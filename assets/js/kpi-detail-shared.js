@@ -242,6 +242,24 @@ export function renderKpiStrip(containerId, items) {
 }
 
 // A comparison line for the header: arrow + delta text vs previous period.
+// Percentage change, or null when a percentage would not mean anything.
+//
+// A percentage needs a positive base. Against a NEGATIVE one the number inverts
+// its own sense: a net profit moving from -Rp1.906.547.823 to -Rp34.444 computes
+// as "+100%", which reads as "the loss is gone" when the business is still losing
+// money — it just lost far less. (99.998% rounding to 100% makes it worse.) The
+// same base also makes -100 → +50 read as "+150%".
+//
+// Finance convention is n/m — not meaningful — so callers show the absolute change
+// alone, which IS meaningful and correct. Zero base is excluded for the older
+// reason: every change from zero is infinite, not 100%.
+export function changePercent(current, previous) {
+    const cur = Number(current) || 0;
+    const prev = Number(previous) || 0;
+    if (!(prev > 0)) return null;
+    return ((cur - prev) / prev) * 100;
+}
+
 export function trendDelta(current, previous, { invert = false } = {}) {
     const cur = Number(current) || 0;
     const prev = Number(previous) || 0;

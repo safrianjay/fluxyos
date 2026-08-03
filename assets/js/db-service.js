@@ -6643,7 +6643,10 @@ class DataService {
 
     _incomeChange(current, previous) {
         const change_amount = (Number(current) || 0) - (Number(previous) || 0);
-        const pct = previous !== 0 ? (change_amount / Math.abs(previous)) * 100 : null;
+        // Positive base only — see changeCells() in accounting.js. A percentage
+        // against a negative previous period inverts its meaning, and a loss that
+        // shrank would read as a loss eliminated.
+        const pct = previous > 0 ? (change_amount / previous) * 100 : null;
         return {
             change_amount,
             change_pct: (pct !== null && Number.isFinite(pct)) ? Math.round(pct * 10) / 10 : null

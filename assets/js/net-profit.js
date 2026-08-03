@@ -9,7 +9,7 @@
 // the Overview Net profit card, so the same figure reads identically either side
 // of the drill-down.
 import {
-    escapeHtml, formatRp, formatPercent, formatDate, recordDate,
+    escapeHtml, formatRp, formatPercent, formatDate, recordDate, changePercent,
     resolvePeriodFromUrl, mountPeriodControls, previousPeriod, resolvePeriod,
     renderKpiStrip, bucketSeries, renderTrendChart, renderComparisonColumns,
     renderBreakdownList, createSupportingTable, ledgerRecordUrl, parseKey, dayKey,
@@ -197,7 +197,11 @@ function render() {
     headline.className = `text-2xl font-bold tracking-tight tabular-nums ${totals.netProfit < 0 ? 'text-red-600' : 'text-gray-900'}`;
 
     const diff = totals.netProfit - prevTotals.netProfit;
-    const changePct = prevTotals.netProfit !== 0 ? (diff / Math.abs(prevTotals.netProfit)) * 100 : null;
+    // Suppressed when the previous period was a loss (or zero): a percentage
+    // against a negative base inverts its own meaning — a move from -Rp1,9bn to
+    // -Rp34k computed as "+100%", reading as though the loss were gone. The
+    // absolute change still shows, and it is the honest number.
+    const changePct = changePercent(totals.netProfit, prevTotals.netProfit);
     const compare = el('profit-compare');
     if (!hasComparison) {
         compare.textContent = `${totals.count} profit and loss record${totals.count === 1 ? '' : 's'}`;

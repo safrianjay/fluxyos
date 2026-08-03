@@ -595,7 +595,12 @@ function mergeStatementLines(current = [], prior = []) {
 
 function changeCells(current, prior, kind) {
     const change_amount = (Number(current) || 0) - (Number(prior) || 0);
-    const change_pct = prior !== 0 ? (change_amount / Math.abs(prior)) * 100 : null;
+    // A percentage needs a POSITIVE base. Against a negative prior it inverts its
+    // own sense — a Net Income row moving from a big loss to a small one computed
+    // as "+100%", reading as though the loss were gone. Revenue/expense rows are
+    // unaffected (their base is positive); only loss-to-loss subtotals change, and
+    // for those the absolute movement is the honest figure.
+    const change_pct = prior > 0 ? (change_amount / prior) * 100 : null;
     const d = changeDisplay({ change_amount, change_pct, kind });
     return `<td class="fluxy-table-cell fluxy-table-money acct-tone-${d.tone}">${escapeHtml(d.text)}</td>
         <td class="fluxy-table-cell fluxy-table-money acct-tone-${d.pctTone}">${escapeHtml(d.pctText)}</td>`;
