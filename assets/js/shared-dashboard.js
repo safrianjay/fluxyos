@@ -354,6 +354,133 @@ window.showReasonDialog = function(options = {}) {
     });
 };
 
+// ---------- Duplicate review dialog ----------
+// The side-by-side "is this a duplicate?" popup shown before a record is saved
+// (docs/DUPLICATE_PREVENTION.md). Built on the canonical dialog shell — same
+// overlay, focus trap, scroll lock, Escape-to-cancel and exit animation — with
+// two differences the canonical one cannot express: a wider card, and a set of
+// context-dependent actions rather than a fixed Cancel/Confirm pair.
+//
+//   const action = await window.showDuplicateDialog({ match, actions, ... });
+//   // → the chosen action's id, or null when cancelled.
+//
+// The caller supplies fully-escaped display values via `match`; nothing here
+// reads Firestore. Fields that DIFFER are highlighted — users are scanning for
+// the difference, not the sameness, so the sameness stays quiet.
+window.showDuplicateDialog = function (options = {}) {
+    const {
+        title = 'This looks like a record you already have',
+        lead = '',
+        evidence = [],
+        existing = {},
+        incoming = {},
+        existingLabel = 'Existing',
+        incomingLabel = "You're adding",
+        note = '',
+        actions = [],
+        tone = 'warn'
+    } = options;
+
+    const esc = (v) => String(v == null ? '' : v)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    // One comparison row. `differs` drives the amber treatment; when a side has
+    // no value we show an em dash rather than an empty cell, so the row still
+    // reads as a comparison.
+    const compareRow = (label, a, b) => {
+        const left = a == null || a === '' ? '—' : a;
+        const right = b == null || b === '' ? '—' : b;
+        const differs = String(left) !== String(right) && left !== '—' && right !== '—';
+        // data-side feeds the mobile layout, where the columns collapse and each
+        // value has to carry its own "Existing" / "You're adding" label.
+        return `
+            <div class="fluxy-dup-row${differs ? ' is-different' : ''}">
+                <span class="fluxy-dup-row-label">${esc(label)}</span>
+                <span class="fluxy-dup-row-value" data-side="${esc(existingLabel)}">${esc(left)}</span>
+                <span class="fluxy-dup-row-value" data-side="${esc(incomingLabel)}">${esc(right)}</span>
+            </div>`;
+    };
+
+    const ROWS = [
+        ['Number', existing.number, incoming.number],
+        ['Counterparty', existing.party, incoming.party],
+        ['Date', existing.date, incoming.date],
+        ['Amount', existing.amount, incoming.amount],
+        ['Status', existing.status, incoming.status],
+        ['Source', existing.source, incoming.source]
+    ];
+
+    return new Promise((resolve) => {
+        document.getElementById('fluxy-dialog')?.remove();
+        const wrap = document.createElement('div');
+        wrap.id = 'fluxy-dialog';
+        wrap.className = 'fluxy-dialog fluxy-dialog--duplicate';
+        wrap.innerHTML = `
+            <div class="fluxy-dialog-overlay" data-dialog-action="__cancel"></div>
+            <div class="fluxy-dialog-card fluxy-dialog-card--duplicate" role="dialog" aria-modal="true" aria-labelledby="fluxy-dialog-title" aria-describedby="fluxy-dup-lead">
+                <div class="fluxy-dialog-icon ${tone === 'danger' ? 'is-danger' : ''}" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${FLUXY_DIALOG_ICONS.warn}</svg>
+                </div>
+                <h3 id="fluxy-dialog-title" class="fluxy-dialog-title">${esc(title)}</h3>
+                ${lead ? `<p id="fluxy-dup-lead" class="fluxy-dup-lead">${esc(lead)}</p>` : ''}
+
+                <div class="fluxy-dup-compare">
+                    <div class="fluxy-dup-row fluxy-dup-head">
+                        <span class="fluxy-dup-row-label"></span>
+                        <span class="fluxy-dup-row-value">${esc(existingLabel)}</span>
+                        <span class="fluxy-dup-row-value">${esc(incomingLabel)}</span>
+                    </div>
+                    ${ROWS.map(([l, a, b]) => compareRow(l, a, b)).join('')}
+                </div>
+
+                ${evidence.length ? `
+                <div class="fluxy-dup-evidence">
+                    <p class="fluxy-dup-evidence-title">Why we flagged this</p>
+                    <ul>${evidence.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>
+                </div>` : ''}
+
+                ${note ? `<p class="fluxy-dup-note">${esc(note)}</p>` : ''}
+
+                <div class="fluxy-dialog-actions fluxy-dup-actions">
+                    ${actions.map((a) => `
+                        <button type="button"
+                            class="fluxy-dialog-btn ${a.primary ? 'fluxy-dialog-btn--primary' : 'fluxy-dialog-btn--ghost'}${a.danger ? ' is-danger' : ''}"
+                            data-dialog-action="${esc(a.id)}">${esc(a.label)}</button>`).join('')}
+                </div>
+            </div>
+        `;
+        document.body.appendChild(wrap);
+
+        const prevOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        const close = (result) => {
+            document.removeEventListener('keydown', onKey);
+            wrap.classList.add('is-closing');
+            window.setTimeout(() => {
+                wrap.remove();
+                document.body.style.overflow = prevOverflow;
+                resolve(result);
+            }, 140);
+        };
+        // Escape cancels, matching every other dialog. Enter is deliberately NOT
+        // bound: with several actions of differing consequence there is no safe
+        // default to fire on a stray keypress.
+        const onKey = (e) => { if (e.key === 'Escape') close(null); };
+
+        wrap.addEventListener('click', (e) => {
+            const action = e.target?.closest('[data-dialog-action]')?.dataset?.dialogAction;
+            if (!action) return;
+            close(action === '__cancel' ? null : action);
+        });
+        document.addEventListener('keydown', onKey);
+        window.setTimeout(() => {
+            wrap.querySelector('.fluxy-dialog-btn--primary, .fluxy-dialog-btn')?.focus();
+        }, 50);
+    });
+};
+
 // Shared budget-allocation picker used by the record-transaction entry points
 // (Add Transaction drawer, CSV bulk apply-to-all, AI receipt capture). Lets the
 // user pin a transaction to a specific budget allocation at creation time so
@@ -445,7 +572,12 @@ window.FluxyCashImpact = (function () {
 
     // Render the control markup into a container. `bankAccounts` is optional;
     // when empty, a "no accounts" note replaces the account select.
-    function buildHtml({ impact = 'actual', direction = 'in', accountId = '', bankAccounts = [] } = {}) {
+    // `lockDirection` hides the Cash in / Cash out toggle for flows where the
+    // direction is not a user choice — paying a bill can only ever be cash OUT,
+    // and offering "Cash in" there is a one-click way to write an expense that
+    // *increases* the cash position. `wire` keeps direction in JS state, so the
+    // caller's `direction` still flows through getState()/derive() unchanged.
+    function buildHtml({ impact = 'actual', direction = 'in', accountId = '', bankAccounts = [], lockDirection = false } = {}) {
         const accounts = (bankAccounts || []).filter(a => a.status === 'active');
         const accountOptions = accounts
             .map(a => `<option value="${esc(a.id)}" ${a.id === accountId ? 'selected' : ''}>${esc(a.account_name || a.bank_name || a.id)}</option>`)
@@ -461,12 +593,13 @@ window.FluxyCashImpact = (function () {
                     ${impactBtn('actual', 'Actual')}${impactBtn('pending', 'Pending')}${impactBtn('no_impact', 'No impact')}
                 </div>
             </div>
+            ${lockDirection ? '' : `
             <div data-fci="direction-field" class="${impact === 'actual' ? '' : 'hidden'}">
                 <p class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Direction</p>
                 <div class="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1" data-fci="direction">
                     ${dirBtn('in', 'Cash in', direction !== 'out')}${dirBtn('out', 'Cash out', direction === 'out')}
                 </div>
-            </div>
+            </div>`}
             <div>
                 <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Link cash account</label>
                 ${bankAccounts && bankAccounts.length
@@ -1089,6 +1222,7 @@ window.showAddTransactionModal = function(options = {}) {
                                 <span id="tx-csv-preview-badge" class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">Ready</span>
                             </div>
                             <div id="tx-csv-mapping-summary" class="mt-3 flex flex-wrap gap-2"></div>
+                            <div id="tx-csv-duplicate-note" class="hidden mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"></div>
                             <div class="mt-3 overflow-x-auto rounded-lg border border-gray-200">
                                 <table class="w-full min-w-[560px] text-left">
                                     <thead class="bg-gray-50 text-[10px] font-bold uppercase tracking-wider text-gray-500">
@@ -1666,16 +1800,24 @@ window.showAddTransactionModal = function(options = {}) {
         return { headers: originalHeaders, indexes, transactions };
     }
 
-    function parseBulkTransactions(csvText, defaultDateKey, Timestamp, overrideStatus = null) {
-        const parsed = analyzeBulkCsv(csvText, defaultDateKey, overrideStatus);
-        return parsed.transactions.map(row => {
-            const { dateKey, line, ...transaction } = row;
-            void line;
+    // Analyzed preview rows → the exact shape addTransactions writes.
+    // Everything stripped here is preview-only bookkeeping: `line`/`dateKey` are
+    // parser artefacts, and the duplicate_* fields are UI state from the
+    // pre-flight. None are in the Firestore transaction allowlist, so leaving
+    // one attached would fail the create rule for the whole batch.
+    function toTransactionRows(rows, Timestamp) {
+        return rows.map(row => {
+            const { dateKey, line, duplicate_match, duplicate_override, selected_for_import, ...transaction } = row;
+            void line; void duplicate_match; void duplicate_override; void selected_for_import;
             return {
                 ...transaction,
                 timestamp: buildTransactionTimestamp(dateKey, Timestamp)
             };
         });
+    }
+
+    function parseBulkTransactions(csvText, defaultDateKey, Timestamp, overrideStatus = null) {
+        return toTransactionRows(analyzeBulkCsv(csvText, defaultDateKey, overrideStatus).transactions, Timestamp);
     }
 
     function hasCsvPastDates(csvText, defaultDateKey) {
@@ -2245,25 +2387,57 @@ window.showAddTransactionModal = function(options = {}) {
                 ['Date', 'date'],
             ];
 
+            // Duplicate pre-flight result (docs/DUPLICATE_PREVENTION.md). Rows
+            // the engine flagged arrive deselected — unwinding 200 mistaken
+            // imports means 200 voids, so the default has to be "leave it out".
+            const dupRows = parsed.transactions.filter(row => row.duplicate_match);
+            const included = parsed.transactions.length - dupRows.length;
+
             title.textContent = file.name;
-            summary.textContent = `${parsed.transactions.length} row${parsed.transactions.length === 1 ? '' : 's'} ready for review. Showing first ${Math.min(parsed.transactions.length, 5)}.`;
-            badge.textContent = 'Ready';
-            badge.className = 'shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700';
+            summary.textContent = dupRows.length
+                ? `${included} of ${parsed.transactions.length} rows will be imported. Showing first ${Math.min(parsed.transactions.length, 5)}.`
+                : `${parsed.transactions.length} row${parsed.transactions.length === 1 ? '' : 's'} ready for review. Showing first ${Math.min(parsed.transactions.length, 5)}.`;
+            badge.textContent = dupRows.length ? `${dupRows.length} skipped` : 'Ready';
+            badge.className = dupRows.length
+                ? 'shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700'
+                : 'shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700';
             mapping.innerHTML = requiredMap.map(([label, key]) => `
                 <span class="rounded-full border ${parsed.indexes[key] === undefined ? 'border-gray-200 bg-gray-50 text-gray-500' : 'border-emerald-200 bg-emerald-50 text-emerald-700'} px-2.5 py-1 text-[11px] font-bold">
                     ${escapeHtml(label)}: ${escapeHtml(indexLabel(key))}
                 </span>
             `).join('');
-            body.innerHTML = parsed.transactions.slice(0, 5).map(row => `
-                <tr>
-                    <td class="px-3 py-2 font-semibold text-gray-900">${escapeHtml(row.vendor_name)}</td>
+            // Show the flagged rows first — they are the ones that need a decision.
+            const previewRows = [...dupRows, ...parsed.transactions.filter(r => !r.duplicate_match)].slice(0, 5);
+            body.innerHTML = previewRows.map(row => `
+                <tr${row.duplicate_match ? ' class="bg-amber-50/40"' : ''}>
+                    <td class="px-3 py-2 font-semibold text-gray-900">
+                        ${escapeHtml(row.vendor_name)}
+                        ${row.duplicate_match ? '<span class="ml-1.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">Possible duplicate</span>' : ''}
+                    </td>
                     <td class="px-3 py-2 text-gray-600">${escapeHtml(row.category)}</td>
                     <td class="px-3 py-2 text-gray-600">${escapeHtml(row.type.replace(/_/g, ' '))}</td>
-                    <td class="px-3 py-2 font-mono font-bold text-gray-900">Rp${Math.abs(row.amount).toLocaleString('id-ID')}</td>
+                    <td class="px-3 py-2 font-bold text-gray-900 tabular-nums">Rp${Math.abs(row.amount).toLocaleString('id-ID')}</td>
                     <td class="px-3 py-2 text-gray-600">${escapeHtml(row.status)}</td>
                     <td class="px-3 py-2 text-gray-600">${escapeHtml(row.dateKey)}</td>
                 </tr>
             `).join('');
+
+            // The same affordance the bank statement import already offers, in
+            // reverse: duplicates start excluded, and including them is opt-in.
+            const dupNote = document.getElementById('tx-csv-duplicate-note');
+            if (dupNote) {
+                if (dupRows.length) {
+                    dupNote.innerHTML = `
+                        <span class="text-[12px] font-semibold text-amber-800">
+                            ${dupRows.length === 1 ? '1 row looks' : `${dupRows.length} rows look`} like records you already have, so ${dupRows.length === 1 ? 'it is' : 'they are'} excluded from this import.
+                        </span>
+                        <button type="button" data-csv-include-dupes class="ml-2 text-[12px] font-bold text-[#EA580C] hover:underline">Include ${dupRows.length === 1 ? 'it' : 'them'} anyway</button>`;
+                    dupNote.classList.remove('hidden');
+                } else {
+                    dupNote.innerHTML = '';
+                    dupNote.classList.add('hidden');
+                }
+            }
             card.classList.remove('hidden');
         };
 
@@ -2352,6 +2526,23 @@ window.showAddTransactionModal = function(options = {}) {
                     renderCsvPreview(file, parsed);
                     setCsvFeedback(`${parsed.transactions.length} rows parsed. Review the preview, then upload when ready.`, 'success');
                     setSubmitButton('Upload CSV', false);
+
+                    // Duplicate pre-flight runs AFTER the preview is on screen so
+                    // the user is never staring at a spinner; it re-renders once
+                    // it knows. A failure here leaves the import exactly as it
+                    // behaved before this feature.
+                    if (window.FluxyDuplicateGuard) {
+                        try {
+                            const { ds: dupDs, scopeId: dupScope } = await getTransactionDataService();
+                            const result = await window.FluxyDuplicateGuard.inspectBatch({
+                                ds: dupDs, userId: dupScope, kind: 'transactions', rows: parsed.transactions
+                            });
+                            if (result.flagged && csvImportState.file === file) {
+                                renderCsvPreview(file, parsed);
+                                setCsvFeedback(`${parsed.transactions.length} rows parsed. ${result.flagged} look like duplicates and are excluded.`, 'info');
+                            }
+                        } catch (_) { /* preview already usable without it */ }
+                    }
                 } catch (err) {
                     csvImportState = { file, csvText: '', parsed: null, status: 'error' };
                     fileInput.dataset.hasPastDates = 'false';
@@ -2368,6 +2559,23 @@ window.showAddTransactionModal = function(options = {}) {
         fileInput.onchange = () => {
             updateSelectedCsvFile();
         };
+
+        // Opt the flagged rows back in. Clearing `duplicate_match` is what makes
+        // them import; the decision itself is logged at upload time, against
+        // each row that was knowingly included.
+        document.getElementById('tx-csv-duplicate-note')?.addEventListener('click', (e) => {
+            if (!e.target?.closest('[data-csv-include-dupes]')) return;
+            const rows = csvImportState.parsed?.transactions || [];
+            rows.forEach((row) => {
+                if (row.duplicate_match) {
+                    row.duplicate_override = row.duplicate_match;
+                    delete row.duplicate_match;
+                    row.selected_for_import = true;
+                }
+            });
+            if (csvImportState.file) renderCsvPreview(csvImportState.file, csvImportState.parsed);
+            setCsvFeedback('Possible duplicates are included in this import.', 'info');
+        });
 
         // Status override toggle
         const bulkToggleBtn = document.getElementById('tx-bulk-status-toggle');
@@ -2485,7 +2693,21 @@ window.showAddTransactionModal = function(options = {}) {
                 dropzone.classList.add('ring-2', 'ring-orange-100', 'border-[#EA580C]');
                 const csvText = csvImportState.csvText || await file.text();
                 const { ds, user, scopeId, Timestamp } = await getTransactionDataService();
-                const transactions = parseBulkTransactions(csvText, todayKey, Timestamp, bulkStatusOverride);
+                // Import from the rows the user actually reviewed — they carry
+                // the duplicate pre-flight result. A fresh parse would silently
+                // re-include everything the preview excluded.
+                const reviewedRows = (csvImportState.file === file && csvImportState.parsed?.transactions)
+                    ? csvImportState.parsed.transactions
+                    : analyzeBulkCsv(csvText, todayKey, bulkStatusOverride).transactions;
+                const skippedDuplicates = reviewedRows.filter(row => row.duplicate_match);
+                const includedRows = reviewedRows.filter(row => !row.duplicate_match);
+                if (!includedRows.length) {
+                    setCsvFeedback(skippedDuplicates.length
+                        ? 'Every row in this file looks like a record you already have. Nothing was imported.'
+                        : 'This CSV has no rows to import.', 'error');
+                    return;
+                }
+                const transactions = toTransactionRows(includedRows, Timestamp);
                 // Apply the chosen budget allocation to expense-like rows only.
                 // Income/refund rows are left to category match (or unallocated).
                 const bulkAllocId = document.getElementById('tx-bulk-allocation-select')?.value || '';
@@ -2500,7 +2722,27 @@ window.showAddTransactionModal = function(options = {}) {
                 }
                 btn.innerText = `Uploading ${transactions.length}...`;
                 await ds.addTransactions(scopeId, transactions);
-                setCsvFeedback(`${transactions.length} transactions imported successfully.`, 'success');
+
+                // Log the rows the user knowingly imported past a duplicate
+                // warning. Best-effort: the import already succeeded, and a
+                // failed provenance note must not read as a failed import.
+                const overridden = includedRows.filter(row => row.duplicate_override);
+                if (overridden.length && ds.recordDuplicateDecision) {
+                    Promise.all(overridden.slice(0, 25).map(row => ds.recordDuplicateDecision(scopeId, {
+                        kind: 'transactions',
+                        primaryId: row.duplicate_override.existing_id || '',
+                        score: row.duplicate_override.score,
+                        rules: row.duplicate_override.rules,
+                        decision: 'kept_both',
+                        reason: 'Included from a CSV import after review.',
+                        source: 'csv'
+                    }))).catch(() => {});
+                }
+
+                const skipNote = skippedDuplicates.length
+                    ? ` ${skippedDuplicates.length} possible duplicate${skippedDuplicates.length === 1 ? ' was' : 's were'} skipped.`
+                    : '';
+                setCsvFeedback(`${transactions.length} transactions imported successfully.${skipNote}`, 'success');
                 window.FluxyDataSync?.emit({ kind: 'transaction', action: 'create', count: transactions.length });
                 window.showToast(`${transactions.length} transactions imported from CSV.`, "success");
                 btn.innerText = 'Uploaded';
@@ -2599,6 +2841,23 @@ window.showAddTransactionModal = function(options = {}) {
                 // single biggest lever on cash attribution, which bank rec depends on.
                 window.FluxyCashImpact.rememberAccount(cashScopeId, chosenCashAccount);
                 Object.assign(data, buildCashImpactFields(txType, chosenCashAccount, data.timestamp));
+            }
+
+            // Duplicate check (docs/DUPLICATE_PREVENTION.md). Deliberately runs
+            // BEFORE the attachment upload below: cancelling here must not leave
+            // an orphaned file in Storage or burn the user's storage quota.
+            // A detection failure resolves to "proceed", so this can never cost
+            // someone their entry.
+            if (user && window.FluxyDuplicateGuard) {
+                btn.innerText = 'Checking for duplicates...';
+                const dupKind = context === 'bill' ? 'bills'
+                    : context === 'subscription' ? 'subscriptions' : 'transactions';
+                const verdict = await window.FluxyDuplicateGuard.check({
+                    ds, userId: scopeId, kind: dupKind, payload: data, source: 'manual'
+                });
+                // `finally` restores the button label and enabled state.
+                if (!verdict.proceed) return;
+                btn.innerText = 'Deploying...';
             }
 
             // Shared document attachment (Phase 1):

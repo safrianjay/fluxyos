@@ -173,8 +173,14 @@ test.describe('Bill Details drawer — Attachments section wiring', () => {
                 defaultCategory: 'Operations',
                 context: 'bill',
             }));
-            await page.locator('#tx-amount').fill('100000');
-            await page.locator('#tx-vendor').fill('QA Bill');
+            // Unique amount AND vendor per run. A repeat of the same amount +
+            // vendor + day is a real duplicate now, and the pre-save guard
+            // rightly stops it. Every rule below D1 anchors on an exact amount
+            // match, so varying the amount keeps this fixture out of the check
+            // entirely — more robust here than answering the dialog.
+            const billStamp = Date.now();
+            await page.locator('#tx-amount').fill(String(100000 + (billStamp % 1000)));
+            await page.locator('#tx-vendor').fill(`QA Bill ${billStamp}`);
             await expect(page.locator('#tx-submit-btn')).toBeEnabled({ timeout: 5_000 });
             await page.locator('#tx-submit-btn').click();
             try {
@@ -220,7 +226,7 @@ test.describe('Storage-dependent end-to-end uploads @storage', () => {
         await dismissOnboardingIfPresent(page);
         await page.evaluate(() => window.showAddTransactionModal({}));
         await page.locator('#tx-amount').fill('123000');
-        await page.locator('#tx-vendor').fill('QA receipt png');
+        await page.locator('#tx-vendor').fill(`QA receipt png ${Date.now()}`);
         await page.locator('#tx-receipt-section input[type="file"]').setInputFiles(tempPng());
         await page.locator('#tx-submit-btn').click();
         await expect(page.locator('#global-tx-modal')).toHaveCount(0, { timeout: 30_000 });
@@ -232,7 +238,7 @@ test.describe('Storage-dependent end-to-end uploads @storage', () => {
         await dismissOnboardingIfPresent(page);
         await page.evaluate(() => window.showAddTransactionModal({}));
         await page.locator('#tx-amount').fill('45000');
-        await page.locator('#tx-vendor').fill('QA receipt pdf');
+        await page.locator('#tx-vendor').fill(`QA receipt pdf ${Date.now()}`);
         await page.locator('#tx-receipt-section input[type="file"]').setInputFiles(tempPdf());
         await page.locator('#tx-submit-btn').click();
         await expect(page.locator('#global-tx-modal')).toHaveCount(0, { timeout: 30_000 });

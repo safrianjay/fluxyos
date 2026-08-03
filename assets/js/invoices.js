@@ -1008,6 +1008,26 @@ export function initInvoicesPage({ ds, user }) {
                 const saved = await saveDraft({ silent: true });
                 if (!saved) return;
             }
+            // Duplicate check (docs/DUPLICATE_PREVENTION.md) at FINALIZE, not at
+            // draft: a draft is inert, but finalizing books the receivable —
+            // and a receivable recognised twice overstates revenue and PPN
+            // output tax, which is a filed-return problem, not just a report.
+            if (window.FluxyDuplicateGuard) {
+                const verdict = await window.FluxyDuplicateGuard.check({
+                    ds,
+                    userId: uid,
+                    kind: 'invoices',
+                    payload: {
+                        customer_name: editor.customerName.trim(),
+                        total_amount: computeTotals().total,
+                        issue_date: editor.issueDate,
+                        currency: editor.currency
+                    },
+                    ignoreId: editor.invoiceId,
+                    source: 'manual'
+                });
+                if (!verdict.proceed) return;
+            }
             await ds.finalizeInvoice(uid, editor.invoiceId, { markSent });
             editor.dirty = false;
             closeReviewModal();

@@ -132,6 +132,40 @@ service cloud.firestore {
         && (!('bank_account_id' in data) || data.bank_account_id == null || data.bank_account_id is string);
     }
 
+    // Duplicate prevention (docs/DUPLICATE_PREVENTION.md) — the record of what a
+    // user decided about one flagged pair of records. Ids, an integer score, and
+    // enums only: no money, no vendor names, no formatted currency. Deliberately
+    // 13 keys with a flat validator, to stay well inside the rules evaluation
+    // budget that the invoice transitions already brush against.
+    function isValidDuplicateReview(data) {
+      return data.keys().hasOnly([
+          'kind', 'primary_id', 'duplicate_id', 'score', 'rules', 'decision',
+          'reason', 'source', 'notes', 'decided_by', 'decided_at', 'created_at'
+        ])
+        && data.keys().hasAll(['kind', 'primary_id', 'decision', 'source', 'decided_by', 'created_at'])
+        && data.kind in ['transactions', 'bills', 'invoices', 'subscriptions', 'journals']
+        && data.primary_id is string && data.primary_id.size() <= 160
+        && (!('duplicate_id' in data) || (data.duplicate_id is string && data.duplicate_id.size() <= 160))
+        && (!('score' in data) || (data.score is number && data.score >= 0 && data.score <= 100))
+        && (!('rules' in data) || (data.rules is list && data.rules.size() <= 8))
+        && data.decision in ['pending', 'kept_both', 'ignored', 'valid', 'voided', 'reversed', 'merged', 'attached']
+        && (!('reason' in data) || (data.reason is string && data.reason.size() <= 500))
+        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 500))
+        && data.source in ['manual', 'scan', 'csv', 'bank_sync', 'revenue_sync', 'api', 'cleanup']
+        && data.decided_by == request.auth.uid
+        && data.created_at == request.time;
+    }
+
+    // Amending a decision: the pair it describes is immutable, only the outcome
+    // and its narrative can change (resolve a `pending`, add a note).
+    function isValidDuplicateReviewUpdate(data, prev) {
+      return data.diff(prev).affectedKeys().hasOnly(['decision', 'reason', 'notes', 'decided_by', 'decided_at'])
+        && data.decision in ['pending', 'kept_both', 'ignored', 'valid', 'voided', 'reversed', 'merged', 'attached']
+        && (!('reason' in data) || (data.reason is string && data.reason.size() <= 500))
+        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 500))
+        && data.decided_by == request.auth.uid;
+    }
+
     function isValidAuditLog(data) {
       return data.keys().hasAll([
           'actor_uid',
@@ -169,7 +203,8 @@ service cloud.firestore {
           'chart_of_accounts',
           'journals',
           'ledger_balances',
-          'periods'
+          'periods',
+          'duplicate_reviews'
         ]
         && data.target_id is string
         && data.target_id.size() <= 160
@@ -859,6 +894,7 @@ service cloud.firestore {
           'upload_status',
           'extraction_status',
           'review_status',
+          'file_hash',
           'created_at',
           'updated_at'
         ])
@@ -875,6 +911,7 @@ service cloud.firestore {
         && data.source_context in ['transaction', 'revenue', 'bill', 'subscription', 'payment']
         && (!('target_collection' in data) || data.target_collection == null || data.target_collection in ['transactions', 'bills', 'subscriptions'])
         && (!('target_id' in data) || data.target_id is string)
+        && (!('file_hash' in data) || (data.file_hash is string && data.file_hash.size() <= 64))
         && data.upload_status in ['pending', 'uploaded', 'failed', 'removed']
         && data.extraction_status in ['not_requested', 'pending', 'completed', 'failed']
         && data.review_status in ['not_required', 'needs_review', 'confirmed', 'rejected']
@@ -2552,6 +2589,19 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
+      // Duplicate decisions. Never deleted — "we looked at this and kept both"
+      // is exactly the evidence an auditor asks for, so it outlives the records.
+      match /duplicate_reviews/{reviewId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && isValidDuplicateReview(request.resource.data)
+          && request.resource.data.decided_at == request.time;
+        allow update: if isOwner(userId)
+          && isValidDuplicateReviewUpdate(request.resource.data, resource.data)
+          && request.resource.data.decided_at == request.time;
+        allow delete: if false;
+      }
+
       match /audit_logs/{auditLogId} {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId)
@@ -3119,7 +3169,7 @@ service cloud.firestore {
           'company_tax_profile', 'tax_mappings', 'tax_transactions', 'tax_periods', 'tax_filings',
           'commerce_accounts', 'commerce_orders', 'commerce_transactions', 'commerce_refunds',
           'commerce_settlements', 'commerce_payouts', 'commerce_sync_jobs',
-          'commerce_sync_errors', 'commerce_webhook_logs'
+          'commerce_sync_errors', 'commerce_webhook_logs', 'duplicate_reviews'
         ]
         && data.target_id is string && data.target_id.size() <= 200
         && data.source in ['dashboard', 'ai', 'integration', 'system']
@@ -3456,6 +3506,20 @@ service cloud.firestore {
         allow create: if isMember(workspaceId)
           && isValidWorkspaceAuditLog(request.resource.data);
         allow update, delete: if false;
+      }
+
+      // Duplicate decisions (docs/DUPLICATE_PREVENTION.md). Readable by every
+      // member so a viewer understands why two similar records both exist;
+      // writable by the same roles that can create the records. Never deleted.
+      match /duplicate_reviews/{reviewId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && isValidDuplicateReview(request.resource.data)
+          && request.resource.data.decided_at == request.time;
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && isValidDuplicateReviewUpdate(request.resource.data, resource.data)
+          && request.resource.data.decided_at == request.time;
+        allow delete: if false;
       }
 
       // ---- STAGE 2 finance/operational records (role-gated) ----

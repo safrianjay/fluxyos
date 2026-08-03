@@ -622,6 +622,125 @@ main > header {
     }
 }
 
+/* Duplicate review dialog (docs/DUPLICATE_PREVENTION.md).
+   Wider than the confirm dialog because it carries a two-column comparison,
+   but everything else — surface, radius, shadow, motion, buttons — is the
+   canonical dialog's. Only the DIFFERING fields are tinted: the eye should
+   land on what changed, not re-read what matched. */
+.fluxy-dialog-card--duplicate {
+    max-width: min(680px, calc(100vw - 32px));
+    padding: 24px;
+    text-align: left;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+}
+.fluxy-dialog-card--duplicate .fluxy-dialog-icon { margin-bottom: 14px; }
+.fluxy-dialog-card--duplicate .fluxy-dialog-title { margin-bottom: 6px; }
+
+.fluxy-dup-lead {
+    margin: 0 0 18px;
+    font-size: 13px;
+    font-weight: 650;
+    color: #B45309;
+    line-height: 1.5;
+}
+.fluxy-dup-compare {
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    overflow: hidden;
+}
+.fluxy-dup-row {
+    display: grid;
+    grid-template-columns: minmax(84px, 0.7fr) minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+    padding: 9px 14px;
+    border-top: 1px solid #F3F4F6;
+    align-items: baseline;
+}
+.fluxy-dup-row:first-child { border-top: none; }
+.fluxy-dup-head {
+    background: #F9FAFB;
+    color: #9CA3AF;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.fluxy-dup-row-label {
+    color: #9CA3AF;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+.fluxy-dup-row-value {
+    color: #111827;
+    font-size: 13.5px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+.fluxy-dup-row.is-different { background: #FFFBEB; }
+.fluxy-dup-row.is-different .fluxy-dup-row-value { color: #B45309; }
+
+.fluxy-dup-evidence {
+    margin-top: 16px;
+    padding: 12px 14px;
+    border: 1px solid #FDE68A;
+    border-radius: 12px;
+    background: #FFFBEB;
+}
+.fluxy-dup-evidence-title {
+    margin: 0 0 6px;
+    color: #92400E;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.fluxy-dup-evidence ul {
+    margin: 0;
+    padding-left: 18px;
+    color: #78350F;
+    font-size: 13px;
+    font-weight: 550;
+    line-height: 1.6;
+}
+.fluxy-dup-note {
+    margin: 14px 0 0;
+    font-size: 12.5px;
+    color: #6B7280;
+    line-height: 1.55;
+}
+.fluxy-dup-actions {
+    margin-top: 18px;
+    gap: 8px;
+}
+.fluxy-dup-actions .fluxy-dialog-btn { min-height: 42px; }
+
+/* Mobile: the two record columns stop being columns. The label row would be
+   unreadable at this width, so each side becomes its own labelled block. */
+@media (max-width: 640px) {
+    .fluxy-dialog-card--duplicate { padding: 20px 16px; }
+    .fluxy-dup-row {
+        grid-template-columns: 1fr;
+        gap: 2px;
+        padding: 10px 12px;
+    }
+    .fluxy-dup-head { display: none; }
+    .fluxy-dup-row-value::before {
+        content: attr(data-side);
+        display: block;
+        color: #9CA3AF;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+    .fluxy-dup-actions { flex-direction: column-reverse; }
+    .fluxy-dup-actions .fluxy-dialog-btn { width: 100%; }
+}
+
 @keyframes fluxyDialogFade {
     from { opacity: 0; }
     to   { opacity: 1; }

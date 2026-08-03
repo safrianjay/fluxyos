@@ -18,7 +18,12 @@ const state = {
     lastTabByGroup: {},
     loading: false,
     data: null,
-    statements: null
+    statements: null,
+    // Duplicate review (docs/DUPLICATE_PREVENTION.md) — scanned lazily per
+    // period, so opening the page costs nothing extra.
+    dupLoading: false,
+    dupGroups: [],
+    dupScannedRange: null
 };
 
 // Display catalog for the mapping <select>, derived from the canonical seed so
@@ -158,6 +163,7 @@ export function initAccountingPage({ ds, user }) {
 
     mountPicker();
     wireStaticControls();
+    wireDuplicateReview();
     load();
     // A transaction saved anywhere feeds the ledger, so the statements, KPI strip
     // and close checklist here all go stale on a save made from another page.
@@ -181,8 +187,10 @@ function mountPicker() {
             // Period-scoped lazy tabs must refresh for the new range. Aging is
             // as-of-today, so it is deliberately left cached.
             if (state.kernel) state.kernel.loadedPeriod = null;
+            state.dupScannedRange = null; // the duplicate scan is period-scoped too
             load(); // re-fetches readiness + statements for the new range
             if (KERNEL_TABS.has(state.activeTab)) loadKernel(true);
+            if (state.activeTab === 'cleanup') loadDuplicates(true);
         }
     });
 }
@@ -369,6 +377,9 @@ function setTab(tab, { updateUrl = true } = {}) {
     if (KERNEL_TABS.has(tab)) loadKernel();
     // Aging is as-of-today (not period-scoped) and loads lazily on first open.
     if (tab === 'aging') loadAging();
+    // The duplicate scan is O(n²) over the period, so it only runs when someone
+    // actually opens Cleanup — and only once per date range.
+    if (tab === 'cleanup') loadDuplicates();
     // Vendor master loads lazily on first open.
     if (tab === 'vendors') renderVendors();
 
@@ -1276,17 +1287,26 @@ function render(data) {
         renderMapping(readiness);
         renderKeywordRules();
         renderCloseChecklist();
-        // Cleanup is pre-close work: the count shows on its own view and rolls up
-        // to the Close group so the backlog is visible from any section.
-        const outstanding = readiness.cleanupItems.length;
-        el('tab-cleanup-count').textContent = `${outstanding}`;
-        const groupBadge = el('tab-close-count');
-        if (groupBadge) {
-            groupBadge.textContent = `${outstanding}`;
-            groupBadge.classList.toggle('hidden', outstanding === 0);
-        }
+        updateCleanupBadge();
     }
     setTab(state.activeTab);
+}
+
+// Cleanup is pre-close work: the count shows on its own view and rolls up to the
+// Close group so the backlog is visible from any section. Unresolved duplicates
+// are counted alongside the readiness items — both are things that must be
+// settled before the period can be closed honestly.
+function updateCleanupBadge() {
+    const items = state.data?.readiness?.cleanupItems?.length || 0;
+    const dupes = state.dupGroups?.length || 0;
+    const outstanding = items + dupes;
+    const tabBadge = el('tab-cleanup-count');
+    if (tabBadge) tabBadge.textContent = `${outstanding}`;
+    const groupBadge = el('tab-close-count');
+    if (groupBadge) {
+        groupBadge.textContent = `${outstanding}`;
+        groupBadge.classList.toggle('hidden', outstanding === 0);
+    }
 }
 
 function renderKpis(data) {
@@ -1388,6 +1408,263 @@ function renderCleanup(data) {
     const rank = { high: 0, medium: 1, low: 2 };
     const sorted = [...data.cleanupItems].sort((a, b) => (rank[a.severity] - rank[b.severity]));
     wrap.innerHTML = sorted.map(cleanupRowHtml).join('');
+}
+
+// ============================================================================
+// DUPLICATE REVIEW (docs/DUPLICATE_PREVENTION.md, Phase 2)
+//
+// The historical counterpart to the pre-save guard: a pairwise scan of the
+// records already in the selected period. Scoring is the same pure engine the
+// drawer uses, so a pair scored 90 here would have been scored 90 at entry.
+//
+// Every resolution routes through an EXISTING db-service path — voidTransaction,
+// voidInvoice, reverseJournal — which already reverse the journal and write the
+// audit log. Nothing here writes a financial record itself.
+// ============================================================================
+
+const DUP_KIND_LABEL = {
+    transactions: 'Transaction',
+    bills: 'Bill',
+    invoices: 'Invoice',
+    subscriptions: 'Subscription',
+    journals: 'Journal'
+};
+
+// Records a period can realistically hold before a pairwise scan stops being
+// instant. Beyond this the user is told to narrow the range rather than left
+// with a frozen tab.
+const DUP_SCAN_CAP = 2000;
+
+let dupEngine = null;
+async function duplicateEngine() {
+    if (!dupEngine) dupEngine = await import('/assets/js/duplicate-engine.js');
+    return dupEngine;
+}
+
+function dupBandPill(band, score) {
+    const cls = band === 'high' ? 'acct-dot-high' : band === 'medium' ? 'acct-dot-medium' : 'acct-dot-low';
+    return `<span class="acct-dot ${cls}" aria-hidden="true"></span><span class="fluxy-meta acct-mono">${score}%</span>`;
+}
+
+function dupSide(label, display) {
+    const parts = [
+        display.number,
+        display.party,
+        display.dateMs ? new Date(display.dateMs).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null,
+        display.status
+    ].filter(Boolean);
+    return `
+        <div style="flex:1;min-width:0;">
+            <div class="fluxy-meta" style="text-transform:uppercase;letter-spacing:0.04em;font-weight:800;color:#9CA3AF;">${escapeHtml(label)}</div>
+            <div class="fluxy-body-strong" style="color:#111827;">${escapeHtml(display.party || '—')}</div>
+            <div class="fluxy-meta acct-mono">${escapeHtml(formatRupiah(display.amount))}</div>
+            <div class="fluxy-meta" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(parts.join(' · '))}</div>
+        </div>`;
+}
+
+function dupGroupHtml(group) {
+    const kindLabel = DUP_KIND_LABEL[group.kind] || 'Record';
+    const link = SOURCE_LINKS[group.kind] || null;
+    const openHref = link ? `${link}?record=${encodeURIComponent(group.duplicate_id)}` : null;
+
+    // Posted records can only be voided. Offering "delete" would be a lie — the
+    // Firestore rules deny it outright — so the card says what IS possible.
+    const canVoid = group.kind === 'transactions' || group.kind === 'invoices';
+    const canReverse = group.kind === 'journals';
+
+    return `
+        <div class="acct-row" data-dup-group="${escapeHtml(group.pair_key)}" style="flex-direction:column;align-items:stretch;gap:10px;padding-top:14px;padding-bottom:14px;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                ${dupBandPill(group.band, group.score)}
+                <span class="acct-pill acct-pill-planned">${escapeHtml(kindLabel)}</span>
+                <span class="fluxy-meta" style="color:#6B7280;">${escapeHtml((group.evidence || []).join(' · '))}</span>
+            </div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;">
+                ${dupSide('Original', group.primary)}
+                ${dupSide('Possible duplicate', group.duplicate)}
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+                ${openHref ? `<a href="${escapeHtml(openHref)}" class="acct-btn acct-btn-secondary" style="text-decoration:none;">Open</a>` : ''}
+                <button type="button" class="acct-btn acct-btn-secondary" data-dup-action="valid">Not a duplicate</button>
+                <button type="button" class="acct-btn acct-btn-secondary" data-dup-action="ignored">Ignore</button>
+                <button type="button" class="acct-btn acct-btn-secondary" data-dup-action="note">Add note</button>
+                ${canVoid ? `<button type="button" class="acct-btn acct-btn-primary" data-dup-action="void">Void the duplicate</button>` : ''}
+                ${canReverse ? `<button type="button" class="acct-btn acct-btn-primary" data-dup-action="reverse">Reverse the duplicate</button>` : ''}
+            </div>
+        </div>`;
+}
+
+// Scan the selected period. Lazy: only runs when the Cleanup tab is opened, or
+// when the user asks for a rescan.
+async function loadDuplicates(force = false) {
+    const wrap = el('duplicate-review-content');
+    if (!wrap || !state.ds || !state.user) return;
+    if (state.dupLoading) return;
+    if (state.dupScannedRange === `${state.startKey}..${state.endKey}` && !force) return;
+
+    state.dupLoading = true;
+    wrap.innerHTML = emptyInline('Scanning…', 'Comparing every record in this period against the others.');
+    try {
+        const engine = await duplicateEngine();
+        const uid = state.user.uid;
+        const [transactions, bills, decisions] = await Promise.all([
+            state.ds.getTransactionsForPeriod(uid, state.startKey, state.endKey).catch(() => []),
+            state.ds.getBillsForPeriod(uid, state.startKey, state.endKey).catch(() => []),
+            state.ds.getDuplicateDecisions(uid).catch(() => ({}))
+        ]);
+
+        const scans = [
+            engine.scanForDuplicates({ records: transactions, kind: 'transactions', decisions, maxRecords: DUP_SCAN_CAP }),
+            engine.scanForDuplicates({ records: bills, kind: 'bills', decisions, maxRecords: DUP_SCAN_CAP })
+        ];
+        const groups = scans.flatMap(s => s.groups).sort((a, b) => b.score - a.score);
+        const truncated = scans.some(s => s.truncated);
+
+        state.dupGroups = groups;
+        state.dupScannedRange = `${state.startKey}..${state.endKey}`;
+        renderDuplicates(groups, truncated);
+    } catch (err) {
+        console.error('Duplicate scan failed:', err);
+        wrap.innerHTML = emptyInline('Could not scan this period', 'Try again, or narrow the date range.');
+    } finally {
+        state.dupLoading = false;
+    }
+}
+
+function renderDuplicates(groups, truncated) {
+    const wrap = el('duplicate-review-content');
+    if (!wrap) return;
+    if (!groups.length) {
+        wrap.innerHTML = emptyInline('No duplicates found',
+            'Nothing in this period looks like a copy of anything else.');
+    } else {
+        const note = truncated
+            ? `<div class="fluxy-meta" style="padding:10px 16px;background:#FFFBEB;color:#92400E;">This period has more records than one scan covers. Narrow the date range to check the rest.</div>`
+            : '';
+        wrap.innerHTML = note + groups.map(dupGroupHtml).join('');
+    }
+    updateCleanupBadge();
+}
+
+// Resolve one group. Void/reverse call the existing kernel paths so the journal
+// correction and its audit log stay in exactly one place.
+async function resolveDuplicate(pairKey, action) {
+    const group = (state.dupGroups || []).find(g => g.pair_key === pairKey);
+    if (!group) return;
+    const uid = state.user.uid;
+    // Whole sentences per record type — a title built by concatenation is
+    // invisible to scripts/i18n-audit.js and ships untranslated.
+    const VOID_TITLE = {
+        transactions: 'Void the duplicate transaction?',
+        bills: 'Void the duplicate bill?',
+        invoices: 'Void the duplicate invoice?',
+        subscriptions: 'Void the duplicate subscription?',
+        journals: 'Reverse the duplicate journal entry?'
+    };
+
+    try {
+        if (action === 'void' || action === 'reverse') {
+            const reason = await window.showReasonDialog?.({
+                title: VOID_TITLE[group.kind] || VOID_TITLE.transactions,
+                body: action === 'void'
+                    ? 'This reverses its journal so your ledger and trial balance stop counting it twice. The record stays visible, marked voided — posted records are never deleted.'
+                    : 'This posts a reversing journal. The original entry stays on the record, as accounting requires.',
+                confirmLabel: action === 'void' ? 'Void it' : 'Reverse it',
+                tone: 'danger',
+                options: ['Duplicate transaction', 'Entered twice', 'Imported twice', 'Scanned twice', 'Other']
+            });
+            if (!reason) return;
+
+            if (action === 'void' && group.kind === 'transactions') {
+                await state.ds.voidTransaction(uid, group.duplicate_id, reason);
+            } else if (action === 'void' && group.kind === 'invoices') {
+                await state.ds.voidInvoice(uid, group.duplicate_id, reason);
+            } else if (action === 'reverse') {
+                await state.ds.reverseJournal(uid, group.duplicate_id);
+            }
+            await recordDuplicateOutcome(group, action === 'void' ? 'voided' : 'reversed', reason);
+            window.showToast?.(action === 'void' ? 'Duplicate voided and its journal reversed.' : 'Duplicate reversed.', 'success');
+        } else if (action === 'note') {
+            const note = await window.showReasonDialog?.({
+                title: 'Add a note',
+                body: 'Notes stay with this pair so the next person understands the call that was made.',
+                confirmLabel: 'Save note',
+                tone: 'default',
+                reasonLabel: 'Note',
+                options: ['Checked with the vendor', 'Waiting on a credit note', 'Confirmed with the customer', 'Other']
+            });
+            if (!note) return;
+            await recordDuplicateOutcome(group, 'pending', note);
+            window.showToast?.('Note saved.', 'success');
+            return; // the pair stays open — a note is not a resolution
+        } else {
+            // valid / ignored — the pair is settled without touching either record.
+            await recordDuplicateOutcome(group, action, action === 'valid'
+                ? 'Reviewed and confirmed as two separate records.'
+                : 'Ignored from the duplicate review.');
+            window.showToast?.(action === 'valid' ? 'Marked as not a duplicate.' : 'Duplicate ignored.', 'success');
+        }
+
+        // Drop the resolved pair from the list without a full rescan.
+        state.dupGroups = (state.dupGroups || []).filter(g => g.pair_key !== pairKey);
+        renderDuplicates(state.dupGroups, false);
+    } catch (err) {
+        console.error('Duplicate resolution failed:', err);
+        window.showAlertDialog?.({ ...window.formatFluxyError(err, 'Could not resolve this duplicate'), tone: 'danger' });
+    }
+}
+
+async function recordDuplicateOutcome(group, decision, reason) {
+    if (typeof state.ds.recordDuplicateDecision !== 'function') return;
+    await state.ds.recordDuplicateDecision(state.user.uid, {
+        kind: group.kind,
+        primaryId: group.primary_id,
+        duplicateId: group.duplicate_id,
+        score: group.score,
+        rules: group.rules || [group.rule],
+        decision,
+        reason,
+        source: 'cleanup'
+    });
+}
+
+// Live page context for the Fluxy AI drawer (window.FluxyAIContext — the explain
+// half; read-only, never writes). Gives the assistant the same evidence the
+// cards show, so "why is this flagged?" can be answered in plain language, in
+// either language, without the AI ever touching a record.
+function registerDuplicateAiContext() {
+    if (!window.FluxyAIContext || typeof window.FluxyAIContext.register !== 'function') return;
+    window.FluxyAIContext.register(() => {
+        const groups = state.dupGroups || [];
+        const top = groups[0] || null;
+        const cleanup = state.data?.readiness?.cleanupItems?.length || 0;
+        return {
+            pageTitle: 'Accounting Center',
+            summary: [
+                { label: 'Period', value: `${state.startKey} → ${state.endKey}` },
+                { label: 'Possible duplicates', value: String(groups.length), status: groups.length ? 'warning' : 'good' },
+                { label: 'Cleanup items', value: String(cleanup), status: cleanup ? 'warning' : 'good' },
+                ...(top ? [{
+                    label: 'Strongest match',
+                    value: `${top.score}% · ${(top.evidence || []).join(', ')}`,
+                    status: top.band === 'high' ? 'critical' : 'warning'
+                }] : [])
+            ],
+            filters: { start: state.startKey, end: state.endKey, tab: state.activeTab },
+            selectedRecord: top ? { kind: top.kind, id: top.duplicate_id } : null
+        };
+    });
+}
+
+function wireDuplicateReview() {
+    registerDuplicateAiContext();
+    el('dup-rescan-btn')?.addEventListener('click', () => loadDuplicates(true));
+    el('duplicate-review-content')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-dup-action]');
+        if (!btn) return;
+        const pairKey = btn.closest('[data-dup-group]')?.dataset.dupGroup;
+        if (pairKey) resolveDuplicate(pairKey, btn.dataset.dupAction);
+    });
 }
 
 function mappingPillClass(status) {

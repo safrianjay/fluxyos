@@ -77,7 +77,6 @@
         extraction: null,
         extractionSource: null,
         saving: false,
-        duplicateConfirmed: false,
         pickers: { primary: null, invoice: null },
         dates: { primary: null, invoice: null },
         errorMessage: null,
@@ -321,7 +320,6 @@
         state.file = null;
         state.extraction = null;
         state.extractionSource = null;
-        state.duplicateConfirmed = false;
         // Per-document state — a second scan must not inherit the first one's
         // currency, exchange rate, or cash-impact choice.
         state.currency = 'IDR';
@@ -341,7 +339,6 @@
         setHeader();
         const isOnline = navigator.onLine !== false;
         state.dates = { primary: null, invoice: null };
-        state.duplicateConfirmed = false;
         clearFile();
         setStep(isOnline ? 'upload' : 'offline');
         $('scan-drawer-backdrop')?.classList.remove('hidden');
@@ -597,7 +594,6 @@
                 </div>
                 ${mockBanner}
                 ${warningsBlock}
-                <div id="scan-duplicate-warning" class="hidden rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-800"></div>
 
                 <div>
                     <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Vendor ${confidenceMark(conf.vendor_name)}</label>
@@ -714,7 +710,6 @@
         $('scan-source-replace')?.addEventListener('click', () => {
             state.extraction = null;
             state.extractionSource = null;
-            state.duplicateConfirmed = false;
             setStep('upload');
         });
     }
@@ -1005,13 +1000,9 @@
     function wireReviewHandlers() {
         const form = $('scan-review-form');
         form?.addEventListener('input', () => {
-            state.duplicateConfirmed = false;
-            hideDuplicateWarning();
             updateSaveEnabled();
         });
         form?.addEventListener('change', () => {
-            state.duplicateConfirmed = false;
-            hideDuplicateWarning();
             updateSaveEnabled();
         });
         // Re-suggest the account when the vendor / category / type changes (unless
@@ -1081,24 +1072,10 @@
         $('scan-rescan-btn')?.addEventListener('click', () => {
             state.extraction = null;
             state.extractionSource = null;
-            state.duplicateConfirmed = false;
             setStep('upload');
         });
     }
 
-    function hideDuplicateWarning() {
-        const warning = $('scan-duplicate-warning');
-        if (!warning) return;
-        warning.classList.add('hidden');
-        warning.textContent = '';
-    }
-
-    function showDuplicateWarning(message) {
-        const warning = $('scan-duplicate-warning');
-        if (!warning) return;
-        warning.textContent = message;
-        warning.classList.remove('hidden');
-    }
 
     function updateSaveEnabled() {
         const form = $('scan-review-form');
@@ -1180,6 +1157,14 @@
             setStep('offline');
             return;
         }
+
+        // Identity check on the file BYTES, before extraction (D0 in
+        // docs/DUPLICATE_PREVENTION.md). Runs first because it is the one signal
+        // that needs no judgement — the same bytes are the same document — and
+        // because catching it here skips an AI extraction the user would pay for
+        // and then throw away.
+        if (await warnIfFileAlreadyUploaded()) return;
+
         setStep('scanning');
         try {
             const fileToSend = await maybeCompressImage(state.file);
@@ -1272,59 +1257,90 @@
         };
     }
 
-    function dayKeyFromAny(value) {
-        if (!value) return '';
-        if (typeof value === 'string') return value.slice(0, 10);
-        if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString().slice(0, 10);
-        if (typeof value.toDate === 'function') {
-            try {
-                return value.toDate().toISOString().slice(0, 10);
-            } catch {
-                return '';
-            }
+
+    const DUPLICATE_KIND = { bill: 'bills', subscription: 'subscriptions', transaction: 'transactions' };
+
+    const RECORD_PAGE = { bills: '/bill', subscriptions: '/subscription', transactions: '/ledger' };
+
+    // Has this exact file already been uploaded and attached to a record?
+    // Returns true when the user chose to stop. Silent on any failure — a
+    // duplicate check must never block a legitimate scan.
+    async function warnIfFileAlreadyUploaded() {
+        const ctx = getContext();
+        const user = ctx?.auth?.currentUser;
+        if (!user || !state.file || typeof ctx.ds?.findDocumentByHash !== 'function') return false;
+        try {
+            const api = await loadAttachmentApi();
+            const hash = await api.hashFile?.(state.file);
+            if (!hash) return false;
+            const existing = await ctx.ds.findDocumentByHash(user.uid, hash);
+            if (!existing) return false;
+
+            const target = existing.target_collection || 'transactions';
+            const proceed = await window.showConfirmDialog?.({
+                title: 'You have already uploaded this exact file',
+                // Filename LAST, so the sentence itself is one whole literal the
+                // translation dictionary and the i18n audit can both see.
+                body: `This file is already attached to a record, so scanning it again would most likely create a duplicate.<br><strong>${escapeHtml(existing.file_name || '')}</strong>`,
+                confirmLabel: 'Scan it anyway',
+                cancelLabel: 'Open the record',
+                tone: 'default'
+            });
+            if (proceed) return false; // user insists — carry on scanning
+
+            const page = RECORD_PAGE[target] || '/ledger';
+            window.location.href = `${page}?record=${encodeURIComponent(existing.target_id)}`;
+            return true;
+        } catch (err) {
+            console.warn('[duplicates] file-hash check skipped:', err && err.message);
+            return false;
         }
-        if (Number.isFinite(value.seconds)) return new Date(value.seconds * 1000).toISOString().slice(0, 10);
-        return '';
     }
 
-    async function findPossibleDuplicate(ctx, userId, payload) {
-        const vendor = String(payload.vendor_name || '').trim().toLowerCase();
-        const amount = Number(payload.amount) || 0;
-        if (!vendor || amount <= 0) return null;
-        try {
-            if (state.mode === 'bill' && typeof ctx.ds.getBills === 'function') {
-                const dueKey = dayKeyFromAny(payload.due_date);
-                const invoice = String(payload.invoice_number || '').trim().toLowerCase();
-                const bills = await ctx.ds.getBills(userId);
-                return bills.find(item => {
-                    const sameVendor = String(item.vendor_name || '').trim().toLowerCase() === vendor;
-                    const sameAmount = Number(item.amount) === amount;
-                    const sameInvoice = invoice && String(item.invoice_number || '').trim().toLowerCase() === invoice;
-                    const sameDue = dueKey && dayKeyFromAny(item.due_date) === dueKey;
-                    return sameVendor && sameAmount && (sameInvoice || sameDue);
-                }) || null;
-            }
-            if (state.mode === 'transaction' && typeof ctx.ds.getTransactions === 'function') {
-                const txKey = dayKeyFromAny(payload.timestamp);
-                const txs = await ctx.ds.getTransactions(userId, 1000);
-                return txs.find(item => (
-                    String(item.vendor_name || '').trim().toLowerCase() === vendor &&
-                    Number(item.amount) === amount &&
-                    txKey &&
-                    dayKeyFromAny(item.timestamp) === txKey
-                )) || null;
-            }
-            if (state.mode === 'subscription' && typeof ctx.ds.getSubscriptions === 'function') {
-                const subs = await ctx.ds.getSubscriptions(userId);
-                return subs.find(item => (
-                    String(item.vendor_name || '').trim().toLowerCase() === vendor &&
-                    Number(item.amount) === amount
-                )) || null;
-            }
-        } catch {
-            return null;
+    // Attach this scan's source document to the record it duplicates, instead of
+    // creating a second one. This is the highest-value outcome of the whole
+    // duplicate flow: the existing record is usually a manual entry with no
+    // paperwork, and the scan's only unique contribution IS the paperwork. The
+    // user keeps the document and the books stay correct.
+    async function attachScanToExisting(ctx, user, match, file) {
+        if (!file) {
+            window.showToast?.('Nothing to attach — this scan has no source file.', 'error');
+            return false;
         }
-        return null;
+        const targetCollection = DUPLICATE_KIND[state.mode] || 'transactions';
+        try {
+            const api = await loadAttachmentApi();
+            const fitted = await api.fitFileForUpload(file);
+            if (!fitted.file) {
+                window.showToast?.(fitted.reason === 'too_large'
+                    ? 'The source file is over 5 MB, so it could not be attached.'
+                    : 'The source file could not be attached.', 'error');
+                return false;
+            }
+            // The shared attachment path: uploads, writes the document metadata
+            // WITH its target pointer, unions it onto the record's
+            // attached_documents, and writes the document.attached audit log.
+            await api.attachToExistingRecord({
+                ds: ctx.ds,
+                userId: user.uid,
+                file: fitted.file,
+                role: modeCfg().documentRole,
+                sourceContext: modeCfg().sourceContext,
+                targetCollection,
+                targetId: match.existing_id,
+                Timestamp: ctx.ds.Timestamp,
+                // A record flagged "Missing Receipt" is complete once its
+                // receipt arrives — which is exactly what just happened.
+                clearMissingReceiptStatus: targetCollection === 'transactions',
+                currentStatus: match.existing?.status || null
+            });
+            window.showToast?.('Document attached to the record you already had.', 'success');
+            return true;
+        } catch (err) {
+            console.error('[document-capture] attach-to-existing failed:', err);
+            window.showToast?.('The document could not be attached to the existing record.', 'error');
+            return false;
+        }
     }
 
     async function saveScannedDocument() {
@@ -1451,13 +1467,31 @@
             }
         } catch (_) { /* fall back to the engine's category-driven resolution */ }
 
-        const duplicate = await findPossibleDuplicate(ctx, user.uid, payload);
-        if (duplicate && !state.duplicateConfirmed) {
-            state.duplicateConfirmed = true;
-            const message = 'Possible duplicate found. Review the existing record, then click save again if you still want to continue.';
-            showDuplicateWarning(message);
-            window.showToast?.(message, 'info');
-            return;
+        // Duplicate check (docs/DUPLICATE_PREVENTION.md). Runs before the source
+        // file is uploaded below, so cancelling costs the user no storage quota.
+        // `allowAttach` offers the outcome that only exists on this path: keep
+        // the record you already have, and give it the document you just scanned.
+        if (window.FluxyDuplicateGuard) {
+            const saveBtnEl = $('scan-save-btn');
+            if (saveBtnEl) saveBtnEl.textContent = 'Checking for duplicates…';
+            const verdict = await window.FluxyDuplicateGuard.check({
+                ds: ctx.ds,
+                userId: user.uid,
+                kind: DUPLICATE_KIND[state.mode] || 'transactions',
+                payload,
+                source: 'scan',
+                allowAttach: !!file
+            });
+            if (saveBtnEl) saveBtnEl.textContent = 'Save';
+            if (verdict.decision === 'attached') {
+                const ok = await attachScanToExisting(ctx, user, verdict.match, file);
+                if (ok) {
+                    window.FluxyDataSync?.emit({ kind: state.mode, action: 'update', id: verdict.match.existing_id });
+                    closeDrawer();
+                }
+                return;
+            }
+            if (!verdict.proceed) return;
         }
 
         state.saving = true;

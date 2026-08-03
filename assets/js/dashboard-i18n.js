@@ -1748,6 +1748,95 @@
         "Could not import the transactions. Try again.": "Tidak dapat mengimpor transaksi. Coba lagi.",
         "No rows were extracted from this statement.": "Tidak ada baris yang diekstrak dari rekening koran ini.",
         "Possible duplicate": "Mungkin duplikat",
+        // Duplicate prevention (docs/DUPLICATE_PREVENTION.md) — the pre-save
+        // review dialog, its evidence lines, and the import pre-flight.
+        "This looks like a transaction you already have": "Sepertinya transaksi ini sudah Anda miliki",
+        "This looks like a bill you already have": "Sepertinya tagihan ini sudah Anda miliki",
+        "This looks like a subscription you already have": "Sepertinya langganan ini sudah Anda miliki",
+        "This looks like an invoice you already have": "Sepertinya invoice ini sudah Anda miliki",
+        "This looks like a journal entry you already have": "Sepertinya jurnal ini sudah Anda miliki",
+        "Why we flagged this": "Alasan kami menandai ini",
+        "Existing": "Yang sudah ada",
+        "You're adding": "Yang Anda tambahkan",
+        "Open existing": "Buka yang sudah ada",
+        "Attach to existing": "Lampirkan ke yang sudah ada",
+        "Keep both": "Simpan keduanya",
+        "Save anyway": "Tetap simpan",
+        "Save both": "Simpan keduanya",
+        "Number": "Nomor",
+        "Counterparty": "Pihak terkait",
+        "Checking for duplicates...": "Memeriksa duplikat...",
+        "Checking for duplicates…": "Memeriksa duplikat…",
+        "Why are both correct?": "Mengapa keduanya benar?",
+        "Two genuine transactions, same day": "Dua transaksi asli, di hari yang sama",
+        "Split payment to the same vendor": "Pembayaran terpisah ke vendor yang sama",
+        "Vendor reused the document number": "Vendor memakai ulang nomor dokumen",
+        "Correcting an earlier entry": "Mengoreksi entri sebelumnya",
+        "amount is identical": "jumlahnya sama persis",
+        "same counterparty": "pihak terkait sama",
+        "dated the same day": "tanggalnya sama",
+        "posted to the same account": "diposting ke akun yang sama",
+        "same category": "kategori sama",
+        "same account and category": "akun dan kategori sama",
+        "the existing record is voided": "catatan yang ada sudah dibatalkan",
+        "this record number is already in use": "nomor catatan ini sudah dipakai",
+        "the exact same file was already uploaded": "file yang sama persis sudah pernah diunggah",
+        "both come from the same bank statement line": "keduanya berasal dari baris rekening koran yang sama",
+        "both come from the same marketplace order": "keduanya berasal dari pesanan marketplace yang sama",
+        "Document attached to the record you already had.": "Dokumen dilampirkan ke catatan yang sudah Anda miliki.",
+        "The document could not be attached to the existing record.": "Dokumen tidak dapat dilampirkan ke catatan yang ada.",
+        "Nothing to attach — this scan has no source file.": "Tidak ada yang dilampirkan — pemindaian ini tanpa file sumber.",
+        "Possible duplicates are included in this import.": "Kemungkinan duplikat disertakan dalam impor ini.",
+        "Every row in this file looks like a record you already have. Nothing was imported.": "Semua baris di file ini tampak seperti catatan yang sudah Anda miliki. Tidak ada yang diimpor.",
+        "This CSV has no rows to import.": "CSV ini tidak punya baris untuk diimpor.",
+        "Included from a CSV import after review.": "Disertakan dari impor CSV setelah ditinjau.",
+        // Duplicate review — Accounting Center → Cleanup (Phase 2).
+        "Records in this period that look like copies of each other. Nothing changes until you choose.": "Catatan di periode ini yang tampak seperti salinan satu sama lain. Tidak ada yang berubah sampai Anda memilih.",
+        "Scan this period": "Pindai periode ini",
+        "Comparing every record in this period against the others.": "Membandingkan setiap catatan di periode ini dengan yang lain.",
+        "No duplicates found": "Tidak ada duplikat",
+        "Nothing in this period looks like a copy of anything else.": "Tidak ada di periode ini yang tampak seperti salinan.",
+        "Could not scan this period": "Tidak dapat memindai periode ini",
+        "Try again, or narrow the date range.": "Coba lagi, atau persempit rentang tanggal.",
+        "This period has more records than one scan covers. Narrow the date range to check the rest.": "Periode ini punya lebih banyak catatan daripada yang dicakup satu pemindaian. Persempit rentang tanggal untuk memeriksa sisanya.",
+        "Original": "Asli",
+        "Not a duplicate": "Bukan duplikat",
+        "Add note": "Tambah catatan",
+        "Add a note": "Tambah catatan",
+        "Void the duplicate transaction?": "Batalkan transaksi duplikat?",
+        "Void the duplicate bill?": "Batalkan tagihan duplikat?",
+        "Void the duplicate invoice?": "Batalkan invoice duplikat?",
+        "Void the duplicate subscription?": "Batalkan langganan duplikat?",
+        "Reverse the duplicate journal entry?": "Balikkan jurnal duplikat?",
+        "Void the duplicate": "Batalkan duplikatnya",
+        "Reverse the duplicate": "Balikkan duplikatnya",
+        "This reverses its journal so your ledger and trial balance stop counting it twice. The record stays visible, marked voided — posted records are never deleted.": "Ini membalikkan jurnalnya agar buku besar dan neraca saldo berhenti menghitungnya dua kali. Catatan tetap terlihat, ditandai dibatalkan — catatan yang sudah diposting tidak pernah dihapus.",
+        "This posts a reversing journal. The original entry stays on the record, as accounting requires.": "Ini memposting jurnal pembalik. Entri asli tetap tercatat, sebagaimana yang dituntut akuntansi.",
+        "Void it": "Batalkan",
+        "Reverse it": "Balikkan",
+        "Entered twice": "Dimasukkan dua kali",
+        "Imported twice": "Diimpor dua kali",
+        "Scanned twice": "Dipindai dua kali",
+        "Notes stay with this pair so the next person understands the call that was made.": "Catatan menyertai pasangan ini agar orang berikutnya memahami keputusan yang diambil.",
+        "Save note": "Simpan catatan",
+        "Checked with the vendor": "Sudah dicek ke vendor",
+        "Waiting on a credit note": "Menunggu nota kredit",
+        "Confirmed with the customer": "Sudah dikonfirmasi ke pelanggan",
+        "Note saved.": "Catatan disimpan.",
+        "Duplicate voided and its journal reversed.": "Duplikat dibatalkan dan jurnalnya dibalik.",
+        "Duplicate reversed.": "Duplikat dibalik.",
+        "Marked as not a duplicate.": "Ditandai bukan duplikat.",
+        "Duplicate ignored.": "Duplikat diabaikan.",
+        "Could not resolve this duplicate": "Tidak dapat menyelesaikan duplikat ini",
+        "Reviewed and confirmed as two separate records.": "Ditinjau dan dikonfirmasi sebagai dua catatan terpisah.",
+        "Ignored from the duplicate review.": "Diabaikan dari tinjauan duplikat.",
+        "Strongest match": "Kecocokan terkuat",
+        "Cleanup items": "Item pembersihan",
+        // File-identity check (Phase 3).
+        "You have already uploaded this exact file": "Anda sudah pernah mengunggah file yang sama persis ini",
+        "This file is already attached to a record, so scanning it again would most likely create a duplicate.": "File ini sudah dilampirkan ke sebuah catatan, jadi memindainya lagi kemungkinan besar membuat duplikat.",
+        "Scan it anyway": "Tetap pindai",
+        "Open the record": "Buka catatannya",
         "Possible duplicates": "Kemungkinan duplikat",
         "Match": "Kecocokan",
         "New": "Baru",
@@ -4721,6 +4810,56 @@
           id: function (m) { return 'dari anggaran periode terpakai · lebih ' + m[1]; } },
         { re: /^(.+) ([\d.,]+%) of period budget$/,
           id: function (m) { var s = translateString(m[1]); return (s !== null ? s : m[1]) + ' ' + m[2] + ' dari anggaran periode'; } },
+
+        // ── duplicate prevention (docs/DUPLICATE_PREVENTION.md) ──────────────
+        // The dialog's lead line joins engine evidence phrases with commas; each
+        // phrase has its own dictionary key, so translate them piecewise.
+        { re: /^(\d+)% match — ([\s\S]+)\.$/,
+          id: function (m) {
+              var parts = m[2].split(', ').map(function (p) {
+                  var t = translateString(p);
+                  return t !== null ? t : p;
+              });
+              return 'Kecocokan ' + m[1] + '% — ' + parts.join(', ') + '.';
+          } },
+        { re: /^Certain duplicate — ([\s\S]+)\.$/,
+          id: function (m) {
+              var t = translateString(m[1]);
+              return 'Duplikat pasti — ' + (t !== null ? t : m[1]) + '.';
+          } },
+        { re: /^counterparty name ([\d.,]+%) similar$/,
+          id: function (m) { return 'nama pihak terkait ' + m[1] + ' mirip'; } },
+        { re: /^description ([\d.,]+%) similar$/,
+          id: function (m) { return 'deskripsi ' + m[1] + ' mirip'; } },
+        { re: /^dated (\d+) days? apart$/,
+          id: function (m) { return 'berjarak ' + m[1] + ' hari'; } },
+        { re: /^(?:Document number|Payment reference) (.+) already exists for (.+)$/,
+          id: function (m) { return 'Nomor dokumen ' + m[1] + ' sudah ada untuk ' + m[2]; } },
+        { re: /^Keeping both means this (.+) will be counted twice\. Only do that if they are genuinely two separate (.+)s\.$/,
+          id: function (m) {
+              var a = translateString(m[1]); var b = translateString(m[2]);
+              return 'Menyimpan keduanya berarti ' + (a !== null ? a : m[1])
+                  + ' ini dihitung dua kali. Lakukan hanya jika keduanya benar-benar '
+                  + (b !== null ? b : m[2]) + ' yang terpisah.';
+          } },
+        { re: /^This is recorded against both (.+)s so the reason is there when someone reviews the books\.$/,
+          id: function (m) {
+              var a = translateString(m[1]);
+              return 'Ini dicatat pada kedua ' + (a !== null ? a : m[1])
+                  + ' agar alasannya tersedia saat seseorang meninjau pembukuan.';
+          } },
+        { re: /^(\d[\d.,]*) skipped$/,
+          id: function (m) { return m[1] + ' dilewati'; } },
+        { re: /^Include (?:it|them) anyway$/,
+          id: function () { return 'Tetap sertakan'; } },
+        { re: /^(\d[\d.,]*) rows? looks? like records you already have, so (?:it is|they are) excluded from this import\.$/,
+          id: function (m) { return m[1] + ' baris tampak seperti catatan yang sudah Anda miliki, jadi dikecualikan dari impor ini.'; } },
+        { re: /^(\d[\d.,]*) of (\d[\d.,]*) rows will be imported\. Showing first (\d+)\.$/,
+          id: function (m) { return m[1] + ' dari ' + m[2] + ' baris akan diimpor. Menampilkan ' + m[3] + ' pertama.'; } },
+        { re: /^(\d[\d.,]*) rows parsed\. (\d[\d.,]*) look like duplicates and are excluded\.$/,
+          id: function (m) { return m[1] + ' baris terbaca. ' + m[2] + ' tampak duplikat dan dikecualikan.'; } },
+        { re: /^(\d[\d.,]*) transactions imported successfully\. (\d[\d.,]*) possible duplicates? (?:was|were) skipped\.$/,
+          id: function (m) { return m[1] + ' transaksi berhasil diimpor. ' + m[2] + ' kemungkinan duplikat dilewati.'; } },
 
         // ── db-service.js (insight strings) ──────────────────────────────────
         { re: /^Week (\d+)$/,

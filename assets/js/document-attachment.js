@@ -115,6 +115,28 @@
         return { file: null, reason: 'too_large' };
     }
 
+    /**
+     * SHA-256 of the file bytes, hex (docs/DUPLICATE_PREVENTION.md).
+     *
+     * Hashing the file the user actually uploads is the one duplicate signal
+     * that carries no judgement: identical bytes are the same document, not a
+     * similar one. Returns null rather than throwing — `crypto.subtle` needs a
+     * secure context, and a duplicate check must never cost someone their
+     * attachment.
+     */
+    async function hashFile(file) {
+        try {
+            if (!file || !window.crypto?.subtle) return null;
+            const buffer = await file.arrayBuffer();
+            const digest = await window.crypto.subtle.digest('SHA-256', buffer);
+            return Array.from(new Uint8Array(digest))
+                .map((b) => b.toString(16).padStart(2, '0'))
+                .join('');
+        } catch (_) {
+            return null;
+        }
+    }
+
     function maybeShowPlanLimit(error) {
         const code = String(error?.code || '');
         if (!code.includes('storage_limit')) return;
@@ -262,6 +284,7 @@
             storage_path: uploaded.storagePath,
             document_role: role,
             source_context: sourceContext,
+            file_hash: await hashFile(file),
             upload_status: 'uploaded'
         });
 
@@ -303,6 +326,7 @@
             source_context: sourceContext,
             target_collection: targetCollection,
             target_id: targetId,
+            file_hash: await hashFile(file),
             upload_status: 'uploaded'
         });
 
@@ -789,6 +813,7 @@
         mount,
         prepareAttachmentForNewRecord,
         attachToExistingRecord,
+        hashFile,
         renderAttachmentsSection,
         reset,
         ALLOWED_MIME: Array.from(ALLOWED_MIME),

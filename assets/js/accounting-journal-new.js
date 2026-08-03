@@ -259,6 +259,36 @@ async function onPost() {
     btn.disabled = true; btn.textContent = 'Posting…';
     try {
         await persistDraft(); // save the latest edits first
+
+        // Duplicate check (docs/DUPLICATE_PREVENTION.md). Posting is the point
+        // of no return — a posted journal can only be reversed, never edited
+        // away — so the question belongs here rather than on the draft.
+        // Compared against OTHER MANUAL journals only: every transaction and
+        // bill also posts a journal, and a manual entry legitimately mirrors the
+        // amount of the system entry it adjusts.
+        if (window.FluxyDuplicateGuard) {
+            const payload = collectPayload();
+            const totalDebit = payload.lines.reduce((sum, line) => sum + (line.debit || 0), 0);
+            const verdict = await window.FluxyDuplicateGuard.check({
+                ds: state.ds,
+                userId: state.user.uid,
+                kind: 'journals',
+                payload: {
+                    total_debit: totalDebit,
+                    description: payload.description,
+                    reference: payload.reference,
+                    date: payload.date
+                },
+                ignoreId: state.draftId,
+                candidateFilter: (j) => j.journal_type === 'manual' && j.status === 'posted',
+                source: 'manual'
+            });
+            if (!verdict.proceed) {
+                btn.disabled = false; btn.textContent = 'Post journal';
+                return;
+            }
+        }
+
         const res = await state.ds.postManualJournal(state.user.uid, state.draftId);
         window.showToast?.(`Posted — ${res.journal_number}.`, 'success');
         window.location.href = `accounting-journal.html?id=${encodeURIComponent(state.draftId)}`;

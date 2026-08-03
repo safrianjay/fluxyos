@@ -1100,10 +1100,36 @@ class DataService {
             upload_status: payload.upload_status || 'uploaded',
             extraction_status: 'not_requested',
             review_status: 'not_required',
+            // SHA-256 of the file bytes (docs/DUPLICATE_PREVENTION.md). Turns
+            // "the same receipt was uploaded twice" from an inference into a
+            // certainty. Omitted rather than nulled when hashing was unavailable,
+            // so legacy documents and non-hashing callers keep the old shape.
+            ...(payload.file_hash ? { file_hash: String(payload.file_hash).slice(0, 64) } : {}),
             created_at: serverTimestamp(),
             updated_at: serverTimestamp()
         });
         return docRef;
+    }
+
+    // Find an already-uploaded document with the same bytes. Equality on a
+    // single indexed field, capped — the D0 identity probe for scanned files.
+    // Returns the newest match that is attached to a record, or null.
+    async findDocumentByHash(userId, fileHash) {
+        const clean = String(fileHash || '').trim();
+        if (!userId || !clean) return null;
+        try {
+            const q = query(
+                collection(this.db, `${this._scope(userId)}/documents`),
+                where('file_hash', '==', clean),
+                limit(5)
+            );
+            const snapshot = await getDocs(q);
+            const docs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+            return docs.find((d) => d.target_id && d.upload_status !== 'removed') || null;
+        } catch (e) {
+            console.warn('[duplicates] file-hash probe unavailable', e && e.message);
+            return null;
+        }
     }
 
     async linkDocumentTarget(userId, documentId, targetCollection, targetId) {
@@ -1688,6 +1714,183 @@ class DataService {
         } catch (e) {
             console.warn('[audit] create log skipped', action, e && e.message ? e.message : e);
         }
+    }
+
+    // ====================================================================
+    // DUPLICATE PREVENTION (docs/DUPLICATE_PREVENTION.md)
+    //
+    // The data layer for the duplicate engine: a bounded candidate fetch used
+    // before every record create, plus the append-mostly `duplicate_reviews`
+    // log that records what the user decided about each flagged pair.
+    //
+    // Scoring lives in assets/js/duplicate-engine.js (pure). Nothing here
+    // voids, merges, or rejects — resolution actions call the existing
+    // voidTransaction / voidInvoice / reverseJournal paths so the journal
+    // correction and its audit log stay in one place.
+    // ====================================================================
+
+    // Which field each collection stores its comparable amount and its
+    // counterparty document number in. Mirrors FIELD_MAP in duplicate-engine.js
+    // — keep the two in step.
+    static get DUPLICATE_PROBE_FIELDS() {
+        return {
+            transactions: { amount: 'amount', docNumber: 'invoice_number' },
+            bills: { amount: 'amount', docNumber: 'invoice_number' },
+            subscriptions: { amount: 'amount', docNumber: 'invoice_number' },
+            invoices: { amount: 'total_amount', docNumber: 'invoice_number' },
+            journals: { amount: 'total_debit', docNumber: 'reference' }
+        };
+    }
+
+    // Fetch the records an incoming one could plausibly duplicate.
+    //
+    // Two bounded EQUALITY probes, both served by Firestore's automatic
+    // single-field indexes — so this needs no composite index and its cost does
+    // NOT grow with the size of the ledger:
+    //   A. same amount  (the anchor: every rule above D1 requires it)
+    //   B. same counterparty document number, when the record carries one
+    //      (the D1 path, which fires regardless of amount)
+    // Date filtering happens in the engine, on the ≤35 docs this returns.
+    async findDuplicateCandidates(userId, {
+        collectionName = 'transactions', amount = 0, docNumber = null, amountLimit = 25, docLimit = 10
+    } = {}) {
+        if (!userId) return [];
+        const probe = DataService.DUPLICATE_PROBE_FIELDS[collectionName];
+        if (!probe) return [];
+        const col = collection(this.db, `${this._scope(userId)}/${collectionName}`);
+        const amountInt = Math.round(Math.abs(Number(amount) || 0));
+        const cleanNumber = String(docNumber || '').trim();
+
+        const runs = [];
+        if (amountInt > 0) {
+            runs.push(getDocs(query(col, where(probe.amount, '==', amountInt), limit(amountLimit))));
+        }
+        if (cleanNumber) {
+            runs.push(getDocs(query(col, where(probe.docNumber, '==', cleanNumber), limit(docLimit))));
+        }
+        if (!runs.length) return [];
+
+        // A duplicate check must never cost the user their save. A failed probe
+        // (offline, a missing index on a legacy field) degrades to "no
+        // candidates found", which lets the record through — the same outcome
+        // as before this feature existed.
+        const settled = await Promise.allSettled(runs);
+        const byId = new Map();
+        settled.forEach((result) => {
+            if (result.status !== 'fulfilled') {
+                console.warn('[duplicates] candidate probe failed — continuing without it');
+                return;
+            }
+            result.value.docs.forEach((d) => {
+                if (!byId.has(d.id)) byId.set(d.id, { id: d.id, ...d.data() });
+            });
+        });
+        return Array.from(byId.values());
+    }
+
+    // The decisions already recorded for a set of records, as
+    // { [pairKey]: decision } — the shape duplicate-engine's `decisions` option
+    // expects, so a pair the user resolved is never re-raised.
+    async getDuplicateDecisions(userId, { kind = null, limitCount = 300 } = {}) {
+        if (!userId) return {};
+        try {
+            const col = collection(this.db, `${this._scope(userId)}/duplicate_reviews`);
+            const q = kind
+                ? query(col, where('kind', '==', kind), limit(limitCount))
+                : query(col, limit(limitCount));
+            const snapshot = await getDocs(q);
+            const map = {};
+            snapshot.docs.forEach((d) => {
+                const data = d.data() || {};
+                if (!data.primary_id || !data.duplicate_id) return;
+                const key = [String(data.primary_id), String(data.duplicate_id)].sort().join('__');
+                map[key] = data.decision || 'pending';
+            });
+            return map;
+        } catch (e) {
+            console.warn('[duplicates] decision history unavailable', e && e.message);
+            return {};
+        }
+    }
+
+    async getDuplicateReviews(userId, limitCount = 100) {
+        if (!userId) return [];
+        const q = query(
+            collection(this.db, `${this._scope(userId)}/duplicate_reviews`),
+            orderBy('created_at', 'desc'),
+            limit(Math.max(1, Math.min(500, Number(limitCount) || 100)))
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    }
+
+    // Record one duplicate decision + its audit log. The two are committed in a
+    // single batch so a rules rejection leaves neither behind.
+    //
+    // `duplicate_id` is '' when the user chose to keep both and no record was
+    // judged the copy — the pair is still logged so the warning is not re-raised
+    // and so the choice is defensible in an audit.
+    async recordDuplicateDecision(userId, {
+        kind = 'transactions', primaryId = '', duplicateId = '', score = 0, rules = [],
+        decision = 'pending', reason = '', source = 'manual', notes = ''
+    } = {}) {
+        if (!userId) throw new Error('userId required');
+        const DECISIONS = ['pending', 'kept_both', 'ignored', 'valid', 'voided', 'reversed', 'merged', 'attached'];
+        const SOURCES = ['manual', 'scan', 'csv', 'bank_sync', 'revenue_sync', 'api', 'cleanup'];
+        const KINDS = ['transactions', 'bills', 'invoices', 'subscriptions', 'journals'];
+
+        const payload = {
+            kind: this._allowedValue(kind, KINDS, 'transactions'),
+            primary_id: this._stringOrDefault(primaryId, '', 160),
+            duplicate_id: this._stringOrDefault(duplicateId, '', 160),
+            score: Math.max(0, Math.min(100, Math.round(Number(score) || 0))),
+            rules: (Array.isArray(rules) ? rules : []).slice(0, 8).map((r) => String(r).slice(0, 8)),
+            decision: this._allowedValue(decision, DECISIONS, 'pending'),
+            reason: this._stringOrDefault(reason, '', 500),
+            source: this._allowedValue(source, SOURCES, 'manual'),
+            notes: this._stringOrDefault(notes, '', 500),
+            decided_by: (this.actorUid || userId),
+            decided_at: serverTimestamp(),
+            created_at: serverTimestamp()
+        };
+
+        const scope = this._scope(userId);
+        const ref = doc(collection(this.db, `${scope}/duplicate_reviews`));
+        const batch = writeBatch(this.db);
+        batch.set(ref, payload);
+        batch.set(doc(collection(this.db, `${scope}/audit_logs`)), {
+            actor_uid: (this.actorUid || userId),
+            actor_role: null,
+            action: `duplicate.${payload.decision}`,
+            target_collection: 'duplicate_reviews',
+            target_id: ref.id,
+            before: null,
+            after: {
+                kind: payload.kind,
+                primary_id: payload.primary_id,
+                duplicate_id: payload.duplicate_id,
+                score: payload.score,
+                source: payload.source
+            },
+            reason: payload.reason || null,
+            source: 'dashboard',
+            created_at: serverTimestamp()
+        });
+        await batch.commit();
+        return { id: ref.id, ...payload };
+    }
+
+    // Amend an existing decision (cleanup review: add a note, or resolve a pair
+    // that was logged as `pending` when the record was first saved).
+    async updateDuplicateDecision(userId, reviewId, { decision = null, reason = null, notes = null } = {}) {
+        if (!userId || !reviewId) throw new Error('userId and reviewId required');
+        const DECISIONS = ['pending', 'kept_both', 'ignored', 'valid', 'voided', 'reversed', 'merged', 'attached'];
+        const patch = { decided_by: (this.actorUid || userId), decided_at: serverTimestamp() };
+        if (decision) patch.decision = this._allowedValue(decision, DECISIONS, 'pending');
+        if (reason != null) patch.reason = this._stringOrDefault(reason, '', 500);
+        if (notes != null) patch.notes = this._stringOrDefault(notes, '', 500);
+        await updateDoc(doc(this.db, `${this._scope(userId)}/duplicate_reviews/${reviewId}`), patch);
+        return { id: reviewId, ...patch };
     }
 
     // ====================================================================

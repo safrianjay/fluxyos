@@ -347,6 +347,20 @@
 
                     <!-- CLEANUP TAB -->
                     <div data-acct-panel="cleanup" class="hidden">
+                        <!-- Possible duplicates (docs/DUPLICATE_PREVENTION.md).
+                             Sits above the cleanup queue: a duplicate distorts
+                             every figure below it, so it is resolved first. -->
+                        <section class="acct-card" style="margin-bottom:16px;">
+                            <div style="padding:16px 16px 12px;border-bottom:1px solid #F3F4F6;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+                                <div>
+                                    <h2 class="fluxy-section-title">Possible duplicates</h2>
+                                    <p class="fluxy-meta">Records in this period that look like copies of each other. Nothing changes until you choose.</p>
+                                </div>
+                                <button type="button" id="dup-rescan-btn" class="acct-btn acct-btn-secondary">Scan this period</button>
+                            </div>
+                            <div id="duplicate-review-content" class="acct-table-scroll"></div>
+                        </section>
+
                         <section class="acct-card">
                             <div style="padding:16px 16px 12px;border-bottom:1px solid #F3F4F6;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
                                 <div>
@@ -469,6 +483,7 @@
 
     <script src="assets/js/sidebar-loader.js"></script>
     <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/duplicate-guard.js"></script>
     <script src="assets/js/dashboard-i18n.js"></script>
     <script src="assets/js/fluxy-select.js"></script>
     <script src="assets/js/fluxy-account-picker.js"></script>
