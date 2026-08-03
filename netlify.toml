@@ -27,7 +27,7 @@
 # Declaring the cron in netlify.toml is the explicit route and does not depend on
 # build-time static detection of the wrapper.
 [functions."ledger-integrity-sweep"]
-  schedule = "*/10 * * * *"
+  schedule = "0 20 * * *"   # 03:00 WIB
 
 [functions."invoice-email-background"]
   node_bundler = "esbuild"
