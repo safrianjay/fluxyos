@@ -108,10 +108,14 @@
     margin-bottom: 16px;
 }
 
+/* 6px matches the KPI card's value → sub-line spacing (`.metric-sub`
+   margin-top), so the two sit on the same rhythm. 2px read as cramped because
+   the amount uses `line-height: 1` per the numeric rule — there is no leading
+   under the glyphs to stand in for the gap. */
 .chart-metric-current {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 6px;
     min-width: 0;
 }
 
@@ -138,10 +142,12 @@
     line-height: 1.4;
 }
 
+/* Same gap as the current-value stack beside it, so the two columns' baselines
+   stay aligned rather than drifting apart. */
 .chart-metric-prior {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 6px;
     padding-left: 20px;
     border-left: 1px solid #E5E7EB;
     min-width: 0;

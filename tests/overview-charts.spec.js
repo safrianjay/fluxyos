@@ -119,13 +119,24 @@ test('tooltip clamps above the bucket labels and carries both series', async ({ 
     const count = await bars.count();
 
     for (let i = 0; i < count; i++) {
-        const box = await bars.nth(i).boundingBox();
         const tip = page.locator('#net-profit-card .chart-tooltip');
-        // Poll for the state being asserted rather than sleeping a fixed 200ms.
-        // The hover handler runs on mousemove, and under suite contention the
-        // fixed wait sometimes measured the tooltip a frame before it painted.
+        // Poll for the state being asserted rather than sleeping a fixed wait.
+        // Two things this has to get right, both of which bit earlier revisions:
+        //  - re-read the box each attempt; a cached one goes stale the moment
+        //    anything above the card shifts (the AI rail finishing its load).
+        //  - actually move. Chromium emits no mousemove for an identical
+        //    consecutive coordinate, so retrying the same point is a no-op and a
+        //    missed first attempt could never recover. Step off, then back on.
         await expect.poll(async () => {
-            await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 2 });
+            // Scroll INSIDE the poll. The page scrolls in an inner
+            // overflow-y container, and this card sits ~1600px down: scrolling
+            // once before the loop did not hold, so boundingBox returned a point
+            // outside the 1000px viewport and the mouse move landed on nothing.
+            await bars.nth(i).scrollIntoViewIfNeeded();
+            const b = await bars.nth(i).boundingBox();
+            if (!b || b.y < 0 || b.y + b.height > page.viewportSize().height) return false;
+            await page.mouse.move(b.x + b.width / 2, b.y - 30);
+            await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 3 });
             return tip.evaluate(e => e.classList.contains('is-visible'));
         }, { timeout: 10_000 }).toBe(true);
         const text = (await tip.textContent() || '').replace(/\s+/g, ' ').trim();
