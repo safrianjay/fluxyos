@@ -34,8 +34,8 @@
 }
 
 .overview-chart-panel {
-    min-height: 430px;
-    padding: 28px 28px 24px;
+    min-height: 336px;
+    padding: 24px 24px 20px;
     display: flex;
     flex-direction: column;
     background: #FFFFFF;
@@ -171,18 +171,18 @@
    series has room to breathe: full-width > 2-up > 3-up. */
 .chart-plot {
     display: flex;
-    min-height: 340px;
+    min-height: 258px;
     flex: 1;
     flex-direction: column;
     min-width: 0;
 }
 
-.overview-chart-row-2 .chart-plot { min-height: 296px; }
-.overview-chart-row-3 .chart-plot { min-height: 264px; }
+.overview-chart-row-2 .chart-plot { min-height: 236px; }
+.overview-chart-row-3 .chart-plot { min-height: 218px; }
 
 .chart-loading {
     display: flex;
-    min-height: 220px;
+    min-height: 180px;
     flex: 1;
     align-items: center;
     justify-content: center;
@@ -195,13 +195,13 @@
 
 .chart-plot-stage {
     position: relative;
-    min-height: 290px;
+    min-height: 208px;
     flex: 1;
     border-bottom: 1px solid #F3F4F6;
 }
 
-.overview-chart-row-2 .chart-plot-stage { min-height: 246px; }
-.overview-chart-row-3 .chart-plot-stage { min-height: 214px; }
+.overview-chart-row-2 .chart-plot-stage { min-height: 186px; }
+.overview-chart-row-3 .chart-plot-stage { min-height: 168px; }
 
 .chart-axis {
     position: absolute;
@@ -415,7 +415,7 @@
 .chart-donut {
     display: flex;
     flex: 1;
-    min-height: 264px;
+    min-height: 218px;
     flex-direction: column;
     justify-content: center;
     min-width: 0;
@@ -431,8 +431,8 @@
 .chart-donut-ring {
     position: relative;
     flex: 0 0 auto;
-    width: 168px;
-    height: 168px;
+    width: 148px;
+    height: 148px;
 }
 
 .chart-donut-ring svg { width: 100%; height: 100%; }
@@ -529,7 +529,7 @@
 .chart-empty {
     display: flex;
     flex: 1;
-    min-height: 200px;
+    min-height: 172px;
     flex-direction: column;
     align-items: center;
     justify-content: center;
@@ -1708,7 +1708,7 @@
 /* Cash flow chart */
 .cash-flow-chart {
     position: relative;
-    min-height: 300px;
+    min-height: 246px;
     display: flex;
     flex-direction: column;
     border-top: 1px solid #F1F5F9;
@@ -1721,7 +1721,7 @@
     display: grid;
     grid-template-columns: 60px 1fr;
     gap: 10px;
-    min-height: 240px;
+    min-height: 196px;
 }
 
 .cash-flow-axis {

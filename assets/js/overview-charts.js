@@ -378,8 +378,11 @@ const AXIS_GUTTER_PX = 76;
 // stage height from the plot container. Pinned in CSS (`.chart-labels-scroll`)
 // so this derivation is exact — keep the two in sync.
 const LABELS_ROW_PX = 30;
-const MIN_PLOT_HEIGHT = 180;
-const FALLBACK_PLOT_HEIGHT = 260;
+// Only a guard against an unrendered / zero-height container — it must stay well
+// below the shortest real stage (3-up is ~188px) or a valid short plot would be
+// silently replaced by the fallback height and break the 1:1 viewBox mapping.
+const MIN_PLOT_HEIGHT = 100;
+const FALLBACK_PLOT_HEIGHT = 200;
 
 // The plot area and the labels row are two separate horizontal scrollers (so the
 // Y-axis can stay pinned). Mirror scrollLeft so they move as one.

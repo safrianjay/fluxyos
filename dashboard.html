@@ -234,7 +234,27 @@
                          whole content canvas, not just the KPI column. -->
                     <div class="overview-wide-column">
 
-                        <!-- 2. Net profit -->
+
+                        <!-- 2. Cash Flow -->
+                        <section class="chart-card cash-flow-card">
+                            <div class="chart-card-header">
+                                <div>
+                                    <h2 class="chart-title">Cash Flow</h2>
+                                    <p class="chart-subtitle">Cash in, cash out, and net cash flow by period</p>
+                                </div>
+                                <div class="chart-legend">
+                                    <span class="legend-item"><span class="legend-dot legend-dot-cash-in"></span> Cash In</span>
+                                    <span class="legend-item"><span class="legend-dot legend-dot-cash-out"></span> Cash Out</span>
+                                    <span class="legend-item"><span class="legend-dot legend-dot-cash-net"></span> Net Cash Flow</span>
+                                </div>
+                            </div>
+                            <div id="cash-flow-chart" class="cash-flow-chart" aria-live="polite">
+                                <div class="cashflow-chart-loading">Loading cash flow activity...</div>
+                            </div>
+                            <p class="chart-footnote">Cash flow is estimated from FluxyOS records only and may not reflect actual bank balance.</p>
+                        </section>
+
+                        <!-- 3. Net profit -->
                         <section id="net-profit-card" class="overview-chart-panel chart-card" data-tour-target="dashboard-net-profit">
                             <div class="chart-card-header">
                                 <div>
@@ -252,7 +272,7 @@
                             </div>
                         </section>
 
-                        <!-- 3. Total income + Total expenses -->
+                        <!-- 4. Total income + Total expenses -->
                         <div class="overview-chart-row-2">
                             <section id="total-income-card" class="chart-card">
                                 <div class="chart-card-header">
@@ -281,7 +301,7 @@
                             </section>
                         </div>
 
-                        <!-- 4. Gross profit margin + the two distribution donuts -->
+                        <!-- 5. Gross profit margin + the two distribution donuts -->
                         <div class="overview-chart-row-3">
                             <section id="gross-margin-card" class="chart-card">
                                 <div class="chart-card-header">
@@ -321,24 +341,6 @@
                             </section>
                         </div>
 
-                        <!-- 5. Cash Flow chart -->
-                        <section class="chart-card cash-flow-card">
-                            <div class="chart-card-header">
-                                <div>
-                                    <h2 class="chart-title">Cash Flow</h2>
-                                    <p class="chart-subtitle">Cash in, cash out, and net cash flow by period</p>
-                                </div>
-                                <div class="chart-legend">
-                                    <span class="legend-item"><span class="legend-dot legend-dot-cash-in"></span> Cash In</span>
-                                    <span class="legend-item"><span class="legend-dot legend-dot-cash-out"></span> Cash Out</span>
-                                    <span class="legend-item"><span class="legend-dot legend-dot-cash-net"></span> Net Cash Flow</span>
-                                </div>
-                            </div>
-                            <div id="cash-flow-chart" class="cash-flow-chart" aria-live="polite">
-                                <div class="cashflow-chart-loading">Loading cash flow activity...</div>
-                            </div>
-                            <p class="chart-footnote">Cash flow is estimated from FluxyOS records only and may not reflect actual bank balance.</p>
-                        </section>
 
                         <!-- 6. Tabs + Requires-your-attention -->
                         <nav class="attention-tabs" aria-label="Queue scope">
