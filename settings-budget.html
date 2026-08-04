@@ -50,7 +50,7 @@
                 <section>
                     <a href="/settings" class="text-[12px] font-bold text-[#EA580C] hover:underline">Settings / Finance Setup</a>
                     <h1 class="mt-2 text-2xl font-bold text-gray-900 tracking-tight">Budget Settings</h1>
-                    <p class="mt-1 text-[14px] text-gray-500">Budgets drive OpEx vs Budget on Overview and the Budget Used metric on Performance Trend.</p>
+                    <p class="mt-1 text-[14px] text-gray-500">Budgets drive OpEx vs Budget on Overview.</p>
                 </section>
 
                 <div id="budget-load-state" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-medium text-gray-500 shadow-sm" aria-live="polite">
@@ -382,7 +382,7 @@
             document.getElementById('budget-cancel-btn').classList.remove('hidden');
             document.getElementById('budget-save-btn').classList.remove('hidden');
             document.getElementById('budget-card-hint').textContent =
-                'Save replaces the active budget. Performance Trend will update on Overview.';
+                'Save replaces the active budget. OpEx vs Budget will update on Overview.';
         }
 
         function setLoadState(state, text) {

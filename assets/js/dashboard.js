@@ -1,4 +1,17 @@
 import DataService from './db-service.js';
+import {
+    buildBucketFrames,
+    buildMetricSeries,
+    trimToActivity,
+    resolveBucketType,
+    renderTrendMetricCard,
+    renderDonutCard,
+    linkHorizontalScroll,
+    formatLevelIDR,
+    formatPercentValue,
+    tooltipRow
+} from './overview-charts.js';
+import { calculateExpenseBreakdown } from './report-builder.js';
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
@@ -16,9 +29,11 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 const auth = getAuth(app);
 const ds = new DataService(app);
 
-let cashflowChartType = 'line';
-let cashflowBuckets = [];
 let cashFlowBuckets = [];
+// Cost-of-revenue mapping keys for the Gross profit margin chart. An empty set
+// means no cost-of-revenue account is mapped yet, which renders the chart's
+// setup state rather than a fabricated 100% margin.
+let cogsKeys = new Set();
 let currentBudget = { monthly: 0, used: 0, usedPct: 0, remaining: 0 };
 let dashboardPeriodMode = 'this_month';
 let dashboardRangeStart = getMonthStartKey();
@@ -78,7 +93,7 @@ window.loadDashboard = async () => {
     renderOverviewLoadingState();
 
     try {
-        const [overviewResult, revenueResult, ledgerCashResult] = await Promise.allSettled([
+        const [overviewResult, revenueResult, ledgerCashResult, mappingsResult] = await Promise.allSettled([
             ds.getDashboardOverview(user.uid, {
                 startDate: dashboardRangeStart,
                 endDate: dashboardRangeEnd,
@@ -86,7 +101,8 @@ window.loadDashboard = async () => {
                 mode: dashboardPeriodMode
             }),
             ds.getRevenueTransactionsForDashboardStats(user.uid),
-            ds.getLedgerCashPosition(user.uid)
+            ds.getLedgerCashPosition(user.uid),
+            ds.getAccountingMappings(user.uid)
         ]);
         if (overviewResult.status !== 'fulfilled') throw overviewResult.reason;
         const overview = overviewResult.value;
@@ -100,18 +116,15 @@ window.loadDashboard = async () => {
         window.FluxyDashboardRange = { start: dashboardRangeStart, end: dashboardRangeEnd };
 
         currentBudget = overview.budget || { monthly: 0, used: 0, usedPct: 0, remaining: 0 };
-        cashflowBuckets = buildCashflowBuckets(
-            overview.chartTransactions || [],
-            dashboardRangeStart,
-            dashboardRangeEnd,
-            currentBudget
-        );
         cashFlowBuckets = overview.cashFlow || [];
-        updateBudgetCaption();
+        // Same COGS classification the Accounting Center income statement uses, so
+        // the Overview gross margin can never disagree with the statement.
+        cogsKeys = mappingsResult.status === 'fulfilled'
+            ? ds._incomeStatementCogsKeys(mappingsResult.value || [])
+            : new Set();
 
         renderSummaryBoard(overview, ledgerCash);
-        renderCashflowChart();
-        attachCashflowChartToggle();
+        renderOverviewCharts(overview);
         renderCashFlowChart();
         buildAttentionCache(overview);
         renderAttentionQueue();
@@ -316,6 +329,7 @@ function renderOverviewLoadingState() {
     setHtml('upcoming-obligations-content', '<div class="overview-card-loading">Loading upcoming obligations...</div>');
     setHtml('report-readiness-content', '<div class="overview-card-loading">Loading report readiness...</div>');
     setHtml('ai-business-summary-content', getAiBusinessSummaryIdleHtml());
+    clearOverviewCharts('Loading...');
     aiSummaryOverview = null;
     aiSummaryRequestSeq += 1;
     updateKPI('attention-total-count', '0');
@@ -362,6 +376,7 @@ function renderOverviewErrorState() {
     setHtml('upcoming-obligations-content', errorHtml);
     setHtml('report-readiness-content', errorHtml);
     setHtml('ai-business-summary-content', errorHtml);
+    clearOverviewCharts('Chart data could not be loaded.');
     clearMetricSparklines();
     const status = document.getElementById('report-readiness-status');
     if (status) {
@@ -680,14 +695,6 @@ function buildNetProfitInsight(performance, netProfit, hasComparison) {
     if (netProfit < 0) return `Expenses exceed revenue by ${formatIDR(Math.abs(netProfit))}.`;
     if (revenue > 0) return `${formatIDR(revenue)} revenue against ${formatIDR(opex)} expenses.`;
     return `${formatIDR(opex)} in expenses with no revenue recorded.`;
-}
-
-function updateBudgetCaption() {
-    const caption = document.getElementById('cashflow-budget-caption');
-    if (!caption) return;
-    const monthly = safeNumber(currentBudget.monthly);
-    const usedPct = safeNumber(currentBudget.usedPct);
-    caption.textContent = monthly > 0 ? `(${usedPct.toFixed(0)}% this period)` : '(Budget not set)';
 }
 
 function renderKpiComparison(id, change, type) {
@@ -1539,7 +1546,14 @@ function renderRevenueSparkline(records = [], periodKey = 'this_month') {
             end: today
         };
     }
-    const buckets = buildCashflowBuckets(records, getDayKey(range.start), getDayKey(range.end), { monthly: 0 });
+    const startKey = getDayKey(range.start);
+    const endKey = getDayKey(range.end);
+    const frames = buildBucketFrames(startKey, endKey);
+    const buckets = trimToActivity(
+        buildMetricSeries(records, frames),
+        [],
+        resolveBucketType(startKey, endKey)
+    ).current;
     renderMetricSparkline(
         'kpi-revenue-sparkline',
         buckets.map(bucket => Number(bucket.revenue) || 0),
@@ -1595,14 +1609,6 @@ function renderRevenueCard() {
     renderRevenueSparkline(selected.records, dashboardPeriodMode);
 }
 
-function isPositiveTransaction(tx) {
-    return isRevenueType(tx.type);
-}
-
-function isSpendTransaction(tx) {
-    return ['expense', 'fee', 'tax', 'pending_payable'].includes(String(tx.type || '').toLowerCase());
-}
-
 function getTxDate(tx) {
     return getRecordDate(tx, 'timestamp');
 }
@@ -1631,12 +1637,6 @@ function parseDayKey(dayKey) {
     return new Date(year, month - 1, day);
 }
 
-function addDays(dayKey, delta) {
-    const date = parseDayKey(dayKey);
-    date.setDate(date.getDate() + delta);
-    return getDayKey(date);
-}
-
 function getMonthStartKey(date = new Date()) {
     return getDayKey(new Date(date.getFullYear(), date.getMonth(), 1));
 }
@@ -1645,112 +1645,12 @@ function getMonthEndKey(date = new Date()) {
     return getDayKey(new Date(date.getFullYear(), date.getMonth() + 1, 0));
 }
 
-function getQuarterStartKey(date = new Date()) {
-    const q = Math.floor(date.getMonth() / 3);
-    return getDayKey(new Date(date.getFullYear(), q * 3, 1));
-}
-
-function getQuarterEndKey(date = new Date()) {
-    const q = Math.floor(date.getMonth() / 3);
-    return getDayKey(new Date(date.getFullYear(), q * 3 + 3, 0));
-}
-
 function formatRangeLabel(startKey, endKey) {
     const start = parseDayKey(startKey);
     const end = parseDayKey(endKey);
     const options = { month: 'short', day: 'numeric', year: 'numeric' };
     if (startKey === endKey) return start.toLocaleDateString('en-US', options);
     return `${start.toLocaleDateString('en-US', options)} - ${end.toLocaleDateString('en-US', options)}`;
-}
-
-function getRangeDays(startKey, endKey) {
-    return Math.max(1, Math.round((parseDayKey(endKey) - parseDayKey(startKey)) / 86400000) + 1);
-}
-
-function formatBucketLabel(startKey, endKey, bucketType) {
-    const start = parseDayKey(startKey);
-    const end = parseDayKey(endKey);
-    if (bucketType === 'quarter') return `Q${Math.floor(start.getMonth() / 3) + 1} ${start.getFullYear()}`;
-    if (bucketType === 'month') return start.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-    if (startKey === endKey) return start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
-        return `${start.toLocaleDateString('en-US', { month: 'short' })} ${start.getDate()}-${end.getDate()}`;
-    }
-    return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}-${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-}
-
-function buildCashflowBuckets(txs, startKey, endKey, budget = { monthly: 0 }) {
-    const rangeDays = getRangeDays(startKey, endKey);
-    const bucketType = rangeDays <= 14 ? 'day'
-        : rangeDays <= 93 ? 'week'
-        : rangeDays <= 366 ? 'month'
-        : 'quarter';
-    const bucketStep = bucketType === 'day' ? 1 : 7;
-    let buckets = [];
-
-    if (bucketType === 'month' || bucketType === 'quarter') {
-        const stepMonths = bucketType === 'quarter' ? 3 : 1;
-        const periodStartKey = date => bucketType === 'quarter' ? getQuarterStartKey(date) : getMonthStartKey(date);
-        const periodEndKey = date => bucketType === 'quarter' ? getQuarterEndKey(date) : getMonthEndKey(date);
-        let cursor = periodStartKey(parseDayKey(startKey));
-        while (cursor <= endKey) {
-            const periodEnd = periodEndKey(parseDayKey(cursor));
-            const bucketStart = cursor < startKey ? startKey : cursor;
-            const bucketEnd = periodEnd > endKey ? endKey : periodEnd;
-            buckets.push({ start: bucketStart, end: bucketEnd, label: formatBucketLabel(bucketStart, bucketEnd, bucketType), revenue: 0, spend: 0, budgetUsedPct: 0 });
-            const next = parseDayKey(cursor);
-            next.setMonth(next.getMonth() + stepMonths);
-            cursor = periodStartKey(next);
-        }
-    } else {
-        let cursor = startKey;
-        while (cursor <= endKey) {
-            const bucketEnd = addDays(cursor, bucketStep - 1) > endKey ? endKey : addDays(cursor, bucketStep - 1);
-            buckets.push({ start: cursor, end: bucketEnd, label: formatBucketLabel(cursor, bucketEnd, bucketType), revenue: 0, spend: 0, budgetUsedPct: 0 });
-            cursor = addDays(bucketEnd, 1);
-        }
-    }
-
-    txs.forEach(tx => {
-        const date = getTxDate(tx);
-        if (!date) return;
-        const dayKey = getDayKey(date);
-        if (dayKey < startKey || dayKey > endKey) return;
-        const bucket = buckets.find(item => dayKey >= item.start && dayKey <= item.end);
-        if (!bucket) return;
-        const amount = Math.abs(Number(tx.amount) || 0);
-        if (isPositiveTransaction(tx)) bucket.revenue += amount;
-        else if (isSpendTransaction(tx)) bucket.spend += amount;
-    });
-
-    const monthlyBudget = safeNumber(budget?.monthly);
-    if (monthlyBudget > 0) {
-        const periodDays = rangeDays;
-        buckets.forEach(bucket => {
-            const bucketDays = getRangeDays(bucket.start, bucket.end);
-            const bucketBudget = monthlyBudget * (bucketDays / Math.max(periodDays, 1));
-            bucket.budgetUsedPct = bucketBudget > 0
-                ? Math.min((bucket.spend / bucketBudget) * 100, 150)
-                : 0;
-        });
-    }
-
-    // For long ranges, anchor the chart to real activity: start at the first
-    // bucket with data ("when the dashboard started collecting") and drop empty
-    // trailing buckets that stretch out to today.
-    if ((bucketType === 'month' || bucketType === 'quarter') && buckets.length > 1) {
-        const hasActivity = bucket => bucket.revenue > 0 || bucket.spend > 0;
-        let lo = 0;
-        let hi = buckets.length - 1;
-        while (lo < hi && !hasActivity(buckets[lo])) lo++;
-        while (hi > lo && !hasActivity(buckets[hi])) hi--;
-        buckets = buckets.slice(lo, hi + 1);
-    }
-
-    if (!buckets.length) {
-        buckets.push({ start: startKey, end: endKey, label: formatBucketLabel(startKey, endKey, 'day'), revenue: 0, spend: 0, budgetUsedPct: 0 });
-    }
-    return buckets;
 }
 
 function formatIDR(value) {
@@ -1786,190 +1686,326 @@ function safeNumber(value) {
 // labels scroll horizontally instead of cramming together.
 const CASHFLOW_MIN_BUCKET_PX = 64;
 
-function cashflowTrackWidth() {
-    return cashflowBuckets.length * CASHFLOW_MIN_BUCKET_PX;
-}
+// ---------------------------------------------------------------------------
+// Overview financial charts
+//
+// Six charts off one dataset: Net income, Total income, Total expenses, Gross
+// profit margin, Expense breakdown and Bank accounts. Every headline figure
+// comes from overview.performance (the same numbers the KPI strip renders), and
+// every series is bucketed from overview.chartTransactions — no second query and
+// no independent arithmetic, so a chart can never disagree with its KPI card.
+// ---------------------------------------------------------------------------
 
-// The plot area and the labels row live in two separate horizontal scrollers
-// (so the Y-axis can stay pinned). Mirror their scrollLeft so they move as one.
-function linkHorizontalScroll(a, b) {
-    if (!a || !b) return;
-    let lock = false;
-    const mirror = (from, to) => {
-        if (lock) return;
-        lock = true;
-        to.scrollLeft = from.scrollLeft;
-        lock = false;
-    };
-    a.addEventListener('scroll', () => mirror(a, b));
-    b.addEventListener('scroll', () => mirror(b, a));
-}
+const CHART_COLORS = {
+    income: '#16A34A',       // success green — money in
+    incomePrior: '#86EFAC',
+    expense: '#EF4444',      // action red — money out
+    expensePrior: '#FCA5A5',
+    margin: '#3B82F6',       // info blue — a ratio, not a cash direction
+    marginPrior: '#93C5FD',
+    net: '#3B82F6',
+    netNegative: '#DC2626',  // matches .chart-column-current.is-negative
+    netPrior: '#C7D2FE'
+};
 
-function syncCashflowScroll(chart) {
-    linkHorizontalScroll(
-        chart.querySelector('[data-cashflow-scroll]'),
-        chart.querySelector('[data-cashflow-labels-scroll]')
-    );
-}
+// Last-rendered chart inputs, so a resize can redraw at the new width. Line
+// charts bake their viewBox from the measured container width; without this a
+// sidebar collapse or a breakpoint change would leave a stretched plot.
+let overviewChartState = null;
 
-function renderCashflowChart() {
-    const chart = document.getElementById('cashflow-chart');
-    if (!chart) return;
-    if (cashflowChartType === 'line') renderCashflowLineChart(chart);
-    else renderCashflowBarChart(chart);
-}
+function renderOverviewCharts(overview) {
+    const performance = overview?.performance || {};
+    const frames = buildBucketFrames(dashboardRangeStart, dashboardRangeEnd);
+    const bucketType = resolveBucketType(dashboardRangeStart, dashboardRangeEnd);
+    const isCogs = cogsKeys.size ? (tx => ds._isCogsTransaction(tx, cogsKeys)) : null;
 
-function renderCashflowBarChart(chart) {
-    const maxValue = Math.max(...cashflowBuckets.map(item => Math.max(item.revenue, item.spend)), 1);
-    const hasBudget = safeNumber(currentBudget.monthly) > 0;
-    const trackWidth = cashflowTrackWidth();
-    chart.innerHTML = `
-        <div class="cashflow-chart-stage" data-cashflow-bar-stage>
-            <div class="cashflow-axis">
-                <div><span>${formatCompactIDR(maxValue)}</span></div>
-                <div><span>${formatCompactIDR(maxValue / 2)}</span></div>
-                <div><span>Rp0</span></div>
-            </div>
-            <div class="cashflow-scroll" data-cashflow-scroll>
-                <div class="cashflow-bars" style="width: ${trackWidth}px">
-                    ${cashflowBuckets.map(item => {
-                        const revenueHeight = Math.max((item.revenue / maxValue) * 100, item.revenue > 0 ? 4 : 0);
-                        const spendHeight = Math.max((item.spend / maxValue) * 100, item.spend > 0 ? 4 : 0);
-                        const budgetUsedPct = Math.min(safeNumber(item.budgetUsedPct), 100);
-                        const budgetHeight = Math.max(budgetUsedPct, budgetUsedPct > 0 ? 4 : 0);
-                        return `
-                            <div class="cashflow-bar-group" data-chart-bar data-label="${escapeHtml(item.label)}" data-revenue="${item.revenue}" data-spend="${item.spend}" data-budget-used="${safeNumber(item.budgetUsedPct)}">
-                                <div class="cashflow-bar cashflow-bar-revenue" style="height: ${revenueHeight}%"></div>
-                                <div class="cashflow-bar cashflow-bar-spend" style="height: ${spendHeight}%"></div>
-                                ${hasBudget ? `<div class="cashflow-bar cashflow-bar-budget${budgetUsedPct > 0 ? '' : ' is-empty'}" style="height: ${budgetHeight}%"></div>` : ''}
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            </div>
-        </div>
-        <div class="cashflow-labels-scroll" data-cashflow-labels-scroll>
-            <div class="cashflow-labels" style="width: ${trackWidth}px">
-                ${cashflowBuckets.map(item => `<span>${escapeHtml(item.label)}</span>`).join('')}
-            </div>
-        </div>
-    `;
-    attachCashflowHover(chart.querySelector('[data-cashflow-bar-stage]'), '#4ADE80', '#D1D5DB');
-    syncCashflowScroll(chart);
-}
+    const currentAll = buildMetricSeries(overview?.chartTransactions || [], frames, isCogs);
 
-function buildLinePoints(values, maxValue, width, height, paddingX, paddingY) {
-    if (values.length === 1) {
-        const y = height - paddingY - ((values[0] / maxValue) * (height - paddingY * 2));
-        return [{ x: width / 2, y }];
+    // Prior-period records are dated inside the PREVIOUS window, so they have to
+    // be bucketed against that window's own frames — bucketing them against the
+    // current frames drops every one of them as out of range and silently draws
+    // an empty ghost series. The two windows are equal length, so pairing them by
+    // index puts "day 1 vs day 1 of last month" on the same x position.
+    const priorTxs = overview?.previousChartTransactions || [];
+    const prevStart = overview?.period?.previousStartDate;
+    const prevEnd = overview?.period?.previousEndDate;
+    let priorAll = [];
+    if (priorTxs.length && prevStart && prevEnd) {
+        const priorFrames = buildBucketFrames(prevStart, prevEnd);
+        const priorSeries = buildMetricSeries(priorTxs, priorFrames, isCogs);
+        const zeroBucket = { revenue: 0, expense: 0, cogs: 0, netIncome: 0, grossProfit: 0, grossMarginPct: null };
+        // Pad or clip to the current frame count so the two series stay aligned
+        // even when a month-length difference shifts the bucket count by one.
+        priorAll = frames.map((frame, index) => ({
+            ...(priorSeries[index] || zeroBucket),
+            label: frame.label
+        }));
     }
-    return values.map((value, index) => {
-        const x = paddingX + (index / Math.max(values.length - 1, 1)) * (width - paddingX * 2);
-        const y = height - paddingY - ((value / maxValue) * (height - paddingY * 2));
-        return { x, y };
-    });
+    const trimmed = trimToActivity(currentAll, priorAll, bucketType);
+
+    overviewChartState = {
+        overview,
+        buckets: trimmed.current,
+        priorBuckets: trimmed.prior,
+        performance
+    };
+    paintOverviewCharts();
 }
 
-function renderCashflowLineChart(chart) {
-    // The SVG viewBox width must equal its rendered pixel width, or the line is
-    // stretched horizontally on short ranges (few buckets, track fills the panel
-    // but the viewBox stays narrow). Use the real plot width: the buckets' track
-    // when it overflows (scrolls), else the available panel width.
-    const axisGutter = 92;
-    const available = Math.max(0, Math.round((chart.clientWidth || 0) - axisGutter));
-    const trackWidth = Math.max(cashflowTrackWidth(), available || cashflowTrackWidth());
-    const width = trackWidth;
-    const height = 280;
-    const paddingX = 24;
-    const paddingY = 28;
-    const revenueValues = cashflowBuckets.map(item => item.revenue);
-    const spendValues = cashflowBuckets.map(item => item.spend);
-    const budgetUsedValues = cashflowBuckets.map(item => Math.min(safeNumber(item.budgetUsedPct), 100));
-    const maxValue = Math.max(...revenueValues, ...spendValues, 1);
-    const revenuePoints = buildLinePoints(revenueValues, maxValue, width, height, paddingX, paddingY);
-    const spendPoints = buildLinePoints(spendValues, maxValue, width, height, paddingX, paddingY);
-    const budgetPoints = currentBudget.monthly > 0
-        ? buildLinePoints(budgetUsedValues, 100, width, height, paddingX, paddingY)
-        : [];
-    const toPolyline = points => points.map(point => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ');
+function paintOverviewCharts() {
+    if (!overviewChartState) return;
+    const { overview, buckets, priorBuckets, performance } = overviewChartState;
+    const hasPrior = priorBuckets.length > 0;
+    const priorLabel = 'Prior period';
 
-    chart.innerHTML = `
-        <div class="cashflow-line-stage" data-cashflow-line-stage>
-            <div class="cashflow-axis">
-                <div><span>${formatCompactIDR(maxValue)}</span></div>
-                <div><span>${formatCompactIDR(maxValue / 2)}</span></div>
-                <div><span>Rp0</span></div>
-            </div>
-            <div class="cashflow-scroll" data-cashflow-scroll>
-                <div class="cashflow-line-track" style="width: ${trackWidth}px">
-                    <svg class="cashflow-line-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Cash flow line chart">
-                        <polyline class="cashflow-line cashflow-line-revenue" points="${toPolyline(revenuePoints)}"></polyline>
-                        <polyline class="cashflow-line cashflow-line-spend" points="${toPolyline(spendPoints)}"></polyline>
-                        ${budgetPoints.length ? `<polyline class="cashflow-line cashflow-line-budget" points="${toPolyline(budgetPoints)}"></polyline>` : ''}
-                        ${revenuePoints.map(point => `<circle class="cashflow-point cashflow-point-revenue" cx="${point.x}" cy="${point.y}" r="4"></circle>`).join('')}
-                        ${spendPoints.map(point => `<circle class="cashflow-point cashflow-point-spend" cx="${point.x}" cy="${point.y}" r="4"></circle>`).join('')}
-                    </svg>
-                    <div class="cashflow-line-hover-zones">
-                        ${cashflowBuckets.map((item, index) => `
-                            <div class="cashflow-line-hover-zone" data-chart-bar data-label="${escapeHtml(item.label)}" data-revenue="${item.revenue}" data-spend="${item.spend}" data-budget-used="${safeNumber(item.budgetUsedPct)}" style="left:${(index / Math.max(cashflowBuckets.length - 1, 1)) * 100}%"></div>
-                        `).join('')}
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="cashflow-labels-scroll" data-cashflow-labels-scroll>
-            <div class="cashflow-labels" style="width: ${trackWidth}px">
-                ${cashflowBuckets.map(item => `<span>${escapeHtml(item.label)}</span>`).join('')}
-            </div>
-        </div>
-    `;
-    attachCashflowHover(chart.querySelector('[data-cashflow-line-stage]'), '#22C55E', '#9CA3AF');
-    syncCashflowScroll(chart);
-}
-
-function attachCashflowHover(stage, revenueColor, spendColor) {
-    if (!stage || !window.attachChartHover) return;
-    window.attachChartHover(stage, {
-        bars: '[data-chart-bar]',
-        orientation: 'vertical',
-        buildTooltip: barEl => {
-            const budgetUsed = Number(barEl.dataset.budgetUsed || 0);
-            const budgetRow = currentBudget.monthly > 0
-                ? `<div class="chart-tooltip-row">
-                       <span class="chart-tooltip-swatch" style="background:#F97316"></span>
-                       <span class="chart-tooltip-label">Budget used</span>
-                       <span class="chart-tooltip-value">${budgetUsed.toFixed(0)}%</span>
-                   </div>`
-                : '';
+    // 1. Net income — a diverging column chart. Net income goes negative
+    // regularly, and a zero-baselined column is the only form that reads a loss
+    // honestly (DESIGN_SYSTEM §4b).
+    renderTrendMetricCard(document.getElementById('net-income-card'), {
+        shape: 'diverging',
+        buckets,
+        priorBuckets,
+        compact: false,
+        valueOf: bucket => bucket.netIncome,
+        color: CHART_COLORS.net,
+        priorColor: CHART_COLORS.netPrior,
+        ariaLabel: 'Net income by period',
+        formatAxis: formatCompactIDR,
+        head: {
+            value: formatLevelIDR(safeNumber(performance.netProfit)),
+            valueLabel: getRangeCaption(),
+            priorValue: hasPrior && performance.previousNetProfit !== null && performance.previousNetProfit !== undefined
+                ? formatLevelIDR(safeNumber(performance.previousNetProfit))
+                : null,
+            priorLabel,
+            change: performance.netProfitChangePct,
+            negative: safeNumber(performance.netProfit) < 0
+        },
+        buildTooltip: (bucket, index) => {
+            const prior = priorBuckets[index];
+            // Swatch follows the column's sign, so the tooltip legend matches the
+            // bar the user is pointing at rather than always showing the positive hue.
+            const netSwatch = bucket.netIncome < 0 ? CHART_COLORS.netNegative : CHART_COLORS.net;
             return `
-                <div class="chart-tooltip-header">${escapeHtml(barEl.dataset.label)}</div>
-                <div class="chart-tooltip-row">
-                    <span class="chart-tooltip-swatch" style="background:${revenueColor}"></span>
-                    <span class="chart-tooltip-label">Revenue</span>
-                    <span class="chart-tooltip-value">${formatIDR(Number(barEl.dataset.revenue || 0))}</span>
-                </div>
-                <div class="chart-tooltip-row">
-                    <span class="chart-tooltip-swatch" style="background:${spendColor}"></span>
-                    <span class="chart-tooltip-label">Spend</span>
-                    <span class="chart-tooltip-value">${formatIDR(Number(barEl.dataset.spend || 0))}</span>
-                </div>
-                ${budgetRow}
+                <div class="chart-tooltip-header">${escapeHtml(bucket.label)}</div>
+                ${tooltipRow(netSwatch, 'Net income', formatLevelIDR(bucket.netIncome))}
+                ${tooltipRow(CHART_COLORS.income, 'Income', formatIDR(bucket.revenue))}
+                ${tooltipRow(CHART_COLORS.expense, 'Expenses', formatIDR(bucket.expense))}
+                ${prior ? tooltipRow(CHART_COLORS.netPrior, priorLabel, formatLevelIDR(prior.netIncome), true) : ''}
+            `;
+        }
+    });
+
+    // 2. Total income
+    renderTrendMetricCard(document.getElementById('total-income-card'), {
+        shape: 'line',
+        buckets,
+        priorBuckets,
+        compact: true,
+        valueOf: bucket => bucket.revenue,
+        color: CHART_COLORS.income,
+        priorColor: CHART_COLORS.incomePrior,
+        ariaLabel: 'Total income by period',
+        formatAxis: formatCompactIDR,
+        head: {
+            value: formatIDR(safeNumber(performance.revenue)),
+            valueLabel: getRangeCaption(),
+            priorValue: hasPrior && performance.previousRevenue !== null && performance.previousRevenue !== undefined
+                ? formatIDR(safeNumber(performance.previousRevenue))
+                : null,
+            priorLabel,
+            change: performance.revenueChangePct
+        },
+        buildTooltip: (bucket, index) => {
+            const prior = priorBuckets[index];
+            return `
+                <div class="chart-tooltip-header">${escapeHtml(bucket.label)}</div>
+                ${tooltipRow(CHART_COLORS.income, 'Income', formatIDR(bucket.revenue))}
+                ${prior ? tooltipRow(CHART_COLORS.incomePrior, priorLabel, formatIDR(prior.revenue), true) : ''}
+            `;
+        }
+    });
+
+    // 3. Total expenses — `invert` so falling spend reads as good.
+    renderTrendMetricCard(document.getElementById('total-expenses-card'), {
+        shape: 'line',
+        buckets,
+        priorBuckets,
+        compact: true,
+        valueOf: bucket => bucket.expense,
+        color: CHART_COLORS.expense,
+        priorColor: CHART_COLORS.expensePrior,
+        ariaLabel: 'Total expenses by period',
+        formatAxis: formatCompactIDR,
+        head: {
+            value: formatIDR(safeNumber(performance.opex)),
+            valueLabel: getRangeCaption(),
+            priorValue: hasPrior && performance.previousOpex !== null && performance.previousOpex !== undefined
+                ? formatIDR(safeNumber(performance.previousOpex))
+                : null,
+            priorLabel,
+            change: performance.opexChangePct,
+            invert: true
+        },
+        buildTooltip: (bucket, index) => {
+            const prior = priorBuckets[index];
+            return `
+                <div class="chart-tooltip-header">${escapeHtml(bucket.label)}</div>
+                ${tooltipRow(CHART_COLORS.expense, 'Expenses', formatIDR(bucket.expense))}
+                ${prior ? tooltipRow(CHART_COLORS.expensePrior, priorLabel, formatIDR(prior.expense), true) : ''}
+            `;
+        }
+    });
+
+    renderGrossMarginChart(buckets, priorBuckets, priorLabel);
+    renderExpenseBreakdownChart(overview);
+    renderBankDistributionChart(overview);
+}
+
+// Gross profit margin = (revenue - cost of revenue) / revenue.
+//
+// Without a mapped cost-of-revenue account there is no COGS to subtract, and
+// showing (revenue - 0) / revenue would report a flat 100% margin for every
+// business. That is a fabricated figure on a financial statement line, so the
+// card renders a setup state instead. Same call report-builder.js makes when it
+// returns a null grossMargin rather than inventing one.
+function renderGrossMarginChart(buckets, priorBuckets, priorLabel) {
+    const card = document.getElementById('gross-margin-card');
+    if (!card) return;
+
+    if (!cogsKeys.size) {
+        renderTrendMetricCard(card, {
+            emptyState: {
+                title: 'Cost of revenue not mapped',
+                description: 'Map at least one category to Cost of revenue in Accounting to see gross profit margin. Until then, FluxyOS will not guess a margin.',
+                buttonText: 'Open Accounting',
+                onAction: () => { window.location.href = '/accounting'; }
+            }
+        });
+        return;
+    }
+
+    const totals = buckets.reduce((acc, bucket) => {
+        acc.revenue += bucket.revenue;
+        acc.cogs += bucket.cogs;
+        return acc;
+    }, { revenue: 0, cogs: 0 });
+    const priorTotals = priorBuckets.reduce((acc, bucket) => {
+        acc.revenue += bucket.revenue;
+        acc.cogs += bucket.cogs;
+        return acc;
+    }, { revenue: 0, cogs: 0 });
+
+    const marginOf = t => t.revenue > 0 ? ((t.revenue - t.cogs) / t.revenue) * 100 : null;
+    const current = marginOf(totals);
+    const prior = priorBuckets.length ? marginOf(priorTotals) : null;
+    // Margins compare in points, not percent-of-percent — matches the Gross
+    // margin KPI card's renderMarginStatus.
+    const changePoints = (current !== null && prior !== null) ? current - prior : null;
+
+    renderTrendMetricCard(card, {
+        shape: 'line',
+        buckets,
+        priorBuckets,
+        compact: true,
+        allowNegative: true,
+        valueOf: bucket => bucket.grossMarginPct,
+        color: CHART_COLORS.margin,
+        priorColor: CHART_COLORS.marginPrior,
+        ariaLabel: 'Gross profit margin by period',
+        formatAxis: value => formatPercentValue(value, 0),
+        head: {
+            value: current === null ? 'N/A' : formatPercentValue(current),
+            valueLabel: getRangeCaption(),
+            priorValue: prior === null ? null : formatPercentValue(prior),
+            priorLabel,
+            change: changePoints,
+            changeUnit: 'points'
+        },
+        buildTooltip: (bucket, index) => {
+            const priorBucket = priorBuckets[index];
+            return `
+                <div class="chart-tooltip-header">${escapeHtml(bucket.label)}</div>
+                ${tooltipRow(CHART_COLORS.margin, 'Gross margin', bucket.grossMarginPct === null ? 'N/A' : formatPercentValue(bucket.grossMarginPct))}
+                ${tooltipRow(CHART_COLORS.income, 'Revenue', formatIDR(bucket.revenue))}
+                ${tooltipRow('#94A3B8', 'Cost of revenue', formatIDR(bucket.cogs))}
+                ${priorBucket ? tooltipRow(CHART_COLORS.marginPrior, priorLabel, priorBucket.grossMarginPct === null ? 'N/A' : formatPercentValue(priorBucket.grossMarginPct), true) : ''}
             `;
         }
     });
 }
 
-function attachCashflowChartToggle() {
-    document.querySelectorAll('[data-cashflow-chart-type]').forEach(button => {
-        button.onclick = () => {
-            cashflowChartType = button.dataset.cashflowChartType || 'bar';
-            document.querySelectorAll('[data-cashflow-chart-type]').forEach(toggle => {
-                toggle.classList.toggle('is-active', toggle === button);
-            });
-            renderCashflowChart();
-        };
+// Expense breakdown donut. Reuses calculateExpenseBreakdown from report-builder
+// (the same aggregation the Expense report ships) rather than a second grouping.
+function renderExpenseBreakdownChart(overview) {
+    const breakdown = calculateExpenseBreakdown(overview?.chartTransactions || [], []);
+    renderDonutCard(document.getElementById('expense-breakdown-card'), {
+        rows: (breakdown.categories || []).map(row => ({
+            label: row.category || 'Uncategorized',
+            value: row.amount
+        })),
+        totalLabel: 'Total expenses',
+        ariaLabel: 'Expense breakdown by category',
+        formatValue: formatIDR,
+        emptyState: {
+            title: 'No expenses in this period',
+            description: 'Expense categories appear here once you record spending in the selected period.'
+        }
     });
 }
+
+// Bank balance distribution. Per-account balances ride along on overview.bankCash
+// so this needs no extra read.
+function renderBankDistributionChart(overview) {
+    const accounts = overview?.bankCash?.accounts || [];
+    renderDonutCard(document.getElementById('bank-distribution-card'), {
+        rows: accounts.map(account => ({
+            label: account.name,
+            value: account.balance
+        })),
+        totalLabel: 'Total balance',
+        ariaLabel: 'Bank balance distribution by account',
+        formatValue: formatIDR,
+        emptyState: {
+            title: 'No bank balances yet',
+            description: 'Add a bank balance to see how your cash is spread across accounts.',
+            buttonText: 'Add bank balance',
+            onAction: () => document.querySelector('[data-finance-setup-open="bank"]')?.click()
+        }
+    });
+}
+
+function getRangeCaption() {
+    return dashboardPeriodMode === 'all_time'
+        ? 'All time'
+        : formatRangeLabel(dashboardRangeStart, dashboardRangeEnd);
+}
+
+function clearOverviewCharts(message) {
+    overviewChartState = null;
+    ['net-income-card', 'total-income-card', 'total-expenses-card', 'gross-margin-card'].forEach(id => {
+        const card = document.getElementById(id);
+        if (!card) return;
+        const head = card.querySelector('[data-chart-head]');
+        const plot = card.querySelector('[data-chart-plot]');
+        if (head) head.innerHTML = '';
+        if (plot) plot.innerHTML = `<div class="chart-loading">${escapeHtml(message)}</div>`;
+    });
+    ['expense-breakdown-card', 'bank-distribution-card'].forEach(id => {
+        const body = document.getElementById(id)?.querySelector('[data-chart-donut]');
+        if (body) body.innerHTML = `<div class="chart-loading">${escapeHtml(message)}</div>`;
+    });
+}
+
+// A line chart's viewBox is baked from the measured container width, so a width
+// change (sidebar collapse, breakpoint, window resize) must redraw or the plot
+// stretches. Debounced, and it repaints from cached data — no refetch.
+let overviewChartResizeTimer = null;
+window.addEventListener('resize', () => {
+    if (!overviewChartState) return;
+    clearTimeout(overviewChartResizeTimer);
+    overviewChartResizeTimer = setTimeout(() => paintOverviewCharts(), 180);
+});
 
 function formatRecordDate(record, fieldName) {
     const date = getRecordDate(record, fieldName);
@@ -2302,7 +2338,7 @@ function renderBudgetReview(data) {
             <div class="bank-review-line"><span>Period type</span><strong>${escapeHtml(capitalize(data.period_type))}</strong></div>
             <div class="bank-review-line"><span>Total budget</span><strong class="tabular-nums">${formatIDR(data.total_budget)}</strong></div>
         </div>
-        <p class="bank-review-note">This will update OpEx vs Budget and the Budget Used metric on Performance Trend.</p>
+        <p class="bank-review-note">This will update OpEx vs Budget on Overview.</p>
     `;
     const confirmBtn = document.getElementById('budget-setup-confirm-btn');
     if (confirmBtn) {

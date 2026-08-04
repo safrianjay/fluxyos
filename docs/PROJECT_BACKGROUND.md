@@ -202,6 +202,41 @@ FluxyOS design language.
   the "Needs your attention" panel all account for them — before this, a ledger of
   records dated in the year 9702 read "100% · 41/41 clean". Regression guard:
   `tests/data-quality-future-dated.spec.js`. Added 2026-08-01.
+- **Overview financial charts (`assets/js/overview-charts.js`).** Six charts replaced
+  the old Performance Trend panel (removed 2026-08-04): **Net income** (full width),
+  **Total income** + **Total expenses** (2-up), then **Gross profit margin** +
+  **Expense breakdown** + **Bank accounts** (3-up). **Cash Flow** is unchanged below
+  them. Each trend card is a headline value + prior-period value + delta + plot,
+  rendered by `renderTrendMetricCard`; the two donuts use `renderDonutCard`.
+  - **Every figure reuses an existing calculation** — no new query. Headlines come
+    from `overview.performance` (`revenue` / `opex` / `netProfit` and their
+    `*ChangePct` + `previous*` companions), so a chart can never state a different
+    number than the KPI card above it. Series are bucketed client-side from
+    `overview.chartTransactions`; the expense donut is
+    `calculateExpenseBreakdown()` (`report-builder.js`) and the bank donut is
+    `overview.bankCash.accounts`.
+  - **Three additive `db-service.js` seams** support them: `previousChartTransactions`
+    on `getDashboardOverview` (the prior slice was already computed and discarded),
+    `accounts: [{id, name, bankName, balance}]` on `_getBankCashSnapshot`, and
+    `_isCogsTransaction(tx, cogsKeys)` extracted from `_buildIncomeStatementBuckets`
+    so the Overview's gross margin and the Accounting Center's income statement
+    classify COGS identically.
+  - **Gross profit margin refuses to guess.** It uses true cost of revenue via
+    `getAccountingMappings` → `_incomeStatementCogsKeys`. With no cost-of-revenue
+    account mapped there is no COGS to subtract, and `(revenue − 0) / revenue` would
+    report a flat **100% margin for every business** — so the card renders a setup
+    state pointing at Accounting instead. Same call `calculateProfitLoss` already
+    makes when it returns a null gross margin rather than inventing one.
+  - **Net income is a diverging column chart**, not a line: net income goes negative
+    regularly and only a zero-baselined column reads a loss honestly. Negative money
+    renders `-Rp…` (red), matching the Overview card convention above.
+  - **One centralized AI entry point.** No chart carries an AI action or an "fx"
+    affordance; the right-rail AI Finance Summary panel remains the only one.
+  - **Removed with Performance Trend:** the Budget-used series (budget stays fully
+    visible on the OpEx vs budget KPI card), the Bar/Line toggle, and the
+    `#cashflow-chart` / `#cashflow-budget-caption` / `[data-cashflow-chart-type]` /
+    `data-tour-target="dashboard-cashflow"` hooks. Regression guard:
+    `tests/overview-charts.spec.js` (11 checks).
 - **Trend chart robustness (`renderTrendChart`/`bucketSeries`):** month/quarter ranges
   trim empty leading/trailing buckets (so All Time isn't padded with a flat zero tail —
   the fix for the line diving to Rp0 at the right edge), and the x-axis thins to ~10

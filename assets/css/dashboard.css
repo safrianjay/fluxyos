@@ -41,41 +41,514 @@
     background: #FFFFFF;
 }
 
-.cashflow-chart-toggle {
+/* ---------------------------------------------------------------------------
+   Overview financial chart rows
+
+   Two multi-column bands inside .overview-main-column. .overview-layout already
+   drops to a single column at 1200px, so the 3-up row gets the full canvas on
+   tablet before it steps down. Every track inside these cards owns an
+   overflow-x:auto scroller, so a wide chart can never push the page wrapper
+   into a horizontal scrollbar (DESIGN_SYSTEM §4a regression guard).
+   --------------------------------------------------------------------------- */
+
+.overview-chart-row-2,
+.overview-chart-row-3 {
+    display: grid;
+    gap: 20px;
+    align-items: stretch;
+    min-width: 0;
+}
+
+.overview-chart-row-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.overview-chart-row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+.overview-chart-row-2 > .chart-card,
+.overview-chart-row-3 > .chart-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+@media (max-width: 1180px) {
+    .overview-chart-row-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 768px) {
+    .overview-chart-row-2,
+    .overview-chart-row-3 {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* Numbers render in Inter with tabular-nums (plain zero), matching every other
+   figure in the app — DESIGN_SYSTEM "Numeric & currency format (strict)".
+   Without this these fall through to the Tailwind ui-sans-serif stack while the
+   KPI values above them are Inter, so the same amount renders in two faces. */
+.chart-metric-value,
+.chart-metric-prior-value,
+.chart-donut-total,
+.chart-donut-legend-pct,
+.chart-donut-legend-value,
+.chart-axis span,
+.chart-labels span {
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Card head: headline value, prior value, delta */
+.chart-metric-head {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    margin-bottom: 16px;
+}
+
+.chart-metric-current {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.chart-metric-value {
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: #0F172A;
+}
+
+.chart-metric-value.is-negative { color: #DC2626; }
+
+.chart-metric-value-label,
+.chart-metric-prior-label {
+    color: #6B7280;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.4;
+}
+
+.chart-metric-prior {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-left: 20px;
+    border-left: 1px solid #E5E7EB;
+    min-width: 0;
+}
+
+.chart-metric-prior-value {
+    color: #64748B;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.chart-metric-delta {
     display: inline-flex;
     align-items: center;
-    padding: 2px;
-    border: 1px solid #E5E7EB;
-    border-radius: 999px;
-    background: #F9FAFB;
+    gap: 4px;
+    margin: 0;
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
 }
 
-.cashflow-chart-toggle-btn {
-    min-width: 48px;
-    border: 0;
-    border-radius: 999px;
-    padding: 6px 10px;
-    background: transparent;
-    color: #64748B;
-    font-size: 11px;
-    line-height: 1;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
-}
+.chart-metric-delta.is-good { color: #16A34A; }
+.chart-metric-delta.is-bad { color: #DC2626; }
+.chart-metric-delta.is-neutral { color: #6B7280; }
+.chart-metric-arrow { font-size: 12px; line-height: 1; }
 
-.cashflow-chart-toggle-btn.is-active {
-    background: #FFFFFF;
-    color: #111827;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-}
-
-.cashflow-chart {
+/* Plot shell */
+.chart-plot {
     display: flex;
-    min-height: 334px;
+    min-height: 268px;
     flex: 1;
     flex-direction: column;
+    min-width: 0;
 }
+
+.chart-loading {
+    display: flex;
+    min-height: 220px;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed #E5E7EB;
+    border-radius: 12px;
+    color: #94A3B8;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.chart-plot-stage {
+    position: relative;
+    min-height: 220px;
+    flex: 1;
+    border-bottom: 1px solid #F3F4F6;
+}
+
+.chart-axis {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    color: #9CA3AF;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-variant-numeric: tabular-nums;
+    font-size: 10px;
+    pointer-events: none;
+}
+
+.chart-axis > div {
+    position: relative;
+    border-bottom: 1px solid #E5E7EB;
+}
+
+.chart-axis span {
+    position: absolute;
+    top: -8px;
+    left: 0;
+    padding-right: 8px;
+    background: #FFFFFF;
+}
+
+/* The diverging axis draws its zero tick where zero actually falls. */
+.chart-axis-diverging { justify-content: flex-start; }
+.chart-axis-diverging > div { border-bottom: 0; }
+
+.chart-axis-diverging > div:first-child,
+.chart-axis-diverging > div:last-child {
+    position: absolute;
+    left: 0;
+    right: 0;
+}
+
+.chart-axis-diverging > div:first-child { top: 0; }
+.chart-axis-diverging > div:last-child { bottom: 0; }
+.chart-axis-diverging > div:last-child span { top: -4px; }
+
+.chart-axis-zero {
+    position: absolute;
+    left: 0;
+    right: 0;
+    transform: translateY(-50%);
+}
+
+.chart-scroll {
+    position: absolute;
+    inset: 0 0 0 76px;
+    z-index: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+}
+
+.chart-scroll::-webkit-scrollbar { display: none; }
+
+.chart-line-track,
+.chart-diverging-track {
+    position: relative;
+    height: 100%;
+    min-width: 100%;
+    box-sizing: border-box;
+}
+
+.chart-line-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.chart-line {
+    fill: none;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Prior period reads as a quieter, dashed echo of the current series — never a
+   second saturated line competing for the same read. */
+.chart-line-prior {
+    stroke-width: 2;
+    stroke-dasharray: 6 5;
+    opacity: 0.75;
+}
+
+.chart-point { stroke: #FFFFFF; stroke-width: 1.5; }
+
+.chart-hover-zones {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+}
+
+.chart-hover-zone { flex: 1; min-width: 0; }
+
+/* Diverging columns (Net income) */
+.chart-diverging-track {
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 0 12px;
+}
+
+.chart-zero-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 1px solid #CBD5E1;
+    z-index: 1;
+}
+
+.chart-diverging-group {
+    position: relative;
+    display: flex;
+    width: 100%;
+    max-width: 92px;
+    min-width: 20px;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 4px;
+    z-index: 2;
+}
+
+.chart-column {
+    position: absolute;
+    width: 38%;
+    min-width: 6px;
+    border-radius: 4px 4px 0 0;
+    transition: height 180ms ease;
+}
+
+.chart-column.is-negative { border-radius: 0 0 4px 4px; }
+
+.chart-column-current {
+    right: 50%;
+    margin-right: 1px;
+    background: #3B82F6;
+}
+
+.chart-column-current.is-negative { background: #DC2626; }
+
+.chart-column-prior {
+    left: 50%;
+    margin-left: 1px;
+    background: #C7D2FE;
+}
+
+.chart-column-prior.is-negative { background: #FCA5A5; }
+
+/* When there is no prior series the current column centers on its slot. */
+.chart-diverging-group > .chart-column-current:only-child {
+    right: auto;
+    margin-right: 0;
+    width: 46%;
+}
+
+/* Labels row — a second scroller mirrored to the plot so the Y-axis stays pinned */
+.chart-labels-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-left: 76px;
+    scrollbar-width: thin;
+}
+
+.chart-labels-scroll::-webkit-scrollbar { height: 6px; }
+.chart-labels-scroll::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 999px; }
+
+.chart-labels {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px 0 12px;
+    color: #64748B;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.chart-labels span {
+    width: 100%;
+    max-width: 92px;
+    min-width: 20px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* Donut (part-to-whole) */
+.chart-donut {
+    display: flex;
+    flex: 1;
+    min-height: 200px;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.chart-donut-body {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.chart-donut-ring {
+    position: relative;
+    flex: 0 0 auto;
+    width: 148px;
+    height: 148px;
+}
+
+.chart-donut-ring svg { width: 100%; height: 100%; }
+
+.chart-donut-track {
+    fill: none;
+    stroke: #F1F5F9;
+    stroke-width: 18;
+}
+
+/* 2px gap between segments (applied via stroke-dasharray) keeps adjacent
+   slices distinguishable without relying on hue alone. */
+.chart-donut-segment {
+    fill: none;
+    stroke-width: 18;
+    stroke-linecap: butt;
+}
+
+.chart-donut-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    text-align: center;
+    pointer-events: none;
+}
+
+.chart-donut-total {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    color: #0F172A;
+}
+
+.chart-donut-total-label {
+    color: #6B7280;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.chart-donut-legend {
+    flex: 1 1 180px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.chart-donut-legend-row {
+    display: grid;
+    grid-template-columns: 10px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.chart-donut-legend-row.is-excluded { opacity: 0.6; }
+
+.chart-donut-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+}
+
+.chart-donut-legend-label {
+    color: #334155;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chart-donut-legend-pct {
+    color: #64748B;
+    font-weight: 600;
+}
+
+.chart-donut-legend-value {
+    color: #0F172A;
+    font-weight: 600;
+}
+
+/* Chart-scoped empty state (shared .fluxy-table-empty typography, compact) */
+.chart-empty {
+    display: flex;
+    flex: 1;
+    min-height: 200px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 24px 16px;
+    text-align: center;
+}
+
+.chart-empty-action {
+    margin-top: 10px;
+    padding: 8px 16px;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    background: #FFFFFF;
+    color: #0F172A;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.chart-empty-action:hover {
+    border-color: #CBD5E1;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.chart-empty-action:focus-visible {
+    outline: 2px solid #EA580C;
+    outline-offset: 2px;
+}
+
+/* Prior-period swatch in the shared tooltip is a hollow ring, echoing the
+   dashed prior line in the plot. The base swatch is 8px, so the ring is 2px
+   with box-sizing border-box — a dashed border would have no room to render. */
+.chart-tooltip-swatch.is-prior {
+    box-sizing: border-box;
+    background: transparent;
+    border: 2px solid #94A3B8;
+}
+
+.legend-dot-current { background: #3B82F6; }
+.legend-dot-prior { background: #C7D2FE; }
+
 
 .cashflow-chart-loading {
     display: flex;
@@ -89,202 +562,34 @@
     font-weight: 600;
 }
 
-.cashflow-chart-stage,
-.cashflow-line-stage {
-    position: relative;
-    min-height: 304px;
-    flex: 1;
-    border-bottom: 1px solid #F3F4F6;
-}
 
-.cashflow-axis {
-    position: absolute;
-    inset: 0 0 0 0;
-    z-index: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    color: #9CA3AF;
-    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums;
-    font-size: 10px;
-    pointer-events: none;
-}
 
-.cashflow-axis > div {
-    position: relative;
-    border-bottom: 1px solid #E5E7EB;
-}
 
-.cashflow-axis > div:last-child {
-    border-bottom-style: solid;
-}
 
-.cashflow-axis span {
-    position: absolute;
-    top: -8px;
-    left: 0;
-    padding-right: 8px;
-    background: #FFFFFF;
-}
 
-.cashflow-scroll {
-    position: absolute;
-    inset: 0 0 0 92px;
-    z-index: 1;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
-}
 
-.cashflow-scroll::-webkit-scrollbar {
-    display: none;
-}
 
-.cashflow-line-track {
-    position: relative;
-    height: 100%;
-    min-width: 100%;
-    box-sizing: border-box;
-}
 
-.cashflow-bars {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    height: 100%;
-    min-width: 100%;
-    box-sizing: border-box;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 18px;
-    padding: 28px 12px 8px 12px;
-}
 
-.cashflow-bar-group {
-    display: flex;
-    width: 100%;
-    max-width: 92px;
-    min-width: 32px;
-    height: 100%;
-    align-items: flex-end;
-    justify-content: center;
-    gap: 5px;
-}
 
-.cashflow-bar {
-    width: 26%;
-    min-width: 8px;
-    border-radius: 6px 6px 0 0;
-    transition: height 180ms ease, opacity 150ms ease;
-}
 
-.cashflow-bar-revenue {
-    background: #4ADE80;
-    box-shadow: 0 0 14px rgba(34, 197, 94, 0.16);
-}
 
-.cashflow-bar-spend {
-    background: #D1D5DB;
-}
 
-.cashflow-bar-budget {
-    background: transparent;
-    border: 2px dashed #F97316;
-    border-bottom: 0;
-}
 
-.cashflow-bar-budget.is-empty {
-    border-color: transparent;
-}
 
-.cashflow-line-svg {
-    position: relative;
-    z-index: 1;
-    width: 100%;
-    height: 304px;
-    overflow: visible;
-}
 
-.cashflow-line {
-    fill: none;
-    stroke-width: 5;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
 
-.cashflow-line-revenue {
-    stroke: #16A34A;
-}
 
-.cashflow-line-spend {
-    stroke: #64748B;
-}
 
-.cashflow-point {
-    stroke: #FFFFFF;
-    stroke-width: 2;
-}
 
-.cashflow-point-revenue {
-    fill: #22C55E;
-}
 
-.cashflow-point-spend {
-    fill: #9CA3AF;
-}
 
-.cashflow-line-hover-zones {
-    position: absolute;
-    inset: 28px 12px 8px 12px;
-    z-index: 2;
-    overflow: hidden;
-    pointer-events: auto;
-}
 
-.cashflow-line-hover-zone {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 48px;
-    transform: translateX(-50%);
-}
 
-.cashflow-labels-scroll {
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding-left: 92px;
-    scrollbar-width: thin;
-}
 
-.cashflow-labels-scroll::-webkit-scrollbar {
-    height: 6px;
-}
 
-.cashflow-labels-scroll::-webkit-scrollbar-thumb {
-    background: #E2E8F0;
-    border-radius: 999px;
-}
 
-.cashflow-labels {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    min-width: 100%;
-    box-sizing: border-box;
-    padding: 10px 12px 0 12px;
-    color: #64748B;
-    font-size: 11px;
-    font-weight: 700;
-    line-height: 1.2;
-    text-transform: uppercase;
-}
 
-.cashflow-labels span {
-    width: 100%;
-    max-width: 92px;
-    min-width: 32px;
-    text-align: center;
-}
 
 .overview-lower-grid {
     display: grid;
@@ -803,32 +1108,46 @@
         padding: 20px;
     }
 
-    .cashflow-scroll {
-        inset: 0 0 0 76px;
+    /* Tighter axis gutter on mobile; the plot and label scrollers must stay in
+       lockstep or the pinned Y-axis drifts from its bars. */
+    .chart-scroll {
+        inset: 0 0 0 60px;
     }
 
-    .cashflow-labels-scroll {
-        padding-left: 76px;
+    .chart-labels-scroll {
+        padding-left: 60px;
     }
 
-    .cashflow-bars,
-    .cashflow-labels {
-        gap: 8px;
+    .chart-diverging-track,
+    .chart-labels {
+        gap: 6px;
         padding-left: 4px;
         padding-right: 4px;
     }
 
-    .cashflow-bar-group,
-    .cashflow-labels span {
-        min-width: 28px;
+    .chart-diverging-group,
+    .chart-labels span {
+        min-width: 18px;
     }
 
-    .cashflow-bar {
-        min-width: 6px;
+    /* Donut stacks above its legend so neither is squeezed at 375px. */
+    .chart-donut-body {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
     }
 
-    .cashflow-line-hover-zones {
-        inset: 28px 4px 8px 4px;
+    .chart-donut-ring {
+        align-self: center;
+    }
+
+    .chart-metric-head {
+        gap: 8px 16px;
+    }
+
+    .chart-metric-delta {
+        margin-left: 0;
+        flex-basis: 100%;
     }
 
     .overview-command-card {
@@ -2450,14 +2769,6 @@
     letter-spacing: 0.04em;
 }
 
-.cashflow-line-budget {
-    fill: none;
-    stroke: #F97316;
-    stroke-width: 3;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    stroke-dasharray: 8 6;
-}
 
 .legend-dot-budget {
     background: transparent;

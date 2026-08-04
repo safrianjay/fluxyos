@@ -6563,6 +6563,17 @@ class DataService {
         return cogsKeys;
     }
 
+    // Single COGS test, shared by the income statement and the Overview gross
+    // margin chart. Both must classify a transaction identically or the two
+    // surfaces report different gross margins for the same period.
+    _isCogsTransaction(tx, cogsKeys) {
+        if (!cogsKeys || !cogsKeys.size) return false;
+        const type = String(tx?.type || '').toLowerCase().trim();
+        const category = (typeof tx?.category === 'string') ? tx.category.trim() : '';
+        return (category && cogsKeys.has(`transaction_category::${category.toLowerCase()}`))
+            || cogsKeys.has(`transaction_type::${type}`);
+    }
+
     _incomeStatementSlug(value) {
         return String(value || '')
             .trim()
@@ -6904,9 +6915,7 @@ class DataService {
             if (INCOME_STATEMENT_REVENUE_TYPES.includes(type)) {
                 add(out.revenue, category || 'Revenue', amount, tx);
             } else if (INCOME_STATEMENT_OPEX_TYPES.includes(type)) {
-                const isCogs = (category && cogsKeys.has(`transaction_category::${category.toLowerCase()}`))
-                    || cogsKeys.has(`transaction_type::${type}`);
-                if (isCogs) {
+                if (this._isCogsTransaction(tx, cogsKeys)) {
                     add(out.cogs, category || 'Cost of revenue', amount, tx);
                 } else {
                     const line = type === 'fee' ? 'Fees' : type === 'tax' ? 'Tax' : (category || 'Others');
@@ -9353,6 +9362,10 @@ class DataService {
                 subscriptions: upcomingSubscriptions
             },
             chartTransactions: periodTransactions,
+            // The prior-period slice travels too, so the Overview trend charts can
+            // draw a "vs prior period" ghost series without a second period query.
+            // Empty for all_time (there is no period before inception-to-date).
+            previousChartTransactions: hasPreviousPeriodData ? previousTransactions : [],
             ledgerPreview: periodTransactions
                 .sort((a, b) => this._sortByDate(b, a, 'timestamp'))
                 .slice(0, 5),
@@ -9433,19 +9446,29 @@ class DataService {
     }
 
     async _getBankCashSnapshot(userId) {
-        if (!userId) return { balance: 0, accountsSynced: 0, syncedAt: null, sourceType: null, balanceHistory: [] };
+        const empty = { balance: 0, accountsSynced: 0, syncedAt: null, sourceType: null, balanceHistory: [], accounts: [] };
+        if (!userId) return { ...empty };
         try {
             const accounts = await this.getBankAccounts(userId);
-            if (!accounts.length) {
-                return { balance: 0, accountsSynced: 0, syncedAt: null, sourceType: null, balanceHistory: [] };
-            }
+            if (!accounts.length) return { ...empty };
             const snapshots = await this.getBankBalanceSnapshots(userId, { limit: 200 }).catch(() => []);
             let balance = 0;
             let syncedAt = null;
             let sourceType = null;
+            // Per-account balances travel alongside the total so the Overview bank
+            // distribution donut needs no second read. Same naming fallback the
+            // Cash position breakdown uses, so the two surfaces can never disagree.
+            const accountBalances = [];
             accounts.forEach(account => {
                 const raw = Number(account.latest_balance);
-                if (Number.isFinite(raw) && raw > 0) balance += raw;
+                const accountBalance = Number.isFinite(raw) && raw > 0 ? raw : 0;
+                if (accountBalance > 0) balance += accountBalance;
+                accountBalances.push({
+                    id: account.id,
+                    name: account.account_name || account.bank_name || 'Account',
+                    bankName: account.bank_name || '',
+                    balance: Math.round(accountBalance)
+                });
                 const stamp = this._getRecordDate(account, 'latest_balance_at');
                 if (stamp && (!syncedAt || stamp > syncedAt)) syncedAt = stamp;
                 if (!sourceType) sourceType = account.source_type || null;
@@ -9455,10 +9478,11 @@ class DataService {
                 accountsSynced: accounts.length,
                 syncedAt: syncedAt ? syncedAt.toISOString() : null,
                 sourceType,
-                balanceHistory: this._buildBankCashHistory(accounts, snapshots)
+                balanceHistory: this._buildBankCashHistory(accounts, snapshots),
+                accounts: accountBalances.sort((a, b) => b.balance - a.balance)
             };
         } catch (_) {
-            return { balance: 0, accountsSynced: 0, syncedAt: null, sourceType: null, balanceHistory: [] };
+            return { ...empty };
         }
     }
 

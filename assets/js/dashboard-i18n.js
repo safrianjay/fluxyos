@@ -808,8 +808,42 @@
         "Bank cash": "Kas bank",
         "Bank balance": "Saldo bank",
         "Total cash": "Total kas",
-        "Performance Trend": "Tren Kinerja",
         "Budget used": "Anggaran terpakai",
+
+        // ── Overview financial charts ──
+        "What was left after every expense, period by period": "Sisa setelah semua beban, per periode",
+        "Total income": "Total pemasukan",
+        "Money in across the selected period": "Uang masuk sepanjang periode yang dipilih",
+        "Money out across the selected period": "Uang keluar sepanjang periode yang dipilih",
+        "Gross profit margin": "Margin laba kotor",
+        "Revenue left after cost of revenue": "Pendapatan yang tersisa setelah harga pokok penjualan",
+        "Expense breakdown": "Rincian pengeluaran",
+        "Where the money went, by category": "Ke mana uang pergi, menurut kategori",
+        "How your cash is spread across accounts": "Bagaimana kas Anda tersebar di seluruh rekening",
+        "Prior": "Sebelumnya",
+        "Prior period": "Periode sebelumnya",
+        "No change": "Tidak berubah",
+        "No prior period": "Tidak ada periode sebelumnya",
+        "Total balance": "Total saldo",
+        "Loading net income...": "Memuat laba bersih...",
+        "Loading income...": "Memuat pemasukan...",
+        "Loading expenses...": "Memuat pengeluaran...",
+        "Loading gross margin...": "Memuat margin kotor...",
+        "Loading expense breakdown...": "Memuat rincian pengeluaran...",
+        "Loading bank accounts...": "Memuat rekening bank...",
+        "Chart data could not be loaded.": "Data grafik tidak dapat dimuat.",
+        "Cost of revenue not mapped": "Harga pokok penjualan belum dipetakan",
+        "Map at least one category to Cost of revenue in Accounting to see gross profit margin. Until then, FluxyOS will not guess a margin.": "Petakan minimal satu kategori ke Harga Pokok Penjualan di Akuntansi untuk melihat margin laba kotor. Sampai saat itu, FluxyOS tidak akan menebak margin.",
+        "Open Accounting": "Buka Akuntansi",
+        "No expenses in this period": "Tidak ada pengeluaran di periode ini",
+        "Expense categories appear here once you record spending in the selected period.": "Kategori pengeluaran muncul di sini setelah Anda mencatat pengeluaran di periode yang dipilih.",
+        "No bank balances yet": "Belum ada saldo bank",
+        "Add a bank balance to see how your cash is spread across accounts.": "Tambahkan saldo bank untuk melihat bagaimana kas Anda tersebar di seluruh rekening.",
+        "Used by OpEx vs Budget on Overview.": "Digunakan oleh OpEx vs Anggaran di Ringkasan.",
+        "Budgets drive OpEx vs Budget on Overview.": "Anggaran menggerakkan OpEx vs Anggaran di Ringkasan.",
+        "Save replaces the active budget. OpEx vs Budget will update on Overview.": "Menyimpan akan menggantikan anggaran aktif. OpEx vs Anggaran di Ringkasan akan diperbarui.",
+        "This will update OpEx vs Budget on Overview.": "Ini akan memperbarui OpEx vs Anggaran di Ringkasan.",
+
         "Predictability": "Prediktabilitas",
         "Finance predictability": "Prediktabilitas keuangan",
         "Predict": "Prediksi",
@@ -1512,8 +1546,6 @@
 
         // Budget helper text
         "Create a new operating budget or duplicate a previous period’s allocation structure.": "Buat anggaran operasional baru atau duplikat struktur alokasi periode sebelumnya.",
-        "Budgets drive OpEx vs Budget on Overview and the Budget Used metric on Performance Trend.": "Anggaran menggerakkan OpEx vs Anggaran di Ringkasan dan metrik Anggaran Terpakai di Tren Kinerja.",
-        "Used by OpEx vs Budget on Overview and the Budget Used metric on Performance Trend.": "Digunakan oleh OpEx vs Anggaran di Ringkasan dan metrik Anggaran Terpakai di Tren Kinerja.",
         "Shows how much of the annual budget has been split into monthly, quarterly, or custom working budgets.": "Menunjukkan berapa banyak anggaran tahunan yang telah dibagi menjadi anggaran kerja bulanan, kuartalan, atau khusus.",
         "Matched by category. Recategorising a record moves it between allocations.": "Dicocokkan menurut kategori. Mengubah kategori catatan memindahkannya antaralokasi.",
         "record(s) intentionally excluded from this budget.": "catatan sengaja dikecualikan dari anggaran ini.",
@@ -3173,7 +3205,6 @@
         "This area is locked until setup is complete.": "Area ini terkunci sampai penyiapan selesai.",
         "This bill will exceed": "Tagihan ini akan melebihi",
         "This usually takes a few seconds.": "Ini biasanya memakan beberapa detik.",
-        "This will update OpEx vs Budget and the Budget Used metric on Performance Trend.": "Ini akan memperbarui OpEx vs Anggaran dan metrik Anggaran Terpakai di Tren Kinerja.",
         "This will update your Bank Cash Balance and recalculate Cash Pressure.": "Ini akan memperbarui Saldo Kas Bank Anda dan menghitung ulang Tekanan Kas.",
         "Total budget amount": "Jumlah total anggaran",
         "Trend table": "Tabel tren",
@@ -4391,7 +4422,6 @@
         "Failed to load history.": "Gagal memuat riwayat.",
         "No budget records yet.": "Belum ada catatan anggaran.",
         "Overview will fall back to \"Budget not set\" until a new active budget exists. History is preserved.": "Ringkasan akan kembali ke \"Anggaran belum diatur\" sampai ada anggaran aktif baru. Riwayat tetap tersimpan.",
-        "Save replaces the active budget. Performance Trend will update on Overview.": "Menyimpan akan menggantikan anggaran aktif. Tren Kinerja di Ringkasan akan diperbarui.",
         "Archive budget": "Arsipkan anggaran",
         "Add your first account": "Tambahkan rekening pertama Anda",
         "Archive account": "Arsipkan rekening",
@@ -4450,6 +4480,12 @@
     //  Applied (in order) only to nodes that miss an exact dictionary key.
     // ─────────────────────────────────────────────────────────────────────────
     var PATTERNS = [
+        // Overview chart deltas: "Up 3.49%", "Down 5.1%", "Up 4.2 pts". Composed
+        // in overview-charts.js from a live number, so exact match cannot reach it.
+        { re: /^(Up|Down) ([\d.,]+)(%| pts)$/,
+          id: function (m) {
+              return (m[1] === 'Up' ? 'Naik ' : 'Turun ') + m[2] + (m[3] === '%' ? '%' : ' poin');
+          } },
         // Close gate: "14 entries are not posted to the ledger" / "1 entry is …".
         { re: /^(\d+) entr(?:y is|ies are) not posted to the ledger$/,
           id: function (m) { return m[1] + ' entri belum diposting ke buku besar'; } },

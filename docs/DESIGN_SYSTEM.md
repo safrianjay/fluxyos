@@ -310,9 +310,11 @@ Reference implementations: Revenue Sync Volume (`revenue-sync.html` `renderVolum
 
 #### 4a. Time-series bucketing & horizontal scroll (Overview charts)
 
-The Overview **Performance Trend** and **Cash Flow** charts plot one bucket per
+The Overview financial charts — **Net income**, **Total income**, **Total
+expenses**, **Gross profit margin** and **Cash Flow** — plot one bucket per
 period across the selected range. They follow these rules (see
-`assets/js/dashboard.js` `buildCashflowBuckets` / `renderCashflowChart` /
+`assets/js/overview-charts.js` `buildBucketFrames` / `buildMetricSeries` /
+`trimToActivity` / `renderTrendMetricCard`, and `assets/js/dashboard.js`
 `renderCashFlowChart`, styled in `assets/css/dashboard.css`):
 
 - **Adaptive granularity by range length:** `≤14d → day`, `≤93d → week`,
@@ -343,6 +345,19 @@ changing an Overview chart, QA at **All Time** and confirm
 With `preserveAspectRatio="none"` a narrow viewBox stretched to a wide panel
 distorts the line and turns point markers into ovals (visible on short ranges
 like *This/Last Month*). Compute the plot width from the real container width.
+Because the width is measured at render time, a width change (window resize,
+sidebar collapse, breakpoint) has to trigger a repaint — `dashboard.js` keeps the
+last chart inputs in `overviewChartState` and redraws from cache on a debounced
+resize rather than refetching.
+
+**Prior-period overlays:** a "vs prior period" ghost series must be bucketed
+against the **previous** window's own frames, then paired to the current series
+by index. Bucketing prior records against the current frames drops every one of
+them as out-of-range and silently draws an empty ghost — the chart looks fine and
+says nothing. The two windows are equal length (`_getPreviousOverviewPeriod`), so
+index *i* is "day 1 vs day 1 of last month". Guard:
+`tests/overview-charts.spec.js` → "prior-period series is bucketed against the
+prior window".
 
 ### 4b. KPI drill-down detail pages
 
@@ -405,6 +420,41 @@ track = the base (revenue = 100%), a fill = the share consumed, the remainder = 
 left, and anything past the limit rendered as a **separate hatched over-run bar** with
 its own label — never as a longer fill, which would imply it still fits.
 
+#### When a donut *is* the right form
+
+The ban above is about **ratio** panels, and both of its reasons are premises, not
+decoration: the parts must actually sum to the whole, and the whole must actually
+bound the parts. Where those premises hold — the parts are all positive and they
+genuinely compose the total — a donut is the correct form and is used:
+**Expense breakdown** (categories summing to total spend) and **Bank accounts**
+(balances summing to total cash), both via `renderDonutCard` in
+`assets/js/overview-charts.js`.
+
+A donut ships only with all four guards, which is what keeps the premises true:
+
+1. **Non-positive values never become an arc.** A ring cannot draw a negative
+   slice. They are excluded from the geometry and surfaced as a counted legend
+   row instead, so an overdrawn account is visible rather than silently dropped.
+2. **Sub-2% slices fold into one "Other" arc**, so the ring never renders
+   sub-pixel wedges that read as rendering noise.
+3. **The legend summarises its tail, it does not enumerate it.** Cap the named
+   rows at the palette length and collapse the rest into a single counted row
+   (`Other (12)`). A workspace with seventeen bank accounts produced a
+   seventeen-row legend that stretched its card to twice the height of its
+   row-mates — and every folded row was under 1%, so listing them bought nothing.
+4. **The centre shows the compact total** (`Rp280.4M`), with the exact figure on
+   `title` and full precision in the legend. The ring's inner hole is ~86px; a
+   full `Rp280.400.000` is clipped.
+
+**Slice colour is a lightness ramp, not a hue wheel.** A multi-hue categorical
+palette was tried first and failed hard: blue, indigo and violet collapse to
+**ΔE 0.3** under deuteranopia — literally the same colour. Dichromacy destroys
+hue but preserves lightness, so stepping lightness within one hue is what stays
+separable. Semantic hues stay out of categorical palettes entirely (green and red
+mean cleared/critical everywhere else; orange backgrounds are banned
+project-wide). Every slice still carries a text label, percentage and amount in
+the legend, so identity is never colour-alone regardless.
+
 #### Comparing a measure across periods
 
 Use `renderComparisonColumns` (`assets/js/kpi-detail-shared.js`) — a diverging column
@@ -426,11 +476,18 @@ Three rules the implementation encodes, all of which were wrong in a first pass:
 Direct-label every column when the chart replaces a table — the figures must be
 readable without hover, or the chart is a downgrade.
 
-**Status green vs red is ΔE 3.7 under deuteranopia** — effectively identical. Wherever
-the two sit adjacent (this meter, stacked segments, paired bars), every segment must
-carry a text label and a 2px surface gap so identity is never colour-alone. Run
-`node scripts/validate_palette.js "<hex,hex>"` before shipping any new multi-colour
-chart rather than eyeballing it.
+**Status green vs red collapses under deuteranopia** — `#16A34A` vs `#EF4444`
+measures ΔE2000 **5.4** simulated, against ~72 in normal vision. Wherever the two
+sit adjacent (this meter, stacked segments, paired bars), every segment must carry
+a text label and a 2px surface gap so identity is never colour-alone.
+
+Run `node scripts/validate_palette.js "<hex,hex,…>"` before shipping any new
+multi-colour chart rather than eyeballing it. It simulates deuteranopia,
+protanopia and tritanopia (Viénot–Brettel–Mollon) and reports the closest pair by
+CIEDE2000, exiting non-zero when any pair falls below the threshold (default
+ΔE 10, override with `--min`). Note the earlier figure recorded here was ΔE 3.7;
+the measured value depends on the difference formula, so treat the script's output
+as the reference rather than a number quoted in prose.
 
 ### 5. Dialog (Confirmation & Alert Popups)
 

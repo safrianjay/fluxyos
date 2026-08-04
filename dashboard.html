@@ -175,29 +175,94 @@
                             </article>
                         </section>
 
-                        <!-- 2. Performance Trend -->
-                        <section class="overview-chart-panel chart-card" data-tour-target="dashboard-cashflow">
+                        <!-- 2. Net income -->
+                        <section id="net-income-card" class="overview-chart-panel chart-card" data-tour-target="dashboard-net-income">
                             <div class="chart-card-header">
                                 <div>
-                                    <h2 class="chart-title">Performance Trend</h2>
-                                    <p class="chart-subtitle">Revenue and OpEx across the selected period</p>
+                                    <h2 class="chart-title">Net income</h2>
+                                    <p class="chart-subtitle">What was left after every expense, period by period</p>
                                 </div>
                                 <div class="chart-legend">
-                                    <span class="legend-item"><span class="legend-dot legend-dot-revenue"></span> Revenue</span>
-                                    <span class="legend-item"><span class="legend-dot legend-dot-opex"></span> OpEx</span>
-                                    <span class="legend-item"><span class="legend-dot legend-dot-budget"></span> Budget used <span id="cashflow-budget-caption" class="legend-caption">(Budget not set)</span></span>
-                                    <div class="cashflow-chart-toggle" aria-label="Cash flow chart type">
-                                        <button type="button" class="cashflow-chart-toggle-btn" data-cashflow-chart-type="bar">Bar</button>
-                                        <button type="button" class="cashflow-chart-toggle-btn is-active" data-cashflow-chart-type="line">Line</button>
-                                    </div>
+                                    <span class="legend-item"><span class="legend-dot legend-dot-current"></span> Current</span>
+                                    <span class="legend-item"><span class="legend-dot legend-dot-prior"></span> Prior</span>
                                 </div>
                             </div>
-                            <div id="cashflow-chart" class="cashflow-chart" aria-live="polite">
-                                <div class="cashflow-chart-loading">Loading cash flow activity...</div>
+                            <div data-chart-head></div>
+                            <div id="net-income-chart" class="chart-plot" data-chart-plot aria-live="polite">
+                                <div class="chart-loading">Loading net income...</div>
                             </div>
                         </section>
 
-                        <!-- 3. Cash Flow chart -->
+                        <!-- 3. Total income + Total expenses -->
+                        <div class="overview-chart-row-2">
+                            <section id="total-income-card" class="chart-card">
+                                <div class="chart-card-header">
+                                    <div>
+                                        <h2 class="chart-title">Total income</h2>
+                                        <p class="chart-subtitle">Money in across the selected period</p>
+                                    </div>
+                                </div>
+                                <div data-chart-head></div>
+                                <div id="total-income-chart" class="chart-plot" data-chart-plot aria-live="polite">
+                                    <div class="chart-loading">Loading income...</div>
+                                </div>
+                            </section>
+
+                            <section id="total-expenses-card" class="chart-card">
+                                <div class="chart-card-header">
+                                    <div>
+                                        <h2 class="chart-title">Total expenses</h2>
+                                        <p class="chart-subtitle">Money out across the selected period</p>
+                                    </div>
+                                </div>
+                                <div data-chart-head></div>
+                                <div id="total-expenses-chart" class="chart-plot" data-chart-plot aria-live="polite">
+                                    <div class="chart-loading">Loading expenses...</div>
+                                </div>
+                            </section>
+                        </div>
+
+                        <!-- 4. Gross profit margin + the two distribution donuts -->
+                        <div class="overview-chart-row-3">
+                            <section id="gross-margin-card" class="chart-card">
+                                <div class="chart-card-header">
+                                    <div>
+                                        <h2 class="chart-title">Gross profit margin</h2>
+                                        <p class="chart-subtitle">Revenue left after cost of revenue</p>
+                                    </div>
+                                </div>
+                                <div data-chart-head></div>
+                                <div id="gross-margin-chart" class="chart-plot" data-chart-plot aria-live="polite">
+                                    <div class="chart-loading">Loading gross margin...</div>
+                                </div>
+                            </section>
+
+                            <section id="expense-breakdown-card" class="chart-card">
+                                <div class="chart-card-header">
+                                    <div>
+                                        <h2 class="chart-title">Expense breakdown</h2>
+                                        <p class="chart-subtitle">Where the money went, by category</p>
+                                    </div>
+                                </div>
+                                <div id="expense-breakdown-chart" class="chart-donut" data-chart-donut aria-live="polite">
+                                    <div class="chart-loading">Loading expense breakdown...</div>
+                                </div>
+                            </section>
+
+                            <section id="bank-distribution-card" class="chart-card">
+                                <div class="chart-card-header">
+                                    <div>
+                                        <h2 class="chart-title">Bank accounts</h2>
+                                        <p class="chart-subtitle">How your cash is spread across accounts</p>
+                                    </div>
+                                </div>
+                                <div id="bank-distribution-chart" class="chart-donut" data-chart-donut aria-live="polite">
+                                    <div class="chart-loading">Loading bank accounts...</div>
+                                </div>
+                            </section>
+                        </div>
+
+                        <!-- 5. Cash Flow chart -->
                         <section class="chart-card cash-flow-card">
                             <div class="chart-card-header">
                                 <div>
@@ -216,7 +281,7 @@
                             <p class="chart-footnote">Cash flow is estimated from FluxyOS records only and may not reflect actual bank balance.</p>
                         </section>
 
-                        <!-- 4. Tabs + Requires-your-attention -->
+                        <!-- 6. Tabs + Requires-your-attention -->
                         <nav class="attention-tabs" aria-label="Queue scope">
                             <button type="button" class="attention-tab is-active" data-attention-tab="all">All</button>
                             <button type="button" class="attention-tab" data-attention-tab="needs_review">Needs review <span class="count-pill" id="attention-needs-review-count">0</span></button>
@@ -399,7 +464,7 @@
         <div class="finance-setup-header">
             <div>
                 <h2 id="budget-setup-title" class="finance-setup-title">Set OpEx budget</h2>
-                <p class="finance-setup-subtitle">Used by OpEx vs Budget on Overview and the Budget Used metric on Performance Trend.</p>
+                <p class="finance-setup-subtitle">Used by OpEx vs Budget on Overview.</p>
             </div>
             <button type="button" class="finance-setup-close" data-finance-setup-close="budget" aria-label="Close">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg>
