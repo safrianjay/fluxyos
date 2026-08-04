@@ -44,7 +44,7 @@
 /* ---------------------------------------------------------------------------
    Overview financial chart rows
 
-   Two multi-column bands inside .overview-main-column. .overview-layout already
+   Two multi-column bands inside .overview-wide-column. .overview-layout already
    drops to a single column at 1200px, so the 3-up row gets the full canvas on
    tablet before it steps down. Every track inside these cards owns an
    overflow-x:auto scroller, so a wide chart can never push the page wrapper
@@ -69,11 +69,15 @@
     min-width: 0;
 }
 
-@media (max-width: 1180px) {
+/* Step down on card width, not viewport vanity: a chart below ~320px wide stops
+   being readable. 3-up needs ~1000px of canvas, 2-up needs ~700px. The canvas is
+   ~1156px at 1440, ~740px at 1024 and ~500px at 768, which puts the steps at
+   1200px (3→2) and 900px (2→1). Charts stack rather than compress. */
+@media (max-width: 1200px) {
     .overview-chart-row-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     .overview-chart-row-2,
     .overview-chart-row-3 {
         grid-template-columns: minmax(0, 1fr);
@@ -162,14 +166,19 @@
 .chart-metric-delta.is-neutral { color: #6B7280; }
 .chart-metric-arrow { font-size: 12px; line-height: 1; }
 
-/* Plot shell */
+/* Plot shell.
+   Heights step with the card's width so a wide card gets a taller plot and the
+   series has room to breathe: full-width > 2-up > 3-up. */
 .chart-plot {
     display: flex;
-    min-height: 268px;
+    min-height: 340px;
     flex: 1;
     flex-direction: column;
     min-width: 0;
 }
+
+.overview-chart-row-2 .chart-plot { min-height: 296px; }
+.overview-chart-row-3 .chart-plot { min-height: 264px; }
 
 .chart-loading {
     display: flex;
@@ -186,10 +195,13 @@
 
 .chart-plot-stage {
     position: relative;
-    min-height: 220px;
+    min-height: 290px;
     flex: 1;
     border-bottom: 1px solid #F3F4F6;
 }
+
+.overview-chart-row-2 .chart-plot-stage { min-height: 246px; }
+.overview-chart-row-3 .chart-plot-stage { min-height: 214px; }
 
 .chart-axis {
     position: absolute;
@@ -309,11 +321,15 @@
     z-index: 1;
 }
 
+/* max-width only binds when there are few buckets and the track fills the panel.
+   At 92px a four-bucket month left ~700px of dead canvas on a full-width card;
+   140px lets the columns carry the width they've been given. With many buckets
+   the track is bucketCount × MIN_BUCKET_PX, so this never causes cramming. */
 .chart-diverging-group {
     position: relative;
     display: flex;
     width: 100%;
-    max-width: 92px;
+    max-width: 140px;
     min-width: 20px;
     align-items: flex-end;
     justify-content: center;
@@ -355,7 +371,14 @@
 }
 
 /* Labels row — a second scroller mirrored to the plot so the Y-axis stays pinned */
+/* Fixed height, so the plot stage's height is exactly
+   `.chart-plot` height − LABELS_ROW_PX. The SVG viewBox height is derived from
+   that in JS; leaving this row's height to content made the derivation drift and
+   stretched the markers into ovals. Keep in sync with LABELS_ROW_PX. */
 .chart-labels-scroll {
+    flex: 0 0 30px;
+    height: 30px;
+    box-sizing: border-box;
     overflow-x: auto;
     overflow-y: hidden;
     padding-left: 76px;
@@ -382,7 +405,7 @@
 
 .chart-labels span {
     width: 100%;
-    max-width: 92px;
+    max-width: 140px;
     min-width: 20px;
     text-align: center;
     white-space: nowrap;
@@ -392,23 +415,24 @@
 .chart-donut {
     display: flex;
     flex: 1;
-    min-height: 200px;
+    min-height: 264px;
     flex-direction: column;
+    justify-content: center;
     min-width: 0;
 }
 
 .chart-donut-body {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 22px;
     flex-wrap: wrap;
 }
 
 .chart-donut-ring {
     position: relative;
     flex: 0 0 auto;
-    width: 148px;
-    height: 148px;
+    width: 168px;
+    height: 168px;
 }
 
 .chart-donut-ring svg { width: 100%; height: 100%; }
@@ -1248,19 +1272,51 @@
 }
 
 /* Two-column layout */
+/* Two rows, not two columns.
+   Row 1 pairs the KPI board with the AI rail; `align-items: stretch` (the grid
+   default) makes the rail exactly as tall as the KPI board with no JS measuring
+   — they are siblings in the same row, so the taller one sets the height.
+   Row 2 spans both columns, so every chart and the attention queue get the full
+   content canvas instead of the narrower KPI column. */
 .overview-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) clamp(300px, 24vw, 320px);
+    grid-template-rows: auto auto;
     gap: clamp(16px, 1.4vw, 20px);
-    align-items: start;
+    align-items: stretch;
 }
 
-.overview-main-column,
+.summary-board {
+    grid-column: 1;
+    grid-row: 1;
+}
+
 .overview-right-column {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+    /* The rail must CONSUME the row height, never define it. A grid row is as
+       tall as its tallest item, so leaving the rail in flow made its ~837px of
+       content stretch the row and drag the KPI board up to match — the exact
+       inverse of the intent. Taking the card out of flow (absolute, inset 0)
+       leaves this cell with no in-flow content, so the KPI board alone sizes the
+       row and the card fills whatever height that is. */
+    position: relative;
+    min-height: 0;
+}
+
+.overview-right-column > .right-workbench {
+    position: absolute;
+    inset: 0;
+}
+
+.overview-wide-column {
+    grid-column: 1 / -1;
+    grid-row: 2;
     min-width: 0;
 }
 
-.overview-main-column > * + * {
+.overview-wide-column > * + * {
     margin-top: 22px;
 }
 
@@ -1968,6 +2024,45 @@
     border-radius: 16px;
     box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 18px rgba(15,23,42,0.035);
     overflow: hidden;
+    /* Fill the grid row (whose height the KPI board sets) rather than growing to
+       fit content. */
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+/* The scrollable content area — one region for the whole card.
+   Deliberately not two scrollers (pinned AI panel + scrolling rail): the card
+   gets ~442px while its content is ~837px, so pinning the 254px AI panel would
+   squeeze the three rail sections into ~188px. One region keeps every section at
+   its natural size and gives the card a single, predictable scrollbar. The card
+   itself stays exactly as tall as the KPI board however long a summary runs. */
+.rail-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #CBD5E1 transparent;
+}
+
+.rail-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.rail-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* Subtle by default, slightly firmer on hover — never a heavy OS scrollbar. */
+.rail-scroll::-webkit-scrollbar-thumb {
+    background: #E2E8F0;
+    border-radius: 999px;
+}
+
+.rail-scroll:hover::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
 }
 
 .brain-panel {
@@ -2602,6 +2697,36 @@
 @media (max-width: 1200px) {
     .overview-layout {
         grid-template-columns: 1fr;
+        grid-template-rows: none;
+    }
+
+    /* Single column: drop the explicit row/column placement so items auto-place,
+       and keep the pre-existing reading order (KPIs → charts → AI rail) rather
+       than letting the rail's DOM position push it above the charts. */
+    .summary-board,
+    .overview-right-column,
+    .overview-wide-column {
+        grid-column: 1;
+        grid-row: auto;
+    }
+
+    .summary-board { order: 1; }
+    .overview-wide-column { order: 2; }
+    .overview-right-column { order: 3; }
+
+    /* Nothing sits beside the rail to match, so it returns to natural height and
+       stops scrolling internally — a stacked card that scrolls inside itself is
+       a scroll trap on touch. `position` must be reset too: leaving the card
+       absolutely positioned with no in-flow sibling collapses the cell to 0. */
+    .overview-right-column > .right-workbench {
+        position: static;
+        height: auto;
+        display: block;
+    }
+
+    .rail-scroll {
+        overflow-y: visible;
+        min-height: 0;
     }
 
     .summary-board {

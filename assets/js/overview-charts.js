@@ -166,7 +166,7 @@ export function buildMetricSeries(transactions = [], frames = [], isCogs = null)
         revenue: 0,
         expense: 0,
         cogs: 0,
-        netIncome: 0,
+        netProfit: 0,
         grossProfit: 0,
         grossMarginPct: null
     }));
@@ -193,7 +193,7 @@ export function buildMetricSeries(transactions = [], frames = [], isCogs = null)
     });
 
     buckets.forEach(bucket => {
-        bucket.netIncome = bucket.revenue - bucket.expense;
+        bucket.netProfit = bucket.revenue - bucket.expense;
         bucket.grossProfit = bucket.revenue - bucket.cogs;
         // Margin is undefined without revenue — a gap in the line, not a zero and
         // never NaN/Infinity.
@@ -374,7 +374,12 @@ function buildMetricHead(config) {
 const MIN_BUCKET_PX = 64;
 const MIN_BUCKET_PX_COMPACT = 34;
 const AXIS_GUTTER_PX = 76;
-const PLOT_HEIGHT = 220;
+// Height of the bucket-labels row beneath the plot, subtracted when deriving the
+// stage height from the plot container. Pinned in CSS (`.chart-labels-scroll`)
+// so this derivation is exact — keep the two in sync.
+const LABELS_ROW_PX = 30;
+const MIN_PLOT_HEIGHT = 180;
+const FALLBACK_PLOT_HEIGHT = 260;
 
 // The plot area and the labels row are two separate horizontal scrollers (so the
 // Y-axis can stay pinned). Mirror scrollLeft so they move as one.
@@ -403,6 +408,16 @@ function trackWidth(bucketCount, plotEl, compact) {
     const minTrack = bucketCount * step;
     const available = Math.max(0, Math.round((plotEl?.clientWidth || 0) - AXIS_GUTTER_PX));
     return Math.max(minTrack, available || minTrack);
+}
+
+// The viewBox HEIGHT must track the rendered height for the same reason the
+// width does: with preserveAspectRatio="none" a fixed viewBox height stretched
+// into a taller stage scales the y-axis independently of x, which turns the
+// round point markers into ovals. Cards now render at three different heights
+// (full-width / 2-up / 3-up), so this has to be measured, not assumed.
+function trackHeight(plotEl) {
+    const measured = Math.round((plotEl?.clientHeight || 0) - LABELS_ROW_PX);
+    return measured > MIN_PLOT_HEIGHT ? measured : FALLBACK_PLOT_HEIGHT;
 }
 
 function buildLinePoints(values, min, max, width, height, paddingX, paddingY) {
@@ -470,7 +485,7 @@ function tooltipRow(color, label, value, dashed = false) {
 }
 
 /**
- * Diverging column plot around a real zero baseline (Net income).
+ * Diverging column plot around a real zero baseline (Net profit).
  *
  * Per DESIGN_SYSTEM §4b: one pixels-per-rupiah for both sides, zero placed where
  * zero actually falls rather than at 50%, and a floor under the smaller side so a
@@ -558,7 +573,7 @@ function renderLinePlot(plotEl, buckets, priorBuckets, config) {
     // viewBox width must equal rendered pixel width, or preserveAspectRatio="none"
     // stretches the line and turns markers into ovals on short ranges.
     const width = trackWidth(buckets.length, plotEl, config.compact);
-    const height = PLOT_HEIGHT;
+    const height = trackHeight(plotEl);
     const paddingX = 16;
     const paddingY = 18;
 

@@ -53,8 +53,6 @@
 
                 <div class="overview-layout">
 
-                    <section class="overview-main-column">
-
                         <!-- 1. Connected summary board -->
                         <section class="summary-board" aria-label="Finance summary">
                             <article class="metric-cell metric-cell-trend metric-cell-clickable" data-tour-target="dashboard-revenue-kpi" data-kpi-nav="revenue" role="link" tabindex="0" aria-label="Open Revenue overview detail page">
@@ -175,11 +173,72 @@
                             </article>
                         </section>
 
-                        <!-- 2. Net income -->
-                        <section id="net-income-card" class="overview-chart-panel chart-card" data-tour-target="dashboard-net-income">
+                    <aside class="overview-right-column">
+                        <div class="right-workbench" data-tour-target="dashboard-ai-panel">
+                          <div class="rail-scroll">
+
+                            <section class="brain-panel">
+                                <div class="brain-head">
+                                    <div class="brain-logo" aria-hidden="true">
+                                        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                                            <rect width="40" height="40" rx="10" fill="currentColor" />
+                                            <g transform="translate(1.5, 0)">
+                                                <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
+                                                <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
+                                            </g>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h2 class="brain-title">AI Finance Summary</h2>
+                                    </div>
+                                </div>
+                                <div id="ai-business-summary-content" class="brain-body">
+                                    <button type="button" class="brain-idle" data-generate-ai-summary aria-label="Generate AI finance summary for this period">
+                                        <span class="brain-loading-icon brain-loading-icon-idle" aria-hidden="true">
+                                            <span class="brain-loading-core"></span>
+                                            <span class="brain-loading-ring"></span>
+                                            <span class="brain-loading-ring brain-loading-ring-alt"></span>
+                                            <span class="brain-loading-node brain-loading-node-one"></span>
+                                            <span class="brain-loading-node brain-loading-node-two"></span>
+                                            <span class="brain-loading-node brain-loading-node-three"></span>
+                                        </span>
+                                        <span class="brain-idle-label">Generate summary</span>
+                                        <span class="brain-idle-hint">Click the orb to run Fluxy AI for this period</span>
+                                    </button>
+                                </div>
+                            </section>
+
+                            <section class="rail-section">
+                                <div class="rail-divider"><span>Payables by category</span></div>
+                                <div id="payables-by-category-content" class="overview-card-loading">Loading payables...</div>
+                            </section>
+
+                            <section class="rail-section">
+                                <div class="rail-divider"><span>Upcoming</span></div>
+                                <div id="upcoming-obligations-content" class="overview-card-loading">Loading upcoming obligations...</div>
+                            </section>
+
+                            <section class="rail-section">
+                                <div class="rail-section-title">
+                                    <span class="rail-title">Report readiness</span>
+                                    <span id="report-readiness-status" class="status-badge">Loading</span>
+                                </div>
+                                <div id="report-readiness-content" class="overview-card-loading">Loading report readiness...</div>
+                            </section>
+
+                          </div>
+                        </div>
+                    </aside>
+
+                    <!-- Full-width band: every chart and the attention queue span the
+                         whole content canvas, not just the KPI column. -->
+                    <div class="overview-wide-column">
+
+                        <!-- 2. Net profit -->
+                        <section id="net-profit-card" class="overview-chart-panel chart-card" data-tour-target="dashboard-net-profit">
                             <div class="chart-card-header">
                                 <div>
-                                    <h2 class="chart-title">Net income</h2>
+                                    <h2 class="chart-title">Net profit</h2>
                                     <p class="chart-subtitle">What was left after every expense, period by period</p>
                                 </div>
                                 <div class="chart-legend">
@@ -188,8 +247,8 @@
                                 </div>
                             </div>
                             <div data-chart-head></div>
-                            <div id="net-income-chart" class="chart-plot" data-chart-plot aria-live="polite">
-                                <div class="chart-loading">Loading net income...</div>
+                            <div id="net-profit-chart" class="chart-plot" data-chart-plot aria-live="polite">
+                                <div class="chart-loading">Loading net profit...</div>
                             </div>
                         </section>
 
@@ -295,62 +354,7 @@
                             <div id="needs-attention-content" class="overview-card-loading">Loading action items...</div>
                         </section>
 
-                    </section>
-
-                    <aside class="overview-right-column">
-                        <div class="right-workbench" data-tour-target="dashboard-ai-panel">
-
-                            <section class="brain-panel">
-                                <div class="brain-head">
-                                    <div class="brain-logo" aria-hidden="true">
-                                        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
-                                            <rect width="40" height="40" rx="10" fill="currentColor" />
-                                            <g transform="translate(1.5, 0)">
-                                                <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
-                                                <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
-                                            </g>
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <h2 class="brain-title">AI Finance Summary</h2>
-                                    </div>
-                                </div>
-                                <div id="ai-business-summary-content" class="brain-body">
-                                    <button type="button" class="brain-idle" data-generate-ai-summary aria-label="Generate AI finance summary for this period">
-                                        <span class="brain-loading-icon brain-loading-icon-idle" aria-hidden="true">
-                                            <span class="brain-loading-core"></span>
-                                            <span class="brain-loading-ring"></span>
-                                            <span class="brain-loading-ring brain-loading-ring-alt"></span>
-                                            <span class="brain-loading-node brain-loading-node-one"></span>
-                                            <span class="brain-loading-node brain-loading-node-two"></span>
-                                            <span class="brain-loading-node brain-loading-node-three"></span>
-                                        </span>
-                                        <span class="brain-idle-label">Generate summary</span>
-                                        <span class="brain-idle-hint">Click the orb to run Fluxy AI for this period</span>
-                                    </button>
-                                </div>
-                            </section>
-
-                            <section class="rail-section">
-                                <div class="rail-divider"><span>Payables by category</span></div>
-                                <div id="payables-by-category-content" class="overview-card-loading">Loading payables...</div>
-                            </section>
-
-                            <section class="rail-section">
-                                <div class="rail-divider"><span>Upcoming</span></div>
-                                <div id="upcoming-obligations-content" class="overview-card-loading">Loading upcoming obligations...</div>
-                            </section>
-
-                            <section class="rail-section">
-                                <div class="rail-section-title">
-                                    <span class="rail-title">Report readiness</span>
-                                    <span id="report-readiness-status" class="status-badge">Loading</span>
-                                </div>
-                                <div id="report-readiness-content" class="overview-card-loading">Loading report readiness...</div>
-                            </section>
-
-                        </div>
-                    </aside>
+                    </div>
 
                 </div>
 

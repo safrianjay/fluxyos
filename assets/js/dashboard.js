@@ -1689,7 +1689,7 @@ const CASHFLOW_MIN_BUCKET_PX = 64;
 // ---------------------------------------------------------------------------
 // Overview financial charts
 //
-// Six charts off one dataset: Net income, Total income, Total expenses, Gross
+// Six charts off one dataset: Net profit, Total income, Total expenses, Gross
 // profit margin, Expense breakdown and Bank accounts. Every headline figure
 // comes from overview.performance (the same numbers the KPI strip renders), and
 // every series is bucketed from overview.chartTransactions — no second query and
@@ -1733,7 +1733,7 @@ function renderOverviewCharts(overview) {
     if (priorTxs.length && prevStart && prevEnd) {
         const priorFrames = buildBucketFrames(prevStart, prevEnd);
         const priorSeries = buildMetricSeries(priorTxs, priorFrames, isCogs);
-        const zeroBucket = { revenue: 0, expense: 0, cogs: 0, netIncome: 0, grossProfit: 0, grossMarginPct: null };
+        const zeroBucket = { revenue: 0, expense: 0, cogs: 0, netProfit: 0, grossProfit: 0, grossMarginPct: null };
         // Pad or clip to the current frame count so the two series stay aligned
         // even when a month-length difference shifts the bucket count by one.
         priorAll = frames.map((frame, index) => ({
@@ -1758,18 +1758,18 @@ function paintOverviewCharts() {
     const hasPrior = priorBuckets.length > 0;
     const priorLabel = 'Prior period';
 
-    // 1. Net income — a diverging column chart. Net income goes negative
+    // 1. Net profit — a diverging column chart. Net profit goes negative
     // regularly, and a zero-baselined column is the only form that reads a loss
     // honestly (DESIGN_SYSTEM §4b).
-    renderTrendMetricCard(document.getElementById('net-income-card'), {
+    renderTrendMetricCard(document.getElementById('net-profit-card'), {
         shape: 'diverging',
         buckets,
         priorBuckets,
         compact: false,
-        valueOf: bucket => bucket.netIncome,
+        valueOf: bucket => bucket.netProfit,
         color: CHART_COLORS.net,
         priorColor: CHART_COLORS.netPrior,
-        ariaLabel: 'Net income by period',
+        ariaLabel: 'Net profit by period',
         formatAxis: formatCompactIDR,
         head: {
             value: formatLevelIDR(safeNumber(performance.netProfit)),
@@ -1785,13 +1785,13 @@ function paintOverviewCharts() {
             const prior = priorBuckets[index];
             // Swatch follows the column's sign, so the tooltip legend matches the
             // bar the user is pointing at rather than always showing the positive hue.
-            const netSwatch = bucket.netIncome < 0 ? CHART_COLORS.netNegative : CHART_COLORS.net;
+            const netSwatch = bucket.netProfit < 0 ? CHART_COLORS.netNegative : CHART_COLORS.net;
             return `
                 <div class="chart-tooltip-header">${escapeHtml(bucket.label)}</div>
-                ${tooltipRow(netSwatch, 'Net income', formatLevelIDR(bucket.netIncome))}
+                ${tooltipRow(netSwatch, 'Net profit', formatLevelIDR(bucket.netProfit))}
                 ${tooltipRow(CHART_COLORS.income, 'Income', formatIDR(bucket.revenue))}
                 ${tooltipRow(CHART_COLORS.expense, 'Expenses', formatIDR(bucket.expense))}
-                ${prior ? tooltipRow(CHART_COLORS.netPrior, priorLabel, formatLevelIDR(prior.netIncome), true) : ''}
+                ${prior ? tooltipRow(CHART_COLORS.netPrior, priorLabel, formatLevelIDR(prior.netProfit), true) : ''}
             `;
         }
     });
@@ -1983,7 +1983,7 @@ function getRangeCaption() {
 
 function clearOverviewCharts(message) {
     overviewChartState = null;
-    ['net-income-card', 'total-income-card', 'total-expenses-card', 'gross-margin-card'].forEach(id => {
+    ['net-profit-card', 'total-income-card', 'total-expenses-card', 'gross-margin-card'].forEach(id => {
         const card = document.getElementById(id);
         if (!card) return;
         const head = card.querySelector('[data-chart-head]');

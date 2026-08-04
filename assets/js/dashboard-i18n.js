@@ -825,7 +825,7 @@
         "No change": "Tidak berubah",
         "No prior period": "Tidak ada periode sebelumnya",
         "Total balance": "Total saldo",
-        "Loading net income...": "Memuat laba bersih...",
+        "Loading net profit...": "Memuat laba bersih...",
         "Loading income...": "Memuat pemasukan...",
         "Loading expenses...": "Memuat pengeluaran...",
         "Loading gross margin...": "Memuat margin kotor...",

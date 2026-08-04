@@ -203,7 +203,7 @@ FluxyOS design language.
   records dated in the year 9702 read "100% · 41/41 clean". Regression guard:
   `tests/data-quality-future-dated.spec.js`. Added 2026-08-01.
 - **Overview financial charts (`assets/js/overview-charts.js`).** Six charts replaced
-  the old Performance Trend panel (removed 2026-08-04): **Net income** (full width),
+  the old Performance Trend panel (removed 2026-08-04): **Net profit** (full width),
   **Total income** + **Total expenses** (2-up), then **Gross profit margin** +
   **Expense breakdown** + **Bank accounts** (3-up). **Cash Flow** is unchanged below
   them. Each trend card is a headline value + prior-period value + delta + plot,
@@ -227,7 +227,7 @@ FluxyOS design language.
     report a flat **100% margin for every business** — so the card renders a setup
     state pointing at Accounting instead. Same call `calculateProfitLoss` already
     makes when it returns a null gross margin rather than inventing one.
-  - **Net income is a diverging column chart**, not a line: net income goes negative
+  - **Net profit is a diverging column chart**, not a line: net profit goes negative
     regularly and only a zero-baselined column reads a loss honestly. Negative money
     renders `-Rp…` (red), matching the Overview card convention above.
   - **One centralized AI entry point.** No chart carries an AI action or an "fx"
@@ -236,7 +236,29 @@ FluxyOS design language.
     visible on the OpEx vs budget KPI card), the Bar/Line toggle, and the
     `#cashflow-chart` / `#cashflow-budget-caption` / `[data-cashflow-chart-type]` /
     `data-tour-target="dashboard-cashflow"` hooks. Regression guard:
-    `tests/overview-charts.spec.js` (11 checks).
+    `tests/overview-charts.spec.js` (17 checks).
+- **Overview grid: two rows, not two columns.** `.overview-layout` is a 2×2 grid.
+  Row 1 pairs `.summary-board` (KPI board) with `.overview-right-column` (the AI
+  rail); row 2 is `.overview-wide-column`, spanning both columns, holding every
+  chart and the attention queue. Two consequences worth knowing before editing it:
+  - **The rail matches the KPI board's height with no JS.** They are siblings in
+    one grid row, so `align-items: stretch` pairs them. But a grid row is as tall
+    as its tallest item, and the rail's natural content (~837px: AI panel + three
+    rail sections) is far taller than the KPI board (~442px) — left in flow it
+    dragged the KPI board up to match. `.right-workbench` is therefore
+    `position: absolute; inset: 0` inside a `position: relative` cell, so the cell
+    has no in-flow content and the KPI board alone sizes the row. Overflow scrolls
+    inside `.rail-scroll`, one region for the whole card. **When the layout stacks
+    (≤1200px) `position` must be reset to `static`** or the card collapses to ~0.
+  - **Charts get the full canvas**, not the narrower KPI column — `.overview-wide-column`
+    is `grid-column: 1 / -1`. Plot heights step with card width (full-width > 2-up >
+    3-up) via `.chart-plot` / `.chart-plot-stage` min-heights.
+- **A line chart's SVG viewBox must match rendered size on BOTH axes.** With
+  `preserveAspectRatio="none"`, a fixed viewBox height stretched into a taller
+  stage scales y independently of x and turns the round point markers into ovals.
+  `trackHeight()` derives the height from `.chart-plot` height − `LABELS_ROW_PX`,
+  which is why `.chart-labels-scroll` is pinned to a fixed 30px — keep the CSS and
+  the JS constant in sync.
 - **Trend chart robustness (`renderTrendChart`/`bucketSeries`):** month/quarter ranges
   trim empty leading/trailing buckets (so All Time isn't padded with a flat zero tail —
   the fix for the line diving to Rp0 at the right edge), and the x-axis thins to ~10

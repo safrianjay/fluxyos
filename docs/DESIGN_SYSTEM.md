@@ -310,7 +310,7 @@ Reference implementations: Revenue Sync Volume (`revenue-sync.html` `renderVolum
 
 #### 4a. Time-series bucketing & horizontal scroll (Overview charts)
 
-The Overview financial charts — **Net income**, **Total income**, **Total
+The Overview financial charts — **Net profit**, **Total income**, **Total
 expenses**, **Gross profit margin** and **Cash Flow** — plot one bucket per
 period across the selected range. They follow these rules (see
 `assets/js/overview-charts.js` `buildBucketFrames` / `buildMetricSeries` /
@@ -341,10 +341,13 @@ Time = ~100 monthly Cash Flow bars in a non-scrolling `1fr` grid) triggers this.
 changing an Overview chart, QA at **All Time** and confirm
 `document.documentElement.scrollWidth === clientWidth`.
 
-**Line charts:** the SVG `viewBox` width must equal its rendered pixel width.
-With `preserveAspectRatio="none"` a narrow viewBox stretched to a wide panel
-distorts the line and turns point markers into ovals (visible on short ranges
-like *This/Last Month*). Compute the plot width from the real container width.
+**Line charts:** the SVG `viewBox` must equal its rendered pixel size on **both
+axes**. With `preserveAspectRatio="none"` a narrow viewBox stretched to a wide
+panel distorts the line, and a fixed viewBox *height* stretched into a taller
+stage scales y independently of x — either one turns round point markers into
+ovals. Compute both from the real container: width from its width, height from
+its height minus the pinned labels row. This matters as soon as one chart type
+renders at more than one size (Overview cards render full-width, 2-up and 3-up).
 Because the width is measured at render time, a width change (window resize,
 sidebar collapse, breakpoint) has to trigger a repaint — `dashboard.js` keeps the
 last chart inputs in `overviewChartState` and redraws from cache on a debounced
