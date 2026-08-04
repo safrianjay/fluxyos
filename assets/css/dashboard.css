@@ -115,11 +115,16 @@
     min-width: 0;
 }
 
+/* One step down the dashboard scale (20 → 16), not an off-scale value: 20px is
+   the KPI-card step, and repeating it on a chart card made the chart headline
+   compete with the KPI board above it. 16px/600 keeps the chart's own hierarchy
+   (headline > prior > delta) while sitting a step below the KPI strip.
+   Letter-spacing follows the scale: -0.01em at 16px, not the 20px -0.02em. */
 .chart-metric-value {
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 600;
     line-height: 1;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
     color: #0F172A;
 }
 
@@ -142,9 +147,11 @@
     min-width: 0;
 }
 
+/* Steps down with the headline so the delta between the two stays legible —
+   14px against a 16px headline reads as the same level. */
 .chart-metric-prior-value {
     color: #64748B;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 600;
     line-height: 1;
     font-variant-numeric: tabular-nums;
@@ -178,7 +185,7 @@
 }
 
 .overview-chart-row-2 .chart-plot { min-height: 236px; }
-.overview-chart-row-3 .chart-plot { min-height: 218px; }
+.overview-chart-row-3 .chart-plot { min-height: 264px; }
 
 .chart-loading {
     display: flex;
@@ -201,7 +208,7 @@
 }
 
 .overview-chart-row-2 .chart-plot-stage { min-height: 186px; }
-.overview-chart-row-3 .chart-plot-stage { min-height: 168px; }
+.overview-chart-row-3 .chart-plot-stage { min-height: 214px; }
 
 .chart-axis {
     position: absolute;
@@ -415,24 +422,28 @@
 .chart-donut {
     display: flex;
     flex: 1;
-    min-height: 218px;
+    min-height: 264px;
     flex-direction: column;
     justify-content: center;
     min-width: 0;
 }
 
+/* Ring centred over its legend rather than sitting left of it. Side-by-side
+   anchored the ring to the left edge and left the card visually lopsided; a
+   centred column also gives the ring room to be larger at the same card height. */
 .chart-donut-body {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 22px;
-    flex-wrap: wrap;
+    gap: 18px;
 }
 
 .chart-donut-ring {
     position: relative;
     flex: 0 0 auto;
-    width: 148px;
-    height: 148px;
+    align-self: center;
+    width: 184px;
+    height: 184px;
 }
 
 .chart-donut-ring svg { width: 100%; height: 100%; }
@@ -480,7 +491,8 @@
 }
 
 .chart-donut-legend {
-    flex: 1 1 180px;
+    width: 100%;
+    flex: 0 0 auto;
     min-width: 0;
     margin: 0;
     padding: 0;
@@ -1154,15 +1166,16 @@
         min-width: 18px;
     }
 
-    /* Donut stacks above its legend so neither is squeezed at 375px. */
+    /* The donut is a centred column at every width now, so this only tightens
+       the gap and trims the ring for a 343px card. `align-items` is deliberately
+       not restated — overriding it back to `stretch` would un-centre the ring. */
     .chart-donut-body {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 16px;
+        gap: 14px;
     }
 
     .chart-donut-ring {
-        align-self: center;
+        width: 168px;
+        height: 168px;
     }
 
     .chart-metric-head {

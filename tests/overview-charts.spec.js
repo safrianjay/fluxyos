@@ -120,10 +120,14 @@ test('tooltip clamps above the bucket labels and carries both series', async ({ 
 
     for (let i = 0; i < count; i++) {
         const box = await bars.nth(i).boundingBox();
-        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-        await page.waitForTimeout(200);
         const tip = page.locator('#net-profit-card .chart-tooltip');
-        expect(await tip.evaluate(e => e.classList.contains('is-visible')), `bar ${i} tooltip`).toBe(true);
+        // Poll for the state being asserted rather than sleeping a fixed 200ms.
+        // The hover handler runs on mousemove, and under suite contention the
+        // fixed wait sometimes measured the tooltip a frame before it painted.
+        await expect.poll(async () => {
+            await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 2 });
+            return tip.evaluate(e => e.classList.contains('is-visible'));
+        }, { timeout: 10_000 }).toBe(true);
         const text = (await tip.textContent() || '').replace(/\s+/g, ' ').trim();
         expect(text).toMatch(/Net profit/);
         expect(text).not.toMatch(/\bNaN\b|\bInfinity\b|\bundefined\b/);
