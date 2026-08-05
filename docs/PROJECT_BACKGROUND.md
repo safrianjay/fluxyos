@@ -222,11 +222,27 @@ FluxyOS design language.
     so the Overview's gross margin and the Accounting Center's income statement
     classify COGS identically.
   - **Gross profit margin refuses to guess.** It uses true cost of revenue via
-    `getAccountingMappings` → `_incomeStatementCogsKeys`. With no cost-of-revenue
+    `getCogsSourceKeys` → `_incomeStatementCogsKeys`. With no cost-of-revenue
     account mapped there is no COGS to subtract, and `(revenue − 0) / revenue` would
     report a flat **100% margin for every business** — so the card renders a setup
-    state pointing at Accounting instead. Same call `calculateProfitLoss` already
-    makes when it returns a null gross margin rather than inventing one.
+    state deep-linking to `/accounting?tab=mapping` instead. Same call
+    `calculateProfitLoss` already makes when it returns a null gross margin rather
+    than inventing one. A genuine 100% is still possible and correct: a workspace
+    that mapped a COGS category but recorded no COGS spend in the period really did
+    have no direct cost.
+  - **COGS is detected from the chart's `sak_category === 'cogs'`, not from the
+    mapping's own fields.** `saveAccountingMapping` persists the target account's
+    *catalog type* — 5100 Cost of Goods Sold is `type: 'expense'` — and nothing ever
+    writes `statement_section` onto a mapping. Matching only those two fields (as
+    the detector originally did) could never fire for a mapping made through
+    Accounting → Setup → Account Mapping: the user mapped a category to Cost of
+    Goods Sold and COGS stayed empty, so the Overview card kept telling them to do
+    the thing they had just done and the income statement's Gross Profit always
+    equalled Revenue. `_incomeStatementCogsKeys(mappings, chartAccounts)` now
+    resolves `target_account_code` against the chart, which is the same signal
+    `statements-engine.buildIncomeStatement` uses — so Overview, the income
+    statement preview and the ledger statements agree. Guard:
+    `tests/accounting-cogs-mapping.spec.js`. Fixed 2026-08-05.
   - **Net profit is a diverging column chart**, not a line: net profit goes negative
     regularly and only a zero-baselined column reads a loss honestly. Negative money
     renders `-Rp…` (red), matching the Overview card convention above.

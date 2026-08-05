@@ -6319,14 +6319,17 @@ class DataService {
         const prevKeys = this._coercePeriodKeys(comparisonPeriod)
             || this._previousPeriodRange(cur.start, cur.end);
 
-        const [readiness, curTx, prevTx, savedMappings] = await Promise.all([
+        const [readiness, curTx, prevTx, savedMappings, chartAccounts] = await Promise.all([
             this.getAccountingReadiness(userId, cur.start, cur.end).catch(() => null),
             this.getTransactionsForPeriod(userId, cur.start, cur.end).catch(() => []),
             this.getTransactionsForPeriod(userId, prevKeys.start, prevKeys.end).catch(() => []),
-            this.getAccountingMappings(userId).catch(() => [])
+            this.getAccountingMappings(userId).catch(() => []),
+            this.getChartForPicker(userId).catch(() => [])
         ]);
 
-        const cogsKeys = this._incomeStatementCogsKeys(savedMappings);
+        // The chart is what makes a mapping resolvable to cost of revenue; without
+        // it the COGS bucket is always empty and Gross Profit always equals Revenue.
+        const cogsKeys = this._incomeStatementCogsKeys(savedMappings, chartAccounts);
 
         const curB = this._buildIncomeStatementBuckets(curTx, cogsKeys);
         const prevB = this._buildIncomeStatementBuckets(prevTx, cogsKeys);
@@ -6551,16 +6554,61 @@ class DataService {
         return this._previousPeriodRange(period.start, period.end);
     }
 
-    _incomeStatementCogsKeys(savedMappings = []) {
+    // Codes of the chart's cost-of-revenue accounts.
+    //
+    // `sak_category === 'cogs'` is the signal the chart actually carries — the
+    // seeded 5100 Cost of Goods Sold is `type: 'expense'`, `sak_category: 'cogs'`
+    // — and it is what statements-engine's buildIncomeStatement already keys off.
+    // Uses the live chart when supplied so user-created COGS accounts count too,
+    // and falls back to the seed when the workspace has not been seeded yet.
+    _cogsAccountCodes(chartAccounts = null) {
+        const codes = new Set();
+        const collect = (list) => (list || []).forEach(a => {
+            if (a && a.code && String(a.sak_category || '').toLowerCase() === 'cogs') {
+                codes.add(String(a.code));
+            }
+        });
+        collect(chartAccounts);
+        if (!codes.size) collect(Object.values(CHART_SEED_BY_CODE));
+        return codes;
+    }
+
+    /**
+     * Source keys (`<source_type>::<source_value>`) that resolve to cost of revenue.
+     *
+     * Matching on `target_account_code` against the chart is the condition that
+     * actually fires. `saveAccountingMapping` persists the target account's
+     * catalog type — 'expense' for 5100 — and nothing ever writes
+     * `statement_section` onto a mapping, so the original two conditions could
+     * never match a mapping made through the Accounting UI: a user could map a
+     * category to Cost of Goods Sold and COGS stayed empty. They are kept as
+     * fallbacks in case a future writer sets either field explicitly.
+     */
+    _incomeStatementCogsKeys(savedMappings = [], chartAccounts = null) {
+        const cogsCodes = this._cogsAccountCodes(chartAccounts);
         const cogsKeys = new Set();
         savedMappings.forEach(m => {
             const section = String(m.statement_section || '').toLowerCase();
             const acctType = String(m.target_account_type || '').toLowerCase();
-            if (section === 'cost_of_revenue' || acctType === 'cost_of_revenue') {
+            const code = String(m.target_account_code || '').trim();
+            const isCogs = section === 'cost_of_revenue'
+                || acctType === 'cost_of_revenue'
+                || (code && cogsCodes.has(code));
+            if (isCogs) {
                 cogsKeys.add(`${m.source_type}::${String(m.source_value || '').trim().toLowerCase()}`);
             }
         });
         return cogsKeys;
+    }
+
+    // Convenience for surfaces that need the COGS key set on its own (the
+    // Overview gross-margin chart). Both reads are cached by their own getters.
+    async getCogsSourceKeys(userId) {
+        const [mappings, chart] = await Promise.all([
+            this.getAccountingMappings(userId).catch(() => []),
+            this.getChartForPicker(userId).catch(() => [])
+        ]);
+        return this._incomeStatementCogsKeys(mappings, chart);
     }
 
     // Single COGS test, shared by the income statement and the Overview gross

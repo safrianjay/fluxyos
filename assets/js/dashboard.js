@@ -93,7 +93,7 @@ window.loadDashboard = async () => {
     renderOverviewLoadingState();
 
     try {
-        const [overviewResult, revenueResult, ledgerCashResult, mappingsResult] = await Promise.allSettled([
+        const [overviewResult, revenueResult, ledgerCashResult, cogsKeysResult] = await Promise.allSettled([
             ds.getDashboardOverview(user.uid, {
                 startDate: dashboardRangeStart,
                 endDate: dashboardRangeEnd,
@@ -102,7 +102,7 @@ window.loadDashboard = async () => {
             }),
             ds.getRevenueTransactionsForDashboardStats(user.uid),
             ds.getLedgerCashPosition(user.uid),
-            ds.getAccountingMappings(user.uid)
+            ds.getCogsSourceKeys(user.uid)
         ]);
         if (overviewResult.status !== 'fulfilled') throw overviewResult.reason;
         const overview = overviewResult.value;
@@ -119,8 +119,8 @@ window.loadDashboard = async () => {
         cashFlowBuckets = overview.cashFlow || [];
         // Same COGS classification the Accounting Center income statement uses, so
         // the Overview gross margin can never disagree with the statement.
-        cogsKeys = mappingsResult.status === 'fulfilled'
-            ? ds._incomeStatementCogsKeys(mappingsResult.value || [])
+        cogsKeys = cogsKeysResult.status === 'fulfilled'
+            ? (cogsKeysResult.value || new Set())
             : new Set();
 
         renderSummaryBoard(overview, ledgerCash);
@@ -1877,9 +1877,11 @@ function renderGrossMarginChart(buckets, priorBuckets, priorLabel) {
         renderTrendMetricCard(card, {
             emptyState: {
                 title: 'Cost of revenue not mapped',
-                description: 'Map at least one category to Cost of revenue in Accounting to see gross profit margin. Until then, FluxyOS will not guess a margin.',
-                buttonText: 'Open Accounting',
-                onAction: () => { window.location.href = '/accounting'; }
+                // Name the actual route to the setting. "in Accounting" sent
+                // people to a page with several tabs and left them to hunt.
+                description: 'In Accounting → Setup → Account Mapping, assign a category to Cost of Goods Sold. Gross profit margin needs to know which spending is direct cost, and FluxyOS will not guess it.',
+                buttonText: 'Open Account Mapping',
+                onAction: () => { window.location.href = '/accounting?tab=mapping'; }
             }
         });
         return;
