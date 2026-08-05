@@ -2652,16 +2652,6 @@
                     <div><p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Status</p><p class="text-[14px] font-bold ${isVoided ? 'text-gray-500' : 'text-gray-900'}">${isVoided ? 'Voided' : escapeHtml(row.status || '—')}</p></div>
                     <div><p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Uploaded</p><p class="text-[14px] font-bold text-gray-900">${formatDetailDate(row.created_at, { year: 'numeric', month: 'short', day: 'numeric' })}</p></div>
                     <div class="col-span-2"><p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Source</p><p class="text-[14px] font-bold text-gray-900">${escapeHtml(sourceText)}</p></div>
-                    <div class="col-span-2 rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
-                        <div>
-                            <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Debit Account</p>
-                            <p id="tx-detail-debit-account" class="text-[14px] font-bold text-gray-900">—</p>
-                        </div>
-                        <div>
-                            <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Credit Account</p>
-                            <p id="tx-detail-credit-account" class="text-[14px] font-bold text-gray-900">—</p>
-                        </div>
-                    </div>
                     ${isVoided ? `<div class="col-span-2 rounded-xl border border-gray-200 bg-gray-50 p-4"><p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Void reason</p><p class="text-[14px] font-semibold text-gray-700">${escapeHtml(row.void_reason || '—')}</p></div>` : ''}
                 </div>
                 <div id="tx-detail-invoice-card"></div>
@@ -2695,58 +2685,7 @@
             document.getElementById('tx-detail-void-btn')?.addEventListener('click', () => voidActiveTransaction(row));
             mountTxAttachments(row, isVoided);
             hydrateTxInvoiceCard(row);
-            hydrateTxAccountFields(row);
             hydrateTxJournalCard(row);
-        }
-
-        function formatAccountReference(accountCode, accountName) {
-            const code = String(accountCode || '').trim();
-            const name = String(accountName || '').trim();
-            if (!code) return escapeHtml(name || '—');
-            const label = `${escapeHtml(code)}${name ? ` · ${escapeHtml(name)}` : ''}`;
-            return `<a href="/accounting-account?code=${encodeURIComponent(code)}" class="text-[#1F2937] font-semibold hover:text-[#EA580C] transition-colors">${label}</a>`;
-        }
-
-        async function hydrateTxAccountFields(row) {
-            const debitEl = document.getElementById('tx-detail-debit-account');
-            const creditEl = document.getElementById('tx-detail-credit-account');
-            if (!debitEl || !creditEl) return;
-            debitEl.textContent = '—';
-            creditEl.textContent = '—';
-            const user = auth.currentUser;
-            const journalRef = String(row.journal_ref || '').trim();
-            if (!user || !journalRef) return;
-
-            let journal = null;
-            try {
-                journal = await ds.getJournalById(user.uid, journalRef);
-            } catch (_) {
-                journal = null;
-            }
-            if (activeTxDetailRow?.id !== row.id) return;
-            if (!journal || !Array.isArray(journal.lines) || !journal.lines.length) return;
-
-            const formatLines = (predicate) => {
-                const unique = [];
-                const seen = new Set();
-                for (const line of journal.lines.filter(predicate)) {
-                    const key = `${String(line.account_code || '').trim()}|${String(line.account_name || '').trim()}`;
-                    if (!seen.has(key)) {
-                        seen.add(key);
-                        unique.push(line);
-                    }
-                }
-                return unique;
-            };
-
-            const debitLines = formatLines((l) => Number(l.debit) > 0);
-            const creditLines = formatLines((l) => Number(l.credit) > 0);
-            debitEl.innerHTML = debitLines.length
-                ? debitLines.map((line) => formatAccountReference(line.account_code, line.account_name)).join('<br>')
-                : '—';
-            creditEl.innerHTML = creditLines.length
-                ? creditLines.map((line) => formatAccountReference(line.account_code, line.account_name)).join('<br>')
-                : '—';
         }
 
         // Source documents for this transaction. The shared component owns
