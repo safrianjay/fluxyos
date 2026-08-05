@@ -44,9 +44,11 @@ async function pickRevenue(page, revenueTypes) {
         const app = appMod.getApps()[0];
         const user = authMod.getAuth(app).currentUser;
         if (!app || !user) return { error: 'no-auth' };
+        const wsId = (window.FLUXY_WORKSPACE_MODE && window.FluxyWorkspace && window.FluxyWorkspace.id) || user.uid;
+        const scopePath = window.FLUXY_WORKSPACE_MODE ? `workspaces/${wsId}` : `users/${user.uid}`;
         const db = fsMod.getFirestore(app);
         const q = fsMod.query(
-            fsMod.collection(db, `users/${user.uid}/transactions`),
+            fsMod.collection(db, `${scopePath}/transactions`),
             fsMod.orderBy('timestamp', 'desc'),
             fsMod.limit(400)
         );

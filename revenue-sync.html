@@ -220,20 +220,20 @@
     <div id="revenue-drawer-backdrop" class="fixed inset-0 bg-black/30 z-40 hidden"></div>
 
     <!-- Revenue Detail Drawer -->
-    <div id="revenue-drawer" class="fixed top-0 right-0 h-full w-full max-w-[420px] bg-white fluxy-drawer-floating z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+    <div id="revenue-drawer" class="fixed top-0 right-0 h-full w-full max-w-[480px] bg-white fluxy-drawer-floating z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+        <div class="fluxy-drawer-header">
             <div>
-                <h2 class="text-[14px] font-bold text-gray-900">Revenue Details</h2>
-                <p class="text-[12px] text-gray-400 mt-0.5">Review the source and status</p>
+                <h2 class="fluxy-drawer-title">Revenue Details</h2>
+                <p class="fluxy-drawer-desc">Review the source and status</p>
             </div>
-            <button id="revenue-drawer-close-btn" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+            <button id="revenue-drawer-close-btn" class="fluxy-drawer-close" aria-label="Close">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
-        <div id="revenue-drawer-content" class="flex-1 overflow-y-auto px-6 py-5">
+        <div id="revenue-drawer-content" class="fluxy-drawer-body">
             <!-- Injected by JS -->
         </div>
-        <div class="px-6 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0">
+        <div class="fluxy-drawer-footer">
             <button id="revenue-drawer-close-footer" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[14px] font-medium hover:bg-gray-200 transition-colors">Close</button>
             <button disabled class="flex-1 px-4 py-2.5 bg-gray-50 text-gray-400 rounded-lg text-[14px] font-medium cursor-not-allowed flex items-center justify-center gap-2">
                 Mark Reconciled
@@ -245,6 +245,7 @@
     <script src="assets/js/sidebar-loader.js"></script>
     <script src="assets/js/shared-dashboard.js"></script>
     <script src="assets/js/duplicate-guard.js"></script>
+    <script src="assets/js/journal-link-card.js"></script>
     <script src="assets/js/dashboard-i18n.js"></script>
     <script src="assets/js/fluxy-select.js"></script>
     <script src="assets/js/fluxy-account-picker.js"></script>
@@ -354,22 +355,35 @@
         // locate, scroll to, and highlight it regardless of the originally selected period.
         async function prepareLinkedRevenueRecordRange(user) {
             if (!linkedRevenueRecordId || !user) return;
+            console.log('REVENUE_DEEP_LINK prepareLinkedRevenueRecordRange', {
+                linkedRevenueRecordId,
+                uid: user.uid,
+                rangeStart: revenueRangeStart,
+                rangeEnd: revenueRangeEnd,
+            });
             let row = null;
             try {
                 row = await ds.getTransactionById(user.uid, linkedRevenueRecordId);
-            } catch (_) {
+            } catch (err) {
+                console.log('REVENUE_DEEP_LINK getTransactionById failed', { err: String(err) });
                 row = null;
             }
             if (!row) {
+                console.log('REVENUE_DEEP_LINK row not found', { linkedRevenueRecordId });
                 window.showToast?.('That revenue row could not be found. It may have been deleted.', 'info');
                 linkedRevenueRecordHandled = true;
                 return;
             }
+            console.log('REVENUE_DEEP_LINK row found', { id: row.id, timestamp: row.timestamp });
             linkedRevenueRecordRow = row;
             const txDate = row.timestamp?.toDate?.();
-            if (!txDate || Number.isNaN(txDate.getTime())) return;
+            if (!txDate || Number.isNaN(txDate.getTime())) {
+                console.log('REVENUE_DEEP_LINK invalid txDate', { txDate });
+                return;
+            }
             const start = getMonthStartKey(txDate);
             const end = getMonthEndKey(txDate);
+            console.log('REVENUE_DEEP_LINK snapped range', { start, end, currentStart: revenueRangeStart, currentEnd: revenueRangeEnd });
             if (start === revenueRangeStart && end === revenueRangeEnd) return;
             revenueRangeStart = start;
             revenueRangeEnd = end;
@@ -832,9 +846,13 @@
             renderRevenueTable(filtered);
         }
 
+        let activeRevenueDetailRowId = null;
+
         // ── Detail Drawer ─────────────────────────────────────────────────────
 
         function openDrawer(row) {
+            console.log('REVENUE_DEEP_LINK openDrawer', { id: row?.id, activeRevenueDetailRowId: String(row?.id || '') });
+            activeRevenueDetailRowId = String(row?.id || '');
             const date = getRowDate(row);
             const dateStr = date
                 ? date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -888,9 +906,11 @@
                             Channel is derived from the vendor name. Once an integration is connected, real connector metadata will replace this inference.
                         </div>
                     </div>
+                    <div id="revenue-journal-card"></div>
                 </div>
             `;
 
+            mountRevenueJournalCard(row);
             document.getElementById('revenue-drawer-backdrop').classList.remove('hidden');
             requestAnimationFrame(() => {
                 document.getElementById('revenue-drawer').classList.remove('translate-x-full');
@@ -900,6 +920,20 @@
         function closeDrawer() {
             document.getElementById('revenue-drawer').classList.add('translate-x-full');
             document.getElementById('revenue-drawer-backdrop').classList.add('hidden');
+        }
+
+        async function mountRevenueJournalCard(row) {
+            const host = document.getElementById('revenue-journal-card');
+            const user = auth.currentUser;
+            if (!host || !user || !window.FluxyJournalCard) return;
+            await window.FluxyJournalCard.render({
+                hostEl: host,
+                ds,
+                userId: user.uid,
+                record: row,
+                context: 'transaction',
+                isStale: () => String(activeRevenueDetailRowId || '') !== String(row?.id || '')
+            });
         }
 
         function highlightLinkedRevenueRow() {
@@ -924,11 +958,13 @@
         }
 
         function openLinkedRevenueRecord() {
+            console.log('REVENUE_DEEP_LINK openLinkedRevenueRecord', { linkedRevenueRecordId, linkedRevenueRecordHandled, allRevenueLength: allRevenue.length });
             if (!linkedRevenueRecordId || linkedRevenueRecordHandled) return;
             // The range was snapped to the record's month in prepareLinkedRevenueRecordRange,
             // so it should be loaded; fall back to the prefetched row if a filter still
             // hides it from the in-memory list, so the detail drawer always opens.
             const row = allRevenue.find(item => item.id === linkedRevenueRecordId) || linkedRevenueRecordRow;
+            console.log('REVENUE_DEEP_LINK openLinkedRevenueRecord row', { foundInAllRevenue: !!allRevenue.find(item => item.id === linkedRevenueRecordId), hasPrefetched: !!linkedRevenueRecordRow, rowId: row?.id });
             if (!row) {
                 window.showToast?.('That revenue row could not be found. It may have been deleted.', 'info');
                 linkedRevenueRecordHandled = true;
@@ -1061,6 +1097,7 @@
                     sessionStorage.removeItem('fluxy_pending_tours');
                     return;
                 }
+                try { const { resolveWorkspace } = await import('/assets/js/workspace-service.js'); await resolveWorkspace(app, user); } catch (_) {}
                 await prepareLinkedRevenueRecordRange(user);
                 await window.loadRevenue();
                 await continuePendingTourIfAny(user.uid);
