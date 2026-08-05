@@ -46,6 +46,31 @@
         return d.toLocaleDateString(loc, { year: 'numeric', month: 'short', day: 'numeric' });
     }
 
+    function accountDisplay(accountCode, accountName) {
+        const code = String(accountCode || '').trim();
+        const name = String(accountName || '').trim();
+        const label = code ? `${escapeHtml(code)}${name ? ` · ${escapeHtml(name)}` : ''}` : escapeHtml(name || '—');
+        if (!code) return label;
+        return `<a href="/accounting-account?code=${encodeURIComponent(code)}" class="text-[#1F2937] font-semibold hover:text-[#EA580C] transition-colors">${label}</a>`;
+    }
+
+    function accountLines(journal, side) {
+        if (!journal || !Array.isArray(journal.lines)) return '—';
+        const seen = new Set();
+        const lines = [];
+        for (const line of journal.lines) {
+            if (side === 'debit' ? Number(line.debit) > 0 : Number(line.credit) > 0) {
+                const key = `${String(line.account_code || '').trim()}|${String(line.account_name || '').trim()}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    lines.push(line);
+                }
+            }
+        }
+        if (!lines.length) return '—';
+        return lines.map((line) => accountDisplay(line.account_code, line.account_name)).join('<br>');
+    }
+
     // Copy reads better naming the thing in front of the user than "this record".
     const NOUN = { transaction: 'transaction', bill: 'bill', invoice: 'invoice', subscription: 'subscription' };
 
@@ -92,19 +117,23 @@
     function cardHtml(journal) {
         const statusLabel = STATUS_LABEL[String(journal.status || '').toLowerCase()] || journal.status || '—';
         const method = journal.journal_type === 'manual' ? 'Manual' : 'Automatically generated';
-        const description = journal.description || journal.memo || '';
         const href = `accounting-journal.html?id=${encodeURIComponent(journal.id)}`;
+        const debitAccounts = accountLines(journal, 'debit');
+        const creditAccounts = accountLines(journal, 'credit');
         return `
-            <a href="${href}" class="group block rounded-xl border border-gray-200 bg-gray-50 p-4 transition-colors hover:border-[#EA580C] hover:bg-orange-50/40">
+            <div class="group block rounded-xl border border-gray-200 bg-gray-50 p-4 transition-colors hover:border-[#EA580C] hover:bg-orange-50/40">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                         <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-2">Journal information</p>
                         <p class="truncate text-[14px] font-bold text-gray-900 group-hover:text-[#EA580C] transition-colors">${escapeHtml(journal.journal_number || 'Not numbered')}</p>
                         <p class="mt-0.5 text-[12px] text-gray-500">${escapeHtml(statusLabel)} · ${escapeHtml(method)}</p>
                     </div>
-                    <svg class="mt-1 h-4 w-4 flex-shrink-0 text-gray-400 group-hover:text-[#EA580C] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                    </svg>
+                    <a id="tx-detail-journal-card-link" class="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors" href="${href}">
+                        <span>View journal</span>
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </a>
                 </div>
                 <div class="mt-3 grid grid-cols-2 gap-3 border-t border-gray-200 pt-3">
                     <div>
@@ -115,13 +144,17 @@
                         <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Period</p>
                         <p class="mt-0.5 text-[13px] font-semibold text-gray-800">${escapeHtml(journal.period_key || '—')}</p>
                     </div>
-                    ${description ? `<div class="col-span-2">
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Description</p>
-                        <p class="mt-0.5 text-[13px] text-gray-700 leading-snug">${escapeHtml(description)}</p>
-                    </div>` : ''}
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Debit account</p>
+                        <p id="tx-detail-journal-debit-account" class="mt-0.5 text-[13px] font-semibold text-gray-800">${debitAccounts}</p>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Credit account</p>
+                        <p id="tx-detail-journal-credit-account" class="mt-0.5 text-[13px] font-semibold text-gray-800">${creditAccounts}</p>
+                    </div>
                 </div>
                 <p class="mt-3 text-[11px] text-gray-400">Open the journal for accounts, debits and credits, and audit history.</p>
-            </a>`;
+            </div>`;
     }
 
     // `isStale` lets a caller cancel a paint when the user has already moved to

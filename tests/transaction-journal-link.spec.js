@@ -46,11 +46,11 @@ test('a posted transaction shows journal metadata and deep-links to Journal Deta
     expect(text, 'posting date').toMatch(/posting date/i);
 
     // Deep link to the existing Journal Detail page.
-    const href = await card.locator('a').getAttribute('href');
+    const href = await card.locator('#tx-detail-journal-card-link').getAttribute('href');
     expect(href, 'must link to Journal Detail').toMatch(/^accounting-journal\.html\?id=.+/);
 
     // A visual affordance that it opens.
-    await expect(card.locator('svg')).toHaveCount(1);
+    await expect(card.locator('#tx-detail-journal-card-link svg')).toHaveCount(1);
 
     // Single responsibility: the accounting detail stays on Journal Detail. Check
     // for the things that would actually constitute duplication — a lines table and
@@ -68,8 +68,8 @@ test('transaction detail shows debit and credit account links from the journal',
     const info = await openLedgerDrawer(page);
     test.skip(!info.journal_ref, 'no posted transaction in this workspace');
 
-    const debit = page.locator('#tx-detail-debit-account');
-    const credit = page.locator('#tx-detail-credit-account');
+    const debit = page.locator('#tx-detail-journal-debit-account');
+    const credit = page.locator('#tx-detail-journal-credit-account');
     await expect(debit).toBeVisible();
     await expect(credit).toBeVisible();
 
@@ -90,7 +90,7 @@ test('the deep link opens the matching Journal Detail page', async ({ page }) =>
     const info = await openLedgerDrawer(page);
     test.skip(!info.journal_ref, 'no posted transaction in this workspace');
 
-    const href = await page.locator('#tx-detail-journal-card a').getAttribute('href');
+    const href = await page.locator('#tx-detail-journal-card-link').getAttribute('href');
     const number = (await page.locator('#tx-detail-journal-card').innerText()).match(/JE-\d{4}-\d{6}/)?.[0];
 
     await page.goto('/' + href);
@@ -146,7 +146,7 @@ for (const surface of [
         // Either a journal card or an explained empty state — never blank.
         expect(html).toMatch(/Journal information/i);
 
-        const link = card.locator('a');
+        const link = card.locator('a#tx-detail-journal-card-link');
         if (await link.count()) {
             const href = await link.getAttribute('href');
             expect(href, 'must deep-link to Journal Detail').toMatch(/^accounting-journal\.html\?id=.+/);
