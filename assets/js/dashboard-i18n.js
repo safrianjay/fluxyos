@@ -3603,6 +3603,8 @@
         "Posting…": "Memposting…",
         "Reopening…": "Membuka kembali…",
         "Code": "Kode",
+        "Debit Account": "Akun Debit",
+        "Credit Account": "Akun Kredit",
         "Debit": "Debit",
         "Credit": "Kredit",
         "Entry": "Entri",

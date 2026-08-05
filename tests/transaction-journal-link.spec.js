@@ -64,6 +64,28 @@ test('a posted transaction shows journal metadata and deep-links to Journal Deta
     expect(bad, `page errors:\n${bad.join('\n')}`).toEqual([]);
 });
 
+test('transaction detail shows debit and credit account links from the journal', async ({ page }) => {
+    const info = await openLedgerDrawer(page);
+    test.skip(!info.journal_ref, 'no posted transaction in this workspace');
+
+    const debit = page.locator('#tx-detail-debit-account');
+    const credit = page.locator('#tx-detail-credit-account');
+    await expect(debit).toBeVisible();
+    await expect(credit).toBeVisible();
+
+    const debitText = await debit.innerText();
+    const creditText = await credit.innerText();
+    expect(debitText).not.toBe('—');
+    expect(creditText).not.toBe('—');
+
+    const debitLink = debit.locator('a');
+    const creditLink = credit.locator('a');
+    await expect(debitLink).toHaveCount(1);
+    await expect(creditLink).toHaveCount(1);
+    await expect(await debitLink.getAttribute('href')).toMatch(/^\/accounting-account\?code=.+/);
+    await expect(await creditLink.getAttribute('href')).toMatch(/^\/accounting-account\?code=.+/);
+});
+
 test('the deep link opens the matching Journal Detail page', async ({ page }) => {
     const info = await openLedgerDrawer(page);
     test.skip(!info.journal_ref, 'no posted transaction in this workspace');
