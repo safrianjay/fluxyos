@@ -41,12 +41,25 @@ rigorous. These are not two products.
 - Dashboard KPIs: Revenue, Cash Position, OpEx vs Budget, Gross Margin, Cash
   Pressure, Net Profit
 
+**Product is organised in five layers** (`PRODUCT_STRATEGY.md` §2): Financial
+Foundation → Accounting Foundation → Operational Foundation → Financial
+Intelligence → Decision Layer. That is a dependency order: Layer 4 intelligence
+is only as good as the Layer 2 books, which are only as true as the Layer 3
+operations feeding them.
+
+**Layers 1 and 2 are substantially shipped** — including the full accounting
+kernel. The audited gaps are multi-entity (Layer 2), approvals and the ERP
+operational modules (Layer 3), forecasting (Layer 4), and role dashboards
+(Layer 5). `PRODUCT_STRATEGY.md` §3 holds the verified per-capability status;
+treat it as the baseline and never plan a shipped capability as future work.
+
 **Direction (2026-08):** deepening toward ERP-class capability — inventory,
 purchasing, and point-of-sale — while the positioning stays *Finance Operating
 System*. The rationale is not feature demand: without inventory movement, cost
 of goods sold is an approximation, so gross margin is an approximation. Modules
-are admitted only when they produce or consume a ledger posting. See
-`PRODUCT_STRATEGY.md` §2–3.
+are admitted only when they **create, move, protect, predict, or explain
+financial performance** (`PRODUCT_STRATEGY.md` §5). Modules that create or move
+value post to the kernel; modules that predict or explain read derived balances.
 
 **Architectural principle that follows from this:** the ledger is the product.
 Everything else is a **source system** (emits documents, owns a posting rule) or

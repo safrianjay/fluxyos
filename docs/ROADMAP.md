@@ -20,27 +20,61 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 
 ---
 
+## The five layers — where the gaps actually are
+
+FluxyOS is organised in five layers (`PRODUCT_STRATEGY.md` §2). A codebase audit
+on 2026-08-07 established the real status of each; the full evidence table is
+`PRODUCT_STRATEGY.md` §3. Summary:
+
+| Layer | State | The real gap |
+|---|---|---|
+| 1 — Financial Foundation | ✅ Substantially shipped | — |
+| 2 — Accounting Foundation | ✅ **Shipped, not emerging** | **Multi-entity** (`entity_id` plumbing exists; no switcher or consolidation) |
+| 3 — Operational Foundation | ◐ Started, uneven | **Approvals** (advertised in sidebar, no data contract) + the ERP modules below |
+| 4 — Financial Intelligence | ◐ Narrow | **Forecasting / cash-flow prediction** |
+| 5 — Decision Layer | ◐ One audience | **Role dashboards** — only one dashboard exists |
+
+> ⚠️ **The accounting kernel is shipped.** General Ledger, Journal Entries,
+> Chart of Accounts, Trial Balance, Income Statement, Balance Sheet, Cash Flow,
+> Period Close, AR/AP Aging, and the Indonesian Tax Center are all live. Do not
+> plan them as future work.
+
+---
+
 ## Operational Modules (ERP depth)
 
 Admitted 2026-08-07. These exist to make reported financials *true*, not to
 broaden the feature surface — without inventory movement, COGS is an
-approximation and therefore so is gross margin. Each is a **source system**
-posting into the existing accounting kernel; none keeps its own books.
+approximation and therefore so is gross margin. Modules that **create or move**
+value post to the kernel; modules that **predict or explain** read derived
+balances. None keeps its own books.
 
-| Module | Status | Why it is in scope | Sequencing |
+| Module | Status | Admission verb | Sequencing |
 |---|---|---|---|
-| Inventory & stock movement | 🧭 Strategic | Produces COGS, wastage expense, and the inventory asset the balance sheet currently lacks | **First.** Fixes existing gross-margin accuracy for every stock-holding customer, not only F&B |
-| Purchasing / procurement | 🧭 Strategic | Produces AP and inventory receipts; closes the loop from bill to stock | With inventory — receipts are how stock enters |
-| POS integration | 🧭 Strategic | Produces revenue, PPN payable, COGS and cash/settlement at source granularity | **Second.** Adapter pattern, reusing the commerce connector shape |
-| Recipes / bill of materials | 🧭 Strategic | Consumed by COGS — explodes a sold dish into ingredients | **Third.** Requires both inventory and POS line items |
-| Fixed assets & depreciation | 🧭 Strategic | Produces depreciation and carrying value | Independent; schedule on accounting-team demand |
-| Payroll | 🧭 Strategic | Produces payroll expense, withholding, accruals | Later — high compliance surface |
-| Own POS terminal | ❓ Unconfirmed | Offline-tolerant real-time system; a different reliability contract from the rest of FluxyOS | **Only with evidence** that integration is insufficient |
+| Multi-entity completion | 🧭 Strategic | Explains (per-entity performance) | **First.** Finishes Layer 2; plumbing already exists; unblocks branch reporting |
+| Inventory & stock movement | 🧭 Strategic | Moves | **Second.** Fixes gross-margin accuracy for every stock-holding customer |
+| Purchasing / procurement | 🧭 Strategic | Moves | With inventory — receipts are how stock enters |
+| POS integration | 🧭 Strategic | Creates | **Third.** Adapter pattern reusing the commerce connector shape |
+| Recipes / bill of materials | 🧭 Strategic | Moves (consumed by COGS) | **Fourth.** Requires inventory + POS line items |
+| Forecasting / cash-flow prediction | 📋 Planned | Predicts | Layer 4 gap; much stronger once Layer 3 supplies operational inputs |
+| Approvals | 📋 Planned | Protects | Interleave — cheap, and closes a gap the sidebar already advertises |
+| Role dashboards (CEO/Finance/Accounting/Ops) | 📋 Planned | Explains | Interleave — Layer 5 currently serves one audience |
+| Order management (own channels) | 🧭 Strategic | Creates | After POS |
+| Customer & supplier master | 🧭 Strategic | Explains | Supplier partly exists via vendors |
+| Branch management | 🧭 Strategic | Explains | Blocked on multi-entity |
+| Fixed assets & depreciation | 🧭 Strategic | Moves | Independent; schedule on accounting-team demand |
+| Production | 🧭 Strategic | Moves | Follows inventory + BOM |
+| CRM | 🧭 Strategic | Predicts | Reads and forecasts; does not post |
+| Project management | 🧭 Strategic | Explains | Attributes existing postings to a dimension |
+| Payroll | 🧭 Strategic | Moves | Later — high compliance surface |
+| Own POS terminal | ❓ Unconfirmed | Creates | **Only with evidence** that integration is insufficient |
 
 **Known hard parts, recorded so they are not rediscovered late:** inventory
 costing must be weighted-average or FIFO (LIFO is not permitted under SAK/IFRS);
-F&B needs wastage and yield handling or margin analysis misleads; costing must
-survive backdated entries and period close. Detail in `PRODUCT_STRATEGY.md` §5.
+F&B needs recipes, wastage and yield handling or margin analysis misleads;
+costing must survive backdated entries and period close; a POS terminal is an
+offline-tolerant realtime system with a different reliability contract from the
+rest of FluxyOS. Detail in `PRODUCT_STRATEGY.md` §7.
 
 ---
 
