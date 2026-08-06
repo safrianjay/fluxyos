@@ -3394,6 +3394,65 @@ service cloud.firestore {
         && (!('fx_rate_date' in data) || data.fx_rate_date == null || data.fx_rate_date.size() <= 20);
     }
 
+    // Every optional bill field, validated flat and WITHOUT a null branch.
+    //
+    // Used on CREATE only. addBill strips null optional fields before writing
+    // (a null on a create can never mean anything a missing key does not), so
+    // the `x == null ||` branch every other validator carries is dead weight
+    // here — and dead weight is what exhausts the 1000-expression budget on a
+    // bill carrying budget + accounting + AI capture + PPN + PPh withholding.
+    //
+    // Flat on purpose: no helper calls, no presence gates. Gates only pay off
+    // when a group is absent, and the shape this exists to rescue has them all.
+    //
+    // Enums, ranges and size caps are identical to the update-side validators.
+    // `.size()` on a non-string and a comparison on a non-number both error, and
+    // an erroring rule DENIES — so types stay enforced without asserting them.
+    function billOptionalsCreateValid(data) {
+      return (!('due_date' in data) || data.due_date is timestamp)
+        && (!('payment_status' in data) || data.payment_status in ['unpaid', 'paid', 'partial', 'overdue', 'unknown'])
+        && (!('invoice_status' in data) || data.invoice_status == 'attached')
+        && (!('attached_documents' in data) || (data.attached_documents is list && data.attached_documents.size() <= 20))
+        && (!('journal_ref' in data) || data.journal_ref.size() <= 120)
+        && (!('accounting_status' in data) || data.accounting_status in ['posted', 'pending', 'excluded', 'reversed'])
+        && (!('account_code' in data) || data.account_code.size() <= 20)
+        && (!('account_name' in data) || data.account_name.size() <= 120)
+        && (!('budget_id' in data) || data.budget_id.size() <= 120)
+        && (!('budget_allocation_id' in data) || data.budget_allocation_id.size() <= 120)
+        && (!('budget_match_method' in data) || data.budget_match_method in ['auto', 'manual', 'rule', 'excluded', 'none'])
+        && (!('budget_match_status' in data) || data.budget_match_status in ['matched', 'needs_review', 'unmatched', 'excluded'])
+        && (!('budget_impact_status' in data) || data.budget_impact_status in ['committed', 'released', 'converted_to_actual'])
+        && (!('budget_assignment_reason' in data) || data.budget_assignment_reason.size() <= 500)
+        && (!('budget_assignment_updated_at' in data) || data.budget_assignment_updated_at is timestamp)
+        && (!('budget_assignment_updated_by' in data) || data.budget_assignment_updated_by == request.auth.uid)
+        && (!('budget_exclusion_reason' in data) || data.budget_exclusion_reason.size() <= 500)
+        && (!('bill_number' in data) || data.bill_number.size() <= 40)
+        && (!('outstanding_amount' in data) || (data.outstanding_amount >= 0 && data.outstanding_amount <= 999999999999))
+        && (!('amount_paid' in data) || (data.amount_paid >= 0 && data.amount_paid <= 999999999999))
+        && (!('currency' in data) || data.currency in ['IDR', 'USD', 'SGD'])
+        && (!('amount_paid_idr' in data) || data.amount_paid_idr >= 0)
+        && (!('fx_rate' in data) || data.fx_rate is number)
+        && (!('fx_rate_date' in data) || data.fx_rate_date.size() <= 20)
+        && (!('tax_code' in data) || data.tax_code.size() <= 40)
+        && (!('tax_rate_percent' in data) || (data.tax_rate_percent >= 0 && data.tax_rate_percent <= 100))
+        && (!('tax_amount' in data) || data.tax_amount >= 0)
+        && (!('taxable_base' in data) || data.taxable_base >= 0)
+        && (!('vendor_npwp' in data) || data.vendor_npwp.size() <= 32)
+        && (!('faktur_number' in data) || data.faktur_number.size() <= 40)
+        && (!('withholding_rate' in data) || (data.withholding_rate >= 0 && data.withholding_rate <= 100))
+        && (!('withholding_type' in data) || data.withholding_type.size() <= 40)
+        && (!('withholding_code' in data) || data.withholding_code.size() <= 40)
+        && (!('bukti_potong_no' in data) || data.bukti_potong_no.size() <= 60)
+        && (!('source' in data) || data.source in ['bill_scan', 'transaction_scan', 'subscription_scan', 'bank_statement_import', 'scan'])
+        && (!('created_via' in data) || data.created_via in ['ai_bill_capture', 'ai_transaction_capture', 'ai_subscription_capture', 'ai_bill_scan'])
+        && (!('extraction_status' in data) || data.extraction_status == 'reviewed')
+        && (!('extraction_confidence' in data) || data.extraction_confidence is number)
+        && (!('extraction_warnings' in data) || data.extraction_warnings is list)
+        && (!('invoice_date' in data) || data.invoice_date is timestamp)
+        && (!('raw_text_preview' in data) || data.raw_text_preview.size() <= 500)
+        && (!('source_file_size_bytes' in data) || data.source_file_size_bytes >= 0);
+    }
+
     function wsValidBillCreate(data) {
       return data.keys().hasOnly([
           'amount', 'vendor_name', 'category', 'type', 'status', 'icon', 'timestamp', 'due_date',
@@ -3409,16 +3468,7 @@ service cloud.firestore {
           'withholding_rate', 'withholding_type', 'withholding_code', 'bukti_potong_no'
         ])
         && isValidBaseRecord(data)
-        && (!('due_date' in data) || data.due_date is timestamp)
-        && (!('payment_status' in data) || data.payment_status in ['unpaid', 'paid', 'partial', 'overdue', 'unknown'])
-        && (!('invoice_status' in data) || data.invoice_status in ['attached'])
-        && billBudgetValid(data)
-        && billPaymentValid(data)
-        && isValidAttachedDocuments(data)
-        && isValidAccountingLink(data)
-        && isValidAccountLink(data)
-        && billTaxValid(data)
-        && billCaptureValid(data);
+        && billOptionalsCreateValid(data);
     }
     // A bill PAYMENT touches a fixed, tiny set of keys. It is evaluated FIRST and
     // deliberately WITHOUT the full bill update validator.

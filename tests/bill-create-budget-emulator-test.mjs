@@ -12,14 +12,14 @@
 // validators, the ceiling moves down and a shape that used to save stops
 // saving. Better to fail here than in a user's browser.
 //
-// Measured 2026-08-06, after leaning the bill validators:
-//   base(9) numbering(14) budget(22) accounting(26) capture(38)  → allowed
-//   + full PPN/PPh withholding (47)                              → STILL OVER
+// History of the ceiling, measured not estimated:
+//   before          22 keys — an ordinary budgeted bill already failed
+//   lean validators 38 keys — enums/caps kept, redundant type checks dropped
+//   null-free create 47 keys — the maximal shape, AI-scanned + budgeted +
+//                    accounting-linked + full PPN and PPh withholding
 //
-// The 47-key shape (AI-scanned + budgeted + accounting-linked + full tax) is
-// the one remaining gap. Closing it means dropping the `x == null ||` clause
-// from ~26 optional fields, which first requires db-service to stop writing
-// nulls for them — a coordinated change, deliberately not bundled here.
+// EVERY shape below must now create. A single added field or check can push the
+// maximal one back over, and nothing else in the suite would notice.
 //
 //   firebase emulators:exec --only firestore,auth \
 //     "node tests/bill-create-budget-emulator-test.mjs"
@@ -54,7 +54,7 @@ const groups = {
 
 // Shapes that MUST save. `tax` is expected to fail until the null clauses go.
 const order = ['numbering', 'budget', 'accounting', 'capture', 'tax'];
-const mustPass = new Set(['base', 'numbering', 'budget', 'accounting', 'capture']);
+const mustPass = new Set(['base', 'numbering', 'budget', 'accounting', 'capture', 'tax']);
 let failures = 0;
 let payload = { ...base };
 let n = 0;

@@ -8,6 +8,13 @@ import { buildIncomeStatement, buildBalanceSheet, buildCashFlow } from "./statem
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
 // See docs/TRIAL_ACCESS_AND_PAYMENT_BANNER_PLAN.md and PROJECT_BACKGROUND §4k.
+// Fields every bill must carry; the null-strip in addBill leaves these alone
+// so a malformed create fails loudly at the validator instead of silently
+// losing a required key.
+const BILL_REQUIRED_FIELDS = new Set([
+    'amount', 'vendor_name', 'category', 'type', 'status', 'icon', 'timestamp'
+]);
+
 const TRIAL_DURATION_DAYS = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const ACCESS_STATUSES = [
@@ -617,11 +624,22 @@ class DataService {
         if (!payload.bill_number) payload.bill_number = await this.generateBillNumber(userId);
         if (payload.outstanding_amount == null) payload.outstanding_amount = amountInt;
         if (payload.amount_paid == null) payload.amount_paid = 0;
-        // Strip any null budget fields so an unmatched bill stays on the
-        // legacy schema (Firestore rules allow these fields to be absent,
-        // but only allow strings or omission — not literal `null`).
-        ['budget_id', 'budget_allocation_id', 'budget_match_method', 'budget_match_status', 'budget_impact_status']
-            .forEach((field) => { if (payload[field] == null) delete payload[field]; });
+        // Strip EVERY null optional field. Two reasons, and the second is the
+        // load-bearing one:
+        //   1. An unmatched bill stays on the legacy schema (rules allow these
+        //      fields absent, not literally `null`) — the original reason.
+        //   2. `null` costs rules expressions. Every optional field validated as
+        //      `(!('x' in data) || data.x == null || <check>)` spends three
+        //      expressions on the null branch alone, and Firestore allows 1000
+        //      per request across the WHOLE document. Bills carry more optional
+        //      fields than any other record, so those branches are the
+        //      difference between a PPN bill saving and failing as
+        //      "Missing or insufficient permissions".
+        // A null here never means anything a missing key does not: this is a
+        // create, so there is no prior value to clear.
+        Object.keys(payload).forEach((field) => {
+            if (payload[field] === null && !BILL_REQUIRED_FIELDS.has(field)) delete payload[field];
+        });
         // A bill accrues the expense now (Dr expense / Cr Accounts Payable). The
         // later "mark paid" creates a linked expense transaction that settles A/P.
         const ref = await this._commitSourceCreate(userId, 'bills', payload, { date: data.due_date || timestamp });
