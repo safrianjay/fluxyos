@@ -50,6 +50,28 @@ Key things docs/PROJECT_BACKGROUND.md covers that prevent mistakes:
 - Features that already exist as stubs (search, export, edit/delete) — don't rebuild from scratch
 - Git workflow for merging worktree to main and pushing
 
+### Codebase knowledge graph (locate code before you grep)
+
+The repo is indexed into `codebase-memory-mcp` under the project name
+**`Users-jay-Desktop-fluxyos`**. For any feature or improvement, use it to find
+code and callers before broad Grep/Glob sweeps:
+
+- `search_graph` — locate a function/page by keyword
+- `trace_path` / `query_graph` — callers, dependencies, impact analysis
+- `get_architecture` — structure overview
+
+`.claude/hooks/cbm-feature-gate.sh` (UserPromptSubmit) injects this reminder
+when a prompt reads as build/change work, EN or ID. It is **non-blocking** —
+unlike `qa-gate.sh` and `docs-read-gate.sh`, it only adds context. It also does
+not replace the doc reads above, which stay hard-gated.
+
+Re-index after large changes:
+`codebase-memory-mcp cli index_repository --repo-path . --mode moderate`
+
+`.cbmignore` at the repo root re-includes `assets/` and `scripts/`, which the
+indexer excludes by default. Without it the graph misses `assets/js/*` — the
+entire client app. Keep that file; deleting it silently halves the graph.
+
 ---
 
 ## Project Stack

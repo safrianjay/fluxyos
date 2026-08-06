@@ -1,0 +1,6 @@
+# Re-include dirs codebase-memory-mcp excludes by default but that hold
+# FluxyOS source: assets/js is the entire client app; scripts/ holds the
+# deploy-split and i18n tooling CLAUDE.md refers to.
+!assets/
+!assets/js/
+!scripts/

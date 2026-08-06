@@ -73,7 +73,60 @@
       "Bash(python3 -c ' *)",
       "Bash(STORAGE_RULES_DEPLOYED=1 npx playwright test tests/cash-impact-derived.spec.js tests/scan-currency-cash-impact.spec.js tests/ledger-edit-account.spec.js tests/document-attachment.spec.js tests/auth-rehydrate-race.spec.js tests/ledger-filters.spec.js tests/ledger-deep-link.spec.js tests/add-transaction-account.spec.js tests/add-bill-amount-layout.spec.js tests/bill-mark-paid.spec.js tests/bill-record-payment.spec.js tests/accounting-smoke.spec.js tests/accounting-correction.spec.js tests/accounting-engine.spec.js tests/bank-recon-unreconcile.spec.js tests/dashboard-i18n.spec.js --reporter=list)",
       "Bash(node scripts/cleanup-qa-test-data.js)",
-      "Bash(grep -n \"async saveAccountingMapping\\\\|async setAccountingMapping\\\\|accounting_mappings/\\\\${\" assets/js/db-service.js)"
+      "Bash(grep -n \"async saveAccountingMapping\\\\|async setAccountingMapping\\\\|accounting_mappings/\\\\${\" assets/js/db-service.js)",
+      "Bash(awk 'NR>=2364 && NR<=2460 && /allow update/' firestore.rules)",
+      "Bash(awk 'NR>=2364 && NR<=2470 && /allow update/ {print NR\": \"$0}' firestore.rules)",
+      "Bash(awk 'NR>=2420 && NR<=2500 && \\(/allow delete/ || /^      }/\\) {print NR\": \"$0; exit}' firestore.rules)",
+      "Bash(firebase emulators:exec --only firestore,auth \"node tests/bill-pay-heavy-doc-emulator-test.mjs\")",
+      "Bash(firebase emulators:exec --only firestore,auth \"node tests/zz-probe.mjs\")",
+      "Bash(firebase emulators:exec --only firestore,auth \"node tests/bill-create-budget-emulator-test.mjs\")",
+      "Bash(grep -n \"bills/\\\\${billId}\\\\|/bills\\\\`\" assets/js/db-service.js)",
+      "Bash(echo \"FIREBASE_EXIT=$?\")",
+      "Bash(grep -n \"innerHTML = \\\\`\" revenue-sync.html)",
+      "Bash(xargs -I{} sh -c '[ {} -eq 1 ] && echo \"IN SYNC: local == origin/main\" || echo \"DIVERGED\"')",
+      "Bash(node -e \"const s=require\\('fs'\\).readFileSync\\('revenue-sync.html','utf8'\\);console.log\\('sections',\\(s.match\\(/<section/g\\)||[]\\).length,\\(s.match\\(/<\\\\/section>/g\\)||[]\\).length\\)\")",
+      "Bash(node -e \"const s=require\\('fs'\\).readFileSync\\('ledger.html','utf8'\\);console.log\\('sections',\\(s.match\\(/<section/g\\)||[]\\).length,\\(s.match\\(/<\\\\/section>/g\\)||[]\\).length\\)\")",
+      "Bash(gsutil version *)",
+      "Bash(gsutil cors *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d[0]['origin']\\)\")",
+      "Bash(echo \"STORAGE_DEPLOY_EXIT=$?\")",
+      "Bash(curl -s \"https://dashboard.fluxyos.com/assets/js/db-service.js\")",
+      "Bash(gcloud config *)",
+      "Bash(gsutil ls *)",
+      "Bash(grep -vE \":$|^$\")",
+      "Bash(gsutil stat *)",
+      "Read(//private/tmp/claude-501/-Users-jay-Desktop-fluxyos/478f5e64-ec28-4f08-9d32-ca1385117b56/tasks/**)",
+      "Bash(pkill -f setmeta)",
+      "Bash(GOOGLE_APPLICATION_CREDENTIALS=/Users/jay/Downloads/sa.json node scripts/revoke-storage-tokens.js --dry-run)",
+      "Bash(GOOGLE_APPLICATION_CREDENTIALS=/Users/jay/Downloads/sa.json node scripts/revoke-storage-tokens.js)",
+      "Bash(GOOGLE_APPLICATION_CREDENTIALS=/Users/jay/Downloads/sa.json node scripts/clear-receipt-urls.js --dry-run)",
+      "Bash(GOOGLE_APPLICATION_CREDENTIALS=/Users/jay/Downloads/sa.json node scripts/clear-receipt-urls.js)",
+      "Bash(GOOGLE_APPLICATION_CREDENTIALS=/Users/jay/.config/fluxyos/keys/sa.json node scripts/revoke-storage-tokens.js --dry-run)",
+      "Bash(GOOGLE_APPLICATION_CREDENTIALS=__TRACKED_VAR__/sa.json node -e ' *)",
+      "Bash(grep -E \"Error|error\" /private/tmp/claude-501/-Users-jay-Desktop-fluxyos/478f5e64-ec28-4f08-9d32-ca1385117b56/scratchpad/../tasks/*.output 2>/dev/null | head -2; npx playwright test tests/attachment-access.spec.js --reporter=line 2>&1 | grep -E \"passed|failed|Error:|storage/\" | head -6)",
+      "Bash(GOOGLE_APPLICATION_CREDENTIALS=/Users/jay/.config/fluxyos/keys/sa.json node -e ' *)",
+      "Bash(GOOGLE_APPLICATION_CREDENTIALS=/Users/jay/.config/fluxyos/keys/sa.json node scripts/revoke-storage-tokens.js)",
+      "Bash(curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh -o /private/tmp/claude-501/-Users-jay-Desktop-fluxyos/aeac354f-2538-4c2a-adbf-878c965ffdab/scratchpad/install.sh)",
+      "Bash(bash /private/tmp/claude-501/-Users-jay-Desktop-fluxyos/aeac354f-2538-4c2a-adbf-878c965ffdab/scratchpad/install.sh --ui)",
+      "Bash(grep -n \"local/bin\" ~/.zshrc | tail -3; echo \"--- mcp ---\"; cat ~/.claude/.mcp.json 2>/dev/null)",
+      "Read(//Users/jay/**)",
+      "Bash(node --check netlify/functions/storage-token-sweep.js)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(/Users/jay/.local/bin/codebase-memory-mcp --help)",
+      "Bash(/Users/jay/.local/bin/codebase-memory-mcp cli *)",
+      "Bash(netlify env:set STORAGE_TOKEN_SWEEP_ENABLED true --site 6e7f4b70-41b3-4ffc-8ddd-65bcba809b06)",
+      "Bash(netlify env:get STORAGE_TOKEN_SWEEP_ENABLED --site 6e7f4b70-41b3-4ffc-8ddd-65bcba809b06)",
+      "Bash(/Users/jay/.local/bin/codebase-memory-mcp config *)",
+      "Bash(strings /Users/jay/.local/bin/codebase-memory-mcp 2>/dev/null | grep -iE \"cbmignore|\\\\.cbm|codebase-memoryignore|CBM_\\(EXCLUDE|INCLUDE|IGNORE\\)\" | sort -u | head -20)",
+      "Read(//Users/jay/.local/bin/**)",
+      "Bash(grep -E \"^assets$|^deploy$|^scripts$\")",
+      "Bash(gcloud auth *)",
+      "Bash(gcloud services *)",
+      "Bash(echo \"SCHEMA OK \\(exit $?\\)\")",
+      "Read(//Users/jay/.config/fluxyos/keys/**)",
+      "Bash(read f *)",
+      "Bash(python3 -c 'import json,sys;print\\(json.load\\(open\\(sys.argv[1]\\)\\)['\\\\''private_key_id'\\\\'']\\)' /Users/jay/.config/fluxyos/keys/__TRACKED_VAR__)"
     ]
   },
   "hooks": {
@@ -93,6 +146,17 @@
           {
             "type": "command",
             "command": ".claude/hooks/docs-read-gate.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/cbm-feature-gate.sh",
+            "timeout": 5
           }
         ]
       }
