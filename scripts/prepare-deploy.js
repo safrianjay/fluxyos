@@ -127,6 +127,7 @@ const SCHEDULED_FUNCTIONS = [
     'invoice-email-worker.js',
     'ledger-integrity-sweep.js',
     'notify-sweep.js',
+    'storage-token-sweep.js',
     'payment-reminders.js',
     'trial-reminders.js',
     'weekly-digest.js',

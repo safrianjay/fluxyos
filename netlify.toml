@@ -29,6 +29,13 @@
 [functions."ledger-integrity-sweep"]
   schedule = "0 20 * * *"   # 03:00 WIB
 
+# Strips Firebase Storage public download tokens. Firebase stamps one on every
+# new upload server-side and only the Admin SDK can clear it, so this has to be
+# recurring rather than an upload-path fix — see docs/SECURITY_SYSTEM.md §11b.
+# Runs 30 min before the ledger sweep so the two never contend.
+[functions."storage-token-sweep"]
+  schedule = "30 19 * * *"  # 02:30 WIB
+
 [functions."invoice-email-background"]
   node_bundler = "esbuild"
   external_node_modules = ["@sparticuz/chromium", "puppeteer-core"]
