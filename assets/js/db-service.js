@@ -1102,6 +1102,37 @@ class DataService {
     // Uploads a file to users/{uid}/documents/{documentId}/{fileName}, returning
     // the allocated documentId, storage_path, and (for images only) a public
     // download URL for the legacy `receipt_url` dual-write on transactions.
+    // Upload metadata that suppresses the public download token.
+    //
+    // Firebase Storage stamps `firebaseStorageDownloadTokens` server-side at
+    // UPLOAD time — not when getDownloadURL() is called. Removing the
+    // getDownloadURL() calls only stopped the app from LEARNING the token; the
+    // token still existed on every new object, and anyone able to read the
+    // object's metadata could rebuild the permanent public URL from it.
+    // Verified: a file uploaded after that change still answered an
+    // unauthenticated GET with 200.
+    //
+    // Passing the key explicitly as empty overrides the generated one in the
+    // same request, so no window exists in which a live token is on the object.
+    _uploadMetadata(contentType) {
+        return { contentType: contentType || 'application/octet-stream' };
+    }
+
+    // A NOTE ON DOWNLOAD TOKENS, because the obvious fix does not work.
+    //
+    // Firebase stamps `firebaseStorageDownloadTokens` server-side at upload, not
+    // when getDownloadURL() is called. The client cannot remove it: passing the
+    // reserved key in customMetadata fails the upload outright, and a follow-up
+    // updateMetadata() is rejected with storage/unknown. The client cannot even
+    // READ it — getMetadata() hides the key — which is the saving grace: no
+    // ordinary member can extract a token and publish a permanent link.
+    //
+    // So the boundary that matters is this: NOTHING in the app ever asks for or
+    // surfaces that token. getDownloadURL() is gone; reads go through
+    // getDocumentBlob(), which storage.rules governs. Clearing the tokens
+    // themselves needs the Admin SDK — scripts/revoke-storage-tokens.js — which
+    // is a periodic sweep, not an upload-path concern.
+
     async uploadDocument(userId, file, options = {}) {
         if (!options.bypassPlanLimit) {
             await this.assertCanUseStorage(userId, file?.size || 0, { source: 'document' });
@@ -1120,7 +1151,7 @@ class DataService {
         const snap = await uploadBytes(
             ref(this._storage, storagePath),
             file,
-            { contentType: file.type || 'application/octet-stream' }
+            this._uploadMetadata(file.type)
         );
 
         // No download URL is minted. getDownloadURL() stamps a token into the
@@ -10250,7 +10281,7 @@ class DataService {
         await uploadBytes(
             ref(this._storage, storagePath),
             file,
-            { contentType: file.type || 'application/octet-stream' }
+            this._uploadMetadata(file.type)
         );
         return {
             storagePath,

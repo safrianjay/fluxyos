@@ -460,6 +460,29 @@ metadata KEY present with an empty value. Grepping for the key name therefore
 looks like a live token and is misleading — check the value, or just make an
 unauthenticated request, which is the only test that means anything.
 
+### Tokens come back on every new upload — and that is expected
+
+Firebase stamps `firebaseStorageDownloadTokens` **server-side at upload**, not
+when `getDownloadURL()` is called. Removing the `getDownloadURL()` calls stops
+the app LEARNING the token; it does not stop the token existing. Verified: a
+file uploaded after that change still answered an unauthenticated GET with 200.
+
+The client cannot remove it. Passing the reserved key in `customMetadata` fails
+the upload outright; a follow-up `updateMetadata()` is rejected with
+`storage/unknown`. Do not reintroduce either — the first breaks uploads for
+users, the second is a silent no-op that reads like protection.
+
+What makes this acceptable: **the client cannot READ the token either.**
+`getMetadata()` hides the reserved key, so no ordinary member can extract one
+and publish a permanent link. Reading it requires Admin SDK or GCS-level access,
+which is already full access to everything.
+
+So the boundary is: nothing in the app ever asks for or surfaces a token, and
+every read goes through `getDocumentBlob()` under `storage.rules`. Clearing the
+tokens themselves is a **periodic Admin-SDK sweep**
+(`scripts/revoke-storage-tokens.js`), not something the upload path can do.
+Run it on a schedule — after any bulk upload, and at minimum before an audit.
+
 ---
 
 ## 12. Implementation Order
