@@ -15,9 +15,36 @@ fallback used when backend Firestore reads fail, read
 
 ## 1. Product Purpose
 
-FluxyOS is a finance operations platform for Indonesian SMBs and finance teams.
-It brings ledgers, vendor spend, bills, subscriptions, receipts, revenue feeds,
-budgets, and AI finance workflows into one operational dashboard.
+FluxyOS is a **Finance Operating System** for Indonesian SMBs and finance teams:
+a double-entry accounting kernel with operational modules feeding it. It brings
+ledgers, vendor spend, bills, subscriptions, receipts, revenue feeds, budgets,
+invoices, tax, commerce integration, and AI finance workflows into one
+operational dashboard.
+
+> Product scope and the test for admitting new modules live in
+> [`PRODUCT_STRATEGY.md`](PRODUCT_STRATEGY.md). This document covers *how* the
+> system is built, not *what* belongs in it.
+
+### The governing architectural principle
+
+**The ledger is the product. Everything else is a source system or a view.**
+
+- A **source system** emits business documents and owns a posting rule that
+  turns them into balanced journals. Manual transactions, bills, invoices, bank
+  imports, and marketplace commerce orders are all source systems today.
+  Inventory, purchasing, and point-of-sale will be added the same way.
+- A **view** reads derived balances (`ledger_balances`, aggregates) and never
+  recomputes truth from raw documents. Dashboard KPIs, reports, the Tax Center,
+  and the AI analyst are views.
+
+This is what allows ERP-class depth without an ERP-class rewrite: the kernel
+already accepts arbitrary sources through `journals.source: {collection, id}`
+and `posting_rule_id`. A new module is a new source, a posting rule, and its own
+documents — not a new set of books.
+
+A module that wants its own totals, its own period concept, or its own
+definition of revenue is architecturally wrong regardless of product merit.
+Route it through the kernel or reject it.
 
 The current product is intentionally simple:
 

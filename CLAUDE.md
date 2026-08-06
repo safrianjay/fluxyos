@@ -61,6 +61,14 @@ Before implementing any feature, page, section, component, UI enhancement, busin
 2. **`docs/DESIGN_SYSTEM.md`** — component reuse rules (shared date picker, dialog, drawer, chart hover), colors, typography, anti-AI-slop standards
 3. **`docs/product_ux_feature_intake_framework.md`** — product logic, feature classification, scope, and UX requirements
 
+**Proposing a whole new module** (not a feature inside an existing one)? Read
+**`docs/PRODUCT_STRATEGY.md`** first. It holds the positioning, the ERP-depth
+rationale, and the admission test: *does this produce or consume a ledger
+posting?* Modules that fail it are out of scope regardless of demand. It also
+fixes the architectural rule that every module must obey — **the ledger is the
+product; everything else is a source system or a view**, and no module keeps its
+own books.
+
 This is enforced by `.claude/hooks/docs-read-gate.sh`, which is **selective** —
 it asks only for what the file being edited actually needs:
 

@@ -10,16 +10,52 @@
 
 ## 1. What FluxyOS Is
 
-FluxyOS is a **financial operations platform** for Indonesian businesses. It consolidates multi-entity ledgers, vendor spending, and live revenue feeds into one unified dashboard.
+FluxyOS is a **Finance Operating System** for Indonesian businesses — a
+double-entry accounting kernel with operational modules feeding it, presented so
+that an owner can read it and an accountant can defend it.
 
-**Target user:** Finance teams managing multiple business entities (e.g. e-commerce brands, agencies).
+> **Strategy, scope, and the test for what belongs in the product live in
+> [`PRODUCT_STRATEGY.md`](PRODUCT_STRATEGY.md).** Read it before proposing any
+> new module. This section describes what exists; that document decides what
+> should.
 
-**Key capabilities:**
+**Two audiences, deliberately served together:**
+
+| Audience | What they need |
+|---|---|
+| Owners & executives | Decision-grade KPIs, cash visibility, margin they can act on |
+| Finance & accounting teams | Double-entry rigour, SAK compliance, auditability, period close |
+
+The executive view is trustworthy *because* the accounting underneath is
+rigorous. These are not two products.
+
+**Key capabilities today:**
+- Double-entry accounting kernel — journals, chart of accounts (SAK-aligned),
+  trial balance, period close with retained earnings
 - Live transaction ledger (revenue + expenses)
-- Bills & payment scheduling
+- Bills & payment scheduling; invoices with multi-currency
+- Bank reconciliation and statement import
+- Indonesian Tax Center; commerce/marketplace integration
 - SaaS subscription tracking
 - AI-powered financial analyst chat
-- Dashboard KPIs: Revenue, Cash Position, OpEx vs Budget, Gross Margin, Cash Pressure, Net Profit
+- Dashboard KPIs: Revenue, Cash Position, OpEx vs Budget, Gross Margin, Cash
+  Pressure, Net Profit
+
+**Direction (2026-08):** deepening toward ERP-class capability — inventory,
+purchasing, and point-of-sale — while the positioning stays *Finance Operating
+System*. The rationale is not feature demand: without inventory movement, cost
+of goods sold is an approximation, so gross margin is an approximation. Modules
+are admitted only when they produce or consume a ledger posting. See
+`PRODUCT_STRATEGY.md` §2–3.
+
+**Architectural principle that follows from this:** the ledger is the product.
+Everything else is a **source system** (emits documents, owns a posting rule) or
+a **view** (reads derived balances, never recomputes truth). New modules add
+source systems; they never add a second source of truth.
+
+**Target user:** Indonesian SMBs that need their books to be correct — currently
+strongest in e-commerce and agencies, with F&B as the expansion segment driving
+the inventory and POS work.
 
 ---
 

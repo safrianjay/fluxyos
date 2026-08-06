@@ -2,6 +2,11 @@
 
 Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 
+> **Scope is governed by [`PRODUCT_STRATEGY.md`](PRODUCT_STRATEGY.md).** A module
+> enters this roadmap only after passing the admission test in §3 — does it
+> produce or consume a ledger posting? Sequencing rationale for the operational
+> modules is in §5 of that document.
+
 ---
 
 ## Status Key
@@ -11,6 +16,31 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 | ✅ Shipped | Fully working, live on main |
 | 🔧 Stub | UI/button exists but has no working logic yet |
 | 📋 Planned | Not yet built |
+| 🧭 Strategic | Admitted by PRODUCT_STRATEGY, not yet specced |
+
+---
+
+## Operational Modules (ERP depth)
+
+Admitted 2026-08-07. These exist to make reported financials *true*, not to
+broaden the feature surface — without inventory movement, COGS is an
+approximation and therefore so is gross margin. Each is a **source system**
+posting into the existing accounting kernel; none keeps its own books.
+
+| Module | Status | Why it is in scope | Sequencing |
+|---|---|---|---|
+| Inventory & stock movement | 🧭 Strategic | Produces COGS, wastage expense, and the inventory asset the balance sheet currently lacks | **First.** Fixes existing gross-margin accuracy for every stock-holding customer, not only F&B |
+| Purchasing / procurement | 🧭 Strategic | Produces AP and inventory receipts; closes the loop from bill to stock | With inventory — receipts are how stock enters |
+| POS integration | 🧭 Strategic | Produces revenue, PPN payable, COGS and cash/settlement at source granularity | **Second.** Adapter pattern, reusing the commerce connector shape |
+| Recipes / bill of materials | 🧭 Strategic | Consumed by COGS — explodes a sold dish into ingredients | **Third.** Requires both inventory and POS line items |
+| Fixed assets & depreciation | 🧭 Strategic | Produces depreciation and carrying value | Independent; schedule on accounting-team demand |
+| Payroll | 🧭 Strategic | Produces payroll expense, withholding, accruals | Later — high compliance surface |
+| Own POS terminal | ❓ Unconfirmed | Offline-tolerant real-time system; a different reliability contract from the rest of FluxyOS | **Only with evidence** that integration is insufficient |
+
+**Known hard parts, recorded so they are not rediscovered late:** inventory
+costing must be weighted-average or FIFO (LIFO is not permitted under SAK/IFRS);
+F&B needs wastage and yield handling or margin analysis misleads; costing must
+survive backdated entries and period close. Detail in `PRODUCT_STRATEGY.md` §5.
 
 ---
 
