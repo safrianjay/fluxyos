@@ -146,7 +146,13 @@
       "Bash(grep -nB2 -A8 \"pageerror\\\\|'console'\" tests/accounting-smoke.spec.js)",
       "Bash(QA_SWEEP_PAGES=dashboard.html npx playwright test tests/zz-console-sweep.spec.js --project=chromium --reporter=line)",
       "Bash(bash -n .claude/hooks/qa-gate.sh)",
-      "Bash(.claude/hooks/qa-gate.sh)"
+      "Bash(.claude/hooks/qa-gate.sh)",
+      "Bash(echo \"gate exit=$? \\(0 = would allow\\)\")",
+      "Bash(node --check scripts/cbm-extract-inline.js)",
+      "Bash(npm view *)",
+      "Bash(timeout 90 npx -y chrome-devtools-mcp@1.6.0 --help)",
+      "Bash(npx -y chrome-devtools-mcp@1.6.0 --help)",
+      "Bash(sed -i '' '/^!cbm-extracted\\\\/$/d' .cbmignore)"
     ]
   },
   "hooks": {

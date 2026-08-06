@@ -91,12 +91,37 @@ when a prompt reads as build/change work, EN or ID. It is **non-blocking** —
 unlike `qa-gate.sh` and `docs-read-gate.sh`, it only adds context. It also does
 not replace the doc reads above, which stay hard-gated.
 
-Re-index after large changes:
-`codebase-memory-mcp cli index_repository --repo-path . --mode moderate`
+Re-index after large changes: `npm run cbm:sync` (extract inline JS, then index).
 
-`.cbmignore` at the repo root re-includes `assets/` and `scripts/`, which the
-indexer excludes by default. Without it the graph misses `assets/js/*` — the
-entire client app. Keep that file; deleting it silently halves the graph.
+Two pieces of setup are load-bearing and easy to break:
+
+1. **`.cbmignore`** re-includes `assets/` and `scripts/`, which the indexer
+   excludes by default. Without it the graph misses `assets/js/*` — the entire
+   client app. Deleting it silently halves the graph.
+2. **`cbm-extracted/`** is a generated, line-aligned mirror of the ~9k lines of
+   inline `<script>` JS in the root pages (`npm run cbm:extract`). The indexer
+   does not parse JS inside HTML, so without it `ledger.html` contributes 2
+   graph nodes and zero functions; with it, 281. Line N of
+   `cbm-extracted/x.inline.js` **is** line N of `x.html`, so graph hits map back
+   directly.
+
+   ⚠️ The ignore for `cbm-extracted/` lives in `.git/info/exclude`, **not**
+   `.gitignore`. codebase-memory-mcp honours `.gitignore`, so moving it there
+   drops the directory from the graph (6470 nodes → 5540). `npm run cbm:extract`
+   re-asserts the exclude entry on every run, including on fresh clones.
+
+Inline JS is only as fresh as the last extract — `npm run cbm:check` reports
+staleness. Prefer `npm run cbm:sync` after substantial page edits.
+
+### Browser control (chrome-devtools MCP)
+
+`.mcp.json` registers `chrome-devtools-mcp` **project-scoped** (not global) for
+interactive debugging: driving a live page, reading the console and network
+panel, and taking screenshots to check the DESIGN_SYSTEM rules a static linter
+cannot judge. It runs `--isolated` (throwaway profile) at a 1280x720 viewport.
+
+This is for *investigation*. Automated console/404 verification is `npm run qa`'s
+FE lane, which is the thing the push gate actually checks.
 
 ---
 
