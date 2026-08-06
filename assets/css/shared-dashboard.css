@@ -2121,6 +2121,14 @@ main > header {
 
 .fluxy-page-header-main {
     min-width: 0;
+    /* Claim the leftover row space rather than shrinking first. Without this the
+       title column defaults to flex: 0 1 auto and collapses toward its longest
+       word, so a page with a crowded action bar (Ledger: Filters, Download CSV,
+       Scan/Import, Add Transaction) wrapped its one-line subtitle into five. */
+    /* 340px basis: when the action bar leaves less than that, the header wraps
+       and the title takes its own row instead of the subtitle collapsing to one
+       word per line. */
+    flex: 1 1 340px;
 }
 
 @media (min-width: 640px) {
@@ -2128,6 +2136,11 @@ main > header {
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
+        /* The actions group is flex-shrink: 0, so without wrapping a crowded
+           toolbar squeezes the title column to almost nothing at mid widths —
+           Ledger's subtitle became five lines at 1024px. Wrapping drops the
+           actions to their own row instead. */
+        flex-wrap: wrap;
     }
 }
 
