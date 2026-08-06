@@ -354,6 +354,56 @@ window.showReasonDialog = function(options = {}) {
     });
 };
 
+/* ── FluxyAmountInput — live Rupiah thousands separators ───────────────
+   One formatter for every editable amount field. Two things it does that a
+   naive `value = format(value)` does not:
+
+   1. It reformats on EVERY keystroke, including deletions. A field pre-filled
+      with "89.500.000" that only reformats on overflow leaves the original
+      dots stranded when digits are removed — the user reads "8000.000" while
+      the code parses 8000000. The figure was right; what they saw was not.
+   2. It puts the caret back where the user was, counted in DIGITS rather than
+      characters, so inserting a separator does not shunt the cursor to the end
+      mid-edit.
+
+   Usage: FluxyAmountInput.format(el) from an input handler, or .attach(el). */
+window.FluxyAmountInput = (function () {
+    function digitsBefore(text, caret) {
+        return String(text).slice(0, caret).replace(/\D/g, '').length;
+    }
+
+    function format(input) {
+        if (!input) return;
+        const caret = typeof input.selectionStart === 'number' ? input.selectionStart : input.value.length;
+        const wanted = digitsBefore(input.value, caret);
+        const digits = input.value.replace(/\D/g, '');
+        const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        if (formatted === input.value) return;
+        input.value = formatted;
+        // Walk forward until we have passed the same number of digits.
+        let seen = 0;
+        let pos = 0;
+        while (pos < formatted.length && seen < wanted) {
+            if (/\d/.test(formatted[pos])) seen += 1;
+            pos += 1;
+        }
+        try { input.setSelectionRange(pos, pos); } catch (_) { /* not a text input */ }
+    }
+
+    function attach(input) {
+        if (!input || input.dataset.fluxyAmountBound === '1') return;
+        input.dataset.fluxyAmountBound = '1';
+        input.addEventListener('input', () => format(input));
+    }
+
+    // Raw integer behind a formatted field.
+    function value(input) {
+        return Math.round(Math.abs(Number(String(input?.value || '').replace(/\D/g, '')) || 0));
+    }
+
+    return { format, attach, value };
+})();
+
 // ---------- Duplicate review dialog ----------
 // The side-by-side "is this a duplicate?" popup shown before a record is saved
 // (docs/DUPLICATE_PREVENTION.md). Built on the canonical dialog shell — same
@@ -1412,8 +1462,8 @@ window.showAddTransactionModal = function(options = {}) {
     const billCurrency = () => (currencySelect ? currencySelect.value : 'IDR');
     amountInput.oninput = (e) => {
         if (billCurrency() === 'IDR') {
-            const value = e.target.value.replace(/\D/g, "");
-            e.target.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            // Shared formatter: reformats on deletion too, and keeps the caret.
+            window.FluxyAmountInput.format(e.target);
         } else {
             // digits + a single decimal point, max 2 decimals
             let v = e.target.value.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1');
