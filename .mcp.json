@@ -1,13 +1,9 @@
 {
   "mcpServers": {
     "chrome-devtools": {
-      "command": "npx",
+      "command": "node",
       "args": [
-        "-y",
-        "chrome-devtools-mcp@1.6.0",
-        "--isolated",
-        "--viewport",
-        "1280x720"
+        "scripts/chrome-devtools-mcp.js"
       ]
     }
   }
