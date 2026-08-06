@@ -859,10 +859,13 @@
                 : null;
             document.getElementById('bill-drawer-content').innerHTML = `
                 <div class="fluxy-drawer-stack">
-                    <div>${getStatusBadge(status)}</div>
-
-                    <section class="fluxy-drawer-section">
-                        <h3 class="fluxy-drawer-section-title">Summary</h3>
+                    <section class="fluxy-drawer-section fluxy-drawer-summary">
+                        <div class="fluxy-drawer-summary-head">${getStatusBadge(status)}</div>
+                        <div>
+                            <p class="fluxy-drawer-label">Amount</p>
+                            <p class="fluxy-drawer-summary-amount mt-1">${formatBillAmount(bill)}</p>
+                            ${isBillPartiallyPaid(bill) ? `<p class="fluxy-drawer-summary-amount-note">${formatCurrencyIDR(Math.round(Math.abs(Number(bill.amount_paid) || 0)))} paid · <span class="font-semibold text-amber-600">${formatCurrencyIDR(billOutstanding(bill))} remaining</span></p>` : ''}
+                        </div>
                         <div class="fluxy-drawer-field-grid">
                             <div>
                                 <p class="fluxy-drawer-label">Vendor</p>
@@ -871,11 +874,6 @@
                             <div>
                                 <p class="fluxy-drawer-label">Category</p>
                                 <p class="text-[14px] text-gray-700 mt-1">${escapeHtml(bill.category || 'Operations')}</p>
-                            </div>
-                            <div>
-                                <p class="fluxy-drawer-label">Amount</p>
-                                <p class="text-xl font-bold text-gray-900 tabular-nums mt-1">${formatBillAmount(bill)}</p>
-                                ${isBillPartiallyPaid(bill) ? `<p class="text-[12px] text-gray-500 mt-0.5">${formatCurrencyIDR(Math.round(Math.abs(Number(bill.amount_paid) || 0)))} paid · <span class="font-semibold text-amber-600">${formatCurrencyIDR(billOutstanding(bill))} remaining</span></p>` : ''}
                             </div>
                             <div>
                                 <p class="fluxy-drawer-label">Due Date</p>

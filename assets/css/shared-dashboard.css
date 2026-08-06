@@ -1137,6 +1137,41 @@ main > header {
 .fluxy-drawer-callout--warning { background: #FFFBEB; border: 1px solid #FEF3C7; color: #92400E; }
 .fluxy-drawer-callout--success { background: #ECFDF5; border: 1px solid #D1FAE5; color: #065F46; }
 
+/* Summary card — the one card that opens every financial detail drawer.
+   No title: it is the first thing in the drawer and the drawer header already
+   says what the record is, so "Summary" was a label on the obvious. Dropping it
+   buys back a row of vertical space at the top of every drawer.
+
+   Order is fixed so the three drawers read identically: status chip, then the
+   figure, then the supporting fields, then readiness. */
+.fluxy-drawer-summary { gap: 14px; }
+.fluxy-drawer-summary-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+/* The strip carries its own top margin for callers that place it after a plain
+   grid; inside the summary the flex gap already provides that space. */
+.fluxy-drawer-summary .fluxy-drawer-readiness { margin-top: 0; }
+/* The headline figure. Colour is left to the caller — the ledger signs it. */
+.fluxy-drawer-summary-amount {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+    color: #0B0F19;
+}
+.fluxy-drawer-summary-amount-note {
+    margin: 2px 0 0;
+    font-size: 12px;
+    font-weight: 500;
+    color: #6B7280;
+}
+
 /* Summary readiness strip — the status a detail drawer used to give its own
    card. Folded into the foot of the Summary section instead: readiness is an
    attribute OF the summary, not a peer of it, and a whole card for one line of
