@@ -29,7 +29,13 @@ if [ "$TOOL_NAME" = "Bash" ]; then
     # See docs/PROJECT_BACKGROUND.md §4 + docs/TEAM_MANAGEMENT_HANDOFF.md §8.
     REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)
     if [ -n "$REPO_ROOT" ]; then
-      FIN_RE='users/\$\{[a-zA-Z_.]+\}/(transactions|bills|subscriptions|budgets|budget_allocations|invoices|bank_accounts|bank_balance_snapshots|bank_statement_imports|documents|report_exports|accounting_mappings|audit_logs)'
+      # Full finance-collection list from docs/PROJECT_BACKGROUND.md §4. The
+      # earlier copy of this regex stopped at audit_logs, so a scope leak in any
+      # Tax Center, Commerce, or accounting-kernel collection passed the gate
+      # unnoticed (verified 2026-08-07: a `users/${userId}/tax_transactions`
+      # query was not detected). scripts/qa-run.js carries the same list; keep
+      # the two in sync when a workspace-scoped collection is added.
+      FIN_RE='users/\$\{[a-zA-Z_.]+\}/(transactions|bills|subscriptions|budgets|budget_allocations|invoices|bank_accounts|bank_balance_snapshots|bank_statement_imports|documents|report_exports|accounting_mappings|audit_logs|chart_of_accounts|business_categories|journals|counters|ledger_balances|periods|company_tax_profile|tax_mappings|tax_transactions|tax_periods|tax_filings|commerce_accounts|commerce_orders|commerce_transactions|commerce_refunds|commerce_settlements|commerce_payouts|commerce_sync_jobs|commerce_sync_errors|commerce_webhook_logs)'
       LEAKS=$(grep -rnE "$FIN_RE" "$REPO_ROOT"/*.html "$REPO_ROOT"/assets/js/*.js 2>/dev/null | grep -v '/db-service.js:')
       if [ -n "$LEAKS" ]; then
         cat >&2 <<EOF
@@ -52,28 +58,93 @@ EOF
       fi
     fi
 
-    if printf '%s' "$COMMAND" | grep -q 'QA_PASS=1'; then
-      exit 0
-    fi
-    cat >&2 <<'EOF'
+    # --- QA artifact verification -------------------------------------------
+    # QA_PASS=1 alone is no longer sufficient. `npm run qa` writes
+    # .qa/qa-run.json stamped with the HEAD sha; this gate only accepts the push
+    # when that artifact exists, passed in full, and describes THIS commit.
+    # Typing QA_PASS=1 without a matching run now fails, which is the point:
+    # the previous version ended with "lying to bypass this gate is on you",
+    # i.e. it was an honour system.
+    ART="$REPO_ROOT/.qa/qa-run.json"
+    if ! printf '%s' "$COMMAND" | grep -q 'QA_PASS=1'; then
+      cat >&2 <<'EOF'
 🛑 QA GATE — Production push blocked
 
-This push targets main/master. Before proceeding, run through:
+This push targets main/master. Run the automated QA suite first:
 
-  [ ] All new file references (CSS, JS, images) actually EXIST locally
-      → `ls` any path you just linked to in HTML
-  [ ] Smoke-tested affected pages in a real browser (not just lint/types)
-  [ ] Browser console clean — no CSP, CORS, 404, or Firebase errors
-  [ ] Read docs/QA_CHECKLIST.md sections for your change type
-  [ ] Read docs/PROJECT_BACKGROUND.md if you touched Firestore / data logic
+  npm run qa
 
-When (and only when) those checks pass, re-run with QA_PASS=1 prepended:
+It runs three lanes selected from your diff:
+  BE       syntax, workspace-scoping invariant, check:* regressions, rules tests
+  FE       design-system lint + real-browser console sweep of affected pages
+  PRODUCT  i18n EN/ID pairing, two-site page classification, SEO essentials
+
+When it passes it writes .qa/qa-run.json for the current commit. Then:
 
   QA_PASS=1 <your original push command>
-
-Lying to bypass this gate is on you, not the hook.
 EOF
-    exit 2
+      exit 2
+    fi
+
+    if [ ! -f "$ART" ]; then
+      cat >&2 <<'EOF'
+🛑 QA GATE — QA_PASS=1 given, but no QA run exists
+
+.qa/qa-run.json is missing. QA_PASS=1 is no longer a promise you can type —
+it must be backed by an actual run:
+
+  npm run qa
+EOF
+      exit 2
+    fi
+
+    if command -v jq >/dev/null 2>&1; then
+      ART_HEAD=$(jq -r '.head // ""' "$ART" 2>/dev/null)
+      ART_PASSED=$(jq -r '.passed // false' "$ART" 2>/dev/null)
+      ART_PARTIAL=$(jq -r '.partial // false' "$ART" 2>/dev/null)
+      ART_WHEN=$(jq -r '.ran_at // "?"' "$ART" 2>/dev/null)
+      CUR_HEAD=$(cd "$REPO_ROOT" && git rev-parse HEAD 2>/dev/null)
+
+      if [ "$ART_PASSED" != "true" ]; then
+        FAILED=$(jq -r '.results[]? | select(.ok == false) | "  ✗ [\(.lane)] \(.name)"' "$ART" 2>/dev/null)
+        cat >&2 <<EOF
+🛑 QA GATE — last QA run FAILED
+
+Run at: $ART_WHEN
+$FAILED
+
+Fix these and re-run \`npm run qa\` before pushing.
+EOF
+        exit 2
+      fi
+
+      if [ "$ART_PARTIAL" = "true" ]; then
+        cat >&2 <<'EOF'
+🛑 QA GATE — last QA run was PARTIAL
+
+It ran with --skip-browser or --lane=, so the browser console sweep did not
+cover this change. Run the full suite:
+
+  npm run qa
+EOF
+        exit 2
+      fi
+
+      if [ -n "$CUR_HEAD" ] && [ "$ART_HEAD" != "$CUR_HEAD" ]; then
+        cat >&2 <<EOF
+🛑 QA GATE — QA run is STALE
+
+  QA ran against: ${ART_HEAD:0:8}
+  you are pushing: ${CUR_HEAD:0:8}
+
+Commits landed after QA passed, so the tested tree is not the pushed tree.
+Re-run \`npm run qa\` on the current commit.
+EOF
+        exit 2
+      fi
+    fi
+
+    exit 0
   fi
 fi
 

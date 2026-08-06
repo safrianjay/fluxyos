@@ -5,23 +5,49 @@
 A PreToolUse hook at `.claude/hooks/qa-gate.sh` enforces the workflow at the
 harness level:
 
-- **Pushes to `main`/`master` are BLOCKED** unless the command contains
-  `QA_PASS=1`. To bypass the gate, prove QA was done and re-run as
-  `QA_PASS=1 git ... push origin main`.
+- **Pushes to `main`/`master` are BLOCKED** unless BOTH hold: the command
+  contains `QA_PASS=1`, **and** `.qa/qa-run.json` shows a passing, non-partial
+  run whose `head` equals the commit being pushed. `QA_PASS=1` on its own no
+  longer works — it must be backed by an actual run.
+- **The workspace-scoping invariant hard-blocks even with `QA_PASS=1`**, across
+  every workspace-scoped collection in `docs/PROJECT_BACKGROUND.md` §4.
 - Edits to `firestore.rules`, `storage.rules`, the dashboard HTML pages, and
   `netlify.toml` print a soft reminder pointing to the docs that matter for
   that change type.
 
-This means text-only rules ("MANDATORY") below are now backed by a real gate.
-If you ignore the workflow, the push will fail.
+### The workflow
 
-### Before adding `QA_PASS=1`, verify:
+```
+git commit …          # commit first — QA stamps the artifact with HEAD
+npm run qa            # BE + FE + PRODUCT lanes, selected from the diff
+QA_PASS=1 git push origin main
+```
 
-1. Every new file reference (CSS, JS, image) actually EXISTS — `ls` it.
-2. Smoke-tested the affected page in a real browser.
-3. Browser console is clean (no CSP, CORS, 404, or Firebase errors).
-4. Read `docs/QA_CHECKLIST.md` sections matching the change type.
-5. Read `docs/PROJECT_BACKGROUND.md` if data layer or Firestore was touched.
+`npm run qa` (`scripts/qa-run.js`) runs three lanes and writes
+`.qa/qa-run.json` (gitignored):
+
+| Lane | Checks |
+|---|---|
+| **BE** | `node --check` on changed JS; workspace-scoping invariant; `check:deploy` / `check:ai-scope` / `check:bank-scope` / `check:ledger-assert` when their inputs change; Firestore rules emulator tests when `*.rules` change |
+| **FE** | `scripts/qa/lint-design.js` (design-system rules, **changed lines only**); `tests/zz-console-sweep.spec.js` — loads affected pages in a real browser and fails on CSP/CORS/permission-denied/uncaught errors and same-origin 404s |
+| **PRODUCT** | i18n EN↔ID pairing where an `/id/` mirror exists; SEO essentials on changed landing pages; `i18n-audit.js` (advisory) |
+
+Flags: `--all` (force every lane), `--lane=be|fe|product`, `--skip-browser`.
+The last two mark the artifact `partial`, which **the gate rejects** — they are
+for fast iteration, not for shipping.
+
+Lane selection comes from the git diff, so an accounting-only change does not
+pay for a landing-page SEO scan. Commits made *after* a QA run make the
+artifact stale and the gate blocks — re-run QA on the commit you are pushing.
+
+### What is still manual
+
+The runner covers the mechanically checkable rules. It does **not** judge the
+subjective anti-slop standards in `docs/DESIGN_SYSTEM.md` (one primary action
+per zone, sections earning their space, hierarchy at 375px/1280px) or whether a
+feature actually solves the user's problem. Read `docs/QA_CHECKLIST.md` sections
+matching the change type, and `docs/PROJECT_BACKGROUND.md` when the data layer
+is touched.
 
 **A task is not done until QA passes. The hook will not let you forget.**
 
