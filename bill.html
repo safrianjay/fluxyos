@@ -205,6 +205,17 @@
                 </div>
                 <div class="px-5 py-4 overflow-y-auto space-y-4">
                     <div id="bill-pay-summary" class="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-1.5"></div>
+                    <!-- IDR partial payment. Foreign bills use the FX block below,
+                         which has carried its own amount field since Stage B. -->
+                    <div id="bill-pay-amount-block">
+                        <label for="bill-pay-amount" class="block text-[12px] font-semibold text-gray-500 mb-1.5">Amount to pay</label>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[13px] text-gray-500">Rp</span>
+                            <input id="bill-pay-amount" type="text" inputmode="numeric" class="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] tabular-nums focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]" placeholder="0">
+                        </div>
+                        <p class="mt-1 text-[11px] text-gray-400">Defaults to the full balance. Enter less for a partial payment.</p>
+                        <p id="bill-pay-amount-error" class="mt-1 hidden text-[11px] font-semibold text-red-600"></p>
+                    </div>
                     <div id="bill-pay-fx" class="hidden rounded-lg border border-blue-100 bg-blue-50/60 p-3 space-y-2">
                         <div>
                             <label for="bill-pay-foreign" class="block text-[12px] font-semibold text-gray-600 mb-1">Amount to pay (<span id="bill-pay-fx-cur">USD</span>)</label>
@@ -1072,6 +1083,20 @@
                     <span class="text-[13px] text-gray-700 truncate">${escapeHtml(allocName)}</span>
                 </div>` : ''}`;
 
+            // Amount to pay. IDR bills get a plain rupiah field defaulted to the
+            // remaining balance; foreign bills already carry their own amount +
+            // Rupiah pair in the FX block, so this one stays hidden for them.
+            const idrAmountBlock = document.getElementById('bill-pay-amount-block');
+            const idrAmountInput = document.getElementById('bill-pay-amount');
+            const foreign = isForeignBill(bill);
+            idrAmountBlock.classList.toggle('hidden', foreign);
+            if (!foreign) {
+                idrAmountInput.value = Math.round(billOutstanding(bill)).toLocaleString('id-ID');
+                window.FluxyAmountInput?.attach(idrAmountInput);
+                syncPayConfirmLabel();
+            }
+            hideBillPayAmountError();
+
             // Cash impact: always actual cash-OUT (a bill payment has no other
             // direction), pre-linked to the workspace's account when there is only
             // one. cash_account_id is what bank reconciliation groups by, so
@@ -1169,6 +1194,37 @@
         // #bill-pay-confirm stays disabled + "Recording…" and the NEXT bill's
         // modal opens with a stuck button. Reset on both open and close so it is
         // always clean regardless of how the previous attempt ended.
+        function billPayAmountValue() {
+            return window.FluxyAmountInput
+                ? window.FluxyAmountInput.value(document.getElementById('bill-pay-amount'))
+                : Math.round(Math.abs(Number(String(document.getElementById('bill-pay-amount')?.value || '').replace(/\D/g, '')) || 0));
+        }
+        function showBillPayAmountError(message) {
+            const el = document.getElementById('bill-pay-amount-error');
+            if (!el) return;
+            el.textContent = message;
+            el.classList.remove('hidden');
+        }
+        function hideBillPayAmountError() {
+            document.getElementById('bill-pay-amount-error')?.classList.add('hidden');
+        }
+        // Say which of the two things the button is about to do. "Mark as Paid" on
+        // a part-payment would be a lie — the bill stays open for the remainder.
+        function syncPayConfirmLabel() {
+            const btn = document.getElementById('bill-pay-confirm');
+            if (!btn || !payModalBill || payInFlight) return;
+            if (isForeignBill(payModalBill)) { btn.textContent = 'Mark as Paid'; return; }
+            const amount = billPayAmountValue();
+            const outstanding = Math.round(billOutstanding(payModalBill));
+            // Flag an over-payment while it is being typed. Waiting for submit
+            // means the user finishes the whole form before learning the very
+            // first field was wrong.
+            if (amount > outstanding) {
+                showBillPayAmountError(`That is more than the ${formatCurrencyIDR(outstanding)} still owed.`);
+            }
+            btn.textContent = (amount > 0 && amount < outstanding) ? 'Record payment' : 'Mark as Paid';
+        }
+
         function resetPayConfirmButton() {
             const confirmBtn = document.getElementById('bill-pay-confirm');
             if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Mark as Paid'; }
@@ -1195,6 +1251,21 @@
                 window.FluxyCashImpact.rememberAccount(billCashScopeId(), cashState.accountId);
                 const cashFields = window.FluxyCashImpact.derive(cashState, Timestamp.fromDate(paymentDate));
                 const opts = { paymentDate, cashFields };
+                if (!isForeignBill(payModalBill)) {
+                    const amount = billPayAmountValue();
+                    const outstanding = Math.round(billOutstanding(payModalBill));
+                    if (!(amount > 0)) {
+                        showBillPayAmountError('Enter an amount to pay.');
+                        resetPayConfirmButton();
+                        return;
+                    }
+                    if (amount > outstanding) {
+                        showBillPayAmountError(`That is more than the ${formatCurrencyIDR(outstanding)} still owed.`);
+                        resetPayConfirmButton();
+                        return;
+                    }
+                    opts.payAmount = amount;
+                }
                 if (isForeignBill(payModalBill)) {
                     const foreignMinor = billPayForeignMinor();
                     if (!(foreignMinor > 0)) { window.showToast?.('Enter an amount to pay.', 'error'); resetPayConfirmButton(); return; }
@@ -1205,8 +1276,14 @@
                     opts.fxRate = payFxRate || null;
                     opts.fxRateDate = payPickerSelectedKey || null;
                 }
+                const remainingBefore = Math.round(billOutstanding(payModalBill));
                 await ds.markBillPaid(auth.currentUser.uid, payModalBill.id, opts);
-                window.showToast?.('Bill marked as paid and recorded in the Ledger.', 'success');
+                const settled = opts.payAmount != null ? opts.payAmount : remainingBefore;
+                window.showToast?.(
+                    settled < remainingBefore
+                        ? `Payment recorded. ${formatCurrencyIDR(remainingBefore - settled)} still outstanding.`
+                        : 'Bill marked as paid and recorded in the Ledger.',
+                    'success');
                 closePayModal();
                 closeBillDrawer();
                 await window.loadBills();
@@ -1224,6 +1301,10 @@
         // hand, so it needs the same live reformatting as the partial-payment
         // amounts. attach() is idempotent.
         window.FluxyAmountInput?.attach(document.getElementById('bill-pay-idr'));
+        document.getElementById('bill-pay-amount')?.addEventListener('input', () => {
+            hideBillPayAmountError();
+            syncPayConfirmLabel();
+        });
         document.getElementById('bill-pay-cancel')?.addEventListener('click', closePayModal);
         document.getElementById('bill-pay-close')?.addEventListener('click', closePayModal);
         document.getElementById('bill-pay-backdrop')?.addEventListener('click', closePayModal);

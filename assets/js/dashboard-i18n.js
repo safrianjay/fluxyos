@@ -1834,6 +1834,11 @@
         "Original": "Asli",
         "Not a duplicate": "Bukan duplikat",
         "Add note": "Tambah catatan",
+        // Bill partial payment (Record payment modal).
+        "Amount to pay": "Jumlah yang dibayar",
+        "Defaults to the full balance. Enter less for a partial payment.": "Default ke seluruh sisa tagihan. Isi lebih kecil untuk pembayaran sebagian.",
+        "Enter an amount to pay.": "Masukkan jumlah yang dibayar.",
+        "Record payment": "Catat pembayaran",
         "Add a note": "Tambah catatan",
         "Void the duplicate transaction?": "Batalkan transaksi duplikat?",
         "Void the duplicate bill?": "Batalkan tagihan duplikat?",
@@ -4848,6 +4853,12 @@
           id: function (m) { return 'dari anggaran periode terpakai · lebih ' + m[1]; } },
         { re: /^(.+) ([\d.,]+%) of period budget$/,
           id: function (m) { var s = translateString(m[1]); return (s !== null ? s : m[1]) + ' ' + m[2] + ' dari anggaran periode'; } },
+
+        // ── bill partial payment ─────────────────────────────────────────────
+        { re: /^That is more than the (Rp[\d.,]+) still owed\.$/,
+          id: function (m) { return 'Itu lebih besar dari ' + m[1] + ' yang masih terutang.'; } },
+        { re: /^Payment recorded\. (Rp[\d.,]+) still outstanding\.$/,
+          id: function (m) { return 'Pembayaran dicatat. ' + m[1] + ' masih terutang.'; } },
 
         // ── duplicate prevention (docs/DUPLICATE_PREVENTION.md) ──────────────
         // The dialog's lead line joins engine evidence phrases with commas; each
