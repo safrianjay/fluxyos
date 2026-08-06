@@ -1,19 +1,23 @@
 #!/usr/bin/env bash
 # Pre-edit doc-read gate for FluxyOS.
-# - BLOCKS the first Edit/Write/NotebookEdit on code (HTML/JS/CSS/rules) in a
-#   session until the assistant has Read PROJECT_BACKGROUND.md and DESIGN_SYSTEM.md.
-# - EXEMPT: edits to docs/, .claude/, .qa/, .githooks/, and any *.md file.
 #
-# Rationale: CLAUDE.md says "MANDATORY: read PROJECT_BACKGROUND.md before
-# implementing any feature." Without enforcement, the rule degrades to a
-# suggestion. This hook converts it to a hard gate, same shape as qa-gate.sh.
+# BLOCKS the first Edit/Write/NotebookEdit on code until the docs that actually
+# matter for THAT change have been Read in the current session.
 #
-# Input on stdin (JSON):
-#   { "tool_name": "...", "tool_input": { "file_path": "..." },
-#     "transcript_path": "/abs/path/to/conversation.jsonl", ... }
-# Exit codes:
-#   0 = allow
-#   2 = block (stderr is shown to Claude)
+# Selective by design. The previous version demanded PROJECT_BACKGROUND.md
+# (2,490 lines) and DESIGN_SYSTEM.md (939 lines) for every edit, so a Netlify
+# function change paid for the full design system and a CSS tweak paid for the
+# entire Firestore schema — ~60k tokens per session before any work started.
+#
+# Now:
+#   PROJECT_BACKGROUND.md  always (854 lines after sharding; holds the
+#                          workspace-scoping invariant, shared APIs, element IDs)
+#   DESIGN_SYSTEM.md       only for UI work (HTML / CSS / page JS)
+#   data-model/<shard>.md  only the collection domain the file touches
+#
+# EXEMPT: docs/, .claude/, .qa/, .githooks/, cbm-extracted/, and any *.md.
+#
+# Exit codes: 0 = allow, 2 = block (stderr shown to Claude).
 
 INPUT=$(cat)
 TOOL_NAME=$(printf '%s' "$INPUT" | jq -r '.tool_name // ""')
@@ -25,43 +29,88 @@ esac
 
 FILE_PATH=$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // ""')
 
-# Allowlist: paths where the gate doesn't apply.
 case "$FILE_PATH" in
-  */docs/*|*.md|*/.claude/*|*/.qa/*|*/.githooks/*)
+  */docs/*|*.md|*/.claude/*|*/.qa/*|*/.githooks/*|*/cbm-extracted/*)
     exit 0 ;;
 esac
 
 TRANSCRIPT=$(printf '%s' "$INPUT" | jq -r '.transcript_path // ""')
 if [ -z "$TRANSCRIPT" ] || [ ! -f "$TRANSCRIPT" ]; then
-  # No transcript available (CI / non-interactive). Don't block.
-  exit 0
+  exit 0   # CI / non-interactive: nothing to check against.
 fi
 
-REQUIRED_DOCS=("PROJECT_BACKGROUND.md" "DESIGN_SYSTEM.md")
+BASE=$(basename "$FILE_PATH")
+
+# --- always required ---------------------------------------------------------
+REQUIRED=("docs/PROJECT_BACKGROUND.md")
+WHY=("architecture, workspace scoping, shared APIs, element IDs")
+
+# --- design system: UI surfaces only -----------------------------------------
+case "$FILE_PATH" in
+  *.html|*.css|*/assets/js/*)
+    REQUIRED+=("docs/DESIGN_SYSTEM.md")
+    WHY+=("component reuse, tokens, numeric format, anti-slop rules")
+    ;;
+esac
+
+# --- data-model shard: match the collection domain the file touches ----------
+# First match wins; order matters where prefixes overlap (bank-statement before
+# bank, accounting-journal before accounting).
+SHARD=""
+case "$BASE" in
+  bank-statement*|*bank_statement*)          SHARD="bank-statement-imports" ;;
+  bank-recon*|bank-account*|bank*)           SHARD="bank-accounts" ;;
+  accounting-engine*|accounting*|journal*)   SHARD="accounting" ;;
+  invoice*)                                  SHARD="invoices" ;;
+  bill*)                                     SHARD="bills" ;;
+  budget*)                                   SHARD="budgets" ;;
+  tax*)                                      SHARD="tax-center" ;;
+  commerce*)                                 SHARD="commerce" ;;
+  subscription*)                             SHARD="subscriptions" ;;
+  internal*)                                 SHARD="internal-ops" ;;
+  billing*|checkout*|voucher*|payment*)      SHARD="billing" ;;
+  onboarding*|platform-learning*)            SHARD="onboarding" ;;
+  document-attachment*|documents*)           SHARD="documents" ;;
+  settings*)                                 SHARD="settings" ;;
+  ledger*|transaction*)                      SHARD="transactions" ;;
+  audit*|activity-log*)                      SHARD="audit-logs" ;;
+esac
+
+if [ -n "$SHARD" ]; then
+  REQUIRED+=("docs/data-model/${SHARD}.md")
+  WHY+=("exact field names and value sets for this collection")
+fi
+
+# --- check the transcript ----------------------------------------------------
 MISSING=()
-for doc in "${REQUIRED_DOCS[@]}"; do
-  # A Read tool call on this doc in the current session shows up as a single
-  # JSON line containing both `"name":"Read"` and the doc filename.
-  if ! grep -q "\"name\":\"Read\".*$doc" "$TRANSCRIPT" 2>/dev/null; then
+MISSING_WHY=()
+for i in "${!REQUIRED[@]}"; do
+  doc="${REQUIRED[$i]}"
+  # A Read on this doc appears as one JSON line containing both the tool name
+  # and the path. Match on the path tail so /docs/x.md and docs/x.md both count.
+  if ! grep -q "\"name\":\"Read\".*${doc}" "$TRANSCRIPT" 2>/dev/null; then
     MISSING+=("$doc")
+    MISSING_WHY+=("${WHY[$i]}")
   fi
 done
 
 if [ ${#MISSING[@]} -gt 0 ]; then
-  cat >&2 <<EOF
-🛑 PRE-EDIT GATE — Read required docs first
-
-You're about to edit code without having Read these in this session:
-$(for d in "${MISSING[@]}"; do echo "  - docs/$d"; done)
-
-CLAUDE.md MANDATORY rule. Open each via the Read tool, then retry.
-Exemptions: edits to docs/, .claude/, .qa/, .githooks/, and any *.md file.
-
-This gate exists because design-system rules (component reuse, no native
-date inputs, etc.) live in DESIGN_SYSTEM.md, and Firestore field names /
-existing helpers live in PROJECT_BACKGROUND.md. Skipping them causes
-duplicate widgets, wrong field names, and rework.
-EOF
+  {
+    echo "🛑 PRE-EDIT GATE — Read the docs for this change first"
+    echo ""
+    echo "Editing: $FILE_PATH"
+    echo ""
+    echo "Not yet Read in this session:"
+    for i in "${!MISSING[@]}"; do
+      echo "  - ${MISSING[$i]}"
+      echo "      ${MISSING_WHY[$i]}"
+    done
+    echo ""
+    echo "This gate is selective — it asks only for what THIS file needs, not the"
+    echo "whole doc set. Read them with the Read tool, then retry."
+    echo ""
+    echo "Exempt: docs/, .claude/, .qa/, .githooks/, cbm-extracted/, any *.md."
+  } >&2
   exit 2
 fi
 

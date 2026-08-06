@@ -152,7 +152,21 @@
       "Bash(npm view *)",
       "Bash(timeout 90 npx -y chrome-devtools-mcp@1.6.0 --help)",
       "Bash(npx -y chrome-devtools-mcp@1.6.0 --help)",
-      "Bash(sed -i '' '/^!cbm-extracted\\\\/$/d' .cbmignore)"
+      "Bash(sed -i '' '/^!cbm-extracted\\\\/$/d' .cbmignore)",
+      "Bash(curl -s -o /dev/null -w \"static server: HTTP %{http_code}\\\\n\" http://127.0.0.1:8765/dashboard.html)",
+      "Bash(curl -s -o /dev/null -w \"cbm graph UI: HTTP %{http_code}\\\\n\" http://127.0.0.1:9749/)",
+      "mcp__chrome-devtools__new_page",
+      "Bash(grep -iE \"chromium$|Chromium$\")",
+      "Bash(node --check scripts/chrome-devtools-mcp.js)",
+      "Bash(node scripts/chrome-devtools-mcp.js)",
+      "Bash(node /private/tmp/claude-501/-Users-jay-Desktop-fluxyos/aeac354f-2538-4c2a-adbf-878c965ffdab/scratchpad/mcp-probe.js)",
+      "Bash(pkill -f \"tests/qa-static-server.js\")",
+      "Bash(grep -nE \"^#{2,3} \" docs/PROJECT_BACKGROUND.md)",
+      "Bash(awk -F: '$0 ~ /## 4|### 4/ || $0 ~ /## [0-9]/ {print}')",
+      "Bash(node /private/tmp/claude-501/-Users-jay-Desktop-fluxyos/aeac354f-2538-4c2a-adbf-878c965ffdab/scratchpad/shard.js)",
+      "Bash(awk 'NR<=18{printf \"%2d| %s\\\\n\", NR, substr\\($0,1,80\\)}' docs/data-model/transactions.md)",
+      "Bash(read p *)",
+      "Bash([ -f \"docs/$p\" ])"
     ]
   },
   "hooks": {

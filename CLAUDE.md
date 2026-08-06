@@ -61,10 +61,23 @@ Before implementing any feature, page, section, component, UI enhancement, busin
 2. **`docs/DESIGN_SYSTEM.md`** — component reuse rules (shared date picker, dialog, drawer, chart hover), colors, typography, anti-AI-slop standards
 3. **`docs/product_ux_feature_intake_framework.md`** — product logic, feature classification, scope, and UX requirements
 
-This is enforced by `.claude/hooks/docs-read-gate.sh`: the first Edit/Write to
-non-doc code is BLOCKED until both `PROJECT_BACKGROUND.md` and `DESIGN_SYSTEM.md`
-have appeared in Read tool calls in the current session. Exempt paths: anything
-under `docs/`, `.claude/`, `.qa/`, `.githooks/`, and any `*.md` file.
+This is enforced by `.claude/hooks/docs-read-gate.sh`, which is **selective** —
+it asks only for what the file being edited actually needs:
+
+| Editing | Must have Read |
+|---|---|
+| anything (non-doc code) | `docs/PROJECT_BACKGROUND.md` |
+| `*.html`, `*.css`, `assets/js/*` | + `docs/DESIGN_SYSTEM.md` |
+| a file whose name maps to a collection domain | + `docs/data-model/<shard>.md` |
+
+So a Netlify function change no longer pays for the whole design system, and a
+CSS tweak no longer pays for the entire Firestore schema. Exempt paths: anything
+under `docs/`, `.claude/`, `.qa/`, `.githooks/`, `cbm-extracted/`, and any `*.md`.
+
+**Collection schemas live in `docs/data-model/`**, not in `PROJECT_BACKGROUND.md`
+(sharded 2026-08-07: 2,490 → 854 lines). `PROJECT_BACKGROUND.md` §4 keeps the
+workspace-scoping invariant — which applies to every shard — plus the shard
+index. Read the one shard your change touches.
 
 If the feature request cannot answer the framework's core questions (user problem, business value, job to be done, scope), it is not ready to build.
 
