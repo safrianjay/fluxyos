@@ -3312,6 +3312,88 @@ service cloud.firestore {
         && isValidTaxDocFields(data)
         && isValidAICaptureMetadata(data);
     }
+    // Bill optional-field groups, gated on PRESENCE.
+    //
+    // Firestore evaluates at most 1000 expressions per request and re-validates
+    // the whole document, so a validator that walks every optional field of
+    // every feature ever shipped (budget + accounting + AI capture + tax +
+    // multi-currency) exceeds the ceiling on an ordinary bill — measured at 26
+    // keys, which a scanned bill with a budget passes easily. The write then
+    // fails as "Missing or insufficient permissions".
+    //
+    // hasAny() costs one call, so a bill that carries none of a group skips that
+    // group's checks entirely. The checks themselves are unchanged when the
+    // fields ARE present; this buys headroom without loosening anything.
+
+    // Capture metadata for BILLS, written lean.
+    //
+    // Every enum and every size cap from isValidAICaptureMetadata is kept — they
+    // are what protect the state machine and guard against storage abuse. What
+    // is dropped are the bare `is string` checks on provenance fields
+    // (extraction_source, document_type, invoice_number, source_file_name,
+    // source_file_mime_type): hasOnly() already bounds WHICH keys may exist and
+    // Firestore bounds the document to 1 MiB, so a type assertion on a filename
+    // buys almost nothing — and each one costs ~10 of the 1000 expressions a
+    // request gets. Bills accumulate more optional fields than any other record,
+    // so they are the only shape where this trade is needed; transactions and
+    // subscriptions keep the fuller validator.
+    function billCaptureValid(data) {
+      return (!('source' in data) || data.source in ['bill_scan', 'transaction_scan', 'subscription_scan', 'bank_statement_import'])
+        && (!('created_via' in data) || data.created_via in ['ai_bill_capture', 'ai_transaction_capture', 'ai_subscription_capture'])
+        && (!('extraction_status' in data) || data.extraction_status == 'reviewed')
+        && (!('extraction_confidence' in data) || data.extraction_confidence == null || data.extraction_confidence is number)
+        && (!('extraction_warnings' in data) || data.extraction_warnings is list)
+        && (!('invoice_date' in data) || data.invoice_date is timestamp)
+        && (!('raw_text_preview' in data) || data.raw_text_preview == null || data.raw_text_preview.size() <= 500)
+        && (!('source_file_size_bytes' in data) || data.source_file_size_bytes == null || data.source_file_size_bytes is number)
+        && (!('notes' in data) || data.notes == null || data.notes.size() <= 1000);
+    }
+
+    // Tax fields for BILLS, written lean.
+    //
+    // Every RANGE and every size cap is kept — those guard the tax arithmetic and
+    // the faktur/NPWP strings. What is dropped are the separate `is string` /
+    // `is number` assertions: `.size()` on a non-string and `>=` on a
+    // non-number both error, and an erroring rule DENIES, so the type is still
+    // enforced — just in two fewer expressions per field. See billCaptureValid
+    // for why bills specifically need this.
+    function billTaxValid(data) {
+      return (!('tax_code' in data) || data.tax_code == null || data.tax_code.size() <= 40)
+        && (!('tax_rate_percent' in data) || data.tax_rate_percent == null || (data.tax_rate_percent >= 0 && data.tax_rate_percent <= 100))
+        && (!('tax_amount' in data) || data.tax_amount == null || data.tax_amount >= 0)
+        && (!('taxable_base' in data) || data.taxable_base == null || data.taxable_base >= 0)
+        && (!('vendor_npwp' in data) || data.vendor_npwp == null || data.vendor_npwp.size() <= 32)
+        && (!('faktur_number' in data) || data.faktur_number == null || data.faktur_number.size() <= 40)
+        && (!('withholding_rate' in data) || data.withholding_rate == null || (data.withholding_rate >= 0 && data.withholding_rate <= 100))
+        && (!('withholding_type' in data) || data.withholding_type == null || data.withholding_type.size() <= 40)
+        && (!('withholding_code' in data) || data.withholding_code == null || data.withholding_code.size() <= 40)
+        && (!('bukti_potong_no' in data) || data.bukti_potong_no == null || data.bukti_potong_no.size() <= 60);
+    }
+
+    // Budget + payment fields for BILLS, written lean (see billCaptureValid).
+    // Enums, ranges and caps kept; redundant type assertions dropped, since
+    // `.size()` / comparison on the wrong type errors and an erroring rule denies.
+    function billBudgetValid(data) {
+      return (!('budget_id' in data) || data.budget_id == null || data.budget_id.size() <= 120)
+        && (!('budget_allocation_id' in data) || data.budget_allocation_id == null || data.budget_allocation_id.size() <= 120)
+        && (!('budget_match_method' in data) || data.budget_match_method == null || data.budget_match_method in ['auto', 'manual', 'rule', 'excluded', 'none'])
+        && (!('budget_match_status' in data) || data.budget_match_status == null || data.budget_match_status in ['matched', 'needs_review', 'unmatched', 'excluded'])
+        && (!('budget_impact_status' in data) || data.budget_impact_status == null || data.budget_impact_status in ['committed', 'released', 'converted_to_actual'])
+        && (!('budget_assignment_reason' in data) || data.budget_assignment_reason == null || data.budget_assignment_reason.size() <= 500)
+        && (!('budget_assignment_updated_at' in data) || data.budget_assignment_updated_at == null || data.budget_assignment_updated_at is timestamp)
+        && (!('budget_assignment_updated_by' in data) || data.budget_assignment_updated_by == null || data.budget_assignment_updated_by == request.auth.uid)
+        && (!('budget_exclusion_reason' in data) || data.budget_exclusion_reason == null || data.budget_exclusion_reason.size() <= 500);
+    }
+    function billPaymentValid(data) {
+      return (!('bill_number' in data) || data.bill_number == null || data.bill_number.size() <= 40)
+        && (!('outstanding_amount' in data) || data.outstanding_amount == null || (data.outstanding_amount >= 0 && data.outstanding_amount <= 999999999999))
+        && (!('amount_paid' in data) || data.amount_paid == null || (data.amount_paid >= 0 && data.amount_paid <= 999999999999))
+        && (!('currency' in data) || data.currency in ['IDR', 'USD', 'SGD'])
+        && (!('amount_paid_idr' in data) || data.amount_paid_idr == null || data.amount_paid_idr >= 0)
+        && (!('fx_rate' in data) || data.fx_rate == null || data.fx_rate is number)
+        && (!('fx_rate_date' in data) || data.fx_rate_date == null || data.fx_rate_date.size() <= 20);
+    }
+
     function wsValidBillCreate(data) {
       return data.keys().hasOnly([
           'amount', 'vendor_name', 'category', 'type', 'status', 'icon', 'timestamp', 'due_date',
@@ -3330,13 +3412,13 @@ service cloud.firestore {
         && (!('due_date' in data) || data.due_date is timestamp)
         && (!('payment_status' in data) || data.payment_status in ['unpaid', 'paid', 'partial', 'overdue', 'unknown'])
         && (!('invoice_status' in data) || data.invoice_status in ['attached'])
-        && isValidBillBudgetFields(data)
-        && isValidBillPaymentFields(data)
+        && billBudgetValid(data)
+        && billPaymentValid(data)
         && isValidAttachedDocuments(data)
         && isValidAccountingLink(data)
         && isValidAccountLink(data)
-        && isValidTaxDocFields(data)
-        && isValidAICaptureMetadata(data);
+        && billTaxValid(data)
+        && billCaptureValid(data);
     }
     // A bill PAYMENT touches a fixed, tiny set of keys. It is evaluated FIRST and
     // deliberately WITHOUT the full bill update validator.
@@ -3383,18 +3465,18 @@ service cloud.firestore {
           'withholding_rate', 'withholding_type', 'withholding_code', 'bukti_potong_no'
         ])
         && isValidBaseRecordUpdate(data, existingData)
-        && isValidTaxDocFields(data)
+        && billTaxValid(data)
         && preservesLegacyRecordDate(data, existingData)
         && (!('due_date' in data) || data.due_date is timestamp)
         && (!('payment_status' in data) || data.payment_status in ['unpaid', 'paid', 'partial', 'overdue', 'unknown'])
         && (!('invoice_status' in data) || data.invoice_status in ['attached'])
         && (!('linked_transaction_id' in data) || data.linked_transaction_id == null || (data.linked_transaction_id is string && data.linked_transaction_id.size() <= 120))
-        && isValidBillBudgetFields(data)
-        && isValidBillPaymentFields(data)
+        && billBudgetValid(data)
+        && billPaymentValid(data)
         && isValidAttachedDocuments(data)
         && isValidAccountingLink(data)
         && isValidAccountLink(data)
-        && isValidAICaptureMetadata(data);
+        && billCaptureValid(data);
     }
     function wsValidSubCreate(data) {
       return data.keys().hasOnly([
