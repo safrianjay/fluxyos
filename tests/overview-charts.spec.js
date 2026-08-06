@@ -6,7 +6,7 @@
  * accounts. See docs/DESIGN_SYSTEM.md §4a and QA_CHECKLIST.md item 17a.
  */
 const { test, expect } = require('@playwright/test');
-const { installTrialPaywallBypass } = require('./qa-helpers.js');
+const { installTrialPaywallBypass, installLearnPromoterBypass } = require('./qa-helpers.js');
 
 const TREND_CARDS = ['net-profit-card', 'total-income-card', 'total-expenses-card', 'gross-margin-card'];
 const DONUT_CARDS = ['expense-breakdown-card', 'bank-distribution-card'];
@@ -19,6 +19,7 @@ const parseRp = (text) => {
 
 async function boot(page, mode = 'this_month', width = 1440) {
     await installTrialPaywallBypass(page);
+    await installLearnPromoterBypass(page);
     await page.setViewportSize({ width, height: 1000 });
     await page.goto(`/dashboard?period=${mode}`);
     await page.waitForSelector('[data-kpi-nav="profit"]', { timeout: 25_000 });

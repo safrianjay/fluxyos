@@ -254,25 +254,7 @@
                             <p class="chart-footnote">Cash flow is estimated from FluxyOS records only and may not reflect actual bank balance.</p>
                         </section>
 
-                        <!-- 3. Net profit -->
-                        <section id="net-profit-card" class="overview-chart-panel chart-card" data-tour-target="dashboard-net-profit">
-                            <div class="chart-card-header">
-                                <div>
-                                    <h2 class="chart-title">Net profit</h2>
-                                    <p class="chart-subtitle">What was left after every expense, period by period</p>
-                                </div>
-                                <div class="chart-legend">
-                                    <span class="legend-item"><span class="legend-dot legend-dot-current"></span> Current</span>
-                                    <span class="legend-item"><span class="legend-dot legend-dot-prior"></span> Prior</span>
-                                </div>
-                            </div>
-                            <div data-chart-head></div>
-                            <div id="net-profit-chart" class="chart-plot" data-chart-plot aria-live="polite">
-                                <div class="chart-loading">Loading net profit...</div>
-                            </div>
-                        </section>
-
-                        <!-- 4. Total income + Total expenses -->
+                        <!-- 3. Total income + Total expenses -->
                         <div class="overview-chart-row-2">
                             <section id="total-income-card" class="chart-card">
                                 <div class="chart-card-header">
@@ -301,7 +283,7 @@
                             </section>
                         </div>
 
-                        <!-- 5. Gross profit margin + the two distribution donuts -->
+                        <!-- 4. Gross profit margin + the two distribution donuts -->
                         <div class="overview-chart-row-3">
                             <section id="gross-margin-card" class="chart-card">
                                 <div class="chart-card-header">
@@ -340,6 +322,24 @@
                                 </div>
                             </section>
                         </div>
+
+                        <!-- 5. Net profit -->
+                        <section id="net-profit-card" class="overview-chart-panel chart-card" data-tour-target="dashboard-net-profit">
+                            <div class="chart-card-header">
+                                <div>
+                                    <h2 class="chart-title">Net profit</h2>
+                                    <p class="chart-subtitle">What was left after every expense, period by period</p>
+                                </div>
+                                <div class="chart-legend">
+                                    <span class="legend-item"><span class="legend-dot legend-dot-current"></span> Current</span>
+                                    <span class="legend-item"><span class="legend-dot legend-dot-prior"></span> Prior</span>
+                                </div>
+                            </div>
+                            <div data-chart-head></div>
+                            <div id="net-profit-chart" class="chart-plot" data-chart-plot aria-live="polite">
+                                <div class="chart-loading">Loading net profit...</div>
+                            </div>
+                        </section>
 
 
                         <!-- 6. Tabs + Requires-your-attention -->

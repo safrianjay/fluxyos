@@ -171,7 +171,15 @@
       "Bash(grep -nE \"^#{3,4} \" docs/data-model/commerce.md)",
       "Bash(grep -nE \"^#{1,3} \" docs/ROADMAP.md)",
       "Bash(perl -0pi -e 's/FluxyOS is a multi-page financial operations platform \\\\\\(static HTML \\\\+ vanilla JS \\\\+ Firebase Firestore\\\\\\)\\\\./FluxyOS is a multi-page Finance Operating System — a double-entry accounting kernel with operational modules feeding it \\(static HTML + vanilla JS + Firebase Firestore\\). See docs\\\\/PRODUCT_STRATEGY.md for scope./' docs/QA_CHECKLIST.md)",
-      "Bash(perl -0pi -e 's/FluxyOS is a Bahasa-first financial operations platform for Indonesian SMBs/FluxyOS is a Bahasa-first Finance Operating System for Indonesian SMBs — a double-entry accounting kernel with operational modules feeding it/' docs/ACCOUNTING_EXPERT_INTERVIEW_GUIDE.md)"
+      "Bash(perl -0pi -e 's/FluxyOS is a Bahasa-first financial operations platform for Indonesian SMBs/FluxyOS is a Bahasa-first Finance Operating System for Indonesian SMBs — a double-entry accounting kernel with operational modules feeding it/' docs/ACCOUNTING_EXPERT_INTERVIEW_GUIDE.md)",
+      "Bash(echo \"OVERVIEW_CHARTS_EXIT=$?\")",
+      "Bash(echo \"WITH_MY_CHANGE_EXIT=$?\")",
+      "Bash(perl -0pi -e \"s/module\\\\.exports = \\\\{ installTrialPaywallBypass, dismissDuplicateDialogIfPresent \\\\};/module.exports = { installTrialPaywallBypass, installLearnPromoterBypass, dismissDuplicateDialogIfPresent };/\" tests/qa-helpers.js)",
+      "Bash(perl -0pi -e \"s/const \\\\{ installTrialPaywallBypass \\\\} = require\\\\\\('\\\\.\\\\/qa-helpers\\\\.js'\\\\\\);/const { installTrialPaywallBypass, installLearnPromoterBypass } = require\\('.\\\\/qa-helpers.js'\\);/\" tests/overview-charts.spec.js)",
+      "Bash(perl -0pi -e \"s/\\(async function boot\\\\\\(page, mode = 'this_month', width = 1440\\\\\\) \\\\{\\\\n    await installTrialPaywallBypass\\\\\\(page\\\\\\);\\)/\\\\$1\\\\n    await installLearnPromoterBypass\\\\\\(page\\\\\\);/\" tests/overview-charts.spec.js)",
+      "Bash(node --check tests/qa-helpers.js)",
+      "Bash(node --check tests/overview-charts.spec.js)",
+      "Bash(sips -Z 1400 /tmp/overview-order.png --out /tmp/overview-small.png)"
     ]
   },
   "hooks": {

@@ -30,6 +30,52 @@ async function installTrialPaywallBypass(page) {
 }
 
 /**
+ * Neutralize the platform-learning promoter overlay.
+ *
+ * `platform-learning.js` injects `#fluxy-learn-promoter-overlay` — a FIXED,
+ * full-viewport element at `z-index: 80` with `pointer-events: auto` — to
+ * promote the product tour. It therefore intercepts every hover on the page
+ * until dismissed, which is correct product behaviour and fatal to any spec
+ * that hovers a chart.
+ *
+ * The failure is timing-dependent, which is what makes it insidious: a spec
+ * that reaches its target before the promoter renders passes, and the same
+ * spec fails once anything above the target gets slower or taller. Moving the
+ * Net profit card below the donut row on the Overview page was enough to flip
+ * `overview-charts.spec.js` from green to red without touching the chart code.
+ *
+ * Same contract as `installTrialPaywallBypass`: call before the first goto.
+ * Runs at document-start and keeps stripping the overlay as it is re-injected.
+ */
+async function installLearnPromoterBypass(page) {
+    await page.addInitScript(() => {
+        // Suppress with CSS, not DOM removal. `platform-learning.js` re-creates
+        // the overlay, and a MutationObserver that deletes it simply loses the
+        // race — measured: the element was still at the hover point on every
+        // attempt. A stylesheet rule applies to whatever matches, whenever it
+        // is created, so there is no race to lose.
+        const CSS = `#fluxy-learn-promoter-overlay,
+                     #fluxy-learn-promoter-popover,
+                     .fluxy-tour-overlay,
+                     .fluxy-learn-promoter-overlay,
+                     .fluxy-learn-promoter-popover {
+                         display: none !important;
+                         pointer-events: none !important;
+                         visibility: hidden !important;
+                     }`;
+        const inject = () => {
+            if (document.getElementById('qa-learn-promoter-bypass')) return;
+            const style = document.createElement('style');
+            style.id = 'qa-learn-promoter-bypass';
+            style.textContent = CSS;
+            (document.head || document.documentElement).appendChild(style);
+        };
+        inject();
+        document.addEventListener('DOMContentLoaded', inject);
+    });
+}
+
+/**
  * Answer the duplicate review dialog if it appears (docs/DUPLICATE_PREVENTION.md).
  *
  * The shared QA account accumulates records across runs, so a spec that creates
@@ -70,4 +116,4 @@ async function dismissDuplicateDialogIfPresent(page, { timeout = 15_000, settled
     return true;
 }
 
-module.exports = { installTrialPaywallBypass, dismissDuplicateDialogIfPresent };
+module.exports = { installTrialPaywallBypass, installLearnPromoterBypass, dismissDuplicateDialogIfPresent };
