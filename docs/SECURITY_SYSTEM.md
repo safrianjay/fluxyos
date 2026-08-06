@@ -447,6 +447,19 @@ Order matters: **deploy the app code → `firebase deploy --only storage` →
 revoke tokens → `scripts/clear-receipt-urls.js`.** Revoking before the code is
 live breaks previews for users mid-session.
 
+**Executed 2026-08-07.** Of 191 objects in the production bucket, **151 were
+publicly reachable** — every legacy receipt (25/25), 116 documents and 10 bank
+statements. All 151 tokens revoked; a re-scan reports 0. Verified independently
+by unauthenticated HTTP GET against a sample of each group and against the URL
+captured before the fix: all now **403** (that URL returned 200 and the full
+file beforehand). 59 transactions carrying a `receipt_url` were cleared; re-scan
+reports 0.
+
+Note when auditing: revocation leaves the `firebaseStorageDownloadTokens`
+metadata KEY present with an empty value. Grepping for the key name therefore
+looks like a live token and is misleading — check the value, or just make an
+unauthenticated request, which is the only test that means anything.
+
 ---
 
 ## 12. Implementation Order
