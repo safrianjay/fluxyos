@@ -672,6 +672,10 @@ class DataService {
         const isForeign = currency !== 'IDR';
         const outstanding = this._billOutstanding(bill);
         if (!(outstanding > 0)) throw new Error('This bill is already fully paid.');
+        // The journal posts into the PAYMENT date's period. Check it before
+        // building the batch, so a closed month says so instead of surfacing
+        // as an opaque permission error from the journals rule.
+        await this._assertPayablePeriod(userId, paymentDate);
 
         // Foreign-currency bills: full payment only (partial FX is ambiguous), and
         // the caller supplies the Rupiah amount actually paid — that IDR amount is
@@ -783,7 +787,11 @@ class DataService {
             source: 'dashboard',
             created_at: serverTimestamp()
         });
-        await batch.commit();
+        try {
+            await batch.commit();
+        } catch (e) {
+            throw this._explainWriteFailure(e, 'This payment');
+        }
         return { id: billId, transactionId: txRef.id, amount, fullyPaid, outstanding_amount: newOutstanding };
     }
 
@@ -3741,6 +3749,59 @@ class DataService {
     // A closed book must not be mutated: the user reopens the period first (or the
     // correction would silently land in a different open period, mismatching the
     // source). Throws a clear message instead of a raw Firestore permission error.
+    // The period a PAYMENT posts into is the payment date's, not the bill's. A
+    // bill accrued in an open month can still be paid into a closed one, and the
+    // journals rule (wsPeriodOpen) rejects that write — as raw
+    // "Missing or insufficient permissions", which tells the user nothing.
+    // Checking here turns it into a sentence they can act on.
+    async _assertPayablePeriod(userId, paymentDate) {
+        const date = paymentDate
+            ? (paymentDate.toDate ? paymentDate.toDate()
+                : (paymentDate.seconds ? new Date(paymentDate.seconds * 1000) : new Date(paymentDate)))
+            : new Date();
+        if (Number.isNaN(date.getTime())) return;
+        const pk = acctPeriodKey(date);
+        let period;
+        try {
+            period = await this.getPeriod(userId, pk);
+        } catch (_) {
+            return; // unreadable period state must not block a legitimate payment
+        }
+        if (period && (period.status === 'closed' || period.status === 'locked')) {
+            throw glError(
+                period.status === 'locked' ? GL.PERIOD_LOCKED : GL.PERIOD_CLOSED,
+                `The payment date falls in a ${period.status} accounting period (${pk}). Reopen the period, or choose a payment date inside an open one.`,
+                { period_key: pk }
+            );
+        }
+    }
+
+    // Firestore reports every rejected write in a batch the same way: one opaque
+    // "Missing or insufficient permissions". For a bill payment that batch spans
+    // the transaction, the bill, the journal, ledger_balances and the audit log,
+    // so the bare message sends people looking in the wrong place. Name the
+    // realistic causes instead — and say plainly when the browser, not the
+    // server, is what refused the write.
+    _explainWriteFailure(error, what) {
+        const code = String(error?.code || '');
+        const message = String(error?.message || '');
+        const denied = code === 'permission-denied' || /insufficient permissions/i.test(message);
+        const blocked = code === 'unavailable'
+            || /ERR_BLOCKED_BY_CLIENT|Failed to fetch|network error|client is offline/i.test(message);
+
+        if (blocked) {
+            return new Error(`${what} could not reach the database. An ad blocker or browser shield is blocking firestore.googleapis.com — allow it for this site and try again.`);
+        }
+        if (!denied) return error;
+
+        const explained = new Error(
+            `${what} was rejected by the database. The usual causes are a closed accounting period for the payment date, a role without permission to post, or a browser shield blocking firestore.googleapis.com.`
+        );
+        explained.code = code || 'permission-denied';
+        explained.cause = error;
+        return explained;
+    }
+
     async _assertEditablePeriod(userId, existing) {
         let pk = null;
         if (existing && existing.journal_ref) {
