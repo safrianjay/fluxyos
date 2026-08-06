@@ -2418,7 +2418,9 @@ service cloud.firestore {
           && isValidAccountLink(request.resource.data)
           && isValidAICaptureMetadata(request.resource.data);
         allow update: if isOwner(userId)
-          && request.resource.data.keys().hasOnly([
+          && (isValidBillPayTransition(request.resource.data, resource.data)
+            || (
+          request.resource.data.keys().hasOnly([
             'amount',
             'vendor_name',
             'category',
@@ -2476,7 +2478,8 @@ service cloud.firestore {
           && isValidBillPaymentFields(request.resource.data)
           && isValidAttachedDocuments(request.resource.data)
           && isValidAccountLink(request.resource.data)
-          && isValidAICaptureMetadata(request.resource.data);
+          && isValidAICaptureMetadata(request.resource.data)
+            ));
         allow delete: if false;
       }
 
@@ -3335,6 +3338,36 @@ service cloud.firestore {
         && isValidTaxDocFields(data)
         && isValidAICaptureMetadata(data);
     }
+    // A bill PAYMENT touches a fixed, tiny set of keys. It is evaluated FIRST and
+    // deliberately WITHOUT the full bill update validator.
+    //
+    // wsValidBillUpdate is a 57-key hasOnly plus ten sub-validators, and Firestore
+    // re-validates the ENTIRE resulting document on an update — so a real
+    // production bill carrying budget + tax + withholding + attachment + currency
+    // fields exhausts the rules evaluation budget and comes back as
+    // "Missing or insufficient permissions". Emulator fixtures are lean enough to
+    // pass, which is why this only ever bites in production.
+    //
+    // Same failure and same remedy as isValidInvoicePaidTransition (invoice
+    // open -> paid, 2026-07-14). Keep this validator flat: no helper calls.
+    function isValidBillPayTransition(data, prev) {
+      return data.diff(prev).affectedKeys().hasOnly([
+          'amount_paid', 'outstanding_amount', 'payment_status',
+          'budget_impact_status', 'linked_transaction_id',
+          'amount_paid_idr', 'fx_rate', 'fx_rate_date',
+          'updated_at', 'updated_by'
+        ])
+        && data.payment_status in ['paid', 'partial']
+        && data.amount_paid is number && data.amount_paid >= 0
+        && data.outstanding_amount is number && data.outstanding_amount >= 0
+        && (!('budget_impact_status' in data) || data.budget_impact_status in ['committed', 'released', 'converted_to_actual'])
+        && (!('linked_transaction_id' in data) || data.linked_transaction_id == null || (data.linked_transaction_id is string && data.linked_transaction_id.size() <= 120))
+        && (!('amount_paid_idr' in data) || data.amount_paid_idr == null || (data.amount_paid_idr is number && data.amount_paid_idr >= 0))
+        && (!('fx_rate' in data) || data.fx_rate == null || data.fx_rate is number)
+        && (!('fx_rate_date' in data) || data.fx_rate_date == null || (data.fx_rate_date is string && data.fx_rate_date.size() <= 20))
+        && data.updated_by is string && data.updated_by.size() <= 128;
+    }
+
     function wsValidBillUpdate(data, existingData) {
       return data.keys().hasOnly([
           'amount', 'vendor_name', 'category', 'type', 'status', 'icon', 'timestamp', 'date', 'due_date',
@@ -3534,7 +3567,9 @@ service cloud.firestore {
       match /bills/{billId} {
         allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
         allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && wsValidBillCreate(request.resource.data);
-        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && wsValidBillUpdate(request.resource.data, resource.data);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && (isValidBillPayTransition(request.resource.data, resource.data)
+            || wsValidBillUpdate(request.resource.data, resource.data));
         allow delete: if false;
       }
       match /subscriptions/{subscriptionId} {

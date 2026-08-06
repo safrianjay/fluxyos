@@ -797,17 +797,21 @@ class DataService {
 
     // Pay a bill's full remaining balance (works for unpaid and partially-paid
     // bills). Kept as the single-bill entry point used by the Bill Details drawer.
-    async markBillPaid(userId, billId, { paymentDate = null, cashFields = null, amountPaidIdr = null, fxRate = null, fxRateDate = null, foreignAmount = null } = {}) {
+    async markBillPaid(userId, billId, { paymentDate = null, cashFields = null, amountPaidIdr = null, fxRate = null, fxRateDate = null, foreignAmount = null, payAmount = null } = {}) {
         if (!userId || !billId) throw new Error('userId and billId required');
         const bill = await this.getBillById(userId, billId);
         if (!bill) throw new Error('Bill not found.');
         const outstanding = this._billOutstanding(bill);
         if (!(outstanding > 0)) throw new Error('This bill is already marked as paid.');
-        // Foreign bills may be paid partially — the caller passes the FOREIGN amount
-        // settled this time; IDR bills always pay the full remaining balance here.
+        // Partial payments. The caller may settle less than the whole balance;
+        // omitting the amount settles all of it, which is what every existing
+        // caller expects. The figure is in the BILL's currency — `foreignAmount`
+        // for a USD/SGD bill, `payAmount` in rupiah for an IDR one.
+        // _payBillOnce enforces > 0 and <= outstanding.
         const isForeign = bill.currency && bill.currency !== 'IDR';
-        const payAmount = (isForeign && foreignAmount != null) ? foreignAmount : outstanding;
-        return this._payBillOnce(userId, bill, payAmount, { paymentDate, cashFields, amountPaidIdr, fxRate, fxRateDate });
+        const requested = isForeign ? foreignAmount : payAmount;
+        const settleAmount = requested != null ? requested : outstanding;
+        return this._payBillOnce(userId, bill, settleAmount, { paymentDate, cashFields, amountPaidIdr, fxRate, fxRateDate });
     }
 
     // Pay one or more bills in a single vendor-payment action. `payments` is
