@@ -886,17 +886,15 @@
                                 <p class="text-[14px] text-gray-500 mt-1">${escapeHtml(createdAt)}</p>
                             </div>` : ''}
                         </div>
-                    </section>
-
-                    <section class="fluxy-drawer-section">
-                        <h3 class="fluxy-drawer-section-title">Payment Readiness</h3>
-                        ${isPaid ? `
-                        <div class="fluxy-drawer-callout fluxy-drawer-callout--success">
-                            <span>Paid and recorded as a Ledger expense.${ledgerHref ? ` <a href="${ledgerHref}" class="inline-flex items-center gap-1 font-semibold hover:underline">View in Ledger <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 18 6-6-6-6"></path></svg></a>` : ''}</span>
-                        </div>` : `
-                        <div class="fluxy-drawer-callout fluxy-drawer-callout--info">
-                            <span>This bill has not been marked as paid. Marking it paid records an expense in the Ledger (category and budget inherited from this bill) and moves it from committed to actual spend.</span>
-                        </div>`}
+                        ${window.FluxyDrawerSummary ? window.FluxyDrawerSummary.readiness(isPaid ? {
+                            tone: 'good',
+                            label: 'Paid and recorded in the Ledger',
+                            detail: ledgerHref ? `<a href="${ledgerHref}">View the ledger entry</a>` : ''
+                        } : {
+                            tone: 'info',
+                            label: 'Not yet marked as paid',
+                            detail: 'Marking it paid posts an expense to the Ledger — category and budget are inherited from this bill, moving it from committed to actual spend.'
+                        }) : ''}
                     </section>
 
                     <div id="bill-attachments"></div>

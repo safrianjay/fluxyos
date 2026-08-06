@@ -1834,6 +1834,14 @@
         "Original": "Asli",
         "Not a duplicate": "Bukan duplikat",
         "Add note": "Tambah catatan",
+        // Detail drawers — readiness folded into the Summary card.
+        "Not yet marked as paid": "Belum ditandai lunas",
+        "Marking it paid posts an expense to the Ledger — category and budget are inherited from this bill, moving it from committed to actual spend.": "Menandainya lunas memposting beban ke Ledger — kategori dan anggaran diwarisi dari tagihan ini, memindahkannya dari komitmen ke realisasi.",
+        "Paid and recorded in the Ledger": "Lunas dan tercatat di Ledger",
+        "View the ledger entry": "Lihat catatan ledger",
+        "Cash impact and budget": "Dampak kas dan anggaran",
+        "No reconciliation flags": "Tidak ada tanda rekonsiliasi",
+        "This record looks clean.": "Catatan ini terlihat bersih.",
         // Bill partial payment (Record payment modal).
         "Amount to pay": "Jumlah yang dibayar",
         "Defaults to the full balance. Enter less for a partial payment.": "Default ke seluruh sisa tagihan. Isi lebih kecil untuk pembayaran sebagian.",
@@ -4853,6 +4861,9 @@
           id: function (m) { return 'dari anggaran periode terpakai · lebih ' + m[1]; } },
         { re: /^(.+) ([\d.,]+%) of period budget$/,
           id: function (m) { var s = translateString(m[1]); return (s !== null ? s : m[1]) + ' ' + m[2] + ' dari anggaran periode'; } },
+
+        { re: /^(\d+) reconciliation flags?$/,
+          id: function (m) { return m[1] + ' tanda rekonsiliasi'; } },
 
         // ── bill partial payment ─────────────────────────────────────────────
         { re: /^That is more than the (Rp[\d.,]+) still owed\.$/,

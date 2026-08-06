@@ -2646,6 +2646,8 @@
                         <span class="inline-flex items-center rounded-md border px-2 py-1 text-[10px] font-bold uppercase ${getTypeBadgeClass(getTransactionType(row))}">${escapeHtml(getTransactionType(row))}</span>
                     </div>
                 </div>
+                <section class="fluxy-drawer-section">
+                <h3 class="fluxy-drawer-section-title">Summary</h3>
                 <div class="grid grid-cols-2 gap-4">
                     <div><p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Transaction Date</p><p class="text-[14px] font-bold text-gray-900">${formatDetailDate(row.timestamp)}</p></div>
                     <div><p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Category</p><p class="text-[14px] font-bold text-gray-900">${escapeHtml(row.category || '—')}</p></div>
@@ -2653,24 +2655,24 @@
                     <div><p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Uploaded</p><p class="text-[14px] font-bold text-gray-900">${formatDetailDate(row.created_at, { year: 'numeric', month: 'short', day: 'numeric' })}</p></div>
                     <div class="col-span-2"><p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Source</p><p class="text-[14px] font-bold text-gray-900">${escapeHtml(sourceText)}</p></div>
                     ${isVoided ? `<div class="col-span-2 rounded-xl border border-gray-200 bg-gray-50 p-4"><p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-1">Void reason</p><p class="text-[14px] font-semibold text-gray-700">${escapeHtml(row.void_reason || '—')}</p></div>` : ''}
+                    ${!isVoided && window.FluxyDrawerSummary ? (() => {
+                        // Cash impact + budget allocation used to be their own grey
+                        // card below the summary. They describe THIS transaction's
+                        // readiness, so they belong at the foot of the summary grid.
+                        const cb = getLedgerCashBadge(row);
+                        const bb = window.__resolveLedgerBudgetBadge?.(row);
+                        const chip = (b) => `<span class="inline-flex items-center rounded border px-2 py-1 text-[11px] font-bold uppercase ${b.cls}">${escapeHtml(b.label)}</span>`;
+                        return `<div class="col-span-2">${window.FluxyDrawerSummary.readiness({
+                            tone: 'info',
+                            label: 'Cash impact and budget',
+                            detail: 'Change these from "Edit transaction".',
+                            chips: [chip(cb), bb ? chip(bb) : null]
+                        })}</div>`;
+                    })() : ''}
                 </div>
+                </section>
                 <div id="tx-detail-invoice-card"></div>
                 <div id="tx-detail-attachments"></div>
-                ${!isVoided ? (() => {
-                    const cb = getLedgerCashBadge(row);
-                    const bb = window.__resolveLedgerBudgetBadge?.(row);
-                    return `<div class="rounded-xl border border-gray-200 bg-gray-50/60 p-4 space-y-3">
-                        <div>
-                            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Cash impact</p>
-                            <span class="mt-1 inline-flex items-center rounded border px-2 py-1 text-[11px] font-bold uppercase ${cb.cls}">${escapeHtml(cb.label)}</span>
-                        </div>
-                        ${bb ? `<div>
-                            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Budget allocation</p>
-                            <span class="mt-1 inline-flex items-center rounded border px-2 py-1 text-[11px] font-bold uppercase ${bb.cls}">${escapeHtml(bb.label)}</span>
-                        </div>` : ''}
-                        <p class="text-[11px] text-gray-400">Change these from "Edit transaction".</p>
-                    </div>`;
-                })() : ''}
                 <div id="tx-detail-journal-card"></div>
             `;
 

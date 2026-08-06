@@ -1137,6 +1137,61 @@ main > header {
 .fluxy-drawer-callout--warning { background: #FFFBEB; border: 1px solid #FEF3C7; color: #92400E; }
 .fluxy-drawer-callout--success { background: #ECFDF5; border: 1px solid #D1FAE5; color: #065F46; }
 
+/* Summary readiness strip — the status a detail drawer used to give its own
+   card. Folded into the foot of the Summary section instead: readiness is an
+   attribute OF the summary, not a peer of it, and a whole card for one line of
+   status made every detail drawer top-heavy.
+
+   Deliberately quieter than .fluxy-drawer-callout — a hairline rule, a tone dot
+   and 12px text rather than a filled panel. It has to stay readable without
+   competing with the figures above it. */
+.fluxy-drawer-readiness {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #F3F4F6;
+}
+.fluxy-drawer-readiness-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #9CA3AF;
+    flex-shrink: 0;
+    margin-top: 5px;
+}
+.fluxy-drawer-readiness-body { min-width: 0; flex: 1; }
+.fluxy-drawer-readiness-label {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1.35;
+}
+.fluxy-drawer-readiness-detail {
+    margin: 2px 0 0;
+    font-size: 12px;
+    font-weight: 500;
+    color: #6B7280;
+    line-height: 1.45;
+}
+.fluxy-drawer-readiness-detail a { font-weight: 600; color: inherit; text-decoration: underline; }
+.fluxy-drawer-readiness--good .fluxy-drawer-readiness-dot { background: #16A34A; }
+.fluxy-drawer-readiness--info .fluxy-drawer-readiness-dot { background: #2563EB; }
+.fluxy-drawer-readiness--warn .fluxy-drawer-readiness-dot { background: #D97706; }
+/* Inline badge row (cash impact / budget allocation) sitting in the strip. */
+.fluxy-drawer-readiness-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+/* Narrow drawers stack the summary grid, so the strip must not add width. */
+@media (max-width: 420px) {
+    .fluxy-drawer-readiness { gap: 8px; }
+}
+
 /* Footer — sticky. Secondary left, primary right → identical everywhere. */
 .fluxy-drawer-footer {
     flex-shrink: 0;

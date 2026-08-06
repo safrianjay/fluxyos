@@ -860,52 +860,55 @@
             const status = getRowStatus(row);
             const statusCls = status === 'Missing Receipt' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-50 text-emerald-700';
             const flags = flagsById.get(row.id) || [];
-            const flagsHtml = flags.length
-                ? `<div class="flex flex-wrap gap-1.5">${flags.map(f => `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-700">${escapeHtml(f)}</span>`).join('')}</div>`
-                : '<p class="text-[12px] text-gray-400">No flags — looks clean.</p>';
-
             document.getElementById('revenue-drawer-content').innerHTML = `
                 <div class="space-y-5">
                     <div><span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${statusCls}">${escapeHtml(status)}</span></div>
 
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-1">Channel</p>
-                            <p class="text-[14px] font-bold text-gray-900">${escapeHtml(getChannelName(row))}</p>
+                    <!-- One Summary card. Channel/Category/Amount/Date/Type were three
+                         rule-separated blocks, and Reconciliation Flags a fourth — the
+                         flags describe this record's readiness, so they close the same
+                         card instead of opening another. -->
+                    <section class="fluxy-drawer-section">
+                        <h3 class="fluxy-drawer-section-title">Summary</h3>
+                        <div class="fluxy-drawer-field-grid">
+                            <div>
+                                <p class="fluxy-drawer-label">Channel</p>
+                                <p class="text-[14px] font-bold text-gray-900 mt-1">${escapeHtml(getChannelName(row))}</p>
+                            </div>
+                            <div>
+                                <p class="fluxy-drawer-label">Category</p>
+                                <p class="text-[14px] text-gray-700 mt-1">${escapeHtml(row.category || '—')}</p>
+                            </div>
+                            <div>
+                                <p class="fluxy-drawer-label">Amount</p>
+                                <p class="text-xl font-bold text-gray-900 tabular-nums mt-1">${formatCurrencyIDR(row.amount)}</p>
+                            </div>
+                            <div>
+                                <p class="fluxy-drawer-label">Date</p>
+                                <p class="text-[14px] text-gray-700 mt-1">${escapeHtml(dateStr)}</p>
+                            </div>
+                            <div>
+                                <p class="fluxy-drawer-label">Type</p>
+                                <p class="text-[14px] text-gray-700 mt-1">${escapeHtml(row.type || 'income')}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-1">Category</p>
-                            <p class="text-[14px] text-gray-700">${escapeHtml(row.category || '—')}</p>
-                        </div>
-                    </div>
+                        ${window.FluxyDrawerSummary ? window.FluxyDrawerSummary.readiness(flags.length ? {
+                            tone: 'warn',
+                            label: `${flags.length} reconciliation flag${flags.length === 1 ? '' : 's'}`,
+                            chips: flags.map(f => `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-700">${escapeHtml(f)}</span>`)
+                        } : {
+                            tone: 'good',
+                            label: 'No reconciliation flags',
+                            detail: 'This record looks clean.'
+                        }) : ''}
+                    </section>
 
-                    <div class="border-t border-gray-100 pt-4">
-                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-1">Amount</p>
-                        <p class="text-xl font-bold font-mono text-gray-900">${formatCurrencyIDR(row.amount)}</p>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-1">Date</p>
-                            <p class="text-[14px] text-gray-700">${escapeHtml(dateStr)}</p>
-                        </div>
-                        <div>
-                            <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-1">Type</p>
-                            <p class="text-[14px] text-gray-700">${escapeHtml(row.type || 'income')}</p>
-                        </div>
-                    </div>
-
-                    <div class="border-t border-gray-100 pt-4">
-                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-2">Reconciliation Flags</p>
-                        ${flagsHtml}
-                    </div>
-
-                    <div class="border-t border-gray-100 pt-4">
-                        <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-2">Source</p>
-                        <div class="bg-gray-50 rounded-lg p-3 text-[12px] text-gray-500 leading-relaxed">
+                    <section class="fluxy-drawer-section">
+                        <h3 class="fluxy-drawer-section-title">Source</h3>
+                        <p class="text-[12px] text-gray-500 leading-relaxed">
                             Channel is derived from the vendor name. Once an integration is connected, real connector metadata will replace this inference.
-                        </div>
-                    </div>
+                        </p>
+                    </section>
                     <div id="revenue-journal-card"></div>
                 </div>
             `;

@@ -354,6 +354,47 @@ window.showReasonDialog = function(options = {}) {
     });
 };
 
+/* ── FluxyDrawerSummary — the readiness strip inside a Summary card ────
+   Every financial detail drawer (Bill, Transaction, Revenue, Invoice) used to
+   give its status its OWN section: a titled card wrapping one line of text.
+   Three separate cards, three different shapes, and a Summary card left
+   lopsided above them.
+
+   Readiness is an attribute of the summary, not a peer of it, so it now lives
+   at the foot of the Summary section — one shared renderer so the four pages
+   cannot drift apart again.
+
+   FluxyDrawerSummary.readiness({ tone, label, detail, chips })
+     tone   'good' | 'info' | 'warn'   → dot colour only
+     label  short status sentence      → required
+     detail optional second line; may contain caller-escaped HTML (links)
+     chips  optional array of ready-made badge HTML (cash impact, budget)      */
+window.FluxyDrawerSummary = (function () {
+    function esc(v) {
+        return String(v == null ? '' : v)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function readiness(options) {
+        options = options || {};
+        if (!options.label) return '';
+        var tone = ['good', 'info', 'warn'].indexOf(options.tone) >= 0 ? options.tone : 'info';
+        var chips = Array.isArray(options.chips) ? options.chips.filter(Boolean) : [];
+        return '<div class="fluxy-drawer-readiness fluxy-drawer-readiness--' + tone + '">'
+            + '<span class="fluxy-drawer-readiness-dot" aria-hidden="true"></span>'
+            + '<div class="fluxy-drawer-readiness-body">'
+            + '<p class="fluxy-drawer-readiness-label">' + esc(options.label) + '</p>'
+            // `detail` is trusted HTML so a caller can inline a link; every
+            // caller escapes its own interpolations first.
+            + (options.detail ? '<p class="fluxy-drawer-readiness-detail">' + options.detail + '</p>' : '')
+            + (chips.length ? '<div class="fluxy-drawer-readiness-chips">' + chips.join('') + '</div>' : '')
+            + '</div></div>';
+    }
+
+    return { readiness: readiness, escape: esc };
+})();
+
 /* ── FluxyAmountInput — live Rupiah thousands separators ───────────────
    One formatter for every editable amount field. Two things it does that a
    naive `value = format(value)` does not:
