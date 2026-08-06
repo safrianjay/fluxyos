@@ -82,8 +82,32 @@
         </div>
     </main>
 
+    <div id="sub-drawer-backdrop" class="fixed inset-0 bg-black/50 z-40 hidden"></div>
+
+    <!-- Subscription Detail Drawer. Same shell, same Summary card and the same
+         shared attachment/journal components as Bill, Revenue and Transaction —
+         "Manage" used to be a button with nothing behind it. -->
+    <div id="sub-drawer" class="fixed top-0 right-0 h-full w-full max-w-[480px] bg-white fluxy-drawer-floating z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+        <div class="fluxy-drawer-header">
+            <div>
+                <h2 class="fluxy-drawer-title">Subscription Details</h2>
+                <p id="sub-drawer-desc" class="fluxy-drawer-desc">Review the recurring charge</p>
+            </div>
+            <button id="sub-drawer-close-btn" class="fluxy-drawer-close" aria-label="Close">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div id="sub-drawer-content" class="fluxy-drawer-body"></div>
+        <div class="fluxy-drawer-footer">
+            <button id="sub-drawer-close-footer" class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Close</button>
+            <button id="sub-cancel-btn" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--danger">Cancel subscription</button>
+        </div>
+    </div>
+
     <script src="assets/js/sidebar-loader.js"></script>
     <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/document-attachment.js"></script>
+    <script src="assets/js/journal-link-card.js"></script>
     <script src="assets/js/duplicate-guard.js"></script>
     <script src="assets/js/dashboard-i18n.js"></script>
     <script src="assets/js/fluxy-select.js"></script>
@@ -232,7 +256,7 @@
                 return;
             }
             body.innerHTML = subs.map(sub => `
-                <tr class="fluxy-table-row" data-subscription-id="${escapeHtml(sub.id)}">
+                <tr class="fluxy-table-row fluxy-table-row-clickable" data-action="review" data-subscription-id="${escapeHtml(sub.id)}">
                     <td class="fluxy-table-cell">
                         <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded bg-blue-50 flex items-center justify-center text-[14px]">
@@ -244,10 +268,10 @@
                     <td class="fluxy-table-cell fluxy-table-money font-bold">Rp${Number(sub.amount || 0).toLocaleString('id-ID')}</td>
                     <td class="fluxy-table-cell fluxy-table-cell-meta">${sub.renewal_date?.toDate().toLocaleDateString() || 'Next month'}</td>
                     <td class="fluxy-table-cell">
-                        <span class="fluxy-table-status fluxy-status-success">Active</span>
+                        <span class="fluxy-table-status ${sub.status === 'Cancelled' ? 'fluxy-status-neutral' : 'fluxy-status-success'}">${sub.status === 'Cancelled' ? 'Cancelled' : 'Active'}</span>
                     </td>
                     <td class="fluxy-table-cell fluxy-table-action">
-                        <button class="fluxy-table-action text-gray-400 hover:text-red-500 transition-colors">Manage</button>
+                        <button type="button" data-action="review" class="fluxy-table-action text-gray-400 hover:text-[#EA580C] transition-colors">Manage</button>
                     </td>
                 </tr>
             `).join('');
@@ -262,6 +286,161 @@
             allSubscriptions = await ds.getSubscriptions(user.uid);
             renderSubscriptions();
         };
+
+        // ---------- Subscription Detail drawer ----------
+        // Mirrors the Bill / Revenue / Transaction drawers: one Summary card
+        // (status chip, amount, fields, readiness), then the shared attachment
+        // and journal components.
+        let activeSubscription = null;
+
+        function subRenewalDisplay(sub) {
+            try {
+                const d = sub.renewal_date?.toDate?.();
+                return d ? d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Not scheduled';
+            } catch (_) { return 'Not scheduled'; }
+        }
+        function subCreatedDisplay(sub) {
+            try {
+                const d = sub.timestamp?.toDate?.();
+                return d ? d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+            } catch (_) { return ''; }
+        }
+
+        function openSubscriptionDrawer(sub) {
+            if (!sub) return;
+            activeSubscription = sub;
+            const cancelled = String(sub.status || '') === 'Cancelled';
+            const cycle = String(sub.billing_cycle || 'monthly');
+            const created = subCreatedDisplay(sub);
+
+            document.getElementById('sub-drawer-desc').textContent = cancelled
+                ? 'This subscription has been cancelled'
+                : 'Review the recurring charge';
+
+            document.getElementById('sub-drawer-content').innerHTML = `
+                <div class="fluxy-drawer-stack">
+                    <section class="fluxy-drawer-section fluxy-drawer-summary">
+                        <div class="fluxy-drawer-summary-head">
+                            <span class="fluxy-table-status ${cancelled ? 'fluxy-status-neutral' : 'fluxy-status-success'}">${cancelled ? 'Cancelled' : 'Active'}</span>
+                            <span class="inline-flex items-center rounded-md border border-gray-200 px-2 py-1 text-[10px] font-bold uppercase text-gray-500">${escapeHtml(cycle)}</span>
+                        </div>
+                        <div>
+                            <p class="fluxy-drawer-label">Amount</p>
+                            <p class="fluxy-drawer-summary-amount mt-1 ${cancelled ? 'text-gray-400 line-through' : ''}">Rp${Number(sub.amount || 0).toLocaleString('id-ID')}</p>
+                            <p class="fluxy-drawer-summary-amount-note">per ${escapeHtml(cycle === 'annual' ? 'year' : cycle === 'weekly' ? 'week' : cycle === 'quarterly' ? 'quarter' : 'month')}</p>
+                        </div>
+                        <div class="fluxy-drawer-field-grid">
+                            <div>
+                                <p class="fluxy-drawer-label">Service</p>
+                                <p class="text-[14px] font-bold text-gray-900 mt-1">${escapeHtml(sub.name || sub.vendor_name || 'Subscription')}</p>
+                            </div>
+                            <div>
+                                <p class="fluxy-drawer-label">Category</p>
+                                <p class="text-[14px] text-gray-700 mt-1">${escapeHtml(sub.category || 'SaaS')}</p>
+                            </div>
+                            <div>
+                                <p class="fluxy-drawer-label">Next renewal</p>
+                                <p class="text-[14px] ${cancelled ? 'text-gray-400' : 'text-gray-700'} mt-1">${escapeHtml(cancelled ? 'No further renewals' : subRenewalDisplay(sub))}</p>
+                            </div>
+                            ${created ? `<div>
+                                <p class="fluxy-drawer-label">Created</p>
+                                <p class="text-[14px] text-gray-500 mt-1">${escapeHtml(created)}</p>
+                            </div>` : ''}
+                        </div>
+                        ${window.FluxyDrawerSummary ? window.FluxyDrawerSummary.readiness(cancelled ? {
+                            tone: 'info',
+                            label: 'Cancelled — no longer renewing',
+                            detail: 'Charges already recorded stay in the Ledger. Cancelling is forward-looking; it does not reverse spend the business already incurred.'
+                        } : {
+                            tone: 'good',
+                            label: 'Active and recurring',
+                            detail: 'Each renewal is recorded as an expense in the Ledger, inheriting this category.'
+                        }) : ''}
+                    </section>
+
+                    <div id="sub-attachments"></div>
+                    <div id="sub-journal-card"></div>
+                </div>
+            `;
+
+            document.getElementById('sub-cancel-btn')?.classList.toggle('hidden', cancelled);
+            mountSubscriptionExtras(sub);
+            document.getElementById('sub-drawer-backdrop').classList.remove('hidden');
+            requestAnimationFrame(() => {
+                document.getElementById('sub-drawer').classList.remove('translate-x-full');
+            });
+        }
+
+        async function mountSubscriptionExtras(sub) {
+            const user = auth.currentUser;
+            if (!user) return;
+            const host = document.getElementById('sub-attachments');
+            if (host && window.FluxyDocumentAttachment) {
+                try {
+                    await window.FluxyDocumentAttachment.renderAttachmentsSection({
+                        hostEl: host, ds, userId: user.uid, record: sub,
+                        targetCollection: 'subscriptions', targetId: sub.id, role: 'invoice', sourceContext: 'subscription',
+                        onChange: () => window.loadSubscriptions?.()
+                    });
+                } catch (_) { host.innerHTML = ''; }
+            }
+            const jHost = document.getElementById('sub-journal-card');
+            if (jHost && window.FluxyJournalCard) {
+                try {
+                    await window.FluxyJournalCard.render({
+                        hostEl: jHost, ds, userId: user.uid, record: sub, context: 'subscription',
+                        isStale: () => activeSubscription?.id !== sub.id
+                    });
+                } catch (_) { jHost.innerHTML = ''; }
+            }
+        }
+
+        function closeSubscriptionDrawer() {
+            document.getElementById('sub-drawer').classList.add('translate-x-full');
+            document.getElementById('sub-drawer-backdrop').classList.add('hidden');
+            activeSubscription = null;
+        }
+
+        async function cancelActiveSubscription() {
+            const sub = activeSubscription;
+            const user = auth.currentUser;
+            if (!sub || !user) return;
+            // A reason is required: cancelling stops a recurring commitment, and
+            // the next person to look at the books will want to know why.
+            const reason = await window.showReasonDialog?.({
+                title: 'Cancel this subscription?',
+                body: 'It stops renewing from now on. Charges already recorded stay in the Ledger — cancelling does not reverse spend you already incurred.',
+                confirmLabel: 'Cancel subscription',
+                cancelLabel: 'Keep it',
+                tone: 'danger',
+                options: ['No longer needed', 'Switched provider', 'Too expensive', 'Duplicate subscription', 'Other']
+            });
+            if (!reason) return;
+            const btn = document.getElementById('sub-cancel-btn');
+            if (btn) { btn.disabled = true; btn.textContent = 'Cancelling…'; }
+            try {
+                await ds.cancelSubscription(user.uid, sub.id, reason);
+                window.showToast?.('Subscription cancelled. It will not renew again.', 'success');
+                closeSubscriptionDrawer();
+                await window.loadSubscriptions?.();
+            } catch (err) {
+                console.error('Cancel subscription failed:', err);
+                window.showToast?.(err?.message || 'Could not cancel this subscription.', 'error');
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Cancel subscription'; }
+            }
+        }
+
+        document.getElementById('sub-table-body')?.addEventListener('click', (e) => {
+            const row = e.target.closest('[data-subscription-id]');
+            if (!row || !e.target.closest('[data-action="review"]')) return;
+            const sub = allSubscriptions.find(s => s.id === row.dataset.subscriptionId);
+            if (sub) openSubscriptionDrawer(sub);
+        });
+        document.getElementById('sub-drawer-close-btn')?.addEventListener('click', closeSubscriptionDrawer);
+        document.getElementById('sub-drawer-close-footer')?.addEventListener('click', closeSubscriptionDrawer);
+        document.getElementById('sub-drawer-backdrop')?.addEventListener('click', closeSubscriptionDrawer);
+        document.getElementById('sub-cancel-btn')?.addEventListener('click', cancelActiveSubscription);
 
         document.getElementById('subscription-search-input')?.addEventListener('input', renderSubscriptions);
     </script>

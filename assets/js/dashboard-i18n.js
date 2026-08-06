@@ -1834,6 +1834,30 @@
         "Original": "Asli",
         "Not a duplicate": "Bukan duplikat",
         "Add note": "Tambah catatan",
+        // Subscription detail drawer.
+        "Subscription Details": "Detail Langganan",
+        "Review the recurring charge": "Tinjau tagihan berulang",
+        "This subscription has been cancelled": "Langganan ini sudah dibatalkan",
+        "Cancel subscription": "Batalkan langganan",
+        "Cancel this subscription?": "Batalkan langganan ini?",
+        "It stops renewing from now on. Charges already recorded stay in the Ledger — cancelling does not reverse spend you already incurred.": "Langganan berhenti diperpanjang mulai sekarang. Biaya yang sudah tercatat tetap di Ledger — pembatalan tidak membalik pengeluaran yang sudah terjadi.",
+        "Keep it": "Pertahankan",
+        "No longer needed": "Tidak diperlukan lagi",
+        "Switched provider": "Ganti penyedia",
+        "Too expensive": "Terlalu mahal",
+        "Duplicate subscription": "Langganan ganda",
+        "Subscription cancelled. It will not renew again.": "Langganan dibatalkan. Tidak akan diperpanjang lagi.",
+        "Could not cancel this subscription.": "Tidak dapat membatalkan langganan ini.",
+        "Cancellation reason is required.": "Alasan pembatalan wajib diisi.",
+        "This subscription is already cancelled.": "Langganan ini sudah dibatalkan.",
+        "Active and recurring": "Aktif dan berulang",
+        "Each renewal is recorded as an expense in the Ledger, inheriting this category.": "Setiap perpanjangan dicatat sebagai beban di Ledger, mewarisi kategori ini.",
+        "Cancelled — no longer renewing": "Dibatalkan — tidak diperpanjang lagi",
+        "Charges already recorded stay in the Ledger. Cancelling is forward-looking; it does not reverse spend the business already incurred.": "Biaya yang sudah tercatat tetap di Ledger. Pembatalan berlaku ke depan; tidak membalik pengeluaran yang sudah terjadi.",
+        "Next renewal": "Perpanjangan berikutnya",
+        "No further renewals": "Tidak ada perpanjangan lagi",
+        "Service": "Layanan",
+        "Cancelling…": "Membatalkan…",
         // Detail drawers — readiness folded into the Summary card.
         "Not yet marked as paid": "Belum ditandai lunas",
         "Marking it paid posts an expense to the Ledger — category and budget are inherited from this bill, moving it from committed to actual spend.": "Menandainya lunas memposting beban ke Ledger — kategori dan anggaran diwarisi dari tagihan ini, memindahkannya dari komitmen ke realisasi.",
@@ -4864,6 +4888,11 @@
 
         { re: /^(\d+) reconciliation flags?$/,
           id: function (m) { return m[1] + ' tanda rekonsiliasi'; } },
+
+        { re: /^per (month|year|week|quarter)$/,
+          id: function (m) {
+              return 'per ' + ({ month: 'bulan', year: 'tahun', week: 'minggu', quarter: 'kuartal' })[m[1]];
+          } },
 
         // ── bill partial payment ─────────────────────────────────────────────
         { re: /^That is more than the (Rp[\d.,]+) still owed\.$/,

@@ -876,6 +876,46 @@ class DataService {
         return ref;
     }
 
+    // Stop a subscription from renewing.
+    //
+    // Deliberately NOT a void. A cancellation is forward-looking: the periods
+    // already accrued really did happen, so their journal stands and the ledger
+    // is left alone. Voiding would reverse expense the business genuinely
+    // incurred. Only `status` moves, which is why this needs no journal
+    // correction and no period check.
+    async cancelSubscription(userId, subscriptionId, reason) {
+        if (!userId || !subscriptionId) throw new Error('userId and subscriptionId required');
+        const cleanReason = this._stringOrDefault(reason, '', 500);
+        if (!cleanReason) throw new Error('Cancellation reason is required.');
+
+        const ref = doc(this.db, `${this._scope(userId)}/subscriptions/${subscriptionId}`);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) throw new Error('Subscription not found.');
+        const existing = snap.data() || {};
+        if (String(existing.status || '') === 'Cancelled') throw new Error('This subscription is already cancelled.');
+
+        const batch = writeBatch(this.db);
+        batch.update(ref, { status: 'Cancelled' });
+        batch.set(doc(collection(this.db, `${this._scope(userId)}/audit_logs`)), {
+            actor_uid: (this.actorUid || userId),
+            actor_role: null,
+            action: 'subscription.cancel',
+            target_collection: 'subscriptions',
+            target_id: subscriptionId,
+            before: { status: existing.status || null, amount: existing.amount ?? null, vendor_name: existing.vendor_name || null },
+            after: { status: 'Cancelled' },
+            reason: cleanReason,
+            source: 'dashboard',
+            created_at: serverTimestamp()
+        });
+        try {
+            await batch.commit();
+        } catch (e) {
+            throw await this._explainWriteFailure(e, 'This cancellation');
+        }
+        return { id: subscriptionId, ...existing, status: 'Cancelled' };
+    }
+
     async getSubscriptions(userId) {
         const q = query(collection(this.db, `${this._scope(userId)}/subscriptions`), orderBy('timestamp', 'desc'));
         const snapshot = await getDocs(q);
