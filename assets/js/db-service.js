@@ -790,7 +790,7 @@ class DataService {
         try {
             await batch.commit();
         } catch (e) {
-            throw this._explainWriteFailure(e, 'This payment');
+            throw await this._explainWriteFailure(e, 'This payment');
         }
         return { id: billId, transactionId: txRef.id, amount, fullyPaid, outstanding_amount: newOutstanding };
     }
@@ -3782,20 +3782,56 @@ class DataService {
     // so the bare message sends people looking in the wrong place. Name the
     // realistic causes instead — and say plainly when the browser, not the
     // server, is what refused the write.
-    _explainWriteFailure(error, what) {
+    // Is firestore.googleapis.com actually reachable from this browser?
+    //
+    // A `no-cors` request resolves opaquely for any HTTP response, including a
+    // 404 — so the ONLY way it rejects is if the request never left the browser.
+    // That is exactly the ERR_BLOCKED_BY_CLIENT case: a shield or extension
+    // eating the request. Never throws; assumes reachable if it cannot tell.
+    async _firestoreReachable() {
+        try {
+            if (typeof fetch !== 'function') return true;
+            await fetch('https://firestore.googleapis.com/generate_204', {
+                method: 'GET', mode: 'no-cors', cache: 'no-store'
+            });
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    // Turn a failed batch commit into something the user can act on.
+    //
+    // Firestore reports every rejected write in a batch the same way — one
+    // opaque "Missing or insufficient permissions" — and, worse, reports a
+    // BLOCKED WRITE STREAM the same way too: when an ad blocker eats the
+    // /Write/channel POST the stream never opens and the SDK surfaces
+    // permission-denied, which sends people hunting through firestore.rules for
+    // a bug that is not there. So on any denial we probe the host first and
+    // answer the question instead of listing possibilities.
+    async _explainWriteFailure(error, what) {
         const code = String(error?.code || '');
         const message = String(error?.message || '');
         const denied = code === 'permission-denied' || /insufficient permissions/i.test(message);
-        const blocked = code === 'unavailable'
+        const offline = code === 'unavailable'
             || /ERR_BLOCKED_BY_CLIENT|Failed to fetch|network error|client is offline/i.test(message);
+        if (!denied && !offline) return error;
 
-        if (blocked) {
-            return new Error(`${what} could not reach the database. An ad blocker or browser shield is blocking firestore.googleapis.com — allow it for this site and try again.`);
+        if (!(await this._firestoreReachable())) {
+            const blocked = new Error(`${what} never reached the database — your browser blocked it. An ad blocker or shield (in Brave, the lion icon) is blocking firestore.googleapis.com. Allow it for this site, then try again.`);
+            blocked.code = 'blocked-by-client';
+            blocked.cause = error;
+            return blocked;
         }
-        if (!denied) return error;
+        if (offline) {
+            const down = new Error(`${what} could not reach the database. Check your connection and try again.`);
+            down.code = code || 'unavailable';
+            down.cause = error;
+            return down;
+        }
 
         const explained = new Error(
-            `${what} was rejected by the database. The usual causes are a closed accounting period for the payment date, a role without permission to post, or a browser shield blocking firestore.googleapis.com.`
+            `${what} was rejected by the database. Check that the accounting period for the payment date is open, and that your role can post entries.`
         );
         explained.code = code || 'permission-denied';
         explained.cause = error;
