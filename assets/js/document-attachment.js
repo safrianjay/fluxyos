@@ -338,7 +338,9 @@
         };
         const attachResult = await ds.attachDocumentToRecord(
             userId, targetCollection, targetId, attachment,
-            { clearMissingReceiptStatus, currentStatus, legacyReceiptUrl: uploaded.downloadURL || null }
+            // No legacyReceiptUrl: receipt_url stored a PUBLIC download URL in
+            // Firestore. attached_documents carries the storage_path instead.
+            { clearMissingReceiptStatus, currentStatus }
         );
 
         try {
@@ -489,7 +491,7 @@
             const meta = [chip, when ? `Attached ${when}` : ''].filter(Boolean).join(' · ');
             const kind = fileKind(name);
             return `
-                <div class="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 transition-colors hover:border-gray-300" data-doc-index="${index}">
+                <div class="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 transition-colors hover:border-gray-300" data-doc-index="${index}" data-doc-id="${escapeHtml(entry.document_id || '')}">
                     <span data-doc-thumb class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg text-[9px] font-bold tracking-wide ${kind.badge}">${escapeHtml(kind.label)}</span>
                     <div class="min-w-0 flex-1">
                         <a data-doc-act="open" target="_blank" rel="noopener noreferrer"
@@ -508,20 +510,54 @@
             // Pre-documents receipts stored only a download URL — no document_id
             // exists behind them, so they can be viewed but never detached.
             return `
-                <div class="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5">
+                <div class="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5" data-doc-legacy>
                     <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-100">
-                        <img src="${escapeHtml(legacyReceiptUrl)}" alt="" class="h-full w-full object-cover">
+                        <img data-legacy-img alt="" class="h-full w-full object-cover">
                     </span>
                     <div class="min-w-0 flex-1">
-                        <a href="${escapeHtml(legacyReceiptUrl)}" target="_blank" rel="noopener noreferrer"
+                        <a data-legacy-open target="_blank" rel="noopener noreferrer"
                             class="block truncate text-[13px] font-semibold text-gray-800 hover:text-[#EA580C] hover:underline">Receipt</a>
                         <p class="truncate text-[11px] text-gray-400">Receipt · Uploaded before document tracking</p>
                     </div>
-                    <a href="${escapeHtml(legacyReceiptUrl)}" data-doc-act="download" download="receipt" title="Download" aria-label="Download"
+                    <a data-legacy-open download="receipt" title="Download" aria-label="Download"
                         class="flex-shrink-0 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">${ICONS.download}</svg>
                     </a>
                 </div>`;
+        }
+
+        // A historical receipt_url is a Firebase media link:
+        //   .../o/<url-encoded storage path>?alt=media&token=...
+        // The path is recoverable from it, so legacy rows can be served through
+        // the SDK like everything else — and keep working once the public
+        // download tokens are revoked.
+        function legacyStoragePath(url) {
+            try {
+                const marker = '/o/';
+                const i = String(url).indexOf(marker);
+                if (i === -1) return null;
+                return decodeURIComponent(String(url).slice(i + marker.length).split('?')[0]);
+            } catch (_) { return null; }
+        }
+
+        async function resolveLegacyRow() {
+            const row = hostEl.querySelector('[data-doc-legacy]');
+            if (!row || !legacyReceiptUrl) return;
+            const path = legacyStoragePath(legacyReceiptUrl);
+            if (!path) return;
+            try {
+                const url = await ds.getDocumentObjectURL(userId, path);
+                const img = row.querySelector('[data-legacy-img]');
+                if (img) img.src = url;
+                row.querySelectorAll('[data-legacy-open]').forEach((a) => { a.href = url; });
+            } catch (_) {
+                // Access denied or the object is gone — say so rather than leave
+                // a dead thumbnail the user will keep clicking.
+                row.querySelectorAll('[data-legacy-open]').forEach((a) => {
+                    a.removeAttribute('href');
+                    a.classList.add('pointer-events-none', 'opacity-40');
+                });
+            }
         }
 
         function render() {
@@ -573,6 +609,7 @@
 
             wire(list);
             resolveUrls(list);
+            resolveLegacyRow();
         }
 
         function showError(message) {
@@ -595,7 +632,13 @@
             list.forEach((entry, index) => {
                 const row = hostEl.querySelector(`[data-doc-index="${index}"]`);
                 if (!row || !entry.storage_path) return;
-                ds.getDocumentDownloadURL(userId, entry.storage_path).then((url) => {
+                // Authorised bytes, not a public link. getDocumentObjectURL fetches
+                // through the SDK (storage.rules enforced) and hands back a blob:
+                // URL — origin-bound and useless if pasted elsewhere.
+                ds.getDocumentObjectURL(userId, entry.storage_path).then((url) => {
+                    ds.logDocumentAccess?.(userId, {
+                        documentId: entry.document_id, action: 'viewed', targetCollection, targetId
+                    });
                     row.querySelectorAll('[data-doc-act="open"], [data-doc-act="download"]').forEach((a) => {
                         a.href = url;
                         a.classList.remove('pointer-events-none', 'opacity-40');
@@ -755,18 +798,19 @@
                     // blob so "Download" really downloads. cors.json already
                     // allows GET from the app origins.
                     event.preventDefault();
+                    // `url` is already a blob: URL holding the authorised bytes,
+                    // so this saves without another network round trip.
                     try {
-                        const response = await fetch(url);
-                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                        const blob = await response.blob();
-                        const objectUrl = URL.createObjectURL(blob);
                         const temp = document.createElement('a');
-                        temp.href = objectUrl;
+                        temp.href = url;
                         temp.download = link.getAttribute('download') || 'document';
                         document.body.appendChild(temp);
                         temp.click();
                         temp.remove();
-                        setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
+                        ds.logDocumentAccess?.(userId, {
+                            documentId: link.closest('[data-doc-index]')?.dataset.docId || '',
+                            action: 'downloaded', targetCollection, targetId
+                        });
                     } catch (_) {
                         window.open(url, '_blank', 'noopener');
                     }

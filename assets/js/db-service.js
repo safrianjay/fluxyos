@@ -1080,14 +1080,11 @@ class DataService {
     // the path below hardcodes users/{uid}/ and bypasses _scope(), so a teammate's
     // upload would land outside the shared workspace tree. Use the DOCUMENTS
     // methods instead.
-    async uploadReceipt(userId, file) {
-        await this.assertCanUseStorage(userId, file?.size || 0, { source: 'receipt' });
-        const { getStorage, ref, uploadBytes, getDownloadURL } =
-            await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
-        if (!this._storage) this._storage = getStorage(this.app);
-        const path = `users/${userId}/receipts/${Date.now()}-${file.name}`;
-        const snap = await uploadBytes(ref(this._storage, path), file, { contentType: file.type || 'image/jpeg' });
-        return getDownloadURL(snap.ref);
+    async uploadReceipt() {
+        // Removed, not deprecated. It returned getDownloadURL(), which mints a
+        // permanent PUBLIC link (see getDocumentBlob below), and it wrote outside
+        // _scope(). It had no callers; this throw makes sure it never gains one.
+        throw new Error('uploadReceipt was removed — use uploadDocument (workspace-scoped, no public URL).');
     }
 
     async updateTransactionReceipt(userId, txId, receiptUrl) {
@@ -1112,7 +1109,7 @@ class DataService {
             // bypassPlanLimit so a user can always activate their subscription).
             await this.assertCanProcessDocument(userId, 1, { source: options.source || 'document' });
         }
-        const { getStorage, ref, uploadBytes, getDownloadURL } =
+        const { getStorage, ref, uploadBytes } =
             await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
         if (!this._storage) this._storage = getStorage(this.app);
 
@@ -1126,18 +1123,21 @@ class DataService {
             { contentType: file.type || 'application/octet-stream' }
         );
 
-        let downloadURL = null;
-        if (file.type && file.type.startsWith('image/')) {
-            try { downloadURL = await getDownloadURL(snap.ref); } catch (_) { downloadURL = null; }
-        }
-
+        // No download URL is minted. getDownloadURL() stamps a token into the
+        // object's metadata and returns a link that Firebase serves over public
+        // HTTPS with Security Rules BYPASSED — proven by fetching one with curl
+        // and getting HTTP 200. Callers read bytes through getDocumentBlob(),
+        // which carries the user's ID token and is therefore governed by
+        // storage.rules. `downloadURL: null` is kept in the shape so existing
+        // callers that spread the result keep working.
+        void snap;
         return {
             documentId,
             storagePath,
             fileName: safeName,
             fileMimeType: file.type || 'application/octet-stream',
             fileSize: file.size || 0,
-            downloadURL
+            downloadURL: null
         };
     }
 
@@ -1145,15 +1145,72 @@ class DataService {
     // only returns a URL for images (the legacy receipt_url dual-write), so this is
     // the read path every attachment UI needs — PDFs included. Cached per session
     // because the Attachments list resolves the same paths on preview + download.
-    async getDocumentDownloadURL(userId, storagePath) {
+    async getDocumentBlob(userId, storagePath) {
         if (!storagePath) throw new Error('storagePath required');
-        if (this._docUrlCache.has(storagePath)) return this._docUrlCache.get(storagePath);
-        const { getStorage, ref, getDownloadURL } =
+        const { getStorage, ref, getBlob } =
             await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
         if (!this._storage) this._storage = getStorage(this.app);
-        const url = await getDownloadURL(ref(this._storage, storagePath));
+        // getBlob() sends the caller's Firebase ID token, so storage.rules — auth
+        // plus uid ownership or active workspace membership — is enforced by the
+        // server on EVERY read. That is the whole difference from
+        // getDownloadURL(), whose token is honoured with rules bypassed.
+        return getBlob(ref(this._storage, storagePath));
+    }
+
+    // A blob: URL for the fetched bytes. Origin-bound, unguessable, and dead as
+    // soon as the tab closes or revoke is called — it cannot be pasted into a
+    // chat and opened by someone else, which is the entire point.
+    // Cached per session because the Attachments list resolves the same path for
+    // preview and again for download.
+    async getDocumentObjectURL(userId, storagePath) {
+        if (!storagePath) throw new Error('storagePath required');
+        if (this._docUrlCache.has(storagePath)) return this._docUrlCache.get(storagePath);
+        const blob = await this.getDocumentBlob(userId, storagePath);
+        const url = URL.createObjectURL(blob);
         this._docUrlCache.set(storagePath, url);
         return url;
+    }
+
+    revokeDocumentObjectURL(storagePath) {
+        const url = this._docUrlCache.get(storagePath);
+        if (!url) return;
+        try { URL.revokeObjectURL(url); } catch (_) { /* already gone */ }
+        this._docUrlCache.delete(storagePath);
+    }
+
+    // Deprecated shim. Any caller reaching this is a path that used to leak a
+    // public link; it now gets an authorised blob URL instead. Kept so a missed
+    // call site keeps WORKING rather than silently breaking a user's preview,
+    // and warns loudly so it gets migrated.
+    async getDocumentDownloadURL(userId, storagePath) {
+        console.warn('[security] getDocumentDownloadURL is deprecated — use getDocumentObjectURL. No public URL is minted.');
+        return this.getDocumentObjectURL(userId, storagePath);
+    }
+
+    // Record that someone opened or saved a document.
+    //
+    // HONEST LIMITATION: this is written by the CLIENT, so it is a usage trail,
+    // not a tamper-proof access log — an authorised member could read bytes
+    // without the entry being written. The SECURITY boundary does not depend on
+    // it; that is storage.rules, enforced server-side. A provable who-saw-what
+    // record needs a backend proxy (docs/SECURITY_SYSTEM.md).
+    async logDocumentAccess(userId, { documentId, action = 'viewed', targetCollection = null, targetId = null } = {}) {
+        if (!userId || !documentId) return;
+        const key = `${documentId}:${action}`;
+        if (!this._docAccessLogged) this._docAccessLogged = new Set();
+        if (this._docAccessLogged.has(key)) return;   // once per session, per action
+        this._docAccessLogged.add(key);
+        try {
+            await this.addAuditLog(userId, {
+                action: action === 'downloaded' ? 'document.downloaded' : 'document.viewed',
+                target_collection: 'documents',
+                target_id: String(documentId).slice(0, 160),
+                after: this._cleanDefined({ record_collection: targetCollection, record_id: targetId }),
+                source: 'dashboard'
+            });
+        } catch (e) {
+            console.warn('[audit] document access not logged:', e && e.message);
+        }
     }
 
     async addDocumentMetadata(userId, documentId, payload) {

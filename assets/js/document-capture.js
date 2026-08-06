@@ -1529,10 +1529,6 @@
                     });
                     attachment = prepared;
                     payload.attached_documents = [prepared.attachmentForArray];
-                    if (prepared.downloadURL && state.mode === 'transaction') {
-                        // Keeps the legacy ledger receipt thumbnail working.
-                        payload.receipt_url = prepared.downloadURL;
-                    }
                     if (state.mode === 'bill') payload.invoice_status = 'attached';
                 }
             } catch (err) {

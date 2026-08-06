@@ -380,6 +380,75 @@ Recommended future controls:
 
 ---
 
+## 11b. Attachment Access (files)
+
+Financial attachments — receipts, supplier invoices, bank statements, payment
+proofs — are the most sensitive objects in the product. This section is the
+authority on how they are served.
+
+### The rule: never mint a public URL
+
+`getDownloadURL()` is **banned**. It stamps a token into the object's metadata
+and returns a link that Firebase serves over public HTTPS with **Storage
+Security Rules bypassed**. That is documented Firebase behaviour, not a
+misconfiguration — rules govern SDK access, not tokenised media URLs.
+
+This was live in FluxyOS and was verified against production: a plain HTTP GET
+with no browser, no cookies and no auth returned `200` and the whole file.
+Storage rules were correct the entire time; nothing consulted them on the path
+users actually fetched through.
+
+### How files are served now
+
+`DataService.getDocumentBlob()` → `getBlob()`, which sends the caller's Firebase
+ID token. **`storage.rules` is therefore the enforcement point on every read** —
+auth, plus uid ownership or active workspace membership, checked server-side by
+Firebase. `getDocumentObjectURL()` wraps it in a `blob:` URL: origin-bound,
+unguessable, and dead when the tab closes. Pasting one elsewhere does nothing.
+
+Consequences to keep in mind:
+
+- **Bucket CORS is load-bearing.** `getBlob()` is an authenticated XHR, so every
+  serving origin must be in `cors.json` — and the file does nothing until
+  `gsutil cors set cors.json gs://fluxyos.firebasestorage.app` runs. A missing
+  origin shows up as attachments that never load.
+- `receipt_url` is **never written**. It persisted a public URL into Firestore,
+  so the leak outlived the page and travelled with the record. Legacy values are
+  resolved back to a storage path and fetched through the SDK.
+- `uploadReceipt()` is removed (it minted a URL and wrote outside `_scope()`),
+  and `users/{uid}/receipts/` is read-only in `storage.rules`.
+
+### Access logging, and what it is not
+
+`document.viewed` / `document.downloaded` are written to `audit_logs` by the
+**client**. They are a usage trail, **not a tamper-proof access log** — an
+authorised member can read bytes without the entry being written. The security
+guarantee does not depend on them; that is `storage.rules`, enforced
+server-side. A provable who-saw-what record requires a backend proxy that
+streams bytes after verifying the ID token. Not built; scope it only if
+compliance demands it.
+
+### Deletion is deliberate
+
+`allow delete: if false` on every storage prefix. Files are retained even when
+the owning record is voided, because an attachment is audit evidence for a
+financial entry. This is a decision, not an oversight — revisit it only
+alongside a data-retention policy.
+
+### Revoking exposure
+
+Fixing the code stops **new** links. Tokens already issued never expire, so
+`scripts/revoke-storage-tokens.js` clears
+`firebaseStorageDownloadTokens` on every object, killing every link previously
+handed out. Run `--dry-run` first. It is irreversible for anyone holding an old
+link, which is the point.
+
+Order matters: **deploy the app code → `firebase deploy --only storage` →
+revoke tokens → `scripts/clear-receipt-urls.js`.** Revoking before the code is
+live breaks previews for users mid-session.
+
+---
+
 ## 12. Implementation Order
 
 Recommended rollout:

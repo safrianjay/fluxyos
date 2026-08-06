@@ -2980,7 +2980,10 @@ window.showAddTransactionModal = function(options = {}) {
                     });
 
                     data.attached_documents = [prepared.attachmentForArray];
-                    if (prepared.downloadURL) data.receipt_url = prepared.downloadURL;
+                    // receipt_url is NOT written. It stored a permanent public
+                    // download URL in Firestore, so the leak outlived the page and
+                    // travelled with the record. attached_documents already carries
+                    // the storage_path, which is fetched through authorised bytes.
                     if (role === 'receipt') data.status = 'Completed';
                 }
             }

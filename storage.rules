@@ -29,12 +29,14 @@ service firebase.storage {
         && firestore.get(/databases/(default)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid)).data.status == 'active';
     }
 
+    // LEGACY. Pre-`documents` receipts. Read stays open to the owner so historical
+    // attachments still render; writes are closed because the only uploader
+    // (uploadReceipt) is gone — it wrote outside _scope(), so a teammate's file
+    // landed outside the shared workspace tree, and it minted a public URL.
+    // New uploads go to documents/ via uploadDocument.
     match /users/{userId}/receipts/{filename} {
       allow read:   if request.auth != null && request.auth.uid == userId;
-      allow write:  if request.auth != null
-                    && request.auth.uid == userId
-                    && request.resource.size <= 1 * 1024 * 1024
-                    && request.resource.contentType in ['image/jpeg', 'image/png', 'image/webp'];
+      allow write:  if false;
       allow delete: if false;
     }
     match /users/{userId}/documents/{documentId}/{fileName} {
