@@ -137,19 +137,35 @@
 }
 
 /* The Accounting Center strip carries four financial figures plus Report
-   confidence. Four fit the ~996px content column; the fifth wrapped onto a row
-   of its own and left roughly 760x120px of dead space directly above the tab
-   bar, which read as a rendering fault.
-   Squeezing all five onto one row was tried first and rejected: it forces
-   186px columns, which clips the widest values — (Rp387.289.720) and the gauge
-   numeral both truncated. A clipped rupiah figure is a worse defect than the
-   whitespace it fixes.
-   Instead the confidence card spans the full row. It is not a financial figure
-   like the other four — it is a readiness meter — so giving it its own band
-   reads as deliberate hierarchy rather than a wrapped leftover, and the four
-   currency cards keep the width their values need. */
-.acct-kpi-grid--5 > :nth-child(5) {
-    grid-column: 1 / -1;
+   confidence, which sits to the right of Net Income.
+
+   Equal fifths were rejected before and still are: five 1fr columns in the
+   ~996px content column give 186px each, which clips the widest values like
+   (Rp387.289.720). A clipped rupiah figure is a worse defect than any layout
+   awkwardness. Spanning the confidence card across the full row was the fix
+   after that, but a full-width band holding one small ring and a pill reads as
+   a stretched empty panel.
+
+   The asymmetry is the point: confidence is a readiness METER, not a currency
+   figure, so it does not need a currency card's width. Four flexible columns
+   carry the money, and the meter takes a fixed, narrower track sized to its
+   ring + pill. That keeps all five on one row, keeps the figures uncropped, and
+   makes the meter read as a different kind of thing rather than a fifth
+   under-filled KPI. */
+.acct-kpi-grid--5 {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(150px, 0.62fr);
+}
+
+/* Below the four-up breakpoint the fixed track would squeeze the figures, so
+   the strip returns to auto-fit wrapping and the meter spans whatever row it
+   lands on rather than sitting half-width beside a single card. */
+@media (max-width: 1180px) {
+    .acct-kpi-grid--5 {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+    .acct-kpi-grid--5 > :nth-child(5) {
+        grid-column: 1 / -1;
+    }
 }
 
 .acct-card {
