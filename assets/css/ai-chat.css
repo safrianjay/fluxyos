@@ -408,6 +408,35 @@
     margin-top: 0;
 }
 
+/* An action that carries a route is the same row, made navigable — deliberately
+   not a button. A second button style here would compete with the drawer's own
+   primary action (DESIGN_SYSTEM §1: one primary action per zone), and the row
+   already reads as a next step. The arrow is the affordance. */
+a.recommended-action-link {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+a.recommended-action-link:hover,
+a.recommended-action-link:focus-visible {
+    background: #F8FAFC;
+}
+a.recommended-action-link:focus-visible {
+    outline: 2px solid #EA580C;
+    outline-offset: -2px;
+}
+.recommended-action-go {
+    flex-shrink: 0;
+    align-self: center;
+    color: #EA580C;
+    font-size: 13px;
+    font-weight: 700;
+}
+
 .insight-title {
     margin: 0 0 2px;
     color: #111827;

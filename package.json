@@ -9,6 +9,8 @@
     "check:ai-scope": "node tests/ai-finance-scope.check.js",
     "check:bank-scope": "node tests/bank-statement-scope.check.js",
     "check:ledger-assert": "node tests/ledger-assert.check.js",
+    "check:statements-workbook": "node tests/statements-workbook.check.js",
+    "check:ai-statements": "node tests/ai-statement-routing.check.js",
     "check:deploy": "node tests/prepare-deploy.check.js",
     "qa": "node scripts/qa-run.js",
     "qa:design": "node scripts/qa/lint-design.js",

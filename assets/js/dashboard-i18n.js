@@ -4255,6 +4255,15 @@
         "Downloads the Income Statement, Balance Sheet, Cash Flow, Trial Balance, and General Ledger for this period as CSV files with raw IDR amounts. Each file states the period, basis, and tie-out results.": "Mengunduh Laporan Laba Rugi, Neraca, Arus Kas, Neraca Saldo, dan Buku Besar untuk periode ini sebagai berkas CSV dengan nilai IDR mentah. Setiap berkas mencantumkan periode, dasar, dan hasil pemeriksaan kesesuaian.",
         "No ledger activity to export for this period.": "Tidak ada aktivitas buku besar untuk diekspor pada periode ini.",
         "Could not export the accounting package. Try again.": "Tidak dapat mengekspor paket akuntansi. Coba lagi.",
+        // Accounting workbook (.xlsx) — same five statements, one file
+        "Export workbook →": "Ekspor workbook →",
+        "CSV files": "Berkas CSV",
+        "Export Income Statement, Balance Sheet, Cash Flow, Trial Balance, and General Ledger as one Excel workbook": "Ekspor Laporan Laba Rugi, Neraca, Arus Kas, Neraca Saldo, dan Buku Besar sebagai satu workbook Excel",
+        "Export the same five statements as separate CSV files": "Ekspor lima laporan yang sama sebagai berkas CSV terpisah",
+        "Export accounting workbook?": "Ekspor workbook akuntansi?",
+        "Downloads one Excel workbook with a tab for the Income Statement, Balance Sheet, Cash Flow, Trial Balance, and General Ledger. Amounts are raw IDR numbers you can sum; every tab states the period, basis, and tie-out results.": "Mengunduh satu workbook Excel dengan tab untuk Laporan Laba Rugi, Neraca, Arus Kas, Neraca Saldo, dan Buku Besar. Nilainya angka IDR mentah yang bisa dijumlahkan; setiap tab mencantumkan periode, dasar, dan hasil pemeriksaan kesesuaian.",
+        "Export workbook": "Ekspor workbook",
+        "Could not export the workbook. Try again.": "Tidak dapat mengekspor workbook. Coba lagi.",
         // Cash Flow statement (indirect method)
         "Cash Flow": "Arus Kas",
         "Indirect method for": "Metode tidak langsung untuk",
@@ -4564,6 +4573,8 @@
           id: function (m) { return 'Transaksi bertipe "' + m[1] + '" tidak diposting ke buku besar, sehingga tidak ada jurnal yang dibuat.'; } },
         { re: /^Exported (\d+) files and logged the export\.$/,
           id: function (m) { return 'Mengekspor ' + m[1] + ' berkas dan mencatat ekspor.'; } },
+        { re: /^Exported (\d+) statements as one workbook and logged the export\.$/,
+          id: function (m) { return 'Mengekspor ' + m[1] + ' laporan sebagai satu workbook dan mencatat ekspor.'; } },
         // Attachments section row meta: "<role> · Attached 28 Jul 2026". The role
         // half is a fixed set, so translate it through the dictionary and leave the
         // locale-formatted date alone.

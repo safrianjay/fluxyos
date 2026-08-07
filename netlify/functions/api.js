@@ -53,6 +53,7 @@ const PLANNER_INTENTS = [
     'comparison',
     'recommendation',
     'lookup',
+    'statement_export',
     'unsupported',
     'ambiguous',
 ];
@@ -90,6 +91,7 @@ const SUPPORTED_INTENTS = [
     'action_recommendation',
     'recommendation',
     'comparison',
+    'statement_export',
     'unsupported',
     'ambiguous',
 ];
@@ -251,6 +253,65 @@ function isIndonesian(message) {
     return /\b(apa|berapa|bagaimana|kenapa|bulan|tagihan|pengeluaran|pendapatan|bisnis|saya|anda|risiko)\b/.test(msg);
 }
 
+// --- Financial statement requests --------------------------------------------
+// "Buatkan balance sheet di Excel" has exactly one true answer in FluxyOS: the
+// ledger-derived statements in the Accounting Center, and the export beside
+// them. There is no analysis path to a balance sheet, so this routes rather than
+// analyses — and it routes to a page the user then acts on, because the assistant
+// does not (and should not) generate financial statements itself.
+
+// Named statements. Nothing else in the product answers these, so the name alone
+// is enough — no export verb required.
+const STATEMENT_TERMS = [
+    'balance sheet', 'neraca saldo', 'neraca',
+    'income statement', 'laporan laba rugi', 'laba rugi', 'profit and loss', 'profit & loss', 'p&l',
+    'trial balance',
+    'general ledger', 'buku besar',
+    'financial statement', 'laporan keuangan',
+];
+
+// Deliberately NOT in the list above: "cash flow" / "arus kas" are ordinary
+// analysis questions at least as often as they are requests for the statement
+// ("bagaimana arus kas saya?"). They route here only when the user also asks
+// for a file.
+const AMBIGUOUS_STATEMENT_TERMS = ['cash flow', 'arus kas'];
+
+const EXPORT_TERMS = [
+    'export', 'ekspor', 'download', 'unduh', 'excel', 'xlsx',
+    'spreadsheet', 'workbook', 'csv',
+];
+
+function isStatementRequest(msg) {
+    if (STATEMENT_TERMS.some(term => msg.includes(term))) return true;
+    return AMBIGUOUS_STATEMENT_TERMS.some(term => msg.includes(term))
+        && EXPORT_TERMS.some(term => msg.includes(term));
+}
+
+// Which statement the user named, so the answer deep-links to that tab rather
+// than dropping them on the Accounting Center's default view. Order matters:
+// "neraca saldo" (Trial Balance) must be tested before "neraca" (Balance Sheet).
+function statementTargetFor(msg) {
+    const m = String(msg || '').toLowerCase();
+    if (m.includes('neraca saldo') || m.includes('trial balance')) {
+        return { tab: 'trial', route: '/accounting?tab=trial', en: 'Trial Balance', id: 'Neraca Saldo' };
+    }
+    if (m.includes('general ledger') || m.includes('buku besar')) {
+        return { tab: 'ledger', route: '/accounting?tab=trial', en: 'General Ledger', id: 'Buku Besar' };
+    }
+    if (m.includes('balance sheet') || m.includes('neraca')) {
+        return { tab: 'balance', route: '/accounting?tab=balance', en: 'Balance Sheet', id: 'Neraca' };
+    }
+    if (m.includes('cash flow') || m.includes('arus kas')) {
+        return { tab: 'cashflow', route: '/accounting?tab=cashflow', en: 'Cash Flow', id: 'Arus Kas' };
+    }
+    if (m.includes('income statement') || m.includes('laba rugi') || m.includes('profit and loss')
+        || m.includes('profit & loss') || m.includes('p&l')) {
+        return { tab: 'income', route: '/accounting?tab=income', en: 'Income Statement', id: 'Laporan Laba Rugi' };
+    }
+    // "laporan keuangan" / "financial statements" — no single statement named.
+    return { tab: 'income', route: '/accounting?tab=income', en: 'financial statements', id: 'laporan keuangan' };
+}
+
 function classifyIntent(message, pageContext = 'global') {
     const msg = normalizeText(message);
     if (!msg) return 'ambiguous';
@@ -263,6 +324,12 @@ function classifyIntent(message, pageContext = 'global') {
     if (unsupportedPatterns.some(pattern => msg.includes(pattern))) return 'unsupported';
 
     if (/\b(hello|hi|hey|test)\b/.test(msg) && msg.length < 16) return 'ambiguous';
+
+    // Statements are checked BEFORE the revenue/expense keyword rules below,
+    // because "income statement" contains "income" and would otherwise be
+    // answered as a revenue analysis — a different question than the one asked.
+    if (isStatementRequest(msg)) return 'statement_export';
+
     if (msg.includes('receipt') || msg.includes('cleanup') || msg.includes('clean up') || msg.includes('trust my ledger') || msg.includes('missing receipt') || msg.includes('reconcile')) return 'ledger_cleanup';
     if (msg.includes('subscription') || msg.includes('saas') || msg.includes('renewal') || msg.includes('recurring')) return 'subscription_analysis';
     if (msg.includes('cash pressure') || msg.includes('cash runway') || msg.includes('cash risk') || msg.includes('cover upcoming') || msg.includes('can i cover') || msg.includes('cover my bills')) return 'cash_pressure';
@@ -1736,9 +1803,27 @@ function insight(title, description, severity = 'info', evidence = []) {
     return { title, description, severity, evidence };
 }
 
-function action(title, description, priority = 'medium') {
-    return { title, description, priority };
+function action(title, description, priority = 'medium', route = null) {
+    const item = { title, description, priority };
+    if (route) item.route = route;
+    return item;
 }
+
+// A recommended action may carry an in-app destination. The set is CLOSED and
+// checked on the way out in sanitizeActions(), because recommended_actions is
+// one of the fields the model writes — an open `href` there would let a prompt
+// injection render an arbitrary link inside a trusted panel of the app. An
+// allowlist of our own routes means the worst case is a link to the wrong tab.
+const ACTION_ROUTES = new Set([
+    '/accounting?tab=income',
+    '/accounting?tab=balance',
+    '/accounting?tab=cashflow',
+    '/accounting?tab=trial',
+    '/accounting?tab=overview',
+    '/reports',
+    '/ledger',
+    '/bill',
+]);
 
 // Bahasa Indonesia rendering of the engine's English period labels, used when
 // a deterministic answer is composed with language === 'id'. Unknown labels
@@ -1830,6 +1915,51 @@ function buildDeterministicAnswer({ intent, message, pageContext, period, tools,
             direct_answer: refusalMessage(language),
         };
     }
+    // Routing, not analysis: no tool runs and no figure is quoted. Naming a
+    // number here would mean computing a statement outside the ledger — the
+    // second source of truth PRODUCT_STRATEGY §6 forbids — so the answer says
+    // where the statement is and what the export gives you, and stops.
+    if (intent === 'statement_export') {
+        const target = statementTargetFor(message);
+        const name = language === 'id' ? target.id : target.en;
+        const isId = language === 'id';
+        return {
+            ...baseAnswer(intent, 'recommendation', period, language),
+            confidence: 1,
+            direct_answer: isId
+                ? `${name} tersedia di Accounting Center, dihitung dari jurnal yang sudah diposting. Buka laporannya, lalu ekspor sebagai workbook Excel (satu tab per laporan) atau berkas CSV.`
+                : `Your ${name} lives in the Accounting Center, derived from posted journals. Open it there, then export it as an Excel workbook (one tab per statement) or as CSV files.`,
+            key_numbers: [],
+            insights: [],
+            recommended_actions: [
+                action(
+                    isId ? `Buka ${name}` : `Open ${name}`,
+                    isId
+                        ? 'Laporan ini dibangun dari buku besar, jadi angkanya selalu cocok dengan Neraca Saldo.'
+                        : 'The statement is built from the ledger, so it always agrees with the Trial Balance.',
+                    'high',
+                    target.route
+                ),
+                action(
+                    isId ? 'Ekspor workbook Excel' : 'Export the Excel workbook',
+                    isId
+                        ? 'Tombol Overview di Accounting Center mengekspor Laporan Laba Rugi, Neraca, Arus Kas, Neraca Saldo, dan Buku Besar sebagai satu workbook dengan angka IDR mentah yang bisa dijumlahkan.'
+                        : 'The Overview button in the Accounting Center exports the Income Statement, Balance Sheet, Cash Flow, Trial Balance, and General Ledger as one workbook, with raw IDR amounts you can sum.',
+                    'medium',
+                    '/accounting?tab=overview'
+                ),
+            ],
+            limitations: [
+                isId
+                    ? 'Saya menunjukkan tempat laporannya; saya tidak membuat berkasnya sendiri, agar angkanya tetap berasal dari buku besar.'
+                    : 'I point you to the statement rather than generating the file myself, so the figures always come from the ledger.',
+            ],
+            follow_up_questions: [
+                isId ? 'Apakah pembukuan periode ini sudah siap ditutup?' : 'Are this period\'s books ready to close?',
+            ],
+        };
+    }
+
     if (intent === 'ambiguous') {
         return {
             ...baseAnswer(intent, 'clarification', period, language),
@@ -2077,6 +2207,11 @@ function buildPlannedDeterministicAnswer({ plan, message, pageContext, tools, la
     }
     if (plan.intent === 'ambiguous') {
         return buildDeterministicAnswer({ intent: 'ambiguous', message, pageContext, period: plan.period, tools: {}, language });
+    }
+    // Statement routing needs no tool result, so it short-circuits here rather
+    // than falling through to the analysis branches below.
+    if (plan.intent === 'statement_export') {
+        return buildDeterministicAnswer({ intent: 'statement_export', message, pageContext, period: plan.period, tools: {}, language });
     }
     if (plan.intent === 'comparison' && tools.comparison) {
         const answer = baseAnswer('comparison', 'comparison', plan.period);
@@ -2354,11 +2489,15 @@ function sanitizeActions(value) {
     if (!Array.isArray(value)) return [];
     return value.slice(0, 5).map(item => {
         if (!item || typeof item.title !== 'string' || typeof item.description !== 'string') return null;
-        return {
+        const cleaned = {
             title: item.title.trim().slice(0, 120),
             description: item.description.trim().slice(0, 500),
             priority: validPriorities.includes(item.priority) ? item.priority : 'medium',
         };
+        // Anything not on the allowlist is dropped silently — including a
+        // plausible-looking absolute URL. See ACTION_ROUTES.
+        if (typeof item.route === 'string' && ACTION_ROUTES.has(item.route)) cleaned.route = item.route;
+        return cleaned;
     }).filter(Boolean);
 }
 
@@ -3787,6 +3926,11 @@ exports.__test__ = {
     receiptEvidenceFromExtraction,
     classifyAmbiguousExtraction,
     classifyIntent,
+    isStatementRequest,
+    statementTargetFor,
+    buildDeterministicAnswer,
+    sanitizeActions,
+    ACTION_ROUTES,
     requiredCollectionsForIntent,
     buildDeterministicAnswer,
     buildPlannedDeterministicAnswer,

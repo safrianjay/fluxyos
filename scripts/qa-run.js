@@ -182,9 +182,17 @@ function laneBE(changed) {
   if (FORCE_ALL || touched(/db-service\.js|^netlify\/|^functions\//)) {
     ok = record('be', run('check:ai-scope', 'node', ['tests/ai-finance-scope.check.js'])) && ok;
     ok = record('be', run('check:bank-scope', 'node', ['tests/bank-statement-scope.check.js'])) && ok;
+    // Intent keyword ORDER and the recommended-action route allowlist. Both fail
+    // silently in manual testing — a wrong tab still looks like a real answer.
+    ok = record('be', run('check:ai-statements', 'node', ['tests/ai-statement-routing.check.js'])) && ok;
   }
   if (FORCE_ALL || touched(/accounting|ledger|db-service\.js/)) {
     ok = record('be', run('check:ledger-assert', 'node', ['tests/ledger-assert.check.js'])) && ok;
+  }
+  // The workbook writer is unreachable from the Playwright suite (static server,
+  // no Netlify functions), so its contract is guarded here or nowhere.
+  if (FORCE_ALL || touched(/statements-xlsx\.js|assets\/js\/accounting\.js/)) {
+    ok = record('be', run('check:statements-workbook', 'node', ['tests/statements-workbook.check.js'])) && ok;
   }
   if (FORCE_ALL || touched(/^firestore\.rules$|^storage\.rules$/)) {
     console.log('    (rules changed — running emulator rules tests, ~60s)');

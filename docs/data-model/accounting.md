@@ -56,11 +56,44 @@ view and rolls up to the Close group badge.
 **Overview is a header dropdown, not a group** (`#acct-overview-btn` /
 `#acct-overview-panel`, moved there 2026-08-07 in place of the Export package
 button). It holds Books health + Before you close, carries an attention dot when a
-check fails or work is outstanding, and keeps Export package in its footer — that
-button was `exportAccountingPackage()`'s only entry point. `render()` therefore calls
+check fails or work is outstanding, and keeps the exports in its footer — that
+button was the export's only entry point. `render()` therefore calls
 `loadKernel()` outright: the dot reads trial-balance and unposted state, which used
 to load only because Overview was in `KERNEL_TABS`. `?tab=overview` opens the panel.
 See `docs/ACCOUNTING_CENTER_IA.md` §Overview.
+
+**Export: one workbook or five CSVs, from one row model (2026-08-07).** The panel
+footer offers **Export workbook** (`#acct-export-workbook`, primary) and **CSV
+files** (`#acct-export-package`, secondary — same id, so its existing
+disabled/label handling is unchanged). Both call `runAccountingExport(format)`,
+which shares the readiness gate, the confirm, the working-papers fetch, the
+integrity block, the `report_exports` row, and the audit log; only serialization
+differs.
+
+`accountingPackageSheets()` returns the package **as data** — per statement a
+`{key, title, filename, columns, rows}`. `accountingPackageFiles()` serializes it
+to CSV; `netlify/functions/statements-xlsx.js` serializes it to workbook tabs. A
+line added to a statement therefore appears in both formats and they cannot drift.
+
+The function is a **formatter only** — it computes no balances and reads no
+Firestore; the client posts rows the ledger already produced. Re-deriving
+statements server-side would be the second source of truth §6 of
+`PRODUCT_STRATEGY.md` forbids. It uses SheetJS (already a dependency, already
+bundled for *reading* spreadsheets in `bank-statement-extract-background.js`).
+Amounts stay JS numbers into the cells so Excel treats them as numbers — a
+workbook of strings cannot be summed, which is the only reason to prefer it over
+CSV. Guard: `npm run check:statements-workbook` (unreachable from Playwright,
+which serves static files with no functions).
+
+⚠️ **Every cell under an `(IDR)` header must be an amount.** The Balance Sheet
+used to end with an `As of period` row carrying a *date* in the amount column —
+invisible in a text editor, wrong the moment the column is summed or read as a
+number. The date now lives in the file's header block. `balanceSheetRows()` is
+data only; `balanceSheetCsv()` adds the header for the standalone download.
+`tests/accounting-export-package.spec.js` asserts `/^-?\d+$/` per amount column
+rather than scanning the file for `Rp` — the General Ledger has a free-text Memo,
+so a user typing "Bayar sewa Rp5.000.000" failed a whole-file scan on a correct
+export.
 
 **Close gate (2026-07-31).** "All entries posted to the ledger" is backed by
 `DataService.countUnpostedSources`, not `countPendingPostings` — the latter matches
@@ -196,6 +229,31 @@ categories are treated as unmapped until a mapping is saved.
 
 **Sidebar route:** `Accounting Center` → `/accounting`, under the Reporting group in
 `sidebar-loader.js` (active id `nav-accounting`).
+
+**Fluxy AI routes statement requests here (`statement_export`, 2026-08-07).**
+"Buatkan balance sheet di Excel" used to reach the ambiguous branch and get a
+polite decline. The intent **routes, it does not analyse**: `toolsForIntent`
+returns `[]`, so no Firestore read runs and **no figure is quoted** — naming one
+would mean computing a statement outside the ledger. The answer names the
+statement, deep-links to its tab, and says the assistant does not generate the
+file itself.
+
+Two failure modes, both guarded by `npm run check:ai-statements`:
+
+1. **Keyword order.** `'income statement'.includes('income')` is true and the
+   revenue rule sits lower in `classifyIntent`, so an Income Statement request
+   would return a revenue analysis; likewise `'neraca saldo'` (Trial Balance)
+   contains `'neraca'` (Balance Sheet). Both return a plausible-looking answer,
+   so neither shows up in manual testing. `isStatementRequest()` is checked
+   before the revenue/expense rules and `statementTargetFor()` tests the longer
+   term first. `cash flow` / `arus kas` route here only when an export word is
+   also present — they are ordinary analysis questions at least as often.
+2. **`recommended_actions` is model-written.** A free-form `href` there would let
+   a prompt injection render an arbitrary link in a trusted panel. Actions carry
+   `route`, validated against the closed `ACTION_ROUTES` allowlist in
+   `sanitizeActions()`, and re-checked against a same-origin path pattern in both
+   renderers (`ai-chat.js`, `ai-command-center.js`) so a bad value degrades to a
+   plain card. Note `sanitizeActions` caps the list at 5.
 
 **Balance Sheet — RETIRED (2026-07-29).** The standalone `balance-sheet.html` /
 `balance-sheet-records.html` pages and `assets/js/balance-sheet*.js` are **deleted**.

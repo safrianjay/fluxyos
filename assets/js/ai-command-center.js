@@ -1387,20 +1387,33 @@
         `;
     }
 
+    // Same contract as ai-chat.js: `route` is a same-origin path from the
+    // server's closed allowlist, re-checked here so a value that somehow arrived
+    // as an absolute or javascript: URL degrades to a plain card.
+    function actionRoute(item) {
+        const route = typeof item.route === 'string' ? item.route.trim() : '';
+        return /^\/[A-Za-z0-9/?=&_-]*$/.test(route) ? route : '';
+    }
+
     function renderAction(item) {
         const priorityClass = {
             high: 'border-red-200 text-red-700 bg-red-50',
             medium: 'border-amber-200 text-amber-700 bg-amber-50',
             low: 'border-gray-200 text-gray-500 bg-gray-50',
         }[item.priority] || 'border-gray-200 text-gray-500 bg-gray-50';
+        const route = actionRoute(item);
+        const tag = route ? 'a' : 'div';
+        const attrs = route
+            ? ` href="${escapeHtml(route)}" class="block rounded-xl border border-gray-200 px-4 py-3 no-underline transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#EA580C]"`
+            : ' class="rounded-xl border border-gray-200 px-4 py-3"';
         return `
-            <div class="rounded-xl border border-gray-200 px-4 py-3">
+            <${tag}${attrs}>
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <p class="text-[14px] font-semibold text-gray-900">${escapeHtml(item.title)}</p>
+                    <p class="text-[14px] font-semibold text-gray-900">${escapeHtml(item.title)}${route ? ' <span aria-hidden="true" class="text-[#EA580C]">→</span>' : ''}</p>
                     <span class="inline-flex w-fit rounded-full border px-2 py-0.5 text-[10px] font-semibold ${priorityClass}">${escapeHtml(toLabel(item.priority || 'next'))}</span>
                 </div>
                 <p class="mt-1 text-[13px] leading-relaxed text-gray-500">${escapeHtml(item.description)}</p>
-            </div>
+            </${tag}>
         `;
     }
 

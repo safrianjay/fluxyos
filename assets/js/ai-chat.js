@@ -513,12 +513,30 @@
         return `<div class="evidence-item">${inner}</div>`;
     }
 
+    // An action may carry an in-app destination (answer.recommended_actions[].route).
+    // Only same-origin paths are rendered: the server already restricts `route` to
+    // a closed allowlist, and this is the second half of that guard — a value that
+    // somehow arrived as "https://…" or "javascript:…" renders as plain text
+    // instead of becoming a link inside a trusted panel.
+    function actionRoute(item) {
+        const route = typeof item.route === 'string' ? item.route.trim() : '';
+        return /^\/[A-Za-z0-9/?=&_-]*$/.test(route) ? route : '';
+    }
+
     function renderAction(item) {
-        return `
-            <div class="recommended-action priority-${escapeAttribute(item.priority || 'medium')}">
+        const route = actionRoute(item);
+        const body = `
                 <p class="insight-title"><span class="priority-dot" aria-hidden="true"></span>${escapeHTML(item.title)}</p>
                 <p>${escapeHTML(item.description)}</p>
-            </div>
+        `;
+        if (!route) {
+            return `<div class="recommended-action priority-${escapeAttribute(item.priority || 'medium')}">${body}</div>`;
+        }
+        return `
+            <a class="recommended-action recommended-action-link priority-${escapeAttribute(item.priority || 'medium')}" href="${escapeAttribute(route)}">
+                ${body}
+                <span class="recommended-action-go" aria-hidden="true">→</span>
+            </a>
         `;
     }
 

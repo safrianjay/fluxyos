@@ -252,7 +252,8 @@ function wireStaticControls() {
     el('journals-post-pending')?.addEventListener('click', () => onPostPending());
     el('coa-new-account')?.addEventListener('click', () => openCreateAccountDrawer());
     el('balance-sheet-export')?.addEventListener('click', () => exportBalanceSheet());
-    el('acct-export-package')?.addEventListener('click', () => exportAccountingPackage());
+    el('acct-export-package')?.addEventListener('click', () => runAccountingExport('csv'));
+    el('acct-export-workbook')?.addEventListener('click', () => runAccountingExport('xlsx'));
     el('post-unposted-btn')?.addEventListener('click', () => onPostUnposted());
     wireOverviewMenu();
 }
@@ -869,8 +870,18 @@ function downloadFile(filename, content) {
     URL.revokeObjectURL(url);
 }
 
-function balanceSheetCsv(bs, period) {
-    const rows = [['Section', 'Account code', 'Account', 'Amount (IDR)']];
+// Row model, not a string. The CSV files and the XLSX workbook both serialize
+// THIS, so a line added here shows up in both and the two can never disagree —
+// the same reason the package reuses balanceSheetCsv rather than rebuilding it.
+const BALANCE_SHEET_COLUMNS = ['Section', 'Account code', 'Account', 'Amount (IDR)'];
+
+// Every cell under an "(IDR)" column is an amount. The as-of date used to ride
+// in that column as a trailing metadata row, which made the amount column
+// non-numeric — harmless in a text editor, wrong the moment the column is summed
+// or read as a number (which is exactly what the workbook does). It moves to the
+// header block below, where the package already stated it anyway.
+function balanceSheetRows(bs) {
+    const rows = [];
     const push = (section, lines) => (lines || []).forEach(l => rows.push([section, l.code, l.name, l.amount]));
     push('Assets', bs.assets);
     rows.push(['Assets', '', 'Total assets', bs.totalAssets]);
@@ -880,8 +891,24 @@ function balanceSheetCsv(bs, period) {
     rows.push(['Equity', '', 'Total equity', bs.totalEquity]);
     rows.push(['', '', 'Total liabilities & equity', bs.liabilitiesPlusEquity]);
     rows.push(['', '', 'Tie-out delta', bs.tieOutDelta]);
-    rows.push(['', '', 'As of period', period.end]);
-    return rows.map(r => r.map(csvEscape).join(',')).join('\n');
+    return rows;
+}
+
+// Standalone Balance Sheet export. The package builds its own header via
+// pkgHeader(), so this header exists for the one-file download — without it the
+// as-of date would have nowhere left to live.
+function balanceSheetCsv(bs, period) {
+    const head = [
+        ['Report', 'Balance Sheet'],
+        ['As of', period.end],
+        ['Basis', 'Posted double-entry ledger (ledger_balances)'],
+        ['Generated at', new Date().toISOString()],
+        ['Tie-out', bs.balanced ? 'Balanced' : `Out by ${bs.tieOutDelta}`],
+        ['Amounts', 'Raw integer IDR — no formatting, no thousands separators'],
+        []
+    ];
+    return [...head, BALANCE_SHEET_COLUMNS, ...balanceSheetRows(bs)]
+        .map(r => r.map(csvEscape).join(',')).join('\n');
 }
 
 async function exportBalanceSheet() {
@@ -1097,12 +1124,16 @@ function pkgHeader(title, period, integrity) {
     return rows.map(r => r.map(csvEscape).join(',')).join('\n') + '\n\n';
 }
 
-function accountingPackageFiles({ report, trial, ledger, integrity }) {
+// The package as DATA — one entry per statement, each with its own column
+// header and rows. `accountingPackageFiles` serializes this to CSV and
+// `accountingWorkbookSheets` to XLSX tabs, so the two formats are the same
+// figures by construction and a line added here appears in both.
+function accountingPackageSheets({ report, trial, ledger }) {
     const slug = report.period.start === report.period.end
         ? report.period.start
         : `${report.period.start}_to_${report.period.end}`;
-    const line = (arr) => arr.map(csvEscape).join(',');
-    const files = [];
+    const line = (arr) => arr;
+    const sheets = [];
 
     // 1. Income Statement — with the comparison column the UI shows.
     {
@@ -1111,7 +1142,8 @@ function accountingPackageFiles({ report, trial, ledger, integrity }) {
         const priorBy = {};
         ['revenue', 'cogs', 'operatingExpenses', 'otherIncome', 'otherExpense']
             .forEach(k => (prev[k] || []).forEach(l => { priorBy[l.code] = l.amount; }));
-        const rows = [line(['Section', 'Account code', 'Account', 'Amount (IDR)', 'Comparison (IDR)'])];
+        const columns = ['Section', 'Account code', 'Account', 'Amount (IDR)', 'Comparison (IDR)'];
+        const rows = [];
         const push = (section, arr) => (arr || []).forEach(l =>
             rows.push(line([section, l.code, l.name, l.amount, priorBy[l.code] || 0])));
         push('Revenue', is.revenue);
@@ -1124,23 +1156,26 @@ function accountingPackageFiles({ report, trial, ledger, integrity }) {
         push('Other income', is.otherIncome);
         push('Other expense', is.otherExpense);
         rows.push(line(['', '', 'Net income', is.netIncome, prev.netIncome || 0]));
-        files.push({
-            filename: `income_statement_${slug}.csv`,
-            content: pkgHeader('Income Statement', report.period, integrity) + rows.join('\n')
+        sheets.push({
+            key: 'income_statement', title: 'Income Statement',
+            filename: `income_statement_${slug}.csv`, columns, rows
         });
     }
 
-    // 2. Balance Sheet — reuses the standalone export so the two cannot diverge.
-    files.push({
+    // 2. Balance Sheet — reuses the standalone export's row model so the two
+    // cannot diverge.
+    sheets.push({
+        key: 'balance_sheet', title: 'Balance Sheet',
         filename: `balance_sheet_${slug}.csv`,
-        content: pkgHeader('Balance Sheet', report.period, integrity)
-            + balanceSheetCsv(report.balanceSheet, report.period)
+        columns: BALANCE_SHEET_COLUMNS,
+        rows: balanceSheetRows(report.balanceSheet)
     });
 
     // 3. Cash Flow.
     {
         const cf = report.cashFlow;
-        const rows = [line(['Section', 'Account code', 'Account', 'Cash effect (IDR)'])];
+        const columns = ['Section', 'Account code', 'Account', 'Cash effect (IDR)'];
+        const rows = [];
         rows.push(line(['Operating', '', 'Net income', cf.netIncome]));
         (cf.workingCapital || []).forEach(l => rows.push(line(['Operating', l.code, l.name, l.amount])));
         rows.push(line(['Operating', '', 'Net cash from operating activities', cf.totalOperating]));
@@ -1150,55 +1185,106 @@ function accountingPackageFiles({ report, trial, ledger, integrity }) {
         if ((cf.financing || []).length) rows.push(line(['Financing', '', 'Net cash from financing activities', cf.totalFinancing]));
         rows.push(line(['', '', 'Net change in cash', cf.netChangeInCash]));
         rows.push(line(['', '', 'Movement in cash accounts', cf.cashMovement]));
-        files.push({
-            filename: `cash_flow_${slug}.csv`,
-            content: pkgHeader('Cash Flow (indirect method)', report.period, integrity) + rows.join('\n')
+        sheets.push({
+            key: 'cash_flow', title: 'Cash Flow (indirect method)',
+            filename: `cash_flow_${slug}.csv`, columns, rows
         });
     }
 
     // 4. Trial Balance — the control the statements were drawn from.
     {
-        const rows = [line(['Account code', 'Account', 'Type', 'Debit (IDR)', 'Credit (IDR)'])];
+        const columns = ['Account code', 'Account', 'Type', 'Debit (IDR)', 'Credit (IDR)'];
+        const rows = [];
         (trial.rows || []).forEach(r =>
             rows.push(line([r.account_code, r.account_name, r.account_type, r.debit_amount, r.credit_amount])));
         rows.push(line(['', 'TOTAL', '', trial.totalDebit, trial.totalCredit]));
-        files.push({
-            filename: `trial_balance_${slug}.csv`,
-            content: pkgHeader('Trial Balance', report.period, integrity) + rows.join('\n')
+        sheets.push({
+            key: 'trial_balance', title: 'Trial Balance',
+            filename: `trial_balance_${slug}.csv`, columns, rows
         });
     }
 
     // 5. General Ledger — every posting behind every number above.
     {
-        const rows = [line(['Account code', 'Account', 'Journal ID', 'Period', 'Posting rule',
-            'Source collection', 'Source ID', 'Memo', 'Debit (IDR)', 'Credit (IDR)', 'Running balance (IDR)'])];
+        const columns = ['Account code', 'Account', 'Journal ID', 'Period', 'Posting rule',
+            'Source collection', 'Source ID', 'Memo', 'Debit (IDR)', 'Credit (IDR)', 'Running balance (IDR)'];
+        const rows = [];
         (ledger || []).forEach(acc => (acc.entries || []).forEach(e => rows.push(line([
             acc.account_code, acc.account_name, e.journal_id, e.period_key, e.posting_rule_id,
             e.source?.collection || '', e.source?.id || '', e.memo,
             e.debit, e.credit, e.running_balance
         ]))));
-        files.push({
-            filename: `general_ledger_${slug}.csv`,
-            content: pkgHeader('General Ledger', report.period, integrity) + rows.join('\n')
+        sheets.push({
+            key: 'general_ledger', title: 'General Ledger',
+            filename: `general_ledger_${slug}.csv`, columns, rows
         });
     }
 
-    return files;
+    return { slug, sheets };
 }
 
-async function exportAccountingPackage() {
+// CSV serialization — unchanged output, now derived from the shared row model.
+function accountingPackageFiles({ report, trial, ledger, integrity }) {
+    const { sheets } = accountingPackageSheets({ report, trial, ledger });
+    return sheets.map(s => ({
+        filename: s.filename,
+        content: pkgHeader(s.title, report.period, integrity)
+            + [s.columns, ...s.rows].map(r => r.map(csvEscape).join(',')).join('\n')
+    }));
+}
+
+// One workbook, one tab per statement — the format an accountant actually works
+// in. Identical figures to the CSV package: both serialize accountingPackageSheets().
+// The .xlsx bytes are written by netlify/functions/statements-xlsx.js, which is a
+// formatter only; no balance is ever computed off the ledger.
+async function buildStatementWorkbook({ sheets, period, integrity, filename }) {
+    const token = await state.user.getIdToken();
+    const res = await fetch('/.netlify/functions/statements-xlsx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ period, integrity, filename, sheets })
+    });
+    if (!res.ok) {
+        let reason = '';
+        try { reason = (await res.json())?.error || ''; } catch (_) { /* non-JSON error body */ }
+        throw new Error(reason || `Workbook request failed (${res.status})`);
+    }
+    return res.blob();
+}
+
+function downloadBlob(filename, blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+
+// `format` is 'csv' (five files) or 'xlsx' (one workbook). Everything before the
+// download — the readiness gate, the confirm, the working-papers fetch, the
+// integrity block, the report_exports row and the audit log — is identical, so it
+// lives here once rather than in two near-copies that drift.
+async function runAccountingExport(format) {
+    const isWorkbook = format === 'xlsx';
     const report = state.statements;
     if (!report || !report.incomeStatement?.hasData) {
         window.showToast?.('No ledger activity to export for this period.', 'info');
         return;
     }
     if (state.exportInProgress) return;
-    const btn = el('acct-export-package');
+    const btn = el(isWorkbook ? 'acct-export-workbook' : 'acct-export-package');
+    const btnLabel = btn?.textContent;
 
     const ok = await window.showConfirmDialog?.({
-        title: 'Export accounting package?',
-        body: 'Downloads the Income Statement, Balance Sheet, Cash Flow, Trial Balance, and General Ledger for this period as CSV files with raw IDR amounts. Each file states the period, basis, and tie-out results.',
-        confirmLabel: 'Export package', cancelLabel: 'Cancel', tone: 'default'
+        title: isWorkbook ? 'Export accounting workbook?' : 'Export accounting package?',
+        body: isWorkbook
+            ? 'Downloads one Excel workbook with a tab for the Income Statement, Balance Sheet, Cash Flow, Trial Balance, and General Ledger. Amounts are raw IDR numbers you can sum; every tab states the period, basis, and tie-out results.'
+            : 'Downloads the Income Statement, Balance Sheet, Cash Flow, Trial Balance, and General Ledger for this period as CSV files with raw IDR amounts. Each file states the period, basis, and tie-out results.',
+        confirmLabel: isWorkbook ? 'Export workbook' : 'Export package',
+        cancelLabel: 'Cancel', tone: 'default'
     });
     if (ok === false) return;
 
@@ -1221,13 +1307,24 @@ async function exportAccountingPackage() {
             bsBalanced: !!bs.balanced, bsDelta: bs.tieOutDelta,
             cfBalanced: !!cf.balanced, cfDelta: cf.tieOutDelta
         };
-        const files = accountingPackageFiles({ report, trial, ledger, integrity });
+        const { slug, sheets } = accountingPackageSheets({ report, trial, ledger });
+        const workbookName = `accounting_package_${slug}.xlsx`;
+
+        // Build the file BEFORE writing the export row: the existing contract is
+        // that a failed log means no download, and the inverse — a logged export
+        // whose file never arrived — is just as misleading in an audit trail.
+        const workbook = isWorkbook
+            ? await buildStatementWorkbook({
+                sheets, period: report.period, integrity, filename: workbookName
+            })
+            : null;
+        const files = isWorkbook ? [] : accountingPackageFiles({ report, trial, ledger, integrity });
 
         const ref = await state.ds.addReportExport(state.user.uid, {
             report_type: 'accounting_package',
             period_start: report.period.start,
             period_end: report.period.end,
-            formats: ['csv'],
+            formats: [isWorkbook ? 'xlsx' : 'csv'],
             status: 'generated',
             included_sections: ['income_statement', 'balance_sheet', 'cash_flow', 'trial_balance', 'general_ledger'],
             record_counts: { accounts: (trial.rows || []).length, ledger_accounts: (ledger || []).length },
@@ -1245,20 +1342,34 @@ async function exportAccountingPackage() {
             target_id: ref.id,
             after: {
                 report_type: 'accounting_package', period: report.period,
-                files: files.map(f => f.filename), integrity
+                format: isWorkbook ? 'xlsx' : 'csv',
+                files: isWorkbook ? [workbookName] : files.map(f => f.filename),
+                integrity
             },
-            reason: 'Accounting package export confirmed',
+            reason: isWorkbook
+                ? 'Accounting workbook export confirmed'
+                : 'Accounting package export confirmed',
             source: 'dashboard'
         });
 
-        files.forEach(f => downloadFile(f.filename, f.content));
-        window.showToast?.(`Exported ${files.length} files and logged the export.`, 'success');
+        if (isWorkbook) {
+            downloadBlob(workbookName, workbook);
+            window.showToast?.(`Exported ${sheets.length} statements as one workbook and logged the export.`, 'success');
+        } else {
+            files.forEach(f => downloadFile(f.filename, f.content));
+            window.showToast?.(`Exported ${files.length} files and logged the export.`, 'success');
+        }
     } catch (err) {
-        console.error('Accounting package export failed:', err);
-        window.showToast?.('Could not export the accounting package. Try again.', 'error');
+        console.error('Accounting export failed:', err);
+        window.showToast?.(
+            isWorkbook
+                ? 'Could not export the workbook. Try again.'
+                : 'Could not export the accounting package. Try again.',
+            'error'
+        );
     } finally {
         state.exportInProgress = false;
-        if (btn) { btn.disabled = false; btn.textContent = 'Export package'; }
+        if (btn) { btn.disabled = false; if (btnLabel) btn.textContent = btnLabel; }
     }
 }
 

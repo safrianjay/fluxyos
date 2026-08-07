@@ -188,6 +188,10 @@
     padding: 10px 16px;
     border-top: 1px solid #F3F4F6;
     background: #F9FAFB;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
 }
 .acct-overview-foot-btn {
     font-size: 12px;
@@ -200,6 +204,13 @@
 }
 .acct-overview-foot-btn:hover { text-decoration: underline; }
 .acct-overview-foot-btn:disabled { opacity: 0.55; cursor: not-allowed; text-decoration: none; }
+/* The workbook is the primary export (one file, five tabs, summable numbers);
+   CSV stays available at visibly lower emphasis rather than as a second
+   orange peer — DESIGN_SYSTEM §1 bans equal-weight adjacent CTAs. */
+.acct-overview-foot-btn-secondary {
+    font-weight: 500;
+    color: #6B7280;
+}
 /* No phone-width override is needed: `right: 0` anchors the panel to the
    button's right edge and it grows leftwards, so the max-width cap alone keeps
    it on screen down to 375px. Verified in accounting-overview-menu.spec.js. */
