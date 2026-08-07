@@ -990,12 +990,16 @@ function renderOverview() {
     // button nobody has a reason to press — the panel has to advertise itself.
     const dot = el('acct-overview-dot');
     if (dot) {
-        const attention = (unposted && unposted.blocking > 0)
-            || cleanupCount > 0
-            || (tb && !tb.balanced)
+        // Red when the books themselves do not tie (an integrity failure), amber
+        // when there is only work outstanding — the same severity split the
+        // cleanup rows already use, so the colour means one thing on this page.
+        const failing = (tb && !tb.balanced)
             || (bs?.hasData && !bs.balanced)
             || (cf?.hasData && !cf.balanced);
-        dot.classList.toggle('hidden', !attention);
+        const outstanding = (unposted && unposted.blocking > 0) || cleanupCount > 0;
+        dot.classList.toggle('hidden', !(failing || outstanding));
+        dot.classList.toggle('acct-dot-high', !!failing);
+        dot.classList.toggle('acct-dot-medium', !failing);
     }
 
     // Every row is a shortcut to the view that fixes it.

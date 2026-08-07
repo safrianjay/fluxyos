@@ -128,15 +128,12 @@
    shared-dashboard.js so the two header popovers behave the same way. */
 .acct-overview-btn { position: relative; }
 .acct-overview-btn.is-open { background: #F3F4F6; border-color: #D1D5DB; }
-/* Attention dot. The panel is closed by default, so this is the only thing that
-   tells a reader a blocker exists — it is load-bearing, not decoration. */
-.acct-overview-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #EA580C;
-    flex-shrink: 0;
-}
+/* The attention dot reuses the .acct-dot severity vocabulary already used by the
+   cleanup rows (red = a check is failing, amber = work outstanding) rather than
+   inventing a colour. The panel is closed by default, so this dot is the only
+   thing telling a reader a blocker exists — it is load-bearing, not decoration,
+   and matching the severity colours the page already uses means it reads the
+   same way. Orange is deliberately not used: CLAUDE.md makes it accent-only. */
 
 .acct-overview-panel {
     position: absolute;
