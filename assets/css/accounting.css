@@ -149,11 +149,27 @@
    The asymmetry is the point: confidence is a readiness METER, not a currency
    figure, so it does not need a currency card's width. Four flexible columns
    carry the money, and the meter takes a fixed, narrower track sized to its
-   ring + pill. That keeps all five on one row, keeps the figures uncropped, and
-   makes the meter read as a different kind of thing rather than a fifth
-   under-filled KPI. */
+   ring. That keeps all five on one row, keeps the figures uncropped, and makes
+   the meter read as a different kind of thing rather than a fifth under-filled
+   KPI.
+
+   The track is sized by the LABEL, not the ring — the ring is only 52px. At
+   150px the label wrapped to two lines, which made this the tallest card in the
+   strip and stretched all five to 124px; on one line they settle at 103px. So
+   the floor is the label's own width plus the card's 2x16px padding, measured,
+   not guessed. */
 .acct-kpi-grid--5 {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(150px, 0.62fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(172px, 0.5fr);
+}
+
+/* Below ~1320px those 172px stop being affordable: the four figure columns fall
+   to 190px and (Rp387.289.720) starts clipping. A clipped rupiah figure is a
+   real defect; a label on two lines is only slightly untidy, so the meter gives
+   the width back and takes the taller card. */
+@media (max-width: 1320px) {
+    .acct-kpi-grid--5 {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(150px, 0.5fr);
+    }
 }
 
 /* Below the four-up breakpoint the fixed track would squeeze the figures, so
@@ -189,25 +205,32 @@
 }
 
 /* --- Readiness ring/score accent --- */
+/* Report-confidence meter. Sized to sit in a KPI card next to four currency
+   figures, so it stays close to their value height rather than dominating the
+   row — the ring is a supporting signal, not the strip's headline. `align-self`
+   keeps it left-aligned with the values beside it; a fixed-width box in a
+   stretch column would otherwise be the only left-flush-by-accident element. */
 .acct-score-ring {
     --pct: 0;
-    width: 64px;
-    height: 64px;
+    width: 52px;
+    height: 52px;
     border-radius: 50%;
     flex-shrink: 0;
+    align-self: flex-start;
     background: conic-gradient(var(--ring-color, #EA580C) calc(var(--pct) * 1%), #F1F5F9 0);
     display: grid;
     place-items: center;
 }
 .acct-score-ring::after {
     content: "";
-    width: 50px;
-    height: 50px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     background: #fff;
     grid-area: 1 / 1;
 }
-.acct-score-ring > span { grid-area: 1 / 1; z-index: 1; }
+/* 40px of usable inner width; "100" at the 20px card value size does not fit. */
+.acct-score-ring > span { grid-area: 1 / 1; z-index: 1; font-size: 16px; }
 
 /* --- Status pills --- */
 .acct-pill {

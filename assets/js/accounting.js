@@ -106,7 +106,6 @@ function taxOptionsHtml(selected = '', type = null) {
 }
 
 const TONE_COLOR = { success: '#16A34A', warning: '#EA580C', danger: '#EF4444', neutral: '#94A3B8' };
-const TONE_PILL = { success: 'acct-pill-ready', warning: 'acct-pill-almost', danger: 'acct-pill-needs', neutral: 'acct-pill-planned' };
 const TONE_STATUS = { success: 'fluxy-status-success', warning: 'fluxy-status-warning', danger: 'fluxy-status-danger', neutral: 'fluxy-status-neutral' };
 
 const SOURCE_LINKS = {
@@ -1368,9 +1367,18 @@ function renderKpis(data) {
         ring.style.setProperty('--pct', (c.score === null || c.score === undefined) ? 0 : c.score);
         ring.style.setProperty('--ring-color', TONE_COLOR[c.tone] || TONE_COLOR.neutral);
     }
-    const band = el('kpi-readiness-band');
-    band.textContent = c.label;
-    band.className = `acct-pill ${TONE_PILL[c.tone] || TONE_PILL.neutral}`;
+    // The band ("Almost ready") used to render as a pill beside the ring. Two
+    // status indicators for one number in a 150px card read as clutter, and the
+    // ring already carries the band in its colour. The words stay reachable as
+    // the card's accessible name and hover title, so nothing is lost for screen
+    // readers — they just no longer compete with the score visually.
+    const card = el('kpi-readiness-card');
+    if (card) {
+        const score = (c.score === null || c.score === undefined) ? 'Not scored' : `${c.score} of 100`;
+        const desc = `Report confidence: ${score}${c.label ? ` — ${c.label}` : ''}`;
+        card.setAttribute('title', desc);
+        card.setAttribute('aria-label', desc);
+    }
 }
 
 
