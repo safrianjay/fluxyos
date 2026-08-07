@@ -40,6 +40,24 @@ function invoiceOutstanding(invoice) {
     return Math.max(0, total - Math.round(Math.abs(Number(invoice.amount_paid) || 0)));
 }
 
+// Total received against an invoice, in the invoice's own currency (minor units).
+//
+// `amount_paid` accumulates across partial payments and is the truth wherever it
+// exists. It does NOT exist on invoices settled before cash application shipped
+// (2026-07-29) — those went straight open→paid without ever writing the field —
+// so a `paid` invoice with no `amount_paid` received its full total. Reading the
+// field alone would report Rp0 received on every historical paid invoice.
+//
+// Voids are Rp0: a voided invoice's receivable was reversed. A void that had
+// taken money before being voided is not a state the app can currently produce.
+function invoiceReceived(invoice) {
+    if (!invoice || invoice.status === 'void') return 0;
+    const paid = Math.round(Math.abs(Number(invoice.amount_paid) || 0));
+    if (paid > 0) return paid;
+    if (invoice.status === 'paid') return Math.round(Math.abs(Number(invoice.total_amount) || 0));
+    return 0;
+}
+
 function esc(value) {
     return String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -315,7 +333,7 @@ export function initInvoicesPage({ ds, user }) {
 
         const body = el('invoice-table-body');
         if (!rows.length) {
-            body.innerHTML = `<tr><td colspan="7" class="fluxy-table-loading-cell">No invoices match your search or filter.</td></tr>`;
+            body.innerHTML = `<tr><td colspan="8" class="fluxy-table-loading-cell">No invoices match your search or filter.</td></tr>`;
         } else {
             body.innerHTML = pageRows.map((invoice) => {
                 const shown = displayStatus(invoice);
@@ -331,6 +349,7 @@ export function initInvoicesPage({ ds, user }) {
                             <span class="fluxy-table-cell-meta">${esc(invoice.customer_email || '')}</span>
                         </td>
                         <td class="fluxy-table-cell fluxy-table-money">${money(['void', 'paid'].includes(invoice.status) ? 0 : invoice.amount_due, invoice.currency)}</td>
+                        <td class="fluxy-table-cell fluxy-table-money">${money(invoiceReceived(invoice), invoice.currency)}</td>
                         <td class="fluxy-table-cell">${formatDate(invoice.due_date)}</td>
                         <td class="fluxy-table-cell">${statusBadgeHTML(shown)}</td>
                         <td class="fluxy-table-cell">${formatDate(invoice.updated_at)}</td>
@@ -401,7 +420,10 @@ export function initInvoicesPage({ ds, user }) {
                 Math.round(Number(invoice.subtotal_amount) || 0),
                 Math.round(Number(invoice.tax_amount) || 0),
                 Math.round(Number(invoice.total_amount) || 0),
-                invoice.status === 'paid' ? Math.round(Number(invoice.total_amount) || 0) : 0,
+                // Was `status === 'paid' ? total : 0`, which reported 0 received on
+                // every PARTIALLY paid invoice — the export predates partial
+                // payments. Shares the table's helper so the two cannot disagree.
+                invoiceReceived(invoice),
                 Math.round(Number(invoice.amount_due) || 0)
             ].map(csvCell).join(','));
             await ds.addAuditLog(uid, {

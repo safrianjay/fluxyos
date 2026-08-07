@@ -1091,6 +1091,8 @@
         "Total amount": "Jumlah total",
         "Amount due": "Jumlah jatuh tempo",
         "Amount received": "Jumlah diterima",
+        // Invoices list column — cumulative across partial payments, hence "Total".
+        "Total received": "Total diterima",
         "Tax rate (%)": "Tarif pajak (%)",
         "No invoices yet": "Belum ada invoice",
         "No overdue invoices": "Tidak ada invoice lewat jatuh tempo",
