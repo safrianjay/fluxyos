@@ -146,11 +146,27 @@ night `LEDGER_ASSERT_ENABLED` is on:
   'excluded'` and posting nothing — exactly to stop minor units entering the IDR
   ledger. The 11 rows are residue from before that guard. Cleanup is a data fix
   on a QA workspace, not a code change.
-- The Tes one is a **product gap worth a decision**: a user-triggered
-  `reverseJournal` from the Journal Register removes the liability from the GL but
-  leaves the source bill open, so the subledger and the GL disagree by design.
-  Reversing a *source* journal has no path that reconciles the source document.
-  Nothing detects this today except this report.
+- The Tes one **was** a product gap and is **fixed as of 2026-08-08**:
+  `reverseJournal` now stamps the source document `accounting_status: 'reversed'`
+  in the same batch as the reversal, and the subledger honours that state for
+  bills and invoices the way it already did for accrual transactions and
+  subscriptions. `'reversed'` also counts as terminal for *coverage* — the source
+  did reach the ledger and was undone on purpose, so it is not a backfill gap.
+
+  ⚠️ **Not retroactive.** The existing Tes bill still carries
+  `accounting_status: 'posted'` from before the fix, so that finding persists
+  until the document is re-stamped. Any pre-fix reversal is in the same position.
+  The fix prevents recurrence; it does not repair history.
+
+**A latent A/R bug was found in the same pass and fixed with it.**
+`expectedReceivables` matched `status === 'open'` and added the invoice's full
+`total_amount`. Cash application (2026-07-29) added `open → partial → paid`, and
+each payment posts `INV-PAY` (Dr Cash / Cr A/R) drawing the receivable *down*
+rather than settling it — so a partial invoice still carries A/R in the GL while
+the subledger dropped it entirely. It now matches `open` **and** `partial` and
+counts `outstanding_amount`. This had never fired only because no checked
+workspace had taken a partial payment yet; it would have been wrong every night
+from the first one.
 
 Diagnosis method, if either recurs: attribute the delta per source — compare each
 bill's A/P journal net against `expectedPayables()`'s value for it, then group the

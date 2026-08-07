@@ -140,6 +140,57 @@ const byId = (report) => Object.fromEntries(report.checks.map((c) => [c.id, c]))
     }), 'ws-lopsided');
     check('unbalanced lines fail the trial balance', byId(lopsided).trial_balance.ok, false);
 
+    // --- Sources with no ledger effect -------------------------------------
+    // A reversed source journal leaves the GL correct and the document standing.
+    // If the subledger still counts that document, A/P is out by exactly its
+    // amount with nothing on the report explaining why — the production finding
+    // this guards. Same for a partially paid invoice, whose receivable is drawn
+    // DOWN by each INV-PAY rather than settled.
+    console.log('\nsources with no ledger effect:');
+    const reversed = await assertWorkspaceLedger(makeDb({
+        journals: {
+            // b1 accrued, then the accrual was reversed: GL A/P nets to zero.
+            j1: journal('2026-07', [
+                { account_code: '6400', account_type: 'expense', debit: 193000, credit: 0 },
+                { account_code: '2000', account_type: 'liability', debit: 0, credit: 193000 }]),
+            j2: journal('2026-07', [
+                { account_code: '2000', account_type: 'liability', debit: 193000, credit: 0 },
+                { account_code: '6400', account_type: 'expense', debit: 0, credit: 193000 }]),
+            // i1 issued for 1.000.000 and half paid: A/R carries the remainder.
+            j3: journal('2026-07', [
+                { account_code: '1100', account_type: 'asset', debit: 1000000, credit: 0 },
+                { account_code: '4000', account_type: 'revenue', debit: 0, credit: 1000000 }]),
+            j4: journal('2026-07', [
+                { account_code: '1000', account_type: 'asset', debit: 400000, credit: 0 },
+                { account_code: '1100', account_type: 'asset', debit: 0, credit: 400000 }])
+        },
+        ledger_balances: {
+            '2026-07__6400': bal('2026-07', '6400', 'expense', 193000, 193000),
+            '2026-07__2000': bal('2026-07', '2000', 'liability', 193000, 193000),
+            '2026-07__1100': bal('2026-07', '1100', 'asset', 1000000, 400000),
+            '2026-07__4000': bal('2026-07', '4000', 'revenue', 0, 1000000),
+            '2026-07__1000': bal('2026-07', '1000', 'asset', 400000, 0)
+        },
+        invoices: {
+            i1: { status: 'partial', total_amount: 1000000, amount_paid: 400000, outstanding_amount: 600000, currency: 'IDR' }
+        },
+        bills: {
+            // Still 'unpaid' — only its journal was undone. Without the
+            // accounting_status check this alone breaks the A/P tie.
+            // journal_ref survives the reversal — the source did post once.
+            b1: { payment_status: 'unpaid', amount: 193000, accounting_status: 'reversed', journal_ref: 'j1' }
+        },
+        subscriptions: {},
+        transactions: {},
+        bank_balance_snapshots: {}
+    }), 'ws-reversed');
+
+    check('a reversed bill leaves A/P tying', byId(reversed).ap_subledger.ok, true);
+    check('a reversed bill contributes nothing to expected A/P', byId(reversed).ap_subledger.expected, 0);
+    check('a partial invoice keeps its outstanding balance in A/R', byId(reversed).ar_subledger.expected, 600000);
+    check('A/R ties on a partially paid invoice', byId(reversed).ar_subledger.ok, true);
+    check('reversed/partial sources do not fail the sweep', reversed.ok, true);
+
     console.log(failures ? `\n${failures} check(s) FAILED.` : '\nAll ledger-assert checks passed.');
     process.exit(failures ? 1 : 0);
 })().catch((err) => { console.error(err); process.exit(1); });

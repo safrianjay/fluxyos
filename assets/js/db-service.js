@@ -4214,7 +4214,12 @@ class DataService {
             'income', 'revenue', 'refund', 'expense', 'fee', 'tax',
             'pending_receivable', 'pending_payable'
         ]);
-        const TERMINAL = new Set(['posted', 'excluded']);
+        // Mirrors TERMINAL_STATUS in netlify/functions/lib/ledger-assert.js.
+        // 'reversed' is terminal: the source reached the ledger and was undone on
+        // purpose. It already passed this gate via journal_ref; naming it here
+        // keeps the gate and the nightly sweep from drifting on what "resolved"
+        // means.
+        const TERMINAL = new Set(['posted', 'excluded', 'reversed']);
         const [txs, bills, subs] = await Promise.all([
             this.getTransactionsForPeriod(userId, startKey, endKey).catch(() => []),
             this.getBillsForPeriod(userId, startKey, endKey).catch(() => []),
@@ -5905,8 +5910,39 @@ class DataService {
         const batch = writeBatch(this.db);
         const revRef = this._attachJournalToBatch(batch, scope, reversal, { entityId });
         batch.update(doc(this.db, `${scope}/journals/${journalId}`), { reversed_by_journal_id: revRef.id });
+
+        // Reversing a SOURCE journal (a bill accrual, an invoice issue, a
+        // transaction posting) removes the amount from the general ledger but
+        // leaves the document it came from untouched — so the subledger still
+        // counts a payable/receivable the GL no longer carries, and the two
+        // disagree with nothing to explain why. That is a real production
+        // finding: one workspace's A/P was out by exactly one reversed bill.
+        //
+        // Stamping the source records the state the ledger is now in.
+        // 'reversed' is already an allowed accounting_status in firestore.rules.
+        // It is written in the SAME batch as the reversal, because a reversal
+        // that lands without its stamp reintroduces the bug it exists to fix.
+        //
+        // The Close gate is unaffected: _collectUnpostedSources treats a source
+        // as posted when it has a journal_ref, which a reversed source keeps.
+        const src = original.source || {};
+        if (src.collection && src.id) {
+            const srcRef = doc(this.db, `${scope}/${src.collection}/${src.id}`);
+            // Only stamp a document that still exists — batch.update() on a
+            // missing doc fails the whole batch, and a deleted source must not
+            // block an otherwise valid reversal.
+            const srcSnap = await getDoc(srcRef).catch(() => null);
+            if (srcSnap && srcSnap.exists()) {
+                batch.update(srcRef, { accounting_status: 'reversed' });
+            }
+        }
+
         await batch.commit();
-        await this._auditCreateBestEffort(userId, 'journal.reversed', 'journals', journalId, { reversal_id: revRef.id, journal_number: reversal.journal_number });
+        await this._auditCreateBestEffort(userId, 'journal.reversed', 'journals', journalId, {
+            reversal_id: revRef.id,
+            journal_number: reversal.journal_number,
+            source: src.collection && src.id ? { collection: src.collection, id: src.id } : null
+        });
         return { reversal_id: revRef.id, journal_number: reversal.journal_number };
     }
 

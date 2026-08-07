@@ -31,6 +31,16 @@ const AR = '1100';
 const AP = '2000';
 const CASH = '1000';
 
+// accounting_status values meaning "this document has no general-ledger effect".
+// 'excluded' is deliberate non-participation (foreign currency); 'reversed' is
+// stamped by DataService.reverseJournal when a source journal is undone.
+//
+// The subledger MUST honour both or it counts a payable/receivable the GL does
+// not carry. Accrual transactions and subscriptions already skipped 'excluded';
+// bills and invoices did not, which is why a single reversed bill put one
+// workspace's A/P out by exactly its amount with nothing to explain it.
+const OUT_OF_LEDGER = new Set(['excluded', 'reversed']);
+
 // Natural balance: assets/expenses are debit-positive, everything else credit-
 // positive. Mirrors signedBalance() in the engine.
 function signed(type, debit, credit) {
@@ -67,15 +77,29 @@ async function expectedReceivables(base) {
     let count = 0;
     invoices.forEach((d) => {
         const inv = d.data() || {};
-        if (inv.status !== 'open') return;
+        // 'partial' belongs here as much as 'open'. Cash application (2026-07-29)
+        // added open→partial→paid, and each payment posts INV-PAY (Dr Cash / Cr
+        // A/R) drawing the receivable DOWN rather than settling it — so a partial
+        // invoice still carries A/R in the GL. Matching 'open' alone dropped it
+        // from the subledger entirely and reported a gap of exactly the
+        // outstanding balance. Latent until the first partial payment lands in a
+        // workspace, then wrong every night after.
+        if (inv.status !== 'open' && inv.status !== 'partial') return;
         if (inv.currency && inv.currency !== 'IDR') return; // never entered the IDR kernel
-        total += toInt(inv.total_amount);
+        if (OUT_OF_LEDGER.has(inv.accounting_status)) return;
+        // Outstanding, not face value — they are the same on an untouched open
+        // invoice and differ on a partially paid one.
+        const outstanding = inv.outstanding_amount != null
+            ? Math.max(0, toInt(Math.abs(inv.outstanding_amount)))
+            : Math.max(0, toInt(Math.abs(inv.total_amount)) - toInt(Math.abs(inv.amount_paid)));
+        if (!outstanding) return;
+        total += outstanding;
         count += 1;
     });
     accruals.forEach((d) => {
         const tx = d.data() || {};
         if (tx.is_voided) return;
-        if (tx.accounting_status === 'excluded') return;
+        if (OUT_OF_LEDGER.has(tx.accounting_status)) return;
         total += toInt(tx.amount);
         count += 1;
     });
@@ -116,6 +140,7 @@ async function expectedPayables(base) {
         const bill = d.data() || {};
         if (bill.payment_status === 'paid' || bill.linked_transaction_id) return;
         if (bill.currency && bill.currency !== 'IDR') return;
+        if (OUT_OF_LEDGER.has(bill.accounting_status)) return;
         const gross = bill.outstanding_amount != null
             ? Math.max(0, toInt(Math.abs(bill.outstanding_amount)))
             : Math.max(0, toInt(Math.abs(bill.amount)) - toInt(Math.abs(bill.amount_paid)));
@@ -127,14 +152,14 @@ async function expectedPayables(base) {
     accruals.forEach((d) => {
         const tx = d.data() || {};
         if (tx.is_voided) return;
-        if (tx.accounting_status === 'excluded') return;
+        if (OUT_OF_LEDGER.has(tx.accounting_status)) return;
         total += toInt(tx.amount);
         count += 1;
     });
     subs.forEach((d) => {
         const s = d.data() || {};
         if (s.is_voided) return;
-        if (s.accounting_status === 'excluded') return;
+        if (OUT_OF_LEDGER.has(s.accounting_status)) return;
         if (s.currency && s.currency !== 'IDR') return;
         total += toInt(s.amount);
         count += 1;
@@ -191,7 +216,13 @@ const POSTABLE_TX_TYPES = new Set([
     'income', 'revenue', 'refund', 'expense', 'fee', 'tax',
     'pending_receivable', 'pending_payable'
 ]);
-const TERMINAL_STATUS = new Set(['posted', 'excluded']);
+// 'reversed' is terminal for COVERAGE, which asks "did this source ever reach
+// the ledger?" — a reversed source did: its journal exists and was then undone
+// deliberately. That is a different question from "does it still carry a
+// balance?", which is OUT_OF_LEDGER's job above. Conflating the two would report
+// every reversal as a coverage gap and send someone to the backfill runbook for
+// a ledger that is already correct.
+const TERMINAL_STATUS = new Set(['posted', 'excluded', 'reversed']);
 
 async function unpostedSources(base) {
     let missing = 0;
