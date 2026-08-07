@@ -259,9 +259,12 @@ scheme**, and `type` alone cannot place an account:
 and revenue (4/7). That is why suggestions key on the category; see
 `deriveCodeBlock()` in `assets/js/accounting.js`.
 
-**Width:** all 182 codes are exactly 4 digits. The suggester derives width from
-the data rather than hard-coding 4, so a workspace numbering differently is
-followed rather than corrected.
+**Width:** all 182 codes are exactly 4 digits — and that is enforced, not merely
+observed. `isValidAccountCode()` in `accounting-engine.js` pins codes to
+`/^[1-9][0-9]{3}$/`, so a workspace *cannot* number differently; a 6-digit code
+like the `500001` in the original brief would be rejected on submit. The
+suggester reads the width from one constant that names that validator as its
+source, so widening the convention means changing both together.
 
 **Integrity:** 0 invalid-format codes, 0 duplicates within any workspace.
 

@@ -65,6 +65,11 @@ const SAK_CATEGORY_TYPE = {
 // fallback rather than the answer.
 const TYPE_CODE_PREFIX_FALLBACK = { asset: '1', liability: '2', equity: '3', revenue: '4', expense: '6' };
 
+// Account codes are exactly 4 digits. Not a house style that could vary — it is
+// what isValidAccountCode() in accounting-engine.js enforces, so a suggestion of
+// any other width would be rejected on submit. Widen both together or neither.
+const ACCOUNT_CODE_WIDTH = 4;
+
 // PPN treatments selectable as an account's default tax. Values are the tax-engine
 // TAX_CODES; the empty value is "No tax". Labels use the canonical Indonesian tax
 // names so they read the same as the Tax Center.
@@ -2372,10 +2377,19 @@ function deriveCodeBlock(sakCategory, type) {
     const numeric = source.filter(a => /^\d+$/.test(String(a.code)));
     if (!numeric.length) return null;
 
-    // Most common code width in the chart — the house convention, not an assumption.
+    // Code width. Derived from the chart rather than written as a literal, but
+    // note the ceiling: isValidAccountCode() in accounting-engine.js pins codes
+    // to /^[1-9][0-9]{3}$/, so 4 is the only width the system will actually
+    // accept today. The derivation is therefore descriptive, not permissive —
+    // it keeps this function honest about where the number comes from, and
+    // follows automatically if that validator is ever widened. It is clamped so
+    // a stray malformed code cannot make the drawer suggest something the
+    // validator will reject on submit.
     const widths = {};
     numeric.forEach(a => { const w = String(a.code).length; widths[w] = (widths[w] || 0) + 1; });
-    const width = Number(Object.keys(widths).sort((x, y) => widths[y] - widths[x])[0]);
+    const observed = Number(Object.keys(widths).sort((x, y) => widths[y] - widths[x])[0]);
+    const width = ACCOUNT_CODE_WIDTH;
+    void observed;
 
     const commonest = (rows) => {
         if (!rows.length) return null;
