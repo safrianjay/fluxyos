@@ -341,10 +341,30 @@ nothing else answers in one place: **can I trust these books, and can I close?**
   cleanup count, and period status. Empty state when nothing is outstanding.
 - Every row is a shortcut to the view that fixes it.
 
-**Overview is now the default landing**, so founders get "are my books OK?" before a
-statement they would have to interpret; accountants deep-link or click through to
-Reports. A group holding a single view hides its child row entirely — a one-button
-row is filler when the group tab already says where you are.
+**Overview moved out of the section nav into a header dropdown (2026-08-07)**,
+replacing the Export package button. It answers §10 question 3 ("does Overview need
+real estate of its own?") with *no*: it is a **check you consult before acting**, not
+a place you work — every row in it is a shortcut somewhere else, so it held the
+landing slot while pushing every actual statement one click further away.
+
+- The button carries an **attention dot** whenever a health check fails, an entry is
+  unposted, or cleanup is outstanding. Closed by default, the panel would otherwise
+  hide exactly the blockers it exists to surface — the dot is behaviour, not chrome.
+- **Export package keeps its only entry point**, re-homed in the panel footer. It was
+  wired to that header button alone; replacing the button without moving it would
+  have made a shipped feature unreachable.
+- The **kernel now loads outright** in `render()`. It used to load as a side effect of
+  Overview sitting in `KERNEL_TABS` and being the landing tab; the dot depends on
+  the same data, so the fetch is now explicit rather than disguised as tab routing.
+- `?tab=overview` opens the panel and lands on the default view — the URL shipped as
+  a real view and the app's own health rows linked to it.
+- **Reports → Income Statement is the default landing**, matching what this doc
+  always specified.
+
+Interaction matches the notifications bell in `shared-dashboard.js` (anchored panel,
+outside-click and Escape to dismiss) so the two header popovers behave alike. A group
+holding a single view hides its child row entirely — a one-button row is filler when
+the group tab already says where you are.
 
 ### Phase 2 — One Income Statement, ledger-derived ⚠️ CODE COMPLETE, CUTOVER BLOCKED
 
@@ -667,8 +687,9 @@ accountant signs off on a month without exporting to Excel."*
      change; call sites passing a magnitude are unaffected. This predates the IA work
      but the ledger-derived P&L surfaced it, since ledger figures are legitimately
      negative far more often than the old cash-basis ones were.
-3. Does Overview need real estate of its own, or is the existing global KPI strip
-   plus a cleanup summary enough to justify the section?
+3. ~~Does Overview need real estate of its own, or is the existing global KPI strip
+   plus a cleanup summary enough to justify the section?~~ **Answered 2026-08-07:
+   no.** Overview is a header dropdown, not a section — see §Overview above.
 
 ---
 

@@ -121,12 +121,91 @@
 .acct-subtab.is-active .acct-tab-count { background: #FFEDD5; color: #C2410C; }
 
 /* --- Overview: two equal cards, stacking on narrow viewports --- */
-.acct-overview-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-    gap: 24px;
-    align-items: start;
+/* --- Overview dropdown ---
+   Overview is a header dropdown rather than a tab: it is a check you consult
+   before acting, not somewhere you work — every row in it is a shortcut
+   elsewhere. Anchored and dismissed exactly like the notifications bell in
+   shared-dashboard.js so the two header popovers behave the same way. */
+.acct-overview-btn { position: relative; }
+.acct-overview-btn.is-open { background: #F3F4F6; border-color: #D1D5DB; }
+/* Attention dot. The panel is closed by default, so this is the only thing that
+   tells a reader a blocker exists — it is load-bearing, not decoration. */
+.acct-overview-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #EA580C;
+    flex-shrink: 0;
 }
+
+.acct-overview-panel {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 8px;
+    /* Wide enough for a three-column table carrying two rupiah control totals
+       ("Dr Rp1.234.567.890 = Cr Rp1.234.567.890") without horizontal scroll —
+       the figures are the point of Books health, and a popover you have to
+       scroll sideways to read defeats it. */
+    width: 520px;
+    max-width: calc(100vw - 32px);
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    box-shadow: 0 20px 40px -12px rgba(16, 24, 40, 0.24), 0 4px 8px rgba(16, 24, 40, 0.06);
+    overflow: hidden;
+    z-index: 50;
+}
+.acct-overview-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid #F3F4F6;
+}
+.acct-overview-title { font-size: 13px; font-weight: 700; color: #0B0F19; }
+.acct-overview-sub { font-size: 12px; color: #6B7280; margin-top: 2px; }
+.acct-overview-x {
+    padding: 4px;
+    color: #9CA3AF;
+    border-radius: 6px;
+    flex-shrink: 0;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+.acct-overview-x:hover { color: #374151; background: #F3F4F6; }
+.acct-overview-body { max-height: min(60vh, 460px); overflow-y: auto; }
+.acct-overview-section + .acct-overview-section { border-top: 1px solid #F3F4F6; }
+.acct-overview-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #6B7280;
+    padding: 12px 16px 6px;
+}
+/* The section owns the horizontal overflow, so a wide row scrolls inside the
+   panel instead of widening it. */
+.acct-overview-section > div { overflow-x: auto; }
+.acct-overview-foot {
+    padding: 10px 16px;
+    border-top: 1px solid #F3F4F6;
+    background: #F9FAFB;
+}
+.acct-overview-foot-btn {
+    font-size: 12px;
+    font-weight: 700;
+    color: #EA580C;
+    cursor: pointer;
+    background: none;
+    border: 0;
+    padding: 0;
+}
+.acct-overview-foot-btn:hover { text-decoration: underline; }
+.acct-overview-foot-btn:disabled { opacity: 0.55; cursor: not-allowed; text-decoration: none; }
+/* No phone-width override is needed: `right: 0` anchors the panel to the
+   button's right edge and it grows leftwards, so the max-width cap alone keeps
+   it on screen down to 375px. Verified in accounting-overview-menu.spec.js. */
 
 /* --- KPI strip --- */
 .acct-kpi-grid {

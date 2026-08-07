@@ -22,7 +22,7 @@ test('Accounting Center kernel surfaces load and seed without errors', async ({ 
     await page.goto('/accounting.html');
     await expect(page.locator('#sidebar')).toBeVisible({ timeout: 30000 });
     // Overview is the default landing; the Income Statement is one click away.
-    await expect(page.locator('[data-acct-panel="overview"]')).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('[data-acct-panel="income"]')).toBeVisible({ timeout: 30000 });
     await openAccountingTab(page, 'income');
     await expect(page.locator('[data-acct-panel="income"]')).toBeVisible();
 

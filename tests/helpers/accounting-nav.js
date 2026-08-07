@@ -8,7 +8,6 @@
 // openAccountingTab() instead of clicking `[data-acct-tab=…]` by hand.
 
 const GROUP_OF_TAB = {
-    overview: 'overview',
     income: 'reports',
     balance: 'reports',
     cashflow: 'reports',

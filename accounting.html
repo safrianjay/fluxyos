@@ -38,9 +38,38 @@
                     <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     Ask Fluxy AI
                 </button>
-                <button type="button" id="acct-export-package" class="acct-btn acct-btn-secondary" title="Export Income Statement, Balance Sheet, Cash Flow, Trial Balance, and General Ledger as CSV">
-                    Export package
-                </button>
+                <div id="acct-overview-wrap" class="relative inline-flex">
+                    <button type="button" id="acct-overview-btn" class="acct-btn acct-btn-secondary acct-overview-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="acct-overview-panel" title="Books health and what still blocks the close">
+                        Overview
+                        <span id="acct-overview-dot" class="acct-overview-dot hidden"></span>
+                    </button>
+                    <div id="acct-overview-panel" class="acct-overview-panel hidden" role="dialog" aria-label="Books overview" aria-modal="false">
+                        <div class="acct-overview-head">
+                            <div>
+                                <p class="acct-overview-title">Can I trust these books?</p>
+                                <p class="acct-overview-sub">Integrity checks and close blockers for <span id="overview-period">this period</span>.</p>
+                            </div>
+                            <button type="button" id="acct-overview-close" class="acct-overview-x" aria-label="Close overview">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+                        <div class="acct-overview-body">
+                            <section class="acct-overview-section">
+                                <h2 class="acct-overview-section-title">Books health</h2>
+                                <div id="overview-health"></div>
+                            </section>
+                            <section class="acct-overview-section">
+                                <h2 class="acct-overview-section-title">Before you close</h2>
+                                <div id="overview-actions"></div>
+                            </section>
+                        </div>
+                        <div class="acct-overview-foot">
+                            <button type="button" id="acct-export-package" class="acct-overview-foot-btn" title="Export Income Statement, Balance Sheet, Cash Flow, Trial Balance, and General Ledger as CSV">
+                                Export package →
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -110,8 +139,7 @@
 
                     <!-- SECTION NAV (primary: groups) -->
                     <nav class="acct-tabs" role="tablist" aria-label="Accounting Center sections">
-                        <button type="button" class="acct-tab is-active" data-acct-group="overview" role="tab" aria-selected="true">Overview</button>
-                        <button type="button" class="acct-tab" data-acct-group="reports" role="tab" aria-selected="false">Reports</button>
+                        <button type="button" class="acct-tab is-active" data-acct-group="reports" role="tab" aria-selected="true">Reports</button>
                         <button type="button" class="acct-tab" data-acct-group="ledger" role="tab" aria-selected="false">Ledger</button>
                         <button type="button" class="acct-tab" data-acct-group="setup" role="tab" aria-selected="false">Setup</button>
                         <button type="button" class="acct-tab" data-acct-group="close" role="tab" aria-selected="false">Close <span class="acct-tab-count" id="tab-close-count">0</span></button>
@@ -119,8 +147,7 @@
 
                     <!-- VIEW NAV (secondary: children of the active group) -->
                     <nav class="acct-subtabs" role="tablist" aria-label="Accounting Center views">
-                        <button type="button" class="acct-subtab is-active" data-acct-tab="overview" data-acct-parent="overview" role="tab" aria-selected="true">Books health</button>
-                        <button type="button" class="acct-subtab" data-acct-tab="income" data-acct-parent="reports" role="tab" aria-selected="false" hidden>Income Statement</button>
+                        <button type="button" class="acct-subtab is-active" data-acct-tab="income" data-acct-parent="reports" role="tab" aria-selected="true">Income Statement</button>
                         <button type="button" class="acct-subtab" data-acct-tab="balance" data-acct-parent="reports" role="tab" aria-selected="false">Balance Sheet</button>
                         <button type="button" class="acct-subtab" data-acct-tab="cashflow" data-acct-parent="reports" role="tab" aria-selected="false">Cash Flow</button>
                         <button type="button" class="acct-subtab" data-acct-tab="aging" data-acct-parent="reports" role="tab" aria-selected="false">Aging</button>
@@ -137,29 +164,8 @@
                         <button type="button" class="acct-subtab" data-acct-tab="cleanup" data-acct-parent="close" role="tab" aria-selected="false" hidden>Cleanup <span class="acct-tab-count" id="tab-cleanup-count">0</span></button>
                     </nav>
 
-                    <!-- OVERVIEW TAB — "can I trust these books, and can I close?" -->
-                    <div data-acct-panel="overview">
-                        <div class="acct-overview-grid">
-                            <section class="acct-card fluxy-table-card">
-                                <div class="fluxy-table-card-header">
-                                    <div>
-                                        <h2 class="fluxy-table-title">Books health</h2>
-                                        <p class="fluxy-table-subtitle">The three integrity checks behind every statement, for <span id="overview-period">this period</span>.</p>
-                                    </div>
-                                </div>
-                                <div id="overview-health" class="fluxy-table-scroll"></div>
-                            </section>
-                            <section class="acct-card fluxy-table-card">
-                                <div class="fluxy-table-card-header">
-                                    <div>
-                                        <h2 class="fluxy-table-title">Before you close</h2>
-                                        <p class="fluxy-table-subtitle">What still needs attention, and where to fix it.</p>
-                                    </div>
-                                </div>
-                                <div id="overview-actions" class="fluxy-table-scroll"></div>
-                            </section>
-                        </div>
-                    </div>
+                    <!-- Overview lives in the header dropdown (#acct-overview-panel), not
+                         as a tab — see docs/ACCOUNTING_CENTER_IA.md §Overview. -->
 
                     <!-- INCOME STATEMENT TAB (ledger-derived) -->
                     <div data-acct-panel="income">

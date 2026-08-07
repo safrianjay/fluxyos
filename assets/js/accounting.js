@@ -13,8 +13,8 @@ const state = {
     startKey: null,
     endKey: null,
     picker: null,
-    activeTab: 'overview',
-    activeGroup: 'overview',
+    activeTab: 'income',
+    activeGroup: 'reports',
     lastTabByGroup: {},
     loading: false,
     data: null,
@@ -225,6 +225,51 @@ function wireStaticControls() {
     el('balance-sheet-export')?.addEventListener('click', () => exportBalanceSheet());
     el('acct-export-package')?.addEventListener('click', () => exportAccountingPackage());
     el('post-unposted-btn')?.addEventListener('click', () => onPostUnposted());
+    wireOverviewMenu();
+}
+
+// --- Overview dropdown -------------------------------------------------------
+// Overview was a tab; it is now a header dropdown, because it is a *check* you
+// consult before acting, not a place you work. As a tab it occupied the landing
+// slot and pushed every actual statement one click further away, while itself
+// holding nothing you can do — every row is a shortcut somewhere else.
+//
+// Same interaction contract as the notifications bell in shared-dashboard.js
+// (anchored panel, outside-click and Escape to close), so the two behave alike.
+
+function overviewMenuOpen() {
+    return el('acct-overview-panel') && !el('acct-overview-panel').classList.contains('hidden');
+}
+
+function setOverviewMenu(open) {
+    const panel = el('acct-overview-panel');
+    const btn = el('acct-overview-btn');
+    if (!panel || !btn) return;
+    panel.classList.toggle('hidden', !open);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btn.classList.toggle('is-open', open);
+    if (open) {
+        // Books health reads the kernel (trial balance, unposted, period status).
+        // It is normally loaded eagerly, but a slow first paint or a failed load
+        // would otherwise leave the panel stuck on "Loading…" forever.
+        loadKernel();
+        renderOverview();
+        el('acct-overview-close')?.focus();
+    }
+}
+
+function wireOverviewMenu() {
+    const btn = el('acct-overview-btn');
+    if (!btn) return;
+    btn.addEventListener('click', (e) => { e.stopPropagation(); setOverviewMenu(!overviewMenuOpen()); });
+    el('acct-overview-close')?.addEventListener('click', () => { setOverviewMenu(false); btn.focus(); });
+    document.addEventListener('click', (e) => {
+        if (!overviewMenuOpen()) return;
+        if (!el('acct-overview-wrap')?.contains(e.target)) setOverviewMenu(false);
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && overviewMenuOpen()) { setOverviewMenu(false); btn.focus(); }
+    });
 }
 
 // Imported entries (CSV / bank statements) post their journals via a sweep rather
@@ -303,7 +348,7 @@ function openFluxyAI() {
     else window.showToast?.('Fluxy AI is still loading. Try again in a moment.', 'info');
 }
 
-const KERNEL_TABS = new Set(['overview', 'journals', 'ledger', 'trial', 'coa', 'close']);
+const KERNEL_TABS = new Set(['journals', 'ledger', 'trial', 'coa', 'close']);
 // Both ledger-statement views come from one getFinancialStatements() fetch.
 // Statements load eagerly with the page (the KPI strip reads the same figures),
 // so no tab needs a lazy statement fetch.
@@ -313,7 +358,6 @@ const KERNEL_TABS = new Set(['overview', 'journals', 'ledger', 'trial', 'coa', '
 // Panel ids are unchanged — only the nav layer knows about grouping.
 // Full rationale: docs/ACCOUNTING_CENTER_IA.md
 const TAB_GROUPS = [
-    { id: 'overview', tabs: ['overview'] },
     { id: 'reports', tabs: ['income', 'balance', 'cashflow', 'aging'] },
     { id: 'ledger', tabs: ['journals', 'ledger', 'trial'] },
     { id: 'setup', tabs: ['coa', 'mapping', 'vendors'] },
@@ -323,6 +367,10 @@ const GROUP_OF_TAB = TAB_GROUPS.reduce((map, g) => {
     g.tabs.forEach(t => { map[t] = g.id; });
     return map;
 }, {});
+// Overview used to be the landing tab. It is now a header dropdown, so the page
+// opens on the first real statement instead of on a summary of it.
+const DEFAULT_TAB = 'income';
+let pendingOverviewOpen = false;
 
 // Views are linkable (?tab=…) so cross-page drill-downs can land on one directly.
 function syncTabUrl(tab) {
@@ -336,10 +384,13 @@ function initialTab() {
     try {
         const t = new URL(window.location.href).searchParams.get('tab');
         if (t && GROUP_OF_TAB[t]) return t;
+        // `?tab=overview` was a real view until Overview moved into the header
+        // dropdown. Links to it exist in the wild (and in this app's own health
+        // rows), so honour the intent by opening the panel rather than silently
+        // dropping the reader on a statement they did not ask for.
+        if (t === 'overview') pendingOverviewOpen = true;
     } catch { /* fall through to default */ }
-    // Founders land on "are my books OK?" rather than on a statement they have to
-    // interpret; accountants deep-link or click straight through to Reports.
-    return 'overview';
+    return DEFAULT_TAB;
 }
 
 // Selecting a group returns to the view last used inside it, defaulting to first.
@@ -934,10 +985,25 @@ function renderOverview() {
         ? tableShell([{ label: 'Item' }, { label: 'Detail' }, { label: 'Status' }], items.join(''))
         : emptyState('Nothing outstanding', 'No unposted entries and no cleanup items for this period.');
 
+    // The button carries a dot whenever something in here needs attention. Without
+    // it, moving Overview off the landing tab would hide every blocker behind a
+    // button nobody has a reason to press — the panel has to advertise itself.
+    const dot = el('acct-overview-dot');
+    if (dot) {
+        const attention = (unposted && unposted.blocking > 0)
+            || cleanupCount > 0
+            || (tb && !tb.balanced)
+            || (bs?.hasData && !bs.balanced)
+            || (cf?.hasData && !cf.balanced);
+        dot.classList.toggle('hidden', !attention);
+    }
+
     // Every row is a shortcut to the view that fixes it.
     [healthWrap, actionWrap].forEach((wrap) => {
         wrap.querySelectorAll('[data-overview-go]').forEach((row) => {
-            const go = () => setTab(row.getAttribute('data-overview-go'));
+            // Navigating out of the panel closes it — the reader asked to go
+            // somewhere, so leaving it open would cover what they came to see.
+            const go = () => { setOverviewMenu(false); setTab(row.getAttribute('data-overview-go')); };
             row.addEventListener('click', go);
             row.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
@@ -1325,6 +1391,18 @@ function render(data) {
         updateCleanupBadge();
     }
     setTab(state.activeTab);
+
+    // The kernel used to load as a side effect of Overview being the landing tab
+    // (it is in KERNEL_TABS). Now that Overview is a dropdown, load it outright:
+    // the button's attention dot reports unposted entries and trial-balance
+    // state, so it would be wrong until someone opened a Ledger view. Same fetch
+    // as before, just no longer disguised as tab routing.
+    loadKernel();
+
+    if (pendingOverviewOpen) {
+        pendingOverviewOpen = false;
+        setOverviewMenu(true);
+    }
 }
 
 // Cleanup is pre-close work: the count shows on its own view and rolls up to the

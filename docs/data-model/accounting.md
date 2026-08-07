@@ -53,6 +53,15 @@ the owning group, so cross-page drill-downs (`drillToLedger`) activate both leve
 Default landing is Reports → Income Statement. The cleanup count shows on its own
 view and rolls up to the Close group badge.
 
+**Overview is a header dropdown, not a group** (`#acct-overview-btn` /
+`#acct-overview-panel`, moved there 2026-08-07 in place of the Export package
+button). It holds Books health + Before you close, carries an attention dot when a
+check fails or work is outstanding, and keeps Export package in its footer — that
+button was `exportAccountingPackage()`'s only entry point. `render()` therefore calls
+`loadKernel()` outright: the dot reads trial-balance and unposted state, which used
+to load only because Overview was in `KERNEL_TABS`. `?tab=overview` opens the panel.
+See `docs/ACCOUNTING_CENTER_IA.md` §Overview.
+
 **Close gate (2026-07-31).** "All entries posted to the ledger" is backed by
 `DataService.countUnpostedSources`, not `countPendingPostings` — the latter matches
 `accounting_status:'pending'` only, so a **never-queued** source (no flag at all) was

@@ -4224,11 +4224,15 @@
         "This transaction was voided. Any journal it produced was reversed in the ledger.": "Transaksi ini dibatalkan. Jurnal yang dihasilkannya telah dibalik di buku besar.",
         "Reversal": "Pembalikan",
         "Reversed": "Dibalik",
-        // Accounting Center Overview
+        // Accounting Center Overview — a header dropdown, no longer a tab.
         "Books health": "Kesehatan Pembukuan",
-        "The three integrity checks behind every statement, for": "Tiga pemeriksaan integritas di balik setiap laporan, untuk",
         "Before you close": "Sebelum Anda tutup buku",
-        "What still needs attention, and where to fix it.": "Apa yang masih perlu ditangani, dan di mana memperbaikinya.",
+        "Can I trust these books?": "Bisa percaya pembukuan ini?",
+        "Integrity checks and close blockers for": "Pemeriksaan integritas dan penghambat tutup buku untuk",
+        "Books overview": "Ringkasan pembukuan",
+        "Close overview": "Tutup ringkasan",
+        "Books health and what still blocks the close": "Kesehatan pembukuan dan apa yang masih menghambat tutup buku",
+        "Export package →": "Ekspor paket →",
         "Trial balance": "Neraca Saldo",
         "Balance sheet ties out": "Neraca seimbang",
         "Cash flow ties to cash": "Arus kas sesuai dengan kas",
