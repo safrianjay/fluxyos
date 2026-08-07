@@ -2408,6 +2408,34 @@ function deriveCodeBlock(sakCategory, type) {
     return { prefix, width, used: new Set(numeric.map(a => String(a.code))) };
 }
 
+// The code range a parent account owns, from its trailing zeros.
+//
+// A chart is READ in code order — trial balance, general ledger and the P&L all
+// sort by code — so a new account's code decides where it appears in every
+// statement from then on. Standard practice is therefore to number a child
+// INSIDE its parent's range so it sorts next to its siblings, rather than
+// appending it to the end of the class where it reads as unrelated. The seed is
+// built this way: 6400 Marketing with 6410-6460 beneath it.
+//
+// Trailing zeros say how much room sits under the parent, capped at two so a
+// top-level account (1000) claims a hundred-range rather than the whole block.
+// A code with no trailing zeros is a leaf: nothing can be filed under it.
+function parentCodeRange(parentCode) {
+    const code = String(parentCode || '').trim();
+    if (!/^\d+$/.test(code)) return null;
+    let zeros = 0;
+    for (let i = code.length - 1; i >= 0 && code[i] === '0'; i -= 1) zeros += 1;
+    zeros = Math.min(zeros, 2);
+    if (zeros === 0) return null;
+    const base = parseInt(code, 10);
+    const span = Math.pow(10, zeros);
+    const step = Math.pow(10, zeros - 1);
+    // `first` is the first slot ON the step grid, not base + 1: under 6400 the
+    // siblings are 6410, 6420 … so a new child belongs at 6470, not 6401.
+    // `lo` stays base + 1 for the dense fallback when the tidy slots run out.
+    return { first: base + step, lo: base + 1, hi: base + span - 1, step };
+}
+
 // The next free code inside the derived block.
 //
 // Continues where the workspace left off rather than parking new accounts in a
@@ -2415,10 +2443,27 @@ function deriveCodeBlock(sakCategory, type) {
 // they use (the commonest gap — 10 in the seed, 3 in one real workspace that
 // bulk-created accounts), and returns the first free code at or after the
 // highest one. Falls back to a dense scan when the tail of the block is full.
-function suggestAccountCode(sakCategory, type) {
+function suggestAccountCode(sakCategory, type, parentCode = '') {
     const block = deriveCodeBlock(sakCategory, type);
     if (!block) return '';
     const { prefix, width, used } = block;
+    const pad0 = (n) => String(n).padStart(width, '0');
+
+    // A parent was chosen: file the child under it. This takes precedence over
+    // appending to the class, because sorting beside its siblings is what makes
+    // the statements readable.
+    const range = parentCodeRange(parentCode);
+    if (range && String(parentCode)[0] === prefix) {
+        for (let n = range.first; n <= range.hi; n += range.step) {
+            if (!used.has(pad0(n))) return pad0(n);
+        }
+        // The parent's tidy slots are taken — any free code under it still sorts
+        // in the right place, so fall to a dense scan before giving up on it.
+        for (let n = range.lo; n <= range.hi; n += 1) {
+            if (!used.has(pad0(n))) return pad0(n);
+        }
+        // Parent genuinely full: fall through to class-level numbering.
+    }
 
     const lo = parseInt(prefix.padEnd(width, '0'), 10);
     const hi = parseInt(prefix.padEnd(width, '9'), 10);
@@ -2479,9 +2524,15 @@ function codeBlockHint(sakCategory, type) {
 
 // Active accounts of the same type — candidate parents. The leading-digit rule is
 // enforced by validateAccountDraft on submit; this just keeps the list relevant.
-function parentOptionsHtml(type, excludeCode) {
+function parentOptionsHtml(type, excludeCode, prefix = '') {
     const parents = (state.kernel?.coa || [])
-        .filter(a => a.type === type && a.is_active !== false && a.code !== excludeCode)
+        .filter(a => a.type === type && a.is_active !== false && a.code !== excludeCode
+            // Same CODE BLOCK, not merely the same type. validateAccountDraft
+            // requires "Parent account must share the same code range", and type
+            // spans two blocks for expense (5 COGS / 6 opex) and revenue (4 / 7)
+            // — so filtering on type alone offered parents the validator would
+            // reject on submit, e.g. 5100 as the parent of an operating expense.
+            && (!prefix || String(a.code).charAt(0) === prefix))
         .sort((a, b) => String(a.code).localeCompare(String(b.code)));
     if (!parents.length) return '<option value="">No eligible parent accounts</option>';
     return '<option value="">— None —</option>' + parents
@@ -2501,13 +2552,21 @@ function refreshCaDerived() {
     if (state.caMode !== 'edit' && codeInput && codeInput.dataset.autofill !== '0') {
         // Keyed on the SAK category, not the type: type cannot tell COGS from
         // operating expense, or other income from revenue.
-        codeInput.value = suggestAccountCode(sakCategory, type);
+        codeInput.value = suggestAccountCode(sakCategory, type, caEl('ca-parent')?.value || '');
     }
     // Say where the number came from. Shown in create mode only — in edit mode
     // the code is immutable, so the convention is not actionable.
     const hint = caEl('ca-code-hint');
     if (hint) {
-        const text = state.caMode === 'edit' ? '' : codeBlockHint(sakCategory, type);
+        const parentCode = caEl('ca-parent')?.value || '';
+        const underParent = state.caMode !== 'edit'
+            && parentCodeRange(parentCode)
+            && String(codeInput?.value || '').startsWith(String(parentCode).slice(0, 2));
+        const text = state.caMode === 'edit'
+            ? ''
+            : (underParent
+                ? `Numbered under parent ${parentCode} so it sorts with the other accounts beneath it.`
+                : codeBlockHint(sakCategory, type));
         hint.textContent = text;
         hint.classList.toggle('hidden', !text);
     }
@@ -2515,7 +2574,7 @@ function refreshCaDerived() {
     if (parentSel) {
         const keep = parentSel.value;
         const selfCode = codeInput?.value || state.caAccount?.code || '';
-        parentSel.innerHTML = parentOptionsHtml(type, selfCode);
+        parentSel.innerHTML = parentOptionsHtml(type, selfCode, deriveCodeBlock(sakCategory, type)?.prefix || '');
         // Preserve a still-valid parent selection across a category change.
         const want = keep || (state.caMode === 'edit' ? (state.caAccount?.parent_code || '') : '');
         if (want && parentSel.querySelector(`option[value="${CSS.escape(want)}"]`)) parentSel.value = want;
@@ -2651,9 +2710,13 @@ function openAccountDrawer(account = null, inUse = false) {
     overlay?.addEventListener('click', closeCreateAccountDrawer);
     caEl('ca-category')?.addEventListener('change', refreshCaDerived);
     caEl('ca-code')?.addEventListener('input', (e) => { e.target.dataset.autofill = '0'; });
+    caEl('ca-parent')?.addEventListener('change', refreshCaDerived);
     caEl('ca-parent-toggle')?.addEventListener('change', (e) => {
         caEl('ca-parent-field')?.classList.toggle('hidden', !e.target.checked);
-        if (e.target.checked) refreshCaDerived();
+        // Clearing the parent must re-suggest too: the account is no longer
+        // filed under anything, so it goes back to class numbering.
+        if (!e.target.checked && caEl('ca-parent')) caEl('ca-parent').value = '';
+        refreshCaDerived();
     });
     caEl('ca-form')?.addEventListener('submit', (e) => { e.preventDefault(); submitAccount(); });
 

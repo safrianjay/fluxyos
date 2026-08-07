@@ -98,3 +98,45 @@ test('a hand-edited code is never overwritten by a category change', async ({ pa
     // Suggestions assist; they must not clobber a deliberate choice.
     await expect(code).toHaveValue('6777');
 });
+
+test('a child is numbered under its parent, not appended to the class', async ({ page }) => {
+    await openNewAccountDrawer(page);
+    await page.locator('#ca-category').selectOption('operating_expense');
+    await page.waitForTimeout(250);
+
+    // Without a parent the code lands at class level.
+    const classLevel = await page.locator('#ca-code').inputValue();
+
+    // Pick a parent that owns a range (a code with trailing zeros).
+    await page.locator('#ca-parent-toggle').check();
+    await page.waitForTimeout(200);
+    const parentSel = page.locator('#ca-parent');
+    const parents = await parentSel.locator('option').evaluateAll(
+        (os) => os.map((o) => o.value).filter((v) => /^\d+00$/.test(v))
+    );
+    if (!parents.length) test.skip(true, 'No parent account with a spare range.');
+    // Every offered parent must be legally usable: validateAccountDraft requires
+    // the parent to share the code range, so the list must not offer a COGS
+    // account as the parent of an operating expense.
+    const classPrefix = classLevel.charAt(0);
+    parents.forEach((p) => expect(p.charAt(0), `parent ${p} is offered but is not in the ${classPrefix}xxx block`).toBe(classPrefix));
+    const parent = parents[0];
+    await parentSel.selectOption(parent);
+    await page.waitForTimeout(300);
+
+    const child = await page.locator('#ca-code').inputValue();
+    // A chart is read in code order, so the child must sort beside its siblings
+    // rather than at the end of the class.
+    expect(child.slice(0, 2), `child ${child} should sit under parent ${parent}`)
+        .toBe(parent.slice(0, 2));
+    expect(Number(child)).toBeGreaterThan(Number(parent));
+    expect(child).not.toBe(classLevel);
+
+    // And the drawer says so.
+    await expect(page.locator('#ca-code-hint')).toContainText(/under parent/i);
+
+    // Clearing the parent returns it to class numbering.
+    await page.locator('#ca-parent-toggle').uncheck();
+    await page.waitForTimeout(300);
+    await expect(page.locator('#ca-code')).toHaveValue(classLevel);
+});
