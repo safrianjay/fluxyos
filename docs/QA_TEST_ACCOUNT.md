@@ -83,3 +83,15 @@ One-time provisioning (manual — cannot be automated here):
 
 Once the file exists, `npx playwright test member-drilldown` runs the member
 sharing checks. Never commit the member password or its saved session.
+
+## ⚠️ Do not re-create the QA accounts after the KYC cutoff
+
+`assets/js/kyc-gate.js` locks the **entire app** for any user whose Firebase
+`creationTime` is on/after `KYC_ENFORCEMENT_CUTOFF` until a reviewer approves
+their KYC in `/internal`. Both QA accounts predate that cutoff, so they are
+never enforced.
+
+If either account is ever deleted and re-created, every Playwright spec will
+fail at a full-screen "Your details are under review" overlay. Recover by
+approving that uid in the Internal Operations Console (KYC Review → Approve),
+or by setting `internal_users/{uid}.kyc_status = 'approved'` directly.

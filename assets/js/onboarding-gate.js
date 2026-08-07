@@ -532,7 +532,20 @@ export async function applyToPage(authUser, options = {}) {
     }
 
     const gate = await shouldGateUser(authUser);
-    if (!gate) return false;
+    if (!gate) {
+        // Onboarding is done (or never applied to this user). A post-cutoff user
+        // still needs KYC approval before the platform unlocks. This is the one
+        // wiring point for the KYC gate: every app page already awaits this
+        // function before its data load and skips it on a truthy return, so the
+        // whole platform locks without touching a single page. Dynamically
+        // imported so legacy users — who are never enforced — don't pay for it.
+        try {
+            const { applyToPage: applyKycGate } = await import('/assets/js/kyc-gate.js');
+            return await applyKycGate(authUser);
+        } catch (_) {
+            return false; // fail open: a module load failure must never lock a user out
+        }
+    }
 
     injectStyles();
 

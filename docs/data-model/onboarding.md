@@ -20,7 +20,7 @@ redirected.
 
 | Document | Fields |
 |----------|--------|
-| `progress` | `onboarding_completed` (bool), `onboarding_exempt` (bool), `eligible_for_onboarding_gate` (bool), `current_step` (`business_setup`/`account_owner`/`finance_setup`/`review`/`complete`), `completed_steps` (string[]), `selected_first_action` (first selected setup preference, backward-compatible), `selected_first_actions` (string[]), `selected_learning_tours` (string[]), `primary_learning_tour` (string \| null), `skipped` (bool), `source` (`onboarding_v2`/`legacy_exemption`), `created_at`, `updated_at`, `completed_at`, `skipped_at` |
+| `progress` | `onboarding_completed` (bool), `onboarding_exempt` (bool), `eligible_for_onboarding_gate` (bool), `kyc_enforced` (bool — see KYC review gate below), `current_step` (`business_setup`/`account_owner`/`finance_setup`/`review`/`complete`), `completed_steps` (string[]), `selected_first_action` (first selected setup preference, backward-compatible), `selected_first_actions` (string[]), `selected_learning_tours` (string[]), `primary_learning_tour` (string \| null), `skipped` (bool), `source` (`onboarding_v2`/`legacy_exemption`), `created_at`, `updated_at`, `completed_at`, `skipped_at` |
 | `profile` | `business_name`, `role` (one of: `Owner / Founder`, `Finance admin`, `Accountant`, `Operations manager`, `Staff`), `main_goal`, `monthly_revenue_range`, `employee_count_range`, `legal_full_name`, `phone_country_code`, `phone_number` (normalized E.164-like string), `created_at`, `updated_at` |
 | `documents` | `identity_document_status` (`not_uploaded`/`uploaded`), `identity_document_storage_path` (null in v1), `business_document_status`, `business_document_storage_path` (null in v1), `created_at`, `updated_at` |
 
@@ -43,11 +43,50 @@ null.
 `csv_upload`, `add_transaction`, `add_bill`, `dashboard_overview`,
 `revenue_review`, `subscriptions`, and `fluxy_ai`. They map to platform
 learning tour IDs `ledger`, `bills`, `overview`, `revenue_sync`,
-`subscriptions`, and `fluxy_ai`. On completion the user always lands on
-`/dashboard`; the first post-KYC coachmark must start with the `overview`
-tour, then any selected preference tours may continue after it. Onboarding
-queues this via `sessionStorage.fluxy_pending_tour = "overview"` and
-`sessionStorage.fluxy_pending_tours` with `overview` first.
+`subscriptions`, and `fluxy_ai`. The first post-KYC coachmark must start with
+the `overview` tour, then any selected preference tours may continue after it,
+queued via `sessionStorage.fluxy_pending_tour = "overview"` and
+`sessionStorage.fluxy_pending_tours` with `overview` first. A **non-enforced**
+user lands on `/dashboard` on completion and `onboarding.js routeAfterSubmit`
+queues it there; a **KYC-enforced** user is locked instead, so `kyc-gate.js`
+re-queues it from `selected_learning_tours` at approval (sessionStorage cannot
+survive a multi-day review), and only when `platform_learning` shows the user
+has never started, completed, skipped, or dismissed a tour.
+
+### KYC review gate — `assets/js/kyc-gate.js`
+
+A user is locked out of the **entire app** between submitting onboarding and
+being approved in the Internal Operations Console — but **only** when
+`onboarding/progress.kyc_enforced === true`.
+
+That flag is the authoritative marker, and both halves of the feature read it:
+the client gate and `ensureBillingSubscription` (which only ever receives a uid,
+never the auth metadata), so they cannot disagree about who is enforced.
+`KYC_ENFORCEMENT_CUTOFF` (`2026-08-07T00:00:00.000Z`, keyed on Firebase
+`creationTime`) decides only **who gets the flag at submit time** — it is not
+itself the lock condition. Deciding from the flag rather than from `creationTime`
+is what keeps a submission made *before* this shipped safe: that user already
+holds a running trial and carries no flag, so nothing retroactively locks them.
+The whole existing roster sits at `kyc_status: 'submitted'` unreviewed and is
+therefore untouched.
+
+- **Decision source:** `internal_users/{uid}.kyc_status` (open read). Read
+  failures fail open; a missing row blocks at `review` and retries the self-sync.
+- **Wiring:** one delegation at the tail of `onboarding-gate.js applyToPage()`,
+  which every app page already awaits before its data load and skips on a truthy
+  return — so no page was edited. Variants: `submitted`/`in_progress`/
+  `not_started` → "under review", `needs_revision` → resubmit CTA back into
+  `/onboarding`, `rejected` → declined. All three carry `support@fluxyos.com`.
+  A live `subscribeInternalUser` listener reloads the page on approval.
+- **Resubmission:** `syncSelfToInternalIndex(uid, { resubmitted: true })` — set
+  only by the onboarding submit handler — is the one path allowed to move
+  `needs_revision` back to `submitted`. Ordinary page-load syncs never do.
+- **Trial timing:** `completeOnboarding` no longer starts the trial. For an
+  enforced user `ensureBillingSubscription` refuses until `kyc_status` is
+  `approved` and then dates `trial_started_at` from the approval moment, so the
+  3 days are not burned during review. Enforced server-side by
+  `isTrialSubscriptionCreate` → `passesKycTrialGate` in `firestore.rules`.
+  Trial duration, plan, and feature rules are otherwise unchanged.
 
 ### 4g. Platform Learning — `users/{userId}/platform_learning/state`
 

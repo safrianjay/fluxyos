@@ -3790,6 +3790,22 @@
         "Your finance data is safely stored, but adding new records, importing files, exporting reports, and using Fluxy AI are locked until you choose a plan.": "Data keuangan Anda tersimpan aman, tetapi menambah catatan baru, mengimpor file, mengekspor laporan, dan memakai Fluxy AI terkunci sampai Anda memilih paket.",
         "Your workspace trial has ended": "Masa uji coba ruang kerja Anda telah berakhir",
 
+        // ── JS-rendered copy: kyc-gate.js ────────────────────────────────────
+        // The reviewer's note is operator free text and is never translated.
+        // "Sign out" already has a key above (shared with the sidebar).
+        "Your details are under review": "Verifikasi akun & bisnis",
+        "We are verifying your account details. This usually takes about one business day. You will get an email the moment FluxyOS is ready — nothing else is needed from you right now.": "Kami sedang memverifikasi data akun dan bisnis Anda. Biasanya proses ini membutuhkan waktu sekitar 1 hari kerja. Setelah akun Anda disetujui, kami akan mengirimkan email dan Anda bisa langsung mulai menggunakan FluxyOS untuk mengelola keuangan bisnis Anda, Terimakasih.",
+        "We need a bit more information": "Kami perlu sedikit informasi tambahan",
+        "Your details could not be verified as submitted. Update them and send them back — it only takes a minute.": "Detail yang Anda kirim belum bisa diverifikasi. Perbarui dan kirim ulang — hanya butuh satu menit.",
+        "Update my details": "Perbarui detail saya",
+        "We could not verify your account": "Kami tidak bisa memverifikasi akun Anda",
+        "We were not able to approve this account for FluxyOS.": "Kami tidak dapat menyetujui akun ini untuk FluxyOS.",
+        "Note from our team": "Catatan dari tim kami",
+        "Need help?": "Butuh bantuan?",
+        // Renders after the bold "Butuh bantuan?" — the target line is
+        // "Butuh bantuan? Hubungi tim kami support@fluxyos.com."
+        "Contact our support team at": "Hubungi tim kami",
+
         // ── JS-rendered copy: platform-learning.js ───────────────────────────
         "Next learning card": "Kartu pembelajaran berikutnya",
         "Previous learning card": "Kartu pembelajaran sebelumnya",

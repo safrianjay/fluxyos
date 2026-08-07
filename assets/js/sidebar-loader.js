@@ -548,6 +548,18 @@
                     // subscription state every member sees.
                     applyRoleAndPlan(ws);
 
+                    // KYC review lock. onboarding-gate.applyToPage() is the primary
+                    // seam (awaited BEFORE each page's data load), but 15 app pages
+                    // never call it — all of Settings plus Reports — and "lock the
+                    // platform" has to mean all of it. Every one of those loads a
+                    // sidebar, so this is the catch-all. The overlay is idempotent,
+                    // so pages covered by both get exactly one. Runs for owners and
+                    // members alike: invited members carry onboarding_exempt and
+                    // legacy users fail the cutoff, so both resolve to "not locked".
+                    import("/assets/js/kyc-gate.js")
+                        .then(({ applyToPage }) => applyToPage(user))
+                        .catch((e) => console.warn('[sidebar] KYC gate skipped', e));
+
                     // Activity Log nav is Owner/Admin only (audit.read capability).
                     // The item ships hidden; reveal it only for permitted roles so
                     // finance/viewer never see the entry. Firestore rules enforce the

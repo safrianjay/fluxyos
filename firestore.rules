@@ -792,6 +792,18 @@ service cloud.firestore {
         && data.updated_at == request.time;
     }
 
+    // A KYC-enforced user (post-cutoff signup, flagged on onboarding/progress at
+    // submit time) may not mint a trial until a reviewer has approved them in the
+    // open internal_users index. Legacy users carry no flag and are unaffected.
+    // Same MVP posture as isInternalReviewReconcile above: internal_users is the
+    // credential-gated ops index, and a trusted backend should own this in
+    // production.
+    function passesKycTrialGate(progress) {
+      return progress.get('kyc_enforced', false) != true
+        || (exists(/databases/$(database)/documents/internal_users/$(request.auth.uid))
+          && get(/databases/$(database)/documents/internal_users/$(request.auth.uid)).data.kyc_status == 'approved');
+    }
+
     function isTrialSubscriptionCreate(data) {
       return data.status == 'trialing'
         && data.plan_id == 'trial'
@@ -804,7 +816,8 @@ service cloud.firestore {
         && data.trial_ends_at == data.trial_started_at + duration.value(3, 'd')
         && exists(/databases/$(database)/documents/users/$(request.auth.uid)/onboarding/progress)
         && (get(/databases/$(database)/documents/users/$(request.auth.uid)/onboarding/progress).data.onboarding_completed == true
-          || get(/databases/$(database)/documents/users/$(request.auth.uid)/onboarding/progress).data.onboarding_exempt == true);
+          || get(/databases/$(database)/documents/users/$(request.auth.uid)/onboarding/progress).data.onboarding_exempt == true)
+        && passesKycTrialGate(get(/databases/$(database)/documents/users/$(request.auth.uid)/onboarding/progress).data);
     }
 
     function isLegacyBillingMigration(userId, data) {

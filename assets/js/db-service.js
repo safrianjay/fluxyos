@@ -1511,6 +1511,11 @@ class DataService {
             selected_first_actions: selectedActions,
             selected_learning_tours: selectedTours,
             primary_learning_tour: primaryTour,
+            // Post-cutoff users must pass KYC review before any access is granted.
+            // Persisted here because ensureBillingSubscription only ever receives a
+            // uid and cannot see the auth creationTime the cutoff is keyed on.
+            // Absent on every legacy user, whose behavior is therefore unchanged.
+            kyc_enforced: payload.kyc_enforced === true,
             source: 'onboarding_v2',
             completed_at: serverTimestamp(),
             updated_at: serverTimestamp()
@@ -1528,13 +1533,13 @@ class DataService {
             },
             source: 'onboarding'
         });
-        // Start the 3-day trial now that the user has reached the product value
-        // moment. Best-effort — a failure here must never block onboarding success.
-        try {
-            await this.ensureBillingSubscription(userId);
-        } catch (e) {
-            console.warn('[onboarding] trial access creation skipped');
-        }
+        // The trial is deliberately NOT started here. Submitting is not the value
+        // moment any more — the platform stays locked until KYC is verified, so a
+        // trial minted now would burn down during review and a user approved on
+        // day 4 would land straight on the expired-trial paywall. The existing
+        // bootstrap in trial-access.js -> ensureBillingSubscription starts the
+        // clock on the first page load after approval instead. Legacy users
+        // (no kyc_enforced flag) still get the trial on that same first load.
     }
 
     async skipOnboarding(userId, currentStep = 'business_setup') {
@@ -7540,12 +7545,18 @@ class DataService {
         const patch = { ...profileFields };
         // Advance KYC to submitted only while the user is still pre-submission —
         // never overwrite a reviewer's approved/needs_revision/rejected decision.
-        if (onboardingCompleted && (existing.kyc_status === 'not_started' || existing.kyc_status === 'in_progress')) {
+        // `needs_revision` is the one exception, and ONLY when the caller passes
+        // opts.resubmitted (the onboarding submit handler): the user acted on the
+        // reviewer's request, so the case belongs back in the review queue. An
+        // ordinary page-load sync must never clear that decision by itself.
+        const reviewable = ['not_started', 'in_progress'];
+        if (opts.resubmitted === true) reviewable.push('needs_revision');
+        if (onboardingCompleted && reviewable.includes(existing.kyc_status)) {
             patch.kyc_status = 'submitted';
-            if (existing.account_status === 'registered' || existing.account_status === 'kyc_incomplete') {
+            if (['registered', 'kyc_incomplete', 'kyc_submitted'].includes(existing.account_status)) {
                 patch.account_status = 'kyc_submitted';
             }
-            if (!existing.kyc_submitted_at) patch.kyc_submitted_at = serverTimestamp();
+            if (opts.resubmitted === true || !existing.kyc_submitted_at) patch.kyc_submitted_at = serverTimestamp();
         }
         await setDoc(ref, patch, { merge: true });
         return 'updated';
@@ -8724,7 +8735,19 @@ class DataService {
         const eligible = !!progress && (progress.onboarding_completed === true || progress.onboarding_exempt === true);
         if (!eligible) return null;
 
-        const startMs = progress.completed_at?.toMillis?.() || Date.now();
+        // A KYC-enforced user gets no trial until a reviewer approves them, and the
+        // 3 days then run from the APPROVAL moment — not from submission, which may
+        // be days earlier. Returning null here is safe: deriveState(null) fails
+        // fully open, and kyc-gate.js is what actually blocks the UI. Mirrored
+        // server-side by isTrialSubscriptionCreate in firestore.rules, so a
+        // bypassed client still cannot mint a plan.
+        const kycEnforced = progress.kyc_enforced === true;
+        if (kycEnforced) {
+            const internal = await this.getInternalUser(userId).catch(() => null);
+            if (internal?.kyc_status !== 'approved') return null;
+        }
+
+        const startMs = kycEnforced ? Date.now() : (progress.completed_at?.toMillis?.() || Date.now());
         const subscription = {
             plan_id: 'trial',
             plan_name: 'Trial',

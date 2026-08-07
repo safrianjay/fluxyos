@@ -5,6 +5,7 @@ import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import DataService from "./db-service.js";
 import { getOnboardingProgress } from "./onboarding-gate.js";
+import { isKycEnforcedUser, resolveKycState, renderKycScreenInto } from "./kyc-gate.js";
 
 const FIREBASE_CONFIG = {
     apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -62,7 +63,8 @@ const state = {
         selected_learning_tours: [],
         primary_learning_tour: null
     },
-    submitting: false
+    submitting: false,
+    resubmitting: false
 };
 
 // ---------- Auth guard ----------
@@ -75,11 +77,26 @@ onAuthStateChanged(auth, async (user) => {
     clearTimeout(authTimeout);
     state.user = user;
 
-    // If user is legacy or already completed, send them to the dashboard.
+    // If user is legacy or exempt, send them to the dashboard.
     const progress = await getOnboardingProgress(user.uid);
-    if (progress?.onboarding_completed === true || progress?.onboarding_exempt === true) {
+    if (progress?.onboarding_exempt === true) {
         window.location.replace('/dashboard');
         return;
+    }
+    if (progress?.onboarding_completed === true) {
+        // Already submitted. Bouncing an unverified user to /dashboard would just
+        // land them on the same review screen, so show it here instead — except
+        // for 'needs_revision', which needs the wizard itself to resubmit.
+        const kyc = await resolveKycState(user);
+        if (!kyc.blocked) {
+            window.location.replace('/dashboard');
+            return;
+        }
+        if (kyc.variant !== 'revision') {
+            showKycReviewScreen(kyc);
+            return;
+        }
+        state.resubmitting = true;
     }
 
     await hydrateSavedState(user.uid, progress);
@@ -92,6 +109,14 @@ onAuthStateChanged(auth, async (user) => {
 
     initUI();
 });
+
+// Replace the whole setup shell — wizard card AND the step-progress rail — with
+// the review screen. Mounting inside .onboarding-content would nest the review
+// card inside the wizard card, and leave the rail claiming "Step 1 · Basic setup"
+// next to a message saying setup is already submitted.
+function showKycReviewScreen(kyc) {
+    renderKycScreenInto(kyc, document.querySelector('.onboarding-shell'));
+}
 
 async function hydrateSavedState(userId, progress) {
     try {
@@ -761,14 +786,21 @@ async function onSubmit() {
             selected_first_action: state.fields.first_actions[0] || null,
             selected_first_actions: state.fields.first_actions,
             selected_learning_tours: state.fields.selected_learning_tours,
-            primary_learning_tour: state.fields.primary_learning_tour
+            primary_learning_tour: state.fields.primary_learning_tour,
+            // Post-cutoff users are locked out until a reviewer approves their
+            // KYC. The flag is persisted because db-service only ever sees a uid,
+            // never the auth metadata this decision needs.
+            kyc_enforced: isKycEnforcedUser(state.user)
         });
         // Surface this freshly-submitted user in the internal operations index so
         // the team can review KYC. Best-effort — never blocks onboarding success.
         try {
             await data.syncSelfToInternalIndex(state.user.uid, {
                 email: state.user.email || null,
-                display_name: state.user.displayName || null
+                display_name: state.user.displayName || null,
+                // Only a real resubmission may move a reviewer's 'needs_revision'
+                // back into the queue — an ordinary page load must never clear it.
+                resubmitted: state.resubmitting
             });
         } catch (e) {
             console.warn('[onboarding] internal index sync skipped', e);
@@ -787,7 +819,7 @@ async function onSubmit() {
         return;
     }
 
-    routeAfterSubmit();
+    await routeAfterSubmit();
 }
 
 function validateAllBeforeSubmit() {
@@ -845,7 +877,24 @@ function hideSubmitLoader() {
     if (overlay) overlay.remove();
 }
 
-function routeAfterSubmit() {
+async function routeAfterSubmit() {
+    // The platform stays locked until a reviewer verifies this submission, so the
+    // first post-submit frame is the review screen — not /dashboard. Legacy
+    // (pre-cutoff) users are never enforced and still land on the dashboard.
+    //
+    // When the user IS locked, the coachmark queue is deliberately not seeded:
+    // sessionStorage cannot survive a multi-day review, so kyc-gate.js re-queues
+    // it from onboarding/progress at the moment access actually opens instead.
+    try {
+        const kyc = await resolveKycState(state.user);
+        if (kyc.blocked) {
+            showKycReviewScreen(kyc);
+            return;
+        }
+    } catch (e) {
+        console.warn('[onboarding] KYC state check skipped', e);
+    }
+
     // Guarantee the onboarding coachmark shows the first time this just-onboarded
     // user reaches the overview. Honored + cleared by dashboard.html.
     sessionStorage.setItem('fluxy_learning_promote_force', '1');

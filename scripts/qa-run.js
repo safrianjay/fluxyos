@@ -221,7 +221,7 @@ function affectedPages(changed) {
   // A shared module or the shared stylesheet can break any app page, so fall
   // back to the sweep's core set rather than pretending nothing is affected.
   const sharedTouched = changed.some((f) =>
-    /^assets\/(js|css)\/(shared-dashboard|db-service|sidebar-loader|onboarding-gate|trial-access|accounting-engine|fluxy-select)/.test(f)
+    /^assets\/(js|css)\/(shared-dashboard|db-service|sidebar-loader|onboarding-gate|kyc-gate|trial-access|accounting-engine|fluxy-select)/.test(f)
   );
   return { pages: [...pages], sharedTouched };
 }
