@@ -124,6 +124,42 @@ backfill does not assign, so the in-product path is confirmed working end to end
 Keep the scripts for gaps spanning many periods or workspaces, and for anything a
 closed period blocks.
 
+### Known `ledger-assert-report.js` findings — baseline 2026-08-07
+
+Re-measured live: coverage **1692 postable, 0 unposted, 100% on all 5 workspaces
+holding transactions** (up from 1640 with the gap still zero — new records post as
+they arrive). `ledger_balances` drift, trial balance and A/R tie everywhere.
+
+The assert report **exits 1** on two `ap_subledger` findings. Both are on
+non-customer workspaces and neither is a coverage gap. Expect them the first
+night `LEDGER_ASSERT_ENABLED` is on:
+
+| Workspace | Δ | Cause |
+|---|---:|---|
+| QA Company | Rp22.550 | 11 USD test bills (`amount: 2050` = $20.50 in cents) each posted a `BILL-ACCRUE` crediting A/P **Rp2.050** — the minor-unit value treated as rupiah. They predate the foreign-currency guard. |
+| Tes | −Rp193.000 | One bill's `BILL-ACCRUE` was reversed (`REVERSAL:BILL-ACCRUE`), so GL A/P nets to Rp0, but the bill document is still open/unpaid so the subledger still counts it. |
+
+**Neither is a live code defect, but they are different kinds of not-a-defect:**
+
+- The QA one **cannot recur**: `_postSourceJournal` (`db-service.js`) now returns
+  early for `currency !== 'IDR'`, marking the source `accounting_status:
+  'excluded'` and posting nothing — exactly to stop minor units entering the IDR
+  ledger. The 11 rows are residue from before that guard. Cleanup is a data fix
+  on a QA workspace, not a code change.
+- The Tes one is a **product gap worth a decision**: a user-triggered
+  `reverseJournal` from the Journal Register removes the liability from the GL but
+  leaves the source bill open, so the subledger and the GL disagree by design.
+  Reversing a *source* journal has no path that reconciles the source document.
+  Nothing detects this today except this report.
+
+Diagnosis method, if either recurs: attribute the delta per source — compare each
+bill's A/P journal net against `expectedPayables()`'s value for it, then group the
+mismatches by pattern (foreign currency / withholding / `linked_transaction_id` /
+reversed / partially paid). A raw list of mismatched ids is not legible; the
+pattern grouping is what makes the cause obvious. Note `BILL-PAY` journals carry
+`source.collection: 'transactions'` (the payment), not `'bills'`, so a naive
+per-bill attribution shows every paid bill as a false mismatch.
+
 ### Historical — the workspaces that needed this
 
 Measured 2026-07-29, **not backfilled** (restating a real customer's books is a

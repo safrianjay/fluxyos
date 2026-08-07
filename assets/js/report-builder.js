@@ -1041,7 +1041,13 @@ export function buildMonthlyReportPack({
     previousLedgerIncomeStatement = null,
     // Per-month ledger Income Statements for the current and comparison ranges.
     ledgerMonthlySeries = null,
-    previousLedgerMonthlySeries = null
+    previousLedgerMonthlySeries = null,
+    // Balance Sheet and Cash Flow from the SAME getFinancialStatements() call the
+    // Income Statement above comes from. Reports packages the books; it does not
+    // compute a second set — the same resolution the P&L got (ACCOUNTING_CENTER_IA
+    // §10.2), so these can never disagree with the Accounting Center.
+    ledgerBalanceSheet = null,
+    ledgerCashFlow = null
 }) {
     // Back-compat: callers may pass `period` only. Derive a monthly scope if
     // `scope` is not supplied so existing flows keep working.
@@ -1148,7 +1154,12 @@ export function buildMonthlyReportPack({
     const totalRecords = transactions.length + bills.length + subscriptions.length;
     const generatedAtIso = new Date().toISOString();
 
-    const sourceFiles = sourceFilesForScope(reportScope);
+    // The statement files are listed only when the ledger actually has them, so
+    // the manifest never promises a file the bundle will not deliver.
+    const sourceFiles = sourceFilesForScope(reportScope, {
+        balanceSheet: !!(ledgerBalanceSheet && ledgerBalanceSheet.hasData),
+        cashFlow: !!(ledgerCashFlow && ledgerCashFlow.hasData)
+    });
 
     const warningTotal = data_quality.warning_counts.missing_receipts +
         data_quality.warning_counts.bills_without_due_date +
@@ -1241,6 +1252,11 @@ export function buildMonthlyReportPack({
         },
         key_takeaways,
         profit_loss,
+        // Passed straight through from getFinancialStatements — never recomputed
+        // here. `null` when the ledger has no activity for the period, which is
+        // what suppresses their CSVs rather than exporting an empty statement.
+        balance_sheet: (ledgerBalanceSheet && ledgerBalanceSheet.hasData) ? ledgerBalanceSheet : null,
+        cash_flow: (ledgerCashFlow && ledgerCashFlow.hasData) ? ledgerCashFlow : null,
         ytd_summary,
         monthly_trend,
         period_comparison,
@@ -1269,7 +1285,7 @@ export function buildMonthlyReportPack({
 
 // File list adapts to the scope so CSV filenames make sense for the report
 // the user actually requested.
-function sourceFilesForScope(scope) {
+function sourceFilesForScope(scope, statements = {}) {
     const slug = periodFilenameSlug({ start: scope.current_period.start_date, end: scope.current_period.end_date });
     const currentYear = parseDay(scope.current_period.start_date)?.getFullYear();
     const previousYear = scope.comparison_period ? parseDay(scope.comparison_period.start_date)?.getFullYear() : null;
@@ -1291,6 +1307,7 @@ function sourceFilesForScope(scope) {
             `monthly_trend_${ytdSlug}.csv`,
             `expense_breakdown_${ytdSlug}.csv`,
             `bills_payables_${ytdSlug}.csv`,
+            ...statementFiles(statements, ytdSlug),
             `ledger_export_${ytdSlug}.csv`,
             `data_quality_${ytdSlug}.csv`
         ];
@@ -1300,8 +1317,18 @@ function sourceFilesForScope(scope) {
         `expense_breakdown_${slug}.csv`,
         `bills_payables_${slug}.csv`,
         `subscriptions_${slug}.csv`,
+        ...statementFiles(statements, slug),
         `ledger_export_${slug}.csv`,
         `data_quality_${slug}.csv`
+    ];
+}
+
+// Balance Sheet and Cash Flow sit after the P&L-shaped files and before the raw
+// ledger export, matching the order an accountant reads them.
+function statementFiles(statements, slug) {
+    return [
+        ...(statements.balanceSheet ? [`balance_sheet_${slug}.csv`] : []),
+        ...(statements.cashFlow ? [`cash_flow_${slug}.csv`] : [])
     ];
 }
 
@@ -1502,6 +1529,55 @@ export function buildCsvFile(fileKey, pack, sourceData = {}) {
             rows.push(csvRow(['Net Result', pack.profit_loss.netResult]));
             return rows.join('\n');
         }
+        // Balance Sheet and Cash Flow come from the ledger unchanged. They are
+        // only ever emitted when pack.balance_sheet / pack.cash_flow exist, so
+        // there is no cash-basis fallback here — unlike the P&L, there is no
+        // honest way to approximate a balance sheet from records alone.
+        case 'balance_sheet': {
+            const bs = pack.balance_sheet;
+            if (!bs) return '';
+            const rows = [];
+            rows.push(csvRow(['Report', 'Balance Sheet']));
+            rows.push(csvRow(['As Of', period.end]));
+            rows.push(csvRow(['Generated At', pack.report_identity.generated_at]));
+            rows.push(csvRow(['Basis', 'Posted ledger (matches Accounting Center / Trial Balance)']));
+            rows.push(csvRow(['Tie-out', bs.balanced ? 'Balanced' : `Out by ${bs.tieOutDelta}`]));
+            rows.push('');
+            rows.push(csvRow(['Section', 'Account Code', 'Account', 'Amount']));
+            const push = (section, lines) => (lines || []).forEach(l => rows.push(csvRow([section, l.code, l.name, l.amount])));
+            push('Assets', bs.assets);
+            rows.push(csvRow(['Assets', '', 'Total assets', bs.totalAssets]));
+            push('Liabilities', bs.liabilities);
+            rows.push(csvRow(['Liabilities', '', 'Total liabilities', bs.totalLiabilities]));
+            push('Equity', bs.equity);
+            rows.push(csvRow(['Equity', '', 'Total equity', bs.totalEquity]));
+            rows.push(csvRow(['', '', 'Total liabilities & equity', bs.liabilitiesPlusEquity]));
+            rows.push(csvRow(['', '', 'Tie-out delta', bs.tieOutDelta]));
+            return rows.join('\n');
+        }
+        case 'cash_flow': {
+            const cf = pack.cash_flow;
+            if (!cf) return '';
+            const rows = [];
+            rows.push(csvRow(['Report', 'Cash Flow (indirect method)']));
+            rows.push(csvRow(['Period Start', period.start]));
+            rows.push(csvRow(['Period End', period.end]));
+            rows.push(csvRow(['Generated At', pack.report_identity.generated_at]));
+            rows.push(csvRow(['Basis', 'Posted ledger (matches Accounting Center / Trial Balance)']));
+            rows.push(csvRow(['Tie-out', cf.balanced ? 'Ties to cash' : `Out by ${cf.tieOutDelta}`]));
+            rows.push('');
+            rows.push(csvRow(['Section', 'Account Code', 'Account', 'Cash Effect']));
+            rows.push(csvRow(['Operating', '', 'Net income', cf.netIncome]));
+            (cf.workingCapital || []).forEach(l => rows.push(csvRow(['Operating', l.code, l.name, l.amount])));
+            rows.push(csvRow(['Operating', '', 'Net cash from operating activities', cf.totalOperating]));
+            (cf.investing || []).forEach(l => rows.push(csvRow(['Investing', l.code, l.name, l.amount])));
+            if ((cf.investing || []).length) rows.push(csvRow(['Investing', '', 'Net cash from investing activities', cf.totalInvesting]));
+            (cf.financing || []).forEach(l => rows.push(csvRow(['Financing', l.code, l.name, l.amount])));
+            if ((cf.financing || []).length) rows.push(csvRow(['Financing', '', 'Net cash from financing activities', cf.totalFinancing]));
+            rows.push(csvRow(['', '', 'Net change in cash', cf.netChangeInCash]));
+            rows.push(csvRow(['', '', 'Movement in cash accounts', cf.cashMovement]));
+            return rows.join('\n');
+        }
         case 'expense_breakdown': {
             const rows = [csvRow(['Category', 'Vendor', 'Amount', 'Record Count', 'Missing Receipt Count'])];
             const txs = sourceData.transactions || [];
@@ -1688,6 +1764,8 @@ function fileKeyFromFilename(filename) {
     if (filename.startsWith('expense_breakdown_')) return 'expense_breakdown';
     if (filename.startsWith('bills_payables_')) return 'bills_payables';
     if (filename.startsWith('subscriptions_')) return 'subscriptions';
+    if (filename.startsWith('balance_sheet_')) return 'balance_sheet';
+    if (filename.startsWith('cash_flow_')) return 'cash_flow';
     if (filename.startsWith('ledger_export_')) return 'ledger_export';
     if (filename.startsWith('data_quality_')) return 'data_quality';
     return null;
@@ -1707,7 +1785,9 @@ export function buildCsvBundle(pack, sourceData = {}) {
             if (!key) return null;
             return { filename, content: buildCsvFile(key, pack, sourceData) };
         })
-        .filter(Boolean);
+        // Empty content means the section had nothing to say (the ledger
+        // statements return '' when absent). Never hand the user a 0-byte file.
+        .filter(f => f && f.content);
 }
 
 export function downloadFile(filename, content, mime = 'text/csv;charset=utf-8;') {

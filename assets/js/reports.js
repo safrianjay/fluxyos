@@ -289,6 +289,10 @@ async function loadReportData() {
             recurringRevenueSettings: reportsState.reportsSettings,
             ledgerIncomeStatement: ledgerStatements?.incomeStatement || null,
             previousLedgerIncomeStatement: prevLedgerStatements?.incomeStatement || null,
+            // Same fetch as the Income Statement above — these were already on the
+            // response and discarded. No extra read.
+            ledgerBalanceSheet: ledgerStatements?.balanceSheet || null,
+            ledgerCashFlow: ledgerStatements?.cashFlow || null,
             ledgerMonthlySeries: ledgerSeries,
             previousLedgerMonthlySeries: prevLedgerSeries
         });
@@ -901,8 +905,17 @@ async function confirmExportFromDrawer() {
             : meta.files.map(key => allFiles.find(f => f.filename.startsWith(`${key}_`))).filter(Boolean);
 
         // 2. Write report_exports metadata + audit log BEFORE downloads.
+        // The ledger statements are bundle FILES, not rendered sections, so they
+        // are absent from sections_availability. Record them anyway — an export
+        // audit row that omits two of the delivered files is not an audit trail.
+        const statementSections = type === 'monthly_report_pack'
+            ? [
+                ...(pack.balance_sheet ? ['balance_sheet'] : []),
+                ...(pack.cash_flow ? ['cash_flow'] : [])
+            ]
+            : [];
         const includedSections = type === 'monthly_report_pack'
-            ? pack.sections_availability.filter(s => s.status !== 'unavailable').map(s => s.key)
+            ? [...pack.sections_availability.filter(s => s.status !== 'unavailable').map(s => s.key), ...statementSections]
             : [type];
         const limitations = collectLimitations(pack);
 
