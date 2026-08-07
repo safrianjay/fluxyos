@@ -128,8 +128,20 @@ remains the readiness/confidence source only.
 > `backfill-journal-numbers.js` → `reconcile-ledger-balances.js`; all dry-run by
 > default). Measure with **`scripts/ledger-coverage-report.js`** (authoritative) —
 > not `listJournals`, which caps at `max:200` and filters period client-side.
-> **Real user workspaces are still unbackfilled** (Beila 5.4%, Get-Pipeline 0%) and
-> must be resolved before cutover. `docs/ACCOUNTING_CENTER_IA.md` Phase 2.
+>
+> ✅ **Production was backfilled on 2026-07-31 — every workspace is at 100%**
+> (1640 postable, 0 unposted, zero drift). Beila went 5.4% → 100% via the scripts
+> after its owner reopened `2026-05`/`2026-06`; Get-Pipeline (0% → 100%) and Dika
+> Finance (46.2% → 100%) via the in-product "Post N unposted entries" action. The
+> per-workspace before/after numbers are in the runbook's recorded runs — that
+> document is the status of record for coverage.
+>
+> ⚠️ This paragraph previously read "real user workspaces are still unbackfilled
+> (Beila 5.4%, Get-Pipeline 0%)" — the 2026-07-29 measurement, left behind when
+> the backfill ran two days later. It was cited as a live blocker on 2026-08-07,
+> which is the §11 lesson repeating: **verify a coverage claim against the runbook
+> (or a fresh `ledger-coverage-report.js`) before acting on it.** Coverage changes;
+> a number written in prose does not.
 >
 > A third P&L still exists at `/reports` and a second Balance Sheet at
 > `/reports`. Read the IA doc before adding any statement.
