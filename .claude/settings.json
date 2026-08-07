@@ -188,7 +188,10 @@
       "Bash(grep -nB1 -A8 \"^\\\\.acct-kpi-grid\" assets/css/accounting.css)",
       "Bash(grep -nA14 \"^function healthRow\" assets/js/accounting.js)",
       "Bash(perl -0pi -e 's/<div class=\"acct-kpi-grid\">/<div class=\"acct-kpi-grid acct-kpi-grid--5\">/' accounting.html)",
-      "Bash(echo \"ACCT_SPECS_EXIT=$?\")"
+      "Bash(echo \"ACCT_SPECS_EXIT=$?\")",
+      "Bash(grep -nB3 -A6 -iE \"png|images|assets/\\\\*\" netlify.toml)",
+      "Bash(sips -g pixelWidth -g pixelHeight assets/images/hero/fluxyos-product-highlight.png)",
+      "Bash(sips -g pixelWidth -g pixelHeight \"assets/images/update image.png\")"
     ]
   },
   "hooks": {
