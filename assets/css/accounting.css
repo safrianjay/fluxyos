@@ -136,6 +136,22 @@
     margin-bottom: 24px;
 }
 
+/* The Accounting Center strip carries four financial figures plus Report
+   confidence. Four fit the ~996px content column; the fifth wrapped onto a row
+   of its own and left roughly 760x120px of dead space directly above the tab
+   bar, which read as a rendering fault.
+   Squeezing all five onto one row was tried first and rejected: it forces
+   186px columns, which clips the widest values — (Rp387.289.720) and the gauge
+   numeral both truncated. A clipped rupiah figure is a worse defect than the
+   whitespace it fixes.
+   Instead the confidence card spans the full row. It is not a financial figure
+   like the other four — it is a readiness meter — so giving it its own band
+   reads as deliberate hierarchy rather than a wrapped leftover, and the four
+   currency cards keep the width their values need. */
+.acct-kpi-grid--5 > :nth-child(5) {
+    grid-column: 1 / -1;
+}
+
 .acct-card {
     background: #fff;
     border: 1px solid #E5E7EB;

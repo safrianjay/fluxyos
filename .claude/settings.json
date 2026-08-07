@@ -179,7 +179,16 @@
       "Bash(perl -0pi -e \"s/\\(async function boot\\\\\\(page, mode = 'this_month', width = 1440\\\\\\) \\\\{\\\\n    await installTrialPaywallBypass\\\\\\(page\\\\\\);\\)/\\\\$1\\\\n    await installLearnPromoterBypass\\\\\\(page\\\\\\);/\" tests/overview-charts.spec.js)",
       "Bash(node --check tests/qa-helpers.js)",
       "Bash(node --check tests/overview-charts.spec.js)",
-      "Bash(sips -Z 1400 /tmp/overview-order.png --out /tmp/overview-small.png)"
+      "Bash(sips -Z 1400 /tmp/overview-order.png --out /tmp/overview-small.png)",
+      "Bash(grep -nA40 \"overview-health\" assets/js/accounting.js)",
+      "Bash(grep -nB2 -A12 -iE \"^#+.*overview|overview tab\" docs/ACCOUNTING_CENTER_IA.md)",
+      "Bash(grep -oE '<h2 class=\"[^\"]*\">[^<]+|fluxy-table-subtitle\">[^<]{0,80}')",
+      "Bash(sips -Z 1300 /tmp/acct-before.png --out /tmp/acct-before-s.png)",
+      "Bash(grep -nB2 -A10 \"237px\\\\|repeat\\(4,\" assets/css/accounting.css)",
+      "Bash(grep -nB1 -A8 \"^\\\\.acct-kpi-grid\" assets/css/accounting.css)",
+      "Bash(grep -nA14 \"^function healthRow\" assets/js/accounting.js)",
+      "Bash(perl -0pi -e 's/<div class=\"acct-kpi-grid\">/<div class=\"acct-kpi-grid acct-kpi-grid--5\">/' accounting.html)",
+      "Bash(echo \"ACCT_SPECS_EXIT=$?\")"
     ]
   },
   "hooks": {
