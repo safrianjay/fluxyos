@@ -57,9 +57,13 @@ const SAK_CATEGORY_TYPE = {
     cogs: 'expense', operating_expense: 'expense', other_expense: 'expense'
 };
 
-// First code digit for each account type (FluxyOS 4-digit convention). Expense
-// accounts live in the 5xxx-6xxx block; suggestions use 6xxx (operating).
-const TYPE_CODE_PREFIX = { asset: '1', liability: '2', equity: '3', revenue: '4', expense: '6' };
+// LAST-RESORT prefix per type, used only when a workspace has no accounts at all
+// to learn from. Everything else derives the prefix from the chart itself — see
+// deriveCodeBlock(). Keyed on type, which is deliberately coarse: type alone
+// cannot distinguish COGS (5xxx) from operating expense (6xxx), nor revenue
+// (4xxx) from other income (7xxx). That ambiguity is exactly why this map is a
+// fallback rather than the answer.
+const TYPE_CODE_PREFIX_FALLBACK = { asset: '1', liability: '2', equity: '3', revenue: '4', expense: '6' };
 
 // PPN treatments selectable as an account's default tax. Values are the tax-engine
 // TAX_CODES; the empty value is "No tax". Labels use the canonical Indonesian tax
@@ -855,18 +859,32 @@ function renderOverview() {
     const cf = st?.cashFlow;
 
     // --- Books health.
+    // Show the control totals, not just a verdict. A green tick is a claim the
+    // reader has to trust; "Dr Rp1.2bn = Cr Rp1.2bn" is a figure they can carry
+    // into a conversation with an auditor — and it is what an accountant checks
+    // first anyway. It also stops the healthy state from rendering as three
+    // bare ticks, which read as an empty screen on the default landing tab.
     const health = [
         healthRow('Trial balance',
             !tb ? 'wait' : (tb.balanced ? 'ok' : 'bad'),
-            !tb ? 'Loading…' : (tb.balanced ? 'Debits equal credits' : 'Debits and credits disagree'),
+            !tb ? 'Loading…'
+                : (tb.balanced
+                    ? `Dr ${formatRupiah(tb.totalDebit) || 'Rp0'} = Cr ${formatRupiah(tb.totalCredit) || 'Rp0'}`
+                    : `Dr ${formatRupiah(tb.totalDebit) || 'Rp0'} vs Cr ${formatRupiah(tb.totalCredit) || 'Rp0'}`),
             'trial'),
         healthRow('Balance sheet ties out',
             !bs?.hasData ? 'wait' : (bs.balanced ? 'ok' : 'bad'),
-            !bs?.hasData ? 'No ledger position yet' : (bs.balanced ? 'Assets = Liabilities + Equity' : `Out by ${signedRupiah(bs.tieOutDelta)}`),
+            !bs?.hasData ? 'No ledger position yet'
+                : (bs.balanced
+                    ? `Assets ${signedRupiah(bs.totalAssets)} = L+E ${signedRupiah((Number(bs.totalLiabilities) || 0) + (Number(bs.totalEquity) || 0))}`
+                    : `Out by ${signedRupiah(bs.tieOutDelta)}`),
             'balance'),
         healthRow('Cash flow ties to cash',
             !cf?.hasData ? 'wait' : (cf.balanced ? 'ok' : 'bad'),
-            !cf?.hasData ? 'No cash movement yet' : (cf.balanced ? 'Net change matches cash accounts' : `Out by ${signedRupiah(cf.tieOutDelta)}`),
+            !cf?.hasData ? 'No cash movement yet'
+                : (cf.balanced
+                    ? `Net change ${signedRupiah(cf.netChangeInCash)} matches cash accounts`
+                    : `Out by ${signedRupiah(cf.tieOutDelta)}`),
             'cashflow')
     ];
     healthWrap.innerHTML = tableShell(
@@ -889,10 +907,23 @@ function renderOverview() {
         items.push(healthRow('Records needing cleanup',
             'wait', `${cleanupCount} to review`, 'cleanup'));
     }
+    // Period status always renders, not only when closed or already clear.
+    // Previously a period with blockers showed the blockers but never said what
+    // state it was in, so "is this period still open?" needed the Close tab.
+    // Deliberately no net income / margin here: the KPI strip above already
+    // carries those, and restating them is the duplication DESIGN_SYSTEM.md §6
+    // bans (see ACCOUNTING_CENTER_IA.md on Overview).
     if (periodStatus === 'closed' || periodStatus === 'locked') {
-        items.push(healthRow('Period status', 'ok', `${currentPeriodKey()} is ${periodStatus}`, 'close'));
+        const closedAt = state.kernel.period?.closed_at;
+        const when = closedAt?.toDate ? closedAt.toDate() : (closedAt ? new Date(closedAt) : null);
+        const suffix = when && !Number.isNaN(when.getTime())
+            ? ` on ${when.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`
+            : '';
+        items.push(healthRow('Period status', 'ok', `${currentPeriodKey()} is ${periodStatus}${suffix}`, 'close'));
     } else if (periodStatus && unposted && unposted.blocking === 0 && tb?.balanced) {
         items.push(healthRow('Ready to close', 'ok', `${currentPeriodKey()} can be closed`, 'close'));
+    } else if (periodStatus) {
+        items.push(healthRow('Period status', 'wait', `${currentPeriodKey()} is open`, 'close'));
     }
 
     actionWrap.innerHTML = items.length
@@ -2320,18 +2351,116 @@ function categoryOptionsHtml({ restrictType = null, selected = '' } = {}) {
         }).join('');
 }
 
-// Next free 4-digit code in the type's block. Custom accounts start at <prefix>900
-// (below the seed's structural codes) and step by 10 so they read as a set.
-function suggestAccountCode(type) {
-    const prefix = TYPE_CODE_PREFIX[type] || '6';
-    const used = new Set((state.kernel?.coa || []).map(a => String(a.code)));
-    for (let n = parseInt(`${prefix}900`, 10); n <= parseInt(`${prefix}999`, 10); n += 10) {
-        if (!used.has(String(n))) return String(n);
+// Read the numbering convention off the chart rather than asserting one.
+//
+// FluxyOS does NOT use the textbook 1/2/3/4/5 scheme, and `type` is too coarse to
+// place an account: expense spans 5xxx (COGS) and 6xxx (operating), revenue spans
+// 4xxx (operating) and 7xxx (other income). Keying suggestions on type therefore
+// put every new COGS account in the operating-expense block and every other-income
+// account in the revenue block — the two bugs this replaces.
+//
+// `sak_category` is the real determinant, so the prefix is learned from the
+// accounts already filed under the SAME category, falling back to the same type,
+// then to the seed a fresh workspace starts from. Code LENGTH is learned the same
+// way instead of assuming four digits: if a workspace numbers differently, the
+// suggestion follows it.
+//
+// Returns { prefix, width, used } or null when the chart is empty.
+function deriveCodeBlock(sakCategory, type) {
+    const coa = (state.kernel?.coa || []).filter(a => a && a.code != null);
+    const source = coa.length ? coa : CHART_OF_ACCOUNTS_SEED;
+    const numeric = source.filter(a => /^\d+$/.test(String(a.code)));
+    if (!numeric.length) return null;
+
+    // Most common code width in the chart — the house convention, not an assumption.
+    const widths = {};
+    numeric.forEach(a => { const w = String(a.code).length; widths[w] = (widths[w] || 0) + 1; });
+    const width = Number(Object.keys(widths).sort((x, y) => widths[y] - widths[x])[0]);
+
+    const commonest = (rows) => {
+        if (!rows.length) return null;
+        const tally = {};
+        rows.forEach(a => { const d = String(a.code)[0]; tally[d] = (tally[d] || 0) + 1; });
+        return Object.keys(tally).sort((x, y) => tally[y] - tally[x])[0];
+    };
+
+    // Narrowest evidence first: same SAK category, then same type, then give up
+    // and use the static map.
+    const prefix = commonest(numeric.filter(a => a.sak_category === sakCategory))
+        || commonest(numeric.filter(a => a.type === type))
+        || TYPE_CODE_PREFIX_FALLBACK[type]
+        || '6';
+
+    return { prefix, width, used: new Set(numeric.map(a => String(a.code))) };
+}
+
+// The next free code inside the derived block.
+//
+// Continues where the workspace left off rather than parking new accounts in a
+// fixed slot: it looks at the codes already in the block, follows the spacing
+// they use (the commonest gap — 10 in the seed, 3 in one real workspace that
+// bulk-created accounts), and returns the first free code at or after the
+// highest one. Falls back to a dense scan when the tail of the block is full.
+function suggestAccountCode(sakCategory, type) {
+    const block = deriveCodeBlock(sakCategory, type);
+    if (!block) return '';
+    const { prefix, width, used } = block;
+
+    const lo = parseInt(prefix.padEnd(width, '0'), 10);
+    const hi = parseInt(prefix.padEnd(width, '9'), 10);
+    const inBlock = [...used]
+        .map(Number)
+        .filter(n => n >= lo && n <= hi)
+        .sort((a, b) => a - b);
+
+    // Spacing the workspace already uses, so a suggestion reads as one of the set.
+    //
+    // Only trusted with enough accounts to show a pattern, and clamped: two
+    // accounts 900 apart (the seed's 4000 and 4900) are not evidence of a
+    // 900-step convention, and honouring it overflows the block and lands on a
+    // silly code like 4001.
+    let step = 10;
+    if (inBlock.length >= 3) {
+        const gaps = {};
+        for (let i = 1; i < inBlock.length; i += 1) {
+            const g = inBlock[i] - inBlock[i - 1];
+            if (g > 0) gaps[g] = (gaps[g] || 0) + 1;
+        }
+        const commonGap = Number(Object.keys(gaps).sort((a, b) => gaps[b] - gaps[a])[0]);
+        if (commonGap > 0) step = Math.min(100, commonGap);
     }
-    for (let n = parseInt(`${prefix}000`, 10); n <= parseInt(`${prefix}999`, 10); n += 1) {
-        if (!used.has(String(n))) return String(n);
+
+    const pad = (n) => String(n).padStart(width, '0');
+    const highest = inBlock.length ? inBlock[inBlock.length - 1] : lo - step;
+
+    // Continue the sequence.
+    for (let n = highest + step; n <= hi; n += step) {
+        if (!used.has(pad(n))) return pad(n);
+    }
+    // Stepping overflowed the block — take the next free code ABOVE the highest
+    // before falling back to the bottom, so a new account still sorts with its
+    // neighbours rather than jumping to the head of the block.
+    for (let n = highest + 1; n <= hi; n += 1) {
+        if (!used.has(pad(n))) return pad(n);
+    }
+    for (let n = lo; n <= hi; n += 1) {
+        if (!used.has(pad(n))) return pad(n);
     }
     return '';
+}
+
+// One line explaining where the suggestion came from, so the number is not magic.
+function codeBlockHint(sakCategory, type) {
+    const block = deriveCodeBlock(sakCategory, type);
+    if (!block) return '';
+    const label = SAK_LABELS[sakCategory] || sakCategory || type;
+    const sample = (state.kernel?.coa || [])
+        .filter(a => a.sak_category === sakCategory && /^\d+$/.test(String(a.code)))
+        .map(a => String(a.code)).sort();
+    const pattern = block.prefix + 'x'.repeat(Math.max(0, block.width - 1));
+    return sample.length
+        ? `${label} accounts in this chart use ${pattern} (e.g. ${sample.slice(0, 3).join(', ')}).`
+        : `${label} accounts follow the ${pattern} block in this chart.`;
 }
 
 // Active accounts of the same type — candidate parents. The leading-digit rule is
@@ -2351,11 +2480,22 @@ function caType() { return SAK_CATEGORY_TYPE[caEl('ca-category')?.value] || 'exp
 
 function refreshCaDerived() {
     const type = caType();
+    const sakCategory = caEl('ca-category')?.value || '';
     const codeInput = caEl('ca-code');
     // Create mode only: auto-suggest a code (unless the user hand-edited it).
     // In edit mode the code is immutable, so never touch it.
     if (state.caMode !== 'edit' && codeInput && codeInput.dataset.autofill !== '0') {
-        codeInput.value = suggestAccountCode(type);
+        // Keyed on the SAK category, not the type: type cannot tell COGS from
+        // operating expense, or other income from revenue.
+        codeInput.value = suggestAccountCode(sakCategory, type);
+    }
+    // Say where the number came from. Shown in create mode only — in edit mode
+    // the code is immutable, so the convention is not actionable.
+    const hint = caEl('ca-code-hint');
+    if (hint) {
+        const text = state.caMode === 'edit' ? '' : codeBlockHint(sakCategory, type);
+        hint.textContent = text;
+        hint.classList.toggle('hidden', !text);
     }
     const parentSel = caEl('ca-parent');
     if (parentSel) {
@@ -2435,6 +2575,10 @@ function openAccountDrawer(account = null, inUse = false) {
                                 <label for="ca-code" class="fluxy-drawer-label">Account code</label>
                                 <input type="text" id="ca-code" inputmode="numeric" maxlength="4" placeholder="e.g. 6900" value="${isEdit ? escapeHtml(account.code) : ''}"${isEdit ? ' disabled' : ''} class="fluxy-drawer-input tabular-nums">
                                 <p class="fluxy-drawer-hint">${isEdit ? 'The account code cannot be changed.' : '4 digits (1000–9999). The first digit must match the category type.'}</p>
+                                <!-- Filled by refreshCaDerived() from the chart's own
+                                     numbering, so the suggested code is explainable
+                                     rather than magic. -->
+                                <p id="ca-code-hint" class="fluxy-drawer-hint hidden" style="color:#6B7280;"></p>
                             </div>
                             <div class="fluxy-drawer-field">
                                 <label for="ca-name" class="fluxy-drawer-label">Account name</label>
