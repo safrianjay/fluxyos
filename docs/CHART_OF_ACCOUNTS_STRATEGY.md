@@ -234,3 +234,51 @@ The multi-company design choice worth locking early: consolidation happens by *m
 **When should advanced features appear?** By behavioral trigger, not by plan tier or settings page (§C Tier-2 signals): sell products → inventory accounts; connect a gateway → settlement float; invite an accountant → the accountant lens. The CoA grows because the business did something, so every new account arrives with its reason attached.
 
 **Simple for founders, trustworthy for accountants — how both hold:** the founder-facing surface never changes as the CoA deepens (categories in, reports out); the accountant-facing surface exposes full statutory structure, immutable journals, mapping control, and the 6999-health metric. The bridge is the mapping system (§E): founders feed it confirmations, accountants tune it, statements consume it. **Sequencing:** expand the seed (Tier-1 six accounts) and ship the accountant CoA screen in Roadmap Phase 1; vendor memory in Phase 1–2; AI tiers 3–5 in Phase 3 — matching the [strategy doc](ACCOUNTING_DISCOVERY_STRATEGY.md) §8, and validated against the expert's Session-2 markup before any code.
+
+
+---
+
+## Numbering convention — measured, not assumed (2026-08-07)
+
+Audited across the seed and all 20 production workspaces (182 accounts) before
+changing the code-suggestion logic. **This chart is not the textbook 1/2/3/4/5
+scheme**, and `type` alone cannot place an account:
+
+| Block | Class | Note |
+|---|---|---|
+| `1xxx` | Assets | |
+| `2xxx` | Liabilities | |
+| `3xxx` | Equity | |
+| `4xxx` | Revenue | operating |
+| `5xxx` | **COGS** | expense, but its own block |
+| `6xxx` | **Operating expense** | where most expenses live |
+| `7xxx` | **Other income** | revenue, but its own block |
+| `8xxx` | reserved: expense | recognised by `accountTypeForCode`, unused |
+
+`sak_category` is the determinant — type spans two blocks for both expense (5/6)
+and revenue (4/7). That is why suggestions key on the category; see
+`deriveCodeBlock()` in `assets/js/accounting.js`.
+
+**Width:** all 182 codes are exactly 4 digits. The suggester derives width from
+the data rather than hard-coding 4, so a workspace numbering differently is
+followed rather than corrected.
+
+**Integrity:** 0 invalid-format codes, 0 duplicates within any workspace.
+
+**Capacity / gaps** (union across workspaces):
+
+| Block | Used | Range | Interior gaps | Free above top |
+|---|---|---|---|---|
+| `1xxx` | 6 | 1000–1150 | 5 (145 codes) | 849 |
+| `2xxx` | 7 | 2000–2901 | 6 (895) | 98 |
+| `3xxx` | 4 | 3000–3900 | 3 (897) | 99 |
+| `4xxx` | 2 | 4000–4900 | 1 (899) | 99 |
+| `5xxx` | 1 | 5100 | 0 | 899 |
+| `6xxx` | 54 | 6000–6999 | 52 (946) | **0** |
+| `7xxx` | 2 | 7100–7200 | 1 (99) | 799 |
+
+No block is close to exhausted. **`6xxx` is the one to watch**: its highest code
+is 6999, the top of the block, so "append after the highest" has nowhere to go
+and the suggester falls back to the first interior hole. That path is the live
+state of the busiest class, not a theoretical branch — which is why it exists
+rather than returning an empty suggestion.
