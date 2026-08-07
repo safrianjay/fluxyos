@@ -65,6 +65,35 @@ const SAK_CATEGORY_TYPE = {
 // fallback rather than the answer.
 const TYPE_CODE_PREFIX_FALLBACK = { asset: '1', liability: '2', equity: '3', revenue: '4', expense: '6' };
 
+// Default hundred-block per SAK category, used ONLY when the chart offers no
+// evidence of its own. A workspace that already numbers fixed assets at 1700
+// keeps 1700 — deriveCodeBlock() reads the chart first and only falls here.
+//
+// Why this exists: five categories the drawer offers (inventory, fixed_asset,
+// accumulated_depreciation, other_asset, long_term_liability) are not in the
+// seeded chart at all. With no evidence for them, the old fallback widened to
+// the whole class — every asset is 1xxx — so a new Fixed Asset continued the
+// CURRENT-asset sequence and was suggested 1160, filing it between Prepaid PPh
+// 25 and PPN Masukan. Statements sort by code and the balance sheet had no
+// current/non-current grouping, so that code was the only thing placing the
+// account, and it placed it wrong.
+//
+// Blocks follow the seeded chart's own shape rather than a textbook: current
+// assets already occupy 1000-1199, so non-current starts at 1500 and leaves
+// 1200-1399 for inventory and further current assets. Long-term liability is
+// 2900 and not the conventional 2500 because this chart already spends 2500 on
+// Deferred Revenue and 2800 on Suspense — both current — and staying above them
+// keeps current-before-non-current true in code order.
+const SAK_CODE_RANGE = {
+    cash_bank: '10', accounts_receivable: '11', other_current_asset: '12',
+    inventory: '13', fixed_asset: '15', accumulated_depreciation: '16',
+    other_asset: '18',
+    accounts_payable: '20', other_current_liability: '21', long_term_liability: '29',
+    equity: '30',
+    revenue: '40', other_income: '71',
+    cogs: '51', operating_expense: '61', other_expense: '69'
+};
+
 // Account codes are exactly 4 digits. Not a house style that could vary — it is
 // what isValidAccountCode() in accounting-engine.js enforces, so a suggestion of
 // any other width would be rejected on submit. Widen both together or neither.
@@ -770,12 +799,39 @@ function renderStmtBalance(wrap, bs) {
         return;
     }
     const parts = [];
-    parts.push(stmtGroupHeader('Assets'));
-    bs.assets.forEach(l => parts.push(bsLineRow(l)));
-    parts.push(bsSubtotalRow('Total assets', bs.totalAssets, { strong: true }));
-    parts.push(stmtGroupHeader('Liabilities'));
-    if (bs.liabilities.length) bs.liabilities.forEach(l => parts.push(bsLineRow(l)));
-    parts.push(bsSubtotalRow('Total liabilities', bs.totalLiabilities));
+    // Classified presentation (PSAK 1) once anything non-current exists. A chart
+    // holding only current accounts stays flat rather than gaining two headings
+    // and an empty section.
+    if (bs.isClassified) {
+        parts.push(stmtGroupHeader('Assets'));
+        parts.push(stmtGroupHeader('Current assets'));
+        bs.assetsCurrent.forEach(l => parts.push(bsLineRow(l)));
+        parts.push(bsSubtotalRow('Total current assets', bs.totalAssetsCurrent));
+        if (bs.assetsNonCurrent.length) {
+            parts.push(stmtGroupHeader('Non-current assets'));
+            bs.assetsNonCurrent.forEach(l => parts.push(bsLineRow(l)));
+            parts.push(bsSubtotalRow('Total non-current assets', bs.totalAssetsNonCurrent));
+        }
+        parts.push(bsSubtotalRow('Total assets', bs.totalAssets, { strong: true }));
+
+        parts.push(stmtGroupHeader('Liabilities'));
+        parts.push(stmtGroupHeader('Current liabilities'));
+        if (bs.liabilitiesCurrent.length) bs.liabilitiesCurrent.forEach(l => parts.push(bsLineRow(l)));
+        parts.push(bsSubtotalRow('Total current liabilities', bs.totalLiabilitiesCurrent));
+        if (bs.liabilitiesNonCurrent.length) {
+            parts.push(stmtGroupHeader('Non-current liabilities'));
+            bs.liabilitiesNonCurrent.forEach(l => parts.push(bsLineRow(l)));
+            parts.push(bsSubtotalRow('Total non-current liabilities', bs.totalLiabilitiesNonCurrent));
+        }
+        parts.push(bsSubtotalRow('Total liabilities', bs.totalLiabilities));
+    } else {
+        parts.push(stmtGroupHeader('Assets'));
+        bs.assets.forEach(l => parts.push(bsLineRow(l)));
+        parts.push(bsSubtotalRow('Total assets', bs.totalAssets, { strong: true }));
+        parts.push(stmtGroupHeader('Liabilities'));
+        if (bs.liabilities.length) bs.liabilities.forEach(l => parts.push(bsLineRow(l)));
+        parts.push(bsSubtotalRow('Total liabilities', bs.totalLiabilities));
+    }
     parts.push(stmtGroupHeader('Equity'));
     bs.equity.forEach(l => parts.push(bsLineRow(l)));
     parts.push(bsSubtotalRow('Total equity', bs.totalEquity));
@@ -2488,14 +2544,39 @@ function deriveCodeBlock(sakCategory, type) {
         return Object.keys(tally).sort((x, y) => tally[y] - tally[x])[0];
     };
 
-    // Narrowest evidence first: same SAK category, then same type, then give up
-    // and use the static map.
-    const prefix = commonest(numeric.filter(a => a.sak_category === sakCategory))
+    // The hundred-block this category already occupies, if it occupies one.
+    // Narrower than the leading digit: "all assets are 1xxx" is true but useless,
+    // because it lets a fixed asset continue the current-asset run.
+    const catRows = numeric.filter(a => a.sak_category === sakCategory);
+    const commonestHundred = (rows) => {
+        if (!rows.length) return null;
+        const tally = {};
+        rows.forEach(a => { const p = String(a.code).slice(0, 2); tally[p] = (tally[p] || 0) + 1; });
+        return Object.keys(tally).sort((x, y) => tally[y] - tally[x])[0];
+    };
+
+    // Evidence first — the chart's own convention always wins — then the SAK
+    // default, then the old class-wide behaviour.
+    const hundred = commonestHundred(catRows) || SAK_CODE_RANGE[sakCategory] || null;
+    const used = new Set(numeric.map(a => String(a.code)));
+
+    if (hundred && hundred.length === 2) {
+        return {
+            prefix: hundred[0],
+            width,
+            used,
+            lo: parseInt(hundred.padEnd(width, '0'), 10),
+            hi: parseInt(hundred.padEnd(width, '9'), 10),
+            scope: catRows.length ? 'chart' : 'default'
+        };
+    }
+
+    const prefix = commonest(catRows)
         || commonest(numeric.filter(a => a.type === type))
         || TYPE_CODE_PREFIX_FALLBACK[type]
         || '6';
 
-    return { prefix, width, used: new Set(numeric.map(a => String(a.code))) };
+    return { prefix, width, used, scope: 'class' };
 }
 
 // The code range a parent account owns, from its trailing zeros.
@@ -2555,8 +2636,11 @@ function suggestAccountCode(sakCategory, type, parentCode = '') {
         // Parent genuinely full: fall through to class-level numbering.
     }
 
-    const lo = parseInt(prefix.padEnd(width, '0'), 10);
-    const hi = parseInt(prefix.padEnd(width, '9'), 10);
+    // An explicit hundred-block (the category's own, or its SAK default) beats
+    // the thousand-wide class range, so a Fixed Asset numbers inside 1500-1599
+    // instead of continuing whatever the highest 1xxx account happens to be.
+    const lo = block.lo ?? parseInt(prefix.padEnd(width, '0'), 10);
+    const hi = block.hi ?? parseInt(prefix.padEnd(width, '9'), 10);
     const inBlock = [...used]
         .map(Number)
         .filter(n => n >= lo && n <= hi)
@@ -2598,7 +2682,12 @@ function suggestAccountCode(sakCategory, type, parentCode = '') {
     return '';
 }
 
-// One line explaining where the suggestion came from, so the number is not magic.
+// One line explaining where the suggested number came from.
+//
+// It must justify the code, not restate the digit rule printed above the field —
+// two sentences saying "starts with 1" read as a stutter, and "the 1xxx block in
+// this chart" is our vocabulary, not the reader's. So: name the range in plain
+// numbers, and say what it is for.
 function codeBlockHint(sakCategory, type) {
     const block = deriveCodeBlock(sakCategory, type);
     if (!block) return '';
@@ -2606,10 +2695,18 @@ function codeBlockHint(sakCategory, type) {
     const sample = (state.kernel?.coa || [])
         .filter(a => a.sak_category === sakCategory && /^\d+$/.test(String(a.code)))
         .map(a => String(a.code)).sort();
+
+    if (sample.length) {
+        return `Numbered with your other ${label} accounts (${sample.slice(0, 3).join(', ')}).`;
+    }
+    if (block.lo != null && block.hi != null) {
+        // No account of this kind exists yet, so the range is a starting
+        // convention rather than an observation. Say so, and say why it matters:
+        // statements are read in code order.
+        return `First ${label} account — starting at ${block.lo} so they group together in reports.`;
+    }
     const pattern = block.prefix + 'x'.repeat(Math.max(0, block.width - 1));
-    return sample.length
-        ? `${label} accounts in this chart use ${pattern} (e.g. ${sample.slice(0, 3).join(', ')}).`
-        : `${label} accounts follow the ${pattern} block in this chart.`;
+    return `${label} accounts use ${pattern}.`;
 }
 
 // Active accounts of the same type — candidate parents. The leading-digit rule is
@@ -2659,6 +2756,16 @@ function refreshCaDerived() {
                 : codeBlockHint(sakCategory, type));
         hint.textContent = text;
         hint.classList.toggle('hidden', !text);
+
+        // One hint at a time. While the suggested code stands, the explanation is
+        // the useful line and the digit rule is redundant — showing both is what
+        // made this field read as a wall of grey text. The rule returns the moment
+        // the code is hand-edited, which is when it becomes actionable.
+        const rule = caEl('ca-code-rule');
+        if (rule && state.caMode !== 'edit') {
+            const untouched = codeInput?.dataset.autofill !== '0';
+            rule.classList.toggle('hidden', Boolean(text) && untouched);
+        }
     }
     const parentSel = caEl('ca-parent');
     if (parentSel) {
@@ -2737,7 +2844,12 @@ function openAccountDrawer(account = null, inUse = false) {
                             <div class="fluxy-drawer-field">
                                 <label for="ca-code" class="fluxy-drawer-label">Account code</label>
                                 <input type="text" id="ca-code" inputmode="numeric" maxlength="4" placeholder="e.g. 6900" value="${isEdit ? escapeHtml(account.code) : ''}"${isEdit ? ' disabled' : ''} class="fluxy-drawer-input tabular-nums">
-                                <p class="fluxy-drawer-hint">${isEdit ? 'The account code cannot be changed.' : '4 digits (1000–9999). The first digit must match the category type.'}</p>
+                                <!-- The format rule is only actionable once someone
+                                     hand-edits the code; while the suggestion stands,
+                                     stacking it above the explanation gave two grey
+                                     paragraphs saying overlapping things. refreshCaDerived()
+                                     hides it until the field is touched. -->
+                                <p id="ca-code-rule" class="fluxy-drawer-hint">${isEdit ? 'The account code cannot be changed.' : '4 digits (1000–9999). The first digit must match the category type.'}</p>
                                 <!-- Filled by refreshCaDerived() from the chart's own
                                      numbering, so the suggested code is explainable
                                      rather than magic. -->
@@ -2799,7 +2911,7 @@ function openAccountDrawer(account = null, inUse = false) {
     caEl('ca-cancel')?.addEventListener('click', closeCreateAccountDrawer);
     overlay?.addEventListener('click', closeCreateAccountDrawer);
     caEl('ca-category')?.addEventListener('change', refreshCaDerived);
-    caEl('ca-code')?.addEventListener('input', (e) => { e.target.dataset.autofill = '0'; });
+    caEl('ca-code')?.addEventListener('input', (e) => { e.target.dataset.autofill = '0'; caEl('ca-code-rule')?.classList.remove('hidden'); });
     caEl('ca-parent')?.addEventListener('change', refreshCaDerived);
     caEl('ca-parent-toggle')?.addEventListener('change', (e) => {
         caEl('ca-parent-field')?.classList.toggle('hidden', !e.target.checked);

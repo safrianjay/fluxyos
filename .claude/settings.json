@@ -191,7 +191,26 @@
       "Bash(echo \"ACCT_SPECS_EXIT=$?\")",
       "Bash(grep -nB3 -A6 -iE \"png|images|assets/\\\\*\" netlify.toml)",
       "Bash(sips -g pixelWidth -g pixelHeight assets/images/hero/fluxyos-product-highlight.png)",
-      "Bash(sips -g pixelWidth -g pixelHeight \"assets/images/update image.png\")"
+      "Bash(sips -g pixelWidth -g pixelHeight \"assets/images/update image.png\")",
+      "Bash(grep -iA 12 \"accounting.html\" .qa/i18n-gap-report.md)",
+      "Bash(grep -nA20 \"SAK_LABELS = \" assets/js/accounting.js)",
+      "Bash(grep -nB2 -A14 \"^function lineOf\\\\|const lineOf\" assets/js/statements-engine.js)",
+      "Bash(grep -nA10 \"^function activeRows\\\\|const activeRows\" assets/js/statements-engine.js)",
+      "Bash(grep -nA10 \"TYPE_CODE_PREFIX_FALLBACK\" assets/js/accounting.js)",
+      "Bash(grep -oE \"code: '2[0-9]{3}', name: '[^']+', name_id: '[^']+'\" assets/js/accounting-engine.js)",
+      "Bash(grep -oE \"code: '1[0-9]{3}', name: '[^']+'\" assets/js/accounting-engine.js)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Skill(claude-api)",
+      "Skill(claude-api:*)",
+      "Bash(sips -Z 900 /tmp/coa-drawer.png --out /tmp/coa-drawer-s.png)",
+      "Bash(grep -nB4 -A10 'id=\"ca-code\"' assets/js/accounting.js)",
+      "mcp__codebase-memory-mcp__search_graph",
+      "Bash(grep -nA22 \"function refreshCaDerived\" assets/js/accounting.js)",
+      "Bash(perl -0pi -e \"s/\\(caEl\\\\\\('ca-code'\\\\\\)\\\\?\\\\.addEventListener\\\\\\('input', \\\\\\(e\\\\\\) => \\\\{ e\\\\.target\\\\.dataset\\\\.autofill = '0'; \\)\\\\}\\\\\\);/\\\\$1caEl\\('ca-code-rule'\\)?.classList.remove\\('hidden'\\); }\\);/\" assets/js/accounting.js)",
+      "Bash(perl -0pi -e 's/return `First \\\\\\\\\\\\$\\\\{label\\\\} account — starting at \\\\\\\\\\\\$\\\\{block\\\\.lo\\\\}\\\\. Statements list accounts by code, so this keeps \\\\\\\\\\\\$\\\\{label\\\\} together\\\\.`;/return `First \\\\${label} account — starting at \\\\${block.lo} so they group together in reports.`;/' assets/js/accounting.js)",
+      "Bash(grep -n \"First \\\\${label} account\" assets/js/accounting.js)",
+      "Bash(grep -nF \"addEventListener\\('input', \\(e\\) => { e.target.dataset.autofill\" assets/js/accounting.js)",
+      "Bash(echo \"SPECS_EXIT=$?\")"
     ]
   },
   "hooks": {

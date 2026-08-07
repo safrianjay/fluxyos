@@ -176,3 +176,85 @@ test('cash flow ties to actual cash movement, open and closed periods', async ({
     expect(r.emptyHasData).toBe(false);
     expect(r.emptyBalanced).toBe(true);
 });
+
+// --- Current vs non-current classification (PSAK 1) --------------------------
+// The balance sheet must present current and non-current separately once
+// non-current accounts exist, and must stay flat before that so charts holding
+// only current accounts do not gain empty headings.
+test('balance sheet classifies current vs non-current, and stays flat without it', async ({ page }) => {
+    await page.goto('/pricing');
+    const r = await page.evaluate(async () => {
+        const e = await import('/assets/js/statements-engine.js');
+        const row = (code, type, sak, debit, credit) => ({
+            account_code: code, account_type: type, account_name: code,
+            sak_category: sak, debit_total: debit, credit_total: credit
+        });
+
+        // Only current accounts -> unclassified presentation.
+        const flat = e.buildBalanceSheet([
+            row('1000', 'asset', 'cash_bank', 5000000, 0),
+            row('2000', 'liability', 'accounts_payable', 0, 2000000),
+            row('3100', 'equity', 'equity', 0, 3000000)
+        ]);
+
+        // Add plant and a long-term loan -> classified presentation.
+        const classified = e.buildBalanceSheet([
+            row('1000', 'asset', 'cash_bank', 5000000, 0),
+            row('1300', 'asset', 'inventory', 4000000, 0),
+            row('1500', 'asset', 'fixed_asset', 20000000, 0),
+            row('1600', 'asset', 'accumulated_depreciation', 0, 3000000),
+            row('2000', 'liability', 'accounts_payable', 0, 2000000),
+            row('2900', 'liability', 'long_term_liability', 0, 15000000),
+            row('3100', 'equity', 'equity', 0, 9000000)
+        ]);
+
+        // An unknown category must land in CURRENT, never be dropped.
+        const unknown = e.buildBalanceSheet([
+            row('1900', 'asset', 'something_new', 1000000, 0),
+            row('3100', 'equity', 'equity', 0, 1000000)
+        ]);
+
+        return {
+            flatIsClassified: flat.isClassified,
+            flatBalanced: flat.balanced,
+
+            isClassified: classified.isClassified,
+            balanced: classified.balanced,
+            currentAssetCodes: classified.assetsCurrent.map(l => l.code),
+            nonCurrentAssetCodes: classified.assetsNonCurrent.map(l => l.code),
+            currentLiabCodes: classified.liabilitiesCurrent.map(l => l.code),
+            nonCurrentLiabCodes: classified.liabilitiesNonCurrent.map(l => l.code),
+            totalCurrentAssets: classified.totalAssetsCurrent,
+            workingCapital: classified.workingCapital,
+            // Splitting must not change the totals it splits.
+            sumMatchesTotal: classified.totalAssetsCurrent + classified.totalAssetsNonCurrent === classified.totalAssets,
+            liabSumMatches: classified.totalLiabilitiesCurrent + classified.totalLiabilitiesNonCurrent === classified.totalLiabilities,
+
+            unknownIsCurrent: unknown.assetsCurrent.map(l => l.code),
+            unknownNonCurrent: unknown.assetsNonCurrent.length
+        };
+    });
+
+    // Flat while nothing is non-current.
+    expect(r.flatIsClassified, 'all-current chart stays unclassified').toBe(false);
+    expect(r.flatBalanced).toBe(true);
+
+    // Classified once plant / long-term debt exist.
+    expect(r.isClassified).toBe(true);
+    expect(r.balanced, 'classification must not break the tie-out').toBe(true);
+    expect(r.currentAssetCodes).toEqual(['1000', '1300']);
+    expect(r.nonCurrentAssetCodes, 'accumulated depreciation sits with fixed assets').toEqual(['1500', '1600']);
+    expect(r.currentLiabCodes).toEqual(['2000']);
+    expect(r.nonCurrentLiabCodes).toEqual(['2900']);
+
+    // Cash 5,000,000 + Inventory 4,000,000
+    expect(r.totalCurrentAssets).toBe(9000000);
+    // 9,000,000 current assets − 2,000,000 current liabilities
+    expect(r.workingCapital).toBe(7000000);
+    expect(r.sumMatchesTotal, 'current + non-current == total assets').toBe(true);
+    expect(r.liabSumMatches, 'current + non-current == total liabilities').toBe(true);
+
+    // Unrecognised categories are conservative: current, not dropped.
+    expect(r.unknownIsCurrent).toEqual(['1900']);
+    expect(r.unknownNonCurrent).toBe(0);
+});

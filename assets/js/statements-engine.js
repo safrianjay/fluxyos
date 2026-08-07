@@ -32,6 +32,10 @@ function lineOf(row) {
         code: row.account_code,
         name: row.account_name || row.account_code,
         name_id: row.account_name_id || null,
+        // Carried so the balance sheet can classify current vs non-current. The
+        // income statement already groups on it; the balance sheet could not,
+        // because lineOf dropped it here.
+        sak_category: row.sak_category || null,
         amount: signedBalance(row.account_type, row.debit_total, row.credit_total)
     };
 }
@@ -195,10 +199,34 @@ export function buildCashFlow(rows = []) {
 // to and including it). Current-period earnings (cumulative Revenue − Expense
 // not yet closed to Retained Earnings) is computed here and added to equity so
 // the sheet ties out.
+// Current vs non-current, by SAK category.
+//
+// PSAK 1 (Indonesia's adoption of IAS 1) requires assets and liabilities to be
+// presented as current and non-current on the face of the statement, unless a
+// liquidity ordering is more relevant — which in practice means financial
+// institutions, not the SMBs this serves. It is also what makes working capital,
+// current ratio and quick ratio readable, which is the first thing a lender
+// computes.
+//
+// Anything unrecognised is treated as CURRENT rather than dropped: an
+// unclassified account is far more likely to be an ordinary payable or
+// receivable than a piece of plant, and understating current liabilities
+// flatters liquidity. Erring toward current is the conservative direction.
+const NON_CURRENT_ASSET_CATEGORIES = new Set(['fixed_asset', 'accumulated_depreciation', 'other_asset']);
+const NON_CURRENT_LIABILITY_CATEGORIES = new Set(['long_term_liability']);
+
+const isNonCurrentAsset = (l) => NON_CURRENT_ASSET_CATEGORIES.has(l.sak_category);
+const isNonCurrentLiability = (l) => NON_CURRENT_LIABILITY_CATEGORIES.has(l.sak_category);
+
 export function buildBalanceSheet(rows = []) {
     const assets = activeRows(rows, ['asset']).map(lineOf);
     const liabilities = activeRows(rows, ['liability']).map(lineOf);
     const equityAccounts = activeRows(rows, ['equity']).map(lineOf);
+
+    const assetsNonCurrent = assets.filter(isNonCurrentAsset);
+    const assetsCurrent = assets.filter((l) => !isNonCurrentAsset(l));
+    const liabilitiesNonCurrent = liabilities.filter(isNonCurrentLiability);
+    const liabilitiesCurrent = liabilities.filter((l) => !isNonCurrentLiability(l));
 
     // Cumulative net income sitting in revenue/expense = earnings not yet closed
     // into equity. Surfaced as its own equity line so the identity holds.
@@ -217,7 +245,21 @@ export function buildBalanceSheet(rows = []) {
     const liabilitiesPlusEquity = totalLiabilities + totalEquity;
 
     return {
+        // Flat arrays stay for callers that predate the classification (CSV
+        // export, drill-down, the Overview tie-out); the grouped views are added
+        // alongside rather than replacing them.
         assets, liabilities, equity,
+        assetsCurrent, assetsNonCurrent, liabilitiesCurrent, liabilitiesNonCurrent,
+        totalAssetsCurrent: sumLines(assetsCurrent),
+        totalAssetsNonCurrent: sumLines(assetsNonCurrent),
+        totalLiabilitiesCurrent: sumLines(liabilitiesCurrent),
+        totalLiabilitiesNonCurrent: sumLines(liabilitiesNonCurrent),
+        // Working capital is the reason the split is worth presenting at all.
+        workingCapital: sumLines(assetsCurrent) - sumLines(liabilitiesCurrent),
+        // True once anything non-current exists. The renderer uses this to stay
+        // flat for charts that have only current accounts, so existing users do
+        // not gain two headings and an empty section for nothing.
+        isClassified: assetsNonCurrent.length + liabilitiesNonCurrent.length > 0,
         totalAssets, totalLiabilities, totalEquity, liabilitiesPlusEquity,
         currentEarnings,
         tieOutDelta: totalAssets - liabilitiesPlusEquity,
