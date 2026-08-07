@@ -3580,9 +3580,19 @@
         "We'll use this later for WhatsApp-based finance reminders and confirmations.": "Nomor ini akan dipakai untuk pengingat dan konfirmasi keuangan lewat WhatsApp.",
         "Identity document": "Dokumen identitas",
         "Business document": "Dokumen usaha",
+        // KYC documents are now uploaded for real and verified before activation,
+        // so the old "optional for now" copy is gone. Keys kept for any cached page.
         "Optional for now. KTP, passport, or another supported identity document can be added later.": "Opsional untuk saat ini. KTP, paspor, atau dokumen identitas lain bisa ditambahkan nanti.",
         "Optional for now. Add NIB, company registration, or business proof when needed.": "Opsional untuk saat ini. Tambahkan NIB, akta perusahaan, atau bukti usaha saat dibutuhkan.",
         "Documents are optional in this step. Higher-trust features may request them later.": "Dokumen bersifat opsional di langkah ini. Fitur dengan tingkat kepercayaan lebih tinggi mungkin memintanya nanti.",
+        "KTP, passport, or another government-issued ID. JPG, PNG, or PDF up to 5MB.": "KTP, paspor, atau identitas resmi lainnya. JPG, PNG, atau PDF maksimal 5MB.",
+        "NIB, company registration, or other business proof. JPG, PNG, or PDF up to 5MB.": "NIB, akta perusahaan, atau bukti usaha lainnya. JPG, PNG, atau PDF maksimal 5MB.",
+        "We verify these before your account is activated. Your documents are private to you and the FluxyOS review team.": "Kami memverifikasi dokumen ini sebelum akun Anda diaktifkan. Dokumen Anda hanya dapat dilihat oleh Anda dan tim peninjau FluxyOS.",
+        "That file is larger than 5MB. Please upload a smaller scan or photo.": "Ukuran file lebih dari 5MB. Silakan unggah hasil scan atau foto yang lebih kecil.",
+        "Please upload a JPG, PNG, or PDF.": "Silakan unggah file JPG, PNG, atau PDF.",
+        "Upload failed. Check your connection and try again.": "Unggahan gagal. Periksa koneksi Anda lalu coba lagi.",
+        "Upload an identity document so we can verify your account.": "Unggah dokumen identitas agar kami dapat memverifikasi akun Anda.",
+        "Wait for the upload to finish.": "Tunggu sampai unggahan selesai.",
         "What do you want help with first?": "Apa yang ingin Anda kerjakan lebih dulu?",
         "Pick one or more. We'll use this to guide your first session inside FluxyOS.": "Pilih satu atau lebih. Ini akan memandu sesi pertama Anda di FluxyOS.",
         "Import existing transaction data from a spreadsheet.": "Impor data transaksi yang sudah ada dari spreadsheet.",
@@ -3794,7 +3804,7 @@
         // The reviewer's note is operator free text and is never translated.
         // "Sign out" already has a key above (shared with the sidebar).
         "Your details are under review": "Verifikasi akun & bisnis",
-        "We are verifying your account details. This usually takes about one business day. You will get an email the moment FluxyOS is ready — nothing else is needed from you right now.": "Kami sedang memverifikasi data akun dan bisnis Anda. Biasanya proses ini membutuhkan waktu sekitar 1 hari kerja. Setelah akun Anda disetujui, kami akan mengirimkan email dan Anda bisa langsung mulai menggunakan FluxyOS untuk mengelola keuangan bisnis Anda, Terimakasih.",
+        "We are verifying your account details. This usually takes about one business day. You will get an email the moment FluxyOS is ready — nothing else is needed from you right now.": "Kami sedang memverifikasi data akun dan bisnis Anda. Biasanya proses ini membutuhkan waktu sekitar 1 hari kerja. Setelah akun Anda disetujui, kami akan mengirimkan email dan Anda bisa langsung mulai menggunakan FluxyOS untuk mengelola keuangan bisnis Anda. Terima kasih.",
         "We need a bit more information": "Kami perlu sedikit informasi tambahan",
         "Your details could not be verified as submitted. Update them and send them back — it only takes a minute.": "Detail yang Anda kirim belum bisa diverifikasi. Perbarui dan kirim ulang — hanya butuh satu menit.",
         "Update my details": "Perbarui detail saya",

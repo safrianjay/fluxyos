@@ -474,6 +474,9 @@
 .onboarding-upload-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .onboarding-upload-title { font-size: 13px; font-weight: 600; color: #0B0F19; }
 .onboarding-upload-hint { font-size: 12px; color: #6B7280; line-height: 1.45; }
+/* Upload feedback states. Identity is colour + text, never colour alone. */
+.onboarding-upload-hint.is-error { color: #DC2626; }
+.onboarding-upload-hint.is-ok { color: #16A34A; font-weight: 600; }
 
 /* Checkbox cards (Step 3) */
 .onboarding-checkbox-grid {

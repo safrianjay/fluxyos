@@ -40,6 +40,76 @@ const WELCOME_OFFER = process.env.WELCOME_OFFER_CODE
 const KYC_TEMPLATES = { approved: 'kyc_approved', needs_revision: 'kyc_needs_revision', rejected: 'kyc_rejected' };
 const PAYMENT_TEMPLATES = { verified: 'payment_verified', rejected: 'payment_rejected' };
 
+// Internal ops alerts. Every new signup and every new KYC submission is emailed
+// to the reviewer, because the KYC gate now BLOCKS the whole product until
+// someone approves — a queue nobody is watching means a locked-out customer.
+const KYC_ALERT_EMAIL = process.env.KYC_ALERT_EMAIL || 'safrian@fluxyos.com';
+// How fresh an event must be to alert. This is the backfill guard — see the
+// call site in reconcileInternalUsers.
+const INTERNAL_ALERT_MAX_AGE_MS = Number(process.env.INTERNAL_ALERT_MAX_AGE_MS || 6 * 60 * 60 * 1000); // 6h
+const ESC = (s) => String(s == null ? '—' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function fmtTs(ts) {
+    const m = toMillis(ts);
+    return m ? new Date(m).toISOString().replace('T', ' ').slice(0, 16) + ' UTC' : '—';
+}
+
+// Which internal alerts (if any) this roster row is due. Pure and exported so
+// the backfill guard is testable — tests/kyc-alert-backfill.check.js feeds it
+// the shape of the real production roster and asserts it stays silent. The
+// recency windows here are the ONLY thing standing between a deploy and one
+// email per existing user.
+function internalAlertFlags(u, now = Date.now()) {
+    const submittedMs = toMillis(u.kyc_submitted_at);
+    return {
+        signup: welcomeEligible(u, now),
+        submission: u.kyc_status === 'submitted'
+            && submittedMs != null
+            && now - submittedMs <= INTERNAL_ALERT_MAX_AGE_MS
+            && passesNotifyCutoff(u.kyc_submitted_at),
+    };
+}
+
+// The reviewer's whole job is comparing these fields, so the alert carries them
+// inline — opening the console should be for the decision, not the reading.
+function buildInternalAlert(kind, uid, u, profile, documents) {
+    const isNewUser = kind === 'signup';
+    const rows = [
+        ['Firebase UID', uid],
+        ['Email', u.email],
+        ['Display name', u.display_name],
+        ['Business name', profile?.business_name || u.business_name],
+        ['Legal full name', profile?.legal_full_name],
+        ['Phone / WhatsApp', profile ? [profile.phone_country_code, profile.phone_number].filter(Boolean).join(' ') : u.phone_number],
+        ['Role', profile?.role || u.role],
+        ['Main goal', profile?.main_goal],
+        ['Monthly revenue', profile?.monthly_revenue_range],
+        ['Employees', profile?.employee_count_range],
+        ['Identity document', documents?.identity_document_status === 'uploaded' ? (documents.identity_document_file_name || 'uploaded') : 'NOT UPLOADED'],
+        ['Business document', documents?.business_document_status === 'uploaded' ? (documents.business_document_file_name || 'uploaded') : 'not uploaded'],
+        ['KYC status', u.kyc_status],
+        ['Submitted', fmtTs(u.kyc_submitted_at)],
+        ['Signed up', fmtTs(u.created_at)],
+    ];
+    const body = rows
+        .map(([k, v]) => `<tr><td style="padding:4px 14px 4px 0;color:#6B7280;white-space:nowrap">${ESC(k)}</td><td style="padding:4px 0;color:#111827">${ESC(v)}</td></tr>`)
+        .join('');
+    return {
+        subject: isNewUser
+            ? `New FluxyOS signup — ${profile?.business_name || u.email || uid}`
+            : `KYC submitted — ${profile?.business_name || u.email || uid}`,
+        html: `<h2 style="margin:0 0 4px;font:600 18px system-ui">${isNewUser ? 'New signup' : 'New KYC submission'}</h2>
+            <p style="margin:0 0 16px;color:#6B7280;font:14px system-ui">${isNewUser
+                ? 'This account has registered. It stays locked until KYC is submitted and approved.'
+                : 'This account is locked out of FluxyOS until you approve or reject it.'}</p>
+            <table style="border-collapse:collapse;font:14px system-ui">${body}</table>
+            <p style="margin:20px 0 0"><a href="${APP_BASE_URL}/internal" style="display:inline-block;background:#0B0F19;color:#fff;text-decoration:none;padding:10px 16px;border-radius:8px;font:600 14px system-ui">Open KYC Review</a></p>`,
+        text: `${isNewUser ? 'New signup' : 'New KYC submission'}\n\n`
+            + rows.map(([k, v]) => `${k}: ${v == null ? '—' : v}`).join('\n')
+            + `\n\nReview: ${APP_BASE_URL}/internal`,
+    };
+}
+
 let _initialized = false;
 function initAdmin() {
     if (!_initialized) {
@@ -65,11 +135,11 @@ function eventKey(prefix, status, ts) {
     return m ? `${prefix}_${status}_${m}` : `${prefix}_${status}`;
 }
 
-function welcomeEligible(u) {
+function welcomeEligible(u, now = Date.now()) {
     const created = toMillis(u.created_at);
     if (!created) return false;
     if (WELCOME_AFTER && created < WELCOME_AFTER) return false;
-    return Date.now() - created <= WELCOME_MAX_AGE_MS;
+    return now - created <= WELCOME_MAX_AGE_MS;
 }
 
 // True when a KYC/payment review is recent enough to notify. With a cutoff set,
@@ -110,6 +180,44 @@ async function reconcileInternalUsers(db, { logger = console, limit = 500 } = {}
                     logger,
                 });
                 if (r && r.sent) sent += 1;
+            }
+
+            // ---- Internal ops alerts (to the reviewer, not the customer) ----
+            // RECENCY IS THE BACKFILL GUARD, and it is load-bearing: every user
+            // already on the roster sits at kyc_status 'submitted' unreviewed, so
+            // a status-only condition would blast one email per existing user on
+            // the first sweep. Both branches require a fresh timestamp, so only
+            // genuinely new events alert. mail_log dedupes the rest.
+            const { signup: signupFresh, submission: submissionFresh } = internalAlertFlags(u);
+
+            if (signupFresh || submissionFresh) {
+                // Only read the onboarding docs when we are actually sending —
+                // otherwise this would be 2 extra reads per user per sweep.
+                const [profileSnap, documentsSnap] = await Promise.all([
+                    db.doc(`users/${uid}/onboarding/profile`).get().catch(() => null),
+                    db.doc(`users/${uid}/onboarding/documents`).get().catch(() => null),
+                ]);
+                const profile = profileSnap && profileSnap.exists ? profileSnap.data() : null;
+                const documents = documentsSnap && documentsSnap.exists ? documentsSnap.data() : null;
+
+                if (signupFresh) {
+                    const built = buildInternalAlert('signup', uid, u, profile, documents);
+                    const r = await sendNotificationEmail({
+                        db, uid, to: KYC_ALERT_EMAIL, eventKey: 'internal_signup',
+                        locale: 'en', replyTo: u.email || undefined,
+                        prebuilt: { ...built, template: 'internal_signup_alert' }, logger,
+                    });
+                    if (r && r.sent) sent += 1;
+                }
+                if (submissionFresh) {
+                    const built = buildInternalAlert('kyc_submitted', uid, u, profile, documents);
+                    const r = await sendNotificationEmail({
+                        db, uid, to: KYC_ALERT_EMAIL, eventKey: eventKey('internal_kyc', 'submitted', u.kyc_submitted_at),
+                        locale: 'en', replyTo: u.email || undefined,
+                        prebuilt: { ...built, template: 'internal_kyc_alert' }, logger,
+                    });
+                    if (r && r.sent) sent += 1;
+                }
             }
 
             const kycTemplate = KYC_TEMPLATES[u.kyc_status];
@@ -290,4 +398,4 @@ async function resolveUserEmail(db, uid) {
     return null;
 }
 
-module.exports = { initAdmin, reconcileInternalUsers, sweepTrialEnding, sweepBillingReminders, sweepPendingPayments, sweepSubmittedPayments, resolveUserEmail, KYC_TEMPLATES, PAYMENT_TEMPLATES };
+module.exports = { initAdmin, reconcileInternalUsers, sweepTrialEnding, sweepBillingReminders, sweepPendingPayments, sweepSubmittedPayments, resolveUserEmail, internalAlertFlags, buildInternalAlert, KYC_ALERT_EMAIL, KYC_TEMPLATES, PAYMENT_TEMPLATES };

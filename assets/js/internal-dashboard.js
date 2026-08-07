@@ -1684,7 +1684,9 @@ function renderDrawer(u) {
         ` : `<p class="text-[13px] text-gray-500 py-2">Onboarding profile has not been submitted yet.</p>`}
     </div>`);
 
-    // KYC
+    // KYC. The documents themselves live in Storage under the user's own uid and
+    // are unreadable from this console (no Firebase Auth), so each one is fetched
+    // on demand as a short-lived Admin-SDK signed URL — see kyc-document-url.js.
     sections.push(`<div class="idrawer-section">
         <h3 class="text-[12px] font-bold uppercase tracking-wider text-gray-500 mb-1">KYC</h3>
         ${kycSubmitted ? `
@@ -1692,6 +1694,14 @@ function renderDrawer(u) {
             ${row('KYC status', badge(u.kyc_status, KYC_TONE))}
             ${row('Submitted', fmtDate(u.kyc_submitted_at))}
             ${row('Reviewed', fmtDate(u.kyc_reviewed_at))}
+            <div class="mt-3">
+                <p class="text-[12px] font-semibold text-gray-500 mb-2">Documents</p>
+                <div class="flex flex-col gap-2">
+                    <button class="iaction-btn" data-kyc-doc="identity" data-kyc-uid="${escapeHtml(uid)}">Open identity document</button>
+                    <button class="iaction-btn" data-kyc-doc="business" data-kyc-uid="${escapeHtml(uid)}">Open business document</button>
+                </div>
+                <p class="text-[12px] text-gray-400 mt-2" id="kyc-doc-status">Links expire after 10 minutes.</p>
+            </div>
         ` : `<p class="text-[13px] text-gray-500 py-2">KYC data has not been submitted yet.</p>`}
     </div>`);
 
@@ -1746,6 +1756,38 @@ function renderDrawer(u) {
     </div>`);
 
     $('internal-drawer-body').innerHTML = sections.join('');
+}
+
+// Fetch a short-lived signed URL for one KYC document and open it. Opening the
+// tab BEFORE the await keeps this a user-gesture-initiated open, which is what
+// stops the popup blocker from eating it.
+const KYC_DOCUMENT_URL = '/.netlify/functions/kyc-document-url';
+async function openKycDocument(userId, docType) {
+    const status = $('kyc-doc-status');
+    const setStatus = (msg) => { if (status) status.textContent = msg; };
+    const tab = window.open('', '_blank');
+    setStatus('Preparing secure link…');
+    try {
+        const res = await fetch(KYC_DOCUMENT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-internal-token': INTERNAL_API_TOKEN },
+            body: JSON.stringify({ userId, docType })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            tab?.close();
+            const msg = data.error === 'not_uploaded' || data.error === 'no_documents'
+                ? `No ${docType} document was uploaded by this user.`
+                : `Could not open the ${docType} document (${data.error || res.status}).`;
+            setStatus(msg);
+            return;
+        }
+        if (tab) tab.location = data.url; else window.open(data.url, '_blank');
+        setStatus(`Opened ${escapeHtml(data.fileName || docType)}. Link expires in 10 minutes.`);
+    } catch (e) {
+        tab?.close();
+        setStatus('Could not reach the document service. Check your connection.');
+    }
 }
 
 // =============================================================================
@@ -2034,6 +2076,8 @@ function initConsoleEvents() {
         if (trialActItem) { runTrialExtend(trialActItem.dataset.trialUid, trialActItem.dataset.trialAct); return; }
         const userActItem = e.target.closest('[data-user-act]');
         if (userActItem) { runUserMenuAction(userActItem.dataset.userUid, userActItem.dataset.userAct); return; }
+        const kycDocBtn = e.target.closest('[data-kyc-doc]');
+        if (kycDocBtn) { openKycDocument(kycDocBtn.dataset.kycUid, kycDocBtn.dataset.kycDoc); return; }
         // Click anywhere else with an open menu closes it.
         if (voucherMenuEl && !e.target.closest('.voucher-menu')) closeVoucherMenu();
         const actBtn = e.target.closest('[data-act]');

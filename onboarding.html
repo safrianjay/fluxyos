@@ -152,17 +152,18 @@
                         </label>
 
                         <div class="onboarding-field">
-                            <span class="onboarding-label">Identity document <span class="onboarding-optional">Optional</span></span>
+                            <span class="onboarding-label">Identity document</span>
                             <label class="onboarding-upload" for="f-id-doc">
                                 <span class="onboarding-upload-icon" aria-hidden="true">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                                 </span>
                                 <span class="onboarding-upload-text">
                                     <span class="onboarding-upload-title" id="f-id-doc-name">Choose file</span>
-                                    <span class="onboarding-upload-hint">Optional for now. KTP, passport, or another supported identity document can be added later.</span>
+                                    <span class="onboarding-upload-hint" id="f-id-doc-hint">KTP, passport, or another government-issued ID. JPG, PNG, or PDF up to 5MB.</span>
                                 </span>
                                 <input type="file" id="f-id-doc" accept=".jpg,.jpeg,.png,.pdf" hidden>
                             </label>
+                            <p class="onboarding-error" id="account-docs-error" role="alert"></p>
                         </div>
 
                         <div class="onboarding-field">
@@ -173,14 +174,14 @@
                                 </span>
                                 <span class="onboarding-upload-text">
                                     <span class="onboarding-upload-title" id="f-biz-doc-name">Choose file</span>
-                                    <span class="onboarding-upload-hint">Optional for now. Add NIB, company registration, or business proof when needed.</span>
+                                    <span class="onboarding-upload-hint" id="f-biz-doc-hint">NIB, company registration, or other business proof. JPG, PNG, or PDF up to 5MB.</span>
                                 </span>
                                 <input type="file" id="f-biz-doc" accept=".jpg,.jpeg,.png,.pdf" hidden>
                             </label>
                         </div>
                     </form>
 
-                    <p class="onboarding-foot-note">Documents are optional in this step. Higher-trust features may request them later.</p>
+                    <p class="onboarding-foot-note">We verify these before your account is activated. Your documents are private to you and the FluxyOS review team.</p>
                 </div>
 
                 <!-- STEP 3 -->

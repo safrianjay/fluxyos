@@ -16,7 +16,8 @@
     "qa:design": "node scripts/qa/lint-design.js",
     "cbm:extract": "node scripts/cbm-extract-inline.js",
     "cbm:check": "node scripts/cbm-extract-inline.js --check",
-    "cbm:sync": "node scripts/cbm-extract-inline.js && codebase-memory-mcp cli index_repository --repo-path . --mode moderate"
+    "cbm:sync": "node scripts/cbm-extract-inline.js && codebase-memory-mcp cli index_repository --repo-path . --mode moderate",
+    "check:kyc-alerts": "node tests/kyc-alert-backfill.check.js"
   },
   "dependencies": {
     "@netlify/functions": "^2.8.2",

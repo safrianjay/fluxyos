@@ -22,7 +22,7 @@ redirected.
 |----------|--------|
 | `progress` | `onboarding_completed` (bool), `onboarding_exempt` (bool), `eligible_for_onboarding_gate` (bool), `kyc_enforced` (bool — see KYC review gate below), `current_step` (`business_setup`/`account_owner`/`finance_setup`/`review`/`complete`), `completed_steps` (string[]), `selected_first_action` (first selected setup preference, backward-compatible), `selected_first_actions` (string[]), `selected_learning_tours` (string[]), `primary_learning_tour` (string \| null), `skipped` (bool), `source` (`onboarding_v2`/`legacy_exemption`), `created_at`, `updated_at`, `completed_at`, `skipped_at` |
 | `profile` | `business_name`, `role` (one of: `Owner / Founder`, `Finance admin`, `Accountant`, `Operations manager`, `Staff`), `main_goal`, `monthly_revenue_range`, `employee_count_range`, `legal_full_name`, `phone_country_code`, `phone_number` (normalized E.164-like string), `created_at`, `updated_at` |
-| `documents` | `identity_document_status` (`not_uploaded`/`uploaded`), `identity_document_storage_path` (null in v1), `business_document_status`, `business_document_storage_path` (null in v1), `created_at`, `updated_at` |
+| `documents` | `identity_document_status` (`not_uploaded`/`uploaded`), `identity_document_storage_path`, `identity_document_file_name`, `business_document_status`, `business_document_storage_path`, `business_document_file_name`, `created_at`, `updated_at` |
 
 **Detection logic** lives in `assets/js/onboarding-gate.js`. Imported as an ES
 module by `login.html` (for post-login routing) and by each app page's auth
@@ -35,9 +35,22 @@ guard (for in-page gate rendering). `DataService` exposes
 **Audit:** `onboarding.submit` and `onboarding.skip` actions are recorded under
 `users/{userId}/audit_logs` via the existing `addAuditLog` method.
 
-**Storage:** Document upload is UI-stub only in v1 — no Firebase Storage writes,
-no PII persisted beyond legal name + phone in `profile`. Storage paths remain
-null.
+**Storage:** KYC documents upload to Firebase Storage at
+`users/{uid}/kyc/{identity|business}/{fileName}` (JPG/PNG/PDF, ≤5MB), uploaded
+**on file select** so a type/size rejection surfaces at the field rather than as
+a failed submit. The **identity document is required**; the business document is
+optional (many Indonesian SMBs are unregistered sole traders with no NIB).
+
+The path is **user-scoped, not `_scope()`-routed** — a workspace teammate must
+never be able to read the owner's ID. `storage.rules` grants read/write only to
+that same uid, and no download URL is ever minted (`getDownloadURL()` bypasses
+Security Rules — see the token note in `db-service.uploadDocument`). The user
+re-reads via `getDocumentBlob()`. **Reviewers** read through
+`netlify/functions/kyc-document-url.js`, a token-gated Admin-SDK endpoint that
+returns a 10-minute signed URL and verifies the stored path is inside that
+user's own KYC prefix before signing. Upload is `DataService.uploadKycDocument`,
+which skips the plan-limit checks because it runs before any subscription
+exists.
 
 **Setup preference values:** `selected_first_actions` may contain
 `csv_upload`, `add_transaction`, `add_bill`, `dashboard_overview`,
@@ -81,6 +94,14 @@ therefore untouched.
 - **Resubmission:** `syncSelfToInternalIndex(uid, { resubmitted: true })` — set
   only by the onboarding submit handler — is the one path allowed to move
   `needs_revision` back to `submitted`. Ordinary page-load syncs never do.
+- **Reviewer alerts:** every new signup and every new KYC submission emails
+  `KYC_ALERT_EMAIL` (default `safrian@fluxyos.com`) with the full submitted
+  profile + document status, via `reconcileInternalUsers` (the existing 5-minute
+  notify sweep, so no new cron). **The recency window in `internalAlertFlags` is
+  a backfill guard, not a nicety** — every existing roster user sits at
+  `kyc_status: 'submitted'` unreviewed, so a status-only condition would send one
+  email per existing user on the first sweep. Guarded twice (6h freshness +
+  `NOTIFY_AFTER`) and pinned by `npm run check:kyc-alerts`.
 - **Trial timing:** `completeOnboarding` no longer starts the trial. For an
   enforced user `ensureBillingSubscription` refuses until `kyc_status` is
   `approved` and then dates `trial_started_at` from the approval moment, so the

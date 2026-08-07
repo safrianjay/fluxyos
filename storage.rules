@@ -39,6 +39,26 @@ service firebase.storage {
       allow write:  if false;
       allow delete: if false;
     }
+    // KYC identity/business documents, uploaded during onboarding and reviewed in
+    // the Internal Operations Console. USER-scoped on purpose: a workspace
+    // teammate must never be able to read the owner's ID document, so this does
+    // NOT use isWorkspaceMember like the finance paths below.
+    //
+    // No trial-storage entitlement check — these are uploaded BEFORE any
+    // subscription exists (the trial is created only at KYC approval), so
+    // hasTrialStorageEntitlement would read a doc that isn't there yet.
+    //
+    // The reviewer reads these through the Admin SDK (kyc-document-url function),
+    // which bypasses rules — that is why there is no reviewer read rule here.
+    match /users/{userId}/kyc/{docType}/{fileName} {
+      allow read:   if request.auth != null && request.auth.uid == userId;
+      allow write:  if request.auth != null
+                    && request.auth.uid == userId
+                    && docType in ['identity', 'business']
+                    && request.resource.size <= 5 * 1024 * 1024
+                    && request.resource.contentType in ['image/jpeg', 'image/png', 'application/pdf'];
+      allow delete: if false;
+    }
     match /users/{userId}/documents/{documentId}/{fileName} {
       allow read:   if request.auth != null && request.auth.uid == userId;
       allow write:  if request.auth != null

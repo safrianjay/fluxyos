@@ -1468,12 +1468,48 @@ class DataService {
         return payload;
     }
 
+    // KYC identity/business documents. USER-scoped (identity, not finance data) —
+    // deliberately not routed through _scope(), so a workspace teammate can never
+    // read the owner's ID. No `documents` collection row and no plan-limit check:
+    // this runs BEFORE any subscription exists (the trial is only created at KYC
+    // approval), so assertCanUseStorage would have nothing to read.
+    //
+    // Like uploadDocument, this never mints a download URL — getDownloadURL()
+    // stamps a token that Firebase serves with Security Rules BYPASSED. The user
+    // re-reads via getDocumentBlob(); the reviewer gets a short-lived Admin-SDK
+    // signed URL from the kyc-document-url function. See the token note above.
+    async uploadKycDocument(userId, docType, file) {
+        if (!userId) throw new Error('userId required');
+        if (!['identity', 'business'].includes(docType)) throw new Error('invalid docType');
+        if (!file) throw new Error('file required');
+        const MAX_BYTES = 5 * 1024 * 1024;
+        const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
+        if (file.size > MAX_BYTES) throw new Error('file-too-large');
+        if (!ALLOWED_TYPES.includes(file.type)) throw new Error('file-type-unsupported');
+
+        const { getStorage, ref, uploadBytes } =
+            await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
+        if (!this._storage) this._storage = getStorage(this.app);
+
+        const safeName = String(file.name || docType).replace(/[^\w.\-]+/g, '_').slice(0, 200) || docType;
+        const storagePath = `users/${userId}/kyc/${docType}/${safeName}`;
+        await uploadBytes(ref(this._storage, storagePath), file, this._uploadMetadata(file.type));
+        return {
+            storagePath,
+            fileName: safeName,
+            fileMimeType: file.type || 'application/octet-stream',
+            fileSize: file.size || 0
+        };
+    }
+
     async saveOnboardingDocuments(userId, data) {
         const payload = this._cleanDefined({
             identity_document_status: this._allowedValue(data.identity_document_status, ['not_uploaded', 'uploaded'], 'not_uploaded'),
-            identity_document_storage_path: null,
+            identity_document_storage_path: this._nullableString(data.identity_document_storage_path, 400),
+            identity_document_file_name: this._nullableString(data.identity_document_file_name, 200),
             business_document_status: this._allowedValue(data.business_document_status, ['not_uploaded', 'uploaded'], 'not_uploaded'),
-            business_document_storage_path: null,
+            business_document_storage_path: this._nullableString(data.business_document_storage_path, 400),
+            business_document_file_name: this._nullableString(data.business_document_file_name, 200),
             updated_at: serverTimestamp()
         });
         await setDoc(this._onboardingDoc(userId, 'documents'), {

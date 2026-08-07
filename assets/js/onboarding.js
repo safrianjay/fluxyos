@@ -58,13 +58,16 @@ const state = {
         phone_local_number: '',
         phone_number: '',
         id_doc_name: '',
+        id_doc_path: '',
         biz_doc_name: '',
+        biz_doc_path: '',
         first_actions: [],
         selected_learning_tours: [],
         primary_learning_tour: null
     },
     submitting: false,
-    resubmitting: false
+    resubmitting: false,
+    uploading: { identity: false, business: false }
 };
 
 // ---------- Auth guard ----------
@@ -144,8 +147,17 @@ async function hydrateSavedState(userId, progress) {
                 state.fields.phone_local_number = withoutCode;
             }
         }
-        if (documents?.identity_document_status === 'uploaded') state.fields.id_doc_name = 'Identity document added';
-        if (documents?.business_document_status === 'uploaded') state.fields.biz_doc_name = 'Business document added';
+        // Restore the real storage paths, not just a label — a user resuming
+        // onboarding (or resubmitting after needs_revision) must not silently
+        // lose an already-uploaded document and get blocked by the required check.
+        if (documents?.identity_document_status === 'uploaded') {
+            state.fields.id_doc_path = documents.identity_document_storage_path || '';
+            state.fields.id_doc_name = documents.identity_document_file_name || 'Identity document added';
+        }
+        if (documents?.business_document_status === 'uploaded') {
+            state.fields.biz_doc_path = documents.business_document_storage_path || '';
+            state.fields.biz_doc_name = documents.business_document_file_name || 'Business document added';
+        }
         if (Array.isArray(progress?.selected_first_actions)) {
             state.fields.first_actions = progress.selected_first_actions.filter((value) =>
                 ONBOARDING_PREFERENCES.some((item) => item.value === value)
@@ -197,14 +209,10 @@ function initUI() {
     syncFormFromState();
 
     document.getElementById('f-id-doc').addEventListener('change', (e) => {
-        const file = e.target.files?.[0];
-        state.fields.id_doc_name = file?.name || '';
-        document.getElementById('f-id-doc-name').textContent = file?.name || 'Choose file';
+        handleDocSelect('identity', e.target.files?.[0]);
     });
     document.getElementById('f-biz-doc').addEventListener('change', (e) => {
-        const file = e.target.files?.[0];
-        state.fields.biz_doc_name = file?.name || '';
-        document.getElementById('f-biz-doc-name').textContent = file?.name || 'Choose file';
+        handleDocSelect('business', e.target.files?.[0]);
     });
 
     document.querySelectorAll('input[name="first_actions"]').forEach((el) => {
@@ -214,6 +222,76 @@ function initUI() {
             clearFieldError('#finance-actions', 'finance-actions-error');
         });
     });
+}
+
+const DOC_UI = {
+    identity: { nameEl: 'f-id-doc-name', hintEl: 'f-id-doc-hint', input: 'f-id-doc', nameField: 'id_doc_name', pathField: 'id_doc_path' },
+    business: { nameEl: 'f-biz-doc-name', hintEl: 'f-biz-doc-hint', input: 'f-biz-doc', nameField: 'biz_doc_name', pathField: 'biz_doc_path' }
+};
+
+function setDocHint(docType, message, tone) {
+    const hint = document.getElementById(DOC_UI[docType].hintEl);
+    if (!hint) return;
+    hint.textContent = message;
+    hint.classList.toggle('is-error', tone === 'error');
+    hint.classList.toggle('is-ok', tone === 'ok');
+}
+
+// Upload on select rather than at submit: a 5MB scan over a phone connection is
+// slow, and a type/size rejection has to surface while the user is still looking
+// at the field — not as a failed submit three steps later.
+async function handleDocSelect(docType, file) {
+    const cfg = DOC_UI[docType];
+    const nameEl = document.getElementById(cfg.nameEl);
+    if (!file) {
+        state.fields[cfg.nameField] = '';
+        state.fields[cfg.pathField] = '';
+        if (nameEl) nameEl.textContent = 'Choose file';
+        setDocHint(docType, DOC_DEFAULT_HINT[docType], null);
+        return;
+    }
+    if (nameEl) nameEl.textContent = file.name;
+    state.fields[cfg.nameField] = file.name;
+    state.fields[cfg.pathField] = '';
+    state.uploading[docType] = true;
+    setDocHint(docType, 'Uploading…', null);
+    try {
+        const res = await data.uploadKycDocument(state.user.uid, docType, file);
+        state.fields[cfg.pathField] = res.storagePath;
+        state.fields[cfg.nameField] = res.fileName;
+        setDocHint(docType, 'Uploaded', 'ok');
+        clearFieldError(`#${cfg.input}`, 'account-docs-error');
+    } catch (err) {
+        state.fields[cfg.pathField] = '';
+        state.fields[cfg.nameField] = '';
+        if (nameEl) nameEl.textContent = 'Choose file';
+        const code = err?.message === 'file-too-large'
+            ? 'That file is larger than 5MB. Please upload a smaller scan or photo.'
+            : err?.message === 'file-type-unsupported'
+                ? 'Please upload a JPG, PNG, or PDF.'
+                : 'Upload failed. Check your connection and try again.';
+        setDocHint(docType, code, 'error');
+    } finally {
+        state.uploading[docType] = false;
+    }
+}
+
+const DOC_DEFAULT_HINT = {
+    identity: 'KTP, passport, or another government-issued ID. JPG, PNG, or PDF up to 5MB.',
+    business: 'NIB, company registration, or other business proof. JPG, PNG, or PDF up to 5MB.'
+};
+
+// Files are already in Storage by the time this runs (uploaded on select), so
+// this only records where they landed.
+function docsPayload() {
+    return {
+        identity_document_status: state.fields.id_doc_path ? 'uploaded' : 'not_uploaded',
+        identity_document_storage_path: state.fields.id_doc_path || null,
+        identity_document_file_name: state.fields.id_doc_name || null,
+        business_document_status: state.fields.biz_doc_path ? 'uploaded' : 'not_uploaded',
+        business_document_storage_path: state.fields.biz_doc_path || null,
+        business_document_file_name: state.fields.biz_doc_name || null
+    };
 }
 
 function syncFormFromState() {
@@ -586,6 +664,17 @@ function validateStep() {
             valid = false;
             setFieldError('#f-phone-local', 'f-phone-error', 'Enter a WhatsApp number after the country code.');
         }
+        // The identity document is the one thing a reviewer actually verifies, so
+        // it is required — an optional field here left the review queue with
+        // nothing to check. The business document stays optional: plenty of
+        // Indonesian SMBs are unregistered sole traders with no NIB to upload.
+        if (state.uploading.identity || state.uploading.business) {
+            valid = false;
+            setFieldError('#f-id-doc', 'account-docs-error', 'Wait for the upload to finish.');
+        } else if (!state.fields.id_doc_path) {
+            valid = false;
+            setFieldError('#f-id-doc', 'account-docs-error', 'Upload an identity document so we can verify your account.');
+        }
         return valid;
     }
 
@@ -679,10 +768,7 @@ async function onContinue() {
                 phone_country_code: state.fields.phone_country_code,
                 phone_number: state.fields.phone_number
             });
-            await data.saveOnboardingDocuments(state.user.uid, {
-                identity_document_status: 'not_uploaded',
-                business_document_status: 'not_uploaded'
-            });
+            await data.saveOnboardingDocuments(state.user.uid, docsPayload());
         } else if (stepKey === 'finance_setup') {
             state.fields.first_actions = getSelectedFirstActions();
             updateLearningTourState();
@@ -765,10 +851,7 @@ async function onSubmit() {
             phone_country_code: state.fields.phone_country_code,
             phone_number: state.fields.phone_number
         });
-        await data.saveOnboardingDocuments(state.user.uid, {
-            identity_document_status: 'not_uploaded',
-            business_document_status: 'not_uploaded'
-        });
+        await data.saveOnboardingDocuments(state.user.uid, docsPayload());
         // Mirror the business name into the canonical settings/company doc so
         // the sidebar entity switcher and Settings → Business stay in sync.
         // Treated as critical now — without it the dashboard's first read of

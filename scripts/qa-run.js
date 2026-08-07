@@ -182,6 +182,9 @@ function laneBE(changed) {
   if (FORCE_ALL || touched(/db-service\.js|^netlify\/|^functions\//)) {
     ok = record('be', run('check:ai-scope', 'node', ['tests/ai-finance-scope.check.js'])) && ok;
     ok = record('be', run('check:bank-scope', 'node', ['tests/bank-statement-scope.check.js'])) && ok;
+    // The KYC alert fires per new signup/submission. Its recency window is the
+    // only thing preventing one email per existing roster user on first sweep.
+    ok = record('be', run('check:kyc-alerts', 'node', ['tests/kyc-alert-backfill.check.js'])) && ok;
     // Intent keyword ORDER and the recommended-action route allowlist. Both fail
     // silently in manual testing — a wrong tab still looks like a real answer.
     ok = record('be', run('check:ai-statements', 'node', ['tests/ai-statement-routing.check.js'])) && ok;
