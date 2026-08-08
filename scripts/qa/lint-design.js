@@ -62,6 +62,64 @@ const isLanding = (f) => f.endsWith('.html') && PAGES.marketing.has(basename(f))
  */
 const RULES = [
   {
+    // A decorative pseudo-element that COVERS its parent (inset / all four
+    // offsets), carries a background fill, and is animated or transformed, must
+    // sit at a negative z-index.
+    //
+    // WebKit promotes an animated/transformed pseudo-element to its own
+    // compositing layer, and a composited layer paints above non-composited
+    // siblings whatever z-index says. `.brain-panel::before` was an 86%-white
+    // gradient at z-index 0, held behind the content only by
+    // `.brain-panel > * { z-index: 1 }` — an opt-in compositing ignores. The AI
+    // panel rendered near-white in Safari while Chrome looked correct, so
+    // Chrome-only QA could never see it.
+    //
+    // Deliberately narrow: a fill AND full coverage AND compositing. A glyph
+    // positioned at a point (.pl-mini-spark::before) or a shadow-only ring
+    // (.fluxy-tour-highlight::before) cannot veil anything and must not warn.
+    id: 'composited-pseudo-veil',
+    severity: 'error',
+    doc: 'Put covering decorative pseudo-elements at `z-index: -1` under an `isolation: isolate` parent — a composited layer beats `z-index: 1` on children in WebKit',
+    applies: (f) => f.endsWith('.css'),
+    scanFile(lines) {
+      // Blank out comments FIRST, keeping newlines so reported line numbers stay
+      // right. CSS comments in this repo contain braces (this rule's own comment
+      // quotes `> * { z-index: 1 }`), and a brace inside a comment desynchronises
+      // the block regex below — which silently made an earlier version of this
+      // rule match nothing at all.
+      const css = lines.join('\n').replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '));
+      const out = [];
+      const BLOCK = /([^{}]+)\{([^{}]*)\}/g;
+      let m;
+      while ((m = BLOCK.exec(css)) !== null) {
+        const sel = m[1].trim();
+        const body = m[2];
+        if (!/::(before|after)\b/.test(sel)) continue;
+        if (/^\s*(from|to)\b/.test(sel) || /\d\s*%/.test(sel)) continue; // @keyframes step
+        if (!/position\s*:\s*(absolute|fixed)/.test(body)) continue;
+        if (!/\banimation\s*:/.test(body) && !/\btransform\s*:/.test(body)) continue;
+
+        const fill = /background(-color|-image)?\s*:\s*([^;]+)/.exec(body);
+        const hasFill = !!fill && !/^\s*(none|transparent|0\b)/i.test(fill[3]);
+        if (!hasFill) continue;
+
+        const covers = /\binset\s*:/.test(body)
+          || (/\btop\s*:/.test(body) && /\bright\s*:/.test(body)
+              && /\bbottom\s*:/.test(body) && /\bleft\s*:/.test(body));
+        if (!covers) continue;
+
+        const z = /z-index\s*:\s*(-?\d+)/.exec(body);
+        if (z && Number(z[1]) < 0) continue;
+
+        out.push({
+          line: css.slice(0, m.index).split('\n').length,
+          message: `\`${sel.replace(/\s+/g, ' ').slice(0, 60)}\` covers its parent with a background fill and is animated/transformed at z-index ${z ? z[1] : 'auto'} — use z-index: -1 or it paints over content in Safari`
+        });
+      }
+      return out;
+    },
+  },
+  {
     id: 'orange-background',
     severity: 'error',
     doc: 'CLAUDE.md — "Orange backgrounds are PROHIBITED project-wide"',
@@ -228,12 +286,24 @@ function lint(files, scope = null) {
       // lineScope null = whole file (new/untracked); Set = only added lines.
       if (scope && lineScope !== null && !lineScope.has(i + 1)) return;
       for (const rule of active) {
+        if (!rule.scan) continue;
         const msg = rule.scan(line, file);
         if (msg) {
           findings.push({ file, line: i + 1, rule: rule.id, severity: rule.severity, message: msg, doc: rule.doc });
         }
       }
     });
+
+    // Block-aware rules. Some violations only exist across a whole CSS rule
+    // (a selector plus several declarations), which a per-line scan cannot see.
+    // Same delta-by-default scoping: report only if the offending line changed.
+    for (const rule of active) {
+      if (!rule.scanFile) continue;
+      for (const hit of rule.scanFile(lines, file) || []) {
+        if (scope && lineScope !== null && !lineScope.has(hit.line)) continue;
+        findings.push({ file, line: hit.line, rule: rule.id, severity: rule.severity, message: hit.message, doc: rule.doc });
+      }
+    }
   }
   return findings;
 }
