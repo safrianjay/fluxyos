@@ -1325,11 +1325,23 @@
             return { label: 'Not classified', cls: 'border-gray-200 bg-gray-50 text-gray-500' };
         }
 
+        // Voided transactions are EXCLUDED here, and that has to be done inside this
+        // function rather than by the caller. The cash summary is deliberately fed
+        // `allLedgerTransactions` so its totals span the whole date range regardless
+        // of the active filters (see the call site) — and the ledger fetches with
+        // `includeVoided: true` so voided rows can still be shown under the
+        // "voided"/"all" visibility filter. The two together meant a voided
+        // transaction stayed in Cash In / Cash Out: the table hid the row but the
+        // totals never moved, so voiding appeared to do nothing.
+        //
+        // Uses the same predicate as the rest of the page (`is_voided === true` or
+        // status "voided"), which mirrors db-service `_isVoidedTransaction`.
         function calcLedgerCashMovement(transactions) {
             let cashIn = 0, cashOut = 0, pendingIn = 0, pendingOut = 0;
             const PENDING_IN_TYPES  = new Set(['income', 'revenue', 'refund', 'pending_receivable']);
             const PENDING_OUT_TYPES = new Set(['expense', 'fee', 'tax', 'pending_payable']);
             transactions.forEach(tx => {
+                if (isVoidedTransaction(tx)) return;
                 const amt    = Math.abs(Number(tx.amount) || 0);
                 const txType = getNormalizedRawTransactionType(tx);
                 if (tx.cash_effective === true && tx.cash_direction === 'in')  cashIn  += amt;
