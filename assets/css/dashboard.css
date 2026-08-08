@@ -2095,11 +2095,21 @@
     transition: filter 180ms ease;
 }
 
+/* Decorative layers sit at z-index -1, NOT 0.
+   `.brain-panel` is `isolation: isolate`, so a negative z-index paints above the
+   panel's own background but below every in-flow child — without each child
+   having to opt in via `.brain-panel > * { z-index: 1 }`.
+   That opt-in was load-bearing and WebKit broke it: this pseudo-element carries
+   an `animation` plus a `transform`, which Safari promotes to its own
+   compositing layer, and a composited layer can paint above non-composited
+   siblings whatever their z-index says. The gradient below is up to 86% white,
+   so the whole panel — title, orb, summary text — washed out in Safari while
+   Chrome rendered it correctly. */
 .brain-panel::before {
     content: '';
     position: absolute;
     inset: -45%;
-    z-index: 0;
+    z-index: -1;
     background-image:
         radial-gradient(circle at 22% 28%, rgba(244,114,182,0.22), transparent 24%),
         radial-gradient(circle at 76% 30%, rgba(99,102,241,0.22), transparent 26%),
@@ -2114,7 +2124,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    z-index: 0;
+    z-index: -1;
     background: linear-gradient(180deg, rgba(255,255,255,0.42), rgba(255,255,255,0.12));
     pointer-events: none;
 }
