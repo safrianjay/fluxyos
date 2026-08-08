@@ -8749,6 +8749,42 @@ class DataService {
         }
     }
 
+    // ===== Enterprise / Custom plan request (highest self-serve plan) =====
+    // Enterprise is sales-led, so a user on the top self-serve plan has nothing
+    // to check out. The request is recorded on their own internal_users row so
+    // the state survives a reload and the ops console can see it. isValidInternalUser
+    // validates known keys but does not restrict unknown ones, so this needs no
+    // rules change.
+
+    async hasRequestedEnterprisePlan(userId) {
+        if (!userId) return false;
+        try {
+            const internal = await this.getInternalUser(userId);
+            return !!(internal && internal.enterprise_request_at);
+        } catch (_) {
+            return false; // fail open: never strand the CTA in a disabled state
+        }
+    }
+
+    async requestEnterprisePlan(userId, meta = {}) {
+        if (!userId) throw new Error('userId required');
+        await setDoc(this._internalUserDoc(userId), {
+            enterprise_request_at: serverTimestamp(),
+            enterprise_request_from_plan: this._nullableString(meta.plan_id, 40),
+            updated_at: serverTimestamp()
+        }, { merge: true });
+        try {
+            await this.addAuditLog(userId, {
+                action: 'billing.enterprise_request',
+                target_collection: 'billing',
+                target_id: 'current',
+                after: { from_plan: meta.plan_id || null },
+                source: 'settings'
+            });
+        } catch (_) { /* non-fatal */ }
+        return true;
+    }
+
     async ensureBillingSubscription(userId) {
         if (!userId) return null;
         const current = await this.getBillingSubscription(userId);

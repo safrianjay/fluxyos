@@ -3800,6 +3800,16 @@
         "Your finance data is safely stored, but adding new records, importing files, exporting reports, and using Fluxy AI are locked until you choose a plan.": "Data keuangan Anda tersimpan aman, tetapi menambah catatan baru, mengimpor file, mengekspor laporan, dan memakai Fluxy AI terkunci sampai Anda memilih paket.",
         "Your workspace trial has ended": "Masa uji coba ruang kerja Anda telah berakhir",
 
+        // ── JS-rendered copy: settings-billing.html (Enterprise request) ─────
+        "You are on our highest standard plan": "Anda sudah di paket standar tertinggi",
+        "Request Enterprise plan": "Ajukan paket Enterprise",
+        "Request Enterprise Plan": "Ajukan paket Enterprise",
+        "Not now": "Nanti saja",
+        "Request received": "Permintaan diterima",
+        "Our team will reach out about an Enterprise or Custom plan. You can also start the conversation now if you would rather not wait.": "Tim kami akan menghubungi Anda soal paket Enterprise atau Custom. Anda juga bisa memulai percakapan sekarang jika tidak ingin menunggu.",
+        "Talk to sales now": "Hubungi tim sales sekarang",
+        "Stay here": "Tetap di sini",
+
         // ── JS-rendered copy: kyc-gate.js ────────────────────────────────────
         // The reviewer's note is operator free text and is never translated.
         // "Sign out" already has a key above (shared with the sidebar).

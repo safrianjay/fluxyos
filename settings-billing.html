@@ -235,6 +235,13 @@
 
         document.getElementById('billing-retry-btn')?.addEventListener('click', () => loadBilling());
 
+        // Enterprise is sales-led, so `growth` is the highest plan a user can buy
+        // on their own. Reaching it means "Upgrade" has nowhere self-serve to go.
+        const TOP_SELF_SERVE_PLAN = 'growth';
+        // Set from internal_users/{uid}; keeps the CTA disabled across reloads so a
+        // user cannot submit the same Enterprise request twice.
+        let enterpriseRequested = false;
+
         async function loadBilling() {
             setLoadState('loading', 'Loading billing');
             errorState.classList.add('hidden');
@@ -246,6 +253,7 @@
                     ds.getBillingInvoices(uid, 20),
                     ds.getBillingUsage(uid)
                 ]);
+                enterpriseRequested = await ds.hasRequestedEnterprisePlan(uid).catch(() => false);
                 renderSummary(overview, usage);
                 renderYourPlan(overview);
                 renderPaymentMethod(overview);
@@ -274,6 +282,7 @@
             const trialEnd = o.trial_end_at ? formatDate(o.trial_end_at) : null;
             // enterprise is the highest tier — there is nothing to upgrade to.
             const isTopTier = o.plan_id === 'enterprise';
+            const isTopSelfServe = o.plan_id === TOP_SELF_SERVE_PLAN;
 
             const map = {
                 none: {
@@ -293,8 +302,19 @@
                     copy: renews
                         ? `Your current plan renews on ${renews}.${seatLimit && storageLimit ? ` Your plan includes ${seatLimit} seats and ${storageLimit} storage.` : ''}${isTopTier ? ' You’re on the highest plan available.' : ''}`
                         : `Your ${escapeHtml(planName)} plan is active.${seatLimit && storageLimit ? ` It includes ${seatLimit} seats and ${storageLimit} storage.` : ''}${isTopTier ? ' You’re on the highest plan available.' : ''}`,
-                    // No upgrade CTA on the top tier — there's nothing higher.
-                    primary: isTopTier ? null : { label: 'Upgrade plan', kind: 'upgrade' },
+                    // No upgrade CTA on enterprise — there is nothing higher. On the
+                    // highest SELF-SERVE plan the CTA stays, but it opens the
+                    // Enterprise request dialog rather than a checkout the user
+                    // cannot complete (enterprise is sales-led).
+                    primary: isTopTier
+                        ? null
+                        : (isTopSelfServe
+                            ? {
+                                label: enterpriseRequested ? 'Request Enterprise Plan' : 'Upgrade plan',
+                                kind: 'upgrade-enterprise',
+                                disabled: enterpriseRequested
+                            }
+                            : { label: 'Upgrade plan', kind: 'upgrade' }),
                     tertiary: { label: 'Cancel renewal', kind: 'cancel' }
                 },
                 cancel_scheduled: {
@@ -516,7 +536,7 @@
                 </div>` : '';
 
             const primaryBtn = info.primary
-                ? `<button type="button" data-action="${info.primary.kind}" class="bill-action inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-[14px] font-bold text-white shadow-sm transition-colors hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed">${escapeHtml(info.primary.label)}</button>`
+                ? `<button type="button" data-action="${info.primary.kind}"${info.primary.disabled ? ' disabled' : ''} class="bill-action inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-[14px] font-bold text-white shadow-sm transition-colors hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed">${escapeHtml(info.primary.label)}</button>`
                 : '';
 
             const tertiary = info.tertiary
@@ -770,6 +790,42 @@
                 const nextPlan = (idx >= 0 && idx < order.length - 1) ? order[idx + 1] : 'growth';
                 const billing = ['monthly', 'annually'].includes(o.billing_cycle) ? o.billing_cycle : 'annually';
                 navigate(`/checkout?plan=${nextPlan}&billing=${billing}`);
+                return;
+            }
+            // Highest self-serve plan. Enterprise/Custom is sales-led, so give the
+            // user an explicit choice instead of silently bouncing them to the
+            // contact-sales page from a button labelled "Upgrade".
+            if (kind === 'upgrade-enterprise') {
+                if (enterpriseRequested) return;
+                const ok = await window.showConfirmDialog({
+                    title: 'You are on our highest standard plan',
+                    body: `Your <strong>${escapeHtml(o.plan_name || 'current')}</strong> plan is the highest one you can subscribe to directly. If you need more — higher limits, Enterprise AI, or a custom setup — our team can put together an Enterprise or Custom plan for you.`,
+                    confirmLabel: 'Request Enterprise plan',
+                    cancelLabel: 'Not now',
+                    icon: 'building'
+                });
+                if (!ok) return;
+
+                await withBusy(btn, async () => {
+                    await ds.requestEnterprisePlan(uid, {
+                        plan_id: o.plan_id || null,
+                        plan_name: o.plan_name || null
+                    });
+                });
+                enterpriseRequested = true;
+                btn.disabled = true;
+                btn.textContent = 'Request Enterprise Plan';
+
+                // Only go to sales if they actively choose to. The request is
+                // already recorded either way.
+                const goToSales = await window.showConfirmDialog({
+                    title: 'Request received',
+                    body: 'Our team will reach out about an Enterprise or Custom plan. You can also start the conversation now if you would rather not wait.',
+                    confirmLabel: 'Talk to sales now',
+                    cancelLabel: 'Stay here',
+                    icon: 'check'
+                });
+                if (goToSales) navigate('/contact-sales');
                 return;
             }
             if (kind === 'fixpayment') {
