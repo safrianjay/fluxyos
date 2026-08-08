@@ -389,7 +389,7 @@ const KERNEL_TABS = new Set(['journals', 'ledger', 'trial', 'coa', 'close']);
 // Full rationale: docs/ACCOUNTING_CENTER_IA.md
 const TAB_GROUPS = [
     { id: 'reports', tabs: ['income', 'balance', 'cashflow', 'aging'] },
-    { id: 'ledger', tabs: ['journals', 'ledger', 'trial'] },
+    { id: 'ledger', tabs: ['journals', 'trial', 'ledger'] },
     { id: 'setup', tabs: ['coa', 'mapping', 'vendors'] },
     { id: 'close', tabs: ['close', 'cleanup'] }
 ];
