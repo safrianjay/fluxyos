@@ -126,6 +126,12 @@
                         </div>
                         <p id="bill-table-count" class="fluxy-table-subtitle"></p>
                     </div>
+                    <div id="bill-attention-chip-row" class="fluxy-table-toolbar hidden">
+                        <button id="bill-clear-attention-filter" type="button" class="inline-flex max-w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[12px] font-semibold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">
+                            <span id="bill-attention-filter-label" class="truncate">Overdue only</span>
+                            <span class="text-gray-400" aria-hidden="true">×</span>
+                        </button>
+                    </div>
                     <div id="bill-vendor-filter-chip-row" class="fluxy-table-toolbar hidden">
                         <button id="bill-clear-vendor-filter" type="button" class="inline-flex max-w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[12px] font-semibold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">
                             <span id="bill-vendor-filter-label" class="truncate">Vendor: —</span>
@@ -455,6 +461,11 @@
         }
 
         async function getBillsForRange(userId) {
+            // Attention deep-link ignores the date range by design: the default
+            // query filters on `timestamp` (when the bill was CREATED), so a bill
+            // created three months ago but overdue today falls outside it and the
+            // filtered list would under-count the row the user clicked.
+            if (billAttentionFlag) return ds.getBills(userId);
             const start = parseDayKey(billRangeStart);
             const end = parseDayKey(addDays(billRangeEnd, 1));
             // Workspace-scoped: route through ds._scope() (NOT a hardcoded
@@ -796,6 +807,7 @@
             const emptyContainer = document.getElementById('bill-empty-state');
             const countEl = document.getElementById('bill-table-count');
             renderBillVendorFilterChip();
+            renderBillAttentionChip();
 
             if (allBills.length === 0) {
                 tableContainer.classList.add('hidden');
@@ -824,10 +836,74 @@
 
         // ── Search ────────────────────────────────────────────────────────────
 
+        // Deep-link from the Overview attention queue: `/bill?flag=overdue` and
+        // `/bill?flag=due_soon` open the list already narrowed to exactly the
+        // bills that row counted, instead of dropping the user on the full table
+        // to find them by hand. Mirrors `/ledger?flag=future_dated`.
+        let billAttentionFlag = (() => {
+            const f = new URLSearchParams(window.location.search).get('flag');
+            return f === 'overdue' || f === 'due_soon' ? f : '';
+        })();
+
+        const BILL_ATTENTION_LABELS = { overdue: 'Overdue only', due_soon: 'Due soon only' };
+        // The Overview's "due soon" window is 30 days OR inside the period it was
+        // showing, so the link carries that period — otherwise the filtered list
+        // would not contain the number the user just clicked.
+        const billAttentionPeriod = (() => {
+            const q = new URLSearchParams(window.location.search);
+            return { start: q.get('start') || '', end: q.get('end') || '' };
+        })();
+
+        // MUST mirror getDashboardOverview: overdue = open bill past due;
+        // due soon = open bill within the next 30 days OR inside the Overview's
+        // selected period (db-service `_isBeforeToday` / `_isInUpcomingWindow`).
+        // The page's own "Due Soon" badge is a 7-day notion and is deliberately
+        // NOT reused here — it would show 7 bills under a row that said 38.
+        function matchesBillAttentionFlag(bill, flag) {
+            if (!flag) return true;
+            const isOpen = String(bill?.payment_status || '').toLowerCase() !== 'paid' && !bill?.is_voided;
+            if (!isOpen) return false;
+            const due = getBillDueDate(bill);
+            if (!due) return false;
+            const today = getToday();
+            const d = new Date(due);
+            d.setHours(0, 0, 0, 0);
+            if (flag === 'overdue') return d < today;
+            const end30 = new Date(today);
+            end30.setDate(end30.getDate() + 30);
+            if (d >= today && d <= end30) return true;
+            if (billAttentionPeriod.start && billAttentionPeriod.end) {
+                const key = getDayKey(d);
+                return key >= billAttentionPeriod.start && key <= billAttentionPeriod.end;
+            }
+            return false;
+        }
+
+        function renderBillAttentionChip() {
+            const row = document.getElementById('bill-attention-chip-row');
+            const label = document.getElementById('bill-attention-filter-label');
+            if (!row || !label) return;
+            if (!billAttentionFlag) { row.classList.add('hidden'); return; }
+            label.textContent = BILL_ATTENTION_LABELS[billAttentionFlag] || 'Filtered';
+            row.classList.remove('hidden');
+        }
+
+        function clearBillAttentionFlag() {
+            if (!billAttentionFlag) return;
+            billAttentionFlag = '';
+            const params = new URLSearchParams(window.location.search);
+            params.delete('flag');
+            const qs = params.toString();
+            window.history.replaceState({}, '', window.location.pathname + (qs ? `?${qs}` : ''));
+            renderBillAttentionChip();
+            filterBills(document.getElementById('bill-search-input')?.value || '');
+        }
+
         function filterBills(query) {
             const q = query.trim().toLowerCase();
             const vendorKey = activeBillVendorFilter?.key || '';
             const filtered = allBills.filter(bill => {
+                if (!matchesBillAttentionFlag(bill, billAttentionFlag)) return false;
                 if (vendorKey && getVendorKey(bill) !== vendorKey) return false;
                 if (!q) return true;
                 const vendor = getVendorDisplayName(bill).toLowerCase();
@@ -1499,6 +1575,7 @@
 
         document.getElementById('bill-search-input').addEventListener('input', (e) => filterBills(e.target.value));
         document.getElementById('bill-clear-vendor-filter')?.addEventListener('click', clearBillVendorFilter);
+        document.getElementById('bill-clear-attention-filter')?.addEventListener('click', clearBillAttentionFlag);
 
         // ── CSV Export ────────────────────────────────────────────────────────
 

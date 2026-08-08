@@ -3810,6 +3810,18 @@
         "Talk to sales now": "Hubungi tim sales sekarang",
         "Stay here": "Tetap di sini",
 
+        // ── Attention queue deep-links (dashboard.js / bill / subscription) ──
+        "Review overdue bills": "Tinjau tagihan lewat jatuh tempo",
+        "Review upcoming bills": "Tinjau tagihan mendatang",
+        "Review renewals": "Tinjau perpanjangan",
+        "See what moved": "Lihat apa yang berubah",
+        "Open bill": "Buka tagihan",
+        "Open subscription": "Buka langganan",
+        "Open record": "Buka catatan",
+        "Overdue only": "Hanya lewat jatuh tempo",
+        "Due soon only": "Hanya segera jatuh tempo",
+        "Renewing soon only": "Hanya perpanjangan segera",
+
         // ── JS-rendered copy: kyc-gate.js ────────────────────────────────────
         // The reviewer's note is operator free text and is never translated.
         // "Sign out" already has a key above (shared with the sidebar).

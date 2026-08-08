@@ -58,6 +58,12 @@
                             <p class="fluxy-table-subtitle">Recurring SaaS spend and renewal status.</p>
                         </div>
                     </div>
+                    <div id="sub-attention-chip-row" class="fluxy-table-toolbar hidden">
+                        <button id="sub-clear-attention-filter" type="button" class="inline-flex max-w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[12px] font-semibold text-gray-700 hover:border-[#EA580C] hover:text-[#EA580C] transition-colors">
+                            <span class="truncate">Renewing soon only</span>
+                            <span class="text-gray-400" aria-hidden="true">×</span>
+                        </button>
+                    </div>
                     <div id="sub-empty-state" class="hidden"></div>
                     <div id="sub-table-container" data-tour-target="subscription-table" class="fluxy-table-scroll">
                         <table class="fluxy-table min-w-[760px]">
@@ -192,10 +198,60 @@
                 .replace(/'/g, '&#039;');
         }
 
+        // Deep-link from the Overview attention queue (`/subscription?flag=renewal_soon`).
+        // MUST mirror getDashboardOverview's `_isInUpcomingWindow`: renewing in the
+        // next 30 days OR inside the period the Overview was showing (carried on
+        // the link), or the filtered list would not contain the number clicked.
+        let subAttentionFlag = new URLSearchParams(window.location.search).get('flag') === 'renewal_soon';
+        const subAttentionPeriod = (() => {
+            const q = new URLSearchParams(window.location.search);
+            return { start: q.get('start') || '', end: q.get('end') || '' };
+        })();
+
+        function subDayKey(d) {
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        function matchesSubAttentionFlag(sub) {
+            if (!subAttentionFlag) return true;
+            const d = sub.renewal_date?.toDate?.();
+            if (!d) return false;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const renew = new Date(d);
+            renew.setHours(0, 0, 0, 0);
+            const end30 = new Date(today);
+            end30.setDate(end30.getDate() + 30);
+            if (renew >= today && renew <= end30) return true;
+            if (subAttentionPeriod.start && subAttentionPeriod.end) {
+                const key = subDayKey(renew);
+                return key >= subAttentionPeriod.start && key <= subAttentionPeriod.end;
+            }
+            return false;
+        }
+
+        function renderSubAttentionChip() {
+            const row = document.getElementById('sub-attention-chip-row');
+            if (!row) return;
+            row.classList.toggle('hidden', !subAttentionFlag);
+        }
+
+        function clearSubAttentionFlag() {
+            if (!subAttentionFlag) return;
+            subAttentionFlag = false;
+            const params = new URLSearchParams(window.location.search);
+            params.delete('flag');
+            const qs = params.toString();
+            window.history.replaceState({}, '', window.location.pathname + (qs ? `?${qs}` : ''));
+            renderSubAttentionChip();
+            renderSubscriptions();
+        }
+
         function filterSubscriptions(query) {
             const q = String(query || '').trim().toLowerCase();
-            if (!q) return allSubscriptions;
-            return allSubscriptions.filter(sub => {
+            const scoped = subAttentionFlag ? allSubscriptions.filter(matchesSubAttentionFlag) : allSubscriptions;
+            if (!q) return scoped;
+            return scoped.filter(sub => {
                 const name = String(sub.name || sub.vendor_name || '').toLowerCase();
                 const status = String(sub.status || 'active').toLowerCase();
                 const category = String(sub.category || 'SaaS').toLowerCase();
@@ -236,6 +292,7 @@
             const emptyContainer = document.getElementById('sub-empty-state');
             if (!body || !tableContainer || !emptyContainer) return;
 
+            renderSubAttentionChip();
             const subs = filterSubscriptions(document.getElementById('subscription-search-input')?.value || '');
             if (allSubscriptions.length === 0) {
                 tableContainer.classList.add('hidden');
@@ -284,6 +341,7 @@
             if (!user) return;
 
             allSubscriptions = await ds.getSubscriptions(user.uid);
+            document.getElementById('sub-clear-attention-filter')?.addEventListener('click', clearSubAttentionFlag);
             renderSubscriptions();
         };
 

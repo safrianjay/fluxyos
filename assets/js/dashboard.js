@@ -907,9 +907,32 @@ const ATTENTION_ICONS = {
     future_dated: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.75" y="4" width="14.5" height="13" rx="2"/><path d="M2.75 8h14.5"/><path d="M6.5 2.5v3"/><path d="M13.5 2.5v3"/><path d="M10 10.5v2.25"/><path d="M10 15.25h.01"/></svg>'
 };
 
+// Every attention row deep-links to the records behind it, never to the bare
+// section. One record -> that record's detail (`?record=<id>`); several -> a
+// filtered list showing exactly those records (`?flag=…`).
+//
+// The filtered views must reproduce this function's own definitions, so the
+// Overview's selected period travels on the link: `billsDueSoon`/`renewalsSoon`
+// are "next 30 days OR inside the selected period" (db-service
+// `_isInUpcomingWindow`), and without the period the destination would show a
+// different number than the row the user clicked.
+function attentionHref(base, { id, flag, period }) {
+    if (id) return `${base}?record=${encodeURIComponent(id)}`;
+    const params = new URLSearchParams();
+    if (flag) params.set('flag', flag);
+    if (period?.startDate && period?.endDate) {
+        params.set('start', period.startDate);
+        params.set('end', period.endDate);
+    }
+    const qs = params.toString();
+    return qs ? `${base}?${qs}` : base;
+}
+
 function buildAttentionItems(overview) {
     const p = overview.performance || {};
     const actions = overview.actionItems || {};
+    const ids = actions.singleRecordIds || {};
+    const period = overview.period || null;
     const items = [];
     if (actions.overdueBills) {
         items.push({
@@ -917,8 +940,8 @@ function buildAttentionItems(overview) {
             iconKind: 'danger',
             title: `${actions.overdueBills} overdue bill${actions.overdueBills === 1 ? '' : 's'}`,
             description: 'Overdue obligations can create vendor and cash pressure.',
-            action: 'Open Bills',
-            href: '/bill'
+            action: actions.overdueBills === 1 ? 'Open bill' : 'Review overdue bills',
+            href: attentionHref('/bill', { id: ids.overdueBills, flag: 'overdue', period })
         });
     }
     if (actions.missingReceipts) {
@@ -927,8 +950,10 @@ function buildAttentionItems(overview) {
             iconKind: 'warning',
             title: `${actions.missingReceipts} missing receipt${actions.missingReceipts === 1 ? '' : 's'}`,
             description: 'Missing receipts reduce confidence in reports and tax-ready records.',
-            action: 'Open Ledger',
-            href: '/ledger?search=Missing%20Receipt'
+            action: actions.missingReceipts === 1 ? 'Open record' : 'Review in Ledger',
+            href: ids.missingReceipts
+                ? `/ledger?record=${encodeURIComponent(ids.missingReceipts)}`
+                : '/ledger?search=Missing%20Receipt'
         });
     }
     // Data-quality: records dated after today. They fall outside every period, so
@@ -945,8 +970,10 @@ function buildAttentionItems(overview) {
             description: amount > 0
                 ? `${formatIDR(amount)} sits outside every period total until the dates are corrected.`
                 : 'These sit outside every period total until the dates are corrected.',
-            action: 'Review in Ledger',
-            href: '/ledger?flag=future_dated'
+            action: n === 1 ? 'Open record' : 'Review in Ledger',
+            href: ids.futureDatedRecords
+                ? `/ledger?record=${encodeURIComponent(ids.futureDatedRecords)}`
+                : '/ledger?flag=future_dated'
         });
     }
     if (actions.highOpexIncrease) {
@@ -955,8 +982,10 @@ function buildAttentionItems(overview) {
             iconKind: 'default',
             title: `OpEx up ${Math.abs(Number(p.opexChangePct)).toFixed(1)}%`,
             description: 'Spending rose meaningfully against the previous period.',
-            action: 'Review Ledger',
-            href: '/ledger'
+            // OpEx vs budget explains the increase (budget, category movers);
+            // the raw ledger only lists rows and leaves the user to work it out.
+            action: 'See what moved',
+            href: '/opex-budget'
         });
     }
     if (actions.billsDueSoon) {
@@ -965,8 +994,8 @@ function buildAttentionItems(overview) {
             iconKind: 'default',
             title: `${actions.billsDueSoon} bill${actions.billsDueSoon === 1 ? '' : 's'} due soon`,
             description: 'Upcoming bills should be checked before new spend is approved.',
-            action: 'Open Bills',
-            href: '/bill'
+            action: actions.billsDueSoon === 1 ? 'Open bill' : 'Review upcoming bills',
+            href: attentionHref('/bill', { id: ids.billsDueSoon, flag: 'due_soon', period })
         });
     }
     if (actions.renewalsSoon) {
@@ -975,8 +1004,8 @@ function buildAttentionItems(overview) {
             iconKind: 'default',
             title: `${actions.renewalsSoon} renewal${actions.renewalsSoon === 1 ? '' : 's'} soon`,
             description: 'Subscription renewals may affect recurring spend.',
-            action: 'Open Subscriptions',
-            href: '/subscription'
+            action: actions.renewalsSoon === 1 ? 'Open subscription' : 'Review renewals',
+            href: attentionHref('/subscription', { id: ids.renewalsSoon, flag: 'renewal_soon', period })
         });
     }
     return items;

@@ -9765,7 +9765,19 @@ class DataService {
             billsDueSoon: billsDueSoon.length,
             renewalsSoon: renewalsSoon.length,
             futureDatedRecords: futureDatedTransactions.length,
-            highOpexIncrease: performance.opexChangePct !== null && performance.opexChangePct >= 25
+            highOpexIncrease: performance.opexChangePct !== null && performance.opexChangePct >= 25,
+            // Ids of the records behind each count, so the Overview attention queue
+            // can deep-link to the exact record when a row represents exactly one.
+            // Free: these arrays are already materialised above for the counts.
+            // Capped because a row with hundreds of ids only ever needs the first —
+            // multi-record rows deep-link to a filtered list instead.
+            singleRecordIds: {
+                overdueBills: overdueBills.length === 1 ? (overdueBills[0].id || null) : null,
+                billsDueSoon: billsDueSoon.length === 1 ? (billsDueSoon[0].id || null) : null,
+                renewalsSoon: renewalsSoon.length === 1 ? (renewalsSoon[0].id || null) : null,
+                missingReceipts: missingReceipts.length === 1 ? (missingReceipts[0].id || null) : null,
+                futureDatedRecords: futureDatedTransactions.length === 1 ? (futureDatedTransactions[0].id || null) : null
+            }
         };
         if (actionItems.highOpexIncrease) actionItems.total += 1;
         // Counted as one queue item (a group), like the OpEx spike — not one per record.
