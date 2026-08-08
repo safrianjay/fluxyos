@@ -448,13 +448,64 @@ function axisTicks(min, max, formatValue) {
     return [max, mid, min].map(value => `<div><span>${escapeHtml(formatValue(value))}</span></div>`).join('');
 }
 
+// Pinned to `.chart-labels` in dashboard.css (padding: 10px 12px 0 12px; gap: 10px).
+// Keep in sync with the CSS, same contract as LABELS_ROW_PX above.
+const LABELS_PADDING_X = 24;
+const LABELS_GAP_PX = 10;
+// 10px Inter, uppercase, 0.06em tracking measures ~7px/char.
+const LABEL_PX_PER_CHAR = 7;
+const LABEL_MIN_GAP_PX = 10;
+
+// Which bucket indices get a label, budgeted by AVAILABLE WIDTH rather than by a
+// fixed count.
+//
+// `.chart-labels` is a flex row whose spans are all forced to the same slot
+// width, so a label wider than its slot does NOT push its neighbour along — it
+// overflows and the glyphs smear into the next one. A count-based stride (~10)
+// therefore looked correct on the full-width cards and collided on the 3-up
+// ones, where 8 monthly labels like "Jan 2026" need ~64px each inside a ~250px
+// row and got 22px.
+//
+// Note what dropping a label does and does not buy: the remaining spans do NOT
+// get wider (every span is an equal share), so the text still overflows its own
+// slot. What it buys is EMPTY neighbours for that overflow to spill into. The
+// real constraint is therefore the pixel distance between two *labelled* slots,
+// which is why this walks the label count down until that distance clears the
+// widest label.
+//
+// Labels are spread across the FULL span rather than strided from zero, so the
+// first and last bucket are always named — the ends of the range are the two a
+// reader most needs.
+export function labelIndices(buckets, width) {
+    const n = buckets.length;
+    if (n <= 1) return new Set(n ? [0] : []);
+
+    const longest = buckets.reduce((m, b) => Math.max(m, String(b.label || '').length), 0);
+    const needPx = longest * LABEL_PX_PER_CHAR + LABEL_MIN_GAP_PX;
+    const usable = Math.max(0, (width || 0) - LABELS_PADDING_X);
+    const slot = Math.max(0, (usable - (n - 1) * LABELS_GAP_PX) / n);
+    const pitch = slot + LABELS_GAP_PX; // centre-to-centre distance of one bucket
+
+    let count = Math.min(10, n);
+    for (; count > 1; count -= 1) {
+        // Rounding to integer indices makes the spacing uneven, so the binding
+        // constraint is the SMALLEST gap this count can produce, not the average.
+        const minGapBuckets = Math.floor((n - 1) / (count - 1));
+        if (minGapBuckets * pitch >= needPx) break;
+    }
+
+    const picked = new Set();
+    if (count <= 1) { picked.add(0); return picked; }
+    for (let i = 0; i < count; i += 1) picked.add(Math.round((i * (n - 1)) / (count - 1)));
+    return picked;
+}
+
 function labelsRow(buckets, width) {
-    // Thin to ~10 labels on long ranges so they never smear together.
-    const stride = Math.max(1, Math.ceil(buckets.length / 10));
+    const picked = labelIndices(buckets, width);
     return `
         <div class="chart-labels-scroll" data-chart-labels-scroll>
             <div class="chart-labels" style="width: ${width}px">
-                ${buckets.map((bucket, index) => `<span>${index % stride === 0 ? escapeHtml(bucket.label) : ''}</span>`).join('')}
+                ${buckets.map((bucket, index) => `<span>${picked.has(index) ? escapeHtml(bucket.label) : ''}</span>`).join('')}
             </div>
         </div>
     `;

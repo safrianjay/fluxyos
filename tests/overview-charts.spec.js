@@ -290,3 +290,62 @@ test('point markers stay round at every card size', async ({ page }) => {
         if (s.marker) expect(Math.abs(s.marker.w - s.marker.h), 'marker is round').toBeLessThanOrEqual(1.2);
     }
 });
+
+// Regression: the 3-up Gross profit margin card smeared its x-axis into an
+// unreadable run ("JAN 2FEB 202AR 2026PR 2026..."). The stride was count-based
+// (~10 labels), which never triggered for 8 monthly buckets — but the labels row
+// is a flex of EQUAL slots, so "Jan 2026" (56px) rendered into a 22px slot and
+// overflowed into its neighbour. Budgeting by width fixes it; this pins the real
+// picker against the real CSS so a future tweak can't quietly reintroduce it.
+test('x-axis labels never overlap, at every card width', async ({ page }) => {
+    await boot(page, 'this_month');
+
+    const result = await page.evaluate(async () => {
+        const { labelIndices } = await import('/assets/js/overview-charts.js');
+        const host = document.createElement('div');
+        host.style.cssText = 'position:fixed;left:-9999px;top:0';
+        document.body.appendChild(host);
+
+        // Widths the three card sizes actually produce (3-up, 2-up, full).
+        const WIDTHS = [272, 359, 864];
+        const LABEL_SETS = {
+            monthly: ['Jan 2026', 'Feb 2026', 'Mar 2026', 'Apr 2026', 'May 2026', 'Jun 2026', 'Jul 2026', 'Aug 2026'],
+            quarterly: ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025', 'Q1 2026', 'Q2 2026', 'Q3 2026'],
+            daily: ['1 Agu', '2 Agu', '3 Agu', '4 Agu', '5 Agu', '6 Agu', '7 Agu', '8 Agu'],
+        };
+
+        const out = [];
+        for (const [kind, labels] of Object.entries(LABEL_SETS)) {
+            for (const width of WIDTHS) {
+                const picked = labelIndices(labels.map(label => ({ label })), width);
+                host.innerHTML = `<div class="chart-labels-scroll"><div class="chart-labels" style="width:${width}px">`
+                    + labels.map((l, i) => `<span>${picked.has(i) ? l : ''}</span>`).join('')
+                    + '</div></div>';
+                const spans = [...host.querySelectorAll('span')];
+                const shown = spans
+                    .map(s => ({ text: s.textContent.trim(), rect: s.getBoundingClientRect(), natural: s.scrollWidth }))
+                    .filter(x => x.text);
+                // Gap between the rendered TEXT of adjacent labels (each is centred
+                // in its slot and free to overflow it).
+                let minGap = Infinity;
+                for (let i = 0; i < shown.length - 1; i += 1) {
+                    const aCentre = shown[i].rect.left + shown[i].rect.width / 2;
+                    const bCentre = shown[i + 1].rect.left + shown[i + 1].rect.width / 2;
+                    minGap = Math.min(minGap, (bCentre - aCentre) - (shown[i].natural / 2 + shown[i + 1].natural / 2));
+                }
+                out.push({ kind, width, shown: shown.length, minGap: shown.length > 1 ? Math.round(minGap) : null });
+            }
+        }
+        host.remove();
+        return out;
+    });
+
+    expect(result.length).toBeGreaterThan(0);
+    for (const r of result) {
+        expect(r.shown, `${r.kind} @${r.width}px renders at least the two ends`).toBeGreaterThanOrEqual(2);
+        expect(r.minGap, `${r.kind} @${r.width}px: labels must not collide`).toBeGreaterThanOrEqual(0);
+    }
+    // The widest card must not over-thin — 8 monthly labels genuinely fit there.
+    const wideMonthly = result.find(r => r.kind === 'monthly' && r.width === 864);
+    expect(wideMonthly.shown, 'wide card keeps every monthly label').toBe(8);
+});
