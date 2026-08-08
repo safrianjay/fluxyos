@@ -674,6 +674,20 @@ function shouldUseTrialAIQuota(subscription) {
     if ((subscription.status === 'active' || subscription.status === 'cancel_scheduled') && subscription.plan_id !== 'trial') {
         return false;
     }
+    // A paying customer who upgrades sits in awaiting_payment/pending_verification
+    // until the new payment is verified. Dropping them onto TRIAL_AI_LIMIT (1
+    // lifetime generation) takes away a quota they already paid for, so keep the
+    // plan quota while the paid period is still running. Mirrors retainsPaidAccess
+    // in trial-access.js and _effectiveBillingPlanId in db-service.js.
+    // decodeFirestoreDocument renders timestampValue as an RFC3339 string.
+    const periodEndMs = typeof subscription.current_period_end === 'string'
+        ? Date.parse(subscription.current_period_end)
+        : NaN;
+    if (['awaiting_payment', 'pending_verification', 'payment_failed'].includes(subscription.status)
+        && Number.isFinite(periodEndMs) && periodEndMs > Date.now()
+        && subscription.plan_id && subscription.plan_id !== 'trial') {
+        return false;
+    }
     return subscription.plan_id === 'trial'
         || ['trialing', 'awaiting_payment', 'pending_verification', 'payment_failed', 'expired'].includes(subscription.status);
 }

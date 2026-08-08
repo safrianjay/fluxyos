@@ -86,12 +86,23 @@ function deriveState(subscription) {
     const isTrialExpiring = isTrialState && daysRemaining !== null && daysRemaining <= 1 && remainingMs > 0;
     const isTrialActive = isTrialState && !isTrialExpiring;
     const trialStillUsable = remainingMs !== null && remainingMs > 0;
-    const canUseTrialPermissions = isTrialState || ((isAwaitingPayment || isPaymentSubmitted || isPaymentRejected) && trialStillUsable);
+    const inPaymentReview = isAwaitingPayment || isPaymentSubmitted || isPaymentRejected;
+    const canUseTrialPermissions = isTrialState || (inPaymentReview && trialStillUsable);
+    // An existing paying customer who UPGRADES mid-period lands in
+    // awaiting_payment/pending_verification while the new payment is verified,
+    // but their current paid period is preserved on the subscription. Keying the
+    // grace window to the TRIAL alone revoked write, AI, export and upload from
+    // someone who had already paid for the period they were sitting in — they
+    // pressed Upgrade and the product went read-only, with no paywall to explain
+    // it (isBlocked stays false). Access they have already bought lasts until
+    // current_period_end regardless of what the upgrade is doing.
+    const paidPeriodStillRunning = periodRemainingMs !== null && periodRemainingMs > 0;
+    const retainsPaidAccess = inPaymentReview && paidPeriodStillRunning;
     const canRead = !isSuspended;
-    const canWrite = isActive || canUseTrialPermissions;
-    const canExport = isActive;
-    const canUseAI = isActive || canUseTrialPermissions;
-    const canUploadDocuments = isActive || canUseTrialPermissions;
+    const canWrite = isActive || canUseTrialPermissions || retainsPaidAccess;
+    const canExport = isActive || retainsPaidAccess;
+    const canUseAI = isActive || canUseTrialPermissions || retainsPaidAccess;
+    const canUploadDocuments = isActive || canUseTrialPermissions || retainsPaidAccess;
     // Hard paywall: the user has no usable access left and must pay to continue —
     // trial ended without paying (`expired`), or a submitted payment was rejected
     // and the trial window is also over (`payment_failed`). Payments still in

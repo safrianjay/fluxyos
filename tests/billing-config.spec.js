@@ -92,3 +92,54 @@ test('voucher math is integer-exact and taxes the discounted subtotal', async ({
     expect(result.noVoucherDiscount).toBe(0);
     expect(result.noVoucherTotal).toBe(7758900);
 });
+
+// Regression: upgrading revoked a paying customer's access.
+//
+// Checkout moves an ACTIVE paying customer to awaiting_payment while preserving
+// current_period_end. deriveState keyed its payment-review grace window to the
+// TRIAL window only, so someone upgrading mid-period — whose trial ended months
+// ago — came out with canWrite/canUseAI/canExport/canUploadDocuments all false.
+// isBlocked stays false, so there was no paywall explaining it: the user pressed
+// Upgrade and the product silently went read-only with the AI panel greyed out.
+//
+// Access already paid for must last until current_period_end, whatever the
+// upgrade is doing. Access NOT paid for must stay locked — both directions are
+// asserted here.
+test('upgrading mid-period keeps the access the customer already paid for', async ({ page }) => {
+    await page.goto('/pricing');
+    const results = await page.evaluate(async () => {
+        const { applyToWorkspaceMember } = await import('/assets/js/trial-access.js');
+        const ts = (ms) => ({ toMillis: () => ms });
+        const TRIAL_OVER = Date.now() - 60 * 24 * 60 * 60 * 1000;
+        const PERIOD_LIVE = Date.now() + 30 * 24 * 60 * 60 * 1000;
+        const PERIOD_OVER = Date.now() - 5 * 24 * 60 * 60 * 1000;
+
+        const derive = async (plan) => {
+            const s = await applyToWorkspaceMember({ plan });
+            return { canWrite: s.canWrite, canUseAI: s.canUseAI, canExport: s.canExport, canUpload: s.canUploadDocuments };
+        };
+        const paid = (status, periodEnd) => ({
+            id: 'growth', name: 'Growth', status, frequency: 'monthly',
+            trialStartedAt: ts(TRIAL_OVER), trialEndsAt: ts(TRIAL_OVER), periodEndsAt: periodEnd ? ts(periodEnd) : null
+        });
+
+        return {
+            upgradeAwaiting: await derive(paid('awaiting_payment', PERIOD_LIVE)),
+            upgradePending: await derive(paid('pending_verification', PERIOD_LIVE)),
+            periodExpired: await derive(paid('awaiting_payment', PERIOD_OVER)),
+            firstPurchaseFromExpiredTrial: await derive({
+                id: 'trial', name: 'Trial', status: 'awaiting_payment', frequency: null,
+                trialStartedAt: ts(TRIAL_OVER), trialEndsAt: ts(TRIAL_OVER), periodEndsAt: null
+            })
+        };
+    });
+
+    const full = { canWrite: true, canUseAI: true, canExport: true, canUpload: true };
+    const none = { canWrite: false, canUseAI: false, canExport: false, canUpload: false };
+
+    expect(results.upgradeAwaiting, 'upgrade with a live paid period keeps full access').toEqual(full);
+    expect(results.upgradePending, 'payment under review keeps full access').toEqual(full);
+    // The other direction matters just as much — this must not hand out access.
+    expect(results.periodExpired, 'an elapsed paid period stays locked').toEqual(none);
+    expect(results.firstPurchaseFromExpiredTrial, 'first purchase from a dead trial is unchanged').toEqual(none);
+});

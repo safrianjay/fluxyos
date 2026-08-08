@@ -8901,8 +8901,20 @@ class DataService {
         if ((subscription.status === 'active' || subscription.status === 'cancel_scheduled') && subscription.plan_id) {
             return subscription.plan_id;
         }
-        // While a payment is waiting/reviewing, access still behaves like trial
-        // until the internal verification promotes the plan to active.
+        // An upgrade from a paid plan sits in awaiting_payment/pending_verification
+        // while the new payment is verified. Downgrading those users to 'trial'
+        // limits (seats, storage, AI quota) strips entitlements from a period they
+        // have already paid for, so keep the real plan while it is still running.
+        // Mirrors retainsPaidAccess in trial-access.js and shouldUseTrialAIQuota
+        // in netlify/functions/api.js — all three must agree.
+        const periodEndMs = subscription.current_period_end?.toMillis?.();
+        if (['awaiting_payment', 'pending_verification', 'payment_failed'].includes(subscription.status)
+            && periodEndMs && periodEndMs > Date.now()
+            && subscription.plan_id && subscription.plan_id !== 'trial') {
+            return subscription.plan_id;
+        }
+        // Otherwise a payment in flight behaves like trial until verification
+        // promotes the plan to active.
         if (['trialing', 'awaiting_payment', 'pending_verification', 'payment_failed', 'expired'].includes(subscription.status)) {
             return 'trial';
         }
