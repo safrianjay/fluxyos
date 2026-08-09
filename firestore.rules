@@ -3502,7 +3502,21 @@ service cloud.firestore {
           'amount_paid_idr', 'fx_rate', 'fx_rate_date',
           'updated_at', 'updated_by'
         ])
-        && data.payment_status in ['paid', 'partial']
+        // 'unpaid' is here for the VOID ROLLBACK, not for a pay: voiding a bill
+        // payment reverses its journal, so the bill has to give the settlement
+        // back, and voiding the last payment lands on 'unpaid'.
+        //
+        // It must be accepted by THIS lean validator rather than falling through
+        // to wsValidBillUpdate. That fallback does work on a plain bill, but it
+        // validates the whole document and lands within sight of the 1000-
+        // expression evaluation ceiling — the emulator already reports exhaustion
+        // on this path. A tax-carrying bill would therefore deny a legitimate
+        // rollback with permission-denied, which is the failure mode
+        // isValidInvoicePaidTransition was created to escape (§ invoices).
+        //
+        // Widening the enum is safe: the diff is still restricted to the payment
+        // keys above and the amounts must still be non-negative numbers.
+        && data.payment_status in ['paid', 'partial', 'unpaid']
         && data.amount_paid is number && data.amount_paid >= 0
         && data.outstanding_amount is number && data.outstanding_amount >= 0
         && (!('budget_impact_status' in data) || data.budget_impact_status in ['committed', 'released', 'converted_to_actual'])

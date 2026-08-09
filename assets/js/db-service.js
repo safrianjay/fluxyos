@@ -387,6 +387,88 @@ class DataService {
         return { id: transactionId, ...after };
     }
 
+    // Inverse of _payBillOnce's bill patch, for when its payment transaction is
+    // voided. Staged into the SAME batch as the void, because a void that lands
+    // without the rollback is exactly the divergence this exists to prevent.
+    //
+    // Returns a summary for the audit log, or null when there is nothing to do.
+    // It never throws: a void must not be blocked by a bill that was deleted or
+    // by a shape this cannot invert — the ledger side of the void is already
+    // correct, and refusing here would leave the user unable to void at all.
+    async _rollbackBillSettlement(userId, batch, tx, transactionId) {
+        const billId = tx && tx.linked_bill_id;
+        if (!billId) return null;
+
+        const billRef = doc(this.db, `${this._scope(userId)}/bills/${billId}`);
+        let bill;
+        try {
+            const snap = await getDoc(billRef);
+            if (!snap.exists()) return null;
+            bill = snap.data() || {};
+        } catch (_) {
+            return null;
+        }
+
+        const paidNow = Math.round(Math.abs(Number(bill.amount_paid) || 0));
+        if (!(paidNow > 0)) return null; // nothing was settled to give back
+
+        const face = Math.round(Math.abs(Number(bill.amount) || 0));
+        const isForeign = !!(bill.currency && bill.currency !== 'IDR');
+        const txAmount = Math.round(Math.abs(Number(tx.amount) || 0));
+
+        // How much of the bill this payment settled, in the BILL's units.
+        //
+        // IDR: the transaction's amount is exactly what was settled.
+        //
+        // Foreign: amount_paid accumulates FOREIGN units while the transaction
+        // carries the RUPIAH paid, so the two are not interchangeable. Foreign
+        // bills are full-payment-only (partial FX is ambiguous — see
+        // _payBillOnce), so the only shape that can be inverted with certainty is
+        // "this payment settled the whole bill". Anything else is left alone
+        // rather than guessed at: a wrong payable is worse than a stale one, and
+        // foreign bills are outside the IDR kernel so no ledger tie depends on it.
+        let settled;
+        if (!isForeign) {
+            settled = txAmount;
+        } else if (paidNow === face && bill.linked_transaction_id === transactionId) {
+            settled = paidNow;
+        } else {
+            return null;
+        }
+        if (!(settled > 0)) return null;
+
+        const newPaid = Math.max(0, paidNow - settled);
+        const newOutstanding = Math.max(0, face - newPaid);
+        const patch = {
+            amount_paid: newPaid,
+            outstanding_amount: newOutstanding,
+            // 'partial' and 'unpaid' both round-trip: the first through the lean
+            // isValidBillPayTransition, the second through wsValidBillUpdate.
+            payment_status: newPaid > 0 ? 'partial' : 'unpaid',
+            updated_at: serverTimestamp(),
+            updated_by: (this.actorUid || userId)
+        };
+        // The bill is no longer fully settled, so undo the two stamps that only a
+        // fully-cleared bill gets — otherwise it stays deep-linked to a voided
+        // transaction and its budget commitment stays converted.
+        if (bill.budget_impact_status === 'converted_to_actual') patch.budget_impact_status = 'committed';
+        if (bill.linked_transaction_id && bill.linked_transaction_id === transactionId) {
+            patch.linked_transaction_id = null;
+        }
+        if (isForeign) {
+            patch.amount_paid_idr = Math.max(0, Math.round(Math.abs(Number(bill.amount_paid_idr) || 0)) - txAmount);
+        }
+
+        batch.update(billRef, patch);
+        return {
+            bill_id: billId,
+            settled_reversed: settled,
+            amount_paid: newPaid,
+            outstanding_amount: newOutstanding,
+            payment_status: patch.payment_status
+        };
+    }
+
     async voidTransaction(userId, transactionId, reason) {
         if (!userId || !transactionId) throw new Error('userId and transactionId required');
         const cleanReason = this._stringOrDefault(reason, '', 500);
@@ -415,6 +497,14 @@ class DataService {
         const journalFields = await this._correctSourceJournal(userId, batch, 'transactions', ref, existing, null);
         Object.assign(payload, journalFields);
         batch.update(ref, payload);
+        // A bill payment is not just a transaction — it also SETTLED a bill.
+        // Reversing its journal put the liability back in the general ledger, so
+        // the bill has to come back too or the ledger says the vendor is owed
+        // money while the bills list says the bill is paid. That is not
+        // hypothetical: one workspace's A/P was understated by Rp20.500.000
+        // because two payments on a Rp89.500.000 bill were voided and the bill
+        // stayed 'paid' with amount_paid untouched.
+        const billRollback = await this._rollbackBillSettlement(userId, batch, existing, transactionId);
         batch.set(doc(collection(this.db, `${this._scope(userId)}/audit_logs`)), {
             actor_uid: (this.actorUid || userId),
             actor_role: null,
@@ -426,7 +516,8 @@ class DataService {
                 is_voided: true,
                 status: 'Voided',
                 voided_by: (this.actorUid || userId),
-                void_reason: cleanReason
+                void_reason: cleanReason,
+                ...(billRollback ? { bill_settlement_rolled_back: billRollback } : {})
             },
             reason: cleanReason,
             source: 'dashboard',

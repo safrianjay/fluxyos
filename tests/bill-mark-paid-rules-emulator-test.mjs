@@ -153,6 +153,43 @@ async function main() {
             linked_transaction_id: 'tx_fx', updated_at: serverTimestamp(), updated_by: uid
         }));
 
+    // Voiding a bill payment reverses its journal, which puts the liability back
+    // in the GL — so the bill must come back too or A/P is understated. These are
+    // exactly the writes _rollbackBillSettlement makes; if the rules reject them
+    // the void fails and the divergence returns.
+    console.log('\n— void rollback: a settled bill can be un-settled —');
+    const rbRef = doc(db, `users/${uid}/bills/bill_rollback_test`);
+    await expectOutcome('create + fully pay a bill', true, async () => {
+        await setDoc(rbRef, { ...billCreatePayload(), outstanding_amount: 0, amount_paid: 0 });
+        return updateDoc(rbRef, {
+            payment_status: 'paid', amount_paid: 89500000, outstanding_amount: 0,
+            budget_impact_status: 'converted_to_actual', linked_transaction_id: 'tx_pay_5',
+            updated_at: serverTimestamp(), updated_by: uid
+        });
+    });
+    // Beila's shape: part of the payments voided, so the bill drops back to
+    // 'partial' with a restored balance. Goes through the lean pay-transition.
+    await expectOutcome('roll back to partial after a voided payment', true, () =>
+        updateDoc(rbRef, {
+            payment_status: 'partial', amount_paid: 69000000, outstanding_amount: 20500000,
+            budget_impact_status: 'committed', linked_transaction_id: null,
+            updated_at: serverTimestamp(), updated_by: uid
+        }));
+    // Every payment voided → 'unpaid', which isValidBillPayTransition does NOT
+    // accept (it allows paid/partial only). It has to round-trip through
+    // wsValidBillUpdate instead, so this asserts that fallback really works —
+    // without it the last void on a bill would fail with permission-denied.
+    await expectOutcome('roll back to unpaid when nothing is left paid', true, () =>
+        updateDoc(rbRef, {
+            payment_status: 'unpaid', amount_paid: 0, outstanding_amount: 89500000,
+            updated_at: serverTimestamp(), updated_by: uid
+        }));
+    await expectOutcome('reject a negative amount_paid', false, () =>
+        updateDoc(rbRef, {
+            payment_status: 'partial', amount_paid: -1, outstanding_amount: 89500001,
+            updated_at: serverTimestamp(), updated_by: uid
+        }));
+
     console.log('\n— sanity: a plain expense WITHOUT linked_bill_id still works —');
     await expectOutcome('plain expense create (no link)', true, () => {
         const ref = doc(collection(db, `users/${uid}/transactions`));
