@@ -3102,6 +3102,13 @@
         "Management report · not audited financial statements": "Laporan manajemen · bukan laporan keuangan yang diaudit",
         "Margin": "Margin",
         "Match by category (default)": "Cocokkan menurut kategori (default)",
+        // Transaction detail → Source. Machine values humanised at render.
+        "CSV import": "Impor CSV",
+        "Bank statement import": "Impor rekening koran",
+        "Receipt scan": "Pindai struk",
+        "Manual / dashboard": "Manual / dasbor",
+        "Onboarding": "Orientasi",
+        "Commerce sync": "Sinkronisasi commerce",
         // CSV bulk import → cash account attribution
         "Cash account": "Akun kas",
         "Which account this money moved through": "Akun mana yang dilalui uang ini",

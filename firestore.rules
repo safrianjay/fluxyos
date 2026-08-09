@@ -110,7 +110,7 @@ service cloud.firestore {
     }
 
     function isValidAICaptureMetadata(data) {
-      return (!('source' in data) || data.source in ['bill_scan', 'transaction_scan', 'subscription_scan', 'bank_statement_import'])
+      return (!('source' in data) || data.source in ['bill_scan', 'transaction_scan', 'subscription_scan', 'bank_statement_import', 'csv_import'])
         && (!('created_via' in data) || data.created_via in ['ai_bill_capture', 'ai_transaction_capture', 'ai_subscription_capture'])
         && (!('extraction_status' in data) || data.extraction_status == 'reviewed')
         && (!('extraction_source' in data) || data.extraction_source is string)
@@ -3382,7 +3382,7 @@ service cloud.firestore {
     // so they are the only shape where this trade is needed; transactions and
     // subscriptions keep the fuller validator.
     function billCaptureValid(data) {
-      return (!('source' in data) || data.source in ['bill_scan', 'transaction_scan', 'subscription_scan', 'bank_statement_import'])
+      return (!('source' in data) || data.source in ['bill_scan', 'transaction_scan', 'subscription_scan', 'bank_statement_import', 'csv_import'])
         && (!('created_via' in data) || data.created_via in ['ai_bill_capture', 'ai_transaction_capture', 'ai_subscription_capture'])
         && (!('extraction_status' in data) || data.extraction_status == 'reviewed')
         && (!('extraction_confidence' in data) || data.extraction_confidence == null || data.extraction_confidence is number)

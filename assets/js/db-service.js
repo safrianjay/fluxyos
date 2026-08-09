@@ -709,6 +709,12 @@ class DataService {
         rows.forEach(row => {
             const { timestamp, ...rest } = row;
             batch.set(doc(txCollection), {
+                // Provenance. Without it these rows fall through to the detail
+                // drawer's "Manual / dashboard" fallback and claim to have been
+                // typed in by hand — wrong on exactly the records where where-did-
+                // this-come-from matters most. A row may override it (nothing does
+                // today); this is a default, not a stamp.
+                source: 'csv_import',
                 ...rest,
                 timestamp: timestamp || serverTimestamp(),
                 created_at: uploadedAt,

@@ -106,13 +106,21 @@ test('explains why a journal is absent rather than showing a bare empty state', 
     await expect(page.locator('#tx-detail-journal-card'))
         .toContainText('No journal has been generated for this transaction yet.');
 
-    // Queued for the sweep → says so, and says where to post it.
+    // Queued for the sweep → says so, and links to where the posting happens.
+    // "the Accounting Center" named the page but not the tab, leaving the one
+    // empty state that HAS an action as the only one you had to go hunting for.
     await openLedgerDrawer(page, { journal_ref: null, accounting_status: 'pending', type: 'expense', void_status: null });
     await expect(page.locator('#tx-detail-journal-card')).toContainText('queued for posting');
+    const postLink = page.locator('#tx-detail-journal-card a[href*="tab=journals"]');
+    await expect(postLink).toHaveCount(1);
+    await expect(postLink).toContainText(/Post pending entries|Posting entri tertunda/);
 
     // Deliberately outside the IDR kernel.
     await openLedgerDrawer(page, { journal_ref: null, accounting_status: 'excluded', type: 'expense', void_status: null });
     await expect(page.locator('#tx-detail-journal-card')).toContainText('outside the IDR ledger');
+    // Only the actionable state gets the link — the rest explain a settled fact,
+    // and a call to action against one would send the user somewhere useless.
+    await expect(page.locator('#tx-detail-journal-card a[href*="tab=journals"]')).toHaveCount(0);
 
     // A type the posting engine never posts.
     await openLedgerDrawer(page, { journal_ref: null, accounting_status: null, type: 'transfer', void_status: null });

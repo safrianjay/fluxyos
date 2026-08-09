@@ -107,10 +107,20 @@
     }
 
     function emptyHtml(record, context) {
+        // 'pending' is the one empty state with an action behind it, and the copy
+        // named the Accounting Center without saying where in it. Everything else
+        // here explains a settled fact, so it stays text-only.
+        const actionable = String(record?.accounting_status || '').toLowerCase() === 'pending';
         return `
             <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
                 <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-2">Journal information</p>
                 <p class="text-[13px] text-gray-500 leading-relaxed">${escapeHtml(emptyStateCopy(record, context))}</p>
+                ${actionable ? `
+                <a href="/accounting?tab=journals"
+                   class="mt-2 inline-flex items-center gap-1 text-[12px] font-bold text-[#EA580C] hover:underline">
+                    Post pending entries
+                    <span aria-hidden="true">→</span>
+                </a>` : ''}
             </div>`;
     }
 

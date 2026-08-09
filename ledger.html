@@ -2646,7 +2646,20 @@
             document.getElementById('tx-detail-vendor').textContent = row.vendor_name || '—';
             if (!content || !actions) return;
 
-            const sourceText = row.source || row.created_via || row.extraction_source || 'Manual / dashboard';
+            // `source` is a machine value ('csv_import', 'bank_statement_import',
+            // 'scan'…). It was rendered raw, so a statement import already read as
+            // "bank_statement_import" in the drawer. Humanise the known ones and
+            // let anything else fall through unchanged rather than guessing.
+            const SOURCE_LABELS = {
+                csv_import: 'CSV import',
+                bank_statement_import: 'Bank statement import',
+                scan: 'Receipt scan',
+                dashboard: 'Manual / dashboard',
+                onboarding: 'Onboarding',
+                commerce: 'Commerce sync'
+            };
+            const rawSource = row.source || row.created_via || row.extraction_source || '';
+            const sourceText = SOURCE_LABELS[rawSource] || rawSource || 'Manual / dashboard';
             content.innerHTML = `
                 <section class="fluxy-drawer-section fluxy-drawer-summary">
                     <div class="fluxy-drawer-summary-head">

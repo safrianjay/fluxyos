@@ -144,6 +144,16 @@ async function main() {
     await expectOutcome('tx create with over-long account_code is denied', false, () =>
         setDoc(doc(collection(db, `workspaces/${WS}/transactions`)), txn({ account_code: '1234567890123' })));
 
+    // REGRESSION: `source` is value-validated, not just key-allowlisted. Stamping
+    // provenance on bulk-imported rows silently denied EVERY CSV import until
+    // 'csv_import' joined the enum — and because addTransactions writes the whole
+    // file in one batch, a single rejected value takes down all 500 rows.
+    // The key being in the hasOnly list is not enough; check the value too.
+    await expectOutcome('tx create with source csv_import is allowed', true, () =>
+        setDoc(doc(collection(db, `workspaces/${WS}/transactions`)), txn({ source: 'csv_import', accounting_status: 'pending' })));
+    await expectOutcome('tx create with an unknown source is denied', false, () =>
+        setDoc(doc(collection(db, `workspaces/${WS}/transactions`)), txn({ source: 'made_up_source' })));
+
     // Vendor→account memory (Phase 3) writes an accounting_mappings doc with the new
     // source_type 'vendor'. The mapping validator must accept it and still reject a
     // bad source_type.

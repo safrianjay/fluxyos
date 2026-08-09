@@ -195,6 +195,11 @@ test('no cash column and no selection imports exactly as it did before', async (
     expect(row, 'the row was written').toBeTruthy();
     ['cash_effective', 'cash_status', 'cash_direction', 'cash_account_id', 'cash_source', 'cash_match_status', 'cash_effective_at']
         .forEach((k) => expect(k in row, `${k} must be absent`).toBe(false));
+
+    // Provenance. Without it the detail drawer falls through to its
+    // "Manual / dashboard" default and an imported row claims to have been typed
+    // in by hand — wrong on exactly the records where provenance matters.
+    expect(row.source).toBe('csv_import');
 });
 
 test('applying one account stamps every row per its own type', async ({ page }) => {
