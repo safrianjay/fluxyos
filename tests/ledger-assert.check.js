@@ -191,6 +191,41 @@ const byId = (report) => Object.fromEntries(report.checks.map((c) => [c.id, c]))
     check('A/R ties on a partially paid invoice', byId(reversed).ar_subledger.ok, true);
     check('reversed/partial sources do not fail the sweep', reversed.ok, true);
 
+    // A bill rolled back from paid keeps linked_transaction_id, which was written
+    // when it WAS fully settled. Treating that as "settled regardless" valued a
+    // restored Rp20.500.000 payable at zero, so A/P could not tie no matter what
+    // the bill's own fields said — the repair wrote correct numbers and the
+    // assertion still failed. An explicit partial/unpaid status must win.
+    const rolledBack = await assertWorkspaceLedger(makeDb({
+        journals: {
+            j1: journal('2026-07', [
+                { account_code: '6400', account_type: 'expense', debit: 89500000, credit: 0 },
+                { account_code: '2000', account_type: 'liability', debit: 0, credit: 89500000 }]),
+            j2: journal('2026-07', [
+                { account_code: '2000', account_type: 'liability', debit: 69000000, credit: 0 },
+                { account_code: '1000', account_type: 'asset', debit: 0, credit: 69000000 }])
+        },
+        ledger_balances: {
+            '2026-07__6400': bal('2026-07', '6400', 'expense', 89500000, 0),
+            '2026-07__2000': bal('2026-07', '2000', 'liability', 69000000, 89500000),
+            '2026-07__1000': bal('2026-07', '1000', 'asset', 0, 69000000)
+        },
+        invoices: {},
+        bills: {
+            b1: {
+                payment_status: 'partial', amount: 89500000, amount_paid: 69000000,
+                outstanding_amount: 20500000, accounting_status: 'posted',
+                // The stale stamp from when this bill was fully paid.
+                linked_transaction_id: 'tx_that_fully_paid_it'
+            }
+        },
+        subscriptions: {}, transactions: {}, bank_balance_snapshots: {}
+    }), 'ws-rolled-back');
+
+    check('a rolled-back bill still counts toward A/P despite a stale linked_transaction_id',
+        byId(rolledBack).ap_subledger.expected, 20500000);
+    check('A/P ties after a rollback', byId(rolledBack).ap_subledger.ok, true);
+
     console.log(failures ? `\n${failures} check(s) FAILED.` : '\nAll ledger-assert checks passed.');
     process.exit(failures ? 1 : 0);
 })().catch((err) => { console.error(err); process.exit(1); });

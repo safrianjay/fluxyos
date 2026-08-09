@@ -449,12 +449,17 @@ class DataService {
             updated_by: (this.actorUid || userId)
         };
         // The bill is no longer fully settled, so undo the two stamps that only a
-        // fully-cleared bill gets — otherwise it stays deep-linked to a voided
-        // transaction and its budget commitment stays converted.
+        // fully-cleared bill gets.
+        //
+        // linked_transaction_id is cleared whenever the bill stops being fully
+        // paid — NOT only when it names the voided transaction. _payBillOnce
+        // writes it under `if (fullyPaid)` alone, so on a partial bill it is
+        // stale by definition. Leaving it also keeps the bill invisible: both
+        // expectedPayables and the budget double-counting guard treat a set
+        // linked_transaction_id as "settled", so the restored payable would still
+        // not appear anywhere.
         if (bill.budget_impact_status === 'converted_to_actual') patch.budget_impact_status = 'committed';
-        if (bill.linked_transaction_id && bill.linked_transaction_id === transactionId) {
-            patch.linked_transaction_id = null;
-        }
+        if (bill.linked_transaction_id && newOutstanding > 0) patch.linked_transaction_id = null;
         if (isForeign) {
             patch.amount_paid_idr = Math.max(0, Math.round(Math.abs(Number(bill.amount_paid_idr) || 0)) - txAmount);
         }

@@ -61,7 +61,8 @@ const rp = (n) => (n < 0 ? '-' : '') + 'Rp' + Math.abs(n).toLocaleString('id-ID'
 // Mirrors expectedPayables() in netlify/functions/lib/ledger-assert.js — what the
 // subledger currently believes this bill still owes.
 function subledgerValue(bill) {
-    if (bill.payment_status === 'paid' || bill.linked_transaction_id) return 0;
+    if (bill.payment_status === 'paid') return 0;
+    if (bill.linked_transaction_id && !['partial', 'unpaid'].includes(bill.payment_status)) return 0;
     if (bill.currency && bill.currency !== 'IDR') return 0;
     if (['excluded', 'reversed'].includes(bill.accounting_status)) return 0;
     const gross = bill.outstanding_amount != null
@@ -122,10 +123,21 @@ async function scanWorkspace(wsId, wsName) {
         if (bill.currency && bill.currency !== 'IDR') return; // different defect class
         const glNet = glByBill[d.id] || 0;
         const sub = subledgerValue(bill);
-        if (glNet === sub) return;
-        // Only repair what a voided payment explains.
         const voided = Object.entries(voidedPayers[d.id] || {}).map(([id, amount]) => ({ id, amount }));
-        if (!voided.length) return;
+
+        // Second repair class: a bill that is no longer fully paid but still
+        // carries linked_transaction_id. That field means "the transaction that
+        // fully settled this bill" and is stale the moment it isn't true. It is
+        // not cosmetic — the budget committed-amount calculation skips any bill
+        // with it set, so a restored payable stays missing from commitments even
+        // once its own amounts are right.
+        const staleLink = !!bill.linked_transaction_id
+            && ['partial', 'unpaid'].includes(bill.payment_status)
+            && toInt(Math.abs(bill.outstanding_amount)) > 0;
+
+        if (glNet === sub && !staleLink) return;
+        // Otherwise only repair what a voided payment explains.
+        if (glNet !== sub && !voided.length) return;
 
         const face = toInt(Math.abs(bill.amount));
         const outstanding = Math.max(0, glNet);
@@ -140,10 +152,11 @@ async function scanWorkspace(wsId, wsName) {
         if (status !== 'paid' && bill.budget_impact_status === 'converted_to_actual') {
             patch.budget_impact_status = 'committed';
         }
-        // Clear a deep link that points at a voided payment.
-        if (bill.linked_transaction_id && voided.some((v) => v.id === bill.linked_transaction_id)) {
-            patch.linked_transaction_id = null;
-        }
+        // linked_transaction_id means "fully settled by this transaction" and is
+        // stale the moment the bill is not. Leaving it set also keeps the bill at
+        // zero in expectedPayables, so the repair would write correct fields and
+        // A/P still would not tie.
+        if (bill.linked_transaction_id && outstanding > 0) patch.linked_transaction_id = null;
 
         out.push({
             wsId, wsName, billId: d.id, vendor: bill.vendor_name || '(no vendor)',

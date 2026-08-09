@@ -138,7 +138,15 @@ async function expectedPayables(base) {
     let count = 0;
     bills.forEach((d) => {
         const bill = d.data() || {};
-        if (bill.payment_status === 'paid' || bill.linked_transaction_id) return;
+        if (bill.payment_status === 'paid') return;
+        // linked_transaction_id means "the transaction that fully settled this
+        // bill" — _payBillOnce writes it under `if (fullyPaid)` only. Treating it
+        // as settled-regardless was safe while paid was terminal, and became
+        // wrong once a bill could go BACK to partial: a rolled-back bill keeps
+        // the stamp from when it was paid, so the subledger valued a restored
+        // Rp20.500.000 payable at zero and A/P would not tie no matter what the
+        // bill's own fields said. An explicit partial/unpaid status wins.
+        if (bill.linked_transaction_id && !['partial', 'unpaid'].includes(bill.payment_status)) return;
         if (bill.currency && bill.currency !== 'IDR') return;
         if (OUT_OF_LEDGER.has(bill.accounting_status)) return;
         const gross = bill.outstanding_amount != null
