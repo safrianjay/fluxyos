@@ -3102,6 +3102,18 @@
         "Management report · not audited financial statements": "Laporan manajemen · bukan laporan keuangan yang diaudit",
         "Margin": "Margin",
         "Match by category (default)": "Cocokkan menurut kategori (default)",
+        // CSV bulk import → cash account attribution
+        "Cash account": "Akun kas",
+        "Which account this money moved through": "Akun mana yang dilalui uang ini",
+        "Don't link a cash account": "Jangan tautkan akun kas",
+        "Don't link": "Jangan tautkan",
+        "Use one account": "Gunakan satu akun",
+        "Map by column": "Petakan dari kolom",
+        "Unlinked": "Tidak tertaut",
+        "Not in file": "Tidak ada di berkas",
+        "no cash effect": "tidak berdampak kas",
+        "Bank account name — map values before importing. Header must say": "Nama akun bank — petakan nilainya sebelum impor. Judul kolom harus",
+        "That cash account is no longer active. Pick another before uploading.": "Akun kas itu sudah tidak aktif. Pilih yang lain sebelum mengunggah.",
         "Match status": "Status kecocokan",
         "Meaning": "Arti",
         "Metric": "Metrik",
@@ -5014,6 +5026,28 @@
           id: function (m) { return m[1] + ' baris terbaca. ' + m[2] + ' tampak duplikat dan dikecualikan.'; } },
         { re: /^(\d[\d.,]*) transactions imported successfully\. (\d[\d.,]*) possible duplicates? (?:was|were) skipped\.$/,
           id: function (m) { return m[1] + ' transaksi berhasil diimpor. ' + m[2] + ' kemungkinan duplikat dilewati.'; } },
+        // CSV cash-account attribution. The success line carries an optional
+        // duplicate clause AND an optional cash clause, so both tails are matched
+        // here rather than adding one pattern per combination.
+        { re: /^(\d[\d.,]*) transactions imported successfully\.(?: (\d[\d.,]*) possible duplicates? (?:was|were) skipped\.)? (\d[\d.,]*) linked to a cash account\.$/,
+          id: function (m) {
+              return m[1] + ' transaksi berhasil diimpor.'
+                  + (m[2] ? ' ' + m[2] + ' kemungkinan duplikat dilewati.' : '')
+                  + ' ' + m[3] + ' tertaut ke akun kas.';
+          } },
+        { re: /^(\d[\d.,]*) row\(s\)$/,
+          id: function (m) { return m[1] + ' baris'; } },
+        { re: /^Mapping (\d[\d.,]*) value\(s\) from column "(.+)"$/,
+          id: function (m) { return 'Memetakan ' + m[1] + ' nilai dari kolom "' + m[2] + '"'; } },
+        { re: /^(\d[\d.,]*) of (\d[\d.,]*) rows will be recorded as cash that moved(?:: (.+))?\.$/,
+          id: function (m) {
+              return m[1] + ' dari ' + m[2] + ' baris akan dicatat sebagai kas yang berpindah'
+                  + (m[3] ? ': ' + m[3].replace(/ out/g, ' keluar').replace(/ in/g, ' masuk') : '') + '.';
+          } },
+        { re: /^(\d[\d.,]*) transfer\/adjustment row\(s\) don't affect cash and stay unlinked\.$/,
+          id: function (m) { return m[1] + ' baris transfer/penyesuaian tidak berdampak pada kas dan tetap tidak tertaut.'; } },
+        { re: /^(\d[\d.,]*) value\(s\) match no cash account \((.+)\) — those rows import without one\.$/,
+          id: function (m) { return m[1] + ' nilai tidak cocok dengan akun kas mana pun (' + m[2] + ') — baris tersebut diimpor tanpa akun.'; } },
 
         // ── db-service.js (insight strings) ──────────────────────────────────
         { re: /^Week (\d+)$/,

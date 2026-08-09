@@ -34,9 +34,9 @@ source: docs/PROJECT_BACKGROUND.md §4 (sharded 2026-08-07)
 | `cash_effective` | boolean \| null | Optional. Phase 1 cash impact. `true` when money has already moved, `false` when pending/neutral. |
 | `cash_status` | string \| null | Optional. Phase 1 cash impact. `"actual"` \| `"pending"` \| `"none"`. |
 | `cash_direction` | string \| null | Optional. Phase 1 cash impact. `"in"` \| `"out"` \| `"none"`. |
-| `cash_account_id` | string \| null | Optional. Phase 1 cash impact. Reserved for future bank account linkage; always `null` in Phase 1. |
-| `cash_source` | string \| null | Optional. Phase 1 cash impact. `"manual"` for user-entered transactions. |
-| `cash_match_status` | string \| null | Optional. Phase 1 cash impact. `"manual"` \| `"unmatched"` \| `null`. |
+| `cash_account_id` | string \| null | Optional. The linked `bank_accounts/{id}` — **live, not reserved**. Set from the entry drawer / receipt capture / ledger editor account picker, from a bill payment, stamped from a statement import's `bank_account_id`, or chosen per file (or per CSV value) by the **bulk CSV importer**. `null` when unattributed. ⚠️ Rules allowlist this key but do **not** validate it — a stale or archived id writes cleanly and renders as nothing, so the writing surface is the only guard. |
+| `cash_source` | string \| null | Optional. `"manual"` (a human classified it) \| `"auto"` (derived from `type` by `FluxyCashImpact.deriveFromType`) \| `"bank_statement_import"` \| `"integration"`. `isDerivable()` re-derives only the first two. |
+| `cash_match_status` | string \| null | Optional. `"manual"` \| `"unmatched"` \| `"imported"` \| `null`. |
 | `cash_effective_at` | Firestore Timestamp \| null | Optional. Phase 1 cash impact. Equals `timestamp` when `cash_effective` is `true`; `null` otherwise. |
 | `cash_assignment_reason` | string \| null | Optional. Phase 2. ≤500 chars. Reason recorded when user manually updates cash-impact fields from Ledger. |
 | `cash_assignment_updated_at` | Timestamp \| null | Optional. Phase 2. Server-set on each cash-impact assignment write. |
@@ -65,5 +65,37 @@ So `cash_direction` and `cash_account_id` are now user-chosen at creation
 (previously direction was inferred from type and the account was always null).
 `pending_payable`/`pending_receivable` stay forced-pending and `transfer` stays
 neutral (control hidden, helper note shown).
+
+**Bulk CSV import assigns the cash account (2026-08-09).** Imported rows used to
+carry **no** `cash_*` fields at all, so every one had to be opened individually to
+say which account the money moved through. The bulk panel now asks for the account
+— the one part of cash impact that is not derivable — and stamps the rest via
+`FluxyCashImpact.deriveFromType`, the same component the single-entry drawer uses,
+so a row imported here and the same row typed by hand produce identical documents.
+
+Two modes: one account applied to the whole file, or — when the CSV carries a
+`Cash account` / `Bank account` / `Rekening` column — a per-value mapping. A bare
+`Account` header is deliberately **not** recognised: in a FluxyOS-flavoured CSV
+that means the Chart-of-Accounts account, and reading it as a bank account would
+stamp `cash_effective` from the wrong column.
+
+Three rules the implementation encodes, each of which is a way to get it wrong:
+
+- **No account ⇒ no `cash_*` keys at all.** Not "cash moved, account unknown" —
+  calling `deriveFromType` with an empty id still returns `cash_effective: true`
+  for an expense, which would pull unmapped rows into the Cash Position KPI.
+- **A value matching no account imports unlinked**, named in the preview *before*
+  the import. Never a fallback to a default account.
+- **An ambiguous label auto-matches nothing.** Two accounts at one bank means
+  "BCA" resolves to neither. `recon-engine.js` hard-excludes a transaction whose
+  `cash_account_id` differs from the statement's account and there is no bulk
+  re-attribution tool, so a confident wrong guess is unrecoverable while an
+  unmatched value is not. For the same reason an account is pre-selected only
+  when the workspace has exactly one.
+
+Consequence worth knowing: imported rows now enter `getLedgerCashPosition`, so
+Cash Position and the dashboard headline move. The preview states the row count
+and the rupiah effect before the import, not after. Guard:
+`tests/csv-import-cash-account.spec.js`.
 
 **Ordering:** `timestamp DESC` (newest first). Default limit: 50. Dashboard preview: 5.

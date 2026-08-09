@@ -1315,7 +1315,7 @@ window.showAddTransactionModal = function(options = {}) {
                             <div id="tx-csv-mapping-summary" class="mt-3 flex flex-wrap gap-2"></div>
                             <div id="tx-csv-duplicate-note" class="hidden mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"></div>
                             <div class="mt-3 overflow-x-auto rounded-lg border border-gray-200">
-                                <table class="w-full min-w-[560px] text-left">
+                                <table class="w-full min-w-[680px] text-left">
                                     <thead class="bg-gray-50 text-[10px] font-bold uppercase tracking-wider text-gray-500">
                                         <tr>
                                             <th class="px-3 py-2">Description</th>
@@ -1324,6 +1324,7 @@ window.showAddTransactionModal = function(options = {}) {
                                             <th class="px-3 py-2">Amount</th>
                                             <th class="px-3 py-2">Status</th>
                                             <th class="px-3 py-2">Date</th>
+                                            <th class="px-3 py-2">Cash account</th>
                                         </tr>
                                     </thead>
                                     <tbody id="tx-csv-preview-body" class="divide-y divide-gray-100 text-[12px]"></tbody>
@@ -1363,6 +1364,22 @@ window.showAddTransactionModal = function(options = {}) {
                                 class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#EA580C] text-[13px]">
                                 <option value="">Match by category (default)</option>
                             </select>
+                        </div>
+                        <div id="tx-bulk-cash-card" class="hidden rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="text-[13px] font-bold text-gray-900">Cash account</p>
+                                    <p id="tx-bulk-cash-sub" class="text-[11px] text-gray-500">Which account this money moved through</p>
+                                </div>
+                                <button type="button" id="tx-bulk-cash-mode"
+                                    class="hidden shrink-0 text-[11px] font-bold text-[#EA580C] hover:underline">Use one account</button>
+                            </div>
+                            <select id="tx-bulk-cash-select"
+                                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#EA580C] text-[13px]">
+                                <option value="">Don't link a cash account</option>
+                            </select>
+                            <div id="tx-bulk-cash-map" class="hidden space-y-2"></div>
+                            <p id="tx-bulk-cash-note" class="hidden rounded-xl px-4 py-3 text-[12px]"></p>
                         </div>
                         <div class="rounded-xl border border-gray-200 bg-white p-4">
                             <div class="flex items-center justify-between mb-3">
@@ -1430,6 +1447,11 @@ window.showAddTransactionModal = function(options = {}) {
                                     <span class="font-mono font-bold text-gray-900 w-24 flex-shrink-0">Date</span>
                                     <span class="text-gray-500">DD-MM-YYYY — omit to use the range end date</span>
                                 </div>
+                                <div class="flex items-start gap-2.5 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
+                                    <span class="mt-1 inline-block w-2 h-2 rounded-full bg-gray-300 flex-shrink-0"></span>
+                                    <span class="font-mono font-bold text-gray-900 w-24 flex-shrink-0">Cash account</span>
+                                    <span class="text-gray-500">Bank account name — map values before importing. Header must say <span class="font-mono font-bold text-gray-700">Cash account</span> or <span class="font-mono font-bold text-gray-700">Bank account</span>, not <span class="font-mono">Account</span></span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1492,6 +1514,11 @@ window.showAddTransactionModal = function(options = {}) {
         status: 'idle'
     };
     const getSelectedCsvFile = () => document.getElementById('tx-csv-file')?.files?.[0] || csvImportState.file || null;
+
+    // CSV cash-account attribution. `mode` is 'single' (one account for the whole
+    // file) or 'column' (the file names an account per row). `chosen` is keyed by
+    // the RAW CSV value so a user override survives a re-render.
+    let bulkCashState = { mode: 'single', singleId: '', values: [], chosen: new Map() };
 
     // Live Formatting for Amount
     const amountInput = document.getElementById('tx-amount');
@@ -1806,7 +1833,18 @@ window.showAddTransactionModal = function(options = {}) {
             type: findIndex(['type', 'jenis']),
             amount: findIndex(['amount', 'jumlah']),
             status: findIndex(['status']),
-            date: findIndex(['date', 'transaction_date', 'transactiondate', 'tanggal', 'tanggal_transaksi', 'waktu'])
+            date: findIndex(['date', 'transaction_date', 'transactiondate', 'tanggal', 'tanggal_transaksi', 'waktu']),
+            // Optional, like status/date. Deliberately NOT validated during parse:
+            // a value naming no FluxyOS account must leave that row unlinked, not
+            // fail the file, and every check below is a throw that aborts the whole
+            // import.
+            // Every synonym carries an explicit cash/bank/rekening token. A bare
+            // "Account" column is deliberately NOT matched: in a FluxyOS-flavoured
+            // CSV that is far more likely to be the Chart-of-Accounts account
+            // (account_code/account_name), and reading it as a bank account would
+            // stamp cash_effective on 500 rows from the wrong column.
+            cashAccount: findIndex(['cash_account', 'bank_account', 'payment_account',
+                'paid_from', 'rekening', 'akun_kas', 'akun_bank', 'sumber_dana', 'bank'])
         };
 
         if ([indexes.vendor, indexes.category, indexes.type, indexes.amount].some(index => index === undefined)) {
@@ -1884,7 +1922,12 @@ window.showAddTransactionModal = function(options = {}) {
                 status,
                 icon: ['income', 'revenue', 'refund', 'pending_receivable'].includes(type) ? '💰' : '💸',
                 dateKey,
-                line
+                line,
+                // Raw cell text, resolved to an account id at submit. Preview-only:
+                // toTransactionRows strips it, because it is not in the Firestore
+                // create allowlist and one stray key fails the whole batch.
+                cashAccountRaw: indexes.cashAccount === undefined
+                    ? '' : String(row[indexes.cashAccount] || '').trim()
             };
         });
 
@@ -1896,10 +1939,58 @@ window.showAddTransactionModal = function(options = {}) {
     // parser artefacts, and the duplicate_* fields are UI state from the
     // pre-flight. None are in the Firestore transaction allowlist, so leaving
     // one attached would fail the create rule for the whole batch.
+    // A CSV cash-account value → a bank account id.
+    //
+    // EXACT match on the normalised string only, never fuzzy. The bank-rec engine
+    // hard-excludes a transaction whose cash_account_id differs from the
+    // statement's account (recon-engine.js), and there is no bulk re-attribution
+    // tool — so a near-miss that confidently picks the wrong account produces a
+    // row that can never be matched and can only be fixed one at a time. An
+    // unmatched value is recoverable; a wrongly matched one is not.
+    //
+    // Matched against the ways a person actually labels the column: the nickname,
+    // the bank, the two together, and the last four digits on their own.
+    function matchCashAccounts(values, accounts) {
+        // A key that resolves to MORE THAN ONE account is removed, never settled by
+        // precedence. Two accounts at the same bank means the string "BCA" must
+        // produce no match at all — a 50/50 guess repeated across hundreds of rows
+        // is the unrecoverable case, and "no match" is the recoverable one.
+        const index = new Map();
+        const AMBIGUOUS = Symbol('ambiguous');
+        const add = (key, id) => {
+            const k = normalizeHeader(String(key || ''));
+            if (!k) return;
+            const seen = index.get(k);
+            if (seen === undefined) index.set(k, id);
+            else if (seen !== id) index.set(k, AMBIGUOUS);
+        };
+        (accounts || []).forEach((account) => {
+            if (!account || account.status === 'archived') return;
+            add(account.id, account.id);           // lets a FluxyOS export round-trip
+            add(account.account_name, account.id);
+            add(account.bank_name, account.id);
+            add(`${account.bank_name || ''} ${account.last_four || ''}`, account.id);
+            if (account.last_four) add(account.last_four, account.id);
+        });
+
+        const matched = new Map();
+        const unmatched = [];
+        (values || []).forEach((raw) => {
+            const key = normalizeHeader(String(raw || ''));
+            if (!key) return; // a blank cell is not an unmatched value, just no instruction
+            if (matched.has(raw) || unmatched.includes(raw)) return;
+            const id = index.get(key);
+            // An ambiguous key is treated exactly like no match: the user picks.
+            if (id && id !== AMBIGUOUS) matched.set(raw, id);
+            else unmatched.push(raw);
+        });
+        return { matched, unmatched };
+    }
+
     function toTransactionRows(rows, Timestamp) {
         return rows.map(row => {
-            const { dateKey, line, duplicate_match, duplicate_override, selected_for_import, ...transaction } = row;
-            void line; void duplicate_match; void duplicate_override; void selected_for_import;
+            const { dateKey, line, duplicate_match, duplicate_override, selected_for_import, cashAccountRaw, ...transaction } = row;
+            void line; void duplicate_match; void duplicate_override; void selected_for_import; void cashAccountRaw;
             return {
                 ...transaction,
                 timestamp: buildTransactionTimestamp(dateKey, Timestamp)
@@ -2317,6 +2408,199 @@ window.showAddTransactionModal = function(options = {}) {
         });
     }
 
+    // --- CSV bulk: cash account attribution -------------------------------
+    // Only the ACCOUNT is asked for. Everything else about cash impact is
+    // derived from each row's type by FluxyCashImpact.deriveFromType, which is
+    // also what the single-entry drawer uses — so a row imported here and the
+    // same row typed by hand produce the same document.
+
+    function cashAccountLabel(account) {
+        const bank = account.bank_name || '';
+        const name = account.account_name || '';
+        const four = account.last_four ? ` ····${account.last_four}` : '';
+        const head = bank && name && bank !== name ? `${bank} · ${name}` : (name || bank || account.id);
+        return `${head}${four}`;
+    }
+
+    function cashOptionsHtml(selectedId, emptyLabel) {
+        const opts = cashBankAccounts
+            .filter(a => a && a.status !== 'archived')
+            .map(a => `<option value="${escapeHtml(a.id)}"${a.id === selectedId ? ' selected' : ''}>${escapeHtml(cashAccountLabel(a))}</option>`)
+            .join('');
+        return `<option value=""${selectedId ? '' : ' selected'}>${escapeHtml(emptyLabel)}</option>${opts}`;
+    }
+
+    // Per-row preview cell. Says what will actually be saved, including the case
+    // the user is most likely to be surprised by: a mapped transfer saves with no
+    // account, because deriveFromType forces it to null.
+    function cashPreviewCell(row) {
+        const id = resolveRowCashAccount(row);
+        if (!id) {
+            return row.cashAccountRaw
+                ? `<span class="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">Unlinked</span>`
+                : '<span class="text-gray-400">—</span>';
+        }
+        const derived = window.FluxyCashImpact.deriveFromType(row.type, { accountId: id });
+        if (!derived.cash_account_id) {
+            return `<span class="text-gray-400">— <span class="text-[11px]">no cash effect</span></span>`;
+        }
+        const account = cashBankAccounts.find(a => a.id === id);
+        return escapeHtml(account ? (account.account_name || account.bank_name || id) : id);
+    }
+
+    // The account this row will actually be saved against, '' meaning unlinked.
+    function resolveRowCashAccount(previewRow) {
+        if (bulkCashState.mode === 'column') {
+            const raw = String(previewRow?.cashAccountRaw || '');
+            return raw ? (bulkCashState.chosen.get(raw) || '') : '';
+        }
+        return bulkCashState.singleId || '';
+    }
+
+    // Coverage, stated in rows AND rupiah. "142 rows linked" does not tell anyone
+    // their Cash Position is about to move by 84 million; the amount does, and it
+    // is the only place that consequence is visible before the import happens.
+    function renderBulkCashNote() {
+        const note = document.getElementById('tx-bulk-cash-note');
+        if (!note) return;
+        const rows = (csvImportState.parsed?.transactions || []).filter(r => r.selected_for_import !== false);
+        if (!rows.length) { note.classList.add('hidden'); return; }
+
+        let linked = 0, neutral = 0, cashIn = 0, cashOut = 0;
+        const unmatched = new Set();
+        rows.forEach((r) => {
+            const id = resolveRowCashAccount(r);
+            if (!id) {
+                if (bulkCashState.mode === 'column' && r.cashAccountRaw) unmatched.add(r.cashAccountRaw);
+                return;
+            }
+            const derived = window.FluxyCashImpact.deriveFromType(r.type, { accountId: id });
+            if (!derived.cash_effective) { neutral += 1; return; }
+            linked += 1;
+            if (derived.cash_direction === 'in') cashIn += r.amount; else cashOut += r.amount;
+        });
+
+        const rp = (n) => 'Rp' + Math.abs(Number(n) || 0).toLocaleString('id-ID');
+        const parts = [];
+        if (linked) {
+            const money = [cashOut ? `${rp(cashOut)} out` : '', cashIn ? `${rp(cashIn)} in` : '']
+                .filter(Boolean).join(', ');
+            parts.push(`${linked} of ${rows.length} rows will be recorded as cash that moved${money ? `: ${money}` : ''}.`);
+        }
+        // Named explicitly: a mapped transfer saves with no account, because
+        // deriveFromType forces it. Surprising unless it is said out loud.
+        if (neutral) parts.push(`${neutral} transfer/adjustment row(s) don't affect cash and stay unlinked.`);
+        if (unmatched.size) {
+            parts.push(`${unmatched.size} value(s) match no cash account (${[...unmatched].slice(0, 3).map(escapeHtml).join(', ')}${unmatched.size > 3 ? '…' : ''}) — those rows import without one.`);
+        }
+        if (!parts.length) { note.classList.add('hidden'); return; }
+        note.className = unmatched.size
+            ? 'rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-[12px] text-amber-800'
+            : 'rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-[12px] text-blue-800';
+        note.textContent = parts.join(' ');
+    }
+
+    function renderBulkCashCard() {
+        const card = document.getElementById('tx-bulk-cash-card');
+        if (!card) return;
+        const active = cashBankAccounts.filter(a => a && a.status !== 'archived');
+        const ready = csvImportState.status === 'ready' && !!csvImportState.parsed;
+        // No accounts, or nothing parsed yet — no card. Same discipline as the
+        // allocation card, which hides when no budget covers the period.
+        if (!active.length || !ready) { card.classList.add('hidden'); return; }
+        card.classList.remove('hidden');
+
+        const sel = document.getElementById('tx-bulk-cash-select');
+        const map = document.getElementById('tx-bulk-cash-map');
+        const sub = document.getElementById('tx-bulk-cash-sub');
+        const modeBtn = document.getElementById('tx-bulk-cash-mode');
+        const header = csvImportState.parsed.indexes.cashAccount;
+        const hasColumn = header !== undefined && bulkCashState.values.length > 0;
+
+        if (bulkCashState.mode === 'column' && hasColumn) {
+            sel?.classList.add('hidden');
+            map?.classList.remove('hidden');
+            modeBtn?.classList.remove('hidden');
+            if (sub) sub.textContent = `Mapping ${bulkCashState.values.length} value(s) from column "${csvImportState.parsed.headers[header]}"`;
+            if (map) {
+                map.innerHTML = bulkCashState.values.map(({ raw, count }) => `
+                    <div class="flex items-center gap-3">
+                        <div class="min-w-0 flex-1">
+                            <p class="truncate text-[13px] font-semibold text-gray-900">${escapeHtml(raw)}</p>
+                            <p class="text-[11px] text-gray-500">${count} row(s)</p>
+                        </div>
+                        <select data-csv-cash-value="${escapeHtml(raw)}"
+                            class="w-[190px] shrink-0 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#EA580C] text-[12px]">
+                            ${cashOptionsHtml(bulkCashState.chosen.get(raw) || '', "Don't link")}
+                        </select>
+                    </div>`).join('');
+            }
+        } else {
+            sel?.classList.remove('hidden');
+            map?.classList.add('hidden');
+            modeBtn?.classList.toggle('hidden', !hasColumn);
+            if (modeBtn) modeBtn.textContent = 'Map by column';
+            if (sub) sub.textContent = 'Which account this money moved through';
+            if (sel) sel.innerHTML = cashOptionsHtml(bulkCashState.singleId, "Don't link a cash account");
+        }
+        renderBulkCashNote();
+    }
+
+    // Called after every successful parse. Rebuilds the distinct-value list and
+    // seeds the auto-match, preserving any override the user already made.
+    function syncBulkCashFromParse() {
+        const parsed = csvImportState.parsed;
+        const active = cashBankAccounts.filter(a => a && a.status !== 'archived');
+        if (!parsed) { bulkCashState.values = []; renderBulkCashCard(); return; }
+
+        const counts = new Map();
+        (parsed.transactions || []).forEach((r) => {
+            const raw = String(r.cashAccountRaw || '');
+            if (!raw) return;
+            counts.set(raw, (counts.get(raw) || 0) + 1);
+        });
+        bulkCashState.values = [...counts.entries()]
+            .map(([raw, count]) => ({ raw, count }))
+            .sort((a, b) => b.count - a.count);
+
+        if (bulkCashState.values.length) {
+            const { matched } = matchCashAccounts(bulkCashState.values.map(v => v.raw), active);
+            matched.forEach((id, raw) => { if (!bulkCashState.chosen.has(raw)) bulkCashState.chosen.set(raw, id); });
+            bulkCashState.mode = 'column';
+        } else {
+            bulkCashState.mode = 'single';
+            // Pre-select ONLY when there is exactly one account, so there is no
+            // wrong answer to get. A remembered last-used account is a one-off
+            // personal choice and must not be applied to a whole file: a wrong
+            // account is hard-excluded by bank rec and there is no bulk undo.
+            if (!bulkCashState.singleId && active.length === 1) bulkCashState.singleId = active[0].id;
+        }
+        renderBulkCashCard();
+    }
+
+    if (supportsBulkCsv) {
+        // Delegated so the handlers survive every re-render of the mapping list.
+        // CRITICAL: these must NOT re-parse the file the way the status override
+        // does. A re-parse rebuilds parsed.transactions and silently discards the
+        // duplicate_match flags and the user's "Include them anyway" choice, which
+        // the submit path reads — re-including rows they excluded.
+        document.getElementById('tx-bulk-cash-select')?.addEventListener('change', (e) => {
+            bulkCashState.singleId = e.target.value || '';
+            renderBulkCashNote();
+        });
+        document.getElementById('tx-bulk-cash-map')?.addEventListener('change', (e) => {
+            const raw = e.target?.getAttribute?.('data-csv-cash-value');
+            if (raw === null || raw === undefined) return;
+            if (e.target.value) bulkCashState.chosen.set(raw, e.target.value);
+            else bulkCashState.chosen.delete(raw);
+            renderBulkCashNote();
+        });
+        document.getElementById('tx-bulk-cash-mode')?.addEventListener('click', () => {
+            bulkCashState.mode = bulkCashState.mode === 'column' ? 'single' : 'column';
+            renderBulkCashCard();
+        });
+    }
+
     function getCurrentBillCategory() {
         const sel = categorySelect?.value || '';
         if (sel === 'Others') {
@@ -2467,7 +2751,8 @@ window.showAddTransactionModal = function(options = {}) {
 
             const indexLabel = (key) => {
                 const index = parsed.indexes[key];
-                return index === undefined ? 'Not mapped' : parsed.headers[index];
+                if (index !== undefined) return parsed.headers[index];
+                return key === 'cashAccount' ? 'Not in file' : 'Not mapped';
             };
             const requiredMap = [
                 ['Description', 'vendor'],
@@ -2476,6 +2761,10 @@ window.showAddTransactionModal = function(options = {}) {
                 ['Amount', 'amount'],
                 ['Status', 'status'],
                 ['Date', 'date'],
+                // Optional, and absent from most files — so it reads "Not in file"
+                // rather than "Not mapped", which looks like an error for a column
+                // nobody was required to supply.
+                ['Cash account', 'cashAccount'],
             ];
 
             // Duplicate pre-flight result (docs/DUPLICATE_PREVENTION.md). Rows
@@ -2510,6 +2799,7 @@ window.showAddTransactionModal = function(options = {}) {
                     <td class="px-3 py-2 font-bold text-gray-900 tabular-nums">Rp${Math.abs(row.amount).toLocaleString('id-ID')}</td>
                     <td class="px-3 py-2 text-gray-600">${escapeHtml(row.status)}</td>
                     <td class="px-3 py-2 text-gray-600">${escapeHtml(row.dateKey)}</td>
+                    <td class="px-3 py-2 text-gray-600">${cashPreviewCell(row)}</td>
                 </tr>
             `).join('');
 
@@ -2545,12 +2835,14 @@ window.showAddTransactionModal = function(options = {}) {
             badge.textContent = 'Needs fix';
             badge.className = 'shrink-0 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-bold text-red-700';
             mapping.innerHTML = '';
-            body.innerHTML = `<tr><td colspan="6" class="px-3 py-4 text-[12px] font-medium text-red-700">${escapeHtml(message)}</td></tr>`;
+            body.innerHTML = `<tr><td colspan="7" class="px-3 py-4 text-[12px] font-medium text-red-700">${escapeHtml(message)}</td></tr>`;
             card.classList.remove('hidden');
         };
 
         const clearCsvPreview = () => {
             document.getElementById('tx-csv-preview-card')?.classList.add('hidden');
+            // The cash card only makes sense against a parsed file.
+            document.getElementById('tx-bulk-cash-card')?.classList.add('hidden');
         };
 
         const setEntryMode = (mode) => {
@@ -2614,6 +2906,9 @@ window.showAddTransactionModal = function(options = {}) {
                     const parsed = analyzeBulkCsv(csvText, todayKey, bulkStatusOverride);
                     csvImportState = { file, csvText, parsed, status: 'ready' };
                     fileInput.dataset.hasPastDates = parsed.transactions.some(row => isPastDateKey(row.dateKey)) ? 'true' : 'false';
+                    // Seed the cash card BEFORE the preview: the preview's per-row
+                    // cash cell reads the resolved mapping.
+                    syncBulkCashFromParse();
                     renderCsvPreview(file, parsed);
                     setCsvFeedback(`${parsed.transactions.length} rows parsed. Review the preview, then upload when ready.`, 'success');
                     setSubmitButton('Upload CSV', false);
@@ -2630,6 +2925,8 @@ window.showAddTransactionModal = function(options = {}) {
                             });
                             if (result.flagged && csvImportState.file === file) {
                                 renderCsvPreview(file, parsed);
+                                // Excluded rows drop out of the coverage counts.
+                                renderBulkCashNote();
                                 setCsvFeedback(`${parsed.transactions.length} rows parsed. ${result.flagged} look like duplicates and are excluded.`, 'info');
                             }
                         } catch (_) { /* preview already usable without it */ }
@@ -2639,6 +2936,7 @@ window.showAddTransactionModal = function(options = {}) {
                     fileInput.dataset.hasPastDates = 'false';
                     const message = err?.message || 'Could not read this CSV file.';
                     setCsvFeedback(message, 'error');
+                    renderBulkCashCard();
                     renderCsvPreviewError(file, message);
                     setSubmitButton('Upload CSV', true);
                 }
@@ -2811,8 +3109,41 @@ window.showAddTransactionModal = function(options = {}) {
                         if (window.FluxyBudgetPicker.isExpenseLike(row.type)) Object.assign(row, allocFields);
                     });
                 }
+                // Cash attribution. A mapped account MEANS the money moved, so the
+                // fields come from deriveFromType — the row's TYPE decides
+                // actual/pending/neutral, never the presence of an account. That
+                // keeps a bulk row identical to the same row typed into the drawer.
+                //
+                // The early return is the whole "unlinked" decision: calling
+                // deriveFromType with an empty accountId would still stamp
+                // cash_effective: true on an expense, i.e. "cash moved, account
+                // unknown", dragging unmapped rows into the Cash Position KPI.
+                // A row with no account must save exactly as it did before this
+                // feature — no cash_* keys at all.
+                const activeCashIds = new Set(cashBankAccounts.filter(a => a && a.status !== 'archived').map(a => a.id));
+                let linkedCount = 0;
+                transactions.forEach((row, i) => {
+                    const accountId = resolveRowCashAccount(includedRows[i]);
+                    if (!accountId) return;
+                    // Rules allowlist cash_account_id but never validate it, so an
+                    // account archived in another tab since the drawer opened would
+                    // write a dangling id that renders as nothing. This is the only
+                    // guard.
+                    if (!activeCashIds.has(accountId)) return;
+                    Object.assign(row, window.FluxyCashImpact.deriveFromType(row.type, {
+                        accountId, timestamp: row.timestamp
+                    }));
+                    if (row.cash_account_id) linkedCount += 1;
+                });
+
                 btn.innerText = `Uploading ${transactions.length}...`;
                 await ds.addTransactions(scopeId, transactions);
+
+                // Only in single-account mode: remembering one of several mapped
+                // accounts would poison the drawer's default with an arbitrary pick.
+                if (bulkCashState.mode === 'single' && bulkCashState.singleId && cashScopeId) {
+                    window.FluxyCashImpact.rememberAccount?.(cashScopeId, bulkCashState.singleId);
+                }
 
                 // Log the rows the user knowingly imported past a duplicate
                 // warning. Best-effort: the import already succeeded, and a
@@ -2833,7 +3164,13 @@ window.showAddTransactionModal = function(options = {}) {
                 const skipNote = skippedDuplicates.length
                     ? ` ${skippedDuplicates.length} possible duplicate${skippedDuplicates.length === 1 ? ' was' : 's were'} skipped.`
                     : '';
-                setCsvFeedback(`${transactions.length} transactions imported successfully.${skipNote}`, 'success');
+                // A receipt, not the warning. The drawer auto-closes 1.2s from here,
+                // so nobody could act on a list of unmatched account names — that
+                // belongs in the preview, before the rows are written.
+                const cashNote = linkedCount
+                    ? ` ${linkedCount} linked to a cash account.`
+                    : '';
+                setCsvFeedback(`${transactions.length} transactions imported successfully.${skipNote}${cashNote}`, 'success');
                 window.FluxyDataSync?.emit({ kind: 'transaction', action: 'create', count: transactions.length });
                 window.showToast(`${transactions.length} transactions imported from CSV.`, "success");
                 btn.innerText = 'Uploaded';
