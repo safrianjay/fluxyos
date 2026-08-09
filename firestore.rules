@@ -1887,9 +1887,40 @@ service cloud.firestore {
               'linked_transaction_id', 'paid_at', 'updated_at', 'updated_by']);
     }
 
+    // Void rollback: a payment transaction was voided, which reversed its INV-PAY
+    // journal and put the receivable back in the general ledger — so the invoice
+    // has to give the settlement back or A/R disagrees with the invoice list.
+    //
+    // This needs its own transition because the two above cannot express it:
+    // isValidInvoicePartialTransition requires existingData.status in
+    // ['open','partial'] and so rejects paid->partial, and isValidInvoicePaidTransition
+    // only goes open->paid. The only remaining branch is the full isValidInvoiceBase,
+    // which is exactly the re-eval that tips a 35+-key invoice over the rules
+    // budget and surfaces as permission-denied. Lean and self-contained, like its
+    // two siblings, for that reason.
+    //
+    // Direction is enforced: paid/partial only ever move BACK to partial/open, and
+    // paid_at must be cleared, so this cannot be used to settle anything.
+    function isValidInvoiceVoidRollbackTransition(data, existingData) {
+      return existingData.status in ['paid', 'partial']
+        && data.status in ['partial', 'open']
+        && data.amount_paid is int && data.amount_paid >= 0
+        && data.outstanding_amount is int && data.outstanding_amount >= 0
+        && (data.status == 'open' ? data.amount_paid == 0 : data.amount_paid > 0)
+        && data.outstanding_amount > 0
+        && data.paid_at == null
+        && data.updated_at == request.time
+        && data.updated_by == request.auth.uid
+        && data.diff(existingData).affectedKeys().hasOnly(
+             ['status', 'amount_paid', 'outstanding_amount', 'paid_at',
+              'last_payment_transaction_id', 'linked_transaction_id',
+              'updated_at', 'updated_by']);
+    }
+
     function isValidInvoiceUpdate(data, existingData) {
       return isValidInvoicePartialTransition(data, existingData)
         || isValidInvoicePaidTransition(data, existingData)
+        || isValidInvoiceVoidRollbackTransition(data, existingData)
         || (isValidInvoiceBase(data)
         && data.created_at == existingData.created_at
         && data.created_by == existingData.created_by

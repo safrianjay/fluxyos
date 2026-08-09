@@ -286,6 +286,47 @@ async function main() {
     await expectOutcome('item create after paid', false, () => setDoc(doc(itemsCol, 'item4'), itemPayload({ description: 'Late add', position: 3 })));
     await expectOutcome('item delete after paid', false, () => deleteDoc(itemRef));
 
+    // Voiding a payment reverses its INV-PAY journal, putting the receivable back
+    // in the ledger — so the invoice must give the settlement back. Neither
+    // existing transition can express that (partial requires existingData.status
+    // in ['open','partial']; paid only goes open->paid), and the remaining branch
+    // is the full validator that tips the rules budget on a big invoice.
+    console.log('\n— void rollback: a settled invoice gives the settlement back —');
+    const rbRef = doc(db, `users/${uid}/invoices/inv_void_rollback`);
+    await expectOutcome('create + finalize + fully pay', true, async () => {
+        await setDoc(rbRef, { ...invoiceCreatePayload(uid), invoice_number: 'INV-202606-0009' });
+        await updateDoc(rbRef, { status: 'open', finalized_at: serverTimestamp(), updated_at: serverTimestamp(), updated_by: uid });
+        return updateDoc(rbRef, {
+            status: 'paid', amount_paid: 1000000, outstanding_amount: 0,
+            last_payment_transaction_id: 'tx_v2', linked_transaction_id: 'tx_v2',
+            paid_at: serverTimestamp(), updated_at: serverTimestamp(), updated_by: uid
+        });
+    });
+    await expectOutcome('paid -> partial after voiding one payment', true, () => updateDoc(rbRef, {
+        status: 'partial', amount_paid: 600000, outstanding_amount: 400000,
+        last_payment_transaction_id: null, paid_at: null,
+        updated_at: serverTimestamp(), updated_by: uid
+    }));
+    await expectOutcome('partial -> open when every payment is voided', true, () => updateDoc(rbRef, {
+        status: 'open', amount_paid: 0, outstanding_amount: 1000000,
+        linked_transaction_id: null, paid_at: null,
+        updated_at: serverTimestamp(), updated_by: uid
+    }));
+    // The rollback must not become a back door to settling an invoice: it only
+    // ever moves BACKWARD, and paid_at must be cleared.
+    await expectOutcome('reject a rollback that keeps paid_at set', false, () => updateDoc(rbRef, {
+        status: 'partial', amount_paid: 500000, outstanding_amount: 500000,
+        paid_at: serverTimestamp(), updated_at: serverTimestamp(), updated_by: uid
+    }));
+    await expectOutcome('reject using the rollback to mark an invoice paid', false, () => updateDoc(rbRef, {
+        status: 'paid', amount_paid: 1000000, outstanding_amount: 0,
+        paid_at: null, updated_at: serverTimestamp(), updated_by: uid
+    }));
+    await expectOutcome('reject a rollback that tampers with total_amount', false, () => updateDoc(rbRef, {
+        status: 'partial', amount_paid: 400000, outstanding_amount: 600000, total_amount: 7,
+        paid_at: null, updated_at: serverTimestamp(), updated_by: uid
+    }));
+
     console.log(`\n──────── ${passed} passed, ${failed} failed ────────`);
     process.exit(failed ? 1 : 0);
 }

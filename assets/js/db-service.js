@@ -474,6 +474,75 @@ class DataService {
         };
     }
 
+    // Invoice counterpart of _rollbackBillSettlement. Voiding an income
+    // transaction that settled an invoice reverses its INV-PAY journal (Dr Cash /
+    // Cr A/R), putting the receivable back in the ledger — so the invoice has to
+    // give the settlement back or A/R, aging and the invoice list all disagree
+    // with the balance sheet.
+    //
+    // Same contract as the bill version: staged into the caller's batch, never
+    // throws, and only inverts what it can invert exactly.
+    async _rollbackInvoiceSettlement(userId, batch, tx, transactionId) {
+        const invoiceId = tx && tx.linked_invoice_id;
+        if (!invoiceId) return null;
+
+        const invRef = doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}`);
+        let inv;
+        try {
+            const snap = await getDoc(invRef);
+            if (!snap.exists()) return null;
+            inv = snap.data() || {};
+        } catch (_) {
+            return null;
+        }
+        if (inv.status === 'void' || inv.status === 'draft') return null;
+
+        const total = Math.round(Math.abs(Number(inv.total_amount) || 0));
+        const paidNow = Math.round(Math.abs(Number(inv.amount_paid) || 0));
+        // Foreign invoices are full-payment-only and stay outside the IDR kernel,
+        // so their payment posts no journal and nothing has diverged. Leave them:
+        // amount_paid is in the invoice's currency while the transaction carries
+        // Rupiah, so there is nothing here to invert exactly.
+        if (inv.currency && inv.currency !== 'IDR') return null;
+
+        // Legacy full payments never wrote amount_paid — a paid invoice with none
+        // received its whole total, mirroring invoiceReceived() in invoices.js.
+        const effectivePaid = paidNow > 0 ? paidNow : (inv.status === 'paid' ? total : 0);
+        if (!(effectivePaid > 0)) return null;
+
+        const settled = Math.min(effectivePaid, Math.round(Math.abs(Number(tx.amount) || 0)));
+        if (!(settled > 0)) return null;
+
+        const newPaid = Math.max(0, effectivePaid - settled);
+        const newOutstanding = Math.max(0, total - newPaid);
+        // The rules transition requires a positive outstanding: with nothing left
+        // owed there is no rollback to make.
+        if (!(newOutstanding > 0)) return null;
+
+        const patch = {
+            status: newPaid > 0 ? 'partial' : 'open',
+            amount_paid: newPaid,
+            outstanding_amount: newOutstanding,
+            // No longer settled, so the paid stamp is false.
+            paid_at: null,
+            updated_at: serverTimestamp(),
+            updated_by: (this.actorUid || userId)
+        };
+        // Unlike bills, invoices stamp these on EVERY payment (not just the final
+        // one), so they name the voided transaction whenever it was the latest.
+        if (inv.last_payment_transaction_id === transactionId) patch.last_payment_transaction_id = null;
+        if (inv.linked_transaction_id === transactionId) patch.linked_transaction_id = null;
+
+        batch.update(invRef, patch);
+        return {
+            invoice_id: invoiceId,
+            settled_reversed: settled,
+            amount_paid: newPaid,
+            outstanding_amount: newOutstanding,
+            status: patch.status
+        };
+    }
+
     async voidTransaction(userId, transactionId, reason) {
         if (!userId || !transactionId) throw new Error('userId and transactionId required');
         const cleanReason = this._stringOrDefault(reason, '', 500);
@@ -510,6 +579,7 @@ class DataService {
         // because two payments on a Rp89.500.000 bill were voided and the bill
         // stayed 'paid' with amount_paid untouched.
         const billRollback = await this._rollbackBillSettlement(userId, batch, existing, transactionId);
+        const invoiceRollback = await this._rollbackInvoiceSettlement(userId, batch, existing, transactionId);
         batch.set(doc(collection(this.db, `${this._scope(userId)}/audit_logs`)), {
             actor_uid: (this.actorUid || userId),
             actor_role: null,
@@ -522,7 +592,8 @@ class DataService {
                 status: 'Voided',
                 voided_by: (this.actorUid || userId),
                 void_reason: cleanReason,
-                ...(billRollback ? { bill_settlement_rolled_back: billRollback } : {})
+                ...(billRollback ? { bill_settlement_rolled_back: billRollback } : {}),
+                ...(invoiceRollback ? { invoice_settlement_rolled_back: invoiceRollback } : {})
             },
             reason: cleanReason,
             source: 'dashboard',
@@ -5381,14 +5452,24 @@ class DataService {
 
         invoiceSnap.docs.forEach((d) => {
             const inv = d.data();
-            if (inv.status !== 'open') return;
+            // 'partial' belongs here as much as 'open'. Each payment posts INV-PAY
+            // (Dr Cash / Cr A/R), drawing the receivable DOWN rather than settling
+            // it, so a partially paid invoice still has A/R on the balance sheet.
+            // Matching 'open' alone dropped it from aging entirely — and aging is
+            // documented as tying to the balance sheet, so the two disagreed by
+            // exactly the outstanding balance.
+            if (inv.status !== 'open' && inv.status !== 'partial') return;
             if (inv.currency && inv.currency !== 'IDR') { fxInvoiceCount += 1; return; }
+            // Outstanding, not face value — identical on an untouched invoice and
+            // different on a partially paid one.
+            const outstanding = this._invoiceOutstanding(inv);
+            if (!(outstanding > 0)) return;
             receivables.push({
                 id: d.id,
                 kind: 'invoice',
                 label: inv.customer_name || inv.invoice_number || 'Invoice',
                 ref: inv.invoice_number || null,
-                amount: inv.total_amount,
+                amount: outstanding,
                 due_date: inv.due_date || null,
                 fallback_date: inv.issue_date || inv.created_at || null
             });
@@ -5396,7 +5477,12 @@ class DataService {
 
         billSnap.docs.forEach((d) => {
             const bill = d.data();
-            if (bill.payment_status === 'paid' || bill.linked_transaction_id) return;
+            if (bill.payment_status === 'paid') return;
+            // Same stale-stamp trap as expectedPayables: linked_transaction_id
+            // means "fully settled by this transaction" and survives a rollback,
+            // so a restored payable would vanish from aging while sitting on the
+            // balance sheet. An explicit partial/unpaid status wins.
+            if (bill.linked_transaction_id && !['partial', 'unpaid'].includes(bill.payment_status)) return;
             // Foreign-currency bills are outside the IDR aging (amounts are in another
             // currency's minor units) — same as foreign invoices above.
             if (bill.currency && bill.currency !== 'IDR') { fxBillCount += 1; return; }
