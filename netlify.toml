@@ -36,6 +36,19 @@
 [functions."storage-token-sweep"]
   schedule = "30 19 * * *"  # 02:30 WIB
 
+# Hourly, because each user picks their own delivery day + hour and the sweep
+# only sends to whoever's local slot is the current hour. So a missed hour is not
+# "late" — it is a whole week skipped for everyone in that slot, silently, with no
+# error anywhere. A user whose slot was 13:00 WIB got nothing while the 09:00 WIB
+# users were served normally the same morning; the only trace was the ABSENCE of
+# an audit row, since the sweep writes weekly_digest.generated per user.
+#
+# Declared here for the same reason as the sweep above: the in-code wrapper is not
+# reliably picked up. NOTE the in-code schedule() must stay in agreement with this
+# value — storage-token-sweep already drifted (code "0 19", toml "30 19").
+[functions."weekly-digest"]
+  schedule = "0 * * * *"    # every hour, on the hour
+
 [functions."invoice-email-background"]
   node_bundler = "esbuild"
   external_node_modules = ["@sparticuz/chromium", "puppeteer-core"]

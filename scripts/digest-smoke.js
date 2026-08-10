@@ -203,13 +203,45 @@ async function main() {
     const isMonday9 = wd === 'monday' && hr === 9;
     const dbSweep = makeDb({
         colls: {
-            internal_users: [{ id: 'uS2', email: 's2@example.com', display_name: 'Sweep User' }],
+            // payment_status 'verified' is REQUIRED — the sweep sends to paying
+            // customers only. Without it this user is skipped, which is what the
+            // unverified case below asserts.
+            internal_users: [{ id: 'uS2', email: 's2@example.com', display_name: 'Sweep User', payment_status: 'verified' }],
             ...financeSeed('uS2', IN_PERIOD),
         },
         docs: { 'users/uS2/settings/email_preferences': { weekly_digest_enabled: true, delivery_day: wd, delivery_hour: hr, timezone: tz, metrics: ALL } },
     });
     const sw = await runWeeklyDigestSweep(dbSweep, { now: NOW, logger: silent });
     check('sweep sent to the due user', sw.due === 1 && sw.sent === 1, `due=${sw.due} sent=${sw.sent}`);
+
+    // 7b) Payment gate. The digest emails a week of someone's real financial
+    // position, so it goes to accounts a reviewer actually verified. An
+    // unverified account must be skipped even when it is otherwise due — and
+    // skipped BEFORE any work, so it costs nothing and leaves no audit row.
+    const dbUnverified = makeDb({
+        colls: {
+            internal_users: [{ id: 'uS3', email: 's3@example.com', display_name: 'Unpaid User', payment_status: 'pending' }],
+            ...financeSeed('uS3', IN_PERIOD),
+        },
+        docs: { 'users/uS3/settings/email_preferences': { weekly_digest_enabled: true, delivery_day: wd, delivery_hour: hr, timezone: tz, metrics: ALL } },
+    });
+    const swU = await runWeeklyDigestSweep(dbUnverified, { now: NOW, logger: silent });
+    check('unverified payment is skipped', swU.sent === 0 && swU.due === 0 && swU.skippedUnverified === 1,
+        `sent=${swU.sent} due=${swU.due} skippedUnverified=${swU.skippedUnverified}`);
+    // force is for deliberate broadcasts and must NOT bypass the payment gate.
+    const swF = await runWeeklyDigestSweep(dbUnverified, { now: NOW, logger: silent, force: true });
+    check('force does not bypass the payment gate', swF.sent === 0, `sent=${swF.sent}`);
+    // Older roster docs predate payment_status; payment_verified_at still counts.
+    const dbLegacyPaid = makeDb({
+        colls: {
+            internal_users: [{ id: 'uS4', email: 's4@example.com', display_name: 'Legacy Paid', payment_verified_at: { seconds: 1750000000 } }],
+            ...financeSeed('uS4', IN_PERIOD),
+        },
+        docs: { 'users/uS4/settings/email_preferences': { weekly_digest_enabled: true, delivery_day: wd, delivery_hour: hr, timezone: tz, metrics: ALL } },
+    });
+    const swL = await runWeeklyDigestSweep(dbLegacyPaid, { now: NOW, logger: silent });
+    check('legacy payment_verified_at counts as verified', swL.skippedUnverified === 0 && swL.due === 1,
+        `due=${swL.due} skippedUnverified=${swL.skippedUnverified}`);
 
     // 8) WORKSPACE SCOPING (regression: the digest reported 0 for weeks that had
     // data because it read the frozen pre-migration users/{uid} copy).
