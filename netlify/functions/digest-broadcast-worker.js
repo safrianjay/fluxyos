@@ -22,7 +22,12 @@ async function sendToOneUser(db, uid, { dryRun = false } = {}) {
     const prefs = await getEffectivePrefs(db, uid, rosterUser);
     if (!prefs.weekly_digest_enabled) return { skipped: 'digest_disabled', uid };
     const r = await generateWeeklyDigest(db, uid, prefs, { now: new Date(), logger: console, dryRun });
-    return { uid, ...r, prebuilt: undefined };
+    // Drop the rendered email rather than setting it to undefined: the result is
+    // written straight to the job doc, and Firestore rejects an undefined value —
+    // which fails the whole job AFTER the send has already happened.
+    const { prebuilt, ...rest } = r;
+    void prebuilt;
+    return { uid, ...rest };
 }
 
 exports.handler = schedule('*/2 * * * *', async () => {
