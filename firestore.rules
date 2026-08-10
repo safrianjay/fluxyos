@@ -2884,9 +2884,15 @@ service cloud.firestore {
     // per ISO week), so the abuse ceiling is "trigger this week's digest early".
     match /internal_digest_jobs/{jobId} {
       allow read: if true;
+      // `uid` targets ONE account instead of the whole roster. Optional — a job
+      // without it stays the original broadcast. Bounded like every other id here;
+      // the worker still applies the payment-verified gate, so naming a uid is a
+      // narrowing, never a way past the rule.
       allow create, update: if request.resource.data.keys().hasOnly([
-            'mode', 'status', 'requested_by', 'requested_at', 'started_at', 'finished_at', 'result', 'error'
+            'mode', 'status', 'requested_by', 'requested_at', 'started_at', 'finished_at', 'result', 'error', 'uid'
           ])
+        && (!('uid' in request.resource.data) || request.resource.data.uid == null
+          || (request.resource.data.uid is string && request.resource.data.uid.size() <= 128))
         && request.resource.data.mode in ['dryRun', 'send']
         && request.resource.data.status in ['pending', 'processing', 'done', 'failed']
         && request.resource.data.requested_by is string
