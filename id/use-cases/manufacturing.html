@@ -86,12 +86,35 @@
     {
       "@context": "https://schema.org",
       "@type": "Organization",
+      "@id": "https://fluxyos.com/#organization",
       "name": "FluxyOS",
+      "legalName": "PT SAF Teknologi Maju",
       "url": "https://fluxyos.com",
       "logo": "https://fluxyos.com/assets/images/favicon.svg",
-      "description": "AI-powered finance operations system for Indonesian small and medium businesses.",
-      "areaServed": { "@type": "Country", "name": "Indonesia" },
-      "contactPoint": { "@type": "ContactPoint", "contactType": "customer support", "email": "support@fluxyos.com", "availableLanguage": ["English", "Indonesian"] }
+      "description": "Platform operasional keuangan untuk bisnis Indonesia yang butuh visibilitas lebih jelas atas pendapatan, pengeluaran, anggaran, dan pergerakan kas.",
+      "foundingDate": "2026",
+      "areaServed": {
+        "@type": "Country",
+        "name": "Indonesia"
+      },
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Jakarta",
+        "addressCountry": "ID"
+      },
+      "sameAs": [
+        "https://www.linkedin.com/company/fluxyos/",
+        "https://www.instagram.com/fluxy_os/"
+      ],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "email": "support@fluxyos.com",
+        "availableLanguage": [
+          "English",
+          "Indonesian"
+        ]
+      }
     }
     </script>
     <script type="application/ld+json">
@@ -105,7 +128,12 @@
       "url": "https://fluxyos.com/id/use-cases/manufacturing",
       "inLanguage": "id-ID",
       "description": "FluxyOS adalah finance OS untuk perusahaan manufaktur. Pantau bahan baku, tagihan supplier, tenaga kerja, overhead mesin, work in progress, barang jadi, invoice, dan arus kas dalam satu view operasional.",
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "IDR", "availability": "https://schema.org/InStock" },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "IDR",
+        "availability": "https://schema.org/InStock"
+      },
       "featureList": [
         "Visibilitas biaya produksi per batch untuk bahan, tenaga kerja, dan overhead",
         "Pelacakan tagihan supplier dan purchase order untuk bahan baku dan packaging",
@@ -113,7 +141,10 @@
         "Visibilitas arus kas untuk deposit, pembayaran vendor, payroll, invoice, dan collection",
         "Review margin per lini produk, batch produksi, atau order pelanggan",
         "Ekspor siap PPN untuk transaksi, struk, invoice supplier, dan biaya operasional"
-      ]
+      ],
+      "publisher": {
+        "@id": "https://fluxyos.com/#organization"
+      }
     }
     </script>
     <script type="application/ld+json">

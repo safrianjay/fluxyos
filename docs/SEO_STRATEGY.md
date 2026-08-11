@@ -15,26 +15,75 @@ founders, finance professionals) and Bahasa Indonesia (broader SMB market).
 
 ## 1. Current State Assessment
 
-### What's good
-- ✅ Clean URL structure (`/vendorspend` not `?id=4`)
-- ✅ HTTPS via Netlify
-- ✅ Mobile-responsive (Tailwind)
-- ✅ Already-localized currency (Rp formatting)
-- ✅ Live JS language switcher (EN/ID)
+> **Audited 2026-08-12 against the live site and the repo.** The list below was
+> written at kickoff (2026-06) and had gone badly stale — it still described nine
+> shipped capabilities as missing, which is worse than no baseline: it sends the
+> next person to rebuild what already exists. Re-audit before trusting it, and
+> update it in the same commit as any change that moves an item.
 
-### What's missing (the big gaps)
-- ❌ No `<meta name="description">` on any page
-- ❌ No Open Graph or Twitter Card tags (link previews look generic)
-- ❌ No Schema.org structured data anywhere — **critical** for AI Overviews
-- ❌ No `sitemap.xml`
-- ❌ No `robots.txt`
-- ❌ No canonical URL tags
-- ❌ No FAQ sections on feature pages (huge AI Overview opportunity)
-- ❌ No `llms.txt` for AI search engines
-- ❌ Tailwind CDN — kills Largest Contentful Paint scores
-- ❌ Title tags are generic ("FluxyOS | Vendor Spend") — no keyword targeting
-- ❌ Most SVG icons missing `aria-label` / `<title>` for accessibility (also a search signal)
-- ❌ No analytics / Search Console wired
+### Shipped (verify before "adding" any of these — they exist)
+- ✅ Clean URL structure (`/vendorspend` not `?id=4`), HTTPS, mobile-responsive
+- ✅ `<meta name="description">` on every landing page — enforced by the PRODUCT
+      lane of `npm run qa` ("SEO essentials on changed landing pages")
+- ✅ Open Graph + Twitter Card tags, with per-page OG images
+- ✅ Canonical URLs, and reciprocal `hreflang` (en / id / x-default)
+- ✅ Schema.org on every landing page — 125 JSON-LD blocks sitewide, covering
+      `Organization`, `WebSite`, `SoftwareApplication`, `Product`, `FAQPage`,
+      `BreadcrumbList`. **One canonical Organization entity**, defined in
+      `seo/organization.json` and propagated by `npm run seo:sync-org`; every
+      page shares `@id: https://fluxyos.com/#organization`, and product nodes
+      reference it rather than minting duplicates
+- ✅ `sitemap.xml` (33 URLs, hreflang pairs) and `robots.txt` that explicitly
+      allows GPTBot / ClaudeBot / PerplexityBot / Google-Extended / CCBot
+- ✅ `llms.txt` with an explicit category definition and competitor framing
+- ✅ Visible FAQ sections + `FAQPage` schema on all landing pages, **including
+      all 16 EN/ID use-case pages**
+- ✅ Unique, keyword-targeted titles (e.g. "Vendor Spend Management for
+      Indonesian SMBs | FluxyOS") — no longer the generic "FluxyOS | X"
+- ✅ Real `/id/` Bahasa pages (homepage, pricing, 5 features, 8 use-cases)
+- ✅ Compiled Tailwind on landing pages (`npm run build:css`) — CDN removed there
+- ✅ GA4 + Microsoft Clarity wired; Search Console connected
+- ✅ Entity identity: `legalName` (PT SAF Teknologi Maju), `foundingDate`,
+      `address`, and `sameAs` → LinkedIn + Instagram
+- ✅ Internal source tree pruned from the published output (`prepare-deploy.js`);
+      `docs/*.md`, `firestore.rules`, `scripts/` etc. previously served 200 as
+      indexable `text/markdown`
+
+### Still open (genuinely)
+- ❌ **No content layer** — no blog, no comparison pages, no glossary. This is
+      the AEO gap: AI Overviews for category queries cite listicles on aged
+      domains (hashmicro, jurnal.id, password.co.id), and we have nothing citable
+- ❌ **41 app pages still on the Tailwind CDN.** Landing pages are migrated; the
+      app is not, which is why the CSP still whitelists `cdn.tailwindcss.com`.
+      Don't remove that CSP entry until the app pages move too
+- ❌ **SVG icons are unlabelled** — 0 `aria-label` and only 4 `aria-hidden`
+      across 89 `<svg>` on the homepage. Most are decorative, so the correct fix
+      is `aria-hidden="true"`, not inventing labels
+- ❌ **No customer reviews.** A fabricated `aggregateRating` (4.9 / 126) was
+      removed 2026-08-12; a commented template in `pricing.html` is ready for
+      real, consented reviews
+
+### The actual constraint (read this before planning tactics)
+
+The technical fundamentals are **done**, and they were never what was holding
+rankings back. Two things are:
+
+1. **Domain age and authority.** PT SAF Teknologi Maju was founded in 2026. The
+   domain is months old. No markup change shortcuts this.
+2. **Zero third-party corroboration.** As of 2026-08-12 a web search for
+   `"fluxyos.com"` returns *only* our own pages — no directory listings, no
+   press, no reviews. The brand token also collides with fluxos.one, flux.ai and
+   Flux Indonesia, so Google has both no evidence and an ambiguous name.
+
+`sameAs` now points at real claimed profiles, so corroboration will attach to a
+coherent entity when it arrives — but **it has to arrive**. The highest-leverage
+work is off-page (§11), not on-page. Treat further on-page micro-optimisation as
+low-yield until §11 has moved.
+
+**A note on brand queries:** googling "fluxyos" will not show an AI Overview.
+Google suppresses them on navigational brand queries. The box that belongs there
+is a **Knowledge Panel**, which is an entity-recognition outcome driven by items
+1–2 above — not a structured-data outcome. Don't treat its absence as a schema bug.
 
 ---
 
@@ -54,13 +103,19 @@ Define these BEFORE running tactics, so we can measure impact:
 | Core Web Vitals — INP | PSI | unknown | <200ms |
 | Core Web Vitals — CLS | PSI | unknown | <0.1 |
 
+> ⚠️ **The "Baseline (today)" column is from 2026-06 and is not current.** A GSC
+> review on 2026-06-23 already showed 279 impressions / 9 clicks / avg position
+> 20.1 — not the zeroes above. Re-baseline from Search Console before measuring
+> against these targets, and don't quote a number from this table as fact.
+
 ---
 
 ## 3. Strategy Pillars
 
-### Pillar A — Technical Foundation
-The non-negotiables: meta tags, sitemap, schema, performance. Must be in place
-before any other tactic returns value.
+### Pillar A — Technical Foundation ✅ COMPLETE (2026-08-12)
+Meta tags, sitemap, schema, canonicals, hreflang, compiled CSS on landing pages.
+**Done — see §1.** Further effort here is low-yield; the binding constraints are
+Pillars D and E.
 
 ### Pillar B — AI Overview Optimization
 Google's AI Overview pulls authoritative, structured content. Optimizing for it

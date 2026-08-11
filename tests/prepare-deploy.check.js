@@ -33,13 +33,29 @@ function assert(cond, label) {
 // Copy only what prepare-deploy touches/needs (root html + config files,
 // deploy/, scripts/, netlify/functions/, and the marketing dirs) — fast and
 // avoids dragging node_modules/.git along.
+//
+// docs/ and tests/ ARE copied: the source-tree prune is asserted below, and
+// skipping them here would make those assertions pass vacuously.
 function makeFixture(tag) {
     const dest = fs.mkdtempSync(path.join(os.tmpdir(), `fluxyos-deploy-${tag}-`));
     for (const entry of fs.readdirSync(ROOT)) {
-        if (['node_modules', '.git', '.netlify', 'tests', 'docs'].includes(entry)) continue;
+        if (['node_modules', '.git', '.netlify'].includes(entry)) continue;
         fs.cpSync(path.join(ROOT, entry), path.join(dest, entry), { recursive: true });
     }
     return dest;
+}
+
+// The publish dir is the repo root, so anything prepare-deploy leaves behind is
+// publicly fetchable. Asserted for BOTH roles.
+function assertSourceTreePruned(dir, role) {
+    for (const p of ['docs', 'tests', 'scripts', 'seo', 'firestore.rules', 'storage.rules', 'CLAUDE.md']) {
+        assert(!exists(dir, p), `${role}: ${p} not published`);
+    }
+    // Pruning these would break the deploy — functions resolve ../../functions/lib/*
+    // and ../../../assets/js/*, and package.json is read during functions bundling.
+    for (const p of ['functions', 'assets', 'package.json', 'netlify.toml']) {
+        assert(exists(dir, p), `${role}: ${p} kept (deploy needs it)`);
+    }
 }
 
 function run(dir, role) {
@@ -62,6 +78,10 @@ console.log('SITE_ROLE unset (monolith no-op):');
     });
     assert(exists(dir, 'dashboard.html') && exists(dir, 'fluxyos.html'), 'nothing pruned');
     assert(!exists(dir, '_redirects'), 'no _redirects generated');
+    // The no-op path is load-bearing for local dev, Playwright, deploy previews
+    // and rollback — the source tree must survive it untouched.
+    assert(exists(dir, 'docs') && exists(dir, 'scripts') && exists(dir, 'firestore.rules'),
+        'source tree untouched in no-op mode');
     fs.rmSync(dir, { recursive: true, force: true });
 }
 
@@ -78,6 +98,7 @@ console.log('SITE_ROLE=marketing (fluxyos.com apex):');
     assert(exists(dir, 'netlify/functions/api.js') && exists(dir, 'netlify/functions/submit-contact-sales.js'), 'request-driven functions kept');
     assert(exists(dir, 'sitemap.xml') && read(dir, 'robots.txt').includes('Allow'), 'sitemap + robots untouched');
     assert(!exists(dir, 'deploy'), 'deploy/ templates removed');
+    assertSourceTreePruned(dir, 'marketing');
     assert(!exists(dir, '_headers'), 'no _headers on marketing');
 
     const r = read(dir, '_redirects');
@@ -103,6 +124,7 @@ console.log('SITE_ROLE=app (dashboard.fluxyos.com):');
     assert(read(dir, '_headers').includes('X-Robots-Tag: noindex, nofollow'), 'noindex _headers written');
     assert(exists(dir, 'netlify/functions/notify-sweep.js'), 'scheduled functions kept on app site');
     assert(!exists(dir, 'deploy'), 'deploy/ templates removed');
+    assertSourceTreePruned(dir, 'app');
 
     const r = read(dir, '_redirects');
     assert(r.includes('/pricing       https://fluxyos.com/pricing  301!'), 'marketing-path 301 generated (/pricing)');

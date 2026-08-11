@@ -86,12 +86,35 @@
     {
       "@context": "https://schema.org",
       "@type": "Organization",
+      "@id": "https://fluxyos.com/#organization",
       "name": "FluxyOS",
+      "legalName": "PT SAF Teknologi Maju",
       "url": "https://fluxyos.com",
       "logo": "https://fluxyos.com/assets/images/favicon.svg",
-      "description": "AI-powered finance operations system for Indonesian small and medium businesses.",
-      "areaServed": { "@type": "Country", "name": "Indonesia" },
-      "contactPoint": { "@type": "ContactPoint", "contactType": "customer support", "email": "support@fluxyos.com", "availableLanguage": ["English", "Indonesian"] }
+      "description": "Finance operations platform for Indonesian businesses that need clearer visibility across revenue, expenses, budgets, and cash movement.",
+      "foundingDate": "2026",
+      "areaServed": {
+        "@type": "Country",
+        "name": "Indonesia"
+      },
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Jakarta",
+        "addressCountry": "ID"
+      },
+      "sameAs": [
+        "https://www.linkedin.com/company/fluxyos/",
+        "https://www.instagram.com/fluxy_os/"
+      ],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "email": "support@fluxyos.com",
+        "availableLanguage": [
+          "English",
+          "Indonesian"
+        ]
+      }
     }
     </script>
     <script type="application/ld+json">
@@ -105,7 +128,12 @@
       "url": "https://fluxyos.com/use-cases/manufacturing",
       "inLanguage": "en-US",
       "description": "FluxyOS is a finance OS for manufacturing companies. Track raw materials, supplier bills, labor, machine overhead, work in progress, finished goods, invoices, and cash movement in one operating view.",
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "IDR", "availability": "https://schema.org/InStock" },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "IDR",
+        "availability": "https://schema.org/InStock"
+      },
       "featureList": [
         "Batch-level production cost visibility for materials, labor, and overhead",
         "Supplier bill and purchase order tracking for raw materials and packaging",
@@ -113,7 +141,10 @@
         "Cash-flow visibility across deposits, vendor payments, payroll, invoices, and collections",
         "Margin review by product line, production run, or customer order",
         "PPN-ready exports for transactions, receipts, supplier invoices, and operating costs"
-      ]
+      ],
+      "publisher": {
+        "@id": "https://fluxyos.com/#organization"
+      }
     }
     </script>
     <script type="application/ld+json">

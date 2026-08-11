@@ -64,12 +64,35 @@
     {
       "@context": "https://schema.org",
       "@type": "Organization",
+      "@id": "https://fluxyos.com/#organization",
       "name": "FluxyOS",
+      "legalName": "PT SAF Teknologi Maju",
       "url": "https://fluxyos.com",
       "logo": "https://fluxyos.com/assets/images/favicon.svg",
-      "description": "AI-powered finance operations system for Indonesian small and medium businesses.",
-      "areaServed": { "@type": "Country", "name": "Indonesia" },
-      "contactPoint": { "@type": "ContactPoint", "contactType": "customer support", "email": "support@fluxyos.com", "availableLanguage": ["English", "Indonesian"] }
+      "description": "Platform operasional keuangan untuk bisnis Indonesia yang butuh visibilitas lebih jelas atas pendapatan, pengeluaran, anggaran, dan pergerakan kas.",
+      "foundingDate": "2026",
+      "areaServed": {
+        "@type": "Country",
+        "name": "Indonesia"
+      },
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Jakarta",
+        "addressCountry": "ID"
+      },
+      "sameAs": [
+        "https://www.linkedin.com/company/fluxyos/",
+        "https://www.instagram.com/fluxy_os/"
+      ],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "email": "support@fluxyos.com",
+        "availableLanguage": [
+          "English",
+          "Indonesian"
+        ]
+      }
     }
     </script>
     <script type="application/ld+json">
@@ -83,7 +106,12 @@
       "url": "https://fluxyos.com/id/use-cases/retail-franchises",
       "inLanguage": "id-ID",
       "description": "FluxyOS is a finance operations system for retail and franchise businesses. It consolidates POS revenue, bank settlements, supplier invoices, receipts, budgets, vendor payments, and branch-level P&L across multiple outlets.",
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "IDR", "availability": "https://schema.org/InStock" },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "IDR",
+        "availability": "https://schema.org/InStock"
+      },
       "featureList": [
         "P&L per cabang berdasarkan outlet",
         "Pencocokan POS dan settlement bank",
@@ -93,7 +121,10 @@
         "Deteksi pembayaran vendor ganda",
         "Perbandingan performa franchise",
         "Persiapan month-end close"
-      ]
+      ],
+      "publisher": {
+        "@id": "https://fluxyos.com/#organization"
+      }
     }
     </script>
     <script type="application/ld+json">

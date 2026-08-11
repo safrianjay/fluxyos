@@ -12,6 +12,8 @@
     "check:statements-workbook": "node tests/statements-workbook.check.js",
     "check:ai-statements": "node tests/ai-statement-routing.check.js",
     "check:deploy": "node tests/prepare-deploy.check.js",
+    "seo:sync-org": "node scripts/sync-org-schema.js",
+    "seo:check-org": "node scripts/sync-org-schema.js --check",
     "qa": "node scripts/qa-run.js",
     "qa:design": "node scripts/qa/lint-design.js",
     "cbm:extract": "node scripts/cbm-extract-inline.js",

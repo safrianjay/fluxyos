@@ -36,7 +36,8 @@ those records: invoice capture, vendor approvals, bank reconciliation,
 duplicate detection, and tax-ready exports. It pushes cleaned data into your
 existing accounting tool if you keep one.
 
-## Optional reading
+## Bahasa Indonesia
 
-- [Localization plan](https://fluxyos.com/LOCALIZATION_PLAN.md): How FluxyOS handles English and Bahasa Indonesia
-- [SEO strategy](https://fluxyos.com/SEO_STRATEGY.md): How the site is structured for Google + AI search engines
+FluxyOS ships fully in Bahasa Indonesia. Every page below has an Indonesian
+counterpart under `/id/` — for example https://fluxyos.com/id/pricing — and the
+product interface itself defaults to Indonesian.

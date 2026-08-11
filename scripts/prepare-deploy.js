@@ -134,6 +134,30 @@ const SCHEDULED_FUNCTIONS = [
     'weekly-digest.js',
 ];
 
+// Source-tree paths that must never be publicly served. The publish dir is the
+// repo root, so anything left behind is fetchable — docs/PROJECT_BACKGROUND.md,
+// firestore.rules and friends were all returning 200 on production until this
+// pruning was added (2026-08-12). They also served as text/markdown under an
+// allow-all robots.txt, so they were indexable as thin content on the domain.
+//
+// Deliberately NOT pruned, because the deploy genuinely needs them:
+//   functions/      required by netlify/functions/* via ../../functions/lib/*
+//   assets/         served, and required by the invoice-email function
+//   node_modules/   netlify.toml included_files pins @sparticuz/chromium
+//   package*.json   read during the functions-bundling phase, which runs AFTER
+//                   the build command — removing it risks breaking the bundle
+//   netlify.toml    build/deploy configuration
+const PRIVATE_DIRS = ['docs', 'tests', 'scripts', 'seo', '.githooks', 'cbm-extracted'];
+const PRIVATE_FILES = [
+    'firestore.rules',
+    'storage.rules',
+    'firestore.indexes.json',
+    'firebase.json',
+    'cors.json',
+    'tailwind.config.js',
+    'playwright.config.js',
+];
+
 // ---------------------------------------------------------------------------
 
 function fail(msg) {
@@ -244,6 +268,19 @@ function prepareApp() {
     installRedirects('app', '# {{MARKETING_PAGE_REDIRECTS}}', pageRedirects(MARKETING_PAGES, MARKETING_ORIGIN));
 }
 
+// Strip the source tree from the published output. Runs for BOTH roles, and
+// only after the role branch — with SITE_ROLE unset this is never reached, so
+// local dev / Playwright / deploy previews / rollback keep the full monolith.
+// This deletes scripts/ (including this file) last; Node has already loaded the
+// module, so removing it mid-run is safe.
+function pruneSourceTree() {
+    PRIVATE_FILES.forEach(rm);
+    fs.readdirSync(ROOT)
+        .filter((f) => f.toLowerCase().endsWith('.md'))
+        .forEach(rm);
+    PRIVATE_DIRS.forEach(rm);
+}
+
 function main() {
     const role = (process.env.SITE_ROLE || '').trim();
 
@@ -263,6 +300,7 @@ function main() {
 
     // Templates must not ship as public files (publish dir is the repo root).
     rm('deploy');
+    pruneSourceTree();
     console.log(`[prepare-deploy] done (${role}).`);
 }
 

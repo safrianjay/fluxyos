@@ -84,16 +84,34 @@
     {
       "@context": "https://schema.org",
       "@type": "Organization",
+      "@id": "https://fluxyos.com/#organization",
       "name": "FluxyOS",
+      "legalName": "PT SAF Teknologi Maju",
       "url": "https://fluxyos.com",
       "logo": "https://fluxyos.com/assets/images/favicon.svg",
-      "description": "Finance operations platform for Indonesian businesses that need clearer visibility across revenue, expenses, budgets, and cash movement.",
-      "areaServed": { "@type": "Country", "name": "Indonesia" },
+      "description": "Platform operasional keuangan untuk bisnis Indonesia yang butuh visibilitas lebih jelas atas pendapatan, pengeluaran, anggaran, dan pergerakan kas.",
+      "foundingDate": "2026",
+      "areaServed": {
+        "@type": "Country",
+        "name": "Indonesia"
+      },
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Jakarta",
+        "addressCountry": "ID"
+      },
+      "sameAs": [
+        "https://www.linkedin.com/company/fluxyos/",
+        "https://www.instagram.com/fluxy_os/"
+      ],
       "contactPoint": {
         "@type": "ContactPoint",
         "contactType": "customer support",
         "email": "support@fluxyos.com",
-        "availableLanguage": ["English", "Indonesian"]
+        "availableLanguage": [
+          "English",
+          "Indonesian"
+        ]
       }
     }
     </script>
@@ -123,7 +141,10 @@
         "Receipt and invoice capture",
         "Fluxy AI finance questions based on authenticated FluxyOS data",
         "Export-ready reports"
-      ]
+      ],
+      "publisher": {
+        "@id": "https://fluxyos.com/#organization"
+      }
     }
     </script>
     <script type="application/ld+json">

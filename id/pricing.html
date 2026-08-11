@@ -47,14 +47,26 @@
     {
       "@context": "https://schema.org",
       "@type": "Organization",
+      "@id": "https://fluxyos.com/#organization",
       "name": "FluxyOS",
+      "legalName": "PT SAF Teknologi Maju",
       "url": "https://fluxyos.com",
       "logo": "https://fluxyos.com/assets/images/favicon.svg",
-      "description": "AI-powered Finance Operations System for Indonesian small and medium businesses.",
+      "description": "Platform operasional keuangan untuk bisnis Indonesia yang butuh visibilitas lebih jelas atas pendapatan, pengeluaran, anggaran, dan pergerakan kas.",
+      "foundingDate": "2026",
       "areaServed": {
         "@type": "Country",
         "name": "Indonesia"
       },
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Jakarta",
+        "addressCountry": "ID"
+      },
+      "sameAs": [
+        "https://www.linkedin.com/company/fluxyos/",
+        "https://www.instagram.com/fluxy_os/"
+      ],
       "contactPoint": {
         "@type": "ContactPoint",
         "contactType": "customer support",
@@ -93,8 +105,7 @@
       "name": "FluxyOS",
       "description": "FluxyOS is a finance operating system for scaling businesses, with an AI Finance Analyst, budget control, bill operations, and cash flow intelligence.",
       "brand": {
-        "@type": "Brand",
-        "name": "FluxyOS"
+        "@id": "https://fluxyos.com/#organization"
       },
       "offers": {
         "@type": "AggregateOffer",
@@ -103,14 +114,7 @@
         "priceCurrency": "IDR",
         "offerCount": "3",
         "availability": "https://schema.org/InStock",
-        "url": "https://fluxyos.com/pricing"
-      },
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.9",
-        "reviewCount": "126",
-        "bestRating": "5",
-        "worstRating": "1"
+        "url": "https://fluxyos.com/id/pricing"
       }
     }
     </script>
@@ -685,25 +689,74 @@
         </div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- TRUST METRICS & FOOTER                     -->
-    <!-- ========================================== -->
-    <div class="max-w-4xl mx-auto px-6 text-center pb-20 border-t border-gray-200 pt-16">
-        <div class="flex items-center justify-center gap-2 mb-8">
-            <span class="text-[#EA580C] text-[18px] leading-none" aria-hidden="true">★★★★★</span>
-            <span class="text-[14px] font-semibold text-gray-900 tabular-nums">4.9</span>
-            <span class="text-[14px] text-gray-500">dari 126 ulasan</span>
+    <!-- ==========================================================================
+         ULASAN PELANGGAN — TEMPLATE, BELUM LIVE. Jangan di-uncomment saat kosong.
+
+         Menggantikan blok "4.9 dari 126 ulasan" yang tidak berdasar (beserta
+         empat logo klien fiktif), dihapus 2026-08-12. Dikirim dalam bentuk
+         komentar agar tidak ada klaim yang belum terverifikasi tampil.
+
+         SYARAT SEBELUM LIVE, untuk SETIAP ulasan, keempatnya harus benar:
+           1. pelanggan nyata yang sudah setuju tertulis untuk dikutip
+           2. kutipan adalah kalimat mereka sendiri, bukan tulisan tim
+           3. ulasan yang sama tampil di halaman DAN di JSON-LD di bawah
+           4. reviewCount / ratingValue sama dengan jumlah kartu yang tampil
+
+         Google mewajibkan rating dikumpulkan secara nyata dan terlihat di
+         halaman. Rating yang dibuat sendiri melanggar kebijakan structured data
+         dan berisiko manual action yang menekan seluruh domain — kebalikan dari
+         tujuan bagian ini. Kalau ulasan siap kurang dari 3, tampilkan kartunya
+         TANPA blok aggregateRating.
+
+         Samakan setiap perubahan dengan pricing.html (EN), sesuai aturan pair-edit.
+
+    <section class="max-w-6xl mx-auto px-6 pb-20">
+        <h2 class="text-[36px] md:text-[36px] font-light text-gray-900 text-center mb-3 tracking-tight">Kata tim keuangan</h2>
+        <p class="text-[16px] text-gray-500 text-center mb-12 max-w-[620px] mx-auto">Semua kutipan di bawah berasal dari pelanggan bernama yang sudah setuju dipublikasikan.</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+
+            ULANGI SATU <article> PER ULASAN — hapus sisanya.
+            <article class="bg-white border border-gray-200 rounded-xl shadow-sm p-8">
+                <p class="text-[16px] text-gray-700 leading-relaxed mb-6">"ISI ULASAN — kalimat pelanggan sendiri."</p>
+                <div class="flex items-center gap-3">
+                    <div>
+                        <div class="text-[14px] font-semibold text-gray-900">NAMA LENGKAP</div>
+                        <div class="text-[14px] text-gray-500">JABATAN, PERUSAHAAN</div>
+                    </div>
+                </div>
+            </article>
+
         </div>
-        <h4 class="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-8">Dipercaya tim keuangan di seluruh Asia Tenggara</h4>
-        <div class="flex flex-wrap justify-center gap-8 opacity-40 grayscale">
-            <span class="text-xl font-bold font-serif">Astra<span class="font-light">Ritel</span></span>
-            <span class="text-xl font-black italic tracking-tighter">TECH<span class="text-gray-500">CORP</span></span>
-            <span class="text-xl font-medium tracking-widest">SPLIT<span class="font-bold">CIRCLE</span></span>
-            <span class="text-xl font-mono font-bold">He<span class="opacity-50">bat</span>.</span>
-        </div>
-        
-        <p class="mt-16 text-[11px] font-medium text-gray-400 font-mono">
-            FluxyOS Core System v2.4.1 &copy; 2026 FluxyOS Inc.
+    </section>
+
+    DAN JSON-LD pasangannya, digabungkan ke node Product di <head>.
+    reviewCount HARUS sama dengan jumlah kartu <article> yang tampil.
+
+      "review": [
+        {
+          "@type": "Review",
+          "author": { "@type": "Person", "name": "NAMA LENGKAP" },
+          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5", "worstRating": "1" },
+          "reviewBody": "ISI ULASAN — identik dengan kartu yang tampil di atas.",
+          "datePublished": "YYYY-MM-DD"
+        }
+      ],
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "RATA-RATA SEBENARNYA",
+        "reviewCount": "JUMLAH ULASAN DI ATAS",
+        "bestRating": "5",
+        "worstRating": "1"
+      }
+    ========================================================================== -->
+
+    <!-- ========================================== -->
+    <!-- FOOTER                                     -->
+    <!-- ========================================== -->
+    <div class="max-w-4xl mx-auto px-6 text-center pb-10 border-t border-gray-200 pt-8">
+        <p class="text-[12px] font-medium text-gray-400">
+            &copy; 2026 PT SAF Teknologi Maju
         </p>
     </div>
 

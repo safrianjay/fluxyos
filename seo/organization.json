@@ -1,0 +1,51 @@
+{
+  "_comment": [
+    "Canonical FluxyOS Organization entity, injected into every page's JSON-LD by",
+    "`npm run seo:sync-org` (scripts/sync-org-schema.js).",
+    "",
+    "WHY THIS FILE EXISTS: the site has no build step, so the Organization block was",
+    "copy-pasted into 33 HTML files and had drifted into 7 variants with 5 different",
+    "descriptions of the same entity. Search engines consolidate an entity from",
+    "consistent, repeated signals; five descriptions is five weak signals instead of",
+    "one strong one. Edit this file, run the script, and all 33 stay identical.",
+    "",
+    "`sameAs` is the strongest entity signal available to us and the main reason this",
+    "machinery exists. ONLY list profiles that are live, claimed, and publicly",
+    "reachable — a sameAs pointing at a 404 or an unclaimed page is a spam signal,",
+    "not a ranking one. Empty values are omitted from the output entirely.",
+    "",
+    "Per-page `contactPoint` is NOT managed here: it legitimately varies by page",
+    "(support / sales / legal / privacy) and the script preserves whatever each page",
+    "already declares."
+  ],
+
+  "@id": "https://fluxyos.com/#organization",
+  "name": "FluxyOS",
+  "url": "https://fluxyos.com",
+  "logo": "https://fluxyos.com/assets/images/favicon.svg",
+
+  "description": {
+    "en": "Finance operations platform for Indonesian businesses that need clearer visibility across revenue, expenses, budgets, and cash movement.",
+    "id": "Platform operasional keuangan untuk bisnis Indonesia yang butuh visibilitas lebih jelas atas pendapatan, pengeluaran, anggaran, dan pergerakan kas."
+  },
+
+  "areaServed": {
+    "@type": "Country",
+    "name": "Indonesia"
+  },
+
+  "sameAs": [
+    "https://www.linkedin.com/company/fluxyos/",
+    "https://www.instagram.com/fluxy_os/"
+  ],
+
+  "legalName": "PT SAF Teknologi Maju",
+  "foundingDate": "2026",
+
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Jakarta",
+    "addressRegion": "",
+    "addressCountry": "ID"
+  }
+}
