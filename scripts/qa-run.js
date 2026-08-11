@@ -301,6 +301,13 @@ function seoEssentials(changed) {
     const abs = path.join(REPO_ROOT, f);
     if (!fs.existsSync(abs)) continue;
     const html = fs.readFileSync(abs, 'utf8');
+    // A page that declares noindex has no search surface, so the discovery
+    // rules in SEO_STRATEGY.md do not apply to it — requiring Open Graph and
+    // JSON-LD on a private, unlisted page asks for rich previews of something
+    // deliberately kept out of search. The private-link pages (investor.html,
+    // beila.html) are the cases; they are in MARKETING_PAGES only because that
+    // list decides which ORIGIN serves a page, not whether it is a landing page.
+    if (/<meta[^>]+name=["']robots["'][^>]*noindex/i.test(html)) continue;
     const need = [
       [/<title>[^<]{1,70}<\/title>/i, '<title>'],
       [/<meta[^>]+name=["']description["']/i, 'meta description'],
