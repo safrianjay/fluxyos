@@ -221,6 +221,8 @@ body.access-locked { overflow: hidden; }
 .data-list table tr.total-row td { border-bottom: 1.5px solid var(--line-strong); font-weight: 700; }
 .data-list table tr:first-child td, .data-list table tr:first-child th { border-top: 1.5px solid var(--line-strong); }
 .data-list table td.right { text-align: right; font-weight: 700; white-space: nowrap; }
+.data-list-note { margin-top: 12px; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+.data-list-note strong { color: var(--ink); font-variant-numeric: tabular-nums; }
 
 .callout-block .kicker { margin-bottom: 10px; }
 .callout-block .value { font-size: 23px; font-weight: 700; color: var(--ink); line-height: 1.2; margin-bottom: 8px; }
@@ -500,7 +502,7 @@ input[type="range"]::-moz-range-thumb {
   .uof-list-tbl td { padding: 14px 0; }
   .terms-table td { padding: 9px 10px; }
   .terms-table th { padding: 11px 10px; }
-  .italic-note, .assumption-note { margin-top: 14px; }
+  .italic-note, .assumption-note { margin-top: 10px; }
   .assumption-note { padding-top: 12px; }
   .calc-embed { margin-top: 16px; padding: 16px 18px; }
   .calc-embed .calc-sub { margin-bottom: 12px; }
@@ -787,6 +789,9 @@ input[type="range"]::-moz-range-thumb {
         <tr><td>Blended cost of goods</td><td class="right">Rp 50.847</td></tr>
         <tr class="total-row"><td>Gross margin per unit</td><td class="right">53.5%</td></tr>
       </table>
+      <div class="data-list-note">
+        Core hijab SKUs produce at <strong>Rp 25.000</strong> / unit (Rp 10M per 400 pcs). The blended figure above spans all 19 SKUs, including outerwear at a far higher unit cost.
+      </div>
     </div>
     <div class="data-list">
       <div class="data-list-head">Monthly Opex — Actual</div>
@@ -1313,7 +1318,7 @@ input[type="range"]::-moz-range-thumb {
     </div>
   </div>
   <div class="italic-note">
-    Defaults are Beila's actuals: Rp 1.7M monthly opex (packaging + ads + entertain), Rp 50.847 blended cost of goods, Rp 109.328 average selling price. Exact break-even is 29.1 units, rounded up to the 30th unit actually needed to cover fixed cost. At the current run-rate of ~108 units per month, Beila operates well above break-even.
+    Defaults are Beila's actuals: Rp 1.7M monthly opex (packaging + ads + entertain), Rp 50.847 blended cost of goods, Rp 109.328 average selling price. <strong>v</strong> is the blended cost across all 19 SKUs, not the factory price of one — core hijab SKUs produce at Rp 25.000 / unit (Rp 10M per 400 pcs), while outerwear costs multiples of that. Exact break-even is 29.1 units, rounded up to the 30th unit actually needed to cover fixed cost. At the current run-rate of ~108 units per month, Beila operates well above break-even.
   </div>
   <div class="slide-footer"><span class="brand">Beila Scarves</span><span>17 / 17</span></div>
 </section>
