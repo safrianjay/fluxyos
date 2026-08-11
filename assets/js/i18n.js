@@ -53,8 +53,8 @@
         // ── Navbar — Platform column ────────────────────────────────────────
         "FluxyOS AI Agents": "FluxyOS AI Agents",
         "Multiply finance efficiency instantly": "Lipat-gandakan efisiensi keuangan",
-        "Global Ready": "Siap Global",
-        "Reconcile 120+ currencies globally": "Cocokkan 120+ mata uang dunia",
+        "Multi-Currency": "Siap Global",
+        "Invoice in IDR, USD, and SGD": "Invoice dalam IDR, USD, dan SGD",
         "Native Integrations": "Integrasi Bawaan",
         "Connect ERPs, HRIS & Productivity": "Hubungkan ERP, HRIS & tools",
 
@@ -170,8 +170,8 @@
 
         // ── Revenue Sync page ───────────────────────────────────────────────
         "Sync revenue from every channel, instantly": "Sinkronkan pendapatan dari semua saluran, instan",
-        "Connect Stripe, Shopify, Tokopedia, TikTok Shop, Gumroad, and 250+ platforms. Every transaction syncs to your ledger in under 30 seconds. No manual work. Pure automation.":
-            "Hubungkan Stripe, Shopify, Tokopedia, TikTok Shop, dan 250+ platform. Setiap transaksi masuk ke ledger Anda dalam 30 detik. Tanpa kerjaan manual.",
+        "Connect TikTok Shop and Shopee. Orders, refunds, and settlements post straight to your double-entry ledger, so marketplace revenue reconciles itself.":
+            "Hubungkan TikTok Shop dan Shopee. Pesanan, refund, dan settlement langsung masuk ke buku besar double-entry Anda, jadi omzet marketplace rekonsiliasi sendiri.",
         "Start Syncing Now": "Mulai Sinkronisasi",
         "Explore Integrations": "Jelajahi Integrasi",
         "TPV Synced": "Total Volume Sync",
@@ -341,7 +341,7 @@
         "Payment method": "Metode pembayaran",
         "Cash, card, GoPay, OVO — matched to source.": "Tunai, kartu, GoPay, OVO — dicocokkan dengan sumber.",
         "Confidence scores on every field": "Skor confidence di setiap kolom",
-        "Below 90%? Fluxy AI flags it for a quick human review. No silent mistakes in your books.":
+        "Low-confidence fields are flagged for a quick human review. No silent mistakes in your books.":
             "Di bawah 90%? Fluxy AI flag untuk Anda cek cepat. Tidak ada kesalahan diam-diam di pembukuan.",
         "From shoebox to dashboard —": "Dari kotak struk ke dashboard —",
         "automatically.": "otomatis.",
@@ -405,7 +405,7 @@
         "PPN summaries, tax-ready exports, and a clean record of every receipt — so when your accountant asks, the answer is two clicks away.":
             "Rangkuman PPN, ekspor siap pajak, dan catatan rapi setiap struk — supaya saat akuntan tanya, jawabannya dua klik saja.",
         "~2 days / quarter": "~2 hari / kuartal",
-        "All six together: about 32 hours back every month.": "Keenamnya: sekitar 32 jam kembali setiap bulan.",
+        "All six together take the repetitive work off your team.": "Keenamnya mengambil alih pekerjaan berulang dari tim Anda.",
         "That's 4 working days you spend on running your business instead of bookkeeping.": "Itu 4 hari kerja untuk fokus jalankan bisnis, bukan pembukuan.",
         "A Tuesday in November.": "Selasa di bulan November.",
         "Here's what your team gets done while you're in meetings, on Slack, or asleep. Real timestamps, real actions.":
@@ -470,8 +470,8 @@
             "Tools akuntansi seperti Xero, QuickBooks, dan Jurnal mencatat apa yang sudah terjadi. FluxyOS Vendor Spend mengotomasi pekerjaan yang menghasilkan catatan itu — tangkap invoice, atur alur approval, jadwalkan pembayaran, dan posting ke ledger. Anda bisa pakai FluxyOS bersama tools akuntansi yang ada; kami push data yang sudah rapi ke sana.",
         "Does FluxyOS support Indonesian banks?":
             "Apakah FluxyOS mendukung bank Indonesia?",
-        "Yes. FluxyOS connects to BCA, Mandiri, BNI, BRI, and 10+ other Indonesian banks for automated reconciliation. Multi-currency support handles USD, SGD, and 120+ other currencies if you also pay international vendors.":
-            "Ya. FluxyOS terhubung ke BCA, Mandiri, BNI, BRI, dan 10+ bank Indonesia lain untuk rekonsiliasi otomatis. Dukungan multi-mata uang menangani USD, SGD, dan 120+ mata uang lain kalau Anda juga bayar vendor internasional.",
+        "Yes. FluxyOS imports statements from BCA, Mandiri, BNI, BRI, and other Indonesian banks for reconciliation. If you also pay international vendors, invoices support IDR, USD, and SGD, and a foreign-currency invoice is converted at the live rate when it is paid.":
+            "Ya. FluxyOS mengimpor rekening koran dari BCA, Mandiri, BNI, BRI, dan bank Indonesia lain untuk rekonsiliasi. Kalau Anda juga bayar vendor luar negeri, invoice mendukung IDR, USD, dan SGD, dan invoice mata uang asing dikonversi dengan kurs live saat dibayar.",
         "Can I set custom approval rules for vendor payments?":
             "Bisa atur aturan approval custom untuk pembayaran vendor?",
         "Yes. You can set rules by amount (e.g., anything over Rp 5M needs a director), by category (new vendors require procurement review), or by team (marketing budget is approved by the marketing lead). Approvers get a Slack notification and approve in one click.":
@@ -492,7 +492,7 @@
         "No — they hand off the routine work so your finance team can focus on judgment calls and strategy. Most teams need 4 minutes per day to review what the agents flagged. Hiring two more accountants would cost roughly Rp 480M/year; the agents do the same routine work without payroll.":
             "Tidak — mereka mengambil pekerjaan rutin supaya tim keuangan Anda bisa fokus ke keputusan dan strategi. Kebanyakan tim butuh 4 menit per hari untuk review hal yang di-flag agent. Tambah dua akuntan akan habis sekitar Rp 480 juta/tahun; agent kerjakan pekerjaan rutin yang sama tanpa gaji.",
         "How accurate is the AI?": "Seberapa akurat AI-nya?",
-        "After one week of learning your chart of accounts, the AI achieves 99.2% transaction categorization accuracy. Anything below 90% confidence is automatically flagged for human review, so silent mistakes don't end up in your books.":
+        "The AI learns your chart of accounts from the corrections you make, so its suggestions sharpen over the first weeks of use. Anything it isn't confident about is flagged for review instead of posted, so silent mistakes don't end up in your books.":
             "Setelah seminggu belajar chart of accounts Anda, AI mencapai akurasi kategorisasi transaksi 99,2%. Apapun di bawah 90% confidence otomatis di-flag untuk review manusia, supaya kesalahan diam-diam tidak masuk pembukuan Anda.",
         "Will it work with my Indonesian chart of accounts?": "Apakah jalan dengan chart of accounts Indonesia saya?",
         "Yes. The AI learns from your existing chart of accounts — including custom categories like 'Biaya Bahan Baku' or 'Operasional Outlet'. It adapts when you correct its tags, getting better over time.":
@@ -515,7 +515,7 @@
         "FluxyOS accepts JPG/PNG photos from phone cameras, PDF invoices forwarded by email, e-receipts from online checkouts, and bulk uploads of up to 100 files at once. The AI reads handwritten receipts and printed thermal-paper struk equally well.":
             "FluxyOS terima foto JPG/PNG dari kamera HP, PDF invoice via email, e-struk dari checkout online, dan upload bulk sampai 100 file sekaligus. AI baca struk tulisan tangan dan struk thermal printer dengan baik.",
         "How accurate is the data extraction?": "Seberapa akurat ekstraksi datanya?",
-        "Average extraction accuracy is 98.4% across vendor name, amount, and date. Individual fields are scored — anything below 90% confidence is flagged for a quick human review so silent mistakes never reach your books.":
+        "Every extracted field — vendor name, amount, date — carries its own confidence score. Anything the model is unsure about is flagged for a quick human review instead of posted, so silent mistakes never reach your books.":
             "Akurasi ekstraksi rata-rata 98,4% untuk nama vendor, jumlah, dan tanggal. Setiap kolom punya skor — apapun di bawah 90% confidence di-flag untuk review cepat supaya kesalahan diam-diam tidak masuk pembukuan.",
         "Does it handle Indonesian PPN tax correctly?": "Apakah menangani PPN Indonesia dengan benar?",
         "Yes. The AI extracts PPN 11% as a separate line item, distinguishes it from service charges and discounts, and includes it in your tax-ready exports. PPN summaries by month are available with one click for your accountant.":

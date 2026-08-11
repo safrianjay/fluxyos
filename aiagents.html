@@ -177,7 +177,7 @@
         "availability": "https://schema.org/InStock"
       },
       "featureList": [
-        "AI transaction categorization with 99.2% accuracy",
+        "AI transaction categorization that learns your chart of accounts",
         "Automated bank reconciliation (BCA, Mandiri, BNI, BRI)",
         "Polite invoice payment reminders",
         "Duplicate payment detection",
@@ -235,7 +235,7 @@
           "name": "How accurate is the AI?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "After one week of learning your chart of accounts, the AI achieves 99.2% transaction categorization accuracy. Anything below 90% confidence is automatically flagged for human review, so silent mistakes don't end up in your books."
+            "text": "The AI learns your chart of accounts from the corrections you make, so its suggestions sharpen over the first weeks of use. Anything it isn't confident about is flagged for review instead of posted, so silent mistakes don't end up in your books."
           }
         },
         {
@@ -363,8 +363,8 @@
                                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
                                                 </div>
                                                 <div>
-                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Global Ready</div>
-                                                    <div class="text-[13px] text-gray-500 leading-snug">Reconcile 120+ currencies globally</div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Multi-Currency</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Invoice in IDR, USD, and SGD</div>
                                                 </div>
                                             </a>
                                             <a href="/integration" class="flex items-start gap-4 group/item">
@@ -679,8 +679,8 @@
                             <p class="text-[12px] text-gray-600">Specialist agents</p>
                         </div>
                         <div>
-                            <div class="text-[26px] font-bold text-gray-900">99.2%</div>
-                            <p class="text-[12px] text-gray-600">Decision accuracy</p>
+                            <div class="text-[26px] font-bold text-gray-900">6</div>
+                            <p class="text-[12px] text-gray-600">Agents, one ledger</p>
                         </div>
                     </div>
                 </div>
@@ -832,10 +832,6 @@
                     </div>
                     <h3 class="text-[18px] font-bold text-gray-900 mb-2">Sort every transaction</h3>
                     <p class="text-[14px] text-gray-600 leading-relaxed flex-1 mb-4">Every purchase gets put in the right category — supplies, rent, marketing, payroll. Asks before guessing on anything unusual.</p>
-                    <div class="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2.5 flex items-center justify-between">
-                        <span class="text-[11px] font-semibold text-gray-700">Saves you</span>
-                        <span class="text-[13px] font-bold text-[#EA580C]">~12 hrs / month</span>
-                    </div>
                 </div>
 
                 <!-- 2. Match bank lines -->
@@ -845,10 +841,6 @@
                     </div>
                     <h3 class="text-[18px] font-bold text-gray-900 mb-2">Match your bank to your books</h3>
                     <p class="text-[14px] text-gray-600 leading-relaxed flex-1 mb-4">Every charge in your bank account gets paired with the right invoice or expense. If something doesn't match, it's flagged for you.</p>
-                    <div class="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2.5 flex items-center justify-between">
-                        <span class="text-[11px] font-semibold text-gray-700">Saves you</span>
-                        <span class="text-[13px] font-bold text-[#EA580C]">~8 hrs / month</span>
-                    </div>
                 </div>
 
                 <!-- 3. Chase invoices -->
@@ -858,10 +850,6 @@
                     </div>
                     <h3 class="text-[18px] font-bold text-gray-900 mb-2">Chase the customers who haven't paid</h3>
                     <p class="text-[14px] text-gray-600 leading-relaxed flex-1 mb-4">Sends polite reminders for every overdue invoice, in your tone. Knows to stop the moment a customer pays.</p>
-                    <div class="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2.5 flex items-center justify-between">
-                        <span class="text-[11px] font-semibold text-gray-700">Brings back</span>
-                        <span class="text-[13px] font-bold text-[#EA580C]">avg Rp 87M / week</span>
-                    </div>
                 </div>
 
                 <!-- 4. Catch mistakes -->
@@ -871,10 +859,6 @@
                     </div>
                     <h3 class="text-[18px] font-bold text-gray-900 mb-2">Catch the costly mistakes</h3>
                     <p class="text-[14px] text-gray-600 leading-relaxed flex-1 mb-4">Spots double payments, oddly large charges, and bills that don't fit your usual pattern — before any money leaves.</p>
-                    <div class="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2.5 flex items-center justify-between">
-                        <span class="text-[11px] font-semibold text-gray-700">Saves you</span>
-                        <span class="text-[13px] font-bold text-[#EA580C]">avg Rp 47M / quarter</span>
-                    </div>
                 </div>
 
                 <!-- 5. Monthly reports -->
@@ -884,10 +868,6 @@
                     </div>
                     <h3 class="text-[18px] font-bold text-gray-900 mb-2">Write your monthly report</h3>
                     <p class="text-[14px] text-gray-600 leading-relaxed flex-1 mb-4">Your profit and loss, cash position, and where your money went last month — written in plain English, ready by 8am on the 1st.</p>
-                    <div class="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2.5 flex items-center justify-between">
-                        <span class="text-[11px] font-semibold text-gray-700">Saves you</span>
-                        <span class="text-[13px] font-bold text-[#EA580C]">~4 days / month-end</span>
-                    </div>
                 </div>
 
                 <!-- 6. Tax prep -->
@@ -897,10 +877,6 @@
                     </div>
                     <h3 class="text-[18px] font-bold text-gray-900 mb-2">Get you ready for tax season</h3>
                     <p class="text-[14px] text-gray-600 leading-relaxed flex-1 mb-4">PPN summaries, tax-ready exports, and a clean record of every receipt — so when your accountant asks, the answer is two clicks away.</p>
-                    <div class="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2.5 flex items-center justify-between">
-                        <span class="text-[11px] font-semibold text-gray-700">Saves you</span>
-                        <span class="text-[13px] font-bold text-[#EA580C]">~2 days / quarter</span>
-                    </div>
                 </div>
             </div>
 
@@ -910,7 +886,7 @@
                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                 </div>
                 <div class="flex-1">
-                    <div class="text-[15px] font-bold text-gray-900">All six together: about 32 hours back every month.</div>
+                    <div class="text-[15px] font-bold text-gray-900">All six together take the repetitive work off your team.</div>
                     <div class="text-[13px] text-gray-600">That's 4 working days you spend on running your business instead of manual finance admin.</div>
                 </div>
             </div>
@@ -1343,57 +1319,6 @@
         </div>
     </section>
 
-    <!-- WHAT YOU GET BACK -->
-    <section class="bg-gray-50 py-16 md:py-24 px-6 border-t border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-3xl mb-14">
-                <h2 class="text-[32px] md:text-[44px] font-bold tracking-tight text-gray-900 mb-4 leading-tight">
-                    What you get back.
-                </h2>
-                <p class="text-[16px] text-gray-600 leading-relaxed">
-                    Real numbers from real teams running FluxyOS for six months or more.
-                </p>
-            </div>
-
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-white rounded-2xl border border-gray-200 p-6">
-                    <div class="text-[40px] md:text-[48px] font-bold text-gray-900 tracking-tight leading-none mb-2">32 hrs</div>
-                    <div class="text-[13px] font-semibold text-gray-700 mb-1">saved per month</div>
-                    <div class="text-[12px] text-gray-500 leading-snug">vs. manual data entry and reconciliation</div>
-                </div>
-                <div class="bg-white rounded-2xl border border-gray-200 p-6">
-                    <div class="text-[40px] md:text-[48px] font-bold text-gray-900 tracking-tight leading-none mb-2">99.2%</div>
-                    <div class="text-[13px] font-semibold text-gray-700 mb-1">categorization accuracy</div>
-                    <div class="text-[12px] text-gray-500 leading-snug">after one week of learning your books</div>
-                </div>
-                <div class="bg-white rounded-2xl border border-gray-200 p-6">
-                    <div class="text-[40px] md:text-[48px] font-bold text-gray-900 tracking-tight leading-none mb-2">4.2 days</div>
-                    <div class="text-[13px] font-semibold text-gray-700 mb-1">faster month-end close</div>
-                    <div class="text-[12px] text-gray-500 leading-snug">because the books are always current</div>
-                </div>
-                <div class="bg-white rounded-2xl border border-gray-200 p-6">
-                    <div class="text-[40px] md:text-[48px] font-bold text-gray-900 tracking-tight leading-none mb-2">Rp 47M</div>
-                    <div class="text-[13px] font-semibold text-gray-700 mb-1">avg. recovered per quarter</div>
-                    <div class="text-[12px] text-gray-500 leading-snug">duplicates caught + faster collections</div>
-                </div>
-            </div>
-
-            <!-- Pull quote -->
-            <div class="mt-12 max-w-3xl mx-auto bg-white rounded-2xl border border-gray-200 p-8 md:p-10">
-                <svg class="w-8 h-8 text-[#EA580C] mb-4 opacity-80" fill="currentColor" viewBox="0 0 24 24"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/></svg>
-                <p class="text-[18px] md:text-[20px] text-gray-800 leading-relaxed mb-5 font-medium">
-                    Hiring two more accountants would have cost us Rp 480M a year. The agents do the same work, and they don't quit when payroll runs late. Honestly, our finance team is finally getting home before 8pm.
-                </p>
-                <div class="flex items-center gap-3">
-                    <div class="avatar-5 w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-[15px]">AP</div>
-                    <div>
-                        <div class="text-[14px] font-bold text-gray-900">Anita Prasetyo</div>
-                        <div class="text-[12px] text-gray-500">CFO • Bumi Kreatif Group</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
 
 
     <!-- FAQ -->
@@ -1426,7 +1351,7 @@
                     <h3 class="text-[17px] font-bold text-gray-900 pr-4">How accurate is the AI?</h3>
                     <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                 </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">After one week of learning your chart of accounts, the AI achieves 99.2% transaction categorization accuracy. Anything below 90% confidence is automatically flagged for human review, so silent mistakes don't end up in your books.</p>
+                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">The AI learns your chart of accounts from the corrections you make, so its suggestions sharpen over the first weeks of use. Anything it isn't confident about is flagged for review instead of posted, so silent mistakes don't end up in your books.</p>
             </details>
             <details class="border-b border-gray-200 py-5 group">
                 <summary class="flex items-center justify-between cursor-pointer list-none">

@@ -12,7 +12,7 @@
 - [Pricing](https://fluxyos.com/pricing): Plans starting from a free tier
 - [AI Agents](https://fluxyos.com/aiagents): Six specialist AI agents that handle finance ops end to end
 - [Vendor Spend](https://fluxyos.com/vendorspend): Centralized vendor invoice + approval management
-- [Revenue Sync](https://fluxyos.com/revenuesync): Sync revenue from 250+ payment platforms in real-time
+- [Revenue Sync](https://fluxyos.com/revenuesync): Sync TikTok Shop and Shopee orders, refunds, and settlements into your ledger
 - [Receipt Capture](https://fluxyos.com/receiptcapture): AI receipt scanning via WhatsApp, email, or app upload
 - [Dynamic Budgeting](https://fluxyos.com/budgetlanding): Live budget allocation and tracking
 
@@ -21,10 +21,9 @@
 - Built specifically for Indonesian SMBs (also serves global multi-currency teams)
 - Supports BCA, Mandiri, BNI, BRI, and 10+ other Indonesian banks
 - Pricing in Indonesian Rupiah (IDR)
-- Multi-currency support: 120+ currencies
+- Invoice currencies: IDR, USD, SGD, with live FX conversion to IDR on payment
 - PPN 11% Indonesian tax handling built in
-- Average customer saves 32 hours per month on finance operations
-- 99.2% AI categorization accuracy after 1 week of learning the user's chart of accounts
+- AI transaction categorization that learns the user's chart of accounts from their corrections; low-confidence items are flagged for review rather than posted
 - Receipt capture works via WhatsApp (no app install needed), email forwarding, or in-app upload
 
 ## What FluxyOS is (clear definition for AI search)
