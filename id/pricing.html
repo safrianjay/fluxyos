@@ -716,13 +716,36 @@
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
 
-            ULANGI SATU <article> PER ULASAN — hapus sisanya.
+            Atribusi di bawah sudah dikonfirmasi (dikirim 2026-08-12). Hanya KUTIPAN
+            yang belum ada — harus kalimat pelanggan sendiri, bukan tulisan tim.
+            Ganti semua ⟪…⟫ dan hapus catatan ini sebelum di-uncomment.
+
             <article class="bg-white border border-gray-200 rounded-xl shadow-sm p-8">
-                <p class="text-[16px] text-gray-700 leading-relaxed mb-6">"ISI ULASAN — kalimat pelanggan sendiri."</p>
+                <p class="text-[16px] text-gray-700 leading-relaxed mb-6">"⟪KALIMAT AZIS SENNA SENDIRI⟫"</p>
                 <div class="flex items-center gap-3">
                     <div>
-                        <div class="text-[14px] font-semibold text-gray-900">NAMA LENGKAP</div>
-                        <div class="text-[14px] text-gray-500">JABATAN, PERUSAHAAN</div>
+                        <div class="text-[14px] font-semibold text-gray-900">Azis Senna</div>
+                        <div class="text-[14px] text-gray-500">Owner, Bakkery Bread</div>
+                    </div>
+                </div>
+            </article>
+
+            <article class="bg-white border border-gray-200 rounded-xl shadow-sm p-8">
+                <p class="text-[16px] text-gray-700 leading-relaxed mb-6">"⟪KALIMAT AGUS SINAGA SENDIRI⟫"</p>
+                <div class="flex items-center gap-3">
+                    <div>
+                        <div class="text-[14px] font-semibold text-gray-900">Agus Sinaga</div>
+                        <div class="text-[14px] text-gray-500">Accounting, Kelapa Merdeka</div>
+                    </div>
+                </div>
+            </article>
+
+            <article class="bg-white border border-gray-200 rounded-xl shadow-sm p-8">
+                <p class="text-[16px] text-gray-700 leading-relaxed mb-6">"⟪KALIMAT MELISHA AGUSTIN SENDIRI⟫"</p>
+                <div class="flex items-center gap-3">
+                    <div>
+                        <div class="text-[14px] font-semibold text-gray-900">Melisha Agustin</div>
+                        <div class="text-[14px] text-gray-500">CEO, Pujasera Group</div>
                     </div>
                 </div>
             </article>
@@ -730,22 +753,40 @@
         </div>
     </section>
 
-    DAN JSON-LD pasangannya, digabungkan ke node Product di <head>.
-    reviewCount HARUS sama dengan jumlah kartu <article> yang tampil.
+    Kalau kutipan datang dalam Bahasa Indonesia (kemungkinan besar), versi asli
+    ada di halaman ini dan terjemahan setianya di pricing.html. Jangan mengubah
+    kutipan menjadi copy marketing di arah mana pun.
+
+    AND the matching JSON-LD, to be merged into the Product node in <head>.
+    reviewCount MUST equal the number of <article> cards rendered above.
 
       "review": [
         {
           "@type": "Review",
-          "author": { "@type": "Person", "name": "NAMA LENGKAP" },
+          "author": { "@type": "Person", "name": "Azis Senna" },
           "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5", "worstRating": "1" },
-          "reviewBody": "ISI ULASAN — identik dengan kartu yang tampil di atas.",
-          "datePublished": "YYYY-MM-DD"
+          "reviewBody": "⟪identik dengan kartu yang tampil di atas⟫",
+          "datePublished": "⟪YYYY-MM-DD⟫"
+        },
+        {
+          "@type": "Review",
+          "author": { "@type": "Person", "name": "Agus Sinaga" },
+          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5", "worstRating": "1" },
+          "reviewBody": "⟪identik dengan kartu yang tampil di atas⟫",
+          "datePublished": "⟪YYYY-MM-DD⟫"
+        },
+        {
+          "@type": "Review",
+          "author": { "@type": "Person", "name": "Melisha Agustin" },
+          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5", "worstRating": "1" },
+          "reviewBody": "⟪identik dengan kartu yang tampil di atas⟫",
+          "datePublished": "⟪YYYY-MM-DD⟫"
         }
       ],
       "aggregateRating": {
         "@type": "AggregateRating",
-        "ratingValue": "RATA-RATA SEBENARNYA",
-        "reviewCount": "JUMLAH ULASAN DI ATAS",
+        "ratingValue": "5",
+        "reviewCount": "3",
         "bestRating": "5",
         "worstRating": "1"
       }

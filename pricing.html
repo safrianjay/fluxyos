@@ -720,13 +720,36 @@
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
 
-            REPEAT ONE <article> PER REVIEW — delete the spares.
+            Attribution below is confirmed (supplied 2026-08-12). ONLY the quotes
+            are outstanding — each must be the customer's own words, not written
+            for them. Replace every ⟪…⟫ and delete this note before uncommenting.
+
             <article class="bg-white border border-gray-200 rounded-xl shadow-sm p-8">
-                <p class="text-[16px] text-gray-700 leading-relaxed mb-6">"REVIEW TEXT — the customer's own words."</p>
+                <p class="text-[16px] text-gray-700 leading-relaxed mb-6">"⟪AZIS SENNA'S OWN WORDS⟫"</p>
                 <div class="flex items-center gap-3">
                     <div>
-                        <div class="text-[14px] font-semibold text-gray-900">FULL NAME</div>
-                        <div class="text-[14px] text-gray-500">ROLE, COMPANY</div>
+                        <div class="text-[14px] font-semibold text-gray-900">Azis Senna</div>
+                        <div class="text-[14px] text-gray-500">Owner, Bakkery Bread</div>
+                    </div>
+                </div>
+            </article>
+
+            <article class="bg-white border border-gray-200 rounded-xl shadow-sm p-8">
+                <p class="text-[16px] text-gray-700 leading-relaxed mb-6">"⟪AGUS SINAGA'S OWN WORDS⟫"</p>
+                <div class="flex items-center gap-3">
+                    <div>
+                        <div class="text-[14px] font-semibold text-gray-900">Agus Sinaga</div>
+                        <div class="text-[14px] text-gray-500">Accounting, Kelapa Merdeka</div>
+                    </div>
+                </div>
+            </article>
+
+            <article class="bg-white border border-gray-200 rounded-xl shadow-sm p-8">
+                <p class="text-[16px] text-gray-700 leading-relaxed mb-6">"⟪MELISHA AGUSTIN'S OWN WORDS⟫"</p>
+                <div class="flex items-center gap-3">
+                    <div>
+                        <div class="text-[14px] font-semibold text-gray-900">Melisha Agustin</div>
+                        <div class="text-[14px] text-gray-500">CEO, Pujasera Group</div>
                     </div>
                 </div>
             </article>
@@ -734,22 +757,40 @@
         </div>
     </section>
 
+    If the quotes come in Bahasa (likely — all three are Indonesian businesses),
+    the Bahasa original belongs on id/pricing.html and a faithful translation on
+    this page. Do not paraphrase into marketing copy in either direction.
+
     AND the matching JSON-LD, to be merged into the Product node in <head>.
     reviewCount MUST equal the number of <article> cards rendered above.
 
       "review": [
         {
           "@type": "Review",
-          "author": { "@type": "Person", "name": "FULL NAME" },
+          "author": { "@type": "Person", "name": "Azis Senna" },
           "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5", "worstRating": "1" },
-          "reviewBody": "REVIEW TEXT — identical to the visible card above.",
-          "datePublished": "YYYY-MM-DD"
+          "reviewBody": "⟪identical to the visible card above⟫",
+          "datePublished": "⟪YYYY-MM-DD⟫"
+        },
+        {
+          "@type": "Review",
+          "author": { "@type": "Person", "name": "Agus Sinaga" },
+          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5", "worstRating": "1" },
+          "reviewBody": "⟪identical to the visible card above⟫",
+          "datePublished": "⟪YYYY-MM-DD⟫"
+        },
+        {
+          "@type": "Review",
+          "author": { "@type": "Person", "name": "Melisha Agustin" },
+          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5", "worstRating": "1" },
+          "reviewBody": "⟪identical to the visible card above⟫",
+          "datePublished": "⟪YYYY-MM-DD⟫"
         }
       ],
       "aggregateRating": {
         "@type": "AggregateRating",
-        "ratingValue": "REAL AVERAGE",
-        "reviewCount": "COUNT OF REVIEWS ABOVE",
+        "ratingValue": "5",
+        "reviewCount": "3",
         "bestRating": "5",
         "worstRating": "1"
       }
