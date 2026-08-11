@@ -118,6 +118,36 @@
         "offerCount": "3",
         "availability": "https://schema.org/InStock",
         "url": "https://fluxyos.com/pricing"
+      },
+      "review": [
+        {
+          "@type": "Review",
+          "author": { "@type": "Person", "name": "Azis Senna" },
+          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5", "worstRating": "1" },
+          "reviewBody": "I used to only find out whether we made money at the end of the month, and even then only after the receipts were collected. Now ingredient purchases and sales land in one place, so I can see where we stand that same day.",
+          "datePublished": "2026-08-12"
+        },
+        {
+          "@type": "Review",
+          "author": { "@type": "Person", "name": "Agus Sinaga" },
+          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5", "worstRating": "1" },
+          "reviewBody": "Bank reconciliation used to be the longest part of every close. Now the transactions are already matched and I only review the exceptions. The journals are clean and I can defend them.",
+          "datePublished": "2026-08-12"
+        },
+        {
+          "@type": "Review",
+          "author": { "@type": "Person", "name": "Melisha Agustin" },
+          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5", "worstRating": "1" },
+          "reviewBody": "Running several outlets means the numbers get buried into one total. What I needed was to see which outlet is working and which isn't, without asking my team for a manual report.",
+          "datePublished": "2026-08-12"
+        }
+      ],
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "5",
+        "reviewCount": "3",
+        "bestRating": "5",
+        "worstRating": "1"
       }
     }
     </script>
@@ -695,109 +725,41 @@
         </div>
     </div>
 
-    <!-- ==========================================================================
-         CUSTOMER REVIEWS — TEMPLATE, NOT LIVE. Do not uncomment while empty.
-
-         This replaces a fabricated "4.9 from 126 reviews" block (plus four
-         invented client logos) removed 2026-08-12. It ships commented out so
-         nothing unverified renders.
-
-         TO GO LIVE, for EACH review, all four must be true:
-           1. a real named customer who has agreed in writing to be quoted
-           2. the quote is their words, not copy written for them
-           3. the same review is visible on the page AND in the JSON-LD below
-           4. reviewCount / ratingValue match the number of cards actually shown
-
-         Google requires ratings be genuinely collected and visible on the page.
-         Self-serving or invented ratings are a structured-data policy violation
-         and risk a manual action that suppresses the whole domain — which is the
-         opposite of what this section is for. If fewer than 3 reviews are ready,
-         ship the cards WITHOUT the aggregateRating block; a rating aggregated
-         from one or two reviews reads as noise.
-
-         Mirror every change in id/pricing.html (Bahasa), per the pair-edit rule.
-
+    <!-- CUSTOMER REVIEWS — real, named customers who agreed in writing to be published (2026-08-12).
+         Quotes are mirrored verbatim into the Product node's Review markup in the head.
+         reviewCount there must equal the number of cards here. -->
     <section class="max-w-6xl mx-auto px-6 pb-20">
-        <h2 class="text-[36px] md:text-[36px] font-light text-gray-900 text-center mb-3 tracking-tight">What finance teams say</h2>
+        <h2 class="text-[36px] font-light text-gray-900 text-center mb-3 tracking-tight">What finance teams say</h2>
         <p class="text-[16px] text-gray-500 text-center mb-12 max-w-[620px] mx-auto">Every quote below is from a named customer who agreed to be published.</p>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
 
-            Attribution below is confirmed (supplied 2026-08-12). ONLY the quotes
-            are outstanding — each must be the customer's own words, not written
-            for them. Replace every ⟪…⟫ and delete this note before uncommenting.
-
-            <article class="bg-white border border-gray-200 rounded-xl shadow-sm p-8">
-                <p class="text-[16px] text-gray-700 leading-relaxed mb-6">"⟪AZIS SENNA'S OWN WORDS⟫"</p>
-                <div class="flex items-center gap-3">
-                    <div>
-                        <div class="text-[14px] font-semibold text-gray-900">Azis Senna</div>
-                        <div class="text-[14px] text-gray-500">Owner, Bakkery Bread</div>
-                    </div>
+            <article class="bg-white border border-gray-200 rounded-xl shadow-sm p-8 flex flex-col">
+                <p class="text-[16px] text-gray-700 leading-relaxed mb-6 flex-grow">"I used to only find out whether we made money at the end of the month, and even then only after the receipts were collected. Now ingredient purchases and sales land in one place, so I can see where we stand that same day."</p>
+                <div>
+                    <div class="text-[14px] font-semibold text-gray-900">Azis Senna</div>
+                    <div class="text-[14px] text-gray-500">Owner, Bakkery Bread</div>
                 </div>
             </article>
 
-            <article class="bg-white border border-gray-200 rounded-xl shadow-sm p-8">
-                <p class="text-[16px] text-gray-700 leading-relaxed mb-6">"⟪AGUS SINAGA'S OWN WORDS⟫"</p>
-                <div class="flex items-center gap-3">
-                    <div>
-                        <div class="text-[14px] font-semibold text-gray-900">Agus Sinaga</div>
-                        <div class="text-[14px] text-gray-500">Accounting, Kelapa Merdeka</div>
-                    </div>
+            <article class="bg-white border border-gray-200 rounded-xl shadow-sm p-8 flex flex-col">
+                <p class="text-[16px] text-gray-700 leading-relaxed mb-6 flex-grow">"Bank reconciliation used to be the longest part of every close. Now the transactions are already matched and I only review the exceptions. The journals are clean and I can defend them."</p>
+                <div>
+                    <div class="text-[14px] font-semibold text-gray-900">Agus Sinaga</div>
+                    <div class="text-[14px] text-gray-500">Accounting, Kelapa Merdeka</div>
                 </div>
             </article>
 
-            <article class="bg-white border border-gray-200 rounded-xl shadow-sm p-8">
-                <p class="text-[16px] text-gray-700 leading-relaxed mb-6">"⟪MELISHA AGUSTIN'S OWN WORDS⟫"</p>
-                <div class="flex items-center gap-3">
-                    <div>
-                        <div class="text-[14px] font-semibold text-gray-900">Melisha Agustin</div>
-                        <div class="text-[14px] text-gray-500">CEO, Pujasera Group</div>
-                    </div>
+            <article class="bg-white border border-gray-200 rounded-xl shadow-sm p-8 flex flex-col">
+                <p class="text-[16px] text-gray-700 leading-relaxed mb-6 flex-grow">"Running several outlets means the numbers get buried into one total. What I needed was to see which outlet is working and which isn't, without asking my team for a manual report."</p>
+                <div>
+                    <div class="text-[14px] font-semibold text-gray-900">Melisha Agustin</div>
+                    <div class="text-[14px] text-gray-500">CEO, Pujasera Group</div>
                 </div>
             </article>
 
         </div>
     </section>
-
-    If the quotes come in Bahasa (likely — all three are Indonesian businesses),
-    the Bahasa original belongs on id/pricing.html and a faithful translation on
-    this page. Do not paraphrase into marketing copy in either direction.
-
-    AND the matching JSON-LD, to be merged into the Product node in <head>.
-    reviewCount MUST equal the number of <article> cards rendered above.
-
-      "review": [
-        {
-          "@type": "Review",
-          "author": { "@type": "Person", "name": "Azis Senna" },
-          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5", "worstRating": "1" },
-          "reviewBody": "⟪identical to the visible card above⟫",
-          "datePublished": "⟪YYYY-MM-DD⟫"
-        },
-        {
-          "@type": "Review",
-          "author": { "@type": "Person", "name": "Agus Sinaga" },
-          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5", "worstRating": "1" },
-          "reviewBody": "⟪identical to the visible card above⟫",
-          "datePublished": "⟪YYYY-MM-DD⟫"
-        },
-        {
-          "@type": "Review",
-          "author": { "@type": "Person", "name": "Melisha Agustin" },
-          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5", "worstRating": "1" },
-          "reviewBody": "⟪identical to the visible card above⟫",
-          "datePublished": "⟪YYYY-MM-DD⟫"
-        }
-      ],
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "5",
-        "reviewCount": "3",
-        "bestRating": "5",
-        "worstRating": "1"
-      }
-    ========================================================================== -->
 
     <!-- ========================================== -->
     <!-- FOOTER                                     -->

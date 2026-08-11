@@ -118,6 +118,39 @@
         "offerCount": "3",
         "availability": "https://schema.org/InStock",
         "url": "https://fluxyos.com/id/pricing"
+      },
+      "review": [
+        {
+          "@type": "Review",
+          "author": { "@type": "Person", "name": "Azis Senna" },
+          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5", "worstRating": "1" },
+          "reviewBody": "Dulu saya baru tahu untung atau rugi pas akhir bulan, itu pun setelah nota-nota dikumpulin dulu. Sekarang belanja bahan dan penjualan masuk ke satu tempat, jadi saya bisa lihat posisinya hari itu juga.",
+          "datePublished": "2026-08-12",
+          "inLanguage": "id"
+        },
+        {
+          "@type": "Review",
+          "author": { "@type": "Person", "name": "Agus Sinaga" },
+          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5", "worstRating": "1" },
+          "reviewBody": "Rekonsiliasi rekening koran dulu makan waktu paling lama tiap tutup buku. Sekarang transaksinya sudah kepasang duluan, saya tinggal cek yang tidak cocok. Jurnalnya rapi dan bisa saya pertanggungjawabkan.",
+          "datePublished": "2026-08-12",
+          "inLanguage": "id"
+        },
+        {
+          "@type": "Review",
+          "author": { "@type": "Person", "name": "Melisha Agustin" },
+          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5", "worstRating": "1" },
+          "reviewBody": "Punya beberapa outlet artinya angkanya gampang ketimbun jadi satu. Yang saya butuh itu lihat per outlet mana yang jalan dan mana yang nggak, tanpa harus minta laporan manual ke tim.",
+          "datePublished": "2026-08-12",
+          "inLanguage": "id"
+        }
+      ],
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "5",
+        "reviewCount": "3",
+        "bestRating": "5",
+        "worstRating": "1"
       }
     }
     </script>
@@ -692,108 +725,41 @@
         </div>
     </div>
 
-    <!-- ==========================================================================
-         ULASAN PELANGGAN — TEMPLATE, BELUM LIVE. Jangan di-uncomment saat kosong.
-
-         Menggantikan blok "4.9 dari 126 ulasan" yang tidak berdasar (beserta
-         empat logo klien fiktif), dihapus 2026-08-12. Dikirim dalam bentuk
-         komentar agar tidak ada klaim yang belum terverifikasi tampil.
-
-         SYARAT SEBELUM LIVE, untuk SETIAP ulasan, keempatnya harus benar:
-           1. pelanggan nyata yang sudah setuju tertulis untuk dikutip
-           2. kutipan adalah kalimat mereka sendiri, bukan tulisan tim
-           3. ulasan yang sama tampil di halaman DAN di JSON-LD di bawah
-           4. reviewCount / ratingValue sama dengan jumlah kartu yang tampil
-
-         Google mewajibkan rating dikumpulkan secara nyata dan terlihat di
-         halaman. Rating yang dibuat sendiri melanggar kebijakan structured data
-         dan berisiko manual action yang menekan seluruh domain — kebalikan dari
-         tujuan bagian ini. Kalau ulasan siap kurang dari 3, tampilkan kartunya
-         TANPA blok aggregateRating.
-
-         Samakan setiap perubahan dengan pricing.html (EN), sesuai aturan pair-edit.
-
+    <!-- CUSTOMER REVIEWS — real, named customers who agreed in writing to be published (2026-08-12).
+         Quotes are mirrored verbatim into the Product node's Review markup in the head.
+         reviewCount there must equal the number of cards here. -->
     <section class="max-w-6xl mx-auto px-6 pb-20">
-        <h2 class="text-[36px] md:text-[36px] font-light text-gray-900 text-center mb-3 tracking-tight">Kata tim keuangan</h2>
+        <h2 class="text-[36px] font-light text-gray-900 text-center mb-3 tracking-tight">Kata tim keuangan</h2>
         <p class="text-[16px] text-gray-500 text-center mb-12 max-w-[620px] mx-auto">Semua kutipan di bawah berasal dari pelanggan bernama yang sudah setuju dipublikasikan.</p>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
 
-            Atribusi di bawah sudah dikonfirmasi (dikirim 2026-08-12). Hanya KUTIPAN
-            yang belum ada — harus kalimat pelanggan sendiri, bukan tulisan tim.
-            Ganti semua ⟪…⟫ dan hapus catatan ini sebelum di-uncomment.
-
-            <article class="bg-white border border-gray-200 rounded-xl shadow-sm p-8">
-                <p class="text-[16px] text-gray-700 leading-relaxed mb-6">"⟪KALIMAT AZIS SENNA SENDIRI⟫"</p>
-                <div class="flex items-center gap-3">
-                    <div>
-                        <div class="text-[14px] font-semibold text-gray-900">Azis Senna</div>
-                        <div class="text-[14px] text-gray-500">Owner, Bakkery Bread</div>
-                    </div>
+            <article class="bg-white border border-gray-200 rounded-xl shadow-sm p-8 flex flex-col">
+                <p class="text-[16px] text-gray-700 leading-relaxed mb-6 flex-grow">"Dulu saya baru tahu untung atau rugi pas akhir bulan, itu pun setelah nota-nota dikumpulin dulu. Sekarang belanja bahan dan penjualan masuk ke satu tempat, jadi saya bisa lihat posisinya hari itu juga."</p>
+                <div>
+                    <div class="text-[14px] font-semibold text-gray-900">Azis Senna</div>
+                    <div class="text-[14px] text-gray-500">Owner, Bakkery Bread</div>
                 </div>
             </article>
 
-            <article class="bg-white border border-gray-200 rounded-xl shadow-sm p-8">
-                <p class="text-[16px] text-gray-700 leading-relaxed mb-6">"⟪KALIMAT AGUS SINAGA SENDIRI⟫"</p>
-                <div class="flex items-center gap-3">
-                    <div>
-                        <div class="text-[14px] font-semibold text-gray-900">Agus Sinaga</div>
-                        <div class="text-[14px] text-gray-500">Accounting, Kelapa Merdeka</div>
-                    </div>
+            <article class="bg-white border border-gray-200 rounded-xl shadow-sm p-8 flex flex-col">
+                <p class="text-[16px] text-gray-700 leading-relaxed mb-6 flex-grow">"Rekonsiliasi rekening koran dulu makan waktu paling lama tiap tutup buku. Sekarang transaksinya sudah kepasang duluan, saya tinggal cek yang tidak cocok. Jurnalnya rapi dan bisa saya pertanggungjawabkan."</p>
+                <div>
+                    <div class="text-[14px] font-semibold text-gray-900">Agus Sinaga</div>
+                    <div class="text-[14px] text-gray-500">Accounting, Kelapa Merdeka</div>
                 </div>
             </article>
 
-            <article class="bg-white border border-gray-200 rounded-xl shadow-sm p-8">
-                <p class="text-[16px] text-gray-700 leading-relaxed mb-6">"⟪KALIMAT MELISHA AGUSTIN SENDIRI⟫"</p>
-                <div class="flex items-center gap-3">
-                    <div>
-                        <div class="text-[14px] font-semibold text-gray-900">Melisha Agustin</div>
-                        <div class="text-[14px] text-gray-500">CEO, Pujasera Group</div>
-                    </div>
+            <article class="bg-white border border-gray-200 rounded-xl shadow-sm p-8 flex flex-col">
+                <p class="text-[16px] text-gray-700 leading-relaxed mb-6 flex-grow">"Punya beberapa outlet artinya angkanya gampang ketimbun jadi satu. Yang saya butuh itu lihat per outlet mana yang jalan dan mana yang nggak, tanpa harus minta laporan manual ke tim."</p>
+                <div>
+                    <div class="text-[14px] font-semibold text-gray-900">Melisha Agustin</div>
+                    <div class="text-[14px] text-gray-500">CEO, Pujasera Group</div>
                 </div>
             </article>
 
         </div>
     </section>
-
-    Kalau kutipan datang dalam Bahasa Indonesia (kemungkinan besar), versi asli
-    ada di halaman ini dan terjemahan setianya di pricing.html. Jangan mengubah
-    kutipan menjadi copy marketing di arah mana pun.
-
-    AND the matching JSON-LD, to be merged into the Product node in <head>.
-    reviewCount MUST equal the number of <article> cards rendered above.
-
-      "review": [
-        {
-          "@type": "Review",
-          "author": { "@type": "Person", "name": "Azis Senna" },
-          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5", "worstRating": "1" },
-          "reviewBody": "⟪identik dengan kartu yang tampil di atas⟫",
-          "datePublished": "⟪YYYY-MM-DD⟫"
-        },
-        {
-          "@type": "Review",
-          "author": { "@type": "Person", "name": "Agus Sinaga" },
-          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5", "worstRating": "1" },
-          "reviewBody": "⟪identik dengan kartu yang tampil di atas⟫",
-          "datePublished": "⟪YYYY-MM-DD⟫"
-        },
-        {
-          "@type": "Review",
-          "author": { "@type": "Person", "name": "Melisha Agustin" },
-          "reviewRating": { "@type": "Rating", "ratingValue": "5", "bestRating": "5", "worstRating": "1" },
-          "reviewBody": "⟪identik dengan kartu yang tampil di atas⟫",
-          "datePublished": "⟪YYYY-MM-DD⟫"
-        }
-      ],
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "5",
-        "reviewCount": "3",
-        "bestRating": "5",
-        "worstRating": "1"
-      }
-    ========================================================================== -->
 
     <!-- ========================================== -->
     <!-- FOOTER                                     -->
