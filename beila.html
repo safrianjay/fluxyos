@@ -1,0 +1,1662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+<title>Beila Scarves — Investor Presentation</title>
+<meta name="description" content="Private investor presentation for Beila Scarves. Access by invitation only.">
+<link rel="canonical" href="https://fluxyos.com/beila">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #FFFFFF;
+  --ink: #0F172A;
+  --muted: #475569;
+  --line: #E5E7EB;
+  --line-strong: #0F172A;
+  --accent: #1E3A5F;
+  --accent-mid: #3E5E80;
+  --accent-soft: #8A9BAF;
+  --accent-tint: #DBE5EF;
+  --sand: #F1F5F9;
+  --panel-text: #FFFFFF;
+  --panel-text-muted: rgba(255,255,255,0.86);
+  --focus: #1E3A5F;
+}
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  color: var(--ink); background: #EEEEEE; scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+body { padding: 24px 12px; font-size: 15px; line-height: 1.6; }
+
+/* Numbers render in Inter with tabular figures — never a monospace face. */
+.mono, .stat-value, .term-value, .traction-metrics .val, .ltv-col .big,
+.ask-proof .val, .rhs .kpi .val, .calc-metric .val, .calc-amount-display,
+.ask-headline, .growth-uplift .big, table td.right, table td.amt, table td.pct,
+.product-table td.price, .benchmarks-table td.beila, .callout-block .value {
+  font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1;
+}
+
+/* Focus — visible on every interactive element (WCAG 2.4.7). */
+a:focus-visible, button:focus-visible, input:focus-visible {
+  outline: 2px solid var(--focus); outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute; left: 12px; top: -60px; z-index: 200;
+  background: var(--accent); color: #fff; padding: 12px 20px;
+  font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 3px;
+  transition: top 120ms ease-out;
+}
+.skip-link:focus { top: 12px; }
+
+/* ---------- Access gate ---------- */
+body.access-locked { overflow: hidden; }
+.gate {
+  position: fixed; inset: 0; z-index: 150;
+  display: grid; place-items: center; padding: 24px;
+  background: var(--paper);
+}
+.gate-card { width: 100%; max-width: 400px; text-align: left; }
+.gate-brand {
+  font-size: 12px; font-weight: 700; color: var(--muted);
+  letter-spacing: 2.5px; text-transform: uppercase; margin-bottom: 14px;
+}
+.gate-title { font-size: 28px; font-weight: 700; line-height: 1.2; margin-bottom: 8px; }
+.gate-sub { font-size: 15px; color: var(--muted); line-height: 1.6; margin-bottom: 28px; }
+.gate-label {
+  display: block; font-size: 12px; font-weight: 700; color: var(--muted);
+  letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px;
+}
+.gate-input {
+  width: 100%; min-height: 52px; padding: 12px 16px; font: inherit; font-size: 16px;
+  color: var(--ink); background: #fff;
+  border: 1px solid var(--line-strong); border-radius: 3px;
+}
+.gate-error { font-size: 14px; color: #B42318; margin-top: 12px; }
+.gate-button {
+  width: 100%; min-height: 52px; margin-top: 18px; padding: 14px 20px;
+  font: inherit; font-size: 15px; font-weight: 700; color: #fff;
+  background: var(--accent); border: 1px solid var(--accent);
+  border-radius: 3px; cursor: pointer;
+}
+.gate-button:hover { background: #17304F; }
+
+/* ---------- Slides ---------- */
+.slide {
+  width: 1360px; max-width: 100%;
+  min-height: 765px;                 /* 16:9 floor — grows with content */
+  margin: 0 auto 28px; background: var(--paper); padding: 56px 72px 40px;
+  position: relative; box-shadow: 0 6px 24px rgba(15, 23, 42, 0.08);
+  display: flex; flex-direction: column;
+}
+.kicker {
+  font-size: 12px; font-weight: 700; color: var(--muted);
+  letter-spacing: 2.5px; text-transform: uppercase; margin-bottom: 10px;
+}
+.kicker.on-accent { color: var(--panel-text-muted); }
+.eyebrow {
+  font-size: 12px; font-weight: 700; color: var(--muted);
+  letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px;
+}
+.slide-title {
+  font-size: 34px; font-weight: 700; color: var(--ink); line-height: 1.2;
+  margin-bottom: 28px; letter-spacing: -0.4px;
+}
+/* Footer sits at the bottom of however tall the slide grew — never overlaps. */
+.slide-footer {
+  margin-top: auto; padding-top: 32px;
+  display: flex; justify-content: space-between; font-size: 11px; color: var(--muted);
+}
+.slide-footer .brand { letter-spacing: 0.5px; }
+
+/* Utilities */
+.mono { font-variant-numeric: tabular-nums; }
+.italic-note {
+  font-size: 12px; font-style: italic; color: var(--muted);
+  line-height: 1.6; margin-top: 26px;
+}
+.emph { color: var(--accent); font-weight: 700; }
+
+/* Slide 1 — Title */
+.title-slide { justify-content: space-between; }
+.title-slide .brand-mark { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 2.5px; text-transform: uppercase; }
+.title-slide .eyebrow-sm { font-size: 15px; color: var(--muted); margin-bottom: 12px; }
+.title-slide .display-title { font-size: 50px; font-weight: 700; color: var(--ink); line-height: 1.1; letter-spacing: -1px; margin-bottom: 48px; }
+.title-slide .rule { width: 240px; height: 2px; background: var(--ink); margin-bottom: 38px; }
+.title-slide .terms-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; margin-bottom: 46px; }
+.title-slide .term-label { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+.title-slide .term-value { font-size: 20px; font-weight: 700; color: var(--ink); }
+.title-slide .location { font-size: 13px; color: var(--muted); }
+
+/* Numbered row (Opportunity) */
+.numbered-row {
+  display: grid; grid-template-columns: 3.4fr 4.5fr; gap: 48px;
+  padding: 30px 0; border-top: 1px solid var(--line);
+}
+.numbered-row:last-of-type { border-bottom: 1px solid var(--line); }
+.numbered-row .head { font-size: 19px; font-weight: 700; color: var(--ink); line-height: 1.3; }
+.numbered-row .body { font-size: 15px; color: var(--muted); line-height: 1.6; }
+
+/* Market stats grid */
+.stats-grid-4 {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
+  padding-bottom: 20px; border-bottom: 1px solid var(--line);
+}
+.stats-grid-4 .stat { padding-right: 24px; position: relative; }
+.stats-grid-4 .stat + .stat { padding-left: 24px; }
+.stats-grid-4 .stat + .stat::before {
+  content: ''; position: absolute; left: 0; top: 8px; bottom: 24px; width: 1px; background: var(--line);
+}
+.stats-grid-4 .stat-value { font-size: 40px; font-weight: 700; color: var(--ink); line-height: 1; margin-bottom: 16px; letter-spacing: -0.8px; }
+.stats-grid-4 .stat-title { font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.35; margin-bottom: 8px; }
+.stats-grid-4 .stat-sub { font-size: 13.5px; color: var(--muted); line-height: 1.5; }
+
+/* Accent panel */
+.accent-panel {
+  background: var(--accent); color: var(--panel-text); border-radius: 3px;
+  padding: 24px 28px;
+}
+.accent-panel .panel-title { font-size: 16px; line-height: 1.6; }
+.accent-panel .kicker { color: var(--panel-text-muted); margin-bottom: 10px; }
+
+/* Product slide */
+.two-col-product { display: grid; grid-template-columns: 7.2fr 5.7fr; gap: 48px; }
+.product-table { width: 100%; border-collapse: collapse; }
+.product-table th {
+  font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 2px;
+  text-transform: uppercase; padding-bottom: 16px; text-align: left;
+  border-bottom: 1.5px solid var(--line-strong);
+}
+.product-table td {
+  padding: 16px 0; border-bottom: 1px solid var(--line); font-size: 14px;
+  vertical-align: middle; line-height: 1.5;
+}
+.product-table td.name { font-weight: 700; color: var(--ink); font-size: 15px; }
+.product-table td.desc { color: var(--muted); font-size: 13.5px; padding-left: 16px; }
+.product-table td.price { font-weight: 700; color: var(--ink); text-align: right; font-size: 14px; white-space: nowrap; }
+.positioning-title { font-size: 22px; font-weight: 700; color: var(--ink); line-height: 1.3; margin: 10px 0 26px; }
+.dash-list { list-style: none; }
+.dash-list li {
+  padding-left: 22px; position: relative; font-size: 15px; color: var(--muted);
+  margin-bottom: 16px; line-height: 1.6;
+}
+.dash-list li::before { content: '\2013'; position: absolute; left: 0; top: 0; font-weight: 700; }
+
+/* Traction slide */
+.traction-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.traction-metrics .metric { padding-right: 20px; position: relative; }
+.traction-metrics .metric + .metric { padding-left: 20px; }
+.traction-metrics .metric + .metric::before {
+  content: ''; position: absolute; left: 0; top: 4px; bottom: 12px; width: 1px; background: var(--line);
+}
+/* One size across the row — the labels carry the distinction, not the type size. */
+.traction-metrics .val { font-size: 32px; font-weight: 700; letter-spacing: -0.6px; line-height: 1.05; margin-bottom: 12px; white-space: nowrap; }
+.traction-metrics .lbl { font-size: 13.5px; color: var(--muted); }
+.traction-body { display: grid; grid-template-columns: 7.4fr 5.2fr; gap: 40px; margin-top: 30px; }
+.chart-wrap { width: 100%; }
+
+/* Business model slide */
+.revenue-engine { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+.revenue-engine .cell { padding-right: 20px; position: relative; }
+.revenue-engine .cell + .cell { padding-left: 20px; }
+.revenue-engine .cell + .cell::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 12px; width: 1px; background: var(--line);
+}
+.revenue-engine .idx { font-size: 18px; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+.revenue-engine .head { font-size: 17px; font-weight: 700; color: var(--ink); margin-bottom: 10px; }
+.revenue-engine .body { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+.bm-tables { display: grid; grid-template-columns: 4.4fr 4.2fr 3.9fr; gap: 32px; margin-top: 30px; }
+.data-list { width: 100%; }
+.data-list-head { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; }
+.data-list table { width: 100%; border-collapse: collapse; }
+.data-list table th, .data-list table td { padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: middle; }
+.data-list table tr.total-row td { border-bottom: 1.5px solid var(--line-strong); font-weight: 700; }
+.data-list table tr:first-child td, .data-list table tr:first-child th { border-top: 1.5px solid var(--line-strong); }
+.data-list table td.right { text-align: right; font-weight: 700; white-space: nowrap; }
+
+.callout-block .kicker { margin-bottom: 10px; }
+.callout-block .value { font-size: 23px; font-weight: 700; color: var(--ink); line-height: 1.2; margin-bottom: 8px; }
+.callout-block .lbl { font-size: 14px; color: var(--muted); margin-bottom: 16px; }
+.callout-block .body { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+/* Benchmarks table */
+.benchmarks-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.benchmarks-table th {
+  font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 1.5px;
+  text-transform: uppercase; padding: 14px 10px; text-align: left;
+  border-top: 1.5px solid var(--line-strong); border-bottom: 1px solid var(--line-strong);
+}
+.benchmarks-table td { padding: 20px 10px; border-bottom: 1px solid var(--line); font-size: 15px; vertical-align: middle; }
+.benchmarks-table td.metric { font-weight: 700; color: var(--ink); font-size: 16px; }
+.benchmarks-table td.beila { font-weight: 700; color: var(--accent); font-size: 19px; }
+.benchmarks-table td.target-min { color: var(--muted); }
+.benchmarks-table td.target-strong { color: var(--ink); }
+
+/* LTV slide */
+.ltv-cols { display: grid; grid-template-columns: 5.5fr 1fr 5.5fr; gap: 0; align-items: start; margin-top: 16px; }
+.ltv-arrow {
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent); padding-top: 64px;
+}
+.ltv-arrow svg { width: 48px; height: 48px; display: block; }
+.ltv-col .big { font-size: 48px; font-weight: 700; color: var(--ink); line-height: 1; margin-bottom: 10px; letter-spacing: -1px; }
+.ltv-col.target .big { color: var(--accent); }
+.ltv-col .caption { font-size: 14px; color: var(--muted); margin-bottom: 26px; line-height: 1.5; }
+.ltv-col table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+.ltv-col table tr:first-child td { border-top: 1.5px solid var(--line-strong); }
+.ltv-col table tr:last-child td { border-bottom: 1.5px solid var(--line-strong); }
+.ltv-col table td { padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 14.5px; }
+.ltv-col table td.right { text-align: right; font-weight: 700; white-space: nowrap; }
+.ltv-col.target table td.right { color: var(--accent); }
+
+/* GTM slide */
+.gtm-cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 10px; padding-bottom: 26px; border-bottom: 1px solid var(--line); }
+.gtm-cols .cell { padding-right: 18px; position: relative; display: flex; flex-direction: column; }
+.gtm-cols .cell + .cell { padding-left: 18px; }
+.gtm-cols .cell + .cell::before {
+  content: ''; position: absolute; left: 0; top: 4px; bottom: 8px; width: 1px; background: var(--line);
+}
+.gtm-cols .idx { font-size: 18px; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
+.gtm-cols .head { font-size: 17px; font-weight: 700; color: var(--ink); line-height: 1.3; margin-bottom: 28px; }
+.gtm-cols .body { font-size: 14px; color: var(--muted); line-height: 1.6; margin-top: auto; }
+.gtm-tagline { margin-top: 26px; font-size: 17px; font-style: italic; color: var(--ink); line-height: 1.55; }
+
+/* Financials slide */
+.fin-body { display: grid; grid-template-columns: 8fr 4.2fr; gap: 40px; margin-top: 10px; }
+.fin-body .rhs { border-left: 1px solid var(--line); padding-left: 32px; }
+.rhs .kpi { padding: 20px 0; border-bottom: 1px solid var(--line); }
+.rhs .kpi:last-child { border-bottom: none; }
+.rhs .kpi .val { font-size: 25px; font-weight: 700; color: var(--ink); line-height: 1.15; margin-bottom: 6px; letter-spacing: -0.5px; }
+.rhs .kpi .lbl { font-size: 13.5px; color: var(--muted); line-height: 1.5; }
+.assumption-note { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 12px; font-style: italic; color: var(--muted); line-height: 1.65; }
+
+/* Growth potential slide */
+.growth-body { display: grid; grid-template-columns: 5.4fr 7fr; gap: 44px; margin-top: 10px; }
+.growth-uplift { display: flex; align-items: baseline; gap: 18px; margin-top: 10px; }
+.growth-uplift .big { font-size: 44px; font-weight: 700; color: var(--accent); line-height: 1; letter-spacing: -1.5px; }
+.growth-uplift .txt { font-size: 14px; color: var(--muted); line-height: 1.55; }
+.growth-table { width: 100%; border-collapse: collapse; }
+.growth-table td { padding: 16px 0; font-size: 15px; }
+.growth-table td.right { text-align: right; font-weight: 700; font-size: 17px; white-space: nowrap; }
+.growth-note { margin-top: 28px; font-size: 14px; color: var(--muted); line-height: 1.65; }
+
+/* Use of funds slide */
+.uof-body { display: grid; grid-template-columns: 5fr 6.5fr; gap: 40px; margin-top: 10px; align-items: start; }
+.uof-donut-wrap { display: flex; flex-direction: column; align-items: center; }
+.uof-legend { margin-top: 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; font-size: 13px; color: var(--ink); line-height: 1.5; }
+.uof-legend .sw { display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: middle; }
+.uof-list-tbl { width: 100%; border-collapse: collapse; }
+.uof-list-tbl tr:first-child td { border-top: 1.5px solid var(--line-strong); }
+.uof-list-tbl tr:last-child td { border-bottom: 1.5px solid var(--line-strong); }
+.uof-list-tbl td { padding: 20px 0; border-bottom: 1px solid var(--line); font-size: 15px; vertical-align: middle; }
+.uof-list-tbl td.cat { font-weight: 700; color: var(--ink); }
+.uof-list-tbl td.pct { text-align: right; font-weight: 700; color: var(--accent); font-size: 19px; padding-right: 20px; width: 100px; }
+.uof-list-tbl td.amt { text-align: right; color: var(--muted); font-size: 14px; width: 150px; white-space: nowrap; }
+
+/* Beyond this round */
+.beyond-intro { font-size: 15px; color: var(--muted); line-height: 1.65; margin-bottom: 26px; max-width: 1050px; }
+.beyond-table { width: 100%; border-collapse: collapse; }
+.beyond-table th {
+  font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 1.5px;
+  text-transform: uppercase; padding: 14px 0; text-align: left;
+  border-top: 1.5px solid var(--line-strong); border-bottom: 1px solid var(--line-strong);
+}
+.beyond-table th.right { text-align: right; }
+.beyond-table td { padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 15px; vertical-align: middle; }
+.beyond-table td.pct { text-align: right; font-weight: 700; color: var(--accent); }
+.beyond-table td.amt { text-align: right; font-weight: 700; color: var(--ink); white-space: nowrap; }
+.beyond-table tr.total td { padding-top: 18px; padding-bottom: 18px; font-weight: 700; font-size: 17px; border-bottom: 1.5px solid var(--line-strong); }
+.beyond-table tr.total td.amt { font-size: 18px; }
+
+/* Terms slide */
+.terms-table { width: 100%; border-collapse: collapse; }
+.terms-table th {
+  padding: 16px 10px; border-top: 1.5px solid var(--line-strong); border-bottom: 1px solid var(--line-strong);
+  text-align: left; font-size: 16px; font-weight: 700; color: var(--ink);
+}
+.terms-table th.blank { border-top: 1.5px solid var(--line-strong); }
+.terms-table td { padding: 14px 10px; border-bottom: 1px solid var(--line); font-size: 14.5px; vertical-align: middle; line-height: 1.55; }
+.terms-table td.label {
+  font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 1px;
+  text-transform: uppercase; width: 22%;
+}
+.terms-note { margin-top: 16px; font-size: 12px; font-style: italic; color: var(--muted); line-height: 1.6; }
+
+/* Calculator (embedded on Terms slide) */
+.calc-embed {
+  margin-top: 28px; padding: 28px 30px; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--sand);
+}
+.calc-embed .calc-title { font-size: 17px; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
+.calc-embed .calc-sub { font-size: 14px; color: var(--muted); margin-bottom: 22px; line-height: 1.55; }
+.calc-controls { display: grid; grid-template-columns: 2fr 3fr; gap: 32px; margin-bottom: 22px; }
+.calc-field-label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
+.calc-amount-display { font-size: 28px; font-weight: 700; color: var(--ink); margin-bottom: 12px; letter-spacing: -0.5px; }
+/* 24px thumb on a 44px-tall track: the hit area meets the 44px minimum. */
+input[type="range"] {
+  width: 100%; -webkit-appearance: none; appearance: none; height: 44px;
+  background: transparent; cursor: pointer;
+}
+/* Must out-specify the base rule above, which otherwise wins on source order
+   and leaves the slider with no visible focus ring. */
+input[type="range"]:focus-visible {
+  outline: 2px solid var(--focus); outline-offset: 2px;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px; background: var(--line); border-radius: 2px;
+}
+input[type="range"]::-moz-range-track {
+  height: 4px; background: var(--line); border-radius: 2px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 24px; height: 24px;
+  margin-top: -10px;
+  background: var(--accent); border-radius: 50%; border: 2px solid #fff;
+  box-shadow: 0 0 0 1px var(--accent); cursor: pointer;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 24px; height: 24px; background: var(--accent); border-radius: 50%;
+  border: 2px solid #fff; box-shadow: 0 0 0 1px var(--accent); cursor: pointer;
+}
+.range-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.calc-tabs { display: flex; gap: 6px; }
+.calc-tab {
+  flex: 1; min-height: 44px; padding: 12px 10px; font-size: 14px; font-weight: 700;
+  background: transparent; border: 1px solid var(--line); color: var(--muted);
+  cursor: pointer; border-radius: 3px; font-family: inherit;
+}
+.calc-tab:hover { border-color: var(--accent-soft); color: var(--ink); }
+.calc-tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+.calc-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
+.calc-metric { background: white; padding: 16px 18px; border-radius: 3px; border: 1px solid var(--line); }
+.calc-metric .val { font-size: 23px; font-weight: 700; color: var(--ink); line-height: 1.15; margin-bottom: 6px; letter-spacing: -0.4px; }
+.calc-metric .lbl { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; line-height: 1.4; }
+.calc-note {
+  background: var(--accent); color: white; padding: 14px 18px; border-radius: 3px;
+  font-size: 13.5px; line-height: 1.6;
+}
+
+/* Roadmap slide */
+.roadmap { position: relative; padding-top: 60px; margin-top: 48px; }
+.roadmap-line {
+  position: absolute; top: 100px; left: 0; right: 0; height: 1.5px; background: var(--ink);
+}
+.roadmap-steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; position: relative; }
+.rmap-step { text-align: center; padding: 0 4px; position: relative; }
+.rmap-step .phase {
+  font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: 1.5px;
+  text-transform: uppercase; margin-bottom: 40px;
+}
+.rmap-step .dot {
+  position: absolute; left: 50%; transform: translate(-50%, -50%); top: 40px;
+  width: 14px; height: 14px; background: var(--ink); border-radius: 50%;
+}
+.rmap-step .name { font-size: 17px; font-weight: 700; color: var(--ink); line-height: 1.25; margin-bottom: 22px; margin-top: 22px; }
+.rmap-step .desc { font-size: 13.5px; color: var(--muted); line-height: 1.65; padding: 0; }
+
+/* Break-even slide */
+/* minmax(0,…): an `fr` track's automatic minimum is its content's min-content
+   width, so the 1800px plot track would blow the grid out and push horizontal
+   scroll onto the whole page. */
+.be-body { display: grid; grid-template-columns: minmax(0, 7.2fr) minmax(0, 5.4fr); gap: 40px; margin-top: 6px; }
+.be-legend { display: flex; gap: 28px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+.be-swatch { display: inline-block; width: 22px; height: 0; margin-right: 8px; vertical-align: middle; }
+/* Solid vs dashed, plus a direct label on each line — identity is never colour-alone. */
+.be-swatch-rev { border-top: 3px solid var(--accent); }
+.be-swatch-cost { border-top: 3px dashed #64748B; }
+.be-side { border-left: 1px solid var(--line); padding-left: 32px; }
+.be-formula {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin: 6px 0 18px; font-size: 22px; color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.be-formula .be-q { font-weight: 700; font-style: italic; }
+.be-formula .be-eq { color: var(--muted); }
+.be-frac { display: inline-flex; flex-direction: column; text-align: center; font-size: 15px; }
+.be-frac .be-num { padding: 0 8px 4px; border-bottom: 1.5px solid var(--ink); }
+.be-frac .be-den { padding: 4px 8px 0; }
+.be-result { font-size: 34px; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
+.be-plain { font-size: 13.5px; color: var(--muted); line-height: 1.6; margin-bottom: 18px; }
+.be-var { font-style: italic; font-weight: 700; color: var(--accent); }
+.be-table { width: 100%; border-collapse: collapse; }
+.be-table tr:first-child td { border-top: 1.5px solid var(--line-strong); }
+.be-table tr:last-child td { border-bottom: 1.5px solid var(--line-strong); }
+.be-table td { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.be-table td.right { text-align: right; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.be-controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+/* The track is wider than the panel, so it gets its OWN overflow-x scroller —
+   a wide plot must never push horizontal scroll onto the page itself. */
+.be-plot-wrap { display: flex; align-items: flex-start; }
+.be-yaxis { flex: 0 0 64px; display: block; }
+.be-scroller { flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden; }
+.be-scroller:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.be-scroller #be-chart { display: block; }
+.be-hint { margin-left: auto; font-style: italic; }
+
+/* Ask slide */
+.ask-headline { font-size: 72px; font-weight: 700; color: var(--ink); letter-spacing: -2px; line-height: 1; margin: 28px 0 18px; }
+.ask-sub { font-size: 16px; color: var(--muted); margin-bottom: 32px; line-height: 1.55; }
+.ask-rule { height: 2px; background: var(--line-strong); margin-bottom: 32px; }
+.ask-proof { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; padding-bottom: 26px; border-bottom: 1px solid var(--line); margin-bottom: 28px; }
+.ask-proof .p { padding-right: 24px; position: relative; }
+.ask-proof .p + .p { padding-left: 24px; }
+.ask-proof .p + .p::before {
+  content: ''; position: absolute; left: 0; top: 6px; bottom: 22px; width: 1px; background: var(--line);
+}
+.ask-proof .val { font-size: 38px; font-weight: 700; color: var(--ink); line-height: 1; margin-bottom: 14px; letter-spacing: -0.8px; }
+.ask-proof .lbl { font-size: 13.5px; color: var(--muted); line-height: 1.5; }
+.ask-contact { display: flex; flex-direction: column; gap: 8px; }
+.ask-contact .lbl { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+.ask-contact .val { font-size: 15px; color: var(--ink); }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important; scroll-behavior: auto !important;
+  }
+}
+
+/* Print — one slide per page, 16 pages.
+   The page box is pinned to the deck's own 1360px geometry rather than A4:
+   printing at a narrower width re-wraps every column, which pushed the taller
+   slides onto a second sheet. The page height is sized off the tallest slide
+   (Terms, with the calculator) plus the print padding, with slack. Slides get
+   that exact height, so each fills precisely one page and the footers line up
+   across the whole PDF. */
+@page { size: 1360px 940px; margin: 0; }
+@media print {
+  html { background: white; font-size: 13px; }
+  body { padding: 0; background: white; }
+  .skip-link, .gate { display: none !important; }
+  .slide {
+    box-shadow: none; margin: 0; width: 1360px; max-width: none;
+    height: 932px; min-height: 932px; padding: 44px 64px 28px;
+    overflow: hidden;
+    page-break-after: always; break-after: page;
+    page-break-inside: avoid; break-inside: avoid;
+  }
+  .slide:last-child { page-break-after: auto; break-after: auto; }
+  .slide-footer { padding-top: 16px; }
+
+  /* An A4-landscape content box is ~717px tall at 96dpi. Two slides exceed it
+     at the screen rhythm — Beyond This Round (8 table rows) and Terms (table +
+     calculator). Tighten only what makes them tall, so all 16 stay one-per-page
+     instead of spilling into a 17th and 18th. */
+  .slide-title { margin-bottom: 18px; }
+  .benchmarks-table td { padding: 13px 10px; }
+  .beyond-table td { padding: 9px 0; }
+  .beyond-table tr.total td { padding-top: 12px; padding-bottom: 12px; }
+  .beyond-intro { margin-bottom: 16px; }
+  .uof-list-tbl td { padding: 14px 0; }
+  .terms-table td { padding: 9px 10px; }
+  .terms-table th { padding: 11px 10px; }
+  .italic-note, .assumption-note { margin-top: 14px; }
+  .assumption-note { padding-top: 12px; }
+  .calc-embed { margin-top: 16px; padding: 16px 18px; }
+  .calc-embed .calc-sub { margin-bottom: 12px; }
+  .calc-controls { margin-bottom: 12px; }
+  .calc-amount-display { font-size: 22px; margin-bottom: 6px; }
+  /* The slider is dead weight on paper — the metrics below carry the meaning. */
+  input[type="range"] { height: 18px; }
+  .calc-tab { min-height: 32px; padding: 7px 10px; }
+  .calc-metric { padding: 10px 12px; }
+  .calc-metric .val { font-size: 19px; }
+  .calc-metrics { margin-bottom: 10px; gap: 10px; }
+  .calc-note { padding: 10px 14px; }
+  .roadmap { margin-top: 28px; }
+
+  /* Paper cannot scroll. Unclip the plot track, stack the break-even slide so
+     the chart gets the full page width, and scale the SVG type back up — the
+     viewBox shrinks to ~0.68, which would drop 12px labels under the floor. */
+  .be-body { grid-template-columns: 1fr; gap: 16px; }
+  .be-side { border-left: none; padding-left: 0; }
+  /* Axis and track are sized in proportion to their viewBox widths (64 and
+     1800 of 1864 total), so both SVGs scale by the same factor and the axis
+     labels stay aligned with the gridlines they belong to. */
+  .be-scroller { overflow: visible; flex: 0 0 96.5%; }
+  .be-yaxis { flex: 0 0 3.4%; width: 3.4%; height: auto; }
+  .be-scroller #be-chart { width: 100%; height: auto; }
+  #be-chart text, .be-yaxis text { font-size: 19px; }
+  .be-hint { display: none; }
+  .be-formula { margin: 2px 0 8px; }
+  .be-plain { margin-bottom: 8px; line-height: 1.5; }
+  .be-table td { padding: 4px 0; }
+  .be-controls { margin-top: 10px; padding-top: 8px; gap: 20px; }
+  .be-legend { margin-top: 6px; }
+  .be-body { gap: 12px; }
+  .accent-panel, .calc-note, .calc-tab.active,
+  .stats-grid-4 .stat + .stat::before, .traction-metrics .metric + .metric::before,
+  .revenue-engine .cell + .cell::before, .gtm-cols .cell + .cell::before,
+  .ask-proof .p + .p::before, .uof-legend .sw, .rmap-step .dot, .roadmap-line {
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+}
+
+/* Mobile fallback */
+@media (max-width: 1000px) {
+  body { padding: 12px 6px; font-size: 15px; }
+  .slide { padding: 28px 22px 32px; min-height: auto; }
+  .slide-title { font-size: 26px; }
+  .title-slide .display-title { font-size: 34px; }
+  .title-slide .terms-row { grid-template-columns: 1fr 1fr; gap: 20px; }
+  .ask-headline { font-size: 44px; }
+  .stats-grid-4, .traction-metrics, .revenue-engine, .gtm-cols, .ask-proof, .roadmap-steps { grid-template-columns: 1fr 1fr; }
+  .stats-grid-4 .stat, .traction-metrics .metric, .revenue-engine .cell, .gtm-cols .cell, .ask-proof .p { padding: 12px 0; }
+  .stats-grid-4 .stat + .stat, .traction-metrics .metric + .metric, .revenue-engine .cell + .cell, .gtm-cols .cell + .cell, .ask-proof .p + .p { padding-left: 0; }
+  .stats-grid-4 .stat + .stat::before,
+  .traction-metrics .metric + .metric::before,
+  .revenue-engine .cell + .cell::before,
+  .gtm-cols .cell + .cell::before,
+  .ask-proof .p + .p::before { display: none; }
+  .stats-grid-4 .stat-value { font-size: 32px; }
+  .traction-metrics .val { font-size: 26px; white-space: normal; }
+  .numbered-row { grid-template-columns: 1fr; gap: 12px; }
+  .two-col-product, .bm-tables, .traction-body, .fin-body, .growth-body, .uof-body, .ltv-cols, .be-body { grid-template-columns: 1fr; gap: 28px; }
+  .be-side { border-left: none; padding-left: 0; border-top: 1px solid var(--line); padding-top: 22px; }
+  .be-controls { grid-template-columns: 1fr; gap: 20px; }
+  .be-formula { font-size: 19px; gap: 10px; }
+  .be-result { font-size: 28px; }
+  .be-legend { flex-direction: column; gap: 8px; }
+  .two-col-product > div:last-child, .traction-body > div:last-child { border-left: none !important; padding-left: 0 !important; border-top: 1px solid var(--line); padding-top: 22px; }
+  .callout-block { border-left: none !important; padding-left: 0 !important; border-top: 1px solid var(--line); padding-top: 22px; }
+  .ltv-arrow { transform: rotate(90deg); padding: 16px 0; }
+  .ltv-col .big { font-size: 40px; }
+  .fin-body .rhs { border-left: none; padding-left: 0; border-top: 1px solid var(--line); padding-top: 20px; }
+  .roadmap { padding-top: 0; margin-top: 20px; }
+  .roadmap-line { display: none; }
+  .rmap-step .dot { display: none; }
+  .rmap-step { text-align: left; padding: 18px 0; border-bottom: 1px solid var(--line); }
+  .rmap-step .phase { margin-bottom: 10px; }
+  .rmap-step .name { margin-top: 0; margin-bottom: 10px; }
+  .calc-controls { grid-template-columns: 1fr; gap: 24px; }
+  .calc-metrics { grid-template-columns: 1fr; }
+  .benchmarks-table td, .benchmarks-table th { padding: 14px 6px; }
+  .uof-list-tbl td.amt { width: auto; }
+}
+</style>
+</head>
+<body class="access-locked">
+
+<a class="skip-link" href="#slide-title">Skip to presentation</a>
+
+<!-- ACCESS GATE -->
+<div class="gate" id="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title">
+  <form class="gate-card" id="gate-form">
+    <div class="gate-brand">Beila Scarves</div>
+    <h1 class="gate-title" id="gate-title">Investor Presentation</h1>
+    <p class="gate-sub">This presentation is private. Enter the access password you were given.</p>
+    <label class="gate-label" for="gate-password">Password</label>
+    <!-- Shared link, no accounts. The hidden username keeps password managers and
+         Chrome's a11y check happy without showing a field nobody can fill in. -->
+    <input type="text" name="username" value="beila-investor" autocomplete="username"
+           hidden aria-hidden="true" tabindex="-1" readonly>
+    <input class="gate-input" id="gate-password" name="password" type="password"
+           autocomplete="current-password" aria-describedby="gate-error" required>
+    <p class="gate-error" id="gate-error" role="alert" hidden>Incorrect password. Please try again.</p>
+    <button class="gate-button" type="submit">View presentation</button>
+  </form>
+</div>
+
+<main id="deck" hidden>
+
+<!-- SLIDE 1: TITLE -->
+<section class="slide title-slide" id="slide-title" aria-label="Title">
+  <div>
+    <div class="brand-mark">Beila Scarves</div>
+  </div>
+  <div style="margin-bottom: 24px;">
+    <div class="eyebrow-sm">Investor Presentation</div>
+    <h1 class="display-title">D2C modest fashion,<br>built for Indonesia.</h1>
+    <div class="rule"></div>
+    <div class="terms-row">
+      <div><div class="term-label">Raise</div><div class="term-value">Rp 85–150M</div></div>
+      <div><div class="term-label">Structure</div><div class="term-value">Equity or debt</div></div>
+      <div><div class="term-label">Horizon</div><div class="term-value">6–12 months</div></div>
+      <div><div class="term-label">Stage</div><div class="term-value">Seed</div></div>
+    </div>
+    <div class="location">Jakarta, Indonesia · 2026</div>
+  </div>
+</section>
+
+<!-- SLIDE 2: OPPORTUNITY -->
+<section class="slide" aria-label="Opportunity">
+  <div class="kicker">01 &nbsp; Opportunity</div>
+  <h2 class="slide-title">A large domestic category, still supplied by imports.</h2>
+  <div style="margin-top: 28px;">
+    <div class="numbered-row">
+      <div class="head">Indonesia is the world's largest Muslim consumer market.</div>
+      <div class="body">$6.09B hijab market, 1.02B+ pieces sold annually.</div>
+    </div>
+    <div class="numbered-row">
+      <div class="head">Supply is dominated by imports.</div>
+      <div class="body">~75% of hijabs sold in Indonesia are imported — domestic quality-first D2C is the exception.</div>
+    </div>
+    <div class="numbered-row">
+      <div class="head">The buyer is digital and social-first.</div>
+      <div class="body">Discovery and purchase happen on TikTok, Instagram and marketplaces — not traditional retail.</div>
+    </div>
+  </div>
+  <div class="italic-note">
+    Sources: modest fashion &amp; Indonesia hijab market research, 2025–26
+  </div>
+  <div class="slide-footer"><span class="brand">Beila Scarves</span><span>02 / 17</span></div>
+</section>
+
+<!-- SLIDE 3: MARKET -->
+<section class="slide" aria-label="Market">
+  <div class="kicker">02 &nbsp; Market</div>
+  <h2 class="slide-title">Category size and structure.</h2>
+  <div class="stats-grid-4" style="margin-top: 26px;">
+    <div class="stat"><div class="stat-value">$318B</div><div class="stat-title">Global modest fashion market, 2025</div><div class="stat-sub">6.8% CAGR to 2034</div></div>
+    <div class="stat"><div class="stat-value">$121.7B</div><div class="stat-title">Asia-Pacific share</div><div class="stat-sub">38% of the global market</div></div>
+    <div class="stat"><div class="stat-value">$6.09B</div><div class="stat-title">Indonesia hijab market</div><div class="stat-sub">1.02B+ pieces sold per year</div></div>
+    <div class="stat"><div class="stat-value">45%</div><div class="stat-title">Shopee's share of fashion e-commerce</div><div class="stat-sub">Marketplace is where buyers already are</div></div>
+  </div>
+  <div class="accent-panel" style="margin-top: 38px;">
+    <div class="kicker on-accent">Takeaway</div>
+    <div class="panel-title">Import-dominated supply means inconsistent sizing, fabric quality and after-sales trust. Beila already sells 19 SKUs profitably online at 53.5% gross margin — the raise scales what works.</div>
+  </div>
+  <div class="italic-note">
+    Sources: Islamic/modest fashion market reports; Indonesia hijab &amp; fashion e-commerce statistics, 2025–26
+  </div>
+  <div class="slide-footer"><span class="brand">Beila Scarves</span><span>03 / 17</span></div>
+</section>
+
+<!-- SLIDE 4: PRODUCT -->
+<section class="slide" aria-label="Product">
+  <div class="kicker">03 &nbsp; Product</div>
+  <h2 class="slide-title">One brand, a full modest-fashion wardrobe.</h2>
+  <div class="two-col-product" style="margin-top: 14px;">
+    <div>
+      <table class="product-table">
+        <thead><tr><th scope="col">Catalog — 19+ active SKUs</th><th></th><th></th></tr></thead>
+        <tbody>
+          <tr><td class="name">Everyday basics</td><td class="desc">Voile, Cotton, Cotton Lace, Nude</td><td class="price">Rp 55–99K</td></tr>
+          <tr><td class="name">Premium fabrics</td><td class="desc">Chiffon, Jersey, Crinkle, Silk-blend</td><td class="price">Rp 78–165K</td></tr>
+          <tr><td class="name">Instant &amp; shaped</td><td class="desc">Pashmina Plisket, Jersey Instant</td><td class="price">Rp 59–85K</td></tr>
+          <tr><td class="name">Outerwear</td><td class="desc">Beila Blazer, Jadda Long Dress</td><td class="price">Rp 200–600K</td></tr>
+          <tr><td class="name">Accessories</td><td class="desc">Magnet Pin — 84% margin add-on</td><td class="price">Rp 55K</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="border-left: 1px solid var(--line); padding-left: 40px;">
+      <div class="eyebrow">Positioning</div>
+      <div class="positioning-title">Quality hijab, priced for everyday.</div>
+      <ul class="dash-list">
+        <li>Not luxury, not disposable fast-fashion</li>
+        <li>100% D2C — no wholesale margin loss</li>
+        <li>Repeat-purchase category: fabric refreshes every season</li>
+        <li>Built domestically — a trust story imports can't match</li>
+      </ul>
+    </div>
+  </div>
+  <div class="slide-footer"><span class="brand">Beila Scarves</span><span>04 / 17</span></div>
+</section>
+
+<!-- SLIDE 5: TRACTION -->
+<section class="slide" aria-label="Traction">
+  <div class="kicker">04 &nbsp; Traction</div>
+  <h2 class="slide-title">Proven and profitable at small scale.</h2>
+  <div class="eyebrow" style="margin-bottom: 16px;">6-Month Actuals Since Launch</div>
+  <div class="traction-metrics">
+    <div class="metric"><div class="val">647</div><div class="lbl">Units sold</div></div>
+    <div class="metric"><div class="val">Rp 70.735.400</div><div class="lbl">Revenue</div></div>
+    <div class="metric"><div class="val">Rp 27.636.390</div><div class="lbl">Net profit</div></div>
+    <div class="metric"><div class="val">39.1%</div><div class="lbl">Net margin</div></div>
+  </div>
+  <div class="traction-body">
+    <div>
+      <div class="eyebrow" style="margin-bottom: 16px;">Top 5 SKUs by Revenue (Rp M)</div>
+      <svg viewBox="0 0 500 230" width="100%" style="display:block;" role="img" aria-labelledby="sku-chart-title sku-chart-desc">
+        <title id="sku-chart-title">Top 5 SKUs by revenue, 6-month actuals</title>
+        <desc id="sku-chart-desc">Horizontal bar chart. Beila Cotton Lace leads at Rp 9.3 million, followed by Beila Jersey at Rp 6.6 million, Beila Lens at Rp 6.0 million, Beila Viscose Lace at Rp 5.0 million, and Beila Cotton at Rp 4.8 million.</desc>
+        <!-- Bar chart: values 9.3, 6.6, 6.0, 4.95, 4.8 -->
+        <!-- Scale: 9.3 → 280px, label area 150px, value area 40px -->
+        <g font-family="Inter, Arial, sans-serif" font-size="12.5" fill="#475569">
+          <text x="150" y="27" text-anchor="end">Beila Cotton Lace</text>
+          <text x="150" y="71" text-anchor="end">Beila Jersey</text>
+          <text x="150" y="115" text-anchor="end">Beila Lens</text>
+          <text x="150" y="159" text-anchor="end">Beila Viscose Lace</text>
+          <text x="150" y="203" text-anchor="end">Beila Cotton</text>
+        </g>
+        <!-- Bars -->
+        <g fill="#1E3A5F">
+          <rect x="160" y="14" width="280" height="20"></rect>
+          <rect x="160" y="58" width="199" height="20"></rect>
+          <rect x="160" y="102" width="181" height="20"></rect>
+          <rect x="160" y="146" width="149" height="20"></rect>
+          <rect x="160" y="190" width="145" height="20"></rect>
+        </g>
+        <!-- Values -->
+        <g font-family="Inter, Arial, sans-serif" font-size="12.5" font-weight="700" fill="#0F172A">
+          <text x="448" y="29">9.3</text>
+          <text x="367" y="73">6.6</text>
+          <text x="349" y="117">6.0</text>
+          <text x="317" y="161">5.0</text>
+          <text x="313" y="205">4.8</text>
+        </g>
+      </svg>
+    </div>
+    <div style="border-left: 1px solid var(--line); padding-left: 32px;">
+      <div class="eyebrow" style="margin-bottom: 12px;">Best Margin Driver</div>
+      <div style="font-size: 18px; font-weight: 700; color: var(--ink); line-height: 1.3; margin-bottom: 20px;">Accessories carry the highest margin.</div>
+      <div style="font-size: 14px; color: var(--muted); line-height: 1.65;">
+        53.5% blended gross margin at product level. Magnet Pin runs at 84% — 80 units moved with minimal ad spend. A low-cost, high-attach cross-sell layered onto every hijab order lifts blended margin as we scale.
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span class="brand">Beila Scarves</span><span>05 / 17</span></div>
+</section>
+
+<!-- SLIDE 6: BUSINESS MODEL -->
+<section class="slide" aria-label="Business Model">
+  <div class="kicker">05 &nbsp; Business Model</div>
+  <h2 class="slide-title">D2C economics that already work.</h2>
+  <div class="revenue-engine">
+    <div class="cell">
+      <div class="idx">01</div>
+      <div class="head">Core catalog</div>
+      <div class="body">19+ hijab &amp; scarf SKUs, D2C — primary revenue engine.</div>
+    </div>
+    <div class="cell">
+      <div class="idx">02</div>
+      <div class="head">High-margin add-ons</div>
+      <div class="body">Accessories like Magnet Pin (84% margin) lift blended profitability.</div>
+    </div>
+    <div class="cell">
+      <div class="idx">03</div>
+      <div class="head">Direct channels</div>
+      <div class="body">Instagram/TikTok social commerce, Shopee/Tokopedia, WhatsApp repeat orders.</div>
+    </div>
+  </div>
+  <div class="bm-tables">
+    <div class="data-list">
+      <div class="data-list-head">Unit Economics — Per Order</div>
+      <table>
+        <tr><td>Average selling price</td><td class="right">Rp 109.328</td></tr>
+        <tr><td>Blended cost of goods</td><td class="right">Rp 50.847</td></tr>
+        <tr class="total-row"><td>Gross margin per unit</td><td class="right">53.5%</td></tr>
+      </table>
+    </div>
+    <div class="data-list">
+      <div class="data-list-head">Monthly Opex — Actual</div>
+      <table>
+        <tr><td>Packaging</td><td class="right">Rp 200K</td></tr>
+        <tr><td>Ads / promotion</td><td class="right">Rp 1M</td></tr>
+        <tr><td>Entertain</td><td class="right">Rp 500K</td></tr>
+        <tr class="total-row"><td>Total monthly opex</td><td class="right">Rp 1.7M</td></tr>
+      </table>
+    </div>
+    <div class="callout-block" style="border-left: 1px solid var(--line); padding-left: 28px;">
+      <div class="kicker">Current Run-Rate</div>
+      <div class="value">Rp 4.6M / month</div>
+      <div class="lbl">Net profit today</div>
+      <div class="body">Rp 11.8M revenue against Rp 1.7M opex — already generating cash. The raise scales what's working, not funding a path to viability.</div>
+    </div>
+  </div>
+  <div class="slide-footer"><span class="brand">Beila Scarves</span><span>06 / 17</span></div>
+</section>
+
+<!-- SLIDE 7: BENCHMARKS -->
+<section class="slide" aria-label="Benchmarks">
+  <div class="kicker">06 &nbsp; Benchmarks</div>
+  <h2 class="slide-title">Beila meets or exceeds every D2C target.</h2>
+  <table class="benchmarks-table">
+    <thead>
+      <tr><th scope="col">Metric</th><th scope="col">Beila (actual)</th><th scope="col">Minimum target</th><th scope="col">Strong target</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="metric">Gross margin</td><td class="beila">53.5%</td><td class="target-min">45%+</td><td class="target-strong">55%+</td></tr>
+      <tr><td class="metric">Contribution margin</td><td class="beila">51.8%</td><td class="target-min">30%+</td><td class="target-strong">40%+</td></tr>
+      <tr><td class="metric">Operating margin</td><td class="beila">39.1%</td><td class="target-min">10%+</td><td class="target-strong">15–20%+</td></tr>
+      <tr><td class="metric">Net margin</td><td class="beila">39.1%</td><td class="target-min">10%+</td><td class="target-strong">15–20%+</td></tr>
+    </tbody>
+  </table>
+  <div class="accent-panel" style="margin-top: 32px;">
+    <div class="panel-title">Beila beats every minimum benchmark. Contribution and operating margins already sit above the strong-target range — the raise scales an operation that's structurally healthier than industry averages.</div>
+  </div>
+  <div class="italic-note">
+    Benchmarks: D2C fashion industry norms, 2024–25. Contribution margin calculated from Beila's per-order economics.
+  </div>
+  <div class="slide-footer"><span class="brand">Beila Scarves</span><span>07 / 17</span></div>
+</section>
+
+<!-- SLIDE 8: LTV -->
+<section class="slide" aria-label="Customer LTV">
+  <div class="kicker">07 &nbsp; Customer LTV</div>
+  <h2 class="slide-title">Building repeat customers, not one-time buyers.</h2>
+  <div class="ltv-cols">
+    <div class="ltv-col current">
+      <div class="eyebrow">Current (est.)</div>
+      <div class="big">Rp 213K</div>
+      <div class="caption">LTV per customer</div>
+      <table>
+        <tr><td>Average order value</td><td class="right">Rp 109K</td></tr>
+        <tr><td>Purchase frequency</td><td class="right">1.3× / year</td></tr>
+        <tr><td>Est. customer lifespan</td><td class="right">1.5 years</td></tr>
+        <tr><td>Est. CAC</td><td class="right">Rp 30K</td></tr>
+        <tr><td>LTV / CAC ratio</td><td class="right">7.1×</td></tr>
+      </table>
+    </div>
+    <div class="ltv-arrow" aria-hidden="true">
+      <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M6 24 H38" stroke="#1E3A5F" stroke-width="5" stroke-linecap="square"/>
+        <path d="M27 12 L41 24 L27 36" stroke="#1E3A5F" stroke-width="5" stroke-linecap="square" stroke-linejoin="miter" fill="none"/>
+      </svg>
+    </div>
+    <div class="ltv-col target">
+      <div class="eyebrow">Target (post-investment)</div>
+      <div class="big">Rp 650K</div>
+      <div class="caption">3.1× uplift with retention investment</div>
+      <table>
+        <tr><td>Average order value</td><td class="right">Rp 130K</td></tr>
+        <tr><td>Purchase frequency</td><td class="right">2.5× / year</td></tr>
+        <tr><td>Customer lifespan</td><td class="right">2.0 years</td></tr>
+        <tr><td>Est. CAC (scaled)</td><td class="right">Rp 50K</td></tr>
+        <tr><td>LTV / CAC ratio</td><td class="right">13×</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="italic-note">
+    Industry benchmarks: LTV/CAC ≥ 3× minimum, ≥ 5× strong. Beila's baseline already sits above the strong benchmark.
+  </div>
+  <div class="slide-footer"><span class="brand">Beila Scarves</span><span>08 / 17</span></div>
+</section>
+
+<!-- SLIDE 9: GO-TO-MARKET -->
+<section class="slide" aria-label="Go-to-Market">
+  <div class="kicker">08 &nbsp; Go-to-Market</div>
+  <h2 class="slide-title">Where the raise buys growth.</h2>
+  <div class="gtm-cols">
+    <div class="cell">
+      <div class="idx">01</div>
+      <div class="head">KOL &amp; micro-influencers</div>
+      <div class="body">Hijab-focused creators drive niche discovery and trust.</div>
+    </div>
+    <div class="cell">
+      <div class="idx">02</div>
+      <div class="head">Social commerce content &amp; ads</div>
+      <div class="body">TikTok Shop and Instagram Reels convert styling content directly.</div>
+    </div>
+    <div class="cell">
+      <div class="idx">03</div>
+      <div class="head">Marketplace visibility</div>
+      <div class="body">Shopee and Tokopedia ads fund reach beyond owned audiences.</div>
+    </div>
+    <div class="cell">
+      <div class="idx">04</div>
+      <div class="head">Referral &amp; repeat loyalty</div>
+      <div class="body">Reward repeat buyers — cheaper than acquisition in a repeat-purchase category.</div>
+    </div>
+  </div>
+  <div class="gtm-tagline">Timed around Ramadan &amp; Lebaran — the largest annual demand spike for modest fashion in Indonesia.</div>
+  <div class="slide-footer"><span class="brand">Beila Scarves</span><span>09 / 17</span></div>
+</section>
+
+<!-- SLIDE 10: FINANCIALS -->
+<section class="slide" aria-label="Financials">
+  <div class="kicker">09 &nbsp; Financials</div>
+  <h2 class="slide-title">12-month projection, funded by the raise.</h2>
+  <div class="fin-body">
+    <div>
+      <div class="eyebrow" style="margin-bottom: 12px;">Monthly Revenue (Rp M)</div>
+      <svg viewBox="0 0 620 330" width="100%" style="display:block;" role="img" aria-labelledby="fin-chart-title fin-chart-desc">
+        <title id="fin-chart-title">Projected monthly revenue over 12 months</title>
+        <desc id="fin-chart-desc">Line chart rising steadily from Rp 11.8 million in month 1 to Rp 54.9 million in month 12, reflecting 15% month-on-month growth funded by the raise.</desc>
+        <!-- Grid lines -->
+        <g stroke="#E5E7EB" stroke-width="1">
+          <line x1="46" y1="40" x2="600" y2="40" />
+          <line x1="46" y1="100" x2="600" y2="100" />
+          <line x1="46" y1="160" x2="600" y2="160" />
+          <line x1="46" y1="220" x2="600" y2="220" />
+          <line x1="46" y1="280" x2="600" y2="280" />
+        </g>
+        <!-- Y axis labels: 0, 15, 30, 45, 60 -->
+        <g font-family="Inter, Arial, sans-serif" font-size="12.5" fill="#475569" text-anchor="end">
+          <text x="36" y="44">60</text>
+          <text x="36" y="104">45</text>
+          <text x="36" y="164">30</text>
+          <text x="36" y="224">15</text>
+          <text x="36" y="284">0</text>
+        </g>
+        <!-- Line: values 11.79, 13.56, 15.59, 17.93, 20.62, 23.71, 27.27, 31.36, 36.06, 41.47, 47.69, 54.85 -->
+        <!-- x = 46 + i * 50.4, y = 280 - value * 4 -->
+        <polyline
+          fill="none" stroke="#1E3A5F" stroke-width="3"
+          points="46,232.84 96.4,225.76 146.8,217.64 197.2,208.28 247.6,197.52 298,185.16 348.4,170.92 398.8,154.56 449.2,135.76 499.6,114.12 550,89.24 600.4,60.6"
+        />
+        <!-- Data points -->
+        <g fill="#1E3A5F">
+          <circle cx="46" cy="232.84" r="4" />
+          <circle cx="96.4" cy="225.76" r="4" />
+          <circle cx="146.8" cy="217.64" r="4" />
+          <circle cx="197.2" cy="208.28" r="4" />
+          <circle cx="247.6" cy="197.52" r="4" />
+          <circle cx="298" cy="185.16" r="4" />
+          <circle cx="348.4" cy="170.92" r="4" />
+          <circle cx="398.8" cy="154.56" r="4" />
+          <circle cx="449.2" cy="135.76" r="4" />
+          <circle cx="499.6" cy="114.12" r="4" />
+          <circle cx="550" cy="89.24" r="4" />
+          <circle cx="600.4" cy="60.6" r="4" />
+        </g>
+        <!-- X axis labels -->
+        <g font-family="Inter, Arial, sans-serif" font-size="12.5" fill="#475569" text-anchor="middle">
+          <text x="46" y="311">M1</text>
+          <text x="96.4" y="311">M2</text>
+          <text x="146.8" y="311">M3</text>
+          <text x="197.2" y="311">M4</text>
+          <text x="247.6" y="311">M5</text>
+          <text x="298" y="311">M6</text>
+          <text x="348.4" y="311">M7</text>
+          <text x="398.8" y="311">M8</text>
+          <text x="449.2" y="311">M9</text>
+          <text x="499.6" y="311">M10</text>
+          <text x="550" y="311">M11</text>
+          <text x="600.4" y="311">M12</text>
+        </g>
+      </svg>
+    </div>
+    <div class="rhs">
+      <div class="kpi"><div class="val">Rp 341.900.000</div><div class="lbl">12-month cumulative revenue</div></div>
+      <div class="kpi"><div class="val">Rp 182.900.000</div><div class="lbl">12-month cumulative gross profit</div></div>
+      <div class="kpi"><div class="val">Rp 135.200.000</div><div class="lbl">12-month cumulative net profit</div></div>
+    </div>
+  </div>
+  <div class="assumption-note">
+    Assumptions: starts from actual current run-rate of Rp 11.79M/month (Rp 70.7M over 6 months / 108 units per month). 15% MoM growth on scaled marketing spend, 53.5% gross margin held. Opex uses actual baseline of Rp 1.7M/month (packaging + ads + entertain) plus ~8% of revenue for expanded marketing funded by the raise. Ending run-rate ~Rp 54.8M/month.
+  </div>
+  <div class="slide-footer"><span class="brand">Beila Scarves</span><span>10 / 17</span></div>
+</section>
+
+<!-- SLIDE 11: GROWTH POTENTIAL -->
+<section class="slide" aria-label="Growth Potential">
+  <div class="kicker">10 &nbsp; Growth Potential</div>
+  <h2 class="slide-title">Scaling the hero: Beila Cotton Lace.</h2>
+  <div class="growth-body">
+    <div>
+      <div class="eyebrow" style="margin-bottom: 12px;">Product Hero — Beila Cotton Lace</div>
+      <table class="growth-table">
+        <tr style="border-top: 1.5px solid var(--line-strong);"><td>Revenue, 6-mo actual</td><td class="right">Rp 9.3M</td></tr>
+        <tr style="border-top: 1px solid var(--line);"><td>Share of catalog revenue</td><td class="right">13%</td></tr>
+        <tr style="border-top: 1px solid var(--line);"><td>Gross margin</td><td class="right">65%</td></tr>
+        <tr style="border-top: 1px solid var(--line);"><td>Units sold, 6-mo</td><td class="right">60 units</td></tr>
+        <tr style="border-top: 1px solid var(--line); border-bottom: 1.5px solid var(--line-strong);"><td>Current run-rate</td><td class="right" style="color: var(--accent);">Rp 1.55M / month</td></tr>
+      </table>
+      <div class="growth-note">
+        Cotton Lace is the top-revenue SKU with the second-highest margin. Concentrating a share of the raise on hero inventory + ads targets an outsized share of upside.
+      </div>
+    </div>
+    <div>
+      <div class="eyebrow" style="margin-bottom: 12px;">12-Month Projected Monthly Revenue (Rp M)</div>
+      <svg viewBox="0 0 620 330" width="100%" style="display:block;" role="img" aria-labelledby="hero-chart-title hero-chart-desc">
+        <title id="hero-chart-title">Beila Cotton Lace projected monthly revenue</title>
+        <desc id="hero-chart-desc">Line chart climbing from Rp 1.6 million per month today to Rp 8.3 million by month 12 — a 5.4 times increase on the hero product alone.</desc>
+        <!-- Grid lines -->
+        <g stroke="#E5E7EB" stroke-width="1">
+          <line x1="46" y1="40" x2="600" y2="40" />
+          <line x1="46" y1="120" x2="600" y2="120" />
+          <line x1="46" y1="200" x2="600" y2="200" />
+          <line x1="46" y1="280" x2="600" y2="280" />
+        </g>
+        <!-- Y axis: 0, 3, 6, 9 -->
+        <g font-family="Inter, Arial, sans-serif" font-size="12.5" fill="#475569" text-anchor="end">
+          <text x="36" y="44">9</text>
+          <text x="36" y="124">6</text>
+          <text x="36" y="204">3</text>
+          <text x="36" y="284">0</text>
+        </g>
+        <!-- Values: 1.55, 2.05, 2.71, 3.59, 4.75, 6.28, 8.30 -->
+        <!-- x = 46 + i*88.4; y = 280 - value*26.67 -->
+        <polyline
+          fill="none" stroke="#1E3A5F" stroke-width="3"
+          points="46,238.66 134.4,225.33 222.8,207.71 311.2,184.26 399.6,153.32 488,112.53 576.4,58.66"
+        />
+        <g fill="#1E3A5F">
+          <circle cx="46" cy="238.66" r="4" />
+          <circle cx="134.4" cy="225.33" r="4" />
+          <circle cx="222.8" cy="207.71" r="4" />
+          <circle cx="311.2" cy="184.26" r="4" />
+          <circle cx="399.6" cy="153.32" r="4" />
+          <circle cx="488" cy="112.53" r="4" />
+          <circle cx="576.4" cy="58.66" r="4" />
+        </g>
+        <!-- Value labels -->
+        <g font-family="Inter, Arial, sans-serif" font-size="12.5" font-weight="700" fill="#0F172A">
+          <text x="52" y="228">1.6</text>
+          <text x="140" y="215">2.1</text>
+          <text x="228" y="197">2.7</text>
+          <text x="317" y="174">3.6</text>
+          <text x="405" y="143">4.8</text>
+          <text x="494" y="102">6.3</text>
+          <text x="560" y="48">8.3</text>
+        </g>
+        <g font-family="Inter, Arial, sans-serif" font-size="12.5" fill="#475569" text-anchor="middle">
+          <text x="46" y="311">Now</text>
+          <text x="134.4" y="311">M2</text>
+          <text x="222.8" y="311">M4</text>
+          <text x="311.2" y="311">M6</text>
+          <text x="399.6" y="311">M8</text>
+          <text x="488" y="311">M10</text>
+          <text x="576.4" y="311">M12</text>
+        </g>
+      </svg>
+      <div class="growth-uplift">
+        <div class="big">5.4×</div>
+        <div class="txt">projected 12-month revenue growth on the hero product alone</div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span class="brand">Beila Scarves</span><span>11 / 17</span></div>
+</section>
+
+<!-- SLIDE 12: USE OF FUNDS -->
+<section class="slide" aria-label="Use of Funds">
+  <div class="kicker">11 &nbsp; Use of Funds</div>
+  <h2 class="slide-title">Deploying Rp 85–150M.</h2>
+  <div class="uof-body">
+    <div class="uof-donut-wrap">
+      <svg viewBox="0 0 200 200" width="280" style="display:block; max-width:100%;" role="img" aria-labelledby="uof-chart-title uof-chart-desc">
+        <title id="uof-chart-title">Use of funds allocation</title>
+        <desc id="uof-chart-desc">Donut chart: Inventory and Production 40 percent, Marketing and Acquisition 35 percent, Operations and Team 15 percent, Working Capital 10 percent.</desc>
+        <!-- Donut chart: 40, 35, 15, 10 -->
+        <!-- Circumference = 2π * 60 ≈ 377 -->
+        <!-- Segments (clockwise from top): 40% = 150.8, 35% = 131.95, 15% = 56.55, 10% = 37.7 -->
+        <g transform="rotate(-90 100 100)">
+          <circle cx="100" cy="100" r="60" fill="none" stroke="#1E3A5F" stroke-width="26"
+            stroke-dasharray="150.8 226.2" stroke-dashoffset="0" />
+          <circle cx="100" cy="100" r="60" fill="none" stroke="#3E5E80" stroke-width="26"
+            stroke-dasharray="131.95 245.05" stroke-dashoffset="-150.8" />
+          <circle cx="100" cy="100" r="60" fill="none" stroke="#8A9BAF" stroke-width="26"
+            stroke-dasharray="56.55 320.45" stroke-dashoffset="-282.75" />
+          <circle cx="100" cy="100" r="60" fill="none" stroke="#DBE5EF" stroke-width="26"
+            stroke-dasharray="37.7 339.3" stroke-dashoffset="-339.3" />
+        </g>
+      </svg>
+      <div class="uof-legend">
+        <div><span class="sw" style="background:#1E3A5F"></span>Inventory &amp; Production</div>
+        <div><span class="sw" style="background:#3E5E80"></span>Marketing &amp; Acquisition</div>
+        <div><span class="sw" style="background:#8A9BAF"></span>Operations &amp; Team</div>
+        <div><span class="sw" style="background:#DBE5EF"></span>Working Capital</div>
+      </div>
+    </div>
+    <div>
+      <table class="uof-list-tbl">
+        <tr><td class="cat">Inventory &amp; Production</td><td class="pct">40%</td><td class="amt">Rp 34–60M</td></tr>
+        <tr><td class="cat">Marketing &amp; Acquisition</td><td class="pct">35%</td><td class="amt">Rp 29.75–52.5M</td></tr>
+        <tr><td class="cat">Operations &amp; Team</td><td class="pct">15%</td><td class="amt">Rp 12.75–22.5M</td></tr>
+        <tr><td class="cat">Working Capital</td><td class="pct">10%</td><td class="amt">Rp 8.5–15M</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="slide-footer"><span class="brand">Beila Scarves</span><span>12 / 17</span></div>
+</section>
+
+<!-- SLIDE 13: BEYOND THIS ROUND -->
+<section class="slide" aria-label="Beyond This Round">
+  <div class="kicker">12 &nbsp; Beyond This Round</div>
+  <h2 class="slide-title">Rp 500M follow-on round after 12–18 months.</h2>
+  <div class="beyond-intro">
+    After the current seed raise scales Beila to ~Rp 55M/month run-rate, a Rp 500M growth round funds national reach, hero-product expansion, and omnichannel entry.
+  </div>
+  <table class="beyond-table">
+    <thead>
+      <tr><th scope="col">Use</th><th scope="col" class="right">Allocation</th><th scope="col" class="right">Amount</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Inventory &amp; hero-product expansion</td><td class="pct">30%</td><td class="amt">Rp 150M</td></tr>
+      <tr><td>Marketing &amp; customer acquisition</td><td class="pct">25%</td><td class="amt">Rp 125M</td></tr>
+      <tr><td>Product development / new collections</td><td class="pct">15%</td><td class="amt">Rp 75M</td></tr>
+      <tr><td>Content / brand building</td><td class="pct">10%</td><td class="amt">Rp 50M</td></tr>
+      <tr><td>Distribution / marketplace / retail</td><td class="pct">10%</td><td class="amt">Rp 50M</td></tr>
+      <tr><td>Technology / operations / analytics</td><td class="pct">5%</td><td class="amt">Rp 25M</td></tr>
+      <tr><td>Working-capital reserve</td><td class="pct">5%</td><td class="amt">Rp 25M</td></tr>
+      <tr class="total"><td>Total</td><td class="pct" style="color: var(--ink);">100%</td><td class="amt">Rp 500M</td></tr>
+    </tbody>
+  </table>
+  <div class="italic-note">
+    Indicative allocation for the follow-on growth round. Trigger: seed raise scaled to Rp 55M+/month run-rate with LTV/CAC ≥ 5×.
+  </div>
+  <div class="slide-footer"><span class="brand">Beila Scarves</span><span>13 / 17</span></div>
+</section>
+
+<!-- SLIDE 14: TERMS + CALCULATOR -->
+<section class="slide" aria-label="Terms">
+  <div class="kicker">13 &nbsp; Terms</div>
+  <h2 class="slide-title">Flexible structure — equity or debt.</h2>
+  <table class="terms-table">
+    <thead>
+      <tr><th class="blank"></th><th scope="col">Option A — Equity</th><th scope="col">Option B — Debt</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="label">Instrument</td><td>Common or preferred equity</td><td>Term loan or revenue-based note</td></tr>
+      <tr><td class="label">Amount</td><td>Rp 85–150M</td><td>Rp 85–150M</td></tr>
+      <tr><td class="label">Indicative pricing</td><td>8–15% equity stake (negotiated)</td><td>18–30% p.a., 12–24 month tenor</td></tr>
+      <tr><td class="label">Alternative</td><td>—</td><td>Revenue-share to 1.3–1.5× repaid</td></tr>
+      <tr><td class="label">Security</td><td>—</td><td>Inventory and receivables</td></tr>
+      <tr><td class="label">Governance</td><td>Quarterly updates; no board seat</td><td>Standard loan covenants</td></tr>
+    </tbody>
+  </table>
+  <div class="terms-note">
+    Indicative starting framework for discussion. Final terms subject to negotiation and confirmation with legal and financial counsel.
+  </div>
+
+  <!-- Interactive calculator -->
+  <div class="calc-embed">
+    <div class="calc-title">Investment metrics calculator</div>
+    <div class="calc-sub">Move the slider and switch structures to see your projected return.</div>
+    <div class="calc-controls">
+      <div>
+        <label class="calc-field-label" for="calc-slider">Investment Amount</label>
+        <div class="calc-amount-display" id="calc-amount">Rp 100M</div>
+        <input type="range" id="calc-slider" min="85" max="150" value="100" step="1"
+               aria-label="Investment amount in millions of rupiah">
+        <div class="range-labels"><span>Rp 85M</span><span>Rp 150M</span></div>
+      </div>
+      <div>
+        <div class="calc-field-label" id="calc-structure-label">Structure</div>
+        <div class="calc-tabs" role="group" aria-labelledby="calc-structure-label">
+          <button class="calc-tab active" type="button" data-s="equity" aria-pressed="true">Equity</button>
+          <button class="calc-tab" type="button" data-s="debt" aria-pressed="false">Debt</button>
+          <button class="calc-tab" type="button" data-s="rev" aria-pressed="false">Revenue-share</button>
+        </div>
+      </div>
+    </div>
+    <div class="calc-metrics" id="calc-metrics" aria-live="polite"></div>
+    <div class="calc-note" id="calc-note"></div>
+  </div>
+
+  <div class="slide-footer"><span class="brand">Beila Scarves</span><span>14 / 17</span></div>
+</section>
+
+<!-- SLIDE 15: ROADMAP -->
+<section class="slide" aria-label="Roadmap">
+  <div class="kicker">14 &nbsp; Roadmap</div>
+  <h2 class="slide-title">6–12 month execution plan.</h2>
+  <div class="roadmap">
+    <div class="roadmap-line"></div>
+    <div class="roadmap-steps">
+      <div class="rmap-step">
+        <div class="phase">M1–2</div>
+        <div class="dot"></div>
+        <div class="name">Deploy &amp; produce</div>
+        <div class="desc">Close raise, scale production, add light ops support.</div>
+      </div>
+      <div class="rmap-step">
+        <div class="phase">M3–4</div>
+        <div class="dot"></div>
+        <div class="name">Ramp marketing</div>
+        <div class="desc">Launch KOL partnerships and paid social; add 2–3 new SKUs.</div>
+      </div>
+      <div class="rmap-step">
+        <div class="phase">M5–6</div>
+        <div class="dot"></div>
+        <div class="name">Expand channels</div>
+        <div class="desc">Grow marketplace presence, tighten CAC. Target ~Rp 24M/month.</div>
+      </div>
+      <div class="rmap-step">
+        <div class="phase">M7–9</div>
+        <div class="dot"></div>
+        <div class="name">Compound profit</div>
+        <div class="desc">Grow monthly net profit as opex stays lean. Reach ~Rp 36M/month revenue.</div>
+      </div>
+      <div class="rmap-step">
+        <div class="phase">M10–12</div>
+        <div class="dot"></div>
+        <div class="name">Scale</div>
+        <div class="desc">Push toward ~Rp 55M/month. Prepare working-capital or growth round.</div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer"><span class="brand">Beila Scarves</span><span>15 / 17</span></div>
+</section>
+
+<!-- SLIDE 16: THE ASK -->
+<section class="slide" aria-label="The Ask">
+  <div class="kicker">15 &nbsp; The Ask</div>
+  <h2 class="ask-headline">Rp 85–150M</h2>
+  <div class="ask-sub">Seed round · 6–12 month runway · structured as equity or debt</div>
+  <div class="ask-rule"></div>
+  <div class="ask-proof">
+    <div class="p"><div class="val">39.1%</div><div class="lbl">Net margin, actual</div></div>
+    <div class="p"><div class="val">Rp 4.6M</div><div class="lbl">Net profit / month, today</div></div>
+    <div class="p"><div class="val">647</div><div class="lbl">Units sold in 6 months</div></div>
+    <div class="p"><div class="val">$6.09B</div><div class="lbl">Domestic market</div></div>
+  </div>
+  <div class="ask-contact">
+    <div class="lbl">Contact</div>
+    <div class="val">Beila Scarves &nbsp;·&nbsp; Jakarta, Indonesia &nbsp;·&nbsp; [founder email / phone]</div>
+  </div>
+  <div class="slide-footer"><span class="brand">Beila Scarves</span><span>16 / 17</span></div>
+</section>
+
+<!-- SLIDE 17: BREAK-EVEN -->
+<section class="slide" aria-label="Break-Even">
+  <div class="kicker">16 &nbsp; Break-Even</div>
+  <h2 class="slide-title">Break-even at 30 units a month.</h2>
+  <div class="be-body">
+    <div>
+      <div class="eyebrow" style="margin-bottom: 12px;">Revenue vs Total Cost (Rp M / month)</div>
+      <!-- Y axis is pinned; the plot track scrolls horizontally beside it, so
+           the volume range never has to be crammed into the panel width. -->
+      <div class="be-plot-wrap">
+        <svg class="be-yaxis" viewBox="0 0 64 330" width="64" height="330" aria-hidden="true">
+          <g id="be-yaxis-g"></g>
+        </svg>
+        <div class="be-scroller" id="be-scroller" tabindex="0" role="region"
+             aria-label="Break-even plot, scrolls horizontally">
+          <svg id="be-chart" viewBox="0 0 1800 330" width="1800" height="330"
+               role="img" aria-labelledby="be-chart-title be-chart-desc">
+            <title id="be-chart-title">Break-even chart, revenue against total cost</title>
+            <desc id="be-chart-desc">Two lines plotted against monthly unit volume from zero to six hundred units. Revenue starts at zero and rises faster than total cost, which starts at fixed opex. They cross at the break-even quantity; beyond that point every unit adds profit. Scroll right to read revenue at higher volumes.</desc>
+            <g id="be-plot"></g>
+          </svg>
+        </div>
+      </div>
+      <div class="be-legend">
+        <span><i class="be-swatch be-swatch-rev"></i>Revenue = p × Q</span>
+        <span><i class="be-swatch be-swatch-cost"></i>Total cost = F + v × Q</span>
+        <span class="be-hint">Scroll the plot sideways →</span>
+      </div>
+    </div>
+    <div class="be-side">
+      <div class="eyebrow">Break-even quantity</div>
+      <div class="be-formula" aria-hidden="true">
+        <span class="be-q">Q*</span>
+        <span class="be-eq">=</span>
+        <span class="be-frac"><span class="be-num">F</span><span class="be-den">p − v</span></span>
+        <span class="be-eq">=</span>
+        <span class="be-frac"><span class="be-num" id="be-f-top">1.700.000</span><span class="be-den" id="be-pv-bot">109.328 − 50.847</span></span>
+        <span class="be-eq">=</span>
+        <span class="be-result" id="be-result">30</span>
+      </div>
+      <p class="be-plain">Q* is the break-even quantity — the point where total revenue matches total cost. Below it Beila loses money; above it every unit contributes <span id="be-cm-inline">Rp 58.481</span> of profit.</p>
+      <table class="be-table">
+        <tr><td>Fixed cost <span class="be-var">F</span></td><td class="right" id="be-out-f">Rp 1.700.000 / mo</td></tr>
+        <tr><td>Variable cost <span class="be-var">v</span></td><td class="right" id="be-out-v">Rp 50.847 / unit</td></tr>
+        <tr><td>Price <span class="be-var">p</span></td><td class="right" id="be-out-p">Rp 109.328 / unit</td></tr>
+        <tr><td>Contribution per unit</td><td class="right" id="be-out-cm">Rp 58.481</td></tr>
+        <tr><td>Break-even revenue</td><td class="right" id="be-out-rev">Rp 3.2M / mo</td></tr>
+        <tr><td>Margin of safety at 108 units</td><td class="right" id="be-out-mos" style="color: var(--accent);">73%</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="be-controls">
+    <div class="be-control">
+      <label class="calc-field-label" for="be-f">Fixed cost <span class="be-var">F</span> — <span id="be-f-val">Rp 1.700.000</span></label>
+      <input type="range" id="be-f" min="500000" max="10000000" step="100000" value="1700000"
+             aria-label="Fixed cost per month in rupiah">
+      <div class="range-labels"><span>Rp 500K</span><span>Rp 10M</span></div>
+    </div>
+    <div class="be-control">
+      <label class="calc-field-label" for="be-v">Variable cost <span class="be-var">v</span> — <span id="be-v-val">Rp 50.847</span></label>
+      <input type="range" id="be-v" min="20000" max="100000" step="1" value="50847"
+             aria-label="Variable cost per unit in rupiah">
+      <div class="range-labels"><span>Rp 20K</span><span>Rp 100K</span></div>
+    </div>
+    <div class="be-control">
+      <label class="calc-field-label" for="be-p">Price <span class="be-var">p</span> — <span id="be-p-val">Rp 109.328</span></label>
+      <input type="range" id="be-p" min="60000" max="200000" step="1" value="109328"
+             aria-label="Selling price per unit in rupiah">
+      <div class="range-labels"><span>Rp 60K</span><span>Rp 200K</span></div>
+    </div>
+  </div>
+  <div class="italic-note">
+    Defaults are Beila's actuals: Rp 1.7M monthly opex (packaging + ads + entertain), Rp 50.847 blended cost of goods, Rp 109.328 average selling price. Exact break-even is 29.1 units, rounded up to the 30th unit actually needed to cover fixed cost. At the current run-rate of ~108 units per month, Beila operates well above break-even.
+  </div>
+  <div class="slide-footer"><span class="brand">Beila Scarves</span><span>17 / 17</span></div>
+</section>
+
+</main>
+
+<script>
+// --- Access gate -----------------------------------------------------------
+// Shared password, handed out out-of-band. This keeps the deck off the open web;
+// it is not a security boundary — the slides ship in the page source.
+(function () {
+  var PASSWORD = 'BeilaInvest';
+  var KEY = 'beila-deck-unlocked';
+  var gate = document.getElementById('gate');
+  var form = document.getElementById('gate-form');
+  var input = document.getElementById('gate-password');
+  var error = document.getElementById('gate-error');
+  var deck = document.getElementById('deck');
+
+  function unlock() {
+    gate.hidden = true;
+    gate.style.display = 'none';
+    deck.hidden = false;
+    document.body.classList.remove('access-locked');
+  }
+
+  try {
+    if (sessionStorage.getItem(KEY) === '1') unlock();
+  } catch (e) { /* private mode — fall through to the gate */ }
+
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    if (input.value === PASSWORD) {
+      try { sessionStorage.setItem(KEY, '1'); } catch (e) {}
+      unlock();
+      return;
+    }
+    error.hidden = false;
+    input.select();
+    input.focus();
+  });
+
+  if (document.body.classList.contains('access-locked')) input.focus();
+})();
+
+// --- Investment metrics calculator ----------------------------------------
+(function() {
+  var amount = 100;
+  var structure = 'equity';
+  var NET_PROFIT_12MO = 135.2;
+  var REV_12MO = 341.9;
+  var POSTMONEY = 1000;
+  var DEBT_RATE = 0.24, DEBT_TENOR = 18;
+  var RS_MULT = 1.4, RS_PCT = 0.15;
+
+  function fmt(n) {
+    if (n >= 1000) return 'Rp ' + (n/1000).toFixed(2) + 'B';
+    return 'Rp ' + n.toFixed(1) + 'M';
+  }
+  function pct(n) { return (n * 100).toFixed(1) + '%'; }
+
+  function compute() {
+    if (structure === 'equity') {
+      var stake = amount / POSTMONEY;
+      var shareNP = stake * NET_PROFIT_12MO;
+      var payback = amount / shareNP;
+      return {
+        metrics: [
+          { v: pct(stake), l: 'Ownership stake' },
+          { v: fmt(shareNP), l: 'Share of Y1 net profit' },
+          { v: payback.toFixed(1) + ' yr', l: 'Payback at Y1 profit share' }
+        ],
+        note: 'Illustrative at post-money valuation of Rp 1B. Y1 net profit of Rp 135.2M from projected model. Actual valuation subject to negotiation.'
+      };
+    } else if (structure === 'debt') {
+      var interest = amount * DEBT_RATE * (DEBT_TENOR/12);
+      var total = amount + interest;
+      var monthly = total / DEBT_TENOR;
+      return {
+        metrics: [
+          { v: fmt(interest), l: 'Total interest earned' },
+          { v: fmt(total), l: 'Total repayment' },
+          { v: fmt(monthly), l: 'Monthly (over ' + DEBT_TENOR + 'mo)' }
+        ],
+        note: 'Illustrative at 24% p.a. over 18-month tenor (middle of 18–30% range). Secured against inventory and receivables. Rate and tenor subject to negotiation.'
+      };
+    } else {
+      var repay = amount * RS_MULT;
+      var monthlyShare = REV_12MO / 12 * RS_PCT;
+      var months = Math.round(repay / monthlyShare);
+      var profit = repay - amount;
+      return {
+        metrics: [
+          { v: fmt(repay), l: 'Total repaid (1.4×)' },
+          { v: fmt(profit), l: 'Your profit' },
+          { v: months + ' mo', l: 'Time to full repayment' }
+        ],
+        note: 'Illustrative at 1.4× repayment multiple and 15% share of monthly revenue. Repayment period assumes the Y1 revenue trajectory.'
+      };
+    }
+  }
+
+  function render() {
+    document.getElementById('calc-amount').textContent = fmt(amount);
+    var result = compute();
+    var html = '';
+    for (var i = 0; i < result.metrics.length; i++) {
+      var m = result.metrics[i];
+      html += '<div class="calc-metric"><div class="val">' + m.v + '</div><div class="lbl">' + m.l + '</div></div>';
+    }
+    document.getElementById('calc-metrics').innerHTML = html;
+    document.getElementById('calc-note').textContent = result.note;
+    var btns = document.querySelectorAll('.calc-tab');
+    for (var j = 0; j < btns.length; j++) {
+      var on = btns[j].dataset.s === structure;
+      btns[j].classList.toggle('active', on);
+      btns[j].setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+  }
+
+  document.getElementById('calc-slider').addEventListener('input', function(e) {
+    amount = parseInt(e.target.value);
+    render();
+  });
+  var btns = document.querySelectorAll('.calc-tab');
+  for (var k = 0; k < btns.length; k++) {
+    btns[k].addEventListener('click', function(e) {
+      structure = e.currentTarget.dataset.s;
+      render();
+    });
+  }
+  render();
+})();
+
+// --- Break-even model (slide 17) -------------------------------------------
+// Q* = F / (p - v). Defaults are Beila's actuals, all figures in IDR.
+// The plot is a wide, horizontally scrollable track with a pinned Y axis, so
+// the full volume range is readable instead of crammed into the panel width.
+(function () {
+  var SVG = 'http://www.w3.org/2000/svg';
+  var chart = document.getElementById('be-chart');
+  if (!chart) return;
+  // Draw into a dedicated group. Clearing the <svg> by child count would also
+  // eat the <title>/<desc> that aria-labelledby points at, because whitespace
+  // between the tags counts as child nodes.
+  var plot = document.getElementById('be-plot');
+  var yAxis = document.getElementById('be-yaxis-g');
+
+  var TRACK_W = 1800, H = 330;          // track viewBox
+  var L = 8, R = TRACK_W - 30, T = 26, B = 282;
+  var AXIS_W = 64;                      // pinned Y-axis gutter
+  var Q_MAX = 600;                      // units/month shown across the track
+  var CURRENT_UNITS = 108;              // actual run-rate
+
+  var idr = function (n) { return 'Rp ' + Math.round(n).toLocaleString('id-ID'); };
+  function compact(n) {
+    // Drop a trailing .0 so an axis never mixes "Rp 5.0M" with "Rp 15M".
+    var trim = function (s) { return s.replace(/\.0$/, ''); };
+    if (n >= 1000000) return 'Rp ' + trim((n / 1000000).toFixed(1)) + 'M';
+    if (n >= 1000) return 'Rp ' + trim((n / 1000).toFixed(1)) + 'K';
+    return 'Rp ' + Math.round(n);
+  }
+  function el(name, attrs, text) {
+    var e = document.createElementNS(SVG, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  // Labels sit on top of plotted lines; a white halo keeps them readable
+  // wherever the geometry puts them.
+  function halo(node) {
+    node.setAttribute('stroke', '#FFFFFF');
+    node.setAttribute('stroke-width', '4');
+    node.setAttribute('stroke-linejoin', 'round');
+    node.setAttribute('paint-order', 'stroke');
+    return node;
+  }
+  function niceStep(max) {
+    var raw = max / 5, mag = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / mag;
+    return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag;
+  }
+
+  function draw(F, v, p) {
+    while (plot.firstChild) plot.removeChild(plot.firstChild);
+    while (yAxis.firstChild) yAxis.removeChild(yAxis.firstChild);
+
+    var cm = p - v;
+    var feasible = cm > 0;
+    var qStar = feasible ? F / cm : Infinity;
+
+    // Y is scaled to the whole track, so the axis reads the same wherever the
+    // plot is scrolled — that is the "zoomed out" view of revenue at volume.
+    var yMax = Math.max(p * Q_MAX, F + v * Q_MAX) * 1.04;
+
+    var x = function (q) { return L + (q / Q_MAX) * (R - L); };
+    var y = function (val) { return B - (val / yMax) * (B - T); };
+
+    // Grid across the track + matching labels in the pinned gutter
+    var step = niceStep(yMax);
+    for (var gv = 0; gv <= yMax; gv += step) {
+      plot.appendChild(el('line', {
+        x1: L, y1: y(gv), x2: R, y2: y(gv), stroke: '#E5E7EB', 'stroke-width': 1
+      }));
+      yAxis.appendChild(el('text', {
+        x: AXIS_W - 10, y: y(gv) + 4, 'text-anchor': 'end', fill: '#475569',
+        'font-family': 'Inter, Arial, sans-serif', 'font-size': 12
+      }, compact(gv)));
+    }
+    // Axis rule so the pinned gutter reads as an axis, not floating text
+    yAxis.appendChild(el('line', { x1: AXIS_W - 1, y1: T, x2: AXIS_W - 1, y2: B, stroke: '#E5E7EB', 'stroke-width': 1 }));
+
+    // X ticks every 50 units across the full range
+    for (var q = 0; q <= Q_MAX; q += 50) {
+      plot.appendChild(el('line', { x1: x(q), y1: B, x2: x(q), y2: B + 5, stroke: '#CBD5E1', 'stroke-width': 1 }));
+      plot.appendChild(el('text', {
+        x: x(q), y: B + 22, 'text-anchor': 'middle', fill: '#475569',
+        'font-family': 'Inter, Arial, sans-serif', 'font-size': 12
+      }, q));
+    }
+    plot.appendChild(el('text', {
+      x: L, y: B + 44, 'text-anchor': 'start', fill: '#475569',
+      'font-family': 'Inter, Arial, sans-serif', 'font-size': 12, 'font-weight': 700
+    }, 'Units sold per month (Q)'));
+
+    // Profit wedge between the two lines beyond break-even
+    if (feasible && qStar < Q_MAX) {
+      plot.appendChild(el('polygon', {
+        points: [x(qStar), y(p * qStar), x(Q_MAX), y(p * Q_MAX), x(Q_MAX), y(F + v * Q_MAX)].join(' '),
+        fill: '#DBE5EF', opacity: 0.75
+      }));
+    }
+
+    // Total cost (dashed) then revenue (solid) — dash + label, not colour alone.
+    plot.appendChild(el('line', {
+      x1: x(0), y1: y(F), x2: x(Q_MAX), y2: y(F + v * Q_MAX),
+      stroke: '#64748B', 'stroke-width': 2.5, 'stroke-dasharray': '7 5'
+    }));
+    plot.appendChild(el('line', {
+      x1: x(0), y1: y(0), x2: x(Q_MAX), y2: y(p * Q_MAX),
+      stroke: '#1E3A5F', 'stroke-width': 3
+    }));
+
+    // Read the value off the line without hovering: label both lines every
+    // 100 units, which is the whole point of scrolling out this far.
+    for (var qm = 100; qm <= Q_MAX; qm += 100) {
+      plot.appendChild(el('circle', { cx: x(qm), cy: y(p * qm), r: 4, fill: '#1E3A5F' }));
+      plot.appendChild(halo(el('text', {
+        x: x(qm), y: y(p * qm) - 12, 'text-anchor': 'middle', fill: '#1E3A5F',
+        'font-family': 'Inter, Arial, sans-serif', 'font-size': 12, 'font-weight': 700
+      }, compact(p * qm))));
+      plot.appendChild(el('circle', { cx: x(qm), cy: y(F + v * qm), r: 3.5, fill: '#64748B' }));
+      plot.appendChild(halo(el('text', {
+        x: x(qm), y: y(F + v * qm) + 20, 'text-anchor': 'middle', fill: '#475569',
+        'font-family': 'Inter, Arial, sans-serif', 'font-size': 12
+      }, compact(F + v * qm))));
+    }
+
+    // Direct labels near the right edge of the track
+    plot.appendChild(halo(el('text', {
+      x: R - 4, y: Math.max(y(p * Q_MAX) - 10, T + 11), 'text-anchor': 'end', fill: '#1E3A5F',
+      'font-family': 'Inter, Arial, sans-serif', 'font-size': 13, 'font-weight': 700
+    }, 'Revenue')));
+    plot.appendChild(halo(el('text', {
+      x: R - 4, y: y(F + v * Q_MAX) + 22, 'text-anchor': 'end', fill: '#475569',
+      'font-family': 'Inter, Arial, sans-serif', 'font-size': 13, 'font-weight': 700
+    }, 'Total cost')));
+
+    // Fixed-cost intercept
+    plot.appendChild(el('circle', { cx: x(0), cy: y(F), r: 4, fill: '#64748B' }));
+
+    // Break-even marker
+    if (feasible && qStar <= Q_MAX) {
+      plot.appendChild(el('line', {
+        x1: x(qStar), y1: y(p * qStar), x2: x(qStar), y2: B,
+        stroke: '#1E3A5F', 'stroke-width': 1.5, 'stroke-dasharray': '4 4'
+      }));
+      plot.appendChild(el('circle', { cx: x(qStar), cy: y(p * qStar), r: 5.5, fill: '#1E3A5F' }));
+      plot.appendChild(halo(el('text', {
+        x: x(qStar) + 10, y: y(p * qStar) - 14, fill: '#1E3A5F',
+        'font-family': 'Inter, Arial, sans-serif', 'font-size': 13, 'font-weight': 700
+      }, 'Q* = ' + Math.ceil(qStar) + ' units')));
+    }
+
+    // Two reference volumes, so scrolling right has a destination: where Beila
+    // is today, and the month-12 volume implied by the Financials projection
+    // (Rp 54.85M ÷ Rp 109.328 ASP ≈ 502 units).
+    [{ q: CURRENT_UNITS, label: 'Today ~108 units' },
+     { q: 502, label: 'M12 target ~502 units' }].forEach(function (m) {
+      if (m.q > Q_MAX) return;
+      plot.appendChild(el('line', {
+        x1: x(m.q), y1: T, x2: x(m.q), y2: B,
+        stroke: '#0F172A', 'stroke-width': 1, 'stroke-dasharray': '2 4', opacity: 0.5
+      }));
+      plot.appendChild(halo(el('text', {
+        x: x(m.q) + 8, y: T + 12, 'text-anchor': 'start', fill: '#0F172A',
+        'font-family': 'Inter, Arial, sans-serif', 'font-size': 12, 'font-weight': 700
+      }, m.label)));
+    });
+
+    return { qStar: qStar, cm: cm, feasible: feasible };
+  }
+
+  function render() {
+    var F = +document.getElementById('be-f').value;
+    var v = +document.getElementById('be-v').value;
+    var p = +document.getElementById('be-p').value;
+
+    var r = draw(F, v, p);
+    var set = function (id, val) { document.getElementById(id).textContent = val; };
+
+    set('be-f-val', idr(F));
+    set('be-v-val', idr(v));
+    set('be-p-val', idr(p));
+    set('be-f-top', F.toLocaleString('id-ID'));
+    set('be-pv-bot', p.toLocaleString('id-ID') + ' − ' + v.toLocaleString('id-ID'));
+    set('be-out-f', idr(F) + ' / mo');
+    set('be-out-v', idr(v) + ' / unit');
+    set('be-out-p', idr(p) + ' / unit');
+
+    if (!r.feasible) {
+      set('be-result', '—');
+      set('be-cm-inline', 'nothing');
+      set('be-out-cm', idr(r.cm));
+      set('be-out-rev', 'No break-even');
+      set('be-out-mos', '—');
+      return;
+    }
+
+    set('be-result', Math.ceil(r.qStar));
+    set('be-cm-inline', idr(r.cm));
+    set('be-out-cm', idr(r.cm));
+    set('be-out-rev', compact(r.qStar * p) + ' / mo');
+    set('be-out-mos', CURRENT_UNITS > r.qStar
+      ? Math.round((1 - r.qStar / CURRENT_UNITS) * 100) + '%'
+      : 'Below break-even');
+  }
+
+  ['be-f', 'be-v', 'be-p'].forEach(function (id) {
+    document.getElementById(id).addEventListener('input', render);
+  });
+  render();
+})();
+</script>
+
+</body>
+</html>

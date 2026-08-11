@@ -58,6 +58,7 @@ const MARKETING_PAGES = [
     'privacy.html',
     'terms.html',
     'investor.html',
+    'beila.html',         // private investor deck, password-gated + noindex
     'index.html',         // redirect stub -> /fluxyos
     'payment.html',       // redirect stub -> /pricing
 ];
