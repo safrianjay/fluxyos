@@ -1,12 +1,15 @@
 User-agent: *
 Allow: /
 
-# App pages — behind auth, no value to index
-Disallow: /dashboard
-Disallow: /bill
-Disallow: /subscription
-Disallow: /ledger
-Disallow: /integration
+# App pages are NOT disallowed here on purpose. They no longer exist on this
+# host — prepare-deploy.js prunes them and every /dashboard, /bill,
+# /subscription, /ledger, /integration path 301s to dashboard.fluxyos.com,
+# which serves Disallow:/ plus X-Robots-Tag: noindex.
+#
+# Disallowing them here stopped Googlebot fetching the URL at all, so it never
+# saw the 301 and 3 legacy URLs were stuck as "Blocked by robots.txt" in Search
+# Console instead of resolving. Letting the redirect be crawled is what actually
+# retires them.
 
 # AI search engines — explicitly allow
 User-agent: GPTBot
