@@ -206,8 +206,8 @@
         "Tokopedia, Shopee, TikTok Shop, Lazada, and Blibli payout reconciliation",
         "Shopify and WooCommerce order ingestion",
         "Net margin reporting by channel (revenue minus fees, ad spend, and COGS)",
-        "Receipt-to-COGS automation from supplier invoices and shipping labels",
-        "Ad spend ROI tracking by campaign and SKU",
+        "Receipt capture from supplier invoices and shipping labels, posted to your mapped cost account",
+        "Ad spend ROI tracking by campaign and channel",
         "Inventory-based budgeting and cash-flow forecasting",
         "VAT-ready audit trail",
         "AI agents for daily revenue and margin questions"
@@ -259,10 +259,10 @@
         },
         {
           "@type": "Question",
-          "name": "Can I see profit by SKU or by channel?",
+          "name": "Can I see profit by channel?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. Once COGS, ad spend, and shipping costs enter FluxyOS, every order is automatically split into revenue, marketplace fees, gateway fees, ad cost share, and COGS, so you see true net margin by channel and SKU, not just gross GMV."
+            "text": "By channel, yes. Once costs enter FluxyOS, every order is split into revenue, marketplace fees, gateway fees, ad cost share, and cost of goods, so you see true net margin per channel. Per-SKU margin is not available yet — it needs an item master and stock costing, which are on the roadmap and SKU, not just gross GMV."
           }
         },
         {
@@ -712,7 +712,7 @@
                                         <span class="text-[12px] font-bold uppercase tracking-wider text-[#EA580C]">AI finding</span>
                                         <span class="font-mono text-[11px] text-gray-500">09:14</span>
                                     </div>
-                                    <p class="text-[13px] leading-relaxed text-gray-700">Shopee margin dropped after the free shipping promo ended. Best-selling SKU is ready for restock.</p>
+                                    <p class="text-[13px] leading-relaxed text-gray-700">Shopee margin dropped after the free shipping promo ended. Channel contribution is worth a review.</p>
                                 </div>
                             </div>
                         </div>
@@ -855,7 +855,7 @@
                             <span class="h-2 w-2 rounded-full bg-[#EA580C]"></span>
                         </div>
                         <h3 class="text-[24px] font-bold tracking-tight">Close with margin</h3>
-                        <p class="mt-4 min-h-[88px] text-[14px] leading-relaxed text-gray-400">Review channel margin, SKU profitability, COGS, and VAT-ready exports before the month-end scramble starts.</p>
+                        <p class="mt-4 min-h-[88px] text-[14px] leading-relaxed text-gray-400">Review channel margin, cost of goods, and VAT-ready exports before the month-end scramble starts.</p>
                         <div class="mt-8 flex flex-wrap gap-2">
                             <span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Margin</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">COGS</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">VAT</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Export</span>
                         </div>
@@ -917,7 +917,7 @@
                     </div>
                     <h3 class="text-[19px] font-bold text-gray-900 mb-2">Receipt &amp; COGS automation</h3>
                     <p class="text-[14px] text-gray-600 leading-relaxed mb-3">
-                        Snap a supplier invoice or shipping receipt, and FluxyOS extracts the vendor, amount, SKU, and tax before booking the COGS line for you.
+                        Snap a supplier invoice or shipping receipt, and FluxyOS extracts the vendor, amount, and tax, then books it to the cost account you mapped.
                     </p>
                     <span class="text-[13px] font-bold text-[#EA580C] inline-flex items-center gap-1">Powered by Receipt Capture &rarr;</span>
                 </a>
@@ -948,7 +948,7 @@
                     <span class="text-[11px] font-bold text-[#EA580C] uppercase tracking-wider">Afternoon</span>
                     <h3 class="text-[19px] font-bold text-gray-900 mt-1 mb-3">Restock decisions with real numbers</h3>
                     <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Your best-selling SKU is almost out. Check its real margin by channel before creating the next PO, including ad spend share and the latest supplier invoice.
+                        Check real margin by channel before your next purchase order, including ad spend share and the latest supplier invoice.
                     </p>
                 </div>
                 <div class="bg-white rounded-2xl border border-gray-200 p-7">
@@ -989,7 +989,7 @@
                     <div class="flex items-start gap-3 flex-row-reverse">
                         <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 text-[12px] font-bold text-[#EA580C]">F</div>
                         <div class="bg-white/[0.04] border border-orange-500/20 rounded-2xl rounded-tr-sm px-4 py-3 text-[14px] text-gray-100 leading-relaxed">
-                            Shopee gross revenue was Rp 11.2M, down 38% from Monday. Two main drivers: the free shipping promo ended at 12:00 (-Rp 4.1M est.) and your best-selling SKU went out of stock at 15:14. I marked the SKU for restock.
+                            Shopee gross revenue was Rp 11.2M, down 38% from Monday. Two main drivers: the free shipping promo ended at 12:00 (-Rp 4.1M est.) and the free shipping subsidy was not reclaimed on 38 orders. I flagged the oKU for restock.
                         </div>
                     </div>
                 </div>
@@ -1018,10 +1018,10 @@
             </details>
             <details class="border-b border-gray-200 py-5 group">
                 <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Can I see profit by SKU or by channel?</h3>
+                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Can I see profit by channel?</h3>
                     <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                 </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Yes. Once COGS, ad spend, and shipping costs enter FluxyOS, every order is automatically split into revenue, marketplace fees, gateway fees, ad cost share, and COGS, so you see true net margin by channel and SKU, not just gross GMV.</p>
+                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">By channel, yes. Once costs enter FluxyOS, every order is split into revenue, marketplace fees, gateway fees, ad cost share, and cost of goods, so you see true net margin per channel. Per-SKU margin is not available yet — it needs an item master and stock costing, which are on the roadmap and SKU, not just gross GMV.</p>
             </details>
             <details class="border-b border-gray-200 py-5 group">
                 <summary class="flex items-center justify-between cursor-pointer list-none">
