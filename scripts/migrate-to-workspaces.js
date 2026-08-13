@@ -25,6 +25,23 @@
 const admin = require('firebase-admin');
 
 // Collections that MOVE to the workspace (must match db-service _scope routing).
+//
+// ⚠️ STALE AND DELIBERATELY UNCHANGED. This list is the Stage 2 snapshot — the
+// collections that existed when the one-shot migration ran. It is missing every
+// collection added since: the accounting kernel (journals, counters,
+// ledger_balances, periods, chart_of_accounts, business_categories), vendors,
+// the Tax Center, and Commerce. Those were created directly under workspaces/
+// after the cutover, so they never needed migrating and this script has not been
+// re-run.
+//
+// Do NOT treat it as the finance-collection registry. The current list lives in
+// `scripts/qa-run.js` FINANCE_COLLECTIONS and `docs/PROJECT_BACKGROUND.md` §4
+// rule 2. If this script is ever re-run — for a restore, or to migrate a
+// workspace that predates the cutover — reconcile against that list FIRST or it
+// will silently under-migrate.
+//
+// That three files must be kept in sync by hand is the point made in
+// `docs/ERP_ARCHITECTURE_REVIEW.md` §3.5.
 const FINANCE_COLLECTIONS = [
     'transactions', 'bills', 'subscriptions', 'budgets', 'budget_allocations',
     'invoices', 'audit_logs', 'bank_accounts', 'bank_balance_snapshots',

@@ -129,6 +129,10 @@ const FINANCE_COLLECTIONS = [
   'commerce_accounts', 'commerce_orders', 'commerce_transactions', 'commerce_refunds',
   'commerce_settlements', 'commerce_payouts', 'commerce_sync_jobs',
   'commerce_sync_errors', 'commerce_webhook_logs',
+  // `vendors` is workspace-scoped in firestore.rules and read by accounting.js,
+  // but it was never added here or to the §4 list — the guard has been blind to
+  // it since it shipped. A guard is only as good as this array.
+  'vendors',
 ];
 
 function scopeGuard() {
@@ -166,6 +170,12 @@ function laneBE(changed) {
   let ok = true;
 
   ok = record('be', scopeGuard()) && ok;
+
+  // Runs on EVERY invocation, not from the diff. Its whole job is catching
+  // claims this repo makes about itself in more than one place drifting apart —
+  // and the file that drifts is rarely the file you just edited. Cheap: pure
+  // file reads, no network, no browser.
+  ok = record('be', run('check:structure-drift', 'node', ['tests/structure-drift.check.js'])) && ok;
 
   const jsChanged = changed.filter((f) => /\.(js|mjs)$/.test(f) && fs.existsSync(path.join(REPO_ROOT, f)));
   if (jsChanged.length) {

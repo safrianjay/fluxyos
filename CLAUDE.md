@@ -28,7 +28,7 @@ QA_PASS=1 git push origin main
 
 | Lane | Checks |
 |---|---|
-| **BE** | `node --check` on changed JS; workspace-scoping invariant; `check:deploy` / `check:ai-scope` / `check:bank-scope` / `check:ledger-assert` when their inputs change; Firestore rules emulator tests when `*.rules` change |
+| **BE** | `node --check` on changed JS; workspace-scoping invariant; **`check:structure` (structural drift — always runs)**; `check:deploy` / `check:ai-scope` / `check:bank-scope` / `check:ledger-assert` when their inputs change; Firestore rules emulator tests when `*.rules` change |
 | **FE** | `scripts/qa/lint-design.js` (design-system rules, **changed lines only**); `tests/zz-console-sweep.spec.js` — loads affected pages in a real browser and fails on CSP/CORS/permission-denied/uncaught errors and same-origin 404s |
 | **PRODUCT** | i18n EN↔ID pairing where an `/id/` mirror exists; SEO essentials on changed landing pages; `i18n-audit.js` (advisory) |
 
@@ -36,8 +36,18 @@ Flags: `--all` (force every lane), `--lane=be|fe|product`, `--skip-browser`.
 The last two mark the artifact `partial`, which **the gate rejects** — they are
 for fast iteration, not for shipping.
 
-Lane selection comes from the git diff, so an accounting-only change does not
-pay for a landing-page SEO scan. Commits made *after* a QA run make the
+`check:structure` (`tests/structure-drift.check.js`) is the exception to lane
+selection — it runs on **every** invocation, because the file that drifts is
+rarely the file you just edited. It verifies claims the repo makes about itself
+in more than one place: the three finance-collection registries agreeing, every
+workspace collection in `firestore.rules` being registered somewhere, prose
+account counts matching `CHART_OF_ACCOUNTS_SEED`, the `docs/data-model/` shard
+index matching disk, and every seeded asset/liability `sak_category` being
+explicitly classified in `statements-engine.js`. All six failure modes are silent
+at runtime — see `docs/ERP_ARCHITECTURE_REVIEW.md` §3.5.
+
+Lane selection otherwise comes from the git diff, so an accounting-only change
+does not pay for a landing-page SEO scan. Commits made *after* a QA run make the
 artifact stale and the gate blocks — re-run QA on the commit you are pushing.
 
 ### What is still manual
