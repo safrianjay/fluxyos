@@ -116,8 +116,8 @@ Verified against the codebase, not from memory or roadmap intent.
 | Revenue & expense categorisation | ✅ | `accounting_mappings`, keyword rules |
 | Tax management (Indonesia) | ✅ Phases 1–4, 5.1 | `tax-center.html`, 5 tax collections |
 | Vendor management | ✅ | `vendors` panel, 123 refs in `db-service.js` |
-| COGS detection | ✅ | via `sak_category === 'cogs'` |
-| **Multi-entity accounting** | **◐ Partial** | `entity_id` carried on journals/accounts/balances (14 refs) — **no entity switcher, no consolidation UI** |
+| COGS detection | ✅ | via `sak_category === 'cogs'` — a categorization of spend, not a consequence of stock moving (see §4) |
+| **Multi-entity accounting** | **📋 Not built** | Re-audited 2026-08-14. `entity_id` is carried on journals/accounts/balances, but `_resolvedScopeId()` returns the workspace id — it is a **constant, not a dimension**. One entity per workspace by construction; `entity_name` is read in one place and written nowhere. A `dimension_id` seam now exists on journal lines (`docs/DIMENSION_SEAM_DESIGN.md`); the collection, rollup, and UI are not built |
 
 ### Layer 3 — Operational Foundation · ◐ started, uneven
 
@@ -133,7 +133,7 @@ Verified against the codebase, not from memory or roadmap intent.
 | Commerce / marketplace order sync | ✅ Phases 1–3 | `commerce_*` collections, Shopee/TikTok connectors |
 | WhatsApp AI | 📋 | `settings-whatsapp.html` exists; planning only |
 | **Approval workflows** | **📋 Not built** | Sidebar shows disabled `Soon`; no data contract. The word appears only in budget copy. |
-| Inventory & stock movement | 🔭 | Admitted §5. The missing input to true COGS. |
+| Inventory & stock movement | 🔭 | Admitted §5. The missing input to true COGS. **Readiness assessed 2026-08-14 — `docs/INVENTORY_READINESS.md`.** Kernel is ready; the line-level dimension seam, cursor pagination, and the `1200`/`2050`/`5150` accounts have shipped as preparation. No inventory collection, page, or posting rule is built |
 | Purchasing / procurement | 🔭 | Admitted §5 |
 | POS integration | 🔭 | Admitted §5 |
 | Recipes / bill of materials | 🔭 | Admitted §5 (enables F&B COGS) |
@@ -179,8 +179,9 @@ Verified against the codebase, not from memory or roadmap intent.
 ### What this audit changes
 
 1. **Layer 2 should stop being described as emerging.** The kernel is shipped.
-   The genuine Layer 2 gap is **multi-entity** — the `entity_id` plumbing exists
-   but there is no entity switcher or consolidation.
+   The genuine Layer 2 gap is **multi-entity** — and it is larger than it looks.
+   The `entity_id` plumbing does not exist: the field is stamped with the
+   workspace id and never varies. Treat this as unbuilt, not half-built.
 2. **Approvals is the notable Layer 3 gap** — often assumed present because the
    sidebar advertises it. It has no data contract.
 3. **Forecasting is the notable Layer 4 gap** — the most requested "AI" capability
@@ -324,8 +325,14 @@ the terminal UI.
 
 ### Recommended sequencing
 
-1. **Multi-entity completion** — finishes Layer 2, unblocks branch reporting,
-   and the plumbing already exists.
+1. **Multi-entity completion** — finishes Layer 2 and unblocks branch
+   reporting. **Correction (2026-08-14): the plumbing does NOT already exist.**
+   `entity_id` is the workspace id on every row, so this is building a dimension
+   from scratch, not wiring up a switcher. The line-level `dimension_id` seam
+   has shipped because posted journals are immutable and it could not be
+   retrofitted; `docs/DIMENSION_SEAM_DESIGN.md` has the rest. It is still the
+   right thing to do first — inventory needs stock locations and per-outlet P&L
+   needs entities, and those are one primitive.
 2. **Inventory + purchasing** — makes existing COGS and gross margin true for
    every stock-holding customer, not only F&B.
 3. **POS integration** — adapters reusing the commerce connector pattern.

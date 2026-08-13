@@ -52,7 +52,7 @@ balances. None keeps its own books.
 | Module | Status | Admission verb | Sequencing |
 |---|---|---|---|
 | Multi-entity completion | 🧭 Strategic | Explains (per-entity performance) | **First.** Finishes Layer 2; plumbing already exists; unblocks branch reporting |
-| Inventory & stock movement | 🧭 Strategic | Moves | **Second.** Fixes gross-margin accuracy for every stock-holding customer |
+| Inventory & stock movement | 🧭 Strategic | Moves | **Second.** Fixes gross-margin accuracy for every stock-holding customer. Readiness assessed and preparation shipped 2026-08-14 — `docs/INVENTORY_READINESS.md` |
 | Purchasing / procurement | 🧭 Strategic | Moves | With inventory — receipts are how stock enters |
 | POS integration | 🧭 Strategic | Creates | **Third.** Adapter pattern reusing the commerce connector shape |
 | Recipes / bill of materials | 🧭 Strategic | Moves (consumed by COGS) | **Fourth.** Requires inventory + POS line items |

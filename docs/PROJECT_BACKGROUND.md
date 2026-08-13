@@ -361,7 +361,7 @@ FluxyOS design language.
 >    `invoices`(+`items`), `audit_logs`, `bank_accounts`, `bank_balance_snapshots`,
 >    `bank_statement_imports`(+`rows`), `documents`, `report_exports`, `accounting_mappings`,
 >    `chart_of_accounts`, `business_categories`, `journals`, `counters`,
->    `ledger_balances`, `periods`,
+>    `ledger_balances`, `periods`, `vendors`,
 >    **(Tax Center, §4o)** `company_tax_profile`, `tax_mappings`,
 >    `tax_transactions`, `tax_periods`, `tax_filings`, and
 >    **(Commerce Integration, §4p)** `commerce_accounts`, `commerce_orders`,
@@ -397,8 +397,15 @@ FluxyOS design language.
 >    directly in the HTML (`collection(ds.db, …)`) instead of calling a
 >    DataService method — these bypass the seam and are the easiest place to
 >    reintroduce the bug. Grep guard:
->    `grep -rnE 'users/\$\{[a-zA-Z_.]+\}/(transactions|bills|subscriptions|budgets|budget_allocations|invoices|bank_accounts|bank_balance_snapshots|bank_statement_imports|documents|report_exports|accounting_mappings|chart_of_accounts|business_categories|journals|counters|ledger_balances|periods|audit_logs|company_tax_profile|tax_mappings|tax_transactions|tax_periods|tax_filings|commerce_accounts|commerce_orders|commerce_transactions|commerce_refunds|commerce_settlements|commerce_payouts|commerce_sync_jobs|commerce_sync_errors|commerce_webhook_logs)' *.html assets/js/*.js | grep -v db-service.js`
+>    `grep -rnE 'users/\$\{[a-zA-Z_.]+\}/(transactions|bills|subscriptions|budgets|budget_allocations|invoices|bank_accounts|bank_balance_snapshots|bank_statement_imports|documents|report_exports|accounting_mappings|chart_of_accounts|business_categories|journals|counters|ledger_balances|periods|vendors|audit_logs|company_tax_profile|tax_mappings|tax_transactions|tax_periods|tax_filings|commerce_accounts|commerce_orders|commerce_transactions|commerce_refunds|commerce_settlements|commerce_payouts|commerce_sync_jobs|commerce_sync_errors|commerce_webhook_logs)' *.html assets/js/*.js | grep -v db-service.js`
 >    must return nothing.
+>
+> 7. **A new module must register its collections in BOTH lists above** — rule 2
+>    here and `FINANCE_COLLECTIONS` in `scripts/qa-run.js`, which is what `npm run
+>    qa` actually executes. `vendors` shipped workspace-scoped but was added to
+>    neither, so the guard was blind to it from the day it landed (fixed
+>    2026-08-14). The guard protects exactly the names it is given and fails
+>    silently — not loudly — for every name it is not.
 
 
 ### 4a–4p. Collection schemas — sharded

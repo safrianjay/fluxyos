@@ -20,7 +20,7 @@ updates the same doc instead of duplicating.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `source_type` | string | `"transaction_category"` \| `"transaction_type"` |
+| `source_type` | string | **Posting-engine sources:** `"transaction_category"` \| `"transaction_type"` — these two are what `resolveExpenseAccount` reads. **Suggestion-only sources:** `"vendor"` (vendor→account memory) and `"keyword"` (user rule: "when the description contains X, use account Y", `source_value` lowercased, longest match wins). The last two are read by `_loadVendorAccountMemory` / `_loadKeywordAccountRules` and deliberately **never reach the posting engine**, so bulk/CSV imports stay category-driven. Documented 2026-08-14 — this row previously listed only the first two |
 | `source_value` | string | The category label or transaction type being mapped (≤60 chars) |
 | `target_account_code` | string | Account code, e.g. `"6100"` (≤12 chars) |
 | `target_account_name` | string | Account name, e.g. `"Marketing Expense"` (≤80 chars) |
@@ -211,10 +211,19 @@ realized spend); their counts only feed the confidence message.
   category (default line `Revenue`). Mirrors `getDashboardStats` / `_calculateOverviewPerformance`.
 - **Operating Expenses** = `type ∈ {expense, fee, tax, pending_payable}`, grouped into lines
   (`fee → Fees`, `tax → Tax`, else category or `Others`).
-- **Cost of Revenue (COGS)** defaults to **0**. A category/type only moves under COGS when a
-  saved `accounting_mappings` doc for it has `target_account_type === 'cost_of_revenue'` or
-  `statement_section === 'cost_of_revenue'`. No such account type exists yet, so Infrastructure
-  stays under OpEx by default (never auto-classified as COGS).
+- **Cost of Revenue (COGS)** defaults to **0**. A category/type moves under COGS when its saved
+  `accounting_mappings` doc resolves to an account whose **`sak_category === 'cogs'`** — i.e.
+  5100, or any account the workspace has classified that way. Infrastructure stays under OpEx
+  by default (never auto-classified as COGS).
+  ⚠️ This paragraph used to say the trigger was `target_account_type === 'cost_of_revenue'` or
+  `statement_section === 'cost_of_revenue'`, "no such account type exists yet". Both conditions
+  are still *checked* by `_incomeStatementCogsKeys` (db-service.js) but neither can ever fire:
+  `saveAccountingMapping` persists the target's catalog type — 5100 is `type: 'expense'` — and
+  nothing writes `statement_section` onto a mapping at all. The chart lookup is the only live
+  path, and it is the same signal `statements-engine.buildIncomeStatement` uses, which is what
+  keeps Overview, the preview, and the ledger statements in agreement. Fixed 2026-08-05; guard
+  `tests/accounting-cogs-mapping.spec.js`. **COGS is still a categorization of spend, not a
+  consequence of stock moving** — see `docs/INVENTORY_READINESS.md`.
 - **Other Income / Other Expense** are `0` in Phase 1; `transfer`/`adjustment`/custom types are
   neutral and excluded from the P&L.
 - **Calculations:** `gross_profit = revenue − cost_of_revenue`, `operating_income = gross_profit
@@ -304,7 +313,7 @@ hardcode `users/`):
 
 | Collection | Doc id | Key fields |
 |---|---|---|
-| `chart_of_accounts` | `{code}` | `code, name, type (asset/liability/equity/revenue/expense), subtype, parent_code, normal_balance, is_active, currency, entity_id, opening_balance, created_at`, plus the policy flags `mappable`, `allow_manual_journal`, `allow_direct_transaction` and a `seed_version` stamp. Seeded idempotently by `seedChartOfAccounts()` from `CHART_OF_ACCOUNTS_SEED` (33 accounts). Archive via `is_active`; **never deleted**. |
+| `chart_of_accounts` | `{code}` | `code, name, type (asset/liability/equity/revenue/expense), subtype, parent_code, normal_balance, is_active, currency, entity_id, opening_balance, created_at`, plus the policy flags `mappable`, `allow_manual_journal`, `allow_direct_transaction` and a `seed_version` stamp. Seeded idempotently by `seedChartOfAccounts()` from `CHART_OF_ACCOUNTS_SEED` (**37 accounts** — this line said 33 while the seed held 34; count it, don't quote it). Archive via `is_active`; **never deleted**. |
 | `journals` | auto | `journal_number ('JE-YYYY-NNNNNN'), journal_seq (int), journal_type ('system'\|'manual'), manual_subtype, posting_rule_id, source:{collection,id}, source_number, period_key 'YYYY-MM', status (draft/posted/reversal/reversed), description, reference, entity_id, currency, memo, lines[], total_debit, total_credit, is_balanced, reverses_journal_id, reversed_by_journal_id, created_by, generated_by, posted_by, posted_at, created_at`. Posted entries are **immutable** (rules allow only `reversed_by_journal_id` to change; no delete) and created only into a **non-closed** period. `journal_type:'manual'` `status:'draft'` rows are editable/deletable until posted. |
 | `counters` | `journal-{YYYY}` | `seq (int, monotonic), entity_id, updated_at`. Per-year journal-number sequence, reserved in a `runTransaction` before the posting batch (`_reserveJournalNumbers`). Rules enforce `seq` only ever grows; no delete. |
 | `ledger_balances` | `{period_key}__{account_code}` | `period_key, account_code, account_type, entity_id, currency, debit_total, credit_total, updated_at`. Running per-account/period totals, written via `FieldValue.increment` alongside each journal. **The trial-balance source** — never sum all journal lines. |

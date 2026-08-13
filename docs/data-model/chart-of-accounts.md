@@ -16,7 +16,9 @@ is denied by default.
 ## 1. `chart_of_accounts/{code}` (doc id = account code)
 
 Single source of truth for the seed: `CHART_OF_ACCOUNTS_SEED` in
-`assets/js/accounting-engine.js` (32 accounts). The db-service mapping catalog
+`assets/js/accounting-engine.js` (**37 accounts**; this line read "32" and
+`accounting.md` read "33" while the seed held 34 — count it, don't quote it).
+The db-service mapping catalog
 (`ACCOUNTING_ACCOUNT_CATALOG`) and the Accounting Center mapping select
 (`ACCOUNT_OPTIONS` in `accounting.js`) are both **derived** from it
 (`mappable !== false` filter) — never edit them independently.
@@ -28,7 +30,7 @@ Single source of truth for the seed: `CHART_OF_ACCOUNTS_SEED` in
 | `name_id` | string \| null | Bahasa name (data for reports/AI; UI localization flows through `dashboard-i18n.js`) |
 | `type` | enum | `asset` \| `liability` \| `equity` \| `revenue` \| `expense` — drives normal balance and signed trial-balance math |
 | `subtype` | null | Reserved (deliberately unused; do not overload) |
-| `sak_category` | enum | 16 Jurnal-style values in `SAK_CATEGORIES` (accounting-engine.js); `inventory`/`fixed_asset`/`accumulated_depreciation`/`long_term_liability`/`other_asset` reserved for Phase 2 accounts |
+| `sak_category` | enum | 16 Jurnal-style values in `SAK_CATEGORIES` (accounting-engine.js). `inventory` now has a seeded account (**1200**, dormant); `fixed_asset`/`accumulated_depreciation`/`long_term_liability`/`other_asset` remain reserved with no seeded account |
 | `parent_code` | string \| null | One-level hierarchy; parent must exist, share `type` and thousand block (children: 641x under 6400, 4900 under 4000) |
 | `is_system` | bool | Locked accounts: posting/tax engines hardcode them or default resolution targets them ({1000, 1100, 2000, 3000, 3900, 4000, 61xx–66xx, 6999} ∪ tax accounts). No edits, no archive |
 | `normal_balance` | enum | `debit` \| `credit`; derived from type except contra accounts **3200 Prive** and **4900 Sales Discounts & Returns** which store `debit` explicitly (display-only — trial-balance signing uses `type`, so contra accounts show negative signed balances; correct, not a bug) |
@@ -126,6 +128,54 @@ Entertainment→6450 · Professional Services→6460 · Insurance→6400 ·
 Training & Development→6400 · Cost of Goods→5100 · Bank Fees→6600 · Taxes→6500 ·
 Owner Drawing→3200 · Discounts & Refunds→4900 · Owner Capital Injection→3100 ·
 Interest Income→7100.
+
+## 4b. Accounts seeded dormant (no engine posts to them yet)
+
+Seeding an account before its engine exists is an established pattern here —
+`1030 Payment Gateway Clearing`, `2800 Suspense`, and the six tax control
+accounts all shipped this way. It keeps the chart complete, lets journal lines
+resolve a name without a lookup, and means the engine that eventually posts does
+not also have to migrate the chart.
+
+| Code | Name (`name_id`) | `sak_category` | Why it is closed / open |
+|---|---|---|---|
+| `1200` | Inventory (Persediaan) | `inventory` | **Closed to both human surfaces**, like 1100 A/R and 2000 A/P: the balance must equal Σ(qty × unit cost) in the inventory subledger, which only holds if stock moves exclusively through it. Opening balances still reachable via `subtype: 'opening'` |
+| `2050` | Goods Received Not Invoiced (Barang Diterima Belum Ditagih) | `other_current_liability` | Stock received before the supplier bill arrives. Closed for the 1030 reason — it clears by matching receipt to bill, so a manual entry leaves unmatchable residue |
+| `5150` | Inventory Adjustment & Shrinkage (Penyesuaian & Susut Persediaan) | `operating_expense` | **Open on every surface.** Deliberately *not* `cogs`: COGS is the cost of stock a customer bought, and folding spoilage in makes gross margin absorb the loss it should expose (`PRODUCT_STRATEGY.md` §7). Writing stock off is a human judgement |
+
+Two consequences worth knowing before the subledger ships:
+
+1. **`1200` is a current asset in both statements, but only one of them was
+   right by construction.** The balance sheet treats anything not in
+   `NON_CURRENT_ASSET_CATEGORIES` as current, so it was always correct. The cash
+   flow statement's `cashSectionOf` had the inverse default — anything not in
+   `CURRENT_ASSET_CATEGORIES` is *investing* — so inventory movement was reported
+   as investing cash flow. Fixed 2026-08-14; guard: "inventory is operating cash
+   flow and a current asset" in `tests/statements-engine.spec.js`. The reason it
+   could sit unnoticed is that the three cash-flow sections are a partition, so a
+   misfiled account still ties out perfectly.
+2. **The `CHART_SEED_VERSION` 2 → 3 heal rewrites `is_system` and the policy
+   flags** on any doc below version — and it cannot tell a stale seeded doc from
+   a user-created account that happens to share the code. A workspace that
+   hand-made its own `1200` gets it converted to the locked system account. The
+   drawer hands out 13xx for `sak_category: 'inventory'` (`SAK_CODE_RANGE` in
+   `accounting.js`), so a collision is unlikely — but query production for
+   existing `1200`/`2050`/`5150` before the subledger ships.
+
+## 4c. `vendors/{vendorId}` — supplier master (previously undocumented)
+
+Workspace-scoped (`firestore.rules` under `workspaces/{workspaceId}`), surfaced
+at Accounting Center → Setup → Vendors (`assets/js/accounting.js`), DAL in
+`db-service.js` (`getVendors`, `_vendorPayload`, cached via
+`_loadVendorEntities`). It shipped without an entry in `PROJECT_BACKGROUND.md`
+§4 or any shard, and without a place in the `qa-run.js` scope guard — both fixed
+2026-08-14.
+
+Shape worth copying for any future master-data collection (an inventory item
+master is the obvious next one): deterministic `name_key` for dedupe, soft
+archive via a status flag rather than deletion, `delete: if false` in rules, and
+a `default_account_code` so the master participates in posting resolution
+instead of duplicating it.
 
 ## 5. Caveats implementers must know
 

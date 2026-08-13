@@ -104,7 +104,13 @@ export function buildIncomeStatement(rows = []) {
 // is grouped with the P&L accounts in Operating, the closing entry nets to zero
 // and "Net income" reads the same whether the period is open or closed.
 const CASH_CATEGORY = 'cash_bank';
-const CURRENT_ASSET_CATEGORIES = ['accounts_receivable', 'other_current_asset'];
+// `inventory` belongs here: stock is operating working capital, not a capital
+// asset. Without it an inventory account falls through to the `investing`
+// default below and every stock movement is reported as investing cash flow —
+// silently, because the statement still ties out (the sections are a partition,
+// so a misfiled account moves between sections without breaking the identity).
+// Seeded dormant with account 1200; see docs/INVENTORY_READINESS.md.
+const CURRENT_ASSET_CATEGORIES = ['accounts_receivable', 'other_current_asset', 'inventory'];
 const CURRENT_LIABILITY_CATEGORIES = ['accounts_payable', 'other_current_liability'];
 const RETAINED_EARNINGS_CODE = '3000';
 

@@ -70,8 +70,8 @@ const TYPE_CODE_PREFIX_FALLBACK = { asset: '1', liability: '2', equity: '3', rev
 // keeps 1700 — deriveCodeBlock() reads the chart first and only falls here.
 //
 // Why this exists: five categories the drawer offers (inventory, fixed_asset,
-// accumulated_depreciation, other_asset, long_term_liability) are not in the
-// seeded chart at all. With no evidence for them, the old fallback widened to
+// accumulated_depreciation, other_asset, long_term_liability) had no seeded
+// account to learn from. With no evidence for them, the old fallback widened to
 // the whole class — every asset is 1xxx — so a new Fixed Asset continued the
 // CURRENT-asset sequence and was suggested 1160, filing it between Prepaid PPh
 // 25 and PPN Masukan. Statements sort by code and the balance sheet had no
@@ -84,6 +84,11 @@ const TYPE_CODE_PREFIX_FALLBACK = { asset: '1', liability: '2', equity: '3', rev
 // 2900 and not the conventional 2500 because this chart already spends 2500 on
 // Deferred Revenue and 2800 on Suspense — both current — and staying above them
 // keeps current-before-non-current true in code order.
+//
+// `inventory: '13'` is now unreachable in practice: seeding `1200 Inventory`
+// (2026-08-14) gives the chart its own evidence, so deriveCodeBlock returns 12
+// before it ever falls here. Left in place as the fallback for a workspace that
+// archives 1200, and because 1200-1399 was always the inventory span.
 const SAK_CODE_RANGE = {
     cash_bank: '10', accounts_receivable: '11', other_current_asset: '12',
     inventory: '13', fixed_asset: '15', accumulated_depreciation: '16',

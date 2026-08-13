@@ -1,4 +1,4 @@
-import { getFirestore, initializeFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, orderBy, limit, writeBatch, runTransaction, doc, Timestamp, arrayUnion, arrayRemove, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, initializeFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, orderBy, limit, startAfter, writeBatch, runTransaction, doc, Timestamp, arrayUnion, arrayRemove, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { resolveDb } from "/assets/js/firestore-db.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
 import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, assertManualJournalPolicy, GL, glError, CHART_OF_ACCOUNTS_SEED, CHART_SEED_VERSION, accountPolicy, SYSTEM_ACCOUNT_CODES, validateAccountDraft, signedBalance, suggestCategorizingAccount, periodKey as acctPeriodKey } from "./accounting-engine.js";
@@ -1983,6 +1983,63 @@ class DataService {
         }
     }
 
+    // --- Cursor pagination ------------------------------------------------
+    // Reads one page and hands back the cursor for the next. This is the ONLY
+    // paged reader in the codebase; every other read is the `limit(1000)` +
+    // filter-client-side shape above.
+    //
+    // Why it exists before anything calls it: that ceiling is not a soft one. A
+    // collection past 1,000 rows in the selected range is silently truncated —
+    // no cursor, no "showing first 1000" affordance, and the summary cards and
+    // CSV export then compute from the truncated set, so the page is confidently
+    // wrong rather than obviously incomplete. Ledger and Bills both already read
+    // at that ceiling. A stock-movement ledger passes it in a single busy month,
+    // which is why the pattern had to exist before inventory rather than after.
+    //
+    // Returns `{ records, cursor, hasMore }`. Pass the returned `cursor` back as
+    // `options.cursor` for the next page; `hasMore` is false when the page came
+    // back short. The cursor is a Firestore DocumentSnapshot — it is not
+    // serializable, so it belongs in page state, never in a URL.
+    //
+    // NOTE: the `_getRecordsForPeriod` client-side-filter fallback is
+    // deliberately NOT replicated here. That fallback exists for missing/legacy
+    // timestamp indexing and works only because it reads the whole (bounded)
+    // collection — which is the exact thing a paged reader must not do. A caller
+    // that needs the fallback wants `_getRecordsForPeriod`.
+    async getRecordsPage(userId, collectionName, options = {}) {
+        const { startKey, endKey, pageSize = 50, cursor = null, includeVoided = false } = options;
+        const constraints = [];
+        if (startKey && endKey) {
+            const start = this._parseDayKey(startKey);
+            const end = this._parseDayKey(endKey);
+            if (!start || !end) return { records: [], cursor: null, hasMore: false };
+            const endExclusive = new Date(end.getFullYear(), end.getMonth(), end.getDate() + 1);
+            constraints.push(where('timestamp', '>=', Timestamp.fromDate(start)));
+            constraints.push(where('timestamp', '<', Timestamp.fromDate(endExclusive)));
+        }
+        constraints.push(orderBy('timestamp', 'desc'));
+        if (cursor) constraints.push(startAfter(cursor));
+        constraints.push(limit(pageSize));
+
+        const snapshot = await getDocs(
+            query(collection(this.db, `${this._scope(userId)}/${collectionName}`), ...constraints)
+        );
+        const docs = snapshot.docs;
+        let records = docs.map((d) => ({ id: d.id, ...d.data() }));
+        // Voided rows are filtered AFTER the page is read, so a page can come back
+        // shorter than pageSize while more data exists. `hasMore` therefore tracks
+        // the raw document count, not the filtered one — deriving it from
+        // `records.length` would end pagination early on a page of voided rows.
+        if (collectionName === 'transactions' && includeVoided !== true) {
+            records = this._activeTransactions(records);
+        }
+        return {
+            records,
+            cursor: docs.length ? docs[docs.length - 1] : null,
+            hasMore: docs.length === pageSize
+        };
+    }
+
     async getRecentExportLogs(userId, limitCount = 10) {
         // Fetch a broader audit window then filter by action; avoids needing a
         // composite (action, created_at) index for an MVP read.
@@ -2386,6 +2443,32 @@ class DataService {
             if (snap.metadata && snap.metadata.hasPendingWrites) return;
             try { callback(snap); } catch (_) {}
         }, (err) => console.warn('[watchCollection] ' + collectionName, err && err.message ? err.message : err));
+    }
+
+    // Query-scoped variant of watchCollection. Same change-notification
+    // semantics (skips the initial snapshot and this client's own pending
+    // writes), but listens to a QUERY rather than the bare collection ref.
+    //
+    // watchCollection attaches to the whole collection, which is fine for the
+    // collections it currently serves (bills, transactions — bounded, and
+    // low-write). It is the wrong shape for anything high-churn: every write by
+    // every teammate ships the full document to every open tab, billed per
+    // document read, for a listener whose only job is to show a "New activity ·
+    // Refresh" pill. A stock-movement collection is exactly that case.
+    //
+    // `constraints` is an array of Firestore query constraints — typically a
+    // `where` narrowing to today plus a `limit`. Returns an unsubscribe function.
+    watchQuery(scopeId, collectionName, constraints, callback) {
+        const q = query(
+            collection(this.db, `${this._scope(scopeId)}/${collectionName}`),
+            ...(constraints || [])
+        );
+        let initialized = false;
+        return onSnapshot(q, (snap) => {
+            if (!initialized) { initialized = true; return; }
+            if (snap.metadata && snap.metadata.hasPendingWrites) return;
+            try { callback(snap); } catch (_) {}
+        }, (err) => console.warn('[watchQuery] ' + collectionName, err && err.message ? err.message : err));
     }
 
     // ====================================================================

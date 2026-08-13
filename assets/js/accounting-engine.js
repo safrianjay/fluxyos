@@ -70,7 +70,26 @@ export const CHART_OF_ACCOUNTS_SEED = [
     // entry leaves residue nothing can ever match off.
     // ⚠️ Seeded but NOT yet wired — see docs/ACCOUNTING_SPEC_REVIEW.md §7.4b.
     { code: '1030', name: 'Payment Gateway Clearing', name_id: 'Dana Mengendap Gateway', type: 'asset', sak_category: 'other_current_asset', is_system: true, mappable: false, allow_manual_journal: false },
+    // Stock held for sale, at cost. Closed to BOTH human surfaces for the same
+    // reason 1100 A/R and 2000 A/P are: the balance must equal Σ(quantity × unit
+    // cost) held in the inventory subledger, and it can only stay true if stock
+    // moves exclusively through that subledger. A category mapped straight to
+    // 1200 would build an asset balance no stock count can ever reconcile to.
+    // Opening balances are still reachable — assertManualJournalPolicy exempts
+    // subtype 'opening', which is how an existing shopkeeper records what is
+    // already on the shelf.
+    // ⚠️ Seeded dormant, NOT yet wired — nothing posts here until the inventory
+    // subledger ships. Precedent: 1030 and the tax accounts were seeded the same
+    // way, ahead of their engines. See docs/INVENTORY_READINESS.md.
+    { code: '1200', name: 'Inventory', name_id: 'Persediaan', type: 'asset', sak_category: 'inventory', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
     // --- Liabilities
+    // Goods Received Not Invoiced: stock physically received whose supplier bill
+    // has not arrived. Without it, receiving stock has to either wait for the
+    // bill (understating inventory) or fake an A/P entry against a vendor who has
+    // not billed yet (overstating payables and breaking the A/P aging tie-out).
+    // Clears by matching the receipt to the bill, so — like 1030 — a manual entry
+    // leaves residue nothing can ever match off. Dormant until receiving ships.
+    { code: '2050', name: 'Goods Received Not Invoiced', name_id: 'Barang Diterima Belum Ditagih', type: 'liability', sak_category: 'other_current_liability', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
     { code: '2000', name: 'Accounts Payable', name_id: 'Utang Usaha', type: 'liability', sak_category: 'accounts_payable', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
     { code: '2500', name: 'Deferred Revenue', name_id: 'Pendapatan Diterima di Muka', type: 'liability', sak_category: 'other_current_liability' },
     // Suspense — where money that arrived but cannot yet be identified parks,
@@ -95,6 +114,16 @@ export const CHART_OF_ACCOUNTS_SEED = [
     { code: '4900', name: 'Sales Discounts & Returns', name_id: 'Diskon & Retur Penjualan', type: 'revenue', sak_category: 'revenue', parent_code: '4000', normal_balance: 'debit' },
     // --- Cost of Goods Sold
     { code: '5100', name: 'Cost of Goods Sold', name_id: 'Harga Pokok Penjualan', type: 'expense', sak_category: 'cogs' },
+    // Shrinkage, spoilage, wastage, and stock-count differences. Deliberately
+    // `operating_expense` and NOT `cogs`: COGS is the cost of stock a customer
+    // actually bought, and folding spoiled inventory into it makes gross margin
+    // read as though the loss were a cost of selling. For F&B — where wastage is
+    // routine and material — that is the difference between a margin figure an
+    // owner can act on and one that quietly absorbs the problem it should expose
+    // (PRODUCT_STRATEGY.md §7). Left open on every surface: writing stock off is
+    // a human judgement, and a category mapped here is a reasonable stopgap
+    // before the subledger ships.
+    { code: '5150', name: 'Inventory Adjustment & Shrinkage', name_id: 'Penyesuaian & Susut Persediaan', type: 'expense', sak_category: 'operating_expense' },
     // --- Operating expenses. 61xx-66xx system entries are default resolution
     // targets (CATEGORY_DEFAULTS / TYPE_EXPENSE_DEFAULTS below).
     { code: '6100', name: 'Marketing Expense', name_id: 'Beban Pemasaran', type: 'expense', sak_category: 'operating_expense', is_system: true },
@@ -134,7 +163,16 @@ export const CHART_OF_ACCOUNTS_SEED = [
 // ad-hoc "is this field missing?" predicate.
 //   1 → implicit (pre-versioning, healed off `!sak_category`)
 //   2 → allow_manual_journal / allow_direct_transaction / mappable persisted
-export const CHART_SEED_VERSION = 2;
+//   3 → 1200 Inventory, 2050 GRNI, 5150 Inventory Adjustment seeded dormant
+//
+// ⚠️ The heal branch rewrites `is_system` and the policy flags on any doc below
+// the current version, and it cannot tell a stale seeded doc from a user-created
+// one that happens to share a code (saveAccount stamps seed_version too). A
+// workspace that hand-made its own `1200` would have it converted to the locked
+// system account by this bump. The account drawer hands out 13xx for
+// sak_category 'inventory', so a collision is unlikely rather than impossible —
+// query production for existing 1200/2050/5150 before the subledger ships.
+export const CHART_SEED_VERSION = 3;
 
 // Resolve the posting policy of an account row from EITHER the seed or a live
 // Firestore doc. Every flag defaults to permissive when absent: a user-created
@@ -350,8 +388,41 @@ function line(accountCode, debit, credit, memo) {
         currency: 'IDR',
         fx_rate: 1,
         functional_amount: toInt(debit) || toInt(credit),
-        memo: memo || ''
+        memo: memo || '',
+        // Outlet / branch / warehouse this line belongs to. Always present and
+        // null by default — see stampDimension below for why the shape is fixed
+        // here rather than added by whoever first needs it.
+        dimension_id: null
     };
+}
+
+// --- Dimension seam --------------------------------------------------------
+// A dimension is an outlet, branch, or warehouse: the "where" of a posting, as
+// opposed to the "what" the account already answers. Nothing sets one yet, so
+// every line ships `dimension_id: null` and every existing behaviour is
+// unchanged.
+//
+// It lives on the LINE, not the journal, because that is the only placement that
+// survives contact with reality: a bill covering two outlets has to split, and a
+// journal-level field would force a second journal per outlet and break the
+// one-document-one-journal relationship the source drill-down depends on.
+//
+// It is stamped here, after the rule builder returns, rather than threaded
+// through `line()`'s positional arguments — that would mean editing all fourteen
+// rule builders for a value none of them reason about. A line that already
+// carries a dimension keeps it, so a future line-level picker overrides the
+// document-level default without this function changing.
+//
+// Why the field exists before the feature: `entity_id` on journals, accounts and
+// balances is stamped as the workspace id and nothing else (`_resolvedScopeId`),
+// so it is a constant, not a dimension. Adding a real one AFTER stock movements
+// and per-outlet postings exist means backfilling posted journals — which are
+// immutable by rule. Cutting the seam first costs a null field.
+// Full design: docs/DIMENSION_SEAM_DESIGN.md.
+export function stampDimension(lines, dimensionId) {
+    const dim = String(dimensionId || '').trim() || null;
+    if (!dim) return lines || [];
+    return (lines || []).map((l) => (l.dimension_id ? l : { ...l, dimension_id: dim }));
 }
 
 // An explicit account chosen in the entry drawer (document.account_code) wins over
@@ -638,7 +709,13 @@ export function buildJournal({ collection, id, document, mappings, date, account
     // static seed) resolves to its real type/name in the posted lines.
     _liveAccounts = accounts || null;
     try {
-        const lines = builder(document || {}, { mappings: mappings || {} });
+        // Document-level dimension: one source document belongs to one outlet, so
+        // every line it produces inherits it. Per-line overrides survive (see
+        // stampDimension) for when bills gain line items.
+        const lines = stampDimension(
+            builder(document || {}, { mappings: mappings || {} }),
+            document?.dimension_id
+        );
         const when = date || document?.timestamp || document?.due_date || document?.date || new Date();
         return finalize(lines, {
             posting_rule_id: ruleId,
@@ -797,7 +874,11 @@ export function buildManualJournal({ lines = [], date, period_key, description, 
                 currency: 'IDR',
                 fx_rate: 1,
                 functional_amount: debit || credit,
-                memo: l.memo || ''
+                memo: l.memo || '',
+                // Manual journals are the one path where a human may split a
+                // single entry across outlets, so the dimension is read per line
+                // rather than stamped from a document.
+                dimension_id: String(l.dimension_id || '').trim() || null
             };
         })
         .filter((l) => l.account_code && (l.debit > 0 || l.credit > 0));

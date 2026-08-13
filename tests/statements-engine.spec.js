@@ -177,6 +177,50 @@ test('cash flow ties to actual cash movement, open and closed periods', async ({
     expect(r.emptyBalanced).toBe(true);
 });
 
+// Stock is operating working capital, not a capital asset. This one is easy to
+// get wrong and impossible to notice: the three cash-flow sections partition the
+// non-cash accounts, so an inventory account filed under `investing` still ties
+// out perfectly — the statement balances and reports the wrong thing. It was
+// wrong until 2026-08-14, when `1200 Inventory` was seeded (see
+// docs/INVENTORY_READINESS.md). The balance sheet must also read it as CURRENT.
+test('inventory is operating cash flow and a current asset', async ({ page }) => {
+    await page.goto('/pricing');
+    const r = await page.evaluate(async () => {
+        const e = await import('/assets/js/statements-engine.js');
+        const row = (code, type, sak, debit, credit) => ({
+            account_code: code, account_type: type, account_name: code,
+            sak_category: sak, debit_total: debit, credit_total: credit
+        });
+
+        // Rp600 of stock bought for cash, Rp400 of it sold (cost moved to COGS).
+        // Cash moves −600; Rp200 stays tied up in stock on the shelf.
+        const rows = [
+            row('1000', 'asset', 'cash_bank', 0, 600),
+            row('1200', 'asset', 'inventory', 600, 400),
+            row('5100', 'expense', 'cogs', 400, 0)
+        ];
+        const cf = e.buildCashFlow(rows);
+        const bs = e.buildBalanceSheet(rows);
+        return {
+            operating: cf.totalOperating,
+            investing: cf.totalInvesting,
+            net: cf.netChangeInCash,
+            cash: cf.cashMovement,
+            balanced: cf.balanced,
+            currentCodes: bs.assetsCurrent.map((l) => l.code),
+            nonCurrentCodes: bs.assetsNonCurrent.map((l) => l.code)
+        };
+    });
+
+    expect(r.investing, 'stock movement is never investing').toBe(0);
+    expect(r.operating).toBe(-600);
+    expect(r.net).toBe(-600);
+    expect(r.cash).toBe(-600);
+    expect(r.balanced).toBe(true);
+    expect(r.currentCodes).toContain('1200');
+    expect(r.nonCurrentCodes).not.toContain('1200');
+});
+
 // --- Current vs non-current classification (PSAK 1) --------------------------
 // The balance sheet must present current and non-current separately once
 // non-current accounts exist, and must stay flat before that so charts holding
