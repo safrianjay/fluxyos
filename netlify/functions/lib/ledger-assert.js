@@ -68,6 +68,22 @@ async function readLedgerBalances(base) {
 // Same composition as getAgingReport in db-service.js, so a failure here means
 // the aging report and the balance sheet have genuinely diverged — which is the
 // whole reason A/R is closed to manual journals.
+// Per-dimension breakdown rows. Summed per {period_key, account_code} so they can
+// be compared against the workspace-level ledger_balances rows they decompose.
+async function readLedgerBalancesByDim(base) {
+    const out = {};
+    const snap = await base.collection('ledger_balances_by_dim').get();
+    snap.forEach((d) => {
+        const r = d.data() || {};
+        const key = `${r.period_key}__${r.account_code}`;
+        const e = out[key] || (out[key] = { debit: 0, credit: 0, rows: 0 });
+        e.debit += Number(r.debit_total) || 0;
+        e.credit += Number(r.credit_total) || 0;
+        e.rows += 1;
+    });
+    return out;
+}
+
 async function expectedReceivables(base) {
     const [invoices, accruals] = await Promise.all([
         base.collection('invoices').get(),
@@ -270,12 +286,13 @@ async function unpostedSources(base) {
  */
 async function assertWorkspaceLedger(db, workspaceId) {
     const base = db.collection('workspaces').doc(workspaceId);
-    const [balances, ar, ap, recomputed, unposted] = await Promise.all([
+    const [balances, ar, ap, recomputed, unposted, byDim] = await Promise.all([
         readLedgerBalances(base),
         expectedReceivables(base),
         expectedPayables(base),
         recomputeFromJournalLines(base),
-        unpostedSources(base)
+        unpostedSources(base),
+        readLedgerBalancesByDim(base)
     ]);
 
     const checks = [];
@@ -328,6 +345,39 @@ async function assertWorkspaceLedger(db, workspaceId) {
     // Coverage — sources that never produced a journal.
     push('journal_coverage', unposted.missing === 0, 'error', 0, unposted.missing,
         `${unposted.missing} of ${unposted.checked} IDR source(s) have no journal`);
+
+    // #6 — the per-dimension breakdown must decompose the workspace row exactly.
+    //
+    // Both collections are written by FieldValue.increment in the SAME batch
+    // (db-service _flushBalanceAcc), so they can only diverge through a bug or a
+    // partial write — and the divergence is invisible from either side alone: the
+    // workspace row still ties to the journals, and the by-dim rows still look
+    // self-consistent. Lines with no dimension roll into '__unassigned__', so this
+    // holds during rollout, not only once everything is dimensioned.
+    //
+    // Compared per {period, account} because that is the granularity the rollup
+    // writes at. Skipped entirely when nothing has been written yet, so an
+    // untouched workspace does not report a phantom failure.
+    let dimMismatches = 0;
+    let dimDelta = 0;
+    if (Object.keys(byDim).length) {
+        // recomputed.expected is already keyed `${period_key}__${account_code}`,
+        // which is exactly the granularity the rollup writes at — no re-aggregation.
+        new Set([...Object.keys(recomputed.expected), ...Object.keys(byDim)]).forEach((key) => {
+            const want = recomputed.expected[key] || { debit: 0, credit: 0 };
+            const got = byDim[key] || { debit: 0, credit: 0 };
+            if (want.debit !== got.debit || want.credit !== got.credit) {
+                dimMismatches += 1;
+                dimDelta += Math.abs(want.debit - got.debit) + Math.abs(want.credit - got.credit);
+            }
+        });
+    }
+    push('ledger_balances_by_dim', dimMismatches === 0, 'error', 0, dimMismatches,
+        !Object.keys(byDim).length
+            ? 'no per-dimension rows yet — nothing to reconcile'
+            : (dimMismatches
+                ? `${dimMismatches} period/account pair(s) where the dimension breakdown does not sum to the ledger, by Rp${dimDelta}`
+                : 'per-dimension rows sum to the ledger'));
 
     // #5 — bank GL vs the last certified statement balance. INFORMATIONAL: these
     // legitimately differ by unpresented items, so it reports without failing.

@@ -60,6 +60,7 @@ SHARD=""
 case "$BASE" in
   bank-statement*|*bank_statement*)          SHARD="bank-statement-imports" ;;
   bank-recon*|bank-account*|bank*)           SHARD="bank-accounts" ;;
+  dimension*)                                SHARD="dimensions" ;;
   accounting-engine*|accounting*|journal*)   SHARD="accounting" ;;
   invoice*)                                  SHARD="invoices" ;;
   bill*)                                     SHARD="bills" ;;

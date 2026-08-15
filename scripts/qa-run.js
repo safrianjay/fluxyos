@@ -133,6 +133,8 @@ const FINANCE_COLLECTIONS = [
   // but it was never added here or to the §4 list — the guard has been blind to
   // it since it shipped. A guard is only as good as this array.
   'vendors',
+  // Dimension master + the per-dimension balance rollup (2026-08-16).
+  'dimensions', 'ledger_balances_by_dim',
 ];
 
 function scopeGuard() {

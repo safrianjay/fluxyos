@@ -3222,7 +3222,8 @@ service cloud.firestore {
           'company_tax_profile', 'tax_mappings', 'tax_transactions', 'tax_periods', 'tax_filings',
           'commerce_accounts', 'commerce_orders', 'commerce_transactions', 'commerce_refunds',
           'commerce_settlements', 'commerce_payouts', 'commerce_sync_jobs',
-          'commerce_sync_errors', 'commerce_webhook_logs', 'duplicate_reviews'
+          'commerce_sync_errors', 'commerce_webhook_logs', 'duplicate_reviews',
+          'dimensions', 'ledger_balances_by_dim'
         ]
         && data.target_id is string && data.target_id.size() <= 200
         && data.source in ['dashboard', 'ai', 'integration', 'system']
@@ -3962,6 +3963,38 @@ service cloud.firestore {
           && request.resource.data.period_key is string
           && request.resource.data.debit_total is number && request.resource.data.debit_total >= 0
           && request.resource.data.credit_total is number && request.resource.data.credit_total >= 0;
+        allow delete: if false;
+      }
+      // Per-dimension breakdown of ledger_balances. Doc id is
+      // {period_key}__{account_code}__{dimension_id}; lines with no dimension use
+      // the reserved '__unassigned__' key so the rows always sum to the
+      // workspace-level row above. Written by FieldValue.increment in the same
+      // batch as the journal (db-service _flushBalanceAcc). Validated field-wise
+      // only, exactly like ledger_balances — kept to five inline checks because
+      // this is on the posting hot path and the rules evaluation budget is real
+      // (see the incidents recorded at lines 3367, 3526, 3546).
+      match /ledger_balances_by_dim/{balanceId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && request.resource.data.account_code is string
+          && request.resource.data.period_key is string
+          && request.resource.data.dimension_id is string
+          && request.resource.data.debit_total is number && request.resource.data.debit_total >= 0
+          && request.resource.data.credit_total is number && request.resource.data.credit_total >= 0;
+        allow delete: if false;
+      }
+      // Outlets, branches and warehouses — the master behind dimension_id on
+      // journal lines. One collection with a `type`, because an F&B outlet is
+      // both a P&L unit and a stock location. Soft archive only: deleting one
+      // would orphan journal lines that are immutable by rule.
+      match /dimensions/{dimensionId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 80
+          && request.resource.data.type in ['outlet', 'branch', 'warehouse']
+          && request.resource.data.status in ['active', 'archived'];
         allow delete: if false;
       }
       // Period lifecycle. Closing requires finance+; locking is owner/admin only.

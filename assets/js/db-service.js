@@ -95,6 +95,15 @@ const ACCOUNTING_UNMAPPED_FALLBACK_CODE = '6999';
 function normalizeVendorKey(name) {
     return String(name || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 60);
 }
+// Reserved dimension for journal lines carrying no dimension. Every line has one
+// today, so the whole ledger rolls up here — which is the point: it keeps "by-dim
+// rows sum to the workspace row" true during rollout instead of only after it.
+// Never a real dimension id; `saveDimension` cannot produce it.
+const UNASSIGNED_DIMENSION = '__unassigned__';
+// Outlets, branches and warehouses in ONE collection, separated by `type`.
+// An F&B outlet is both a P&L unit and a stock location; separate `entities` and
+// `locations` collections would make every such site exist twice and drift.
+const DIMENSION_TYPES = ['outlet', 'branch', 'warehouse'];
 // Founder-facing category taxonomy seed (docs/data-model/chart-of-accounts.md).
 // The built-in six keep their exact ledger-wide names and stay active; expanded
 // categories seed inactive until Phase 3 activates them in the pickers, but
@@ -4096,28 +4105,24 @@ class DataService {
             posted_at: serverTimestamp(),
             created_at: serverTimestamp()
         });
+        // Always accumulate, then flush. The caller may pass its own accumulator
+        // to span several journals in one batch (corrections, sweeps); without
+        // one we use a local accumulator and flush immediately, which is NOT
+        // merely tidier — the direct-write path this replaces would write the
+        // same balance document twice whenever two lines shared an account and
+        // dimension, and Firestore rejects the whole batch when that happens.
+        const acc = balanceAcc || {};
         (journal.lines || []).forEach((l) => {
-            if (balanceAcc) {
-                const key = `${journal.period_key}__${l.account_code}`;
-                const e = balanceAcc[key] || (balanceAcc[key] = {
-                    period_key: journal.period_key, account_code: l.account_code,
-                    account_type: l.account_type, debit: 0, credit: 0
-                });
-                e.debit += Number(l.debit) || 0;
-                e.credit += Number(l.credit) || 0;
-                return;
-            }
-            batch.set(doc(this.db, `${scope}/ledger_balances/${journal.period_key}__${l.account_code}`), {
-                period_key: journal.period_key,
-                account_code: l.account_code,
-                account_type: l.account_type,
-                entity_id: entityId,
-                currency: 'IDR',
-                debit_total: increment(Number(l.debit) || 0),
-                credit_total: increment(Number(l.credit) || 0),
-                updated_at: serverTimestamp()
-            }, { merge: true });
+            const dim = String(l.dimension_id || '').trim() || UNASSIGNED_DIMENSION;
+            const key = `${journal.period_key}__${l.account_code}__${dim}`;
+            const e = acc[key] || (acc[key] = {
+                period_key: journal.period_key, account_code: l.account_code,
+                account_type: l.account_type, dimension_id: dim, debit: 0, credit: 0
+            });
+            e.debit += Number(l.debit) || 0;
+            e.credit += Number(l.credit) || 0;
         });
+        if (!balanceAcc) this._flushBalanceAcc(batch, scope, entityId, acc);
         return journalRef;
     }
 
@@ -4172,8 +4177,45 @@ class DataService {
     }
 
     // Flush an accumulated balance map (one merged increment per account+period).
+    // Writes TWO collections from one accumulator:
+    //
+    //   ledger_balances         {period}__{account}         the tie-out source —
+    //                                                       doc id unchanged, so
+    //                                                       trial balance, the
+    //                                                       statements, close and
+    //                                                       the integrity sweep
+    //                                                       are untouched
+    //   ledger_balances_by_dim  {period}__{account}__{dim}  the breakdown
+    //
+    // The accumulator is keyed by dimension, so the workspace-level row has to be
+    // RE-AGGREGATED here. Firestore rejects a batch that writes one document
+    // twice, and two dimensions posting to the same account in one batch would do
+    // exactly that — which is also why this function exists at all.
+    //
+    // Lines with no dimension roll into `__unassigned__` rather than being
+    // dropped, so "by-dim rows sum to the workspace row" holds during rollout and
+    // not only once every posting is dimensioned. Today every line is unassigned,
+    // so this doubles a handful of balance writes per batch and buys the
+    // invariant; see docs/DIMENSION_SEAM_DESIGN.md §5.
     _flushBalanceAcc(batch, scope, entityId, balanceAcc) {
+        const rollup = {};
         Object.values(balanceAcc).forEach((e) => {
+            const dim = e.dimension_id || UNASSIGNED_DIMENSION;
+            batch.set(doc(this.db, `${scope}/ledger_balances_by_dim/${e.period_key}__${e.account_code}__${dim}`), {
+                period_key: e.period_key, account_code: e.account_code, account_type: e.account_type,
+                dimension_id: dim, entity_id: entityId, currency: 'IDR',
+                debit_total: increment(e.debit), credit_total: increment(e.credit),
+                updated_at: serverTimestamp()
+            }, { merge: true });
+            const k = `${e.period_key}__${e.account_code}`;
+            const r = rollup[k] || (rollup[k] = {
+                period_key: e.period_key, account_code: e.account_code,
+                account_type: e.account_type, debit: 0, credit: 0
+            });
+            r.debit += e.debit;
+            r.credit += e.credit;
+        });
+        Object.values(rollup).forEach((e) => {
             batch.set(doc(this.db, `${scope}/ledger_balances/${e.period_key}__${e.account_code}`), {
                 period_key: e.period_key, account_code: e.account_code, account_type: e.account_type,
                 entity_id: entityId, currency: 'IDR',
@@ -5202,6 +5244,87 @@ class DataService {
                 .filter((v) => includeArchived || v.status !== 'archived')
                 .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
         } catch (_) { return []; }
+    }
+
+    // =====================================================================
+    // DIMENSIONS — outlets / branches / warehouses
+    //
+    // The "where" of a posting, as opposed to the "what" the account answers.
+    // Modelled on `vendors`, which is this codebase's proven master-data shape:
+    // deterministic `name_key`, soft archive, never deleted.
+    //
+    // Nothing sets a dimension on a document yet — `dimension_id` rides journal
+    // lines (accounting-engine.js `stampDimension`) and every line is currently
+    // null. This is the master the picker will read once documents carry one.
+    // Design: docs/DIMENSION_SEAM_DESIGN.md.
+    // =====================================================================
+
+    async getDimensions(userId, { includeArchived = false } = {}) {
+        try {
+            const snap = await getDocs(collection(this.db, `${this._scope(userId)}/dimensions`));
+            return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+                .filter((d) => includeArchived || d.status !== 'archived')
+                .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+        } catch (_) { return []; }
+    }
+
+    async saveDimension(userId, data = {}, { create = false, dimensionId = null } = {}) {
+        if (!userId) throw new Error('userId required');
+        const name = this._stringOrDefault(data.name, '', 80);
+        if (!name) throw new Error('Dimension name is required.');
+        const type = DIMENSION_TYPES.includes(data.type) ? data.type : 'outlet';
+        const nameKey = normalizeVendorKey(name);
+        const scope = this._scope(userId);
+
+        if (create) {
+            // Deterministic key, so the same outlet cannot be created twice under
+            // two spellings — the vendors precedent.
+            const existing = await this.getDimensions(userId, { includeArchived: true });
+            if (existing.some((d) => d.name_key === nameKey)) {
+                throw new Error(`A dimension named "${name}" already exists.`);
+            }
+            const payload = {
+                name, name_key: nameKey, type, status: 'active',
+                created_at: serverTimestamp(), updated_at: serverTimestamp()
+            };
+            const ref = await addDoc(collection(this.db, `${scope}/dimensions`), payload);
+            await this.addAuditLog(userId, {
+                action: 'dimension.created', target_collection: 'dimensions', target_id: ref.id,
+                after: { name, type }, source: 'dashboard'
+            });
+            return { id: ref.id, ...payload };
+        }
+
+        if (!dimensionId) throw new Error('dimensionId required');
+        const ref = doc(this.db, `${scope}/dimensions/${dimensionId}`);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) throw new Error('Dimension not found.');
+        const prev = snap.data();
+        // `name_key` stays immutable: it is the dedupe key, and journal history
+        // already posted against this id must keep resolving to the same site.
+        const payload = { name, type, updated_at: serverTimestamp() };
+        await updateDoc(ref, payload);
+        await this.addAuditLog(userId, {
+            action: 'dimension.updated', target_collection: 'dimensions', target_id: dimensionId,
+            before: { name: prev.name, type: prev.type }, after: { name, type }, source: 'dashboard'
+        });
+        return { id: dimensionId, ...prev, ...payload };
+    }
+
+    // Soft archive only. A deleted dimension would orphan every journal line
+    // that posted against it, and posted journals are immutable.
+    async archiveDimension(userId, dimensionId, { restore = false } = {}) {
+        if (!userId || !dimensionId) throw new Error('userId and dimensionId required');
+        const status = restore ? 'active' : 'archived';
+        await updateDoc(doc(this.db, `${this._scope(userId)}/dimensions/${dimensionId}`), {
+            status, updated_at: serverTimestamp()
+        });
+        await this.addAuditLog(userId, {
+            action: restore ? 'dimension.reactivated' : 'dimension.archived',
+            target_collection: 'dimensions', target_id: dimensionId,
+            after: { status }, source: 'dashboard'
+        });
+        return { id: dimensionId, status };
     }
 
     // Cached name_key → vendor entity for fast default lookups during entry.
