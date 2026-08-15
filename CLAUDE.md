@@ -28,7 +28,7 @@ QA_PASS=1 git push origin main
 
 | Lane | Checks |
 |---|---|
-| **BE** | `node --check` on changed JS; workspace-scoping invariant; **`check:structure` (structural drift — always runs)**; `check:deploy` / `check:ai-scope` / `check:bank-scope` / `check:ledger-assert` when their inputs change; Firestore rules emulator tests when `*.rules` change |
+| **BE** | `node --check` on changed JS; workspace-scoping invariant; **`check:structure` (structural drift) and `check:deploy-stamp` (Firebase deploy preconditions) — both always run**; `check:deploy` / `check:ai-scope` / `check:bank-scope` / `check:ledger-assert` when their inputs change; Firestore rules emulator tests when `*.rules` change |
 | **FE** | `scripts/qa/lint-design.js` (design-system rules, **changed lines only**); `tests/zz-console-sweep.spec.js` — loads affected pages in a real browser and fails on CSP/CORS/permission-denied/uncaught errors and same-origin 404s |
 | **PRODUCT** | i18n EN↔ID pairing where an `/id/` mirror exists; SEO essentials on changed landing pages; `seo:check-org` (Organization entity in sync — catches running the two SEO generators in the wrong order); `i18n-audit.js` (advisory) |
 
@@ -47,6 +47,24 @@ classified in `statements-engine.js`, and the **canonical positioning** holding
 across its six sources (category present, retired strings absent, no SMB-ceiling
 phrasing). All seven failure modes are silent at runtime — see
 `docs/ERP_ARCHITECTURE_REVIEW.md` §3.5.
+
+`check:deploy-stamp` is the other unconditional check. **`firestore.rules`,
+`firestore.indexes.json` and `storage.rules` do not ship with `git push`** — each
+is a separate `firebase deploy --only …` command. Code that depends on an
+undeployed one does not degrade gracefully: Firestore batch writes are atomic, so
+a missing rules block fails *every* posting, not just the new feature. That
+nearly shipped on 2026-08-16 with full QA green.
+
+The workflow when you touch one of those three files:
+
+```
+firebase deploy --only firestore:rules   # 1. deploy
+                                         # 2. VERIFY — run a spec that exercises
+                                         #    the new path; "published" in the
+                                         #    console is not the same claim
+npm run deploy:stamp                     # 3. record what is now live
+git add deploy/deployed-stamps.json      # 4. commit the stamp with the change
+```
 
 Lane selection otherwise comes from the git diff, so an accounting-only change
 does not pay for a landing-page SEO scan. Commits made *after* a QA run make the

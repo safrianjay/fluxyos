@@ -179,6 +179,13 @@ function laneBE(changed) {
   // file reads, no network, no browser.
   ok = record('be', run('check:structure-drift', 'node', ['tests/structure-drift.check.js'])) && ok;
 
+  // Also unconditional. firestore.rules / firestore.indexes.json / storage.rules
+  // do NOT ship with `git push` — they are separate Firebase commands — and code
+  // that depends on an undeployed one breaks production the moment it lands.
+  // Batch writes are atomic, so a missing rules block does not degrade a feature,
+  // it fails every posting. Cheap: three file hashes, no network, no credentials.
+  ok = record('be', run('check:deploy-stamp (rules/indexes deployed?)', 'node', ['tests/deploy-stamp.check.js'])) && ok;
+
   const jsChanged = changed.filter((f) => /\.(js|mjs)$/.test(f) && fs.existsSync(path.join(REPO_ROOT, f)));
   if (jsChanged.length) {
     for (const f of jsChanged) {
