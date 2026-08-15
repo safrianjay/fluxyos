@@ -5,8 +5,9 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 > **Scope is governed by [`PRODUCT_STRATEGY.md`](PRODUCT_STRATEGY.md).** A module
 > enters this roadmap only after passing the admission test in **§5** — does it
 > create, move, protect, predict, or explain financial performance? — and the
-> connection test in **§5a**. Sequencing rationale for the operational modules is
-> in **§7**. (This blockquote previously cited §3 and §5; corrected 2026-08-15.)
+> connection test in **§5a**, and its priority is set by **§5b** — financial
+> necessity and customer demand are separate axes and a module scoring high on
+> one does not get funded on that alone. Sequencing rationale is in **§7**. (This blockquote previously cited §3 and §5; corrected 2026-08-15.)
 >
 > **The maturity ladder in §2a is direction, not a delivery plan.** This document
 > stays the phased, prioritized view. Nothing here carries a date.
@@ -73,8 +74,8 @@ balances. None keeps its own books.
 
 | Module | Status | Admission verb | Sequencing |
 |---|---|---|---|
-| Multi-entity completion | 🧭 Strategic | Explains (per-entity performance) | **First.** Finishes Layer 2 and unblocks branch reporting. The plumbing does **not** already exist — `entity_id` is the workspace id on every row. The line-level `dimension_id` seam shipped 2026-08-14 (`DIMENSION_SEAM_DESIGN.md`); the collection, rollup and UI have not |
-| Inventory & stock movement | 🧭 Strategic | Moves | **Second.** Fixes gross-margin accuracy for every stock-holding customer. Readiness assessed and preparation shipped 2026-08-14 — `docs/INVENTORY_READINESS.md` |
+| Multi-entity / outlet dimension | 🧭 Strategic | Explains (per-entity performance) | **First — the only High-necessity AND High-demand item (§5b).** The sole explicit unmet customer request on record is per-outlet profitability. Finishes Layer 2 and unblocks branch reporting. The plumbing does **not** already exist — `entity_id` is the workspace id on every row. The line-level `dimension_id` seam shipped 2026-08-14 (`DIMENSION_SEAM_DESIGN.md`); the collection, rollup and UI have not |
+| Inventory & stock movement | 🧭 Strategic | Moves | **Minimum capability only** — high financial necessity, **zero verified customer demand** (`INVENTORY_DEMAND_VALIDATION.md`, 2026-08-15). Scope capped by §5b at a periodic stock count posting one COGS journal; no item master, no SKUs, no stock movements. Readiness + preparation: `INVENTORY_READINESS.md` |
 | Purchasing / procurement | 🧭 Strategic | Moves | With inventory — receipts are how stock enters |
 | POS integration | 🧭 Strategic | Creates | **Third.** Adapter pattern reusing the commerce connector shape |
 | Recipes / bill of materials | 🧭 Strategic | Moves (consumed by COGS) | **Fourth.** Requires inventory + POS line items |

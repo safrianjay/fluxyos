@@ -1,0 +1,210 @@
+---
+status: current
+owns: [inventory demand evidence, scope validation, segment call]
+updated: 2026-08-15
+verify: re-run the evidence sweep before acting; sales_leads was NOT readable when this was written
+---
+
+# Inventory — demand validation
+
+Inventory has **two independent justifications, and they must not be conflated**:
+
+| | |
+|---|---|
+| **Financial correctness** | FluxyOS publishes gross margin. For a stock-holding business that figure is wrong without inventory movement. This is an internal accounting rationale. |
+| **Customer demand** | Are customers experiencing this problem and willing to pay to solve it? |
+
+The first is **established** (`PRODUCT_STRATEGY.md` §4). The second is what this
+document assesses. **A high financial necessity does not license a full module.**
+
+---
+
+## 1. Evidence tiers
+
+Everything below is labelled. Nothing is inferred without saying so.
+
+### ✅ VERIFIED — attributed customer voice
+
+Three testimonials, published 2026-08-12 (commit `4422ed1`). These are the only
+attributed customer statements in the repository, and they survived an
+authenticity audit: commit `ff04214` removed fabricated metrics and invented
+testimonials immediately before, and each of these was confirmed with the
+customer before publishing.
+
+| Customer | Segment | Verbatim | Underlying problem |
+|---|---|---|---|
+| **Azis Senna** — Owner, Bakkery Bread | F&B (bakery, stock-holding) | "I used to only find out whether we made money at the end of the month, and even then only after the receipts were collected. Now ingredient purchases and sales land in one place, so I can see where we stand that same day." | **Timeliness of profit visibility.** Note he describes ingredient *purchases* landing — the purchase side — not stock tracking |
+| **Agus Sinaga** — Accounting, Kelapa Merdeka | not stated | "Bank reconciliation used to be the longest part of every close. Now the transactions are already matched and I only review the exceptions. The journals are clean and I can defend them." | **Close speed and defensibility.** Accounting, not operational |
+| **Melisha Agustin** — CEO, Pujasera Group | F&B (food court, multi-outlet) | "Running several outlets means the numbers get buried into one total. What I needed was to see which outlet is working and which isn't, without asking my team for a manual report." | **Per-outlet profitability.** The only explicit unmet request in the corpus |
+
+### ◐ INFERENCE — artifact-derived, never stated by a customer
+
+The Beila Scarves investor deck (`beila.html`, built by FluxyOS *for* the
+customer) states "19 SKUs profitably online at 53.5% blended gross margin" and
+"Magnet Pin runs at 84%". Commit `aeac37d` — "state the core-hijab production
+cost alongside blended COGS" — shows product-level COGS had to be written in by
+hand.
+
+**Inference:** a real customer needed per-SKU margin and computed it outside
+FluxyOS. **This is not a request.** Beila never asked for inventory; we built the
+deck and hit the gap ourselves.
+
+### ❌ ABSENT — searched for, not found
+
+- **No explicit request for inventory, POS, purchasing, procurement, or vendor
+  management appears anywhere in the repository.** Zero.
+- `ACCOUNTING_EXPERT_INTERVIEW_GUIDE.md` — a complete 6-session instrument whose
+  findings template is **literally blank** (`Session #: ___ Date: ___`). None of
+  the six sessions has been run.
+- `ACCOUNTING_DISCOVERY_STRATEGY.md` §2.14 analyses inventory and concludes "Ask
+  the expert" — unanswered.
+- No support-conversation log, feature-request record, or churn note exists.
+- Zero of the last 80 commits is attributed to a customer request.
+- **Named production workspaces (Beila, Get-Pipeline, Dika Finance, Pitto) appear
+  only in ledger-integrity incident records and repair scripts.** Their observed
+  pain is books that do not tie — coverage gaps, scope leaks, drift.
+
+### 🚫 UNREACHABLE — the richest source, not read
+
+`netlify/functions/submit-contact-sales.js` writes every inbound lead to the
+top-level Firestore collection **`sales_leads`**, carrying `business_type`,
+`team_size`, and a free-text `message` up to 2,000 characters. Each lead is also
+emailed and posted to `SLACK_WEBHOOK_URL`.
+
+Form options map directly onto the segment question: *E-commerce · Retail &
+Franchise · Food & Beverage · Agency · SaaS/Tech · Manufacturing · Professional
+Services · Other*.
+
+**None of this was readable when this document was written** — Firestore needs
+production credentials, and the email/Slack archives sit outside the repo.
+**Every conclusion below is provisional on that data.**
+
+---
+
+## 2. Request classification
+
+Explicit demand separated from underlying business problem, per segment.
+
+| Category | Explicit demand | Underlying problem behind it | Tier |
+|---|---|---|---|
+| **Per-outlet / multi-branch profitability** | ✅ **Yes — Melisha** | "which outlet is working and which isn't" | Verified |
+| Profit timeliness / cash visibility | ✅ Yes — Azis | "see where we stand that same day" | Verified |
+| Close speed, journal defensibility | ✅ Yes — Agus | reconciliation was the longest part of close | Verified |
+| COGS accuracy | ❌ none | Beila's product-level COGS computed by hand | Inference |
+| **Inventory** | ❌ **none** | — | — |
+| **POS** | ❌ **none** | — | — |
+| Purchasing / procurement | ❌ none — Azis names ingredient purchases as something that *now works*, not a gap | — | — |
+| Vendor management | ❌ none | — | — |
+
+**The single most important line:** the strongest verified signal is
+**per-outlet profitability**, and it is *not* a request for inventory. The
+underlying problem — *"I don't know which outlet is losing money"* — is solved by
+a dimension on postings, not by stock tracking.
+
+---
+
+## 3. Segment call
+
+**Two of three named customers are F&B** (Bakkery Bread, Pujasera Group; Kelapa
+Merdeka's industry is not stated). So the customer base leans F&B.
+
+But the demand those F&B customers express is **financial visibility, not
+operational control.** Neither asks about ingredients, recipes, waste, or stock
+levels. Azis wants to know profit sooner; Melisha wants it split by outlet.
+
+That distinction decides the scenario:
+
+| Scenario (`PRODUCT_STRATEGY` framing) | Fits? |
+|---|---|
+| **A — F&B demanding operational control** (POS → outlet → purchasing → BOM → inventory) | ❌ The segment is F&B, but the demand is not operational |
+| **B — Retail/e-commerce dominant** (SKU → inventory → COGS) | ❌ Only Beila, and by inference not request |
+| **C — Multi-outlet financial visibility dominant** (dimensions → sales data → COGS → outlet P&L) | ✅ **This one.** The only explicit request, from the only CEO in the corpus |
+| **D — No meaningful operational demand** | ◐ Partly true, and points the same way |
+
+**Verdict: Scenario C, with an F&B-leaning base.** Inventory enters later as the
+upstream that makes outlet-level COGS accurate — not as the flagship.
+
+---
+
+## 4. Prioritization
+
+Applying the two-axis framework (`PRODUCT_STRATEGY.md` §5b):
+
+| Capability | Financial necessity | Customer demand | Verdict |
+|---|---|---|---|
+| **Outlet / entity dimension** | **High** — per-outlet financial information cannot be produced at all without it | **High** — the only explicit unmet request | **Highest priority** |
+| **Inventory** | **High** — gross margin is materially wrong for stock-holders | **Unknown/none** — zero requests | **Minimum capability for correctness, then continue validating** |
+| Purchasing / receiving | Moderate — the stock-in path | None | Follows inventory, not ahead of it |
+| POS | High (revenue originates there) | None | Defer; no evidence, and it carries a different reliability contract |
+| Recipes / BOM | High *for F&B* | None | Defer until F&B operational demand is verified |
+
+Note the dimension is the rare High/High. It is also the cheapest of these, and
+its irreversible half (`dimension_id` on journal lines) **already shipped**.
+
+---
+
+## 5. Smallest useful scope
+
+> **Periodic inventory: a stock value per period, and one computed COGS journal.**
+>
+> `COGS = opening stock + purchases − closing stock`, posted as a period-end
+> journal (Dr `5100` / Cr `1200`).
+
+What that needs: one collection holding a per-period stock valuation, one posting
+rule, one small entry surface. The accounts already exist — `1200 Persediaan` and
+`2050 GRNI` are seeded dormant, `5100 COGS` is live and wired into both statement
+surfaces.
+
+What it deliberately does **not** need: item master, SKUs, UoM, stock movements,
+per-unit costing, warehouses, recipes.
+
+Why this is the right minimum:
+
+1. **It makes gross margin materially true** for every stock-holding customer —
+   which is the financial-correctness case, discharged in full.
+2. **It presupposes no product scope.** It is the cheap v1 that
+   `CHART_OF_ACCOUNTS_STRATEGY.md:57` and `ACCOUNTING_DISCOVERY_STRATEGY.md`
+   §2.14 both originally proposed, before the roadmap assumed a full module.
+3. **It is itself a demand instrument.** If customers enter counts and then ask
+   for per-SKU detail, that is the demand evidence this document is missing. If
+   they never enter a count, that is evidence too — and it cost one collection.
+
+### ⚠️ This reverses my earlier recommendation, and the reversal matters
+
+`INVENTORY_READINESS.md` §4 recorded "perpetual weighted-average model, periodic
+count as the first UX". The argument was that pure periodic cannot consume POS
+line items and would need rewriting.
+
+**That argument assumed inventory was definitely coming at full scope.** Under
+validated-demand thinking it inverts: a perpetual cost model built for unvalidated
+demand is exactly the presumption of full scope this exercise exists to avoid.
+
+The rework fear was also narrower than stated. **Periodic COGS journals are not
+throwaway** — a correct period-end journal posted in August remains correct
+history when perpetual costing arrives later. What would have needed reworking was
+a perpetual *costing engine and item master*, which periodic-first simply does not
+build. Building less costs nothing here.
+
+---
+
+## 6. What would change this
+
+This document is provisional on `sales_leads`. Re-run the sweep and revise if:
+
+- **`business_type` skews Food & Beverage AND messages describe operational
+  control** (waste, ingredients, recipes, stock counts) → Scenario A. Reorder to
+  POS → outlet → purchasing → BOM → inventory, and note `PRODUCT_STRATEGY` §7's
+  warning that generic warehouse inventory in an F&B account is "worse than
+  shipping nothing: confidently wrong COGS".
+- **`business_type` skews E-commerce/Retail with SKU-level margin asks** →
+  Scenario B. The commerce connectors already carry `sku`, `quantity` and
+  `unit_price` into `commerce_orders`, so the quantity-out signal exists; a
+  goods-for-resale model becomes appropriate and the generic-model decision made
+  on 2026-08-14 is confirmed.
+- **Explicit inventory or POS requests appear at volume** → inventory moves from
+  "minimum capability" to a funded module, and this section is why.
+- **The interview guide gets run** — six sessions, already written, and the
+  qualitative half of the same question.
+
+Until then: **build the minimum for correctness, keep validating, and do not fund
+the full module.**

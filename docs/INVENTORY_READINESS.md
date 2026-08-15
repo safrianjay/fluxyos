@@ -1,7 +1,7 @@
 ---
 status: current
 owns: [inventory readiness verdict, pre-build preparation backlog]
-updated: 2026-08-14
+updated: 2026-08-15
 ---
 
 # Inventory Management — Structural Readiness
@@ -9,9 +9,14 @@ updated: 2026-08-14
 Assessment of whether FluxyOS can carry an Inventory Management module, and what
 had to be prepared first so that inventory — and later POS — connect to the
 ledger without being rewritten. **This is not an inventory spec.** No inventory
-collection, page, or posting rule was built. Module admission itself is settled:
-`PRODUCT_STRATEGY.md` §3/§5/§7 already admits inventory under *moves* and
-sequences it second.
+collection, page, or posting rule was built.
+
+**Admission is settled; scope and priority are not.** `PRODUCT_STRATEGY.md` §5
+admits inventory under *moves*, but §5b caps it at the **minimum capability
+required for financial correctness** because a demand review on 2026-08-15 found
+zero verified customer requests. Read `INVENTORY_DEMAND_VALIDATION.md` alongside
+this — that document sets the scope, this one describes whether the foundation
+can carry it.
 
 ---
 
@@ -128,7 +133,21 @@ asset"* in `tests/statements-engine.spec.js`.
 
 ## 4. Decisions taken, with rationale
 
-### Costing: perpetual model, periodic workflow first
+### ⚠️ Superseded 2026-08-15 — read `INVENTORY_DEMAND_VALIDATION.md` first
+
+This section was written on the assumption that inventory was coming at full
+module scope. A demand review the next day found **zero verified customer
+requests** for inventory, and `PRODUCT_STRATEGY.md` §5b caps a
+high-necessity/no-demand module at the minimum capability required for
+correctness — a periodic stock count posting one COGS journal, with no item
+master, no SKUs and no stock movements.
+
+**The costing decision below is therefore deferred, not reversed.** It becomes
+live only if demand evidence funds the full module. The readiness findings in
+§§1–3 and §6 stand unchanged: they describe the foundation, which is needed
+either way.
+
+### Costing: perpetual model, periodic workflow first *(deferred — see above)*
 
 The docs disagreed. `CHART_OF_ACCOUNTS_STRATEGY.md:57` and
 `ACCOUNTING_DISCOVERY_STRATEGY.md` §2.14 both proposed periodic (month-end count
@@ -314,15 +333,23 @@ side effect of inventory prep is how the ledger breaks.
 
 ## 9. Recommended sequence from here
 
-1. **Validate demand** (§7) — cheap, and it is the only open question.
-2. **Finish the dimension**: `dimensions` collection, `ledger_balances_by_dim`
-   rollup + its integrity assertion, and the UI on the existing
-   `entity-menu-add` stub. Delivers per-outlet P&L — a stated customer ask — and
-   gives inventory its locations.
-3. **Item master** (§5), then **purchasing/receiving** (bill line items + the
-   `2050` clearing path).
-4. **Inventory movements + weighted-average costing**, periodic count first.
-5. **POS integration** on the commerce connector pattern; **recipes/BOM** after.
+*Revised 2026-08-15 against the demand evidence — see
+`INVENTORY_DEMAND_VALIDATION.md` §4.*
 
-Steps 2 and 3 are the real prerequisites. Costing is the hard part, but it is
-not the first part.
+1. **Finish the dimension**: `dimensions` collection, `ledger_balances_by_dim`
+   rollup + its integrity assertion, and the UI on the existing
+   `entity-menu-add` stub. The only High-necessity **and** High-demand item —
+   per-outlet profitability is the sole explicit unmet request on record.
+2. **Minimum inventory for correctness**: a periodic stock value per period
+   posting one COGS journal (Dr `5100` / Cr `1200`). No item master, no SKUs, no
+   movements. Discharges the financial-correctness case in full and doubles as a
+   demand instrument.
+3. **Re-validate before expanding.** Item master, purchasing/receiving, per-SKU
+   costing, POS and BOM stay unfunded until evidence supports them.
+4. Only if funded: **inventory movements + weighted-average costing**, then
+   **POS integration**, then **recipes/BOM**.
+
+The earlier version of this list put demand validation first and then assumed the
+full module. The validation has now been run against everything readable in the
+repo; what it found is that step 1 outranks inventory entirely, and step 2 is
+smaller than this document originally scoped.

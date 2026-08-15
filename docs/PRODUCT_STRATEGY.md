@@ -12,7 +12,9 @@ verify: none — this document states intent and audited status, not behaviour
 >
 > §3 is a **reality audit**, verified against the codebase on 2026-08-07 — not a
 > wish list. Nothing already shipped is described here as future work.
-> §5 is the admission test every proposed module must pass.
+> §5 is the admission test every proposed module must pass; §5a asks whether it
+> is connected to the system, and §5b decides when it is built and how much of
+> it. **Financial necessity is not customer demand** — do not conflate them.
 >
 > `PROJECT_BACKGROUND.md` §1 (positioning) and `ROADMAP.md` (sequencing) derive
 > from this document. When they disagree, this wins.
@@ -272,7 +274,7 @@ Verified against the codebase, not from memory or roadmap intent.
 | Commerce / marketplace order sync | ✅ Phases 1–3 | `commerce_*` collections, Shopee/TikTok connectors |
 | WhatsApp AI | 📋 | `settings-whatsapp.html` exists; planning only |
 | **Approval workflows** | **📋 Not built** | Sidebar shows disabled `Soon`; no data contract. The word appears only in budget copy. |
-| Inventory & stock movement | 🔭 | Admitted §5. The missing input to true COGS. **Readiness assessed 2026-08-14 — `docs/INVENTORY_READINESS.md`.** Kernel is ready; the line-level dimension seam, cursor pagination, and the `1200`/`2050`/`5150` accounts have shipped as preparation. No inventory collection, page, or posting rule is built |
+| Inventory & stock movement | 🔭 | Admitted §5. The missing input to true COGS. **Readiness assessed 2026-08-14 (`INVENTORY_READINESS.md`); demand assessed 2026-08-15 (`INVENTORY_DEMAND_VALIDATION.md`) — high financial necessity, ZERO verified demand.** Status per §5b: minimum capability for correctness, not a funded module. Kernel is ready; the dimension seam, cursor pagination and the `1200`/`2050`/`5150` accounts shipped as preparation. No inventory collection, page or posting rule is built |
 | Purchasing / procurement | 🔭 | Admitted §5 |
 | POS integration | 🔭 | Admitted §5 |
 | Recipes / bill of materials | 🔭 | Admitted §5 (enables F&B COGS) |
@@ -440,6 +442,58 @@ inside an existing module uses `product_ux_feature_intake_framework.md` instead.
 
 ---
 
+## 5b. The prioritization test — necessity is not demand
+
+§5 decides whether a module belongs. §5a decides whether it is connected. This
+decides **when it gets built and how much of it.**
+
+A module can be financially necessary without anyone asking for it, and asked for
+without being financially necessary. **These are independent axes and conflating
+them is how a finance product becomes an ERP nobody requested.**
+
+| | **High customer demand** | **Low / unknown demand** |
+|---|---|---|
+| **High financial necessity** | **Build it.** Highest priority | **Build the minimum capability required for correctness, then keep validating.** Do not fund the full module |
+| **Low financial necessity** | Investigate whether it creates an important financial workflow or a strategic entry point | Do not prioritize |
+
+**Axis A — financial necessity:** does FluxyOS need this data to produce accurate
+financial information? Inventory scores high because gross margin is materially
+wrong for a stock-holding business without it (§4).
+
+**Axis B — customer demand:** are customers actively experiencing this problem and
+willing to pay to solve it? Requires *evidence*, not inference. Verified customer
+statements, lead messages, interview findings, support conversations — labelled by
+tier, never invented.
+
+### Explicit demand is not the underlying problem
+
+Classify every piece of evidence twice:
+
+| Explicit demand | Underlying business problem |
+|---|---|
+| "We need inventory management" | *may* be "I cannot tell what my margin really is" |
+| "Which outlet is losing money?" | is **not** an inventory request — it is a dimension request |
+
+**These lead to different products.** A customer describing a symptom in the
+vocabulary of a module they have seen elsewhere is not a specification.
+
+### Do not build a module because ERPs have one
+
+The Intelligent Finance Operating System framing (§1) is a commitment to
+connection, not a licence to reproduce an ERP feature list. The reason to build
+inventory is that it is necessary for a figure we publish and/or solves a
+validated customer problem — never that mature ERPs ship one. The same test
+applies to POS, CRM, procurement, payroll, asset management, production, order
+management, and branch management.
+
+> **Worked example — Inventory, assessed 2026-08-15:** high financial necessity,
+> **zero explicit demand** in any available evidence. Verdict: minimum capability
+> for correctness (a periodic stock count posting one COGS journal), not a funded
+> module. Full evidence review, segment call and the scope this implies:
+> `INVENTORY_DEMAND_VALIDATION.md`.
+
+---
+
 ## 6. Why the architecture already supports this
 
 FluxyOS is not a dashboard needing an accounting engine bolted on. It is a
@@ -500,26 +554,61 @@ different from a static dashboard over Firestore. **Integrate with existing POS
 systems before building our own.** The financial value is in the postings, not
 the terminal UI.
 
-### Recommended sequencing
+### Sequencing is driven by the customer problem, not the ERP ladder
 
-1. **Multi-entity completion** — finishes Layer 2 and unblocks branch
-   reporting. **Correction (2026-08-14): the plumbing does NOT already exist.**
-   `entity_id` is the workspace id on every row, so this is building a dimension
-   from scratch, not wiring up a switcher. The line-level `dimension_id` seam
-   has shipped because posted journals are immutable and it could not be
-   retrofitted; `docs/DIMENSION_SEAM_DESIGN.md` has the rest. It is still the
-   right thing to do first — inventory needs stock locations and per-outlet P&L
-   needs entities, and those are one primitive.
-2. **Inventory + purchasing** — makes existing COGS and gross margin true for
-   every stock-holding customer, not only F&B.
-3. **POS integration** — adapters reusing the commerce connector pattern.
-4. **Recipes / BOM** — turns POS line items into ingredient-level COGS.
-5. **Forecasting** — the Layer 4 gap; becomes far stronger once Layer 3 supplies
-   real operational inputs.
-6. **Own POS terminal** — only with evidence integration is insufficient.
+**Do not sequence as** Finance → Accounting → Inventory → POS → ERP. That is an
+ERP-centric mindset: it builds modules in the order a reference platform lists
+them, and it will produce an inventory module before anyone has asked for one.
+
+**Sequence along the chain a validated problem actually travels:**
+
+```
+Customer problem → Operational event → Financial impact
+    → Financial intelligence → Business decision
+```
+
+Worked example, from the one explicit request we have:
+
+```
+"Which of my outlets is actually profitable?"   (Melisha, Pujasera Group)
+    → outlet dimension on every posting
+    → outlet-level revenue and cost
+    → outlet P&L
+    → AI explains why one outlet trails
+    → owner changes something
+```
+
+Inventory enters that chain at the point where outlet-level COGS stops being
+accurate — as the upstream that improves a figure, not as a destination. Which
+module comes first therefore depends on which chain the evidence lights up, and
+POS, inventory, purchasing, or a dimension may each legitimately be first.
+
+### Current sequencing, on the evidence available 2026-08-15
+
+1. **Outlet / entity dimension** — the only High-necessity **and** High-demand
+   item (§5b). Per-outlet financial information cannot be produced without it,
+   and it is the sole explicit unmet request on record. **Correction
+   (2026-08-14): the plumbing does NOT already exist** — `entity_id` is the
+   workspace id on every row, so this is a dimension built from scratch, not a
+   switcher wired up. The line-level `dimension_id` seam has shipped because
+   posted journals are immutable and it could not be retrofitted;
+   `DIMENSION_SEAM_DESIGN.md` has the rest.
+2. **Minimum inventory for financial correctness** — a periodic stock count
+   posting one COGS journal. High necessity, **no verified demand**, so §5b caps
+   it at the minimum rather than a module. `INVENTORY_DEMAND_VALIDATION.md` §5.
+3. **Re-validate before expanding.** Purchasing, item master, per-SKU costing,
+   POS and BOM stay unfunded until evidence supports them. Each has high
+   financial necessity and, today, zero demand signal.
+4. **Forecasting** — the Layer 4 gap; stronger once Layer 3 supplies real
+   operational inputs.
 
 Approvals and role dashboards are smaller and can interleave; both are
 comparatively cheap and close visible gaps.
+
+⚠️ **This ordering is provisional on evidence that was not readable when it was
+written** — `sales_leads` in Firestore holds `business_type` and a free-text
+message on every inbound lead. Re-run `INVENTORY_DEMAND_VALIDATION.md` §6 before
+funding anything past step 2.
 
 ---
 
@@ -551,9 +640,13 @@ comparatively cheap and close visible gaps.
 
 ## 9. How to use this document
 
-- **Proposing a module?** Answer §5, then §5a. Unclear verb = boundary case;
-  escalate, do not queue. A module that passes §5 but cannot answer §5a question
-  3 is a parallel set of books.
+- **Proposing a module?** Answer §5, then §5a, then §5b. Unclear verb = boundary
+  case; escalate, do not queue. A module that passes §5 but cannot answer §5a
+  question 3 is a parallel set of books — and one that passes both but has no
+  demand evidence gets the minimum capability, not the module (§5b).
+- **Arguing a module is necessary?** Necessary and wanted are different claims.
+  §5b requires both to be stated separately, with the demand side backed by
+  labelled evidence rather than inference.
 - **Proposing a feature inside an existing module?** This does not apply — use
   `product_ux_feature_intake_framework.md`.
 - **Writing positioning copy anywhere** — docs, landing pages, `llms.txt`,

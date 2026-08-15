@@ -7,6 +7,28 @@ All notable changes to FluxyOS are recorded here, newest first.
 ## [Unreleased]
 > Changes in progress — not yet pushed to main
 
+### Changed (Inventory demand validation — necessity separated from demand, 2026-08-15)
+- **`PRODUCT_STRATEGY.md` gains §5b, the prioritization test.** Financial necessity
+  and customer demand are now explicitly independent axes: high necessity with
+  low/unknown demand earns the **minimum capability required for correctness**, not
+  a funded module. Adds the explicit-demand-vs-underlying-problem distinction and a
+  standing rule not to build a module because mature ERPs ship one.
+- **§7 sequencing reframed** away from the ERP ladder (Finance → Accounting →
+  Inventory → POS → ERP) and onto the chain a validated problem travels: customer
+  problem → operational event → financial impact → intelligence → decision.
+- **Inventory status revised.** High financial necessity, **zero verified customer
+  demand** in any evidence readable from the repo. Scope capped at a periodic stock
+  count posting one COGS journal — no item master, no SKUs, no stock movements.
+  Full evidence review, tiering and segment call: `INVENTORY_DEMAND_VALIDATION.md`.
+- **The outlet dimension moves ahead of inventory** as the only
+  High-necessity/High-demand item: per-outlet profitability is the sole explicit
+  unmet request on record (Pujasera Group).
+- Supersedes the "perpetual model, periodic UX first" costing decision in
+  `INVENTORY_READINESS.md` §4 — deferred, not reversed, and only live if demand
+  evidence funds the full module.
+- ⚠️ Provisional: `sales_leads` (Firestore) holds `business_type` and a free-text
+  message per lead and was **not readable** when this was written.
+
 ### Changed (Strategic repositioning — Intelligent Finance Operating System, 2026-08-15)
 - **Category is now "Intelligent Finance Operating System"** across every canonical
   surface. `PRODUCT_STRATEGY.md` §1 holds the definition sentence; `PROJECT_BACKGROUND.md`,
