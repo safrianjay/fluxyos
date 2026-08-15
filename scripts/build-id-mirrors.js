@@ -56,12 +56,12 @@ const PAGES = {
     'vendorspend.html': {
         slug: 'vendorspend', rootPath: '/vendorspend',
         title: 'Manajemen Vendor Spend untuk Bisnis Indonesia | FluxyOS',
-        description: 'Pusatkan invoice vendor, otomatiskan persetujuan, tangkap pembayaran ganda. Hemat 12+ jam tiap bulan untuk manajemen vendor.',
+        description: 'Pusatkan invoice vendor, otomatiskan persetujuan, dan tangkap pembayaran ganda sebelum dana keluar.',
     },
     'revenuesync.html': {
         slug: 'revenuesync', rootPath: '/revenuesync',
         title: 'Revenue Sync — Hubungkan Stripe, Tokopedia, Shopify | FluxyOS',
-        description: 'Sinkronkan pendapatan dari 240+ platform pembayaran secara real-time. Setiap transaksi masuk ke buku besar terpadu Anda dalam hitungan detik.',
+        description: 'Masukkan order, refund, dan settlement marketplace ke buku besar double-entry Anda secara otomatis.',
     },
     'receiptcapture.html': {
         slug: 'receiptcapture', rootPath: '/receiptcapture',
@@ -71,7 +71,7 @@ const PAGES = {
     'aiagents.html': {
         slug: 'aiagents', rootPath: '/aiagents',
         title: 'AI Finance Agents — 6 Spesialis untuk Pembukuan Anda | FluxyOS',
-        description: 'Enam agent AI menangani rekonsiliasi bank, penandaan transaksi, penagihan invoice, dan laporan bulanan — otomatis. Hemat 32+ jam per bulan.',
+        description: 'Enam agent AI menangani rekonsiliasi bank, penandaan transaksi, penagihan invoice, dan laporan bulanan — otomatis.',
     },
     'budgetlanding.html': {
         slug: 'budgetlanding', rootPath: '/budgetlanding',
