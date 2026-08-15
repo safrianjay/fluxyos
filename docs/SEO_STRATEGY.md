@@ -1,5 +1,15 @@
 # FluxyOS — SEO Strategy & Execution Plan
 
+**Category (canonical, from `PRODUCT_STRATEGY.md` §1):** Intelligent Finance
+Operating System. Use it verbatim in titles, descriptions, JSON-LD, and the
+AI-Overview opening sentence. The retired strings "finance operations platform"
+and "Finance Operations System" must not reappear — `npm run check:structure`
+fails the build if they do.
+
+**Audience note:** Indonesian SMB owners are the current search beachhead, not
+the product ceiling. Keep segment-specific pages targeted; keep the category
+sentence stage-neutral.
+
 **Goal:** Get FluxyOS visible to Indonesian SMB owners searching for finance,
 bookkeeping, and AI accounting tools — both in classic Google search results
 AND in Google's AI Overview / SGE results, plus AI search engines (Perplexity,
@@ -144,14 +154,14 @@ Backlinks, brand mentions, directory listings. Long-tail tactic — month 2+.
 In every `<head>` (replace placeholders):
 
 ```html
-<title>Vendor Spend Management Software for Indonesian SMBs | FluxyOS</title>
+<title>Vendor Spend Management for Indonesian Businesses | FluxyOS</title>
 <meta name="description" content="Centralize vendor invoices, automate approvals, and pay on time. FluxyOS Vendor Spend helps Indonesian businesses control SaaS, contractor, and supplier payments — saving 12+ hours every month.">
 <meta name="keywords" content="vendor management indonesia, manajemen vendor, software keuangan UKM, vendor spend">
 <link rel="canonical" href="https://fluxyos.com/vendorspend">
 
 <!-- Open Graph -->
 <meta property="og:type" content="website">
-<meta property="og:title" content="Vendor Spend Management for Indonesian SMBs | FluxyOS">
+<meta property="og:title" content="Vendor Spend Management for Indonesian Businesses | FluxyOS">
 <meta property="og:description" content="Centralize vendor invoices and automate approvals. Save 12+ hours every month on vendor management.">
 <meta property="og:image" content="https://fluxyos.com/assets/images/og-vendorspend.png">
 <meta property="og:url" content="https://fluxyos.com/vendorspend">
@@ -161,7 +171,7 @@ In every `<head>` (replace placeholders):
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Vendor Spend Management for Indonesian SMBs">
+<meta name="twitter:title" content="Vendor Spend Management for Indonesian Businesses">
 <meta name="twitter:description" content="Centralize vendor invoices and automate approvals.">
 <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-vendorspend.png">
 ```
@@ -249,7 +259,7 @@ LOCALIZATION_PLAN.md §2 glossary.
 | `/` (homepage) | FluxyOS — AI Finance Operations for Indonesian SMBs | Connect your bank, vendors, and sales channels. AI agents handle reconciliation, categorization, and reporting — saving 32+ hours every month. |
 | `/pricing` | FluxyOS Pricing — Plans for Indonesian Businesses | Simple, transparent pricing. Start free. Plans for solo founders, growing teams, and finance departments. |
 | `/aiagents` | AI Finance Agents — 6 Specialists for Your Books \| FluxyOS | Six AI agents handle bank reconciliation, transaction tagging, invoice chasing, and monthly reports — automatically. |
-| `/vendorspend` | Vendor Spend Management for Indonesian SMBs \| FluxyOS | Centralize vendor invoices, automate approvals, catch duplicate payments. Save 12+ hours every month. |
+| `/vendorspend` | Vendor Spend Management for Indonesian Businesses \| FluxyOS | Centralize vendor invoices, automate approvals, catch duplicate payments. Save 12+ hours every month. |
 | `/receiptcapture` | AI Receipt Capture — Snap, WhatsApp, or Email \| FluxyOS | Send receipts via WhatsApp, email, or upload. AI extracts vendor, amount, tax, and category in seconds. |
 | `/revenuesync` | Revenue Sync — Connect Stripe, Tokopedia, Shopify \| FluxyOS | Sync revenue from 250+ payment platforms in real-time. Every transaction lands in your unified ledger. |
 | `/budgetlanding` | Dynamic Budgeting for Modern Businesses \| FluxyOS | Allocate, track, and adjust budgets in real-time. Live spend visibility against every budget category. |
@@ -274,7 +284,7 @@ Add to every page's `<head>` or before `</body>`.
   "name": "FluxyOS",
   "url": "https://fluxyos.com",
   "logo": "https://fluxyos.com/assets/images/logo.png",
-  "description": "AI-powered Finance Operations System for Indonesian small and medium businesses.",
+  "description": "Intelligent Finance Operating System connecting financial operations, accounting, and intelligence into one system.",
   "foundingDate": "2024",
   "areaServed": {
     "@type": "Country",
@@ -318,7 +328,7 @@ Add to every page's `<head>` or before `</body>`.
     "ratingCount": "127",
     "bestRating": "5"
   },
-  "description": "Centralized vendor spend management for Indonesian SMBs.",
+  "description": "Centralized vendor spend management for Indonesian businesses.",
   "featureList": [
     "Vendor invoice centralization",
     "Approval workflow automation",
@@ -419,7 +429,7 @@ direct answers from FAQPage schema.
   "@context": "https://schema.org",
   "@type": "Product",
   "name": "FluxyOS Pro",
-  "description": "Full Finance Operations System with all 6 AI agents.",
+  "description": "Full Intelligent Finance Operating System with all 6 AI agents.",
   "brand": { "@type": "Brand", "name": "FluxyOS" },
   "offers": {
     "@type": "AggregateOffer",
@@ -531,7 +541,7 @@ site is and which pages matter. Place at `/llms.txt`:
 ```markdown
 # FluxyOS
 
-> AI-powered Finance Operations System for Indonesian small and medium businesses.
+> Intelligent Finance Operating System connecting financial operations, accounting, business operations, and intelligence into one system.
 > Connects bank feeds, vendors, sales channels, and tax filing in one place.
 > Six specialized AI agents handle reconciliation, transaction categorization,
 > invoice chasing, and monthly reporting automatically.
@@ -548,7 +558,7 @@ site is and which pages matter. Place at `/llms.txt`:
 
 ## Key facts
 
-- Built specifically for Indonesian SMBs
+- Indonesia is the home market; Indonesian SMBs are the current core customer base, not the ceiling
 - Supports BCA, Mandiri, BNI, BRI, and 10+ Indonesian banks
 - Pricing in Indonesian Rupiah (IDR)
 - Multi-currency support: 120+ currencies

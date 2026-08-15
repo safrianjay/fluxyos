@@ -23,7 +23,7 @@ Why:
 
 ## 2. Product Context
 
-FluxyOS is a financial operations platform for Indonesian businesses. The app already has:
+FluxyOS is an Intelligent Finance Operating System that connects financial operations, accounting, business operations, and intelligence into one continuously connected system. The app already has:
 - A Bills page at `bill.html`
 - Firestore user-scoped `users/{userId}/bills`
 - Add Bill modal using shared transaction modal logic

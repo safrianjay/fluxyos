@@ -49,7 +49,7 @@ It is also **not a replacement for an accountant, tax advisor, lawyer, or invest
 
 # 2. Product Context
 
-FluxyOS is a financial operations platform for Indonesian businesses.
+FluxyOS is an Intelligent Finance Operating System that connects financial operations, accounting, business operations, and intelligence into one continuously connected system.
 
 Current product capabilities include:
 

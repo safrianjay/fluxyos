@@ -10,9 +10,13 @@
 
 ## 1. What FluxyOS Is
 
-FluxyOS is a **Finance Operating System** for Indonesian businesses — a
-double-entry accounting kernel with operational modules feeding it, presented so
-that an owner can read it and an accountant can defend it.
+FluxyOS is an **Intelligent Finance Operating System** that connects financial
+operations, accounting, business operations, enterprise workflows, and
+intelligence into one continuously connected system.
+
+In implementation terms — which is what the rest of this document is about — it
+is a double-entry accounting kernel with operational modules feeding it,
+presented so that an owner can read it and an accountant can defend it.
 
 > **Strategy, scope, and the test for what belongs in the product live in
 > [`PRODUCT_STRATEGY.md`](PRODUCT_STRATEGY.md).** Read it before proposing any
@@ -54,11 +58,12 @@ operational modules (Layer 3), forecasting (Layer 4), and role dashboards
 treat it as the baseline and never plan a shipped capability as future work.
 
 **Direction (2026-08):** deepening toward ERP-class capability — inventory,
-purchasing, and point-of-sale — while the positioning stays *Finance Operating
-System*. The rationale is not feature demand: without inventory movement, cost
-of goods sold is an approximation, so gross margin is an approximation. Modules
-are admitted only when they **create, move, protect, predict, or explain
-financial performance** (`PRODUCT_STRATEGY.md` §5). Modules that create or move
+purchasing, and point-of-sale — as the operational foundation beneath the
+intelligence layer. The rationale is not feature demand: without inventory
+movement, cost of goods sold is an approximation, so gross margin is an
+approximation. Modules are admitted only when they **create, move, protect,
+predict, or explain financial performance** (`PRODUCT_STRATEGY.md` §5), and must
+also answer the six connection questions in §5a. Modules that create or move
 value post to the kernel; modules that predict or explain read derived balances.
 
 **Architectural principle that follows from this:** the ledger is the product.
@@ -66,9 +71,39 @@ Everything else is a **source system** (emits documents, owns a posting rule) or
 a **view** (reads derived balances, never recomputes truth). New modules add
 source systems; they never add a second source of truth.
 
-**Target user:** Indonesian SMBs that need their books to be correct — currently
+### Who it is for
+
+**Businesses across their growth journey** — small and growing companies,
+medium-sized businesses, large and enterprise organizations, multi-entity groups,
+and eventually public and IPO-stage companies. The architecture must let a
+business grow *with* FluxyOS rather than out of it.
+
+**Indonesia is the home market and operating context, not the product ceiling.**
+SAK, PPN, and Bahasa-first are foundational defaults. Indonesian SMBs are the
+current beachhead and remain an important segment — the current customer base is
 strongest in e-commerce and agencies, with F&B as the expansion segment driving
-the inventory and POS work.
+the inventory and POS work. That describes where we are, not how far the product
+goes.
+
+### Current capability vs direction vs future
+
+Keep these three columns distinct in every document, every brief, and every piece
+of copy. `PRODUCT_STRATEGY.md` §3 is the audited baseline and overrides this
+table whenever they appear to disagree.
+
+| Now (shipped) | Next (planned / prepared) | Future (direction only) |
+|---|---|---|
+| Financial operations — transactions, bills, revenue, subscriptions, budgets | Advanced accounting depth | POS and commercial operations |
+| Accounting kernel — CoA, journals, GL, trial balance, IS/BS/CF, period close, AP/AR aging | Inventory, purchasing, vendor and product master | Multi-entity and consolidation |
+| Bank reconciliation and statement import | Cost control and COGS from stock movement | Enterprise permissions, approval workflows, governance controls |
+| Indonesian Tax Center; commerce/marketplace order sync | Operational workflows | Predictive cash flow and profitability, anomaly detection |
+| AI analyst chat, receipt/document extraction | Dimension (branch/outlet/warehouse) rollout | AI operations analyst, decision automation |
+| Team workspaces with role-based access | | IPO-grade controls and auditability |
+
+**Nothing in the Future column exists.** Multi-entity in particular looks built —
+`entity_id` is stamped on every journal, account, and balance — but it is always
+the workspace id, so it is a constant rather than a dimension. Do not describe
+any Future item as present.
 
 ---
 

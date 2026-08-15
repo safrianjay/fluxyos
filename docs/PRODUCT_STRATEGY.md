@@ -1,7 +1,7 @@
 ---
 status: current
-owns: [product vision, layer model, module scope, roadmap admission]
-updated: 2026-08-07
+owns: [product vision, layer model, maturity ladder, module scope, roadmap admission]
+updated: 2026-08-15
 verify: none — this document states intent and audited status, not behaviour
 ---
 
@@ -16,16 +16,66 @@ verify: none — this document states intent and audited status, not behaviour
 >
 > `PROJECT_BACKGROUND.md` §1 (positioning) and `ROADMAP.md` (sequencing) derive
 > from this document. When they disagree, this wins.
+>
+> **§1 holds the canonical category and definition sentence.** Every other
+> surface — docs, `README.md`, `llms.txt`, `seo/organization.json`, landing
+> pages, `i18n.js` — restates it rather than inventing its own. Enforced by
+> `npm run check:structure`.
 
 ---
 
-## 1. Positioning — unchanged
+## 1. Positioning
 
-**FluxyOS is a Finance Operating System.** That is the tagline, the category, and
-how we describe ourselves to the market. It is not changing.
+**FluxyOS is an Intelligent Finance Operating System that connects financial
+operations, accounting, business operations, enterprise workflows, and
+intelligence into one continuously connected system.**
 
-What has changed is our understanding of how *deep* a Finance OS must go before
-the numbers it reports are true.
+That sentence is the category, the tagline, and the definition every other
+document derives from. Use it verbatim; `npm run check:structure` enforces that
+the canonical sources agree.
+
+### What this is *more than*
+
+FluxyOS may include all of these. None of them defines it:
+
+| It is more than | Because |
+|---|---|
+| Bookkeeping software | Recording is the input, not the outcome |
+| Accounting software | Correct books are the foundation, not the product |
+| Financial reporting software | A report explains the past; the goal is to change the next decision |
+| ERP software | ERP is structural discipline we adopt — see below |
+| A finance dashboard | A dashboard displays; an operating system connects and acts |
+| Expense management software | Spend is one flow among several |
+| Business intelligence software | BI reads a warehouse; this reads a ledger it also writes |
+
+The ambition is to become **the financial and operational control layer of a
+business** — the system that understands how operational activity produces
+financial outcomes, and what to do about it.
+
+### Who it is for
+
+**Businesses across their growth journey** — small and growing companies,
+medium-sized businesses, large and enterprise organizations, multi-entity groups,
+and eventually public and IPO-stage companies. The architecture must let a
+business grow *with* FluxyOS rather than out of it.
+
+| Stage | What they should be able to do |
+|---|---|
+| Small | Start with simple financial operations |
+| Growing | Add accounting and operational workflows |
+| Medium | Run multiple departments, entities, and processes |
+| Large / Enterprise | Manage complex org structures, permissions, approvals, and financial controls |
+| Public / IPO | Operate with stronger controls, auditability, governance, and financial integrity |
+
+> ⚠️ **That table is architectural direction, not current capability.** Today's
+> product serves the first two stages well. Multi-entity, approvals, and
+> enterprise controls are **not built** — §3 is the audited truth and always
+> wins over this table.
+
+**Indonesia is the home market and operating context**, not the product ceiling.
+SAK, PPN, and Bahasa-first are defaults we build into the foundation (§8).
+Indonesian SMBs are the current beachhead and remain an important segment — they
+are simply no longer the definition of how far the product goes.
 
 We serve two audiences at once, and the tension between them is the product:
 
@@ -40,11 +90,42 @@ accounting underneath is rigorous.
 ### Why "ERP" is a capability, not a label
 
 We are deliberately not marketing FluxyOS as an ERP. The word signals
-implementation projects, consultants, and long rollouts — the opposite of what
-an Indonesian SMB will buy. But we will build ERP-class capability wherever it
+implementation projects, consultants, and long rollouts — the opposite of what a
+growing business will buy. But we will build ERP-class capability wherever it
 makes the financial statements true.
 
-**"Finance Operating System" is the promise. ERP depth is how we keep it.**
+The strategic model is additive rather than substitutive:
+
+```
+Accounting + Finance + Operations + ERP + Business Intelligence
+  + AI + Automation + Decision Support
+        = Intelligent Finance Operating System
+```
+
+**We take the structural discipline of ERP and add an intelligence layer that
+continuously interprets financial and operational data.** ERP systems are
+rigorous but inert: they record faithfully and explain nothing. The difference we
+are building toward is a system that progressively answers:
+
+*What happened? Why did it happen? What is changing? What is likely to happen?
+What should the business do? What action should be taken? What financial impact
+will that action have?*
+
+**"Intelligent Finance Operating System" is the promise. ERP depth is how we keep
+it.**
+
+### Strategic benchmarks
+
+Oracle NetSuite, SAP Business One, SAP S/4HANA, and Odoo are **architectural
+benchmarks, not products to copy**. Read them for how they structure accounting
+foundations, master data, document flow, multi-entity, tax, approvals,
+permissions, audit trails, and data architecture at scale. A concrete
+benchmark-by-benchmark assessment lives in `ERP_ARCHITECTURE_REVIEW.md`.
+
+We differentiate on the intelligence layer, automation, UX, financial decision
+support, and AI-native workflows — not on matching their module count. Do not
+claim feature parity, and do not import enterprise complexity before the product
+needs it.
 
 ---
 
@@ -65,6 +146,64 @@ The layers are a *dependency* order, not a build order. Layer 4 intelligence is
 only as good as the Layer 2 books beneath it, which are only as true as the
 Layer 3 operations feeding them. This is why operational depth is a finance
 concern rather than scope creep — see §4.
+
+### The loop the layers exist to close
+
+"Operating system" is a claim about connection, not about feature count. The
+system should increasingly understand how operational activity produces
+financial outcomes, and feed that understanding back into operations:
+
+```
+Business Operations → Operational Data → Financial Events → Accounting
+   → Financial Intelligence → Business Decisions → Operational Actions
+        → (feeds back into Business Operations)
+```
+
+Concretely, the chains we are connecting:
+
+| Operational activity | …becomes financial reality |
+|---|---|
+| Sales | Revenue |
+| Purchasing → Inventory | COGS → Gross margin |
+| POS | Sales + payments + stock movement |
+| Inventory | Stock + cost + working capital |
+| Bills | Accounts payable → cash flow |
+| Payroll | Operating expenses → profitability |
+| Accounting | Financial statements → management intelligence |
+| Fluxy AI | Analysis → recommendations → actions |
+
+**A module that does not join one of these chains is a feature, not part of the
+operating system.** This is the difference between a product that connects and a
+product that accumulates screens — and it is why §5a exists.
+
+---
+
+## 2a. The maturity ladder
+
+The five layers describe what depends on what. The ladder below describes how
+far along we are, and where the product is going. They are two views of the same
+system, not two systems.
+
+| Phase | Name | Contains | Maps to |
+|---|---|---|---|
+| **1** | Financial Operations | Transactions, bills, revenue, subscriptions, budgets, reporting | Layer 1 |
+| **2** | Accounting Foundation | CoA, journals, GL, trial balance, IS/BS, AP/AR, reconciliation, tax, audit trail | Layer 2 |
+| **3** | Operational ERP Foundation | Inventory, purchasing, vendors, products, stock movement, cost control, COGS, warehouse, sales | Layer 3 |
+| **4** | Commercial Operations | POS, orders, payments, customers, sales channels, inventory sync, revenue sync | Layer 3 |
+| **5** | Intelligent Finance OS | AI financial/operations/accounting analysts, forecasting, anomaly detection, recommendations, workflow automation, decision support, predictive cash flow and profitability | Layers 4–5 |
+
+Phases 3 and 4 both sit in Layer 3 because they are the same layer approached
+from two ends — purchasing pushes value in, commerce pulls it out. Phase 5 spans
+Layers 4 and 5 because intelligence without a decision surface is a report.
+
+**Where we actually are:** Phases 1 and 2 are substantially shipped. Phase 3 has
+not started beyond preparation (`INVENTORY_READINESS.md`). Phase 4 exists only as
+marketplace order sync. Phase 5 exists as AI chat and extraction, with no
+forecasting. §3 holds the audited detail.
+
+> This ladder is **strategic direction, not a roadmap.** It does not authorise
+> building every module, and it sets no dates. Sequencing stays in §7 and
+> `ROADMAP.md`, which remain phased and prioritized.
 
 ---
 
@@ -239,6 +378,13 @@ requested.
 | **Predicts** | Forecasts future position | CRM pipeline, cash-flow forecasting |
 | **Explains** | Attributes performance to a cause | Project management, branch reporting |
 
+**The test survived the 2026-08-15 vision expansion unchanged**, which is the
+strongest evidence it was drawn correctly. Every capability the expanded vision
+names already passes: payroll *creates* cost, approvals and enterprise controls
+*protect*, multi-entity and branch reporting *explain*, forecasting and
+predictive cash flow *predict*, inventory and purchasing *move*. A broader
+ambition did not require a looser gate.
+
 ### The architectural consequence
 
 The admission test decides *whether* a module belongs. This decides *how* it is
@@ -260,6 +406,37 @@ Table reservations, staff scheduling (unless it drives labour cost postings),
 and campaign management fail every verb. Loyalty programmes are a **boundary
 case** — they create a contra-revenue liability — and go to the co-founders
 rather than silently into the backlog.
+
+---
+
+## 5a. The connection test
+
+Passing §5 earns a module a place in the system. This decides whether it is
+*connected to* the system or merely hosted by it.
+
+**FluxyOS must not become a collection of disconnected business modules.** Every
+major module answers all six:
+
+1. **What operational problem does this solve?**
+2. **What financial data does it generate?**
+3. **Which accounting records does it affect?** (which posting rule, which
+   accounts, which subledger)
+4. **Which other modules depend on this data?**
+5. **What financial insight can be generated from it?**
+6. **What actions can Fluxy AI eventually take based on it?**
+
+Question 3 is the one that fails silently. A module that cannot name its posting
+rule is building a parallel set of books, which §6 forbids outright.
+
+Worked example — **Inventory**: solves "I do not know what my stock is worth or
+what it cost me to sell"; generates stock movements and unit costs; posts
+Dr Inventory / Cr GRNI on receipt and Dr COGS / Cr Inventory on sale; is depended
+on by POS, purchasing, and gross-margin reporting; yields true gross margin and
+working-capital visibility; and eventually lets Fluxy AI flag a SKU becoming a
+working-capital risk before it ties up cash.
+
+Answer these in the feature brief, not after implementation. Feature-level work
+inside an existing module uses `product_ux_feature_intake_framework.md` instead.
 
 ---
 
@@ -348,8 +525,15 @@ comparatively cheap and close visible gaps.
 
 ## 8. What stays true regardless
 
-- **Bahasa-first, Indonesia-first.** SAK, PPN, and local operating reality are
-  the default, not a localisation layer.
+- **Bahasa-first, Indonesia-first — as market and foundation, not as ceiling.**
+  SAK, PPN, and local operating reality are the default, not a localisation
+  layer. This is a statement about where we are strongest and what we build into
+  the foundation; it is not a limit on how large a business the product may
+  serve (§1).
+- **Growth-stage neutrality.** A design decision that works for a ten-person
+  business but forecloses a fifty-entity one is a decision to re-litigate later.
+  Prefer seams over ceilings — the cheapest version of this is a nullable field
+  cut now rather than a migration against immutable data later.
 - **Workspace-scoped finance data.** Every new collection follows
   `PROJECT_BACKGROUND.md` §4. A POS or inventory collection hardcoding
   `users/{uid}` shows invited members zero data.
@@ -367,10 +551,17 @@ comparatively cheap and close visible gaps.
 
 ## 9. How to use this document
 
-- **Proposing a module?** Answer §5. Unclear verb = boundary case; escalate,
-  do not queue.
+- **Proposing a module?** Answer §5, then §5a. Unclear verb = boundary case;
+  escalate, do not queue. A module that passes §5 but cannot answer §5a question
+  3 is a parallel set of books.
 - **Proposing a feature inside an existing module?** This does not apply — use
   `product_ux_feature_intake_framework.md`.
+- **Writing positioning copy anywhere** — docs, landing pages, `llms.txt`,
+  structured data? §1 holds the canonical category and definition sentence. Use
+  it verbatim; `npm run check:structure` fails the build if the canonical
+  sources drift apart or a retired string reappears.
+- **Tempted to describe a stage-based capability?** §1's stage table is
+  direction. §3 is what exists. When they appear to disagree, §3 is right.
 - **Writing docs or a roadmap?** §3 is the status baseline. Never describe a ✅
   capability as planned. If §3 disagrees with the code, re-audit and update §3
   rather than working around it.

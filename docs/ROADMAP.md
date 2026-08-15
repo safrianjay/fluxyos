@@ -3,9 +3,13 @@
 Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 
 > **Scope is governed by [`PRODUCT_STRATEGY.md`](PRODUCT_STRATEGY.md).** A module
-> enters this roadmap only after passing the admission test in §3 — does it
-> produce or consume a ledger posting? Sequencing rationale for the operational
-> modules is in §5 of that document.
+> enters this roadmap only after passing the admission test in **§5** — does it
+> create, move, protect, predict, or explain financial performance? — and the
+> connection test in **§5a**. Sequencing rationale for the operational modules is
+> in **§7**. (This blockquote previously cited §3 and §5; corrected 2026-08-15.)
+>
+> **The maturity ladder in §2a is direction, not a delivery plan.** This document
+> stays the phased, prioritized view. Nothing here carries a date.
 
 ---
 
@@ -20,6 +24,24 @@ Tracks what's shipped, what's stubbed (UI exists, no logic), and what's planned.
 
 ---
 
+## Where the product is going (maturity ladder)
+
+`PRODUCT_STRATEGY.md` §2a defines five maturity phases. They are **direction, not
+a delivery plan** — this document remains the prioritized view, and no phase
+carries a date.
+
+| Phase | Name | State today |
+|---|---|---|
+| 1 | Financial Operations | ✅ Substantially shipped |
+| 2 | Accounting Foundation | ✅ Substantially shipped |
+| 3 | Operational ERP Foundation | 🧭 Not started — preparation shipped (`INVENTORY_READINESS.md`) |
+| 4 | Commercial Operations | ◐ Marketplace order sync only; POS not built |
+| 5 | Intelligent Finance OS | ◐ AI chat + extraction; no forecasting, no automation |
+
+Phases 3 and 4 both sit in Layer 3 below. Phase 5 spans Layers 4–5.
+
+---
+
 ## The five layers — where the gaps actually are
 
 FluxyOS is organised in five layers (`PRODUCT_STRATEGY.md` §2). A codebase audit
@@ -29,7 +51,7 @@ on 2026-08-07 established the real status of each; the full evidence table is
 | Layer | State | The real gap |
 |---|---|---|
 | 1 — Financial Foundation | ✅ Substantially shipped | — |
-| 2 — Accounting Foundation | ✅ **Shipped, not emerging** | **Multi-entity** (`entity_id` plumbing exists; no switcher or consolidation) |
+| 2 — Accounting Foundation | ✅ **Shipped, not emerging** | **Multi-entity** — not built. `entity_id` is stamped everywhere but is always the workspace id, so it is a constant, not a dimension (corrected 2026-08-14) |
 | 3 — Operational Foundation | ◐ Started, uneven | **Approvals** (advertised in sidebar, no data contract) + the ERP modules below |
 | 4 — Financial Intelligence | ◐ Narrow | **Forecasting / cash-flow prediction** |
 | 5 — Decision Layer | ◐ One audience | **Role dashboards** — only one dashboard exists |
@@ -51,7 +73,7 @@ balances. None keeps its own books.
 
 | Module | Status | Admission verb | Sequencing |
 |---|---|---|---|
-| Multi-entity completion | 🧭 Strategic | Explains (per-entity performance) | **First.** Finishes Layer 2; plumbing already exists; unblocks branch reporting |
+| Multi-entity completion | 🧭 Strategic | Explains (per-entity performance) | **First.** Finishes Layer 2 and unblocks branch reporting. The plumbing does **not** already exist — `entity_id` is the workspace id on every row. The line-level `dimension_id` seam shipped 2026-08-14 (`DIMENSION_SEAM_DESIGN.md`); the collection, rollup and UI have not |
 | Inventory & stock movement | 🧭 Strategic | Moves | **Second.** Fixes gross-margin accuracy for every stock-holding customer. Readiness assessed and preparation shipped 2026-08-14 — `docs/INVENTORY_READINESS.md` |
 | Purchasing / procurement | 🧭 Strategic | Moves | With inventory — receipts are how stock enters |
 | POS integration | 🧭 Strategic | Creates | **Third.** Adapter pattern reusing the commerce connector shape |
@@ -349,6 +371,9 @@ disabled until a real authenticated app page and data contract exist.
 | Netlify hosting + auto-deploy from main | ✅ Shipped | |
 | Clean URLs (no `.html` extensions) | ✅ Shipped | |
 | SVG favicon | ✅ Shipped | Black F-logo, all pages |
+| `PRODUCT_STRATEGY.md` | ✅ Shipped | Product vision, layer model, maturity ladder, admission + connection tests |
+| `SYSTEM_DESIGN.md` | ✅ Shipped | Implementation architecture, module contracts, extension recipes |
+| `DESIGN_SYSTEM.md` | ✅ Shipped | Visual system, component reuse, anti-slop rules |
 | `CLAUDE.md` | ✅ Shipped | Claude session rules |
 | `PROJECT_BACKGROUND.md` | ✅ Shipped | Architecture reference |
 | `QA_CHECKLIST.md` | ✅ Shipped | QA workflow |

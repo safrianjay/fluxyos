@@ -7,7 +7,7 @@
 
 ## One-Page Primer: What FluxyOS Does Today
 
-FluxyOS is a Bahasa-first Finance Operating System for Indonesian SMBs — a double-entry accounting kernel with operational modules feeding it (static web app on Firebase; team workspaces with roles including a dedicated `accountant` role). What exists now:
+FluxyOS is a Bahasa-first Intelligent Finance Operating System — a double-entry accounting kernel with operational modules feeding it (static web app on Firebase; team workspaces with roles including a dedicated `accountant` role). What exists now:
 
 - **Recording:** transactions (income/expense/fee/tax/transfer/refund/accruals), bills with due dates and a vendor master, subscriptions, invoices (draft → finalized → partial → paid/void; USD/SGD supported, converted to IDR at payment). Partial and combined invoice payments are supported — one customer payment applied across several invoices.
 - **A real double-entry kernel underneath:** every transaction/bill/invoice generates a balanced journal automatically against a seeded **32-account SAK-aligned chart** (Cash 1000, A/R 1100, A/P 2000, Retained Earnings 3000, Owner Capital 3100, Prive 3200, Revenue 4000, COGS 5100, expense accounts 61xx–6999, PPN/PPh tax accounts). Journals are immutable once posted (corrections by reversal), numbered `JE-YYYY-NNNNNN`. A trial balance accumulates per account per month. Manual journal entries exist (draft → post → reverse). Fiscal periods close (net income rolls to Retained Earnings) and lock; edits into closed periods are blocked; reopening reverses the closing entry.

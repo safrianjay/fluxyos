@@ -18,6 +18,7 @@ A feature must answer:
 - What business objective does this support?
 - What job is the user trying to complete?
 - Where does this feature belong in the product system?
+- Which existing module or accounting record does it connect to?
 - What should change after the user uses it?
 - How do we know if it works?
 

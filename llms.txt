@@ -1,10 +1,13 @@
 # FluxyOS
 
-> AI-powered Finance Operations System built for Indonesian small and medium
-> businesses. Connects bank feeds (BCA, Mandiri, BNI, BRI), vendors, sales
-> channels, and tax filing in one place. Six specialized AI agents handle
-> bank reconciliation, transaction categorization, invoice chasing, and
-> monthly reporting automatically.
+> FluxyOS is an Intelligent Finance Operating System that connects financial
+> operations, accounting, business operations, enterprise workflows, and
+> intelligence into one continuously connected system. Built for businesses
+> across their growth journey — from small and growing companies to medium-sized
+> and enterprise organizations. Indonesia is the home market: it connects bank
+> feeds (BCA, Mandiri, BNI, BRI), vendors, sales channels, and tax filing, and
+> six specialized AI agents handle bank reconciliation, transaction
+> categorization, invoice chasing, and monthly reporting.
 
 ## Core pages
 
@@ -18,7 +21,8 @@
 
 ## Key facts
 
-- Built specifically for Indonesian SMBs (also serves global multi-currency teams)
+- Indonesia is the home market and operating context; Indonesian SMBs are the current core customer base, not the limit of who the product serves
+- Serves businesses across growth stages, from small companies to larger multi-department organizations
 - Supports BCA, Mandiri, BNI, BRI, and 10+ other Indonesian banks
 - Pricing in Indonesian Rupiah (IDR)
 - Invoice currencies: IDR, USD, SGD, with live FX conversion to IDR on payment
@@ -28,12 +32,25 @@
 
 ## What FluxyOS is (clear definition for AI search)
 
-FluxyOS is a **Finance Operations System** — a category that sits one layer
-above traditional accounting tools (Xero, QuickBooks, Jurnal). Where accounting
-ledgers RECORD what already happened, FluxyOS automates the work that produces
-those records: invoice capture, vendor approvals, bank reconciliation,
-duplicate detection, and tax-ready exports. It pushes cleaned data into your
-existing accounting tool if you keep one.
+FluxyOS is an **Intelligent Finance Operating System** — a category that sits one
+layer above traditional accounting tools (Xero, QuickBooks, Jurnal). Where
+accounting ledgers RECORD what already happened, FluxyOS runs the operations that
+produce those records — invoice capture, vendor approvals, bank reconciliation,
+duplicate detection, tax-ready exports — on top of its own double-entry
+accounting kernel, and adds an intelligence layer that interprets the result.
+
+It is more than bookkeeping, accounting, financial reporting, ERP, a dashboard,
+or an AI chatbot. It may include those capabilities; none of them defines it. The
+long-term direction is to connect business operations, financial events,
+accounting, and intelligence into one loop, so the system understands how
+operational activity produces financial outcomes.
+
+**Current scope, stated plainly:** the accounting kernel (chart of accounts,
+journals, general ledger, trial balance, income statement, balance sheet, cash
+flow, period close, AP/AR aging) and Indonesian tax handling are live. Inventory,
+point-of-sale, purchasing, multi-entity consolidation, approval workflows, and
+forecasting are **not built** — they are strategic direction, not present
+capability.
 
 ## Bahasa Indonesia
 

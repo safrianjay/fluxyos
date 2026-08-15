@@ -202,6 +202,7 @@ place:
 | Seed codes | duplicate account codes (the seed is keyed by code as the doc id) |
 | Shard index | `docs/data-model/` and the §4 shard table diverging, in both directions |
 | **Statement coverage** | a seeded asset/liability `sak_category` in no classification list — **the exact inventory-as-investing bug** |
+| **Positioning** | the canonical category drifting across its six sources, a retired category string reappearing, or SMB-ceiling phrasing returning — four competing category strings were shipping simultaneously before 2026-08-15 |
 
 Two of these deserve emphasis because they are *preventive* rather than
 descriptive: rules coverage means a future `stock_movements` collection cannot be
@@ -210,8 +211,10 @@ added without being registered, and statement coverage means a future
 classified in both statements. Both failure modes are silent at runtime — that is
 precisely why they need a checker rather than a convention.
 
-All six are mutation-tested: each was verified to fail when its invariant is
-broken, then restored. A check that cannot fail is worse than no check, because
+All seven are mutation-tested: each was verified to fail when its invariant is
+broken, then restored — including a false-positive guard confirming that
+legitimate segment discussion ("Indonesian SMBs are the current beachhead")
+still passes. A check that cannot fail is worse than no check, because
 it reports green.
 
 ### 3.6 Client-side posting is the architectural ceiling

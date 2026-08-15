@@ -4,6 +4,33 @@ This file is read by Codex, Aider, and any tool that follows the AGENTS.md
 convention. Claude Code reads `CLAUDE.md` (same rules). The full workflow
 diagram lives in `docs/WORKFLOW.md`.
 
+## What FluxyOS Is (canonical — use verbatim)
+
+**FluxyOS is an Intelligent Finance Operating System that connects financial
+operations, accounting, business operations, enterprise workflows, and
+intelligence into one continuously connected system.**
+
+It serves businesses across their growth journey — small, growing, medium,
+enterprise, and eventually public/IPO-stage. **Indonesia is the home market and
+operating context, not the product ceiling**; Indonesian SMBs are the current
+beachhead and remain an important segment.
+
+It is more than bookkeeping, accounting, financial reporting, ERP, a dashboard,
+or an AI chatbot. It may include those; none of them defines it.
+
+⚠️ **The vision is not the product.** Multi-entity, inventory, POS, purchasing,
+approvals, enterprise permissions and IPO-grade controls are **not built**.
+`docs/PRODUCT_STRATEGY.md` §3 is the audited truth — never write copy or docs
+implying otherwise. `npm run check:structure` fails the build if the canonical
+positioning drifts or a retired category string reappears.
+
+**Proposing a new module?** Read `docs/PRODUCT_STRATEGY.md` first: §1 (canonical
+positioning), §3 (audited status), §5 (admission test — does it create, move,
+protect, predict, or explain financial performance?), §5a (connection test), §6
+(the ledger is the product; no module keeps its own books).
+
+---
+
 ## QA Enforcement — Git-Gated (Cross-Agent)
 
 A `pre-push` git hook at `.githooks/pre-push` BLOCKS any push to `main`/`master`
@@ -18,17 +45,25 @@ QA_PASS=1 git push origin main
 
 Without the prefix the push exits 1 and the gate's checklist is printed.
 
-### What `QA_PASS=1` claims
+### `QA_PASS=1` is no longer an honour-system claim
 
-Setting the variable is an explicit assertion that you did all of these:
+Run the QA suite; it writes an artifact the gate verifies:
 
-1. Every new file reference (CSS, JS, image) was `ls`'d locally — it EXISTS
-2. The affected page was opened in a real browser
-3. Browser console had no CSP, CORS, 404, or Firebase errors
-4. `docs/QA_CHECKLIST.md` sections matching the change type were read
-5. `docs/PROJECT_BACKGROUND.md` was read for any Firestore / data change
+```bash
+git commit …          # commit first — QA stamps the artifact with HEAD
+npm run qa            # BE + FE + PRODUCT lanes, selected from the diff
+QA_PASS=1 git push origin main
+```
 
-Lying defeats the gate's purpose. There is no way for the hook to verify.
+`npm run qa` (`scripts/qa-run.js`) writes `.qa/qa-run.json`. Claude Code's
+PreToolUse hook additionally requires that artifact to show a **passing,
+non-partial** run whose `head` equals the commit being pushed — so `QA_PASS=1`
+alone does not pass there. The `.githooks/pre-push` hook in this repo still only
+checks the variable, which means for Codex/Aider the discipline is yours: run
+`npm run qa` and confirm it passed before setting it.
+
+`--skip-browser` and `--lane=…` mark the artifact `partial`, which the Claude
+gate rejects. They are for fast iteration, not for shipping.
 
 ### Activating the hook on a fresh clone
 
@@ -61,7 +96,8 @@ Key things it covers that prevent mistakes:
 ## Project Stack
 
 - Static HTML + Tailwind CSS + Vanilla JS (no build step)
-- Firebase Auth + Firestore (user-scoped collections)
+- Firebase Auth + Firestore (finance collections are **workspace-scoped** via the
+  `_scope()` seam; identity/billing stays user-scoped — `PROJECT_BACKGROUND.md` §4)
 - Netlify hosting (auto-deploys from `main` branch)
 - Shared JS: `sidebar-loader.js`, `footer-loader.js`, `shared-dashboard.js`, `universe-canvas.js`
 - Shared CSS: `shared-dashboard.css`, `footer.css`
@@ -77,7 +113,7 @@ Quick rules:
 - Validate schema via [Google Rich Results Test](https://search.google.com/test/rich-results) before pushing — broken JSON-LD silently disqualifies the page from AI Overview.
 - **Lighthouse SEO score ≥95 is a deploy gate** for every landing page.
 - Add new URLs to `sitemap.xml` and update `lastmod` when content materially changes.
-- For AI Overview eligibility: use the "**Product** is a [category] that [does X]" pattern in the first paragraph. Add real FAQ sections (visible on page) backed by `FAQPage` schema.
+- For AI Overview eligibility: use the "**Product** is a [category] that [does X]" pattern in the first paragraph. The category is **"Intelligent Finance Operating System"**; the retired strings ("finance operations platform", "Finance Operations System") must not reappear. Add real FAQ sections (visible on page) backed by `FAQPage` schema.
 - Tailwind CDN is **not** allowed in production (kills LCP). Use the built CSS at `assets/css/tailwind.min.css`.
 
 ## Localization (Bahasa Indonesia)
@@ -92,7 +128,9 @@ Quick rules:
   glossary and sample translations.
 - **Brand & product names stay English** everywhere (FluxyOS, Fluxy AI, Revenue
   Sync, Vendor Spend, Receipt Capture, Dynamic Budgeting, AI Agents, plus all
-  3rd-party brands).
+  3rd-party brands). The **category** is the exception: "Intelligent Finance
+  Operating System" renders as **"Sistem Operasi Keuangan Cerdas"**, English in
+  parentheses on first mention per page.
 - **Pair edits.** Any change to user-facing copy in an EN page must include the
   matching update to its `/id/` counterpart in the same commit. Don't ship
   English-only copy changes.

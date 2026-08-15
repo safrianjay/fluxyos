@@ -42,9 +42,11 @@ rarely the file you just edited. It verifies claims the repo makes about itself
 in more than one place: the three finance-collection registries agreeing, every
 workspace collection in `firestore.rules` being registered somewhere, prose
 account counts matching `CHART_OF_ACCOUNTS_SEED`, the `docs/data-model/` shard
-index matching disk, and every seeded asset/liability `sak_category` being
-explicitly classified in `statements-engine.js`. All six failure modes are silent
-at runtime — see `docs/ERP_ARCHITECTURE_REVIEW.md` §3.5.
+index matching disk, every seeded asset/liability `sak_category` being explicitly
+classified in `statements-engine.js`, and the **canonical positioning** holding
+across its six sources (category present, retired strings absent, no SMB-ceiling
+phrasing). All seven failure modes are silent at runtime — see
+`docs/ERP_ARCHITECTURE_REVIEW.md` §3.5.
 
 Lane selection otherwise comes from the git diff, so an accounting-only change
 does not pay for a landing-page SEO scan. Commits made *after* a QA run make the
@@ -71,9 +73,24 @@ Before implementing any feature, page, section, component, UI enhancement, busin
 2. **`docs/DESIGN_SYSTEM.md`** — component reuse rules (shared date picker, dialog, drawer, chart hover), colors, typography, anti-AI-slop standards
 3. **`docs/product_ux_feature_intake_framework.md`** — product logic, feature classification, scope, and UX requirements
 
+**What FluxyOS is (canonical, use verbatim):** an **Intelligent Finance
+Operating System** that connects financial operations, accounting, business
+operations, enterprise workflows, and intelligence into one continuously
+connected system. It serves businesses across their growth journey — small,
+growing, medium, enterprise, and eventually public/IPO-stage. Indonesia is the
+home market and operating context, **not** the product ceiling; Indonesian SMBs
+are the current beachhead and remain an important segment.
+
+⚠️ **The vision is not the product.** Multi-entity, inventory, POS, approvals,
+enterprise permissions and IPO-grade controls are **not built**. Never write copy
+or docs that imply otherwise — `PRODUCT_STRATEGY.md` §3 is the audited truth and
+`npm run check:structure` fails the build if positioning drifts.
+
 **Proposing a whole new module** (not a feature inside an existing one)? Read
 **`docs/PRODUCT_STRATEGY.md`** first:
 
+- **§1 holds the canonical category and definition sentence.** Every other
+  surface restates it rather than inventing its own.
 - **§3 is the audited status baseline.** FluxyOS is five layers, and Layers 1–2
   are substantially shipped — the accounting kernel (GL, journals, CoA, trial
   balance, income statement, balance sheet, cash flow, period close, aging, tax)
@@ -82,6 +99,10 @@ Before implementing any feature, page, section, component, UI enhancement, busin
 - **§5 is the admission test:** does this *create, move, protect, predict, or
   explain* financial performance? Modules failing all five verbs are out of
   scope regardless of demand.
+- **§5a is the connection test:** name the operational problem, the financial
+  data generated, the accounting records affected, the dependent modules, the
+  insight produced, and the AI action enabled. A module that cannot name its
+  posting rule is building a parallel set of books.
 - **§6 is architecturally binding:** the ledger is the product; everything else
   is a source system or a view. Modules that create or move value post to the
   kernel; modules that predict or explain read derived balances. No module keeps
@@ -216,7 +237,7 @@ Quick rules:
 - Validate schema via [Google Rich Results Test](https://search.google.com/test/rich-results) before pushing — broken JSON-LD silently disqualifies the page from AI Overview.
 - **Lighthouse SEO score ≥95 is a deploy gate** for every landing page.
 - Add new URLs to `sitemap.xml` and update `lastmod` when content materially changes.
-- For AI Overview eligibility: use the "**Product** is a [category] that [does X]" pattern in the first paragraph. Add real FAQ sections (visible on page) backed by `FAQPage` schema.
+- For AI Overview eligibility: use the "**Product** is a [category] that [does X]" pattern in the first paragraph. The category is **"Intelligent Finance Operating System"** — `PRODUCT_STRATEGY.md` §1 holds the exact sentence, and the retired strings ("finance operations platform", "Finance Operations System") must not reappear. Add real FAQ sections (visible on page) backed by `FAQPage` schema.
 - Tailwind CDN is **not** allowed in production (kills LCP). Use the built CSS at `assets/css/tailwind.min.css`.
 
 ## Localization (Bahasa Indonesia)
@@ -238,7 +259,10 @@ Quick rules:
   glossary and sample translations.
 - **Brand & product names stay English** everywhere (FluxyOS, Fluxy AI, Revenue
   Sync, Vendor Spend, Receipt Capture, Dynamic Budgeting, AI Agents, plus all
-  3rd-party brands).
+  3rd-party brands). The **category** is the exception: "Intelligent Finance
+  Operating System" renders in Bahasa as **"Sistem Operasi Keuangan Cerdas"**,
+  with the English in parentheses on first mention per page
+  (`LOCALIZATION_PLAN.md` §2).
 - **Pair edits.** Any change to user-facing copy in an EN page must include the
   matching update to its `/id/` counterpart in the same commit. Don't ship
   English-only copy changes.

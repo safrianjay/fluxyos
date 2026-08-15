@@ -15,15 +15,21 @@ fallback used when backend Firestore reads fail, read
 
 ## 1. Product Purpose
 
-FluxyOS is a **Finance Operating System** for Indonesian SMBs and finance teams:
-a double-entry accounting kernel with operational modules feeding it. It brings
-ledgers, vendor spend, bills, subscriptions, receipts, revenue feeds, budgets,
-invoices, tax, commerce integration, and AI finance workflows into one
-operational dashboard.
+FluxyOS is an **Intelligent Finance Operating System** that connects financial
+operations, accounting, business operations, enterprise workflows, and
+intelligence into one continuously connected system. It serves businesses across
+their growth journey — from small and growing companies through medium-sized and
+enterprise organizations — with Indonesia as the home market and operating
+context rather than the product ceiling.
 
-> Product scope and the test for admitting new modules live in
-> [`PRODUCT_STRATEGY.md`](PRODUCT_STRATEGY.md). This document covers *how* the
-> system is built, not *what* belongs in it.
+What exists today: a double-entry accounting kernel with operational modules
+feeding it, bringing ledgers, vendor spend, bills, subscriptions, receipts,
+revenue feeds, budgets, invoices, tax, commerce integration, and AI finance
+workflows into one operational dashboard.
+
+> Product scope, the canonical positioning sentence, and the test for admitting
+> new modules live in [`PRODUCT_STRATEGY.md`](PRODUCT_STRATEGY.md). This document
+> covers *how* the system is built, not *what* belongs in it.
 
 ### The governing architectural principle
 
@@ -51,7 +57,7 @@ The current product is intentionally simple:
 - Static HTML pages
 - Vanilla JavaScript modules
 - Firebase Auth
-- Firestore user-scoped collections
+- Firestore collections behind a workspace/user scope seam
 - Netlify hosting and redirects
 - No frontend framework or build step
 
@@ -79,7 +85,7 @@ flowchart LR
     App --> PageController["Page script/render logic"]
     PageController --> DataService["DataService"]
     SharedUI --> DataService
-    DataService --> Firestore["users/{uid}/... collections"]
+    DataService --> Firestore["workspaces/{wsId}/... + users/{uid}/..."]
 ```
 
 ### Request and data flow
@@ -90,7 +96,7 @@ write Firestore.
 
 App pages must authenticate with Firebase before loading user data. Once a user
 is available, page-specific render functions call `DataService`, which reads or
-writes Firestore under `users/{userId}/`.
+writes Firestore through the `_scope()` seam.
 
 Shared UI helpers such as modals, toasts, empty states, shimmer rows, sidebar,
 footer, and AI drawer can be reused across pages. These helpers are stable
@@ -147,7 +153,12 @@ Current responsibilities:
 
 Rules:
 
-- Every collection path must be under `users/{userId}/`.
+- Every collection path routes through the scope seam. **Finance/operational
+  collections are workspace-scoped** (`${this._scope(userId)}/…`, resolving to
+  `workspaces/{workspaceId}/`); identity/billing collections stay under
+  `users/{userId}/`. Full rule and the collection lists: `PROJECT_BACKGROUND.md`
+  §4. Hardcoding `users/{uid}/` for a finance collection shows invited members
+  zero data, and `qa-gate.sh` blocks the push.
 - New documents that represent user activity should use `serverTimestamp()`.
 - Sensitive writes should create audit logs before the feature is considered complete.
 - Amounts must be raw numbers in Firestore, never formatted strings.
@@ -191,7 +202,10 @@ Rules:
 
 ## 5. Domain Models
 
-All user-owned data is scoped under `users/{userId}/`.
+Finance/operational data is workspace-scoped under `workspaces/{workspaceId}/`
+via `DataService._scope()`; identity and billing data stays under
+`users/{userId}/`. The paths below are written user-scoped for historical
+reference — see `PROJECT_BACKGROUND.md` §4 for which is which.
 
 ### Transaction
 
@@ -273,7 +287,7 @@ where two tabs (Account details, Business details) edit the `company` doc.
 
 Before adding a collection, define:
 
-- Collection path under `users/{userId}/`
+- Collection path through `_scope()` (workspace-scoped if finance/operational)
 - Required fields, optional fields, defaults, and allowed values
 - Ordering and limits
 - Owning page or feature
@@ -455,7 +469,8 @@ offer, route the card at its primary driver instead of cloning the scaffold
 
 1. Add the schema to `PROJECT_BACKGROUND.md`.
 2. Add read/write methods to `DataService`.
-3. Keep all paths under `users/{userId}/`.
+3. Route paths through `_scope()` — workspace-scoped for finance/operational
+   collections, `users/{userId}/` for identity and billing.
 4. Use raw typed values, not formatted display strings.
 5. Render empty states for zero rows.
 6. Run database and cross-page QA if shared files changed.
@@ -500,6 +515,31 @@ offer, route the card at its primary driver instead of cloning the scaffold
 - Do not make public landing pages depend on authenticated state.
 - Do not add fake reviews or ratings to schema.
 - Do not ship English-only user-facing copy changes when an `/id/` counterpart exists.
+- Do not invent a new product category string. `PRODUCT_STRATEGY.md` §1 holds the
+  canonical one; `npm run check:structure` fails the build when the canonical
+  sources drift apart.
+
+### Target architecture — what new decisions must not block
+
+`PRODUCT_STRATEGY.md` §1 commits the product to growing with a business from a
+small team to a multi-entity organization. **None of the following is built, and
+none of it should be built speculatively.** They are listed so that an
+architectural decision taken today does not foreclose them tomorrow:
+
+- Modular business domains over one shared financial foundation
+- Cross-module relationships (a module reads another's master data rather than
+  copying it)
+- Multi-entity organizations and consolidation
+- Role-based permissions beyond the current five roles, and approval workflows
+- Audit trails and financial controls sufficient for governance review
+- Data architecture that survives high-volume financial data
+- An AI intelligence layer reading across modules, and workflow automation
+
+The practical test when making a schema or seam decision: *would this need a
+migration against immutable data to support the list above?* If yes, cut the seam
+now. `dimension_id` on journal lines is the worked example — nullable today,
+impossible to backfill later because posted journals are immutable
+(`DIMENSION_SEAM_DESIGN.md`).
 
 ---
 

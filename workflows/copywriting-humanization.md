@@ -61,7 +61,7 @@ You may change:
 
 ## Product Positioning
 
-FluxyOS is a finance operations platform for business owners, operators, and finance teams who need real-time visibility across revenue, expenses, budgets, and cash movement.
+FluxyOS is an Intelligent Finance Operating System for business owners, operators, and finance teams who need real-time visibility across revenue, expenses, budgets, and cash movement.
 
 FluxyOS is industry-agnostic. It can support businesses across different sectors, including but not limited to e-commerce, retail, F&B, agencies, services, and multi-entity operators.
 

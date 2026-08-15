@@ -7,6 +7,48 @@ All notable changes to FluxyOS are recorded here, newest first.
 ## [Unreleased]
 > Changes in progress — not yet pushed to main
 
+### Changed (Strategic repositioning — Intelligent Finance Operating System, 2026-08-15)
+- **Category is now "Intelligent Finance Operating System"** across every canonical
+  surface. `PRODUCT_STRATEGY.md` §1 holds the definition sentence; `PROJECT_BACKGROUND.md`,
+  `SYSTEM_DESIGN.md`, `ROADMAP.md`, `CLAUDE.md`, `README.md`, `llms.txt`,
+  `seo/organization.json`, `i18n.js`, and the landing pages restate it rather than
+  inventing their own. Four competing category strings were shipping simultaneously
+  ("Finance Operating System", "Finance Operations System", "finance operations
+  platform", "intelligent financial operating system"); they are retired.
+- **Target market is no longer capped at Indonesian SMBs.** The product is positioned
+  for businesses across their growth journey — small, growing, medium, large,
+  enterprise, multi-entity, and eventually public/IPO-stage. **Indonesia remains the
+  home market and operating context, and Indonesian SMBs remain the current beachhead
+  and an important segment** — they are simply no longer the definition of the ceiling.
+- **`PRODUCT_STRATEGY.md` gains §2a (maturity ladder)** — five phases from Financial
+  Operations to Intelligent Finance OS, crosswalked to the existing five layers
+  (Phases 3 and 4 both sit in Layer 3; Phase 5 spans Layers 4–5). Direction, not a
+  delivery plan; no dates.
+- **`PRODUCT_STRATEGY.md` gains §5a (the connection test)** — six questions every
+  module answers so FluxyOS does not become a collection of disconnected modules.
+  §5's five-verb admission test was tested against the expanded vision and **survives
+  unchanged**.
+- **No capability claims changed.** §3 remains the audited baseline; multi-entity,
+  inventory, POS, approvals and enterprise controls are still documented as not built.
+- **`npm run check:structure` now enforces positioning** — canonical-category parity
+  across the six canonical sources, plus denylists for the retired strings and for
+  SMB-ceiling framing. Legitimate segment discussion is unaffected.
+- Fixed while in the area: `ROADMAP.md` cited the wrong `PRODUCT_STRATEGY` sections
+  (§3/§5 instead of §5/§7), still claimed multi-entity "plumbing already exists"
+  (reversed 2026-08-14), and omitted three docs from its own inventory;
+  `SYSTEM_DESIGN.md` still mandated `users/{userId}/` for all collections, which
+  `qa-gate.sh` hard-blocks.
+
+### Fixed (Residual unsupported capability claims, 2026-08-15)
+- Commit `1ed0eeb` did not fully land. `use-cases/ecommerce-brands.html` and its ID
+  mirror carried a garbled/self-contradicting per-SKU margin sentence in `FAQPage`
+  JSON-LD (the ID copy denied the capability and re-asserted it in the same clause);
+  `use-cases/retail-franchises.html` still shipped "Branch-level P&L by outlet",
+  "POS and bank settlement reconciliation" and "Supplier and inventory cost tracking"
+  in its `featureList` because only the ID copy had been fixed. Also removed
+  "Inventory-based budgeting", a visible branch-level P&L claim, and relabelled the
+  POS logo row that read as an integration wall.
+
 ### Added (Cash Pressure drill-down + all Overview KPIs clickable)
 - **Cash Pressure page** (`cash-pressure.html` / `cash-pressure.js`, `/cash-pressure`) — a forward-looking liquidity runway, distinct from Cash Position's realized view: bank cash + receivables due − payables due over a **30/60/90-day horizon toggle**, a cumulative projected-balance runway chart (positive/negative fill + Today at the left edge), Payables/Receivables/Timing breakdowns, and an upcoming-obligations table (open invoices, unpaid bills, subscription renewals, pending payables/receivables) whose rows deep-link to the original record.
 - **All six Overview KPI cards now clickable** — Gross margin → `/revenue-overview` (margin is revenue-driven), Cash pressure → `/cash-pressure`, Payables → `/bill` (Bills already lists payables — reuse instead of a duplicate page). Each has the drill affordance + a "?" tooltip.

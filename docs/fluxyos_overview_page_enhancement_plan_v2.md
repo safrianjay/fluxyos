@@ -12,7 +12,7 @@ This plan is written for Codex or another code agent to execute safely inside th
 
 ## 1. Product Context
 
-FluxyOS is a financial operations platform for Indonesian businesses. The Overview page should help business owners and finance operators quickly understand:
+FluxyOS is an Intelligent Finance Operating System that connects financial operations, accounting, business operations, and intelligence into one continuously connected system. The Overview page should help business owners and finance operators quickly understand:
 
 - How the business is performing
 - Whether revenue and spending are moving in the right direction

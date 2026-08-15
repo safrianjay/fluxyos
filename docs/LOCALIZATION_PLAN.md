@@ -124,6 +124,7 @@ Indonesia mixed with everyday English (Slack, dashboard, invoice, online shop).
 
 | English | Indonesian (canonical) | Notes |
 |---------|------------------------|-------|
+| Intelligent Finance Operating System | Sistem Operasi Keuangan Cerdas | **The product category.** The one exception to "brand names stay English": translate it, with the English in parentheses on first mention per page — *Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System)*. Canonical source: `PRODUCT_STRATEGY.md` §1 |
 | Vendor Spend | Vendor Spend (keep) | Product name |
 | Revenue Sync | Revenue Sync (keep) | Product name |
 | Receipt Capture | Receipt Capture (keep) | Product name |
