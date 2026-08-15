@@ -19,6 +19,11 @@
  *     same entity instead of minting anonymous duplicates
  *   - `/id/` pages get the Indonesian description; everything else English
  *
+ * ⚠️ RUN THIS *AFTER* `node scripts/build-id-mirrors.js`, never before. That
+ * generator rebuilds each /id/ page by copying the root page's JSON-LD verbatim,
+ * which reinstates the ENGLISH Organization block and silently undoes this
+ * script's work. `--check` exits 1 on that state and runs in the QA PRODUCT lane.
+ *
  * Usage:
  *   node scripts/sync-org-schema.js            # write
  *   node scripts/sync-org-schema.js --check    # exit 1 if anything is stale

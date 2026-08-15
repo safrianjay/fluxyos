@@ -19,6 +19,17 @@
  *
  * JSON-LD blocks are copied as-is from the root page (English) - acceptable to
  * Google alongside a correct hreflang pair; localize them here if that changes.
+ *
+ * ⚠️ ORDER MATTERS — RUN THIS *BEFORE* `npm run seo:sync-org`.
+ *
+ *     node scripts/build-id-mirrors.js   # 1. mirrors (copies the EN JSON-LD)
+ *     npm run seo:sync-org               # 2. localizes the Organization node
+ *
+ * Because the copy above is verbatim, every mirror lands carrying the ENGLISH
+ * Organization description. `sync-org-schema.js` is what rewrites /id/ pages to
+ * the Indonesian one. Reverse the order and the Indonesian pages ship an English
+ * company description — valid JSON-LD, correct hreflang, no console error, no
+ * visible defect. Guarded by `seo:check-org` in the QA PRODUCT lane.
  */
 'use strict';
 

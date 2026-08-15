@@ -343,6 +343,27 @@ function laneProduct(changed) {
   ok = record('product', i18nPairing(changed)) && ok;
   ok = record('product', seoEssentials(changed)) && ok;
 
+  // The two SEO generators have an ORDER dependency and no other guard.
+  // `build-id-mirrors.js` copies each root page's JSON-LD verbatim — including
+  // the ENGLISH Organization block — and `sync-org-schema.js` is what rewrites
+  // the /id/ pages to the Indonesian description. Run them the other way round
+  // and the Indonesian pages ship an English company description: valid JSON-LD,
+  // correct hreflang, no console error, no visible defect. Nothing catches it.
+  //
+  // `--check` exits 1 on exactly that state, so it is the guard. Scoped to the
+  // changes that can cause it rather than every run.
+  const orgSurfaceTouched = changed.some(
+    (f) => /^id\/[^/]+\.html$/.test(f)
+        || f === 'seo/organization.json'
+        || f === 'scripts/build-id-mirrors.js'
+        || f === 'scripts/sync-org-schema.js'
+        || /^[^/]+\.html$/.test(f)
+  );
+  if (FORCE_ALL || orgSurfaceTouched) {
+    ok = record('product', run('seo:check-org (Organization entity in sync)', 'node',
+      ['scripts/sync-org-schema.js', '--check'])) && ok;
+  }
+
   const appCopyTouched = changed.some((f) => /^assets\/js\/|^[^/]+\.html$/.test(f));
   if (FORCE_ALL || appCopyTouched) {
     // Advisory: writes .qa/i18n-gap-report.md. Bahasa gaps are a running

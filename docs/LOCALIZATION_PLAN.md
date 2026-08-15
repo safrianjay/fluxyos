@@ -120,6 +120,18 @@ Indonesia mixed with everyday English (Slack, dashboard, invoice, online shop).
   upload, drag and drop, screenshot, scan
 - Currency code: USD, EUR (when comparing). IDR is `Rp`.
 
+### Regenerating the `/id/` mirrors
+
+```bash
+node scripts/build-id-mirrors.js   # 1. mirrors, from the EN pages + this dictionary
+npm run seo:sync-org               # 2. Organization entity → Indonesian description
+```
+
+Order is load-bearing — see `SEO_STRATEGY.md` → "Generator order". Also note the
+7 `/id/` **root** pages are generated: editing `id/*.html` by hand is overwritten
+on the next build, so root-page head copy changes go in `scripts/build-id-mirrors.js`.
+The 8 `id/use-cases/*.html` pages are hand-maintained and are *not* generated.
+
 ### Translation glossary — recurring product/finance terms
 
 | English | Indonesian (canonical) | Notes |

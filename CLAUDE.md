@@ -30,7 +30,7 @@ QA_PASS=1 git push origin main
 |---|---|
 | **BE** | `node --check` on changed JS; workspace-scoping invariant; **`check:structure` (structural drift — always runs)**; `check:deploy` / `check:ai-scope` / `check:bank-scope` / `check:ledger-assert` when their inputs change; Firestore rules emulator tests when `*.rules` change |
 | **FE** | `scripts/qa/lint-design.js` (design-system rules, **changed lines only**); `tests/zz-console-sweep.spec.js` — loads affected pages in a real browser and fails on CSP/CORS/permission-denied/uncaught errors and same-origin 404s |
-| **PRODUCT** | i18n EN↔ID pairing where an `/id/` mirror exists; SEO essentials on changed landing pages; `i18n-audit.js` (advisory) |
+| **PRODUCT** | i18n EN↔ID pairing where an `/id/` mirror exists; SEO essentials on changed landing pages; `seo:check-org` (Organization entity in sync — catches running the two SEO generators in the wrong order); `i18n-audit.js` (advisory) |
 
 Flags: `--all` (force every lane), `--lane=be|fe|product`, `--skip-browser`.
 The last two mark the artifact `partial`, which **the gate rejects** — they are

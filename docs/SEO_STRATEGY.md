@@ -1,5 +1,21 @@
 # FluxyOS — SEO Strategy & Execution Plan
 
+### Generator order (gets this wrong silently)
+
+```bash
+node scripts/build-id-mirrors.js   # 1. rebuild /id/ mirrors
+npm run seo:sync-org               # 2. localize the Organization entity
+```
+
+**Always in that order.** `build-id-mirrors.js` copies each root page's JSON-LD
+verbatim, so every mirror lands with the *English* Organization block;
+`sync-org-schema.js` is what rewrites `/id/` pages to the Indonesian
+description. Reversed, the Indonesian pages ship an English company description
+— valid JSON-LD, correct hreflang, no console error, nothing visibly wrong.
+`npm run seo:check-org` exits 1 on that state and now runs in the QA PRODUCT
+lane whenever a root page, an `/id/` mirror, `seo/organization.json`, or either
+generator changes.
+
 **Category (canonical, from `PRODUCT_STRATEGY.md` §1):** Intelligent Finance
 Operating System. Use it verbatim in titles, descriptions, JSON-LD, and the
 AI-Overview opening sentence. The retired strings "finance operations platform"
