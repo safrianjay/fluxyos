@@ -22,7 +22,7 @@
     // ─────────────────────────────────────────────────────────────────────────
     var ID = {
         // ── Page titles ──────────────────────────────────────────────────────
-        "FluxyOS | Unified Business Economics": "FluxyOS | Sistem Operasi Keuangan Bisnis Anda",
+        "FluxyOS | Intelligent Finance Operating System": "FluxyOS | Sistem Operasi Keuangan Cerdas",
         "Vendor Spend | FluxyOS": "Vendor Spend | FluxyOS",
         "Revenue Sync | FluxyOS": "Revenue Sync | FluxyOS",
         "Receipt Capture | FluxyOS": "Receipt Capture | FluxyOS",
@@ -156,8 +156,8 @@
         "Captured": "Terambil",
 
         // ── Homepage hero (fluxyos.html) ────────────────────────────────────
-        "The Finance Operation System for modern scale-ups.": "Sistem Operasi Keuangan untuk bisnis yang sedang scale-up.",
-        "Connect your sales channels, digital ad platforms, and vendor invoices into one central Finance Operation System. Stop piecing together spreadsheets and start scaling with crystal-clear visibility.":
+        "The Intelligent Finance Operating System for businesses at every stage.": "Sistem Operasi Keuangan Cerdas untuk bisnis di setiap tahap pertumbuhan.",
+        "Connect your sales channels, digital ad platforms, and vendor invoices into one Intelligent Finance Operating System. Stop piecing together spreadsheets and start scaling with crystal-clear visibility.":
             "Hubungkan saluran penjualan, platform iklan digital, dan invoice vendor dalam satu Sistem Operasi Keuangan. Berhenti merangkai spreadsheet — mulai scale-up dengan visibilitas penuh.",
         "Track live operational costs against daily revenue.": "Pantau biaya operasional live terhadap pendapatan harian.",
         "Automate manual receipt matching and reconciliation.": "Otomatiskan pencocokan struk dan rekonsiliasi.",
@@ -540,12 +540,12 @@
         "All rights reserved.": "Hak cipta dilindungi.",
 
         // ── Homepage backfill (July 2026 redesign — hero, sections, FAQ) ────
-        "FluxyOS — Finance Operations Visibility": "FluxyOS — Visibilitas Operasional Keuangan",
+        "FluxyOS — Intelligent Finance Operating System": "FluxyOS — Sistem Operasi Keuangan Cerdas",
         "Run your entire finance": "Jalankan seluruh operasional",
         "operation": "keuangan Anda",
         "in one place": "di satu tempat",
         "Track revenue, control expenses, manage bills, and ask Fluxy AI what needs attention before month-end.": "Pantau pendapatan, kendalikan pengeluaran, kelola tagihan, dan tanya Fluxy AI apa yang perlu diperhatikan sebelum tutup bulan.",
-        "FluxyOS is a finance operations platform for business owners, operators, and finance teams that need real-time visibility across revenue, expenses, budgets, and cash movement.": "FluxyOS adalah platform operasional keuangan untuk pemilik bisnis, operator, dan tim keuangan yang butuh visibilitas real-time atas pendapatan, pengeluaran, anggaran, dan pergerakan kas.",
+        "FluxyOS is an Intelligent Finance Operating System that connects financial operations, accounting, business operations, and intelligence into one continuously connected system.": "FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System) yang menghubungkan operasional keuangan, akuntansi, operasional bisnis, dan intelligence dalam satu sistem yang terus terhubung.",
         "FluxyOS brings sales, expenses, receipts, vendor payments, budgets, and payouts into one operating view so teams can compare money coming in with money going out.": "FluxyOS menyatukan penjualan, pengeluaran, struk, pembayaran vendor, anggaran, dan pencairan dalam satu tampilan kerja, jadi tim bisa membandingkan uang masuk dengan uang keluar.",
         "A quick overview of what FluxyOS is, who it helps, and how it fits into finance operations.": "Gambaran singkat tentang apa itu FluxyOS, siapa yang terbantu, dan bagaimana perannya dalam operasional keuangan.",
         "Revenue, expenses, and budgets in one working view": "Pendapatan, pengeluaran, dan anggaran dalam satu tampilan kerja",
@@ -600,7 +600,7 @@
         // Homepage FAQ
         "What is FluxyOS?": "Apa itu FluxyOS?",
         "Who is FluxyOS built for?": "FluxyOS dibuat untuk siapa?",
-        "FluxyOS is built for Indonesian businesses today, including owners, founders, operators, CFOs, finance managers, and teams managing multiple channels, vendors, projects, or entities.": "FluxyOS dibuat untuk bisnis Indonesia, termasuk pemilik, founder, operator, CFO, manajer keuangan, dan tim yang mengelola banyak kanal, vendor, proyek, atau entitas.",
+        "FluxyOS is built for businesses at every growth stage, including owners, founders, operators, CFOs, finance managers, and teams managing multiple channels, vendors, projects, or entities. Indonesia is our home market.": "FluxyOS dibuat untuk bisnis di setiap tahap pertumbuhan, termasuk pemilik, founder, operator, CFO, manajer keuangan, dan tim yang mengelola banyak kanal, vendor, proyek, atau entitas.",
         "What does FluxyOS help teams see?": "Apa yang bisa dilihat tim lewat FluxyOS?",
         "How does FluxyOS use AI?": "Bagaimana FluxyOS memakai AI?",
         "Does FluxyOS only work for one industry?": "Apakah FluxyOS hanya untuk satu industri?",
@@ -703,7 +703,7 @@
         "85% Used": "85% Terpakai",
 
         // ── Pricing page backfill ────────────────────────────────────────────
-        "FluxyOS Pricing — Plans for Indonesian Businesses": "Harga FluxyOS — Paket untuk Bisnis Indonesia",
+        "FluxyOS Pricing — Plans for Every Growth Stage": "Harga FluxyOS — Paket untuk Setiap Tahap Bisnis",
         "Choose Starter": "Pilih Starter",
         "Choose Core Ops": "Pilih Core Ops",
         "Choose Growth Engine": "Pilih Growth Engine",
@@ -751,7 +751,7 @@
         "Real-time visibility into overall economics.": "Visibilitas real-time atas ekonomi bisnis menyeluruh.",
 
         // ── Vendor Spend page backfill ───────────────────────────────────────
-        "Vendor Spend Management for Indonesian SMBs | FluxyOS": "Manajemen Vendor Spend untuk UKM Indonesia | FluxyOS",
+        "Vendor Spend Management for Indonesian Businesses | FluxyOS": "Manajemen Vendor Spend untuk Bisnis Indonesia | FluxyOS",
         "A spreadsheet that's always out of date": "Spreadsheet yang selalu ketinggalan",
         "\"Vendors_Master_v7_FINAL_FINAL.xlsx\" — updated by hand, never matches reality.": "\"Vendors_Master_v7_FINAL_FINAL.xlsx\" — diperbarui manual, tidak pernah cocok dengan kenyataan.",
         "Invoices in three inboxes": "Invoice tercecer di tiga inbox",
@@ -921,8 +921,8 @@
         "vs last year": "vs tahun lalu",
         "What is Dynamic Budgeting?": "Apa itu Dynamic Budgeting?",
         "Dynamic Budgeting is a FluxyOS feature that lets businesses allocate, track, and adjust budgets in real time as spend changes. Instead of waiting for spreadsheet updates, teams can see available budget, burn rate, and variance as transactions arrive.": "Dynamic Budgeting adalah fitur FluxyOS untuk mengalokasikan, memantau, dan menyesuaikan anggaran secara real-time saat pengeluaran berubah. Tanpa menunggu update spreadsheet, tim bisa melihat sisa anggaran, burn rate, dan selisih begitu transaksi masuk.",
-        "How does Dynamic Budgeting help Indonesian SMBs?": "Bagaimana Dynamic Budgeting membantu UKM Indonesia?",
-        "Dynamic Budgeting helps Indonesian SMBs control spending by connecting budgets to live vendor, receipt, and ledger data. Owners can see when marketing, operations, SaaS, or project budgets are moving off plan before month end.": "Dynamic Budgeting membantu UKM Indonesia mengendalikan pengeluaran dengan menghubungkan anggaran ke data vendor, struk, dan buku besar yang live. Pemilik bisa melihat kapan anggaran marketing, operasional, SaaS, atau proyek mulai keluar jalur sebelum akhir bulan.",
+        "How does Dynamic Budgeting help Indonesian businesses?": "Bagaimana Dynamic Budgeting membantu bisnis Indonesia?",
+        "Dynamic Budgeting helps Indonesian businesses control spending by connecting budgets to live vendor, receipt, and ledger data. Owners can see when marketing, operations, SaaS, or project budgets are moving off plan before month end.": "Dynamic Budgeting membantu bisnis Indonesia mengendalikan pengeluaran dengan menghubungkan anggaran ke data vendor, struk, dan buku besar yang live. Pemilik bisa melihat kapan anggaran marketing, operasional, SaaS, atau proyek mulai keluar jalur sebelum akhir bulan.",
         "Can FluxyOS track budgets by department or project?": "Bisakah FluxyOS memantau anggaran per departemen atau proyek?",
         "Yes. FluxyOS can organize budgets by department, project, entity, or operating category so teams can compare planned spend against actual spend. This is useful for agencies, e-commerce teams, restaurants, and multi-location operators.": "Bisa. FluxyOS dapat menata anggaran per departemen, proyek, entitas, atau kategori operasional, jadi tim bisa membandingkan rencana dengan pengeluaran aktual. Berguna untuk agensi, tim e-commerce, restoran, dan operator multi-lokasi.",
         "Is Dynamic Budgeting different from a spreadsheet budget?": "Apa bedanya Dynamic Budgeting dengan anggaran spreadsheet?",
@@ -959,7 +959,7 @@
         "Contact Sales": "Hubungi Sales",
         "Retail": "Ritel",
         "an overdue invoice": "invoice yang lewat jatuh tempo",
-        "The intelligent financial operating system. Unify internal budgets, operational expenses, and revenue for agencies, manufacturers, and modern businesses.": "Sistem operasi keuangan yang cerdas. Satukan anggaran internal, biaya operasional, dan pendapatan untuk agensi, manufaktur, dan bisnis modern.",
+        "The Intelligent Finance Operating System. Unify budgets, operational expenses, and revenue for businesses at every growth stage.": "Sistem Operasi Keuangan Cerdas. Satukan anggaran, biaya operasional, dan pendapatan untuk bisnis di setiap tahap pertumbuhan.",
         "bank statements to invoices": "rekening koran dengan invoice",
         "today's receipts and bills": "struk dan tagihan hari ini",
         "tomorrow's daily summary": "ringkasan harian besok",

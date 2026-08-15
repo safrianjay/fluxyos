@@ -34,17 +34,17 @@ const SITE = 'https://fluxyos.com';
 const PAGES = {
     'fluxyos.html': {
         slug: 'fluxyos', rootPath: '/',
-        title: 'FluxyOS — Visibilitas Operasional Keuangan',
-        description: 'Satukan pendapatan, pengeluaran, anggaran, dan pergerakan kas dalam satu tampilan operasional keuangan untuk bisnis Indonesia.',
+        title: 'FluxyOS — Sistem Operasi Keuangan Cerdas',
+        description: 'Satukan operasional keuangan, akuntansi, dan intelligence dalam satu sistem. Untuk bisnis di setiap tahap pertumbuhan.',
     },
     'pricing.html': {
         slug: 'pricing', rootPath: '/pricing',
-        title: 'Harga FluxyOS — Paket untuk Bisnis Indonesia',
+        title: 'Harga FluxyOS — Paket untuk Setiap Tahap Bisnis',
         description: 'Harga sederhana dan transparan. Mulai gratis. Paket untuk founder solo, tim yang berkembang, dan departemen keuangan. Semua dalam Rupiah.',
     },
     'vendorspend.html': {
         slug: 'vendorspend', rootPath: '/vendorspend',
-        title: 'Manajemen Vendor Spend untuk UKM Indonesia | FluxyOS',
+        title: 'Manajemen Vendor Spend untuk Bisnis Indonesia | FluxyOS',
         description: 'Pusatkan invoice vendor, otomatiskan persetujuan, tangkap pembayaran ganda. Hemat 12+ jam tiap bulan untuk manajemen vendor.',
     },
     'revenuesync.html': {
@@ -55,7 +55,7 @@ const PAGES = {
     'receiptcapture.html': {
         slug: 'receiptcapture', rootPath: '/receiptcapture',
         title: 'Receipt Capture AI via WhatsApp, Email, atau Upload | FluxyOS',
-        description: 'Kirim struk via WhatsApp, email, atau upload. AI mengekstrak vendor, jumlah, pajak, dan kategori dalam hitungan detik. Dibuat untuk UKM Indonesia.',
+        description: 'Kirim struk via WhatsApp, email, atau upload. AI mengekstrak vendor, jumlah, pajak, dan kategori dalam hitungan detik. Dibuat untuk bisnis Indonesia.',
     },
     'aiagents.html': {
         slug: 'aiagents', rootPath: '/aiagents',
