@@ -240,6 +240,72 @@ if (rulesCollections && qaRun) {
         }
     }
 
+    // --- 6. Positioning consistency ---------------------------------------
+    // Same failure mode as everything above: a claim made in many places that
+    // rots independently. Before 2026-08-15 FOUR competing category strings
+    // shipped simultaneously — "Finance Operating System" in the strategy doc,
+    // "Finance Operations System" in llms.txt (what AI crawlers read),
+    // "finance operations platform" on the homepage and in the Organization
+    // entity, and "intelligent financial operating system" in the README. No
+    // reader could tell which was the real one, and nothing could notice.
+    //
+    // The category is owned by PRODUCT_STRATEGY.md §1. These sources restate it.
+    const CATEGORY = 'Intelligent Finance Operating System';
+    const CANONICAL_SOURCES = [
+        'docs/PRODUCT_STRATEGY.md',
+        'docs/PROJECT_BACKGROUND.md',
+        'docs/SYSTEM_DESIGN.md',
+        'README.md',
+        'llms.txt',
+        'seo/organization.json',
+    ];
+    // Superseded category strings. `Finance Operating System` is deliberately
+    // NOT listed: it is a substring of the canonical one, so it can never be
+    // matched independently.
+    const RETIRED = [
+        'finance operations platform',
+        'financial operations platform',
+        'Finance Operations System',
+        'Finance Operation System',
+    ];
+    // Definitional SMB-ceiling phrasings only. Segment discussion is WANTED —
+    // "Indonesian SMBs are the current beachhead" must keep passing — so this
+    // matches the specific constructions that cap the product, not the acronym.
+    const SMB_CEILING = [
+        'for Indonesian SMBs —',
+        'built specifically for Indonesian SMBs',
+        'Built specifically for Indonesian SMBs',
+        'System for Indonesian SMBs',
+        'platform for Indonesian SMBs',
+    ];
+
+    const posProblems = [];
+    for (const src of CANONICAL_SOURCES) {
+        let text;
+        try { text = read(src); } catch (_) {
+            posProblems.push(`${src}: canonical positioning source is missing`);
+            continue;
+        }
+        if (!text.includes(CATEGORY)) {
+            posProblems.push(`${src}: does not state the canonical category "${CATEGORY}"`);
+        }
+        for (const r of RETIRED) {
+            if (text.includes(r)) posProblems.push(`${src}: retired category string "${r}"`);
+        }
+        for (const p of SMB_CEILING) {
+            if (text.includes(p)) posProblems.push(`${src}: SMB-ceiling phrasing "${p}"`);
+        }
+    }
+    if (posProblems.length) {
+        fail('positioning',
+            `canonical positioning has drifted:\n      ` + posProblems.join('\n      ') +
+            `\n      The category is owned by docs/PRODUCT_STRATEGY.md §1. Restate it; do not\n` +
+            `      invent a variant. Indonesia and SMBs may be discussed as market and\n` +
+            `      segment — just not as the definition of what the product is.`);
+    } else {
+        ok('positioning', `"${CATEGORY}" consistent across ${CANONICAL_SOURCES.length} canonical sources`);
+    }
+
     // --- report ------------------------------------------------------------
     if (failures.length) {
         console.error('\nSTRUCTURAL DRIFT\n');
