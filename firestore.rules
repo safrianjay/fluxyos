@@ -288,36 +288,14 @@ service cloud.firestore {
         && data.updated_at == request.time;
     }
 
-    // Owner-scoped 3-day trial / billing access doc (users/{uid}/billing/access).
-    // Status enums only — no secrets, no formatted currency strings.
-    function isValidBillingAccess(data) {
-      return (!('access_status' in data) || data.access_status in [
-          'trial_not_started', 'trial_active', 'trial_expiring', 'trial_expired',
-          'payment_pending', 'payment_submitted', 'payment_verified', 'active', 'suspended'
-        ])
-        && (!('payment_status' in data) || data.payment_status in [
-          'not_started', 'pending', 'submitted', 'under_review', 'verified', 'rejected'
-        ])
-        && (!('account_status' in data) || data.account_status in ['trial', 'active', 'suspended'])
-        && (!('trial_duration_days' in data) || data.trial_duration_days is number)
-        && (!('plan_id' in data) || data.plan_id == null
-          || (data.plan_id is string && data.plan_id.size() <= 40));
-    }
-
-    // Owner-scoped manual payment proof (users/{uid}/payment_verifications/{id}).
-    // Raw-integer amounts only; no card data / secrets.
-    function isValidPaymentVerification(data) {
-      return data.amount is number && data.amount >= 0 && data.amount <= 999999999999
-        && data.currency == 'IDR'
-        && data.status in ['submitted', 'under_review', 'verified', 'rejected']
-        && (!('payment_method' in data) || data.payment_method in ['bank_transfer', 'manual', 'other'])
-        && (!('billing_period' in data) || data.billing_period == null
-          || data.billing_period in ['monthly', 'annual', 'custom'])
-        && (!('proof_file_name' in data) || data.proof_file_name == null
-          || (data.proof_file_name is string && data.proof_file_name.size() <= 240))
-        && (!('submitted_note' in data) || data.submitted_note == null
-          || (data.submitted_note is string && data.submitted_note.size() <= 500));
-    }
+    // NOTE: isValidBillingAccess / isValidPaymentVerification lived here and were
+    // removed 2026-08-16. They validated client writes to users/{uid}/billing/*
+    // and users/{uid}/payment_verifications/*, but both collections are
+    // `allow create, update, delete: if false` — server-only through the Admin
+    // SDK, which bypasses rules. So the validators had no reachable call path,
+    // and the rules compiler flagged them as unused. The CLI treats that as a
+    // warning; the Firebase console treats it as a hard error and refuses to
+    // publish the whole file, which is how they came to block a deploy.
 
     function isValidBillingPlan(planId) {
       return planId in ['trial', 'starter', 'core', 'growth', 'enterprise'];
@@ -1096,9 +1074,15 @@ service cloud.firestore {
 
     function activePlanAiLimit(userId) {
       let path = /databases/$(database)/documents/users/$(userId)/billing_subscription/current;
-      let sub = exists(path) ? get(path).data : null;
-      return (sub != null && (sub.status == 'active' || sub.status == 'cancel_scheduled'))
-        ? planMonthlyAiLimit(sub.plan_id)
+      // `{}` rather than `null` when the doc is absent. A map|null union makes the
+      // rules type-checker reject the file outright in the console ("Invalid type.
+      // Received one of [null]. Expected one of [map]"), which blocked a deploy.
+      // map.get(key, default) keeps the behaviour identical and fail-closed:
+      // no doc, no status, or no plan_id all fall through to -1, and every caller
+      // requires `limit > 0`, so -1 denies the write.
+      let sub = exists(path) ? get(path).data : {};
+      return (sub.get('status', '') == 'active' || sub.get('status', '') == 'cancel_scheduled')
+        ? planMonthlyAiLimit(sub.get('plan_id', ''))
         : -1;
     }
 
