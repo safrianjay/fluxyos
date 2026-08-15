@@ -75,10 +75,10 @@ balances. None keeps its own books.
 | Module | Status | Admission verb | Sequencing |
 |---|---|---|---|
 | Multi-entity / outlet dimension | 🧭 Strategic | Explains (per-entity performance) | **First — the only High-necessity AND High-demand item (§5b).** The sole explicit unmet customer request on record is per-outlet profitability. Finishes Layer 2 and unblocks branch reporting. The plumbing does **not** already exist — `entity_id` is the workspace id on every row. The line-level `dimension_id` seam shipped 2026-08-14 (`DIMENSION_SEAM_DESIGN.md`); the collection, rollup and UI have not |
-| Inventory & stock movement | 🧭 Strategic | Moves | **Minimum capability only** — high financial necessity, **zero verified customer demand** (`INVENTORY_DEMAND_VALIDATION.md`, 2026-08-15). Scope capped by §5b at a periodic stock count posting one COGS journal; no item master, no SKUs, no stock movements. Readiness + preparation: `INVENTORY_READINESS.md` |
+| Inventory & stock movement | 🧭 Strategic | Moves | **Funded — demand verified 2026-08-15** (~15 blocked F&B prospects, `INVENTORY_DEMAND_VALIDATION.md` §7). Scope is the F&B stack: ingredient master + UoM conversion, recipes/BOM, waste to `5150`, stock per outlet. Perpetual weighted-average model, periodic count as the first workflow. Readiness + preparation: `INVENTORY_READINESS.md` |
 | Purchasing / procurement | 🧭 Strategic | Moves | With inventory — receipts are how stock enters |
-| POS integration | 🧭 Strategic | Creates | **Third.** Adapter pattern reusing the commerce connector shape |
-| Recipes / bill of materials | 🧭 Strategic | Moves (consumed by COGS) | **Fourth.** Requires inventory + POS line items |
+| POS integration | 🧭 Strategic | Creates | **Demand verified — part of the same 15 F&B prospects.** Adapter pattern reusing the commerce connector shape; upgrades COGS from periodic to per-sale for the subset that already runs a till. Own terminal stays last and only for the no-till subset |
+| Recipes / bill of materials | 🧭 Strategic | Moves (consumed by COGS) | **Core v1, not fourth.** Menu COGS requires exploding a recipe, not decrementing a SKU — the 15 F&B prospects asked for menu-level COGS explicitly |
 | Forecasting / cash-flow prediction | 📋 Planned | Predicts | Layer 4 gap; much stronger once Layer 3 supplies operational inputs |
 | Approvals | 📋 Planned | Protects | Interleave — cheap, and closes a gap the sidebar already advertises |
 | Role dashboards (CEO/Finance/Accounting/Ops) | 📋 Planned | Explains | Interleave — Layer 5 currently serves one audience |

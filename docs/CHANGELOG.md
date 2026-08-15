@@ -7,6 +7,28 @@ All notable changes to FluxyOS are recorded here, newest first.
 ## [Unreleased]
 > Changes in progress — not yet pushed to main
 
+### Changed (Inventory demand VERIFIED — F&B stack funded, 2026-08-15)
+- **~15 F&B prospects require POS and ingredient-level inventory, and are blocked
+  on it shipping.** Source: the founder's sales pipeline — evidence outside the
+  repository, now recorded in `INVENTORY_DEMAND_VALIDATION.md` §7.
+- **Scenario A, not C.** Under §5b: high financial necessity **and** high customer
+  demand → funded, highest priority. Confirmed depth: ingredient stock and usage,
+  recipe/menu COGS, waste and spoilage, stock per outlet — all four.
+- **The generic goods model is withdrawn for this base.** Menu COGS requires
+  exploding a recipe at sale time, not decrementing a SKU. **Recipes/BOM move to
+  core v1**, and unit-of-measure conversion becomes mandatory (buy in kilos, sell
+  in portions).
+- **Perpetual weighted-average restored.** The 2026-08-14 decision stands; the
+  2026-08-15 downgrade to periodic-only reasoned from absent evidence and is
+  withdrawn. Periodic count remains the first workflow on that model.
+- **Sequencing wedges on what does not need a POS** (the base is mixed on whether
+  they run one): dimensions → item master + UoM → recipes/BOM → purchasing →
+  periodic count + waste → outlet P&L. POS integration then upgrades COGS from
+  periodic to per-sale; own terminal stays last.
+- Recorded in §5b as a standing lesson: **"no demand evidence found" must be
+  reported as *not found here*, never as *does not exist*** — most demand evidence
+  lives in a CRM, an inbox, or a founder's head.
+
 ### Changed (Inventory demand validation — necessity separated from demand, 2026-08-15)
 - **`PRODUCT_STRATEGY.md` gains §5b, the prioritization test.** Financial necessity
   and customer demand are now explicitly independent axes: high necessity with

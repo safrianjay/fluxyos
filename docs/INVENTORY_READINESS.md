@@ -133,21 +133,16 @@ asset"* in `tests/statements-engine.spec.js`.
 
 ## 4. Decisions taken, with rationale
 
-### ⚠️ Superseded 2026-08-15 — read `INVENTORY_DEMAND_VALIDATION.md` first
+### Costing: perpetual model, periodic workflow first — **confirmed**
 
-This section was written on the assumption that inventory was coming at full
-module scope. A demand review the next day found **zero verified customer
-requests** for inventory, and `PRODUCT_STRATEGY.md` §5b caps a
-high-necessity/no-demand module at the minimum capability required for
-correctness — a periodic stock count posting one COGS journal, with no item
-master, no SKUs and no stock movements.
-
-**The costing decision below is therefore deferred, not reversed.** It becomes
-live only if demand evidence funds the full module. The readiness findings in
-§§1–3 and §6 stand unchanged: they describe the foundation, which is needed
-either way.
-
-### Costing: perpetual model, periodic workflow first *(deferred — see above)*
+> **Decision history, kept because the reversal is instructive.** This was
+> decided 2026-08-14. On 2026-08-15 a repository-only demand review found no
+> verified requests and downgraded it to periodic-only under
+> `PRODUCT_STRATEGY.md` §5b. Later the same day the founder's sales pipeline
+> supplied ~15 blocked F&B prospects needing ingredient-level inventory with
+> recipes, waste and per-outlet stock — which **restores the original decision**.
+> The downgrade was reasoning from absent evidence, not from evidence of absence.
+> `INVENTORY_DEMAND_VALIDATION.md` §7.
 
 The docs disagreed. `CHART_OF_ACCOUNTS_STRATEGY.md:57` and
 `ACCOUNTING_DISCOVERY_STRATEGY.md` §2.14 both proposed periodic (month-end count
@@ -336,20 +331,25 @@ side effect of inventory prep is how the ledger breaks.
 *Revised 2026-08-15 against the demand evidence — see
 `INVENTORY_DEMAND_VALIDATION.md` §4.*
 
-1. **Finish the dimension**: `dimensions` collection, `ledger_balances_by_dim`
-   rollup + its integrity assertion, and the UI on the existing
-   `entity-menu-add` stub. The only High-necessity **and** High-demand item —
-   per-outlet profitability is the sole explicit unmet request on record.
-2. **Minimum inventory for correctness**: a periodic stock value per period
-   posting one COGS journal (Dr `5100` / Cr `1200`). No item master, no SKUs, no
-   movements. Discharges the financial-correctness case in full and doubles as a
-   demand instrument.
-3. **Re-validate before expanding.** Item master, purchasing/receiving, per-SKU
-   costing, POS and BOM stay unfunded until evidence supports them.
-4. Only if funded: **inventory movements + weighted-average costing**, then
-   **POS integration**, then **recipes/BOM**.
+*Revised 2026-08-15 on verified demand — ~15 blocked F&B prospects.
+`INVENTORY_DEMAND_VALIDATION.md` §7 holds the reasoning and the commercial risk.*
 
-The earlier version of this list put demand validation first and then assumed the
-full module. The validation has now been run against everything readable in the
-repo; what it found is that step 1 outranks inventory entirely, and step 2 is
-smaller than this document originally scoped.
+The wedge is everything that does **not** depend on a POS, because the prospect
+base is mixed on whether they already run one:
+
+1. **Dimensions collection + `ledger_balances_by_dim` rollup** — "stock per
+   outlet" and "outlet P&L" both need it; the irreversible half shipped.
+2. **Item master with UoM + conversion**, `type: 'stock' | 'composite'` from the
+   first write. Buy in kilos, sell in portions — without conversion, cost per
+   unit is not computable.
+3. **Recipes / BOM** — composite items exploding into components. Core v1 for
+   F&B, not a later phase.
+4. **Purchasing / receiving** — ingredient stock in, clearing through `2050 GRNI`.
+5. **Periodic count per outlet + waste entry** — COGS to `5100`, waste to `5150`
+   (`operating_expense`, so spoilage cannot hide inside gross margin).
+6. **POS integration** — upgrades COGS from periodic to per-sale for the subset
+   that already has a till, on the commerce connector pattern.
+7. **Own terminal** — last, and only if the no-till subset justifies it alone.
+
+Steps 1–5 are the revenue unlock and serve all 15 regardless of POS. Step 6 is
+an accuracy upgrade, not a prerequisite.

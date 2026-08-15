@@ -274,7 +274,7 @@ Verified against the codebase, not from memory or roadmap intent.
 | Commerce / marketplace order sync | ✅ Phases 1–3 | `commerce_*` collections, Shopee/TikTok connectors |
 | WhatsApp AI | 📋 | `settings-whatsapp.html` exists; planning only |
 | **Approval workflows** | **📋 Not built** | Sidebar shows disabled `Soon`; no data contract. The word appears only in budget copy. |
-| Inventory & stock movement | 🔭 | Admitted §5. The missing input to true COGS. **Readiness assessed 2026-08-14 (`INVENTORY_READINESS.md`); demand assessed 2026-08-15 (`INVENTORY_DEMAND_VALIDATION.md`) — high financial necessity, ZERO verified demand.** Status per §5b: minimum capability for correctness, not a funded module. Kernel is ready; the dimension seam, cursor pagination and the `1200`/`2050`/`5150` accounts shipped as preparation. No inventory collection, page or posting rule is built |
+| Inventory & stock movement | 🔭 → **funded** | Admitted §5. **Demand verified 2026-08-15: ~15 F&B prospects require ingredient-level inventory + POS and are blocked on it (`INVENTORY_DEMAND_VALIDATION.md` §7).** High necessity AND high demand under §5b. Scope is the F&B stack — ingredient master with UoM, recipes/BOM, waste, stock per outlet — **not** generic SKU decrement. Kernel ready; dimension seam, cursor pagination and `1200`/`2050`/`5150` shipped as preparation. No inventory collection, page or posting rule is built yet |
 | Purchasing / procurement | 🔭 | Admitted §5 |
 | POS integration | 🔭 | Admitted §5 |
 | Recipes / bill of materials | 🔭 | Admitted §5 (enables F&B COGS) |
@@ -486,11 +486,20 @@ validated customer problem — never that mature ERPs ship one. The same test
 applies to POS, CRM, procurement, payroll, asset management, production, order
 management, and branch management.
 
-> **Worked example — Inventory, assessed 2026-08-15:** high financial necessity,
-> **zero explicit demand** in any available evidence. Verdict: minimum capability
-> for correctness (a periodic stock count posting one COGS journal), not a funded
-> module. Full evidence review, segment call and the scope this implies:
-> `INVENTORY_DEMAND_VALIDATION.md`.
+> **Worked example — Inventory, assessed 2026-08-15.** A first pass over the
+> repository found high financial necessity and **zero explicit demand**, which
+> caps a module at minimum capability. The same day, the founder's sales pipeline
+> supplied the missing axis: **~15 F&B prospects requiring POS and
+> ingredient-level inventory, all blocked on it shipping.** High necessity **and**
+> high demand → build it.
+>
+> Two lessons worth keeping. **The framework was right and the input was blind** —
+> most demand evidence lives in a CRM, an inbox, or a founder's head, not in a
+> repository, so "no evidence found" must be reported as *not found here*, never
+> as *does not exist*. And the demand, once known, changed the **shape** as well as
+> the priority: ingredient-level with recipes, waste and per-outlet stock is a
+> different product from SKU-decrement inventory. Full record:
+> `INVENTORY_DEMAND_VALIDATION.md` §7.
 
 ---
 

@@ -2,7 +2,7 @@
 status: current
 owns: [inventory demand evidence, scope validation, segment call]
 updated: 2026-08-15
-verify: re-run the evidence sweep before acting; sales_leads was NOT readable when this was written
+verify: §7 supersedes §5 — demand verified 2026-08-15 from the founder sales pipeline (~15 blocked F&B prospects)
 ---
 
 # Inventory — demand validation
@@ -16,6 +16,25 @@ Inventory has **two independent justifications, and they must not be conflated**
 
 The first is **established** (`PRODUCT_STRATEGY.md` §4). The second is what this
 document assesses. **A high financial necessity does not license a full module.**
+
+---
+
+> ## ⚠️ DEMAND VERIFIED 2026-08-15 — this document's original conclusion is overturned
+>
+> **~15 F&B prospects require POS and ingredient-level inventory. All are blocked:
+> they will not sign until it ships.** Source: the founder's sales pipeline —
+> evidence that exists outside the repository, which is why the sweep below could
+> not find it.
+>
+> Confirmed depth — they need **all four**: ingredient stock and usage, recipe /
+> menu COGS, waste and spoilage, and stock per outlet. POS situation is **mixed**:
+> some already run a till, some need one.
+>
+> **This is Scenario A, not C.** Under §5b that is high financial necessity **and**
+> high customer demand → build it, highest priority. Not a minimum capability.
+>
+> §§1–3 below are preserved as the record of what the repository contained. The
+> scope call in §5 is **superseded by §7**.
 
 ---
 
@@ -77,7 +96,7 @@ Services · Other*.
 
 **None of this was readable when this document was written** — Firestore needs
 production credentials, and the email/Slack archives sit outside the repo.
-**Every conclusion below is provisional on that data.**
+**Every conclusion below was provisional on that data — and §7 records the data arriving.**
 
 ---
 
@@ -121,7 +140,9 @@ That distinction decides the scenario:
 | **C — Multi-outlet financial visibility dominant** (dimensions → sales data → COGS → outlet P&L) | ✅ **This one.** The only explicit request, from the only CEO in the corpus |
 | **D — No meaningful operational demand** | ◐ Partly true, and points the same way |
 
-**Verdict: Scenario C, with an F&B-leaning base.** Inventory enters later as the
+**⚠️ Verdict below was OVERTURNED on 2026-08-15 — see the banner at the top and §7. Retained as the record of what the repository alone supported.**
+
+**Verdict (repository evidence only): Scenario C, with an F&B-leaning base.** Inventory enters later as the
 upstream that makes outlet-level COGS accurate — not as the flagship.
 
 ---
@@ -143,7 +164,7 @@ its irreversible half (`dimension_id` on journal lines) **already shipped**.
 
 ---
 
-## 5. Smallest useful scope
+## 5. Smallest useful scope *(SUPERSEDED — see §7)*
 
 > **Periodic inventory: a stock value per period, and one computed COGS journal.**
 >
@@ -208,3 +229,88 @@ This document is provisional on `sales_leads`. Re-run the sweep and revise if:
 
 Until then: **build the minimum for correctness, keep validating, and do not fund
 the full module.**
+
+
+---
+
+## 7. Revised plan on verified demand (2026-08-15)
+
+### What the evidence now is
+
+| | |
+|---|---|
+| **Volume** | ~15 F&B prospects |
+| **Requirement** | POS **and** intelligent inventory |
+| **Depth** | Ingredient stock/usage · recipe & menu COGS · waste & spoilage · stock per outlet — **all four** |
+| **POS today** | **Mixed** — some run a till, some do not |
+| **Sales stage** | **Blocked.** No signature until it ships |
+| **Source** | Founder sales pipeline. Not in the repository; recorded here so it is |
+
+### Three consequences
+
+1. **The generic goods model is wrong for this base.** That decision was taken on
+   2026-08-14 when no F&B demand signal existed. It does now, and
+   `PRODUCT_STRATEGY.md` §7's warning is live: a dish consumes many ingredients,
+   so menu COGS requires **exploding a recipe at sale time**, not decrementing a
+   SKU. Recipes/BOM move from "fourth, later" to **core v1**.
+2. **Perpetual weighted-average is the right model after all.** The original
+   2026-08-14 call stands; the 2026-08-15 downgrade to periodic-only was made on
+   absent evidence and is withdrawn. Periodic counts remain the first *workflow*
+   on that model, and POS-driven per-sale decrement lands on it later without a
+   rewrite.
+3. **Unit-of-measure conversion is now mandatory, not optional.** You buy flour in
+   kilos and sell it in portions. Without conversion factors, cost per unit is not
+   computable — and this is independent of recipes.
+
+### The wedge: ship the part that does not need a POS
+
+"Mixed" POS is the sequencing problem — building a till serves only part of the
+base and is the slowest thing on the list (offline-tolerant realtime, hardware,
+a support contract unlike anything here today).
+
+**Everything below works for all 15 regardless of their POS situation:**
+
+```
+ingredient master + UoM  →  recipes / BOM  →  purchasing & receiving
+   →  periodic count per outlet  →  waste entry  →  COGS journal per outlet
+   →  outlet P&L
+```
+
+That delivers all four requested capabilities. Menu COGS is *approximate* under
+periodic counting rather than per-sale — worth naming to prospects, because it is
+still the number they do not have today.
+
+**POS integration then upgrades accuracy from periodic to per-sale** for the
+subset that already runs a till, reusing the connector pattern that ships TikTok
+Shop and Shopee. **Building our own terminal stays last** and only for the subset
+that genuinely has no till — §7 of the strategy doc is unchanged on that point.
+
+### Dependency order
+
+1. **Dimensions collection + `ledger_balances_by_dim` rollup** — "stock per
+   outlet" and "outlet P&L" both require it. The irreversible half
+   (`dimension_id` on journal lines) already shipped.
+2. **Item master with UoM + conversion**, `type: 'stock' | 'composite'` populated
+   from the first write — the composite seam is what recipes later attach to.
+3. **Recipes / BOM** — composite items exploding into components.
+4. **Purchasing / receiving** — ingredient stock in, clearing through `2050 GRNI`.
+5. **Periodic count per outlet + waste entry** — COGS journal (Dr `5100` /
+   Cr `1200`), waste to `5150` (`operating_expense`, deliberately not `cogs`, so
+   spoilage cannot hide inside gross margin).
+6. **POS integration** for the subset that has a till.
+7. **Own terminal** — only if the no-till subset is worth it on its own.
+
+Steps 1–5 are the revenue unlock. Step 6 is the accuracy upgrade.
+
+### The commercial risk, stated plainly
+
+Fifteen prospects blocked on a multi-month build means **no revenue from any of
+them until steps 1–5 ship**. That is a real cash-flow exposure and it argues for:
+
+- **Sequencing to a demoable slice**, not to architectural completeness — an
+  owner needs to see their own menu COGS before they believe it.
+- **Design partners.** Fifteen blocked F&B prospects is exactly the discovery
+  cohort `ACCOUNTING_EXPERT_INTERVIEW_GUIDE.md` was written for, and building
+  *with* two or three of them beats building ahead of all fifteen.
+- **Naming the periodic-vs-per-sale distinction up front**, so the first release
+  is not measured against a promise nobody made.
