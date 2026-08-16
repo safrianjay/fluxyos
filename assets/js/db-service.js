@@ -5,7 +5,7 @@ import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJo
 import { buildTaxAppendix, billWithheldAmount, TAX_RATES } from "./tax-engine.js";
 import { computeAging } from "./aging-engine.js";
 import { buildIncomeStatement, buildBalanceSheet, buildCashFlow } from "./statements-engine.js";
-import { validateItemDraft, normalizeComponents, explodeRecipe, recipeCost, ITEM_TYPES } from "./inventory-engine.js";
+import { validateItemDraft, normalizeComponents, explodeRecipe, recipeCost, countVariance, wasteValue, unitCostOf, ITEM_TYPES } from "./inventory-engine.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
 // See docs/TRIAL_ACCESS_AND_PAYMENT_BANNER_PLAN.md and PROJECT_BACKGROUND §4k.
@@ -5443,6 +5443,143 @@ class DataService {
             vendor_name: vendorName, total_amount: total, line_count: lines.length, dimension_id: dimensionId
         });
         return { id: receiptRef.id, ...payload };
+    }
+
+    // Stock count and waste — where inventory becomes COGS.
+    //
+    //   count short   Dr 5100 COGS   / Cr 1200   STOCK-COUNT-COGS
+    //   count over    Dr 1200        / Cr 5100   STOCK-COUNT-GAIN
+    //   waste         Dr 5150        / Cr 1200   STOCK-WASTE
+    //
+    // Waste posts to 5150 and NOT to COGS on purpose: folding spoilage into cost
+    // of goods sold makes gross margin absorb the loss it should expose. For F&B,
+    // where waste is routine and material, that is the difference between a
+    // margin an owner can act on and one that hides the problem.
+    //
+    // Waste recorded as it happens reduces the system quantity, so the next
+    // count's variance is what the kitchen actually consumed — the two do not
+    // double-count each other.
+    async createStockAdjustment(userId, data = {}) {
+        if (!userId) throw new Error('userId required');
+        const type = data.adjustment_type === 'waste' ? 'waste' : 'count';
+        const scope = this._scope(userId);
+        const entityId = this._resolvedScopeId(userId);
+        const dimensionId = this._nullableString(data.dimension_id, 60);
+        const reference = this._nullableString(data.reference, 60);
+        const when = data.counted_at instanceof Date ? data.counted_at : new Date();
+
+        const [items, onHand] = await Promise.all([
+            this.getItems(userId, { includeArchived: true }),
+            this.getStockOnHand(userId, { byDimension: true })
+        ]);
+        const byId = {}; items.forEach((i) => { byId[i.id] = i; });
+        const key = (itemId) => `${itemId}__${dimensionId || '__unassigned__'}`;
+
+        const lines = (Array.isArray(data.lines) ? data.lines : []).map((l) => {
+            const itemId = String((l && l.item_id) || '').trim();
+            const item = byId[itemId];
+            if (!item) throw new Error(`Item "${itemId}" does not exist.`);
+            const sys = onHand[key(itemId)] || { quantity: 0, value: 0 };
+            if (type === 'waste') {
+                const w = wasteValue(sys.quantity, sys.value, l.quantity);
+                return { item_id: itemId, item_name: item.name, base_unit: item.base_unit,
+                         system_quantity: sys.quantity, quantity: -w.quantity, amount: -w.amount };
+            }
+            const v = countVariance(sys.quantity, sys.value, l.counted_quantity);
+            return { item_id: itemId, item_name: item.name, base_unit: item.base_unit,
+                     system_quantity: sys.quantity, counted_quantity: Number(l.counted_quantity),
+                     quantity: v.varianceQty, amount: v.amount };
+        });
+        if (!lines.length) throw new Error('A stock adjustment needs at least one line.');
+
+        // Signed net: negative means stock left. Rounding already happened once
+        // per line, because each line becomes a movement whose integer amounts
+        // must sum to the journal.
+        const total = lines.reduce((sum, l) => sum + l.amount, 0);
+        if (total === 0) {
+            // Nothing moved in value terms — posting a zero journal would fail
+            // the engine's balance assertion (GL_003) and mean nothing anyway.
+            throw new Error('This adjustment nets to zero — nothing to post.');
+        }
+
+        const ref = doc(collection(this.db, `${scope}/stock_adjustments`));
+        const payload = {
+            adjustment_type: type, dimension_id: dimensionId, reference,
+            lines, total_amount: total, line_count: lines.length, status: 'posted',
+            timestamp: Timestamp.fromDate(when),
+            created_by: this.actorUid || userId, created_at: serverTimestamp()
+        };
+
+        const batch = writeBatch(this.db);
+        await this._postSourceJournal(userId, batch, 'stock_adjustments', ref, payload, {});
+        batch.set(ref, payload);
+
+        const periodKey = acctPeriodKey(when);
+        lines.forEach((l) => {
+            if (!l.quantity && !l.amount) return; // a line that counted exactly right
+            const mref = doc(collection(this.db, `${scope}/stock_movements`));
+            batch.set(mref, {
+                item_id: l.item_id, item_name: l.item_name, dimension_id: dimensionId,
+                quantity: l.quantity, base_unit: l.base_unit, amount: l.amount,
+                movement_type: type === 'waste' ? 'waste' : 'count',
+                source: { collection: 'stock_adjustments', id: ref.id },
+                journal_ref: payload.journal_ref || null,
+                period_key: periodKey, entity_id: entityId,
+                created_by: this.actorUid || userId, created_at: serverTimestamp()
+            });
+        });
+
+        await batch.commit();
+        await this._auditCreateBestEffort(userId, `stock_${type}.created`, 'stock_adjustments', ref.id, {
+            total_amount: total, line_count: lines.length, dimension_id: dimensionId
+        });
+        return { id: ref.id, ...payload };
+    }
+
+    // Per-outlet P&L — the reason the dimension shipped first.
+    //
+    // Reads ledger_balances_by_dim (the breakdown written alongside every
+    // posting) and runs the SAME buildIncomeStatement the consolidated statement
+    // uses, once per dimension. Reusing it is the point: an outlet P&L computed
+    // by different arithmetic would eventually disagree with the company one, and
+    // PRODUCT_STRATEGY §6 forbids a second source of truth.
+    async getOutletPnL(userId, { periodKey = null } = {}) {
+        const scope = this._scope(userId);
+        const [snap, coa, dims] = await Promise.all([
+            getDocs(collection(this.db, `${scope}/ledger_balances_by_dim`)),
+            this.getChartOfAccounts(userId),
+            this.getDimensions(userId, { includeArchived: true })
+        ]);
+        const meta = {};
+        (coa || []).forEach((a) => {
+            meta[a.code] = { name: a.name, name_id: a.name_id || null, type: a.type, sak_category: a.sak_category || null };
+        });
+        const dimName = {};
+        (dims || []).forEach((d) => { dimName[d.id] = d.name; });
+
+        const byDim = {};
+        snap.forEach((d) => {
+            const r = d.data() || {};
+            if (periodKey && r.period_key !== periodKey) return;
+            const m = meta[r.account_code];
+            if (!m) return; // an account the chart no longer has
+            const id = r.dimension_id || '__unassigned__';
+            (byDim[id] || (byDim[id] = [])).push({
+                account_code: r.account_code, account_name: m.name, account_name_id: m.name_id,
+                account_type: m.type, sak_category: m.sak_category,
+                debit_total: Number(r.debit_total) || 0, credit_total: Number(r.credit_total) || 0
+            });
+        });
+
+        return Object.entries(byDim).map(([id, rows]) => ({
+            dimension_id: id === '__unassigned__' ? null : id,
+            // Unassigned is surfaced, never hidden: postings made before a
+            // dimension existed are real money and would otherwise vanish from
+            // the sum of the outlets.
+            dimension_name: id === '__unassigned__' ? 'Unassigned' : (dimName[id] || id),
+            period_key: periodKey,
+            statement: buildIncomeStatement(rows)
+        })).sort((a, b) => String(a.dimension_name).localeCompare(String(b.dimension_name)));
     }
 
     async getGoodsReceipts(userId, { limitCount = 100 } = {}) {

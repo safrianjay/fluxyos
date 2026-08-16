@@ -1,6 +1,6 @@
 ---
 status: current
-owns: [goods_receipts, stock_movements]
+owns: [goods_receipts, stock_movements, stock_adjustments]
 updated: 2026-08-16
 source: docs/INVENTORY_DEMAND_VALIDATION.md §7
 ---
@@ -99,6 +99,55 @@ arrived. `BILL-ACCRUE` there would double-count it and leave GRNI open forever.
 The journal posts the receipt **total** to 1200, not one line per item — exactly
 as an invoice posts its total to A/R while the line detail lives in its own
 subcollection. Per-item detail is what `stock_movements` is for.
+
+## 4b. `stock_adjustments/{id}` — count and waste
+
+Where inventory becomes COGS.
+
+```
+count short   Dr 5100 COGS / Cr 1200    STOCK-COUNT-COGS
+count over    Dr 1200      / Cr 5100    STOCK-COUNT-GAIN
+waste         Dr 5150      / Cr 1200    STOCK-WASTE
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `adjustment_type` | enum | `count` \| `waste` |
+| `dimension_id` | string \| null | Which outlet was counted |
+| `lines` | array | count: `{item_id, system_quantity, counted_quantity, quantity, amount}` · waste: `{item_id, system_quantity, quantity, amount}` |
+| `total_amount` | integer, **signed** | Negative means stock left. Deliberately not bounded ≥ 0 the way a receipt total is |
+
+**Waste posts to `5150`, not to COGS.** Folding spoilage into cost of goods sold
+makes gross margin absorb the loss it should expose. For F&B, where waste is
+routine and material, that is the difference between a margin an owner can act on
+and one that hides the problem (`PRODUCT_STRATEGY.md` §7).
+
+**Waste and counts do not double-count.** Waste recorded as it happens reduces
+the system quantity, so the next count's variance is what the kitchen actually
+consumed.
+
+**Costing is weighted average, derived not stored.** Unit cost is value on hand ÷
+quantity on hand, both sums over `stock_movements`. There is no cached cost to
+drift. The rate is fractional on purpose; money is rounded **once per line**,
+because each line becomes a movement whose integer amounts must sum to the
+journal.
+
+A count that nets to zero is rejected rather than posted — a zero journal would
+fail the engine's balance assertion and would mean nothing.
+
+## 4c. Outlet P&L
+
+`getOutletPnL(userId, { periodKey })` reads `ledger_balances_by_dim`, joins
+`sak_category` from the chart, and runs **the same `buildIncomeStatement`** the
+consolidated statement uses, once per dimension.
+
+Reusing it is the point. An outlet P&L computed by different arithmetic would
+eventually disagree with the company one, and `PRODUCT_STRATEGY.md` §6 forbids a
+second source of truth.
+
+Postings with no dimension are surfaced as **"Unassigned"**, never hidden — they
+are real money, and dropping them would make the outlets fail to sum to the
+company.
 
 ## 5. Stock on hand
 

@@ -302,3 +302,53 @@ export function recipeCost(itemsById, unitCostByItemId, itemId, quantityBase) {
     });
     return { cost: Math.round(total), components: exploded, missingCost: missing };
 }
+
+
+// --- costing: weighted average from the subledger --------------------------
+//
+// Unit cost is DERIVED, never stored: value on hand / quantity on hand, both of
+// which are sums over stock_movements. There is no cached cost to drift from the
+// movements that produce it — the same reason getStockOnHand sums rather than
+// caching a running total.
+//
+// The rate is fractional on purpose (Rp0,012 per gram is real). Only the money
+// that reaches a journal is rounded, and it is rounded once per line, because
+// each line becomes its own stock_movement whose integer amounts must sum to the
+// journal total.
+
+export function unitCostOf(systemQuantity, systemValue) {
+    const q = Number(systemQuantity) || 0;
+    if (q === 0) return 0;
+    return (Number(systemValue) || 0) / q;
+}
+
+// A physical count against what the subledger believes.
+//
+// varianceQty is counted − system, so it is NEGATIVE when stock has left without
+// a recorded movement — which for F&B is overwhelmingly consumption, i.e. COGS.
+// Waste recorded as it happens has already reduced `system`, so it is not
+// double-counted here; whatever remains is what the kitchen actually used.
+export function countVariance(systemQuantity, systemValue, countedQuantity) {
+    const counted = Number(countedQuantity);
+    if (!Number.isInteger(counted) || counted < 0) {
+        throw invError(INV.NON_INTEGER_QUANTITY,
+            `inventory: counted quantity must be a whole number of base units (got ${countedQuantity})`,
+            { counted: String(countedQuantity) });
+    }
+    const unitCost = unitCostOf(systemQuantity, systemValue);
+    const varianceQty = counted - (Number(systemQuantity) || 0);
+    return { unitCost, varianceQty, amount: Math.round(varianceQty * unitCost) };
+}
+
+// Explicit spoilage/breakage. Always a reduction, so quantity is given positive
+// and the movement it produces is negative.
+export function wasteValue(systemQuantity, systemValue, quantity) {
+    const q = Number(quantity);
+    if (!Number.isInteger(q) || q <= 0) {
+        throw invError(INV.NON_INTEGER_QUANTITY,
+            `inventory: waste quantity must be a positive whole number of base units (got ${quantity})`,
+            { quantity: String(quantity) });
+    }
+    const unitCost = unitCostOf(systemQuantity, systemValue);
+    return { unitCost, quantity: q, amount: Math.round(q * unitCost) };
+}

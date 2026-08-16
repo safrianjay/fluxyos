@@ -222,6 +222,13 @@ const SALES_RETURNS = '4900';  // contra-revenue (debit normal) — refunds/retu
 const FEE_EXPENSE = '6600';
 const TAX_EXPENSE = '6500';
 const UNMAPPED_EXPENSE = '6999';
+// Cost of stock a customer actually bought.
+const COGS = '5100';
+// Spoilage, breakage, shrinkage. Deliberately NOT 5100: folding waste into COGS
+// makes gross margin absorb the loss it should expose, which for F&B is the
+// difference between a margin an owner can act on and one that hides the
+// problem (PRODUCT_STRATEGY.md §7).
+const WASTE = '5150';
 
 // Category/type → expense (or revenue) account. Mirrors ACCOUNTING_CATEGORY_DEFAULTS
 // and ACCOUNTING_TYPE_DEFAULTS in db-service.js. Kept here so the engine resolves
@@ -562,6 +569,13 @@ export function selectRule(collection, document) {
         return 'BILL-ACCRUE';
     }
     if (collection === 'goods_receipts') return 'GR-RECEIPT';
+    if (collection === 'stock_adjustments') {
+        if (doc.adjustment_type === 'waste') return 'STOCK-WASTE';
+        // A count that found MORE than the books expected reverses into stock
+        // rather than crediting COGS with a negative, so the ledger reads as
+        // what happened: an asset was understated.
+        return toInt(doc.total_amount) >= 0 ? 'STOCK-COUNT-GAIN' : 'STOCK-COUNT-COGS';
+    }
     if (collection === 'subscriptions') return 'SUB-ACCRUE';
     if (collection === 'invoices') {
         const status = String(doc.status || '').trim().toLowerCase();
@@ -655,6 +669,31 @@ const RULES = {
             line(AP, 0, amt, doc.vendor_name || 'Payable')
         ];
     },
+    // Physical count short of the books: the stock left without a recorded
+    // movement, which for F&B is consumption. Waste already recorded reduced the
+    // system quantity, so it is not counted twice here.
+    'STOCK-COUNT-COGS': (doc) => {
+        const amt = requireAmount(Math.abs(toInt(doc.total_amount)), 'stock count');
+        return [
+            line(COGS, amt, 0, doc.reference || 'Stock consumed'),
+            line(INVENTORY, 0, amt, doc.reference || 'Stock count')
+        ];
+    },
+    // Count found more than the books held — an understated asset, corrected.
+    'STOCK-COUNT-GAIN': (doc) => {
+        const amt = requireAmount(toInt(doc.total_amount), 'stock count gain');
+        return [
+            line(INVENTORY, amt, 0, doc.reference || 'Stock count gain'),
+            line(COGS, 0, amt, doc.reference || 'Stock count gain')
+        ];
+    },
+    'STOCK-WASTE': (doc) => {
+        const amt = requireAmount(Math.abs(toInt(doc.total_amount)), 'stock waste');
+        return [
+            line(WASTE, amt, 0, doc.reference || 'Spoilage / waste'),
+            line(INVENTORY, 0, amt, doc.reference || 'Spoilage / waste')
+        ];
+    },
     'BILL-PAY': (doc) => {
         const amt = requireAmount(doc.amount, 'bill payment');
         return [line(AP, amt, 0, doc.vendor_name || 'Payable settled'), line(CASH, 0, amt, 'Cash paid')];
@@ -686,6 +725,9 @@ const RULE_DESCRIPTIONS = {
     'TXN-ACCRUE-AP': 'Accrued payable',
     'BILL-ACCRUE': 'Bill accrued',
     'GR-RECEIPT': 'Goods received',
+    'STOCK-COUNT-COGS': 'Stock count — consumption',
+    'STOCK-COUNT-GAIN': 'Stock count — gain',
+    'STOCK-WASTE': 'Waste / spoilage',
     'BILL-GRNI': 'Supplier invoice for goods received',
     'BILL-PAY': 'Bill paid',
     'SUB-ACCRUE': 'Subscription accrued',

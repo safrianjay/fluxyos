@@ -2615,7 +2615,7 @@ service cloud.firestore {
           'commerce_settlements', 'commerce_payouts', 'commerce_sync_jobs',
           'commerce_sync_errors', 'commerce_webhook_logs', 'duplicate_reviews',
           'dimensions', 'ledger_balances_by_dim', 'items',
-          'goods_receipts', 'stock_movements'
+          'goods_receipts', 'stock_movements', 'stock_adjustments'
         ]
         && data.target_id is string && data.target_id.size() <= 200
         && data.source in ['dashboard', 'ai', 'integration', 'system']
@@ -3378,6 +3378,19 @@ service cloud.firestore {
           && request.resource.data.total_amount >= 0
           && request.resource.data.lines is list
           && request.resource.data.status in ['received', 'billed', 'reversed'];
+        allow delete: if false;
+      }
+      // Stock count and waste. Posts STOCK-COUNT-COGS / STOCK-COUNT-GAIN /
+      // STOCK-WASTE. `total_amount` is SIGNED — negative means stock left — so
+      // it is deliberately not bounded at >= 0 the way a receipt total is.
+      // Never deleted: it carries an immutable journal.
+      match /stock_adjustments/{adjustmentId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && request.resource.data.adjustment_type in ['count', 'waste']
+          && request.resource.data.total_amount is number
+          && request.resource.data.lines is list
+          && request.resource.data.status in ['posted', 'reversed'];
         allow delete: if false;
       }
       // Stock movements — the subledger 1200 Inventory must tie to.
