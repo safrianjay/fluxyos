@@ -209,6 +209,15 @@
                             <h2 class="fluxy-table-title">Items</h2>
                             <p class="fluxy-table-subtitle">Quantities are summed from every receipt, count, and waste record — nothing here is typed in by hand.</p>
                         </div>
+                        <div class="fluxy-table-actions">
+                            <!-- Counting acts on the stock in this table, so it
+                                 belongs to the table rather than the page chrome —
+                                 and the topbar already holds its one primary action. -->
+                            <a id="count-stock-link" href="/inventory-count" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 inline-flex items-center gap-2 shadow-sm whitespace-nowrap">
+                                <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m-6 9 2 2 4-4"></path></svg>
+                                Count stock
+                            </a>
+                        </div>
                     </div>
 
                     <div class="fluxy-table-toolbar">
@@ -471,6 +480,17 @@
         }
 
         // ── Load ─────────────────────────────────────────────────────────────
+        // Page to a row and put it on screen. The item list paginates at 10, and a
+        // master list is sorted by name — so a newly saved item routinely lands on
+        // a page the user is not looking at and reads as though the save failed.
+        function revealItem(itemId) {
+            if (!paginator || !itemId) return;
+            const found = paginator.goToRow((r) => r.item.id === itemId);
+            if (!found) return;
+            const row = document.querySelector(`#inventory-body [data-item-id="${itemId}"]`);
+            if (row) row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+
         async function loadInventory() {
             const [items, onHand, dims, receipts] = await Promise.all([
                 ds.getItems(currentUid),
@@ -772,12 +792,13 @@
             btn.disabled = true;
             btn.textContent = 'Saving…';
             try {
-                await ds.saveItem(currentUid, draft, editingItem
+                const saved = await ds.saveItem(currentUid, draft, editingItem
                     ? { create: false, itemId: editingItem.id }
                     : { create: true });
                 window.showToast(editingItem ? 'Item updated.' : 'Item added.', 'success');
                 closeDrawer();
                 await loadInventory();
+                revealItem(saved && saved.id);
             } catch (err) {
                 showError(INV_MESSAGES[err.code] || err.message || 'Could not save this item.');
             } finally {
@@ -1012,6 +1033,8 @@
                 window.showToast('Stock received.', 'success');
                 closeReceiptDrawer();
                 await loadInventory();
+                // Show the stock that just arrived rather than page 1 of the master.
+                revealItem(lines[0] && lines[0].item_id);
             } catch (err) {
                 showReceiptError(err.message || 'Could not record this delivery.');
             } finally {

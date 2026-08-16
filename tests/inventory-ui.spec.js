@@ -61,7 +61,13 @@ test('an item can be created from the page and shows up in the table', async ({ 
     await page.fill('#item-shelf', 'Dry store — shelf A');
     await page.click('#item-save-btn');
 
-    // Drawer closes and the row is on the page.
+    // Drawer closes and the row is ON THE VISIBLE PAGE.
+    //
+    // This assertion is load-bearing, not incidental: the table paginates at 10
+    // and the master list is sorted by name, so a new item routinely belongs on
+    // a page the user is not looking at. Before revealItem() the save appeared to
+    // do nothing. The locator only matches rendered rows, so it fails if the row
+    // exists but sits on another page.
     await expect(page.locator('#item-drawer')).toHaveClass(/translate-x-full/, { timeout: 20000 });
     const row = page.locator(`#inventory-body tr:has-text("${TAG} Tepung")`);
     await expect(row).toHaveCount(1);

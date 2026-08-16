@@ -4668,7 +4668,47 @@
         // Deliveries table
         "Last 10 deliveries": "10 pengiriman terakhir",
         "Each one raised stock and parked its cost in Goods Received Not Invoiced until the supplier's bill clears it.": "Masing-masing menambah stok dan menaruh biayanya di Goods Received Not Invoiced sampai tagihan supplier melunasinya.",
-        "Unknown outlet": "Outlet tidak dikenal"
+        "Unknown outlet": "Outlet tidak dikenal",
+
+        // ── Stock count (inventory-count.html) ───────────────────────────────
+        // "Stock opname" is what Indonesian retail and F&B actually call a
+        // physical count — see LOCALIZATION_PLAN §2.
+        "Stock count": "Stock opname",
+        "Count what is physically on the shelf; FluxyOS works out what was used and books it.": "Hitung yang benar-benar ada di rak; FluxyOS yang menghitung berapa yang terpakai dan membukukannya.",
+        "Back to Inventory": "Kembali ke Persediaan",
+        "Which outlet are you counting?": "Outlet mana yang Anda hitung?",
+        "Stock not assigned to an outlet": "Stok yang belum ditetapkan ke outlet",
+        "Find an item": "Cari item",
+        "Name or shelf": "Nama atau rak",
+        "Nothing counted yet": "Belum ada yang dihitung",
+        "Leave an item blank to skip it": "Kosongkan item untuk melewatinya",
+        "No shelf set": "Rak belum diisi",
+        "No items to count": "Tidak ada item untuk dihitung",
+        "Add the ingredients and goods you hold first, then receive stock against them.": "Tambahkan dulu bahan dan barang yang Anda simpan, lalu catat penerimaan barangnya.",
+        "Go to Inventory": "Buka Persediaan",
+        "Try part of the name or the shelf it sits on.": "Coba sebagian nama atau rak tempatnya.",
+        "Matches the system": "Sesuai catatan sistem",
+        "Enter a number, or leave it blank to skip.": "Masukkan angka, atau kosongkan untuk melewati.",
+        "Nothing to post yet": "Belum ada yang bisa diposting",
+        "Cost of stock used — posts to 5100 Cost of Goods Sold": "Biaya stok terpakai — diposting ke 5100 Harga Pokok Penjualan",
+        "More on the shelf than the system knew": "Di rak lebih banyak daripada catatan sistem",
+        "Quantities differ, but these items have no recorded cost — nothing to post": "Kuantitas berbeda, tapi item ini belum punya biaya tercatat — tidak ada yang bisa diposting",
+        "Everything counted matches the system": "Semua yang dihitung sesuai catatan sistem",
+        "Post count": "Posting hitungan",
+        "Count posted.": "Hitungan diposting.",
+        "Could not post this count.": "Hitungan ini tidak bisa diposting.",
+        "Fix the highlighted counts first.": "Perbaiki dulu hitungan yang ditandai.",
+        "Stock moved while you were counting": "Stok berubah saat Anda menghitung",
+
+        // Waste
+        "Spoilage, breakage, anything thrown away. It leaves stock at cost and lands in Inventory Adjustment & Shrinkage — deliberately outside cost of goods sold, so your gross margin still shows the loss instead of absorbing it.": "Barang busuk, pecah, apa pun yang dibuang. Keluar dari stok sebesar biayanya dan masuk ke Inventory Adjustment & Shrinkage — sengaja di luar harga pokok penjualan, supaya margin kotor Anda tetap memperlihatkan kerugiannya, bukan menyerapnya.",
+        "How much": "Berapa banyak",
+        "Past its date": "Sudah lewat tanggal",
+        "Waste recorded.": "Susut dicatat.",
+        "Could not record this waste.": "Susut ini tidak bisa dicatat.",
+        "How much was thrown away?": "Berapa banyak yang dibuang?",
+        "That quantity cannot be used.": "Kuantitas itu tidak bisa dipakai.",
+        "That count cannot be used.": "Hitungan itu tidak bisa dipakai."
     };
 
     // ─────────────────────────────────────────────────────────────────────────

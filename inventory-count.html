@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Stock Count</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <style>
+        .dashboard-topbar-copy { display: flex; flex-direction: column; min-width: 0; }
+        .dashboard-topbar-title {
+            color: #0B0F19; font-size: 18px; line-height: 1.15;
+            font-weight: 700; letter-spacing: -0.015em;
+            /* The topbar is a fixed 64px. With a back link and two actions beside
+               it, a wrapping title breaks the bar's height instead of the title. */
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .dashboard-topbar-subtitle {
+            margin: 3px 0 0; color: #6B7280; font-size: 13px;
+            line-height: 1.35; font-weight: 500; letter-spacing: -0.005em;
+        }
+
+        /* A count is done standing up, on a phone, walking a shelf. Rows are
+           generous and single-purpose rather than a dense table: the counter is
+           reading one line at a time, not comparing columns. */
+        .cnt-shelf { margin-bottom: 20px; }
+        .cnt-shelf-label {
+            font-size: 10px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; color: #64748B;
+            padding: 0 4px 8px;
+        }
+        .cnt-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px; border: 1px solid #E2E8F0; border-radius: 10px;
+            background: #fff; margin-bottom: 8px;
+        }
+        .cnt-row.is-counted { border-color: #CBD5E1; background: #FAFCFF; }
+        .cnt-row-main { flex: 1; min-width: 0; }
+        .cnt-row-name {
+            font-size: 14px; font-weight: 600; color: #0F172A;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .cnt-row-system {
+            font-size: 12px; color: #64748B; margin-top: 2px;
+            font-variant-numeric: tabular-nums;
+        }
+        .cnt-row-input {
+            width: 108px; flex-shrink: 0; text-align: right;
+            font-size: 16px; /* 16px stops iOS zooming the page on focus */
+            font-weight: 600; font-variant-numeric: tabular-nums;
+            padding: 10px 10px; border: 1px solid #CBD5E1; border-radius: 8px;
+            background: #fff; color: #0F172A;
+        }
+        .cnt-row-input:focus { outline: none; border-color: #EA580C; box-shadow: 0 0 0 1px #EA580C; }
+        .cnt-row-unit {
+            font-size: 12px; color: #94A3B8; flex-shrink: 0;
+            width: 28px; text-align: left;
+        }
+        .cnt-row-variance {
+            font-size: 12px; margin-top: 2px; font-variant-numeric: tabular-nums;
+            font-weight: 500;
+        }
+        .cnt-var-short { color: #EF4444; }
+        .cnt-var-over { color: #16A34A; }
+        .cnt-var-exact { color: #64748B; }
+
+        .cnt-progress-track {
+            height: 6px; border-radius: 999px; background: #E2E8F0; overflow: hidden;
+        }
+        .cnt-progress-fill {
+            height: 100%; background: #0F172A; border-radius: 999px;
+            transition: width 200ms ease-out;
+        }
+        @media (prefers-reduced-motion: reduce) { .cnt-progress-fill { transition: none; } }
+
+        /* Posting must be reachable from anywhere in a long sheet — you finish at
+           the back of the stockroom, not at the bottom of the page. */
+        .cnt-footer {
+            position: sticky; bottom: 0; z-index: 20;
+            background: #fff; border-top: 1px solid #E2E8F0;
+            padding: 12px 16px;
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            box-shadow: 0 -8px 24px rgba(11, 15, 25, 0.06);
+        }
+        .cnt-footer-figure { min-width: 0; }
+        .cnt-footer-value {
+            font-size: 20px; font-weight: 600; letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums; color: #0B0F19; line-height: 1;
+        }
+        .cnt-footer-note { font-size: 12px; color: #6B7280; margin-top: 3px; }
+        .cnt-post-btn {
+            flex-shrink: 0; padding: 10px 18px; border-radius: 8px;
+            background: #0F172A; color: #fff; font-size: 14px; font-weight: 700;
+            border: 0; cursor: pointer; white-space: nowrap;
+        }
+        .cnt-post-btn:hover { background: #1E293B; }
+        .cnt-post-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+        .cnt-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+        .cnt-toolbar-field { min-width: 200px; flex: 1; }
+        .cnt-label {
+            display: block; font-size: 12px; font-weight: 600;
+            color: #475569; margin-bottom: 6px;
+        }
+        .cnt-muted { color: #94A3B8; }
+        .cnt-back {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 14px; font-weight: 600; color: #6B7280;
+            text-decoration: none; flex-shrink: 0;
+        }
+        .cnt-back:hover { color: #111827; }
+
+        @media (max-width: 640px) {
+            header.cnt-topbar { padding-left: 16px; padding-right: 16px; gap: 8px; }
+            .cnt-row-input { width: 96px; }
+        }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <aside id="sidebar" class="w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden"></aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="dashboard-main-topbar cnt-topbar h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-4">
+            <div class="dashboard-topbar-left flex items-center gap-3 min-w-0 flex-1">
+                <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <!-- Back navigation is a topbar text link, top-left, per DESIGN_SYSTEM. -->
+                <a href="/inventory" class="cnt-back" aria-label="Back to Inventory">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    <span class="hidden sm:inline">Inventory</span>
+                </a>
+                <div class="dashboard-topbar-copy">
+                    <span class="dashboard-topbar-title">Stock count</span>
+                    <p class="dashboard-topbar-subtitle hidden lg:block">Count what is physically on the shelf; FluxyOS works out what was used and books it.</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                <button id="record-waste-btn" type="button" aria-label="Record waste" title="Record waste" class="px-2.5 sm:px-4 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"></path></svg>
+                    <span class="hidden sm:inline">Record waste</span>
+                </button>
+                <button type="button" onclick="window.toggleFluxyAI()" class="fluxy-ai-btn" title="Open Fluxy AI">Fluxy AI</button>
+            </div>
+        </header>
+
+        <div class="fluxy-page-shell">
+            <div class="fluxy-page-canvas fluxy-section-stack">
+
+                <div class="cnt-toolbar">
+                    <div class="cnt-toolbar-field">
+                        <label class="cnt-label" for="count-outlet">Which outlet are you counting?</label>
+                        <div id="count-outlet-host"></div>
+                    </div>
+                    <div class="cnt-toolbar-field">
+                        <label class="cnt-label" for="count-search">Find an item</label>
+                        <input id="count-search" type="text" class="fluxy-drawer-input" placeholder="Name or shelf" autocomplete="off" style="width:100%;">
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between gap-3 mb-2">
+                        <span id="count-progress-label" class="text-[12px] font-medium text-gray-600">Nothing counted yet</span>
+                        <span id="count-progress-hint" class="text-[12px] text-gray-400">Leave an item blank to skip it</span>
+                    </div>
+                    <div class="cnt-progress-track">
+                        <div id="count-progress-fill" class="cnt-progress-fill" style="width:0%"></div>
+                    </div>
+                </div>
+
+                <div id="count-list"></div>
+                <div id="count-empty"></div>
+
+            </div>
+        </div>
+
+        <!-- Sticky, outside the scroll region. -->
+        <div id="count-footer" class="cnt-footer hidden">
+            <div class="cnt-footer-figure">
+                <div id="count-total-value" class="cnt-footer-value">Rp0</div>
+                <div id="count-total-note" class="cnt-footer-note">Nothing to post yet</div>
+            </div>
+            <button id="count-post-btn" type="button" class="cnt-post-btn" disabled>Post count</button>
+        </div>
+    </main>
+
+    <!-- RECORD WASTE DRAWER -->
+    <div id="waste-drawer-backdrop" class="fixed inset-0 bg-black/50 z-40 hidden"></div>
+    <div id="waste-drawer" class="fixed top-0 right-0 h-full w-full max-w-[460px] bg-white fluxy-drawer-floating z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col" role="dialog" aria-modal="true" aria-labelledby="waste-drawer-title">
+        <div class="fluxy-drawer-header">
+            <div>
+                <h2 id="waste-drawer-title" class="fluxy-drawer-title">Record waste</h2>
+                <p class="fluxy-drawer-desc">Spoilage, breakage, anything thrown away. It leaves stock at cost and lands in Inventory Adjustment &amp; Shrinkage — deliberately outside cost of goods sold, so your gross margin still shows the loss instead of absorbing it.</p>
+            </div>
+            <button id="waste-drawer-close" type="button" class="fluxy-drawer-close" aria-label="Close">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <form id="waste-form" class="fluxy-drawer-body" novalidate>
+            <div class="fluxy-drawer-field">
+                <label class="fluxy-drawer-label" for="waste-item">Item</label>
+                <div id="waste-item-host"></div>
+            </div>
+            <div class="fluxy-drawer-field-grid">
+                <div class="fluxy-drawer-field">
+                    <label class="fluxy-drawer-label" for="waste-qty">How much</label>
+                    <input id="waste-qty" type="text" inputmode="decimal" class="fluxy-drawer-input" placeholder="500" autocomplete="off">
+                </div>
+                <div class="fluxy-drawer-field">
+                    <label class="fluxy-drawer-label" for="waste-unit">Unit</label>
+                    <div id="waste-unit-host"></div>
+                </div>
+            </div>
+            <div class="fluxy-drawer-field">
+                <label class="fluxy-drawer-label" for="waste-reference">Reason <span class="cnt-muted">(optional)</span></label>
+                <input id="waste-reference" type="text" class="fluxy-drawer-input" maxlength="60" placeholder="Past its date" autocomplete="off">
+            </div>
+            <p id="waste-preview" class="fluxy-drawer-hint"></p>
+            <div id="waste-error" class="fluxy-drawer-callout fluxy-drawer-callout--warning hidden"></div>
+        </form>
+
+        <div class="fluxy-drawer-footer">
+            <button id="waste-cancel-btn" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Cancel</button>
+            <button id="waste-save-btn" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--primary" disabled>Record waste</button>
+        </div>
+    </div>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/money-format.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/dashboard-i18n.js"></script>
+    <script src="assets/js/fluxy-select.js"></script>
+
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from './assets/js/db-service.js';
+        import { applyToPage } from './assets/js/onboarding-gate.js';
+        import { itemUnits, toBase, unitCostOf, INV } from './assets/js/inventory-engine.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
+        };
+
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        const ds = new DataService(app);
+
+        const UNASSIGNED = '__unassigned__';
+
+        let currentUid = null;
+        let stockItems = [];
+        let dimensions = [];
+        let onHand = {};
+        // null = nothing chosen yet (fall back to the first outlet);
+        // '' = the user explicitly picked the unassigned bucket.
+        let outletId = null;
+        let counted = {};           // itemId -> raw string the user typed
+
+        function rp(value) {
+            const n = Math.round(Number(value) || 0);
+            return (n < 0 ? '-Rp' : 'Rp') + Math.abs(n).toLocaleString('id-ID');
+        }
+        function esc(str) {
+            return String(str == null ? '' : str).replace(/[&<>"']/g, (c) => (
+                { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+            ));
+        }
+
+        // ── Draft persistence ────────────────────────────────────────────────
+        // A real count takes twenty minutes on a phone in a stockroom; losing it
+        // to a reload or a dropped connection is unacceptable. Deliberately local
+        // rather than a Firestore collection: one person counts one outlet on one
+        // device, so a shared draft buys nothing — and firestore.rules has under
+        // 19KB of headroom, which the next module needs more than this does.
+        function draftKey() {
+            const ws = (window.FluxyWorkspace && window.FluxyWorkspace.id) || currentUid || 'anon';
+            return `fluxy_count_draft:${ws}:${outletId || UNASSIGNED}`;
+        }
+        function saveDraft() {
+            try {
+                const entries = Object.entries(counted).filter(([, v]) => String(v).trim() !== '');
+                if (!entries.length) localStorage.removeItem(draftKey());
+                else localStorage.setItem(draftKey(), JSON.stringify(Object.fromEntries(entries)));
+            } catch (_) { /* private mode — the sheet still works, it just won't survive a reload */ }
+        }
+        function loadDraft() {
+            try {
+                const raw = localStorage.getItem(draftKey());
+                counted = raw ? JSON.parse(raw) : {};
+            } catch (_) { counted = {}; }
+        }
+        function clearDraft() {
+            try { localStorage.removeItem(draftKey()); } catch (_) {}
+            counted = {};
+        }
+
+        // ── Data ─────────────────────────────────────────────────────────────
+        function systemFor(itemId) {
+            return onHand[`${itemId}__${outletId || UNASSIGNED}`] || { quantity: 0, value: 0 };
+        }
+
+        async function loadAll() {
+            const [items, stock, dims] = await Promise.all([
+                ds.getItems(currentUid),
+                ds.getStockOnHand(currentUid, { byDimension: true }),
+                ds.getDimensions(currentUid)
+            ]);
+            // Composites are recipes; they are produced and consumed, never counted
+            // on a shelf. Their ingredients are what is physically there.
+            stockItems = items.filter((i) => i.type === 'stock');
+            onHand = stock;
+            dimensions = dims;
+            // Keep the outlet the user is counting. Rebuilding the select with no
+            // argument falls back to the first dimension by name, which silently
+            // moves the counter to a different outlet after every post — the sheet
+            // then reads zeroes and looks as though the count wiped the stock.
+            renderOutletSelect(outletId);
+            loadDraft();
+            renderList();
+        }
+
+        function renderOutletSelect(selected = null) {
+            const options = dimensions.map((d) =>
+                `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('');
+            document.getElementById('count-outlet-host').innerHTML =
+                `<select id="count-outlet" class="fluxy-drawer-select" aria-label="Outlet" style="width:100%;">`
+                + options + '<option value="">Stock not assigned to an outlet</option></select>';
+            const sel = document.getElementById('count-outlet');
+            const wanted = selected != null ? selected : (dimensions.length ? dimensions[0].id : '');
+            if ([...sel.options].some((o) => o.value === wanted)) sel.value = wanted;
+            outletId = sel.value;
+        }
+
+        // ── The sheet ────────────────────────────────────────────────────────
+        // Ordered by storage location, then name. This is the MarketMan insight
+        // and the reason `storage_location` exists: a count is done by walking the
+        // shelf, and an alphabetical sheet sends the counter back and forth across
+        // the stockroom until they stop doing counts at all.
+        function visibleItems() {
+            const term = (document.getElementById('count-search').value || '').trim().toLowerCase();
+            return stockItems
+                .filter((i) => !term
+                    || String(i.name || '').toLowerCase().includes(term)
+                    || String(i.storage_location || '').toLowerCase().includes(term))
+                .sort((a, b) => {
+                    // Items with no shelf sort last, together, rather than being
+                    // scattered through the ones that do.
+                    const sa = a.storage_location || '￿';
+                    const sb = b.storage_location || '￿';
+                    if (sa !== sb) return sa.localeCompare(sb);
+                    return String(a.name || '').localeCompare(String(b.name || ''));
+                });
+        }
+
+        // A blank input is NOT zero. An item nobody reached is skipped; treating it
+        // as counted-to-zero would write off its entire stock as consumption.
+        function parseCounted(raw) {
+            const s = String(raw == null ? '' : raw).trim().replace(',', '.');
+            if (s === '') return { blank: true };
+            const n = Number(s);
+            if (!Number.isFinite(n) || n < 0) return { error: true };
+            return { value: n };
+        }
+
+        function lineFor(item) {
+            const parsed = parseCounted(counted[item.id]);
+            if (parsed.blank) return { blank: true };
+            if (parsed.error) return { error: 'Enter a number, or leave it blank to skip.' };
+            const sys = systemFor(item.id);
+            let base;
+            try {
+                base = toBase(item, parsed.value, item.base_unit);
+            } catch (err) {
+                if (err.code === INV.NON_INTEGER_QUANTITY) {
+                    return { error: `Count in whole ${item.base_unit}.` };
+                }
+                return { error: err.message || 'That count cannot be used.' };
+            }
+            const varianceQty = base - sys.quantity;
+            const amount = Math.round(varianceQty * unitCostOf(sys.quantity, sys.value));
+            return { base, sys, varianceQty, amount };
+        }
+
+        function renderList() {
+            const items = visibleItems();
+            const host = document.getElementById('count-list');
+            const emptyHost = document.getElementById('count-empty');
+
+            if (!items.length) {
+                host.innerHTML = '';
+                emptyHost.innerHTML = '';
+                window.renderEmptyState('count-empty', stockItems.length ? {
+                    title: 'No item matches that',
+                    description: 'Try part of the name or the shelf it sits on.'
+                } : {
+                    title: 'No items to count',
+                    description: 'Add the ingredients and goods you hold first, then receive stock against them.',
+                    buttonText: 'Go to Inventory',
+                    onAction: () => { window.location.href = '/inventory'; }
+                });
+                document.getElementById('count-footer').classList.add('hidden');
+                return;
+            }
+            emptyHost.innerHTML = '';
+
+            // Group by shelf so the sheet reads as a route through the stockroom.
+            const groups = [];
+            let current = null;
+            items.forEach((item) => {
+                const shelf = item.storage_location || '';
+                if (!current || current.shelf !== shelf) {
+                    current = { shelf, items: [] };
+                    groups.push(current);
+                }
+                current.items.push(item);
+            });
+
+            host.innerHTML = groups.map((g) => `
+                <div class="cnt-shelf">
+                    <div class="cnt-shelf-label">${g.shelf ? esc(g.shelf) : 'No shelf set'}</div>
+                    ${g.items.map(rowHtml).join('')}
+                </div>`).join('');
+
+            refreshTotals();
+        }
+
+        function rowHtml(item) {
+            const sys = systemFor(item.id);
+            const raw = counted[item.id] == null ? '' : counted[item.id];
+            return `
+                <div class="cnt-row" data-item="${esc(item.id)}">
+                    <div class="cnt-row-main">
+                        <div class="cnt-row-name">${esc(item.name)}</div>
+                        <div class="cnt-row-system">System: ${sys.quantity.toLocaleString('id-ID')} ${esc(item.base_unit || '')}</div>
+                        <div class="cnt-row-variance" data-field="variance"></div>
+                    </div>
+                    <input class="cnt-row-input" type="text" inputmode="decimal" data-field="counted"
+                           value="${esc(raw)}" placeholder="—" aria-label="Counted quantity for ${esc(item.name)}">
+                    <span class="cnt-row-unit">${esc(item.base_unit || '')}</span>
+                </div>`;
+        }
+
+        function refreshTotals() {
+            const items = visibleItems();
+            let total = 0;
+            let countedCount = 0;
+            let anyError = false;
+            let quantitiesDiffer = false;
+
+            items.forEach((item) => {
+                const row = document.querySelector(`[data-item="${item.id}"]`);
+                if (!row) return;
+                const out = row.querySelector('[data-field="variance"]');
+                const line = lineFor(item);
+
+                row.classList.toggle('is-counted', !line.blank && !line.error);
+
+                if (line.blank) { out.textContent = ''; out.className = 'cnt-row-variance'; return; }
+                if (line.error) {
+                    out.textContent = line.error;
+                    out.className = 'cnt-row-variance cnt-var-short';
+                    anyError = true;
+                    return;
+                }
+                countedCount++;
+                total += line.amount;
+                if (line.varianceQty !== 0) quantitiesDiffer = true;
+
+                if (line.varianceQty === 0) {
+                    out.textContent = 'Matches the system';
+                    out.className = 'cnt-row-variance cnt-var-exact';
+                } else {
+                    const sign = line.varianceQty > 0 ? '+' : '';
+                    out.textContent = `${sign}${line.varianceQty.toLocaleString('id-ID')} ${item.base_unit} · ${rp(line.amount)}`;
+                    out.className = 'cnt-row-variance ' + (line.varianceQty < 0 ? 'cnt-var-short' : 'cnt-var-over');
+                }
+            });
+
+            // Progress counts the whole sheet, not the filtered view — otherwise
+            // searching would make it look as though the count were finished.
+            const totalItems = stockItems.length;
+            const doneAll = stockItems.filter((i) => {
+                const p = parseCounted(counted[i.id]);
+                return !p.blank && !p.error;
+            }).length;
+            const pct = totalItems ? Math.round((doneAll / totalItems) * 100) : 0;
+            document.getElementById('count-progress-fill').style.width = `${pct}%`;
+            document.getElementById('count-progress-label').textContent = doneAll
+                ? `${doneAll} of ${totalItems} counted`
+                : 'Nothing counted yet';
+
+            const footer = document.getElementById('count-footer');
+            footer.classList.toggle('hidden', !doneAll && !anyError);
+            document.getElementById('count-total-value').textContent = rp(total);
+
+            // The total is a VALUE, so "Rp0" does not mean the quantities agreed.
+            // An item with stock but no recorded cost values every variance at
+            // zero, and saying "everything matches" there would be a lie about
+            // the one thing the counter just checked.
+            let note;
+            if (!doneAll) {
+                note = 'Nothing to post yet';
+            } else if (total < 0) {
+                note = 'Cost of stock used — posts to 5100 Cost of Goods Sold';
+            } else if (total > 0) {
+                note = 'More on the shelf than the system knew';
+            } else if (quantitiesDiffer) {
+                note = 'Quantities differ, but these items have no recorded cost — nothing to post';
+            } else {
+                note = 'Everything counted matches the system';
+            }
+            document.getElementById('count-total-note').textContent = note;
+
+            // A count netting to zero would post a zero journal, which the engine
+            // rejects — so the button says so rather than letting it fail on submit.
+            document.getElementById('count-post-btn').disabled = anyError || !doneAll || total === 0;
+            void countedCount;
+        }
+
+        // ── Post ─────────────────────────────────────────────────────────────
+        async function postCount() {
+            const btn = document.getElementById('count-post-btn');
+            const lines = [];
+            for (const item of stockItems) {
+                const line = lineFor(item);
+                if (line.blank) continue;
+                if (line.error) {
+                    window.showToast('Fix the highlighted counts first.', 'error');
+                    return;
+                }
+                lines.push({
+                    item_id: item.id,
+                    counted_quantity: line.base,
+                    // What the sheet showed the counter. If stock has moved since,
+                    // the DAL refuses rather than booking the difference as usage.
+                    expected_system_quantity: line.sys.quantity
+                });
+            }
+            if (!lines.length) return;
+
+            btn.disabled = true;
+            btn.textContent = 'Posting…';
+            try {
+                await ds.createStockAdjustment(currentUid, {
+                    adjustment_type: 'count',
+                    dimension_id: outletId || null,
+                    lines
+                });
+                clearDraft();
+                window.showToast('Count posted.', 'success');
+                await loadAll();
+            } catch (err) {
+                if (err.code === 'STOCK_MOVED') {
+                    await window.showAlertDialog({
+                        title: 'Stock moved while you were counting',
+                        body: esc(err.moved.map((m) => m.item_name).join(', '))
+                            + ' changed since you opened this sheet. Your counts are still here — they have been checked against what is on the shelf now.',
+                        confirmLabel: 'Review',
+                        tone: 'danger'
+                    });
+                    await loadAll();   // draft survives; the system column refreshes
+                } else {
+                    window.showToast(err.message || 'Could not post this count.', 'error');
+                }
+            } finally {
+                btn.textContent = 'Post count';
+                refreshTotals();
+            }
+        }
+
+        // ── Waste ────────────────────────────────────────────────────────────
+        function renderWastePickers() {
+            const options = stockItems.map((i) =>
+                `<option value="${esc(i.id)}">${esc(i.name)}</option>`).join('');
+            document.getElementById('waste-item-host').innerHTML =
+                `<select id="waste-item" class="fluxy-drawer-select" aria-label="Item" style="width:100%;">${options}</select>`;
+            renderWasteUnits();
+        }
+        function renderWasteUnits() {
+            const item = stockItems.find((i) => i.id === document.getElementById('waste-item')?.value);
+            const units = item ? itemUnits(item) : [];
+            document.getElementById('waste-unit-host').innerHTML =
+                `<select id="waste-unit" class="fluxy-drawer-select" aria-label="Unit" style="width:100%;">`
+                + units.map((u) => `<option value="${esc(u.code)}">${esc(u.code)}</option>`).join('')
+                + '</select>';
+        }
+
+        function wasteResolved() {
+            const item = stockItems.find((i) => i.id === document.getElementById('waste-item')?.value);
+            if (!item) return { error: 'Pick an item.' };
+            const raw = String(document.getElementById('waste-qty').value || '').trim().replace(',', '.');
+            if (!raw) return { pending: true };
+            const n = Number(raw);
+            if (!Number.isFinite(n) || n <= 0) return { error: 'How much was thrown away?' };
+            const unit = document.getElementById('waste-unit')?.value || item.base_unit;
+            let base;
+            try { base = toBase(item, n, unit); }
+            catch (err) {
+                return { error: err.code === INV.NON_INTEGER_QUANTITY
+                    ? `${n} ${unit} is not a whole number of ${item.base_unit}.`
+                    : (err.message || 'That quantity cannot be used.') };
+            }
+            const sys = systemFor(item.id);
+            if (base > sys.quantity) {
+                return { error: `Only ${sys.quantity.toLocaleString('id-ID')} ${item.base_unit} is on hand at this outlet.` };
+            }
+            return { item, base, amount: Math.round(base * unitCostOf(sys.quantity, sys.value)) };
+        }
+
+        function refreshWaste() {
+            const out = document.getElementById('waste-preview');
+            const r = wasteResolved();
+            const btn = document.getElementById('waste-save-btn');
+            if (r.error) { out.textContent = r.error; out.style.color = '#EF4444'; btn.disabled = true; return; }
+            if (r.pending) { out.textContent = ''; btn.disabled = true; return; }
+            out.style.color = '';
+            out.textContent = `${r.base.toLocaleString('id-ID')} ${r.item.base_unit} · ${rp(r.amount)} written off to 5150`;
+            btn.disabled = false;
+        }
+
+        async function saveWaste() {
+            const r = wasteResolved();
+            if (r.error || r.pending) return;
+            const btn = document.getElementById('waste-save-btn');
+            const errEl = document.getElementById('waste-error');
+            errEl.classList.add('hidden');
+            btn.disabled = true;
+            btn.textContent = 'Recording…';
+            try {
+                await ds.createStockAdjustment(currentUid, {
+                    adjustment_type: 'waste',
+                    dimension_id: outletId || null,
+                    reference: document.getElementById('waste-reference').value.trim() || null,
+                    lines: [{ item_id: r.item.id, quantity: r.base }]
+                });
+                window.showToast('Waste recorded.', 'success');
+                closeWaste();
+                await loadAll();
+            } catch (err) {
+                errEl.textContent = err.message || 'Could not record this waste.';
+                errEl.classList.remove('hidden');
+            } finally {
+                btn.textContent = 'Record waste';
+                refreshWaste();
+            }
+        }
+
+        function openWaste() {
+            renderWastePickers();
+            document.getElementById('waste-qty').value = '';
+            document.getElementById('waste-reference').value = '';
+            document.getElementById('waste-error').classList.add('hidden');
+            refreshWaste();
+            document.getElementById('waste-drawer-backdrop').classList.remove('hidden');
+            document.getElementById('waste-drawer').classList.remove('translate-x-full');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeWaste() {
+            document.getElementById('waste-drawer').classList.add('translate-x-full');
+            document.getElementById('waste-drawer-backdrop').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        // ── Wiring ───────────────────────────────────────────────────────────
+        document.getElementById('count-list').addEventListener('input', (e) => {
+            if (e.target.dataset.field !== 'counted') return;
+            const row = e.target.closest('[data-item]');
+            counted[row.dataset.item] = e.target.value;
+            saveDraft();
+            refreshTotals();
+        });
+
+        document.getElementById('count-outlet-host').addEventListener('change', (e) => {
+            if (e.target.id !== 'count-outlet') return;
+            outletId = e.target.value;
+            loadDraft();          // each outlet keeps its own in-progress sheet
+            renderList();
+        });
+
+        let searchTimer = null;
+        document.getElementById('count-search').addEventListener('input', () => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(renderList, 150);
+        });
+
+        document.getElementById('count-post-btn').addEventListener('click', postCount);
+
+        document.getElementById('record-waste-btn').addEventListener('click', openWaste);
+        document.getElementById('waste-drawer-close').addEventListener('click', closeWaste);
+        document.getElementById('waste-cancel-btn').addEventListener('click', closeWaste);
+        document.getElementById('waste-drawer-backdrop').addEventListener('click', closeWaste);
+        document.getElementById('waste-save-btn').addEventListener('click', saveWaste);
+        document.getElementById('waste-form').addEventListener('submit', (e) => { e.preventDefault(); saveWaste(); });
+        document.getElementById('waste-qty').addEventListener('input', refreshWaste);
+        document.getElementById('waste-item-host').addEventListener('change', () => { renderWasteUnits(); refreshWaste(); });
+        document.getElementById('waste-unit-host').addEventListener('change', refreshWaste);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !document.getElementById('waste-drawer-backdrop').classList.contains('hidden')) closeWaste();
+        });
+
+        // ── Boot ─────────────────────────────────────────────────────────────
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) { window.location.replace('/login'); return; }
+            const gated = await applyToPage(user, { pageKey: 'overview' });
+            if (gated) return;
+            try {
+                const { resolveWorkspace } = await import('/assets/js/workspace-service.js');
+                await resolveWorkspace(app, user);
+            } catch (_) {}
+            currentUid = user.uid;
+            await loadAll();
+            document.getElementById('record-waste-btn').disabled = stockItems.length === 0;
+        });
+    </script>
+</body>
+</html>

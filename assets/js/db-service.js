@@ -5475,6 +5475,45 @@ class DataService {
         const byId = {}; items.forEach((i) => { byId[i.id] = i; });
         const key = (itemId) => `${itemId}__${dimensionId || '__unassigned__'}`;
 
+        // Optimistic concurrency. A count is taken against what was on the shelf at
+        // a moment in time, and the sheet showed the counter a system quantity to
+        // reconcile against. If stock moved between opening the sheet and posting
+        // it — a delivery landed, another outlet transferred in — the variance
+        // would be measured against a state the counter never saw, and the
+        // difference is booked to COGS as if it were consumption.
+        //
+        // Concretely: sheet opens at 24.500 g, a 5.000 g delivery is received,
+        // the counter posts the 21.500 g they physically counted. Without this the
+        // variance is -8.000 g (Rp96.000 of COGS) instead of the -3.000 g that
+        // actually left. Nothing errors; the books just quietly overstate cost.
+        //
+        // Callers that pass `expected_system_quantity` opt in. Omitting it keeps
+        // the previous behaviour, so the engine specs and any non-interactive
+        // caller are unaffected.
+        const moved = [];
+        (Array.isArray(data.lines) ? data.lines : []).forEach((l) => {
+            if (!l || l.expected_system_quantity == null) return;
+            const itemId = String(l.item_id || '').trim();
+            const sys = onHand[key(itemId)] || { quantity: 0 };
+            if (Number(sys.quantity) !== Number(l.expected_system_quantity)) {
+                moved.push({
+                    item_id: itemId,
+                    item_name: (byId[itemId] || {}).name || itemId,
+                    expected: Number(l.expected_system_quantity),
+                    actual: Number(sys.quantity)
+                });
+            }
+        });
+        if (moved.length) {
+            const err = new Error(
+                `Stock moved while you were counting: ${moved.map((m) => m.item_name).join(', ')}. `
+                + 'Reopen the count so the figures are compared against what is on the shelf now.'
+            );
+            err.code = 'STOCK_MOVED';
+            err.moved = moved;
+            throw err;
+        }
+
         const lines = (Array.isArray(data.lines) ? data.lines : []).map((l) => {
             const itemId = String((l && l.item_id) || '').trim();
             const item = byId[itemId];

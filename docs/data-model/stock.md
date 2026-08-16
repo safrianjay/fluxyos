@@ -135,6 +135,21 @@ journal.
 A count that nets to zero is rejected rather than posted — a zero journal would
 fail the engine's balance assertion and would mean nothing.
 
+### Optimistic concurrency
+
+A caller may pass `expected_system_quantity` per line — what the count sheet
+showed the counter. If the subledger has moved since, `createStockAdjustment`
+throws `STOCK_MOVED` (with `err.moved`) instead of posting.
+
+Without it the variance is measured against a state the counter never saw. A
+sheet opened at 24.500 g, a 5.000 g delivery received mid-count, then 21.500 g
+posted, books **-8.000 g** of consumption instead of the -3.000 g that actually
+left. Nothing errors; the books quietly overstate cost.
+
+Omitting the field keeps the previous behaviour, so non-interactive callers are
+unaffected. `inventory-count.html` always sends it.
+Guard: `tests/inventory-count-ui.spec.js` → "stock moving mid-count is refused".
+
 ## 4c. Outlet P&L
 
 `getOutletPnL(userId, { periodKey })` reads `ledger_balances_by_dim`, joins
