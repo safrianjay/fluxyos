@@ -11,6 +11,7 @@
 // Talks only to the local emulators; exits non-zero on any failed expectation.
 // =============================================================================
 
+import { createRequire } from 'module';
 import { initializeApp } from 'firebase/app';
 import {
     getFirestore, connectFirestoreEmulator, doc, collection,
@@ -18,6 +19,16 @@ import {
 } from 'firebase/firestore';
 import { getAuth, connectAuthEmulator, signInAnonymously } from 'firebase/auth';
 
+const require = createRequire(import.meta.url);
+const admin = require('../functions/node_modules/firebase-admin');
+if (!admin.apps.length) admin.initializeApp({ projectId: 'fluxyos' });
+const adminDb = admin.firestore();
+
+// Migrated 2026-08-16 from users/{uid}/… to workspaces/{ws}/…: the user-scoped
+// finance rules were removed when the ruleset hit its release ceiling, and the
+// app has routed every finance read/write through _scope() since Stage 2. This
+// spec was still exercising rules the product no longer uses.
+const WS = 'ws_invoiceedit_test';
 const app = initializeApp({ projectId: 'fluxyos', apiKey: 'emulator-fake-key' });
 const db = getFirestore(app);
 connectFirestoreEmulator(db, '127.0.0.1', 8080);
@@ -90,9 +101,10 @@ function itemPayload(overrides = {}) {
 async function main() {
     await signInAnonymously(auth);
     const uid = auth.currentUser.uid;
+    await adminDb.doc(`workspaces/${WS}/members/${uid}`).set({ role: 'finance', status: 'active', uid });
     const invId = 'inv_edit_test';
-    const invRef = doc(db, `users/${uid}/invoices/${invId}`);
-    const itemsCol = collection(db, `users/${uid}/invoices/${invId}/items`);
+    const invRef = doc(db, `workspaces/${WS}/invoices/${invId}`);
+    const itemsCol = collection(db, `workspaces/${WS}/invoices/${invId}/items`);
     const itemRef = doc(itemsCol, 'item1');
 
     console.log('\n— setup: draft + item, then finalize-only —');
@@ -176,7 +188,7 @@ async function main() {
         updated_by: uid
     }));
 
-    const draftRef = doc(db, `users/${uid}/invoices/inv_paid_draft_test`);
+    const draftRef = doc(db, `workspaces/${WS}/invoices/inv_paid_draft_test`);
     await expectOutcome('create second draft invoice', true, () => setDoc(draftRef, {
         ...invoiceCreatePayload(uid),
         invoice_number: 'INV-202606-0002'
@@ -190,7 +202,7 @@ async function main() {
     }));
 
     console.log('\n— cash application (Phase 2): open -> partial -> paid —');
-    const partRef = doc(db, `users/${uid}/invoices/inv_partial_test`);
+    const partRef = doc(db, `workspaces/${WS}/invoices/inv_partial_test`);
     await expectOutcome('create partial-test draft', true, () => setDoc(partRef, {
         ...invoiceCreatePayload(uid), invoice_number: 'INV-202606-0003'
     }));
@@ -226,7 +238,7 @@ async function main() {
     }));
 
     console.log('\n— mark paid: open -> paid batch (invoice + income transaction) —');
-    const txRef = doc(collection(db, `users/${uid}/transactions`));
+    const txRef = doc(collection(db, `workspaces/${WS}/transactions`));
     await expectOutcome('mark paid batch: tx create + invoice update', true, () => {
         const batch = writeBatch(db);
         batch.set(txRef, {
@@ -292,7 +304,7 @@ async function main() {
     // in ['open','partial']; paid only goes open->paid), and the remaining branch
     // is the full validator that tips the rules budget on a big invoice.
     console.log('\n— void rollback: a settled invoice gives the settlement back —');
-    const rbRef = doc(db, `users/${uid}/invoices/inv_void_rollback`);
+    const rbRef = doc(db, `workspaces/${WS}/invoices/inv_void_rollback`);
     await expectOutcome('create + finalize + fully pay', true, async () => {
         await setDoc(rbRef, { ...invoiceCreatePayload(uid), invoice_number: 'INV-202606-0009' });
         await updateDoc(rbRef, { status: 'open', finalized_at: serverTimestamp(), updated_at: serverTimestamp(), updated_by: uid });

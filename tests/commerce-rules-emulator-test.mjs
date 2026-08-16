@@ -180,7 +180,7 @@ async function main() {
         amount: 250000, vendor_name: 'TikTok Shop — Toko Uji', category: 'Revenue', type: 'income',
         status: 'Completed', icon: '💰', timestamp: serverTimestamp(), created_at: serverTimestamp(), ...extra,
     });
-    const userTxRef = (id) => doc(db, `users/${uid}/transactions/${id}`);
+    const userTxRef = (id) => doc(db, `workspaces/${WS}/transactions/${id}`);
     await expectOutcome('owner CAN create a tx with commerce link fields (user-scoped twin)', true, () =>
         setDoc(userTxRef('cm_t1'), txDoc({ commerce_order_id: 'tiktok_shop_7000123_ORD1', commerce_account_id: ACCOUNT_ID })));
     // Same 9-key shape as the passing create, only the value type differs —

@@ -64,6 +64,29 @@ function main() {
         ok.push(`${file} (stamped ${stamps[file].stamped_at})`);
     }
 
+    // Rules size. Firebase documents a 256 KiB ruleset limit, but the RELEASE
+    // endpoint rejects well below it — measured at ~223 KB on this project on
+    // 2026-08-16, with an opaque `400 INVALID_ARGUMENT` and a `--dry-run` that
+    // still said "compiled successfully". Adding any new collection failed, and
+    // the cause took a bisect to find. A number beats a mystery.
+    const RULES_CEILING = 218_000; // conservative: below the observed break
+    const rulesPath = path.join(REPO_ROOT, 'firestore.rules');
+    if (fs.existsSync(rulesPath)) {
+        const size = fs.statSync(rulesPath).size;
+        const pct = Math.round((size / RULES_CEILING) * 100);
+        if (size > RULES_CEILING) {
+            problems.push(
+                `firestore.rules is ${size} bytes — past the ~${RULES_CEILING} the release\n` +
+                `      endpoint accepts on this project. It will FAIL TO DEPLOY with an opaque\n` +
+                `      400 while --dry-run still reports success.\n` +
+                `      Shrink it before adding collections. The 2026-08-16 precedent: the dead\n` +
+                `      user-scoped finance blocks (migrated to workspaces/) were worth ~26 KB.`
+            );
+        } else if (pct >= 90) {
+            console.log(`  ⚠ firestore.rules at ${pct}% of the usable ceiling (${size} bytes) — plan a trim`);
+        }
+    }
+
     if (problems.length) {
         console.error('\nDEPLOY PRECONDITION NOT MET\n');
         for (const p of problems) console.error(`  ✗ ${p}\n`);

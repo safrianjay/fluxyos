@@ -75,7 +75,7 @@ const review = (uid, extra = {}) => ({
 // Small wrapper for the documents cases, which write to a different collection.
 async function expect_(ctx, label, shouldAllow, docId, payload) {
     await expectOutcome(label, shouldAllow,
-        () => setDoc(doc(ctx.db, `users/${ctx.uid}/documents/${docId}`), payload));
+        () => setDoc(doc(ctx.db, `workspaces/${ctx.uid}/documents/${docId}`), payload));
 }
 
 const memberDoc = (uid, email, role) => ({
@@ -92,7 +92,18 @@ const memberDoc = (uid, email, role) => ({
     await signUp(stranger, 'dup-stranger@test.com');
 
     const wsId = owner.uid;
-    const uPath = (id) => `users/${owner.uid}/duplicate_reviews/${id}`;
+    // Seed workspace membership up front: sections 1-5 now write to
+    // workspaces/, and every one of those rules goes through hasRole().
+    await setDoc(doc(owner.db, `workspaces/${wsId}`), {
+        name: 'Dup Co', owner_uid: owner.uid, created_at: serverTimestamp(), updated_at: serverTimestamp()
+    }).catch(() => {});
+    await setDoc(doc(owner.db, `workspaces/${wsId}/members/${owner.uid}`),
+        memberDoc(owner.uid, owner.email, 'owner')).catch(() => {});
+    // Was `users/${owner.uid}/duplicate_reviews/...`. The user-scoped finance
+    // rules were removed 2026-08-16 when the ruleset hit its release ceiling;
+    // the app has written these to workspaces/ since Stage 2. Repointed rather
+    // than deleted so the shape/validation coverage below survives.
+    const uPath = (id) => `workspaces/${wsId}/duplicate_reviews/${id}`;
     const wPath = (id) => `workspaces/${wsId}/duplicate_reviews/${id}`;
 
     console.log('\n1. USER-SCOPED create');
@@ -108,7 +119,7 @@ const memberDoc = (uid, email, role) => ({
     await expectOutcome("audit log with target_collection 'duplicate_reviews'", true, () => {
         const batch = writeBatch(owner.db);
         batch.set(doc(owner.db, uPath('u3')), review(owner.uid));
-        batch.set(doc(owner.db, `users/${owner.uid}/audit_logs/a1`), {
+        batch.set(doc(owner.db, `workspaces/${wsId}/audit_logs/a1`), {
             actor_uid: owner.uid, actor_role: null, action: 'duplicate.kept_both',
             target_collection: 'duplicate_reviews', target_id: 'u3',
             before: null, after: { score: 90 }, reason: 'both genuine',

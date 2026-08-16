@@ -5329,6 +5329,156 @@ class DataService {
     }
 
     // =====================================================================
+    // GOODS RECEIPT + STOCK MOVEMENTS — the inventory subledger
+    //
+    // Receiving is where inventory first touches the ledger:
+    //
+    //   goods receipt   Dr 1200 Inventory / Cr 2050 GRNI   (GR-RECEIPT)
+    //   supplier bill   Dr 2050 GRNI      / Cr 2000 A/P    (BILL-GRNI)
+    //
+    // GRNI exists because the goods and the invoice arrive on different days.
+    // Without it, receiving would either wait for the bill (understating stock)
+    // or credit a payable to a vendor who has not billed (overstating A/P and
+    // breaking the aging tie-out).
+    //
+    // 1200 is a CONTROL account: its balance must equal Σ(quantity × unit cost)
+    // in stock_movements, the same contract 1100/2000 have with the invoice and
+    // bill subledgers. That is why 1200 is closed to both human posting surfaces.
+    //
+    // Schema: docs/data-model/stock.md
+    // =====================================================================
+
+    // One atomic batch: the receipt, one movement per line, the journal, the
+    // balance increments, and the audit log. A receipt that landed without its
+    // movements would put 1200 out of agreement with the subledger it controls,
+    // with nothing to explain the difference.
+    async createGoodsReceipt(userId, data = {}) {
+        if (!userId) throw new Error('userId required');
+        const scope = this._scope(userId);
+        const entityId = this._resolvedScopeId(userId);
+
+        const dimensionId = this._nullableString(data.dimension_id, 60);
+        const vendorName = this._stringOrDefault(data.vendor_name, '', 160);
+        const reference = this._nullableString(data.reference, 60);
+        const when = data.received_at instanceof Date ? data.received_at : new Date();
+
+        const items = await this.getItems(userId, { includeArchived: true });
+        const byId = {};
+        items.forEach((i) => { byId[i.id] = i; });
+
+        const lines = (Array.isArray(data.lines) ? data.lines : []).map((l) => {
+            const itemId = String((l && l.item_id) || '').trim();
+            const item = byId[itemId];
+            if (!item) throw new Error(`Item "${itemId}" does not exist.`);
+            if (item.type !== 'stock') {
+                // Receiving a composite would put a recipe into stock without
+                // consuming its ingredients — the components are what arrived.
+                throw new Error(`"${item.name}" is a composite item; receive its components instead.`);
+            }
+            const quantity = Number(l.quantity);
+            if (!Number.isInteger(quantity) || quantity <= 0) {
+                throw new Error(`Quantity for "${item.name}" must be a positive whole number of ${item.base_unit}.`);
+            }
+            // `amount` is authoritative and is what posts. Unit cost is DERIVED
+            // (amount / quantity) and may be fractional — Rp0,012 per gram is a
+            // legitimate cost rate, and it is never stored as money or quantity.
+            const amount = Number(l.amount);
+            if (!Number.isInteger(amount) || amount < 0) {
+                throw new Error(`Amount for "${item.name}" must be a whole number of Rupiah.`);
+            }
+            return { item_id: itemId, item_name: item.name, base_unit: item.base_unit, quantity, amount };
+        });
+        if (!lines.length) throw new Error('A goods receipt needs at least one line.');
+
+        const total = lines.reduce((sum, l) => sum + l.amount, 0);
+        const receiptRef = doc(collection(this.db, `${scope}/goods_receipts`));
+        const payload = {
+            vendor_name: vendorName || null,
+            vendor_id: this._nullableString(data.vendor_id, 60),
+            dimension_id: dimensionId,
+            reference,
+            lines,
+            total_amount: total,
+            line_count: lines.length,
+            status: 'received',
+            // Set when a supplier bill clears this receipt out of GRNI.
+            bill_id: null,
+            timestamp: Timestamp.fromDate(when),
+            created_by: this.actorUid || userId,
+            created_at: serverTimestamp()
+        };
+
+        const batch = writeBatch(this.db);
+        // Journal first: _postSourceJournal mutates payload with journal_ref and
+        // accounting_status before the document is staged, exactly as
+        // _commitSourceCreate does for transactions and bills.
+        await this._postSourceJournal(userId, batch, 'goods_receipts', receiptRef, payload, {});
+        batch.set(receiptRef, payload);
+
+        const periodKey = acctPeriodKey(when);
+        lines.forEach((l) => {
+            const mref = doc(collection(this.db, `${scope}/stock_movements`));
+            batch.set(mref, {
+                item_id: l.item_id,
+                item_name: l.item_name,
+                dimension_id: dimensionId,
+                // Signed: positive is stock in, negative is stock out. One field
+                // rather than a quantity plus a direction flag, so a sum over the
+                // collection IS the balance and cannot disagree with itself.
+                quantity: l.quantity,
+                base_unit: l.base_unit,
+                amount: l.amount,
+                movement_type: 'receipt',
+                source: { collection: 'goods_receipts', id: receiptRef.id },
+                journal_ref: payload.journal_ref || null,
+                period_key: periodKey,
+                entity_id: entityId,
+                created_by: this.actorUid || userId,
+                created_at: serverTimestamp()
+            });
+        });
+
+        await batch.commit();
+        await this._auditCreateBestEffort(userId, 'goods_receipt.created', 'goods_receipts', receiptRef.id, {
+            vendor_name: vendorName, total_amount: total, line_count: lines.length, dimension_id: dimensionId
+        });
+        return { id: receiptRef.id, ...payload };
+    }
+
+    async getGoodsReceipts(userId, { limitCount = 100 } = {}) {
+        try {
+            const q = query(
+                collection(this.db, `${this._scope(userId)}/goods_receipts`),
+                orderBy('timestamp', 'desc'), limit(limitCount)
+            );
+            const snap = await getDocs(q);
+            return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        } catch (_) { return []; }
+    }
+
+    // Stock on hand, from the subledger. Summed per item (and per dimension when
+    // asked) rather than stored as a running total: the movements ARE the record,
+    // and a cached balance is one more thing that can disagree with them.
+    async getStockOnHand(userId, { byDimension = false } = {}) {
+        const out = {};
+        try {
+            const snap = await getDocs(collection(this.db, `${this._scope(userId)}/stock_movements`));
+            snap.forEach((d) => {
+                const m = d.data() || {};
+                const key = byDimension ? `${m.item_id}__${m.dimension_id || '__unassigned__'}` : m.item_id;
+                const e = out[key] || (out[key] = {
+                    item_id: m.item_id, item_name: m.item_name || null,
+                    dimension_id: byDimension ? (m.dimension_id || null) : null,
+                    base_unit: m.base_unit || null, quantity: 0, value: 0
+                });
+                e.quantity += Number(m.quantity) || 0;
+                e.value += Number(m.amount) || 0;
+            });
+        } catch (_) { /* collection may not exist yet */ }
+        return out;
+    }
+
+    // =====================================================================
     // ITEMS — the inventory master (ingredients, finished goods, menu items)
     //
     // `vendors`-shaped again: deterministic name_key, soft archive, never

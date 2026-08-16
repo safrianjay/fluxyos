@@ -135,6 +135,7 @@ const FINANCE_COLLECTIONS = [
   'vendors',
   // Dimension master + the per-dimension balance rollup (2026-08-16).
   'dimensions', 'ledger_balances_by_dim', 'items',
+  'goods_receipts', 'stock_movements',
 ];
 
 function scopeGuard() {
@@ -220,11 +221,17 @@ function laneBE(changed) {
     console.log('    (rules changed — running emulator rules tests, ~60s)');
     const specs = gitLines(['ls-files', 'tests/*-rules-emulator-test.mjs']);
     if (specs.length) {
+      // A shell LOOP, not `node a && node b && …`. The joined form grew past the
+      // argv limit at 17 specs and returned exit 126 ("cannot execute") — which
+      // reads exactly like a test failure and would have been chased as one.
+      // The loop is a fixed-length string however many specs exist, and echoing
+      // each name makes a failure attributable to one file.
       ok = record('be', run(
         'firestore rules (emulator)',
         'npx',
-        ['firebase', 'emulators:exec', '--only', 'firestore,auth', specs.map((s) => `node ${s}`).join(' && ')],
-        { timeout: 8 * 60_000 }
+        ['firebase', 'emulators:exec', '--only', 'firestore,auth',
+         'for s in tests/*-rules-emulator-test.mjs; do echo "--- $s"; node "$s" || exit 1; done'],
+        { timeout: 10 * 60_000 }
       )) && ok;
     }
   }

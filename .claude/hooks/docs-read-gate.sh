@@ -62,6 +62,7 @@ case "$BASE" in
   bank-recon*|bank-account*|bank*)           SHARD="bank-accounts" ;;
   dimension*)                                SHARD="dimensions" ;;
   item*|inventory*)                          SHARD="items" ;;
+  stock*|goods-receipt*|goods_receipt*)      SHARD="stock" ;;
   accounting-engine*|accounting*|journal*)   SHARD="accounting" ;;
   invoice*)                                  SHARD="invoices" ;;
   bill*)                                     SHARD="bills" ;;

@@ -14,6 +14,7 @@
 // Talks only to the local emulators; exits non-zero on any failed expectation.
 // =============================================================================
 
+import { createRequire } from 'module';
 import { initializeApp } from 'firebase/app';
 import {
     getFirestore, connectFirestoreEmulator, doc, collection,
@@ -21,6 +22,16 @@ import {
 } from 'firebase/firestore';
 import { getAuth, connectAuthEmulator, signInAnonymously } from 'firebase/auth';
 
+const require = createRequire(import.meta.url);
+const admin = require('../functions/node_modules/firebase-admin');
+if (!admin.apps.length) admin.initializeApp({ projectId: 'fluxyos' });
+const adminDb = admin.firestore();
+
+// Migrated 2026-08-16 from users/{uid}/… to workspaces/{ws}/…: the user-scoped
+// finance rules were removed when the ruleset hit its release ceiling, and the
+// app has routed every finance read/write through _scope() since Stage 2. This
+// spec was still exercising rules the product no longer uses.
+const WS = 'ws_billpaid_test';
 const app = initializeApp({ projectId: 'fluxyos', apiKey: 'emulator-fake-key' });
 const db = getFirestore(app);
 connectFirestoreEmulator(db, '127.0.0.1', 8080);
@@ -82,14 +93,15 @@ function paymentTxPayload(billId) {
 async function main() {
     await signInAnonymously(auth);
     const uid = auth.currentUser.uid;
-    const billRef = doc(db, `users/${uid}/bills/bill_pay_test`);
+    await adminDb.doc(`workspaces/${WS}/members/${uid}`).set({ role: 'finance', status: 'active', uid });
+    const billRef = doc(db, `workspaces/${WS}/bills/bill_pay_test`);
 
     console.log('\n— setup: create an unpaid bill —');
     await expectOutcome('create unpaid bill', true, () => setDoc(billRef, billCreatePayload()));
 
     console.log('\n— mark paid: bad shapes must be DENIED —');
     await expectOutcome('tx create with non-string linked_bill_id', false, () => {
-        const txRef = doc(collection(db, `users/${uid}/transactions`));
+        const txRef = doc(collection(db, `workspaces/${WS}/transactions`));
         return setDoc(txRef, { ...paymentTxPayload(12345), linked_bill_id: 12345 });
     });
     await expectOutcome('bill update with non-string linked_transaction_id', false, () => updateDoc(billRef, {
@@ -101,7 +113,7 @@ async function main() {
     }));
 
     console.log('\n— mark paid: the real batch (tx create + bill update) is ALLOWED —');
-    const txRef = doc(collection(db, `users/${uid}/transactions`));
+    const txRef = doc(collection(db, `workspaces/${WS}/transactions`));
     await expectOutcome('mark paid batch: expense create + bill update', true, () => {
         const batch = writeBatch(db);
         batch.set(txRef, paymentTxPayload(billRef.id));
@@ -116,17 +128,17 @@ async function main() {
     });
 
     console.log('\n— vendor payment: bill numbering + partial-payment fields —');
-    const billRef2 = doc(db, `users/${uid}/bills/bill_pay_test_2`);
+    const billRef2 = doc(db, `workspaces/${WS}/bills/bill_pay_test_2`);
     await expectOutcome('create bill with bill_number + outstanding_amount + amount_paid', true, () =>
         setDoc(billRef2, { ...billCreatePayload(), bill_number: 'BILL-202607-0001', outstanding_amount: 1250000, amount_paid: 0 }));
     await expectOutcome('reject over-long bill_number', false, () =>
-        setDoc(doc(db, `users/${uid}/bills/bill_pay_test_3`), { ...billCreatePayload(), bill_number: 'X'.repeat(41) }));
+        setDoc(doc(db, `workspaces/${WS}/bills/bill_pay_test_3`), { ...billCreatePayload(), bill_number: 'X'.repeat(41) }));
     await expectOutcome('reject negative outstanding_amount', false, () =>
-        setDoc(doc(db, `users/${uid}/bills/bill_pay_test_4`), { ...billCreatePayload(), outstanding_amount: -5 }));
+        setDoc(doc(db, `workspaces/${WS}/bills/bill_pay_test_4`), { ...billCreatePayload(), outstanding_amount: -5 }));
     // A PARTIAL payment: bill stays committable (no linked_transaction_id), status
     // 'partial', outstanding_amount reduced, amount_paid increased — in one batch
     // with the partial payment transaction.
-    const partialTxRef = doc(collection(db, `users/${uid}/transactions`));
+    const partialTxRef = doc(collection(db, `workspaces/${WS}/transactions`));
     await expectOutcome('partial payment batch: tx + bill partial update', true, () => {
         const batch = writeBatch(db);
         batch.set(partialTxRef, { ...paymentTxPayload(billRef2.id), amount: 500000 });
@@ -141,11 +153,11 @@ async function main() {
     });
 
     console.log('\n— multi-currency (Stage B): foreign bill + FX payment fields —');
-    const fxBillRef = doc(db, `users/${uid}/bills/bill_fx_test`);
+    const fxBillRef = doc(db, `workspaces/${WS}/bills/bill_fx_test`);
     await expectOutcome('create a USD bill', true, () =>
         setDoc(fxBillRef, { ...billCreatePayload(), currency: 'USD', outstanding_amount: 150000, amount_paid: 0 }));
     await expectOutcome('reject a bill with a bad currency', false, () =>
-        setDoc(doc(db, `users/${uid}/bills/bill_fx_bad`), { ...billCreatePayload(), currency: 'EUR' }));
+        setDoc(doc(db, `workspaces/${WS}/bills/bill_fx_bad`), { ...billCreatePayload(), currency: 'EUR' }));
     await expectOutcome('foreign bill paid: stamps amount_paid_idr + fx_rate + fx_rate_date', true, () =>
         updateDoc(fxBillRef, {
             payment_status: 'paid', outstanding_amount: 0, amount_paid: 150000,
@@ -158,7 +170,7 @@ async function main() {
     // exactly the writes _rollbackBillSettlement makes; if the rules reject them
     // the void fails and the divergence returns.
     console.log('\n— void rollback: a settled bill can be un-settled —');
-    const rbRef = doc(db, `users/${uid}/bills/bill_rollback_test`);
+    const rbRef = doc(db, `workspaces/${WS}/bills/bill_rollback_test`);
     await expectOutcome('create + fully pay a bill', true, async () => {
         await setDoc(rbRef, { ...billCreatePayload(), outstanding_amount: 0, amount_paid: 0 });
         return updateDoc(rbRef, {
@@ -192,7 +204,7 @@ async function main() {
 
     console.log('\n— sanity: a plain expense WITHOUT linked_bill_id still works —');
     await expectOutcome('plain expense create (no link)', true, () => {
-        const ref = doc(collection(db, `users/${uid}/transactions`));
+        const ref = doc(collection(db, `workspaces/${WS}/transactions`));
         const p = paymentTxPayload(billRef.id);
         delete p.linked_bill_id;
         return setDoc(ref, p);

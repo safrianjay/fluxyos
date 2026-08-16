@@ -12,6 +12,7 @@
 // script talks only to the local emulators and exits non-zero on any failure.
 // =============================================================================
 
+import { createRequire } from 'module';
 import { initializeApp } from 'firebase/app';
 import {
     getFirestore, connectFirestoreEmulator, doc, collection, getDoc, getDocs,
@@ -19,6 +20,16 @@ import {
 } from 'firebase/firestore';
 import { getAuth, connectAuthEmulator, signInAnonymously } from 'firebase/auth';
 
+const require = createRequire(import.meta.url);
+const admin = require('../functions/node_modules/firebase-admin');
+if (!admin.apps.length) admin.initializeApp({ projectId: 'fluxyos' });
+const adminDb = admin.firestore();
+
+// Migrated 2026-08-16 from users/{uid}/… to workspaces/{ws}/…: the user-scoped
+// finance rules were removed when the ruleset hit its release ceiling, and the
+// app has routed every finance read/write through _scope() since Stage 2. This
+// spec was still exercising rules the product no longer uses.
+const WS = 'ws_voucher_test';
 const app = initializeApp({ projectId: 'fluxyos', apiKey: 'emulator-fake-key' });
 const db = getFirestore(app);
 connectFirestoreEmulator(db, '127.0.0.1', 8080);
@@ -120,6 +131,7 @@ async function attemptVoucherCheckout(voucherCode, {
     await auth.signOut().catch(() => {});
     const { user } = await signInAnonymously(auth);
     const uid = user.uid;
+    await adminDb.doc(`workspaces/${WS}/members/${uid}`).set({ role: 'finance', status: 'active', uid });
     const requestRef = doc(collection(db, `users/${uid}/billing_payment_requests`));
     const batch = writeBatch(db);
     const requestPayload = paymentRequestPayload(voucherCode, requestOverrides);
@@ -136,7 +148,7 @@ async function attemptVoucherCheckout(voucherCode, {
         current_period_end: null,
         updated_at: serverTimestamp()
     });
-    batch.set(doc(collection(db, `users/${uid}/audit_logs`)), {
+    batch.set(doc(collection(db, `workspaces/${WS}/audit_logs`)), {
         actor_uid: uid,
         actor_role: null,
         action: 'billing.payment_request_created',

@@ -166,51 +166,6 @@ service cloud.firestore {
         && data.decided_by == request.auth.uid;
     }
 
-    function isValidAuditLog(data) {
-      return data.keys().hasAll([
-          'actor_uid',
-          'action',
-          'target_collection',
-          'target_id',
-          'source',
-          'created_at'
-        ])
-        && data.actor_uid == request.auth.uid
-        && data.action is string
-        && data.action.size() > 0
-        && data.action.size() <= 80
-        && data.target_collection in [
-          'transactions',
-          'bills',
-          'subscriptions',
-          'vendors',
-          'budgets',
-          'budget_allocations',
-          'integrations',
-          'exports',
-          'report_exports',
-          'users',
-          'onboarding',
-          'bank_accounts',
-          'bank_balance_snapshots',
-          'bank_statement_imports',
-          'documents',
-          'billing',
-          'billing_payment_requests',
-          'payment_verifications',
-          'accounting_mappings',
-          'invoices',
-          'chart_of_accounts',
-          'journals',
-          'ledger_balances',
-          'periods',
-          'duplicate_reviews'
-        ]
-        && data.target_id is string
-        && data.target_id.size() <= 160
-        && data.source in ['dashboard', 'ai', 'integration', 'system', 'onboarding']
-        && data.created_at == request.time;
-    }
 
     // Internal-console outreach leads (Sales Leads → Outreach subpage). Manually
     // entered prospects the team sends the bilingual meeting-reminder to.
@@ -910,24 +865,7 @@ service cloud.firestore {
         && data.updated_at is timestamp;
     }
 
-    function hasTrialStorageEntitlement(userId) {
-      return exists(/databases/$(database)/documents/users/$(userId)/billing_subscription/current)
-        && (
-          get(/databases/$(database)/documents/users/$(userId)/billing_subscription/current).data.plan_id == 'trial'
-          || get(/databases/$(database)/documents/users/$(userId)/billing_subscription/current).data.status in [
-            'trialing',
-            'awaiting_payment',
-            'pending_verification',
-            'payment_failed',
-            'expired'
-          ]
-        );
-    }
 
-    function respectsTrialStorageSingleFileLimit(userId, data) {
-      return !hasTrialStorageEntitlement(userId)
-        || data.file_size <= 5 * 1024 * 1024;
-    }
 
     function isValidAttachedDocuments(data) {
       return !('attached_documents' in data)
@@ -1618,17 +1556,6 @@ service cloud.firestore {
         && data.updated_at == request.time;
     }
 
-    function isValidBillBudgetFields(data) {
-      return (!('budget_id' in data) || data.budget_id == null || (data.budget_id is string && data.budget_id.size() <= 120))
-        && (!('budget_allocation_id' in data) || data.budget_allocation_id == null || (data.budget_allocation_id is string && data.budget_allocation_id.size() <= 120))
-        && (!('budget_match_method' in data) || data.budget_match_method == null || data.budget_match_method in ['auto', 'manual', 'rule', 'excluded', 'none'])
-        && (!('budget_match_status' in data) || data.budget_match_status == null || data.budget_match_status in ['matched', 'needs_review', 'unmatched', 'excluded'])
-        && (!('budget_impact_status' in data) || data.budget_impact_status == null || data.budget_impact_status in ['committed', 'released', 'converted_to_actual'])
-        && (!('budget_assignment_reason' in data) || data.budget_assignment_reason == null || (data.budget_assignment_reason is string && data.budget_assignment_reason.size() <= 500))
-        && (!('budget_assignment_updated_at' in data) || data.budget_assignment_updated_at == null || data.budget_assignment_updated_at is timestamp)
-        && (!('budget_assignment_updated_by' in data) || data.budget_assignment_updated_by == null || (data.budget_assignment_updated_by is string && data.budget_assignment_updated_by == request.auth.uid))
-        && (!('budget_exclusion_reason' in data) || data.budget_exclusion_reason == null || (data.budget_exclusion_reason is string && data.budget_exclusion_reason.size() <= 500));
-    }
 
     function isValidTransactionBudgetFields(data) {
       return (!('budget_id' in data) || data.budget_id == null || (data.budget_id is string && data.budget_id.size() <= 120))
@@ -1995,15 +1922,6 @@ service cloud.firestore {
         && (!('position' in data) || (data.position is number && data.position >= 0 && data.position <= 200));
     }
 
-    // Items can only be written while the parent invoice is (or becomes, in
-    // the same batch) editable: a draft, or a finalized-but-unsent ("finalize
-    // only") open invoice. getAfter sees post-commit state so the create-draft
-    // batch (invoice + items together) validates correctly.
-    function invoiceIsDraftAfterWrite(userId, invoiceId) {
-      let inv = getAfter(/databases/$(database)/documents/users/$(userId)/invoices/$(invoiceId)).data;
-      return inv.status == 'draft'
-        || (inv.status == 'open' && (!('sent_at' in inv) || inv.sent_at == null));
-    }
 
     function isValidBankStatementImport(data) {
       return data.keys().hasAll([
@@ -2103,27 +2021,7 @@ service cloud.firestore {
         && (!('matched_count' in data) || (data.matched_count is number && data.matched_count >= 0));
     }
 
-    function isValidBankStatementImportCreate(userId, data) {
-      return isValidBankStatementImport(data)
-        && data.created_at == request.time
-        && data.updated_at == request.time
-        && respectsTrialStorageSingleFileLimit(userId, data)
-        && data.review_status == 'draft'
-        && data.extraction_status == 'pending'
-        && (!('storage_path' in data) || data.storage_path == null
-              || data.storage_path.matches('users/' + userId + '/bank_statement_imports/.*'));
-    }
 
-    function isValidBankStatementImportUpdate(userId, data, existingData) {
-      return isValidBankStatementImport(data)
-        && data.created_at == existingData.created_at
-        && data.updated_at == request.time
-        && data.file_name == existingData.file_name
-        && data.file_mime_type == existingData.file_mime_type
-        && data.file_size == existingData.file_size
-        && (!('storage_path' in data) || data.storage_path == null
-              || data.storage_path.matches('users/' + userId + '/bank_statement_imports/.*'));
-    }
 
     function isValidBankStatementRow(data) {
       return data.keys().hasOnly([
@@ -2170,6 +2068,25 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
+      // NOTE: the user-scoped FINANCE rules (transactions, bills, invoices,
+      // budgets, bank_*, documents, vendors, accounting_mappings, audit_logs,
+      // report_exports, subscriptions, duplicate_reviews) were REMOVED
+      // 2026-08-16, together with the validator functions only they called.
+      //
+      // Those collections moved to workspaces/{workspaceId}/ in the Stage 2
+      // migration. _scope() has routed every client read there since — which the
+      // qa-run scope guard enforces — and Netlify functions use the Admin SDK,
+      // which bypasses rules entirely. The blocks were dead weight.
+      //
+      // They had to go because this ruleset hit a HARD RELEASE CEILING near
+      // 223 KB: below the documented 256 KiB, and enforced at RELEASE rather
+      // than compile, so adding any new collection failed with an opaque 400
+      // while `--dry-run` still reported success. That is what blocked
+      // goods_receipts and stock_movements.
+      //
+      // The users/{uid} DATA is untouched — it is the rollback net; only client
+      // rule access is gone, and git holds these rules if ever needed. Identity
+      // and billing below stay user-scoped by design (PROJECT_BACKGROUND §4.3).
       allow read: if isOwner(userId);
       allow create, update, delete: if false;
 
@@ -2243,429 +2160,12 @@ service cloud.firestore {
         allow create, update, delete: if false;
       }
 
-      match /transactions/{transactionId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId)
-          && request.resource.data.keys().hasOnly([
-            'amount',
-            'vendor_name',
-            'category',
-            'type',
-            'status',
-            'icon',
-            'timestamp',
-            'created_at',
-            'receipt_url',
-            'attached_documents',
-            'source',
-            'created_via',
-            'extraction_status',
-            'extraction_source',
-            'extraction_confidence',
-            'extraction_warnings',
-            'document_type',
-            'invoice_number',
-            'invoice_date',
-            'raw_text_preview',
-            'source_file_name',
-            'source_file_mime_type',
-            'source_file_size_bytes',
-            'payment_reference',
-            'notes',
-            'budget_id',
-            'budget_allocation_id',
-            'budget_match_method',
-            'budget_match_status',
-            'budget_match_confidence',
-            'budget_assignment_reason',
-            'budget_assignment_updated_at',
-            'budget_assignment_updated_by',
-            'budget_exclusion_reason',
-            'cash_effective',
-            'cash_status',
-            'cash_direction',
-            'cash_account_id',
-            'cash_source',
-            'cash_match_status',
-            'cash_effective_at',
-            'bank_statement_import_id',
-            'bank_statement_row_id',
-            'imported_at',
-            'bank_account_id',
-            'recon_status',
-            'recon_import_id',
-            'recon_row_id',
-            'recon_at',
-            'linked_bill_id',
-            'commerce_order_id',
-            'commerce_account_id',
-            'account_code',
-            'account_name'
-          ])
-          && isValidBaseRecord(request.resource.data)
-          && (!('created_at' in request.resource.data) || request.resource.data.created_at == request.time)
-          && (!('receipt_url' in request.resource.data) || request.resource.data.receipt_url is string)
-          && (!('linked_bill_id' in request.resource.data) || request.resource.data.linked_bill_id == null || (request.resource.data.linked_bill_id is string && request.resource.data.linked_bill_id.size() <= 120))
-          && isValidTransactionBudgetFields(request.resource.data)
-          && isValidAttachedDocuments(request.resource.data)
-          && isValidAccountLink(request.resource.data)
-          && isValidCommerceLink(request.resource.data)
-          && isValidAICaptureMetadata(request.resource.data);
-        allow update: if isOwner(userId)
-          && request.resource.data.keys().hasOnly([
-            'amount',
-            'vendor_name',
-            'category',
-            'type',
-            'status',
-            'icon',
-            'date',
-            'timestamp',
-            'created_at',
-            'receipt_url',
-            'attached_documents',
-            'source',
-            'created_via',
-            'extraction_status',
-            'extraction_source',
-            'extraction_confidence',
-            'extraction_warnings',
-            'document_type',
-            'invoice_number',
-            'invoice_date',
-            'raw_text_preview',
-            'source_file_name',
-            'source_file_mime_type',
-            'source_file_size_bytes',
-            'payment_reference',
-            'notes',
-            'budget_id',
-            'budget_allocation_id',
-            'budget_match_method',
-            'budget_match_status',
-            'budget_match_confidence',
-            'budget_assignment_reason',
-            'budget_assignment_updated_at',
-            'budget_assignment_updated_by',
-            'budget_exclusion_reason',
-            'cash_effective',
-            'cash_status',
-            'cash_direction',
-            'cash_account_id',
-            'cash_source',
-            'cash_match_status',
-            'cash_effective_at',
-            'cash_assignment_reason',
-            'cash_assignment_updated_at',
-            'cash_assignment_updated_by',
-            'updated_at',
-            'updated_by',
-            'is_voided',
-            'voided_at',
-            'voided_by',
-            'void_reason',
-            'bank_statement_import_id',
-            'bank_statement_row_id',
-            'imported_at',
-            'bank_account_id',
-            'recon_status',
-            'recon_import_id',
-            'recon_row_id',
-            'recon_at',
-            'linked_bill_id',
-            'commerce_order_id',
-            'commerce_account_id',
-            'account_code',
-            'account_name'
-          ])
-          && isValidTransactionRecordUpdate(request.resource.data, resource.data)
-          && preservesLegacyRecordDate(request.resource.data, resource.data)
-          && (!('linked_bill_id' in request.resource.data) || request.resource.data.linked_bill_id == null || (request.resource.data.linked_bill_id is string && request.resource.data.linked_bill_id.size() <= 120))
-          && isValidTransactionBudgetFields(request.resource.data)
-          && isValidAttachedDocuments(request.resource.data)
-          && isValidAccountLink(request.resource.data)
-          && isValidCommerceLink(request.resource.data)
-          && isValidAICaptureMetadata(request.resource.data);
-        allow delete: if false;
-      }
 
-      match /bills/{billId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId)
-          && request.resource.data.keys().hasOnly([
-            'amount',
-            'vendor_name',
-            'category',
-            'type',
-            'status',
-            'icon',
-            'timestamp',
-            'due_date',
-            'source',
-            'created_via',
-            'extraction_status',
-            'extraction_source',
-            'extraction_confidence',
-            'extraction_warnings',
-            'document_type',
-            'invoice_number',
-            'invoice_date',
-            'payment_status',
-            'raw_text_preview',
-            'source_file_name',
-            'source_file_mime_type',
-            'source_file_size_bytes',
-            'attached_documents',
-            'invoice_status',
-            'budget_id',
-            'budget_allocation_id',
-            'budget_match_method',
-            'budget_match_status',
-            'budget_impact_status',
-            'budget_assignment_reason',
-            'budget_assignment_updated_at',
-            'budget_assignment_updated_by',
-            'budget_exclusion_reason',
-            'account_code',
-            'account_name',
-            'bill_number',
-            'outstanding_amount',
-            'amount_paid',
-            'currency',
-            'amount_paid_idr',
-            'fx_rate',
-            'fx_rate_date'
-          ])
-          && isValidBaseRecord(request.resource.data)
-          && (!('due_date' in request.resource.data) || request.resource.data.due_date is timestamp)
-          && (!('payment_status' in request.resource.data) || request.resource.data.payment_status in ['unpaid', 'paid', 'partial', 'overdue', 'unknown'])
-          && (!('invoice_status' in request.resource.data) || request.resource.data.invoice_status in ['attached'])
-          && isValidBillBudgetFields(request.resource.data)
-          && isValidBillPaymentFields(request.resource.data)
-          && isValidAttachedDocuments(request.resource.data)
-          && isValidAccountLink(request.resource.data)
-          && isValidAICaptureMetadata(request.resource.data);
-        allow update: if isOwner(userId)
-          && (isValidBillPayTransition(request.resource.data, resource.data)
-            || (
-          request.resource.data.keys().hasOnly([
-            'amount',
-            'vendor_name',
-            'category',
-            'type',
-            'status',
-            'icon',
-            'timestamp',
-            'date',
-            'due_date',
-            'source',
-            'created_via',
-            'extraction_status',
-            'extraction_source',
-            'extraction_confidence',
-            'extraction_warnings',
-            'document_type',
-            'invoice_number',
-            'invoice_date',
-            'payment_status',
-            'raw_text_preview',
-            'source_file_name',
-            'source_file_mime_type',
-            'source_file_size_bytes',
-            'attached_documents',
-            'invoice_status',
-            'budget_id',
-            'budget_allocation_id',
-            'budget_match_method',
-            'budget_match_status',
-            'budget_impact_status',
-            'budget_assignment_reason',
-            'budget_assignment_updated_at',
-            'budget_assignment_updated_by',
-            'budget_exclusion_reason',
-            'linked_transaction_id',
-            'updated_at',
-            'updated_by',
-            'account_code',
-            'account_name',
-            'bill_number',
-            'outstanding_amount',
-            'amount_paid',
-            'currency',
-            'amount_paid_idr',
-            'fx_rate',
-            'fx_rate_date'
-          ])
-          && isValidBaseRecordUpdate(request.resource.data, resource.data)
-          && preservesLegacyRecordDate(request.resource.data, resource.data)
-          && (!('due_date' in request.resource.data) || request.resource.data.due_date is timestamp)
-          && (!('payment_status' in request.resource.data) || request.resource.data.payment_status in ['unpaid', 'paid', 'partial', 'overdue', 'unknown'])
-          && (!('invoice_status' in request.resource.data) || request.resource.data.invoice_status in ['attached'])
-          && (!('linked_transaction_id' in request.resource.data) || request.resource.data.linked_transaction_id == null || (request.resource.data.linked_transaction_id is string && request.resource.data.linked_transaction_id.size() <= 120))
-          && isValidBillBudgetFields(request.resource.data)
-          && isValidBillPaymentFields(request.resource.data)
-          && isValidAttachedDocuments(request.resource.data)
-          && isValidAccountLink(request.resource.data)
-          && isValidAICaptureMetadata(request.resource.data)
-            ));
-        allow delete: if false;
-      }
 
-      match /subscriptions/{subscriptionId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId)
-          && request.resource.data.keys().hasOnly([
-            'amount',
-            'vendor_name',
-            'category',
-            'type',
-            'status',
-            'icon',
-            'timestamp',
-            'renewal_date',
-            'source',
-            'created_via',
-            'extraction_status',
-            'extraction_source',
-            'extraction_confidence',
-            'extraction_warnings',
-            'document_type',
-            'invoice_number',
-            'invoice_date',
-            'billing_cycle',
-            'raw_text_preview',
-            'source_file_name',
-            'source_file_mime_type',
-            'source_file_size_bytes',
-            'notes',
-            'attached_documents',
-            'account_code',
-            'account_name'
-          ])
-          && isValidBaseRecord(request.resource.data)
-          && (!('renewal_date' in request.resource.data) || request.resource.data.renewal_date is timestamp)
-          && isValidAttachedDocuments(request.resource.data)
-          && isValidAccountLink(request.resource.data)
-          && isValidAICaptureMetadata(request.resource.data);
-        allow update: if isOwner(userId)
-          && request.resource.data.keys().hasOnly([
-            'amount',
-            'vendor_name',
-            'category',
-            'type',
-            'status',
-            'icon',
-            'timestamp',
-            'renewal_date',
-            'source',
-            'created_via',
-            'extraction_status',
-            'extraction_source',
-            'extraction_confidence',
-            'extraction_warnings',
-            'document_type',
-            'invoice_number',
-            'invoice_date',
-            'billing_cycle',
-            'raw_text_preview',
-            'source_file_name',
-            'source_file_mime_type',
-            'source_file_size_bytes',
-            'notes',
-            'attached_documents',
-            'account_code',
-            'account_name'
-          ])
-          && isValidBaseRecordUpdate(request.resource.data, resource.data)
-          && (!('renewal_date' in request.resource.data) || request.resource.data.renewal_date is timestamp)
-          && isValidAttachedDocuments(request.resource.data)
-          && isValidAccountLink(request.resource.data)
-          && isValidAICaptureMetadata(request.resource.data);
-        allow delete: if false;
-      }
 
-      match /report_exports/{exportId} {
-        // Metadata for a confirmed Reports & Exports run. Stores period,
-        // formats, included sections, record counts, warning counts, and
-        // (for YTD/YoY) the resolved report scope. Must never contain
-        // row-level financial data or CSV content.
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId)
-          && request.resource.data.keys().hasOnly([
-            'report_type',
-            'report_scope',
-            'period_start',
-            'period_end',
-            'formats',
-            'status',
-            'included_sections',
-            'record_counts',
-            'warning_counts',
-            'limitations',
-            'created_at',
-            'created_by'
-          ])
-          && request.resource.data.report_type is string
-          && request.resource.data.report_type.size() > 0
-          && request.resource.data.report_type.size() <= 80
-          && request.resource.data.created_by == request.auth.uid
-          && request.resource.data.created_at == request.time
-          && request.resource.data.formats is list
-          && request.resource.data.status is string
-          && request.resource.data.included_sections is list
-          && request.resource.data.record_counts is map
-          && request.resource.data.warning_counts is map
-          && request.resource.data.limitations is list
-          && (!('report_scope' in request.resource.data) || request.resource.data.report_scope is map);
-        allow update, delete: if false;
-      }
 
-      // Duplicate decisions. Never deleted — "we looked at this and kept both"
-      // is exactly the evidence an auditor asks for, so it outlives the records.
-      match /duplicate_reviews/{reviewId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId)
-          && isValidDuplicateReview(request.resource.data)
-          && request.resource.data.decided_at == request.time;
-        allow update: if isOwner(userId)
-          && isValidDuplicateReviewUpdate(request.resource.data, resource.data)
-          && request.resource.data.decided_at == request.time;
-        allow delete: if false;
-      }
 
-      match /audit_logs/{auditLogId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId)
-          && request.resource.data.keys().hasOnly([
-            'actor_uid',
-            'actor_role',
-            'action',
-            'target_collection',
-            'target_id',
-            'before',
-            'after',
-            'reason',
-            'source',
-            'created_at'
-          ])
-          && isValidAuditLog(request.resource.data);
-        allow update, delete: if false;
-      }
 
-      match /documents/{documentId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId)
-          && isValidDocumentMetadata(request.resource.data)
-          && request.resource.data.created_at == request.time
-          && request.resource.data.updated_at == request.time
-          && request.resource.data.storage_path.matches('users/' + userId + '/documents/.*');
-        allow update: if isOwner(userId)
-          && isValidDocumentMetadata(request.resource.data)
-          && request.resource.data.created_at == resource.data.created_at
-          && request.resource.data.updated_at == request.time
-          && request.resource.data.storage_path == resource.data.storage_path;
-        allow delete: if false;
-      }
 
       match /ai_chats/{chatId} {
         allow read: if isOwner(userId);
@@ -2712,95 +2212,12 @@ service cloud.firestore {
         allow delete: if false;
       }
 
-      match /bank_accounts/{bankAccountId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId)
-          && isValidBankAccountCreate(request.resource.data);
-        allow update: if isOwner(userId)
-          && isValidBankAccountUpdate(request.resource.data, resource.data);
-        allow delete: if false;
-      }
 
-      match /vendors/{vendorId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidVendorCreate(request.resource.data);
-        allow update: if isOwner(userId) && isValidVendorUpdate(request.resource.data, resource.data);
-        allow delete: if false;
-      }
 
-      match /bank_balance_snapshots/{snapshotId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId)
-          && isValidBankBalanceSnapshot(request.resource.data);
-        allow update, delete: if false;
-      }
 
-      match /bank_statement_imports/{importId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId)
-          && isValidBankStatementImportCreate(userId, request.resource.data);
-        allow update: if isOwner(userId)
-          && isValidBankStatementImportUpdate(userId, request.resource.data, resource.data);
-        allow delete: if false;
 
-        match /rows/{rowId} {
-          allow read: if isOwner(userId);
-          allow create: if isOwner(userId)
-            && isValidBankStatementRow(request.resource.data)
-            && request.resource.data.created_at == request.time;
-          allow update: if isOwner(userId)
-            && isValidBankStatementRow(request.resource.data)
-            && request.resource.data.created_at == resource.data.created_at;
-          allow delete: if false;
-        }
-      }
 
-      match /budgets/{budgetId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId)
-          && isValidBudgetCreate(request.resource.data);
-        allow update: if isOwner(userId)
-          && isValidBudgetUpdate(request.resource.data, resource.data);
-        allow delete: if false;
-      }
 
-      match /budget_allocations/{allocationId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId)
-          && isValidBudgetAllocationCreate(request.resource.data);
-        allow update: if isOwner(userId)
-          && isValidBudgetAllocationUpdate(request.resource.data, resource.data);
-        allow delete: if false;
-      }
-
-      // Invoices (Create Invoice MVP) — owner-scoped customer invoices.
-      // Delete is blocked: invoices are voided (status update), never removed.
-      // Finalizing never creates a transaction; receivables stay expected-only.
-      match /invoices/{invoiceId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId)
-          && isValidInvoiceCreate(request.resource.data);
-        allow update: if isOwner(userId)
-          && isValidInvoiceUpdate(request.resource.data, resource.data);
-        allow delete: if false;
-
-        match /items/{itemId} {
-          allow read: if isOwner(userId);
-          allow create: if isOwner(userId)
-            && isValidInvoiceItem(request.resource.data)
-            && request.resource.data.created_at == request.time
-            && request.resource.data.updated_at == request.time
-            && invoiceIsDraftAfterWrite(userId, invoiceId);
-          allow update: if isOwner(userId)
-            && isValidInvoiceItem(request.resource.data)
-            && request.resource.data.created_at == resource.data.created_at
-            && request.resource.data.updated_at == request.time
-            && invoiceIsDraftAfterWrite(userId, invoiceId);
-          // Item rows may be removed only while the invoice is still a draft.
-          allow delete: if isOwner(userId)
-            && invoiceIsDraftAfterWrite(userId, invoiceId);
-        }
-      }
 
       match /platform_learning/{learningDoc} {
         allow read: if isOwner(userId) && learningDoc == 'state';
@@ -2810,16 +2227,6 @@ service cloud.firestore {
         allow delete: if false;
       }
 
-      // Accounting Center (Phase 1) — saved account mappings only.
-      // Enums/strings only; never store amounts or formatted currency here.
-      match /accounting_mappings/{mappingId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId)
-          && isValidAccountingMappingCreate(request.resource.data);
-        allow update: if isOwner(userId)
-          && isValidAccountingMappingUpdate(request.resource.data, resource.data);
-        allow delete: if false;
-      }
 
       match /{document=**} {
         allow read, write: if false;
@@ -3207,7 +2614,8 @@ service cloud.firestore {
           'commerce_accounts', 'commerce_orders', 'commerce_transactions', 'commerce_refunds',
           'commerce_settlements', 'commerce_payouts', 'commerce_sync_jobs',
           'commerce_sync_errors', 'commerce_webhook_logs', 'duplicate_reviews',
-          'dimensions', 'ledger_balances_by_dim', 'items'
+          'dimensions', 'ledger_balances_by_dim', 'items',
+          'goods_receipts', 'stock_movements'
         ]
         && data.target_id is string && data.target_id.size() <= 200
         && data.source in ['dashboard', 'ai', 'integration', 'system']
@@ -3242,19 +2650,6 @@ service cloud.firestore {
         && (!('account_name' in data) || data.account_name == null || (data.account_name is string && data.account_name.size() <= 80));
     }
 
-    // Bill numbering + outstanding-balance tracking (partial payments). Optional +
-    // bounded; absent on legacy bills.
-    function isValidBillPaymentFields(data) {
-      return (!('bill_number' in data) || data.bill_number == null || (data.bill_number is string && data.bill_number.size() <= 40))
-        && (!('outstanding_amount' in data) || data.outstanding_amount == null || (data.outstanding_amount is number && data.outstanding_amount >= 0 && data.outstanding_amount <= 999999999999))
-        && (!('amount_paid' in data) || data.amount_paid == null || (data.amount_paid is number && data.amount_paid >= 0 && data.amount_paid <= 999999999999))
-        // Multi-currency (Stage B): currency label + FX provenance stamped only on
-        // payment of a foreign bill (the IDR amount posted to the ledger + rate).
-        && (!('currency' in data) || data.currency in ['IDR', 'USD', 'SGD'])
-        && (!('amount_paid_idr' in data) || data.amount_paid_idr == null || (data.amount_paid_idr is int && data.amount_paid_idr >= 0))
-        && (!('fx_rate' in data) || data.fx_rate == null || data.fx_rate is number)
-        && (!('fx_rate_date' in data) || data.fx_rate_date == null || (data.fx_rate_date is string && data.fx_rate_date.size() <= 20));
-    }
     // Commerce Integration back-links: the server-side sync worker stamps these
     // onto ledger transactions it creates (source:'commerce') so the doc can
     // drill to its commerce_orders / commerce_accounts records. Optional +
@@ -3971,6 +3366,36 @@ service cloud.firestore {
       // journal lines. One collection with a `type`, because an F&B outlet is
       // both a P&L unit and a stock location. Soft archive only: deleting one
       // would orphan journal lines that are immutable by rule.
+      // Goods receipt: stock arriving before the supplier invoice does.
+      // Posts GR-RECEIPT (Dr 1200 Inventory / Cr 2050 GRNI). `lines` is validated
+      // in db-service, not here — rules cannot iterate an array cheaply and the
+      // evaluation budget is real (incidents at 3367, 3526, 3546).
+      // Never deleted: it carries an immutable journal. Correct by reversal.
+      match /goods_receipts/{receiptId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && request.resource.data.total_amount is number
+          && request.resource.data.total_amount >= 0
+          && request.resource.data.lines is list
+          && request.resource.data.status in ['received', 'billed', 'reversed'];
+        allow delete: if false;
+      }
+      // Stock movements — the subledger 1200 Inventory must tie to.
+      // `quantity` is SIGNED: positive in, negative out, so a sum over the
+      // collection is the balance. Written in the same batch as the journal that
+      // moved 1200, and never deleted, for the same reason journals are not:
+      // deleting one would silently put the control account out of agreement
+      // with the subledger, and nothing would report it.
+      match /stock_movements/{movementId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && request.resource.data.item_id is string
+          && request.resource.data.quantity is number
+          && request.resource.data.amount is number
+          && request.resource.data.period_key is string
+          && request.resource.data.movement_type in ['receipt', 'issue', 'adjustment', 'count', 'waste', 'transfer'];
+        allow update, delete: if false;
+      }
       // Inventory master: ingredients, finished goods, and menu items.
       // `type` separates a stock item from a composite (recipe) one, and
       // `base_unit` is the unit every stored quantity is an integer count of.

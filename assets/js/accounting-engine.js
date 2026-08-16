@@ -78,9 +78,8 @@ export const CHART_OF_ACCOUNTS_SEED = [
     // Opening balances are still reachable — assertManualJournalPolicy exempts
     // subtype 'opening', which is how an existing shopkeeper records what is
     // already on the shelf.
-    // ⚠️ Seeded dormant, NOT yet wired — nothing posts here until the inventory
-    // subledger ships. Precedent: 1030 and the tax accounts were seeded the same
-    // way, ahead of their engines. See docs/INVENTORY_READINESS.md.
+    // WIRED 2026-08-16: GR-RECEIPT debits this on goods receipt. The subledger
+    // that must tie to it is `stock_movements` (docs/data-model/stock.md).
     { code: '1200', name: 'Inventory', name_id: 'Persediaan', type: 'asset', sak_category: 'inventory', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
     // --- Liabilities
     // Goods Received Not Invoiced: stock physically received whose supplier bill
@@ -88,7 +87,8 @@ export const CHART_OF_ACCOUNTS_SEED = [
     // bill (understating inventory) or fake an A/P entry against a vendor who has
     // not billed yet (overstating payables and breaking the A/P aging tie-out).
     // Clears by matching the receipt to the bill, so — like 1030 — a manual entry
-    // leaves residue nothing can ever match off. Dormant until receiving ships.
+    // leaves residue nothing can ever match off.
+    // WIRED 2026-08-16: GR-RECEIPT credits it, BILL-GRNI debits it back out.
     { code: '2050', name: 'Goods Received Not Invoiced', name_id: 'Barang Diterima Belum Ditagih', type: 'liability', sak_category: 'other_current_liability', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
     { code: '2000', name: 'Accounts Payable', name_id: 'Utang Usaha', type: 'liability', sak_category: 'accounts_payable', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
     { code: '2500', name: 'Deferred Revenue', name_id: 'Pendapatan Diterima di Muka', type: 'liability', sak_category: 'other_current_liability' },
@@ -208,6 +208,13 @@ const CASH = '1000';
 const CLEARING = '1030';   // marketplace/gateway settlement float
 const AR = '1100';
 const AP = '2000';
+// Goods received, supplier invoice not yet arrived. Clears when the bill is
+// matched to the receipt — see BILL-GRNI.
+const GRNI = '2050';
+// Stock at cost. A control account: its balance must equal the sum of
+// quantity x unit cost held in stock_movements, which is why it is closed to
+// both human posting surfaces (docs/data-model/chart-of-accounts.md §4b).
+const INVENTORY = '1200';
 const RETAINED_EARNINGS = '3000';
 const OPENING_EQUITY = '3900';
 const REVENUE = '4000';
@@ -546,7 +553,15 @@ export function selectRule(collection, document) {
                 return null; // transfer / adjustment / custom — no posting
         }
     }
-    if (collection === 'bills') return 'BILL-ACCRUE';
+    if (collection === 'bills') {
+        // A bill that settles a goods receipt must clear GRNI, not book a second
+        // expense: the cost already entered the books as inventory when the
+        // goods arrived. Posting BILL-ACCRUE here would double-count it and
+        // leave GRNI open forever.
+        if (doc.goods_receipt_id) return 'BILL-GRNI';
+        return 'BILL-ACCRUE';
+    }
+    if (collection === 'goods_receipts') return 'GR-RECEIPT';
     if (collection === 'subscriptions') return 'SUB-ACCRUE';
     if (collection === 'invoices') {
         const status = String(doc.status || '').trim().toLowerCase();
@@ -620,6 +635,26 @@ const RULES = {
         const acct = resolveExpenseAccount(doc, ctx.mappings);
         return [line(acct, amt, 0, doc.category || 'Bill'), line(AP, 0, amt, doc.vendor_name || 'Payable')];
     },
+    // Goods arrive: stock goes up at cost, and a liability is recognised even
+    // though no invoice exists yet. Amount is the receipt total, which is the sum
+    // of its line amounts — the per-item detail lives in stock_movements, exactly
+    // as invoice lines live outside the A/R posting.
+    'GR-RECEIPT': (doc) => {
+        const amt = requireAmount(doc.total_amount, 'goods receipt');
+        return [
+            line(INVENTORY, amt, 0, doc.reference || 'Goods received'),
+            line(GRNI, 0, amt, doc.vendor_name || 'Goods received not invoiced')
+        ];
+    },
+    // The supplier invoice arrives for goods already received: move the liability
+    // from GRNI to A/P. No expense, no inventory movement — both already happened.
+    'BILL-GRNI': (doc) => {
+        const amt = requireAmount(doc.amount, 'bill against goods receipt');
+        return [
+            line(GRNI, amt, 0, doc.vendor_name || 'GRNI cleared'),
+            line(AP, 0, amt, doc.vendor_name || 'Payable')
+        ];
+    },
     'BILL-PAY': (doc) => {
         const amt = requireAmount(doc.amount, 'bill payment');
         return [line(AP, amt, 0, doc.vendor_name || 'Payable settled'), line(CASH, 0, amt, 'Cash paid')];
@@ -650,6 +685,8 @@ const RULE_DESCRIPTIONS = {
     'TXN-ACCRUE-AR': 'Accrued receivable',
     'TXN-ACCRUE-AP': 'Accrued payable',
     'BILL-ACCRUE': 'Bill accrued',
+    'GR-RECEIPT': 'Goods received',
+    'BILL-GRNI': 'Supplier invoice for goods received',
     'BILL-PAY': 'Bill paid',
     'SUB-ACCRUE': 'Subscription accrued',
     'INV-ISSUE': 'Invoice issued',

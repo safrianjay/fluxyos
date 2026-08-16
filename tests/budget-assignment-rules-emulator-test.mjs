@@ -27,6 +27,11 @@ const admin = require('../functions/node_modules/firebase-admin');
 if (!admin.apps.length) admin.initializeApp({ projectId: 'fluxyos' });
 const adminDb = admin.firestore();
 
+// Migrated 2026-08-16 from users/{uid}/… to workspaces/{ws}/…: the user-scoped
+// finance rules were removed when the ruleset hit its release ceiling, and the
+// app has routed every finance read/write through _scope() since Stage 2.
+const WS = 'ws_budgetassign_test';
+
 const app = initializeApp({ projectId: 'fluxyos', apiKey: 'emulator-fake-key' });
 const db = getFirestore(app);
 connectFirestoreEmulator(db, '127.0.0.1', 8080);
@@ -67,15 +72,15 @@ async function expectDenied(label, run) {
 }
 
 function txRef(uid, txId) {
-    return doc(db, `users/${uid}/transactions/${txId}`);
+    return doc(db, `workspaces/${WS}/transactions/${txId}`);
 }
 
 function billRef(uid, billId) {
-    return doc(db, `users/${uid}/bills/${billId}`);
+    return doc(db, `workspaces/${WS}/bills/${billId}`);
 }
 
 function auditRef(uid) {
-    return doc(collection(db, `users/${uid}/audit_logs`));
+    return doc(collection(db, `workspaces/${WS}/audit_logs`));
 }
 
 function auditPayload(uid, targetCollection, targetId, budgetId, allocationId) {
@@ -96,6 +101,8 @@ function auditPayload(uid, targetCollection, targetId, budgetId, allocationId) {
 async function main() {
     await signInAnonymously(auth);
     const uid = auth.currentUser.uid;
+    await adminDb.doc(`workspaces/${WS}/members/${uid}`).set({ role: 'finance', status: 'active', uid });
+    await adminDb.doc(`workspaces/${WS}/members/${uid}`).set({ role: 'finance', status: 'active', uid });
     const txId = 'legacy-budget-assignment-tx';
     const billId = 'legacy-budget-assignment-bill';
     const budgetId = 'period-budget-1';
@@ -103,7 +110,7 @@ async function main() {
     const legacyDate = '2026-06-09';
     const recordTimestamp = admin.firestore.Timestamp.fromDate(new Date('2026-06-09T12:00:00Z'));
 
-    await adminDb.doc(`users/${uid}/transactions/${txId}`).set({
+    await adminDb.doc(`workspaces/${WS}/transactions/${txId}`).set({
         amount: 1500000,
         vendor_name: 'Grand indo marketing',
         category: 'Marketing',
@@ -145,7 +152,7 @@ async function main() {
         updated_by: uid
     }));
 
-    await adminDb.doc(`users/${uid}/bills/${billId}`).set({
+    await adminDb.doc(`workspaces/${WS}/bills/${billId}`).set({
         amount: 1500000,
         vendor_name: 'Grand indo marketing',
         category: 'Marketing',
