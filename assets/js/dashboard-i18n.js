@@ -4635,7 +4635,40 @@
         "The purchase unit must be a whole number of stock units.": "Satuan beli harus berupa bilangan bulat dari satuan stok.",
         "Give the item a stock unit — the unit you count it in.": "Beri item ini satuan stok — satuan yang Anda pakai untuk menghitungnya.",
         "That purchase unit repeats the stock unit with a different size. Remove it, or give it its real conversion.": "Satuan beli itu mengulang satuan stok dengan ukuran berbeda. Hapus, atau isi konversinya yang sebenarnya.",
-        "Give the item a name.": "Beri nama item ini."
+        "Give the item a name.": "Beri nama item ini.",
+
+        // Receive stock
+        "Receive stock": "Terima barang",
+        "Add an item first — there is nothing to receive into yet.": "Tambahkan item dulu — belum ada tempat untuk menerima barangnya.",
+        "Record what physically arrived. Stock goes up straight away, and the cost waits in Goods Received Not Invoiced until the supplier's bill turns up.": "Catat barang yang benar-benar datang. Stok langsung bertambah, dan biayanya menunggu di Goods Received Not Invoiced sampai tagihan supplier masuk.",
+        "Where the stock landed. This is what makes a per-outlet P&L possible later.": "Di mana barangnya masuk. Ini yang nanti memungkinkan Laba Rugi per outlet.",
+        "Not assigned to an outlet": "Tidak ditetapkan ke outlet",
+        "Add an outlet…": "Tambah outlet…",
+        "Create": "Buat",
+        "Outlet added.": "Outlet ditambahkan.",
+        "Could not add that outlet.": "Outlet itu tidak bisa ditambahkan.",
+        "Supplier": "Supplier",
+        "Delivery note": "Surat jalan",
+        "Received on": "Diterima tanggal",
+        "Sets the accounting period this lands in.": "Menentukan periode akuntansi tempat catatan ini masuk.",
+        "What arrived": "Barang yang datang",
+        "Add another item": "Tambah item lain",
+        "Total cost": "Total biaya",
+        "Posts to 1200 Inventory, against 2050 GRNI.": "Diposting ke 1200 Persediaan, lawan 2050 GRNI.",
+        "Stock received.": "Barang diterima.",
+        "Could not record this delivery.": "Pengiriman ini tidak bisa dicatat.",
+        "Finish every line before receiving.": "Lengkapi setiap baris sebelum menerima barang.",
+        "Pick an item.": "Pilih item.",
+        "Quantity must be more than zero.": "Kuantitas harus lebih dari nol.",
+        "That quantity cannot be converted.": "Kuantitas itu tidak bisa dikonversi.",
+        "Quantity": "Kuantitas",
+        "Cost": "Biaya",
+        "Cost, e.g. 300.000": "Biaya, misal 300.000",
+
+        // Deliveries table
+        "Last 10 deliveries": "10 pengiriman terakhir",
+        "Each one raised stock and parked its cost in Goods Received Not Invoiced until the supplier's bill clears it.": "Masing-masing menambah stok dan menaruh biayanya di Goods Received Not Invoiced sampai tagihan supplier melunasinya.",
+        "Unknown outlet": "Outlet tidak dikenal"
     };
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -4655,6 +4688,17 @@
         // Outlet cell when one item sits in more than one place: "3 outlets".
         { re: /^(\d+) outlets$/,
           id: function (m) { return m[1] + ' outlet'; } },
+        // Delivery row meta: "3 items" or "1 item · DN-1042".
+        { re: /^(\d+) items?(?: · (.+))?$/,
+          id: function (m) { return m[1] + ' item' + (m[2] ? ' · ' + m[2] : ''); } },
+        // Receipt line rejected because the quantity is not a whole number of the
+        // item's base unit. Rounding it would be invisible and would land in a
+        // journal amount, so the engine refuses and this explains the way out.
+        { re: /^([\d.,]+) (\S+) is not a whole number of (\S+)\. Use a rounder quantity, or give the item a finer stock unit\.$/,
+          id: function (m) {
+              return m[1] + ' ' + m[2] + ' bukan kelipatan bulat dari ' + m[3]
+                  + '. Pakai kuantitas yang lebih bulat, atau beri item ini satuan stok yang lebih halus.';
+          } },
         // Overview chart deltas: "Up 3.49%", "Down 5.1%", "Up 4.2 pts". Composed
         // in overview-charts.js from a live number, so exact match cannot reach it.
         { re: /^(Up|Down) ([\d.,]+)(%| pts)$/,

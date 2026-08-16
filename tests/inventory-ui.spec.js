@@ -91,6 +91,74 @@ test('an item can be created from the page and shows up in the table', async ({ 
     expect(consoleErrors, `console errors: ${consoleErrors.join(' | ')}`).toEqual([]);
 });
 
+test('stock can be received through the page, in the unit it was bought in', async ({ page }) => {
+    await gotoInventory(page);
+
+    // Create the item this test will receive into, so the spec owns its data.
+    await page.click('#new-item-btn');
+    await page.fill('#item-name', `${TAG} Gula`);
+    await page.fill('#item-base-unit', 'g');
+    await page.fill('#item-purchase-unit', 'kg');
+    await page.fill('#item-purchase-factor', '1000');
+    await page.click('#item-save-btn');
+    await expect(page.locator('#item-drawer')).toHaveClass(/translate-x-full/, { timeout: 20000 });
+
+    const valueBefore = await page.locator('#inventory-total-value').textContent();
+
+    await page.click('#receive-stock-btn');
+    await expect(page.locator('#receipt-drawer')).not.toHaveClass(/translate-x-full/);
+    await expect(page.locator('#receipt-save-btn')).toBeDisabled();
+
+    // Pick the item, then buy in KILOS while the item is held in GRAMS. This is
+    // the whole point of the purchase unit, and the conversion must be the
+    // engine's, not the page's.
+    const line = page.locator('#receipt-lines .inv-line').first();
+    await line.locator('[data-field="item"]').selectOption({ label: `${TAG} Gula` });
+    await line.locator('[data-field="unit"]').selectOption('kg');
+    await line.locator('[data-field="qty"]').fill('25');
+    await line.locator('[data-field="amount"]').fill('300000');
+
+    // Amount input carries Indonesian separators; the stored value is an integer.
+    await expect(line.locator('[data-field="amount"]')).toHaveValue('300.000');
+    // 25 kg resolves to 25.000 g at Rp12/g — shown BEFORE committing, so a wrong
+    // conversion factor is caught here rather than inside a COGS figure later.
+    await expect(line.locator('[data-field="derived"]')).toHaveText('25.000 g · Rp12 per g');
+    await expect(page.locator('#receipt-total')).toHaveText('Rp300.000');
+    await expect(page.locator('#receipt-save-btn')).toBeEnabled();
+
+    await page.fill('#receipt-vendor', 'QA Sumber Pangan');
+    await page.click('#receipt-save-btn');
+    await expect(page.locator('#receipt-drawer')).toHaveClass(/translate-x-full/, { timeout: 25000 });
+
+    // The item now carries stock, in base units.
+    const row = page.locator(`#inventory-body tr:has-text("${TAG} Gula")`);
+    await expect(row).toContainText('25.000');
+    await expect(row).toContainText('Rp300.000');
+    await expect(row).not.toContainText('Not stocked yet');
+
+    // The headline moved, and the delivery is listed.
+    await expect(page.locator('#inventory-total-value')).not.toHaveText(valueBefore);
+    await expect(page.locator('#receipts-card')).toBeVisible();
+    await expect(page.locator('#receipts-body')).toContainText('QA Sumber Pangan');
+});
+
+test('a quantity that is not a whole number of stock units is refused, not rounded', async ({ page }) => {
+    await gotoInventory(page);
+    await page.click('#receive-stock-btn');
+
+    const line = page.locator('#receipt-lines .inv-line').first();
+    await line.locator('[data-field="item"]').selectOption({ label: `${TAG} Gula` });
+    // 0,0005 kg is half a gram. Rounding it would be invisible and would land in
+    // a journal amount, so the engine rejects it and the page must say so.
+    await line.locator('[data-field="unit"]').selectOption('kg');
+    await line.locator('[data-field="qty"]').fill('0.0005');
+    await line.locator('[data-field="amount"]').fill('1000');
+
+    await expect(line.locator('[data-field="derived"]')).toContainText('not a whole number of g');
+    await expect(page.locator('#receipt-save-btn')).toBeDisabled();
+    await page.click('#receipt-cancel-btn');
+});
+
 // The off-canvas sidebar is SHARED behaviour (shared-dashboard.css +
 // sidebar-loader.js), so it is guarded here on a page that is not inventory.
 // Before this, every app page rendered the `md:hidden` hamburger with nothing

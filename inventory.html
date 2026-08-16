@@ -95,6 +95,52 @@
 
         /* 375px: the topbar keeps the title and both actions; the subtitle is the
            only thing that drops, and the action labels shorten rather than wrap. */
+        /* Receipt lines. One card per line rather than a table row: at 375px a
+           4-column row is unreadable, and a line carries a derived figure (unit
+           cost) that a table row has nowhere to put. */
+        .inv-line {
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #fff;
+        }
+        .inv-line-grid {
+            display: grid;
+            grid-template-columns: 1fr 90px 1.2fr;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        @media (max-width: 420px) {
+            .inv-line-grid { grid-template-columns: 1fr 90px; }
+            .inv-line-cost { grid-column: 1 / -1; }
+        }
+        .inv-line-foot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-top: 8px;
+            min-height: 20px;
+        }
+        .inv-line-derived {
+            font-size: 12px;
+            color: #64748B;
+            font-variant-numeric: tabular-nums;
+        }
+        .inv-line-remove {
+            font-size: 12px;
+            font-weight: 500;
+            color: #94A3B8;
+            background: none;
+            border: 0;
+            padding: 2px 4px;
+            cursor: pointer;
+        }
+        .inv-line-remove:hover { color: #EF4444; }
+        .inv-line-remove:disabled { opacity: .4; cursor: not-allowed; }
+        .inv-line-remove:disabled:hover { color: #94A3B8; }
+
         /* `header.inv-topbar` rather than `.inv-topbar` so it outranks Tailwind's
            equally-specific .px-6, which the CDN injects after this stylesheet. */
         @media (max-width: 640px) {
@@ -122,13 +168,21 @@
                 </div>
             </div>
             <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                <!-- Below 640px the label drops and the button stays as the "+"
-                     glyph: still the one primary action, still labelled for
-                     assistive tech, but narrow enough to leave the page title
-                     its room. The empty state carries the spelled-out CTA. -->
-                <button id="new-item-btn" type="button" aria-label="New item" title="New item" class="px-2.5 sm:px-4 py-2 bg-gray-900 text-white rounded-lg text-[14px] font-bold hover:bg-gray-800 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap">
+                <!-- Below 640px the labels drop and the buttons stay as glyphs:
+                     still labelled for assistive tech, but narrow enough to leave
+                     the page title its room. The empty state carries the
+                     spelled-out CTA.
+
+                     Receiving is the recurring job, so it is the primary action;
+                     creating items is setup. It stays disabled until a stock item
+                     exists, because there would be nothing to receive INTO. -->
+                <button id="new-item-btn" type="button" aria-label="New item" title="New item" class="px-2.5 sm:px-4 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"></path></svg>
                     <span class="hidden sm:inline">New item</span>
+                </button>
+                <button id="receive-stock-btn" type="button" aria-label="Receive stock" title="Receive stock" class="px-2.5 sm:px-4 py-2 bg-gray-900 text-white rounded-lg text-[14px] font-bold hover:bg-gray-800 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
+                    <span class="hidden sm:inline">Receive stock</span>
                 </button>
                 <!-- The launcher is owned by `.fluxy-ai-btn` — enhanceFluxyAIButtons()
                      in shared-dashboard.js replaces this element's className and
@@ -187,6 +241,32 @@
                             <span id="inventory-page-indicator" class="fluxy-table-pagination-summary"></span>
                             <button id="inventory-next-page" type="button" class="fluxy-table-action">Next</button>
                         </div>
+                    </div>
+                </section>
+
+                <!-- A recency strip, not a second ledger: it answers "did what I
+                     received actually land, and at what cost?". Bounded at 10 and
+                     labelled as such, so it is never a truncated list with no way
+                     to see the rest. -->
+                <section id="receipts-card" class="fluxy-table-card hidden">
+                    <div class="fluxy-table-card-header">
+                        <div>
+                            <h2 class="fluxy-table-title">Last 10 deliveries</h2>
+                            <p class="fluxy-table-subtitle">Each one raised stock and parked its cost in Goods Received Not Invoiced until the supplier's bill clears it.</p>
+                        </div>
+                    </div>
+                    <div class="fluxy-table-scroll">
+                        <table class="fluxy-table">
+                            <thead>
+                                <tr class="fluxy-table-header">
+                                    <th>Received</th>
+                                    <th>Supplier</th>
+                                    <th>Outlet</th>
+                                    <th class="fluxy-table-money">Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody id="receipts-body"></tbody>
+                        </table>
                     </div>
                 </section>
 
@@ -262,17 +342,92 @@
         </div>
     </div>
 
+    <!-- RECEIVE STOCK DRAWER -->
+    <div id="receipt-drawer-backdrop" class="fixed inset-0 bg-black/50 z-40 hidden"></div>
+    <div id="receipt-drawer" class="fixed top-0 right-0 h-full w-full max-w-[520px] bg-white fluxy-drawer-floating z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col" role="dialog" aria-modal="true" aria-labelledby="receipt-drawer-title">
+        <div class="fluxy-drawer-header">
+            <div>
+                <h2 id="receipt-drawer-title" class="fluxy-drawer-title">Receive stock</h2>
+                <p class="fluxy-drawer-desc">Record what physically arrived. Stock goes up straight away, and the cost waits in Goods Received Not Invoiced until the supplier's bill turns up.</p>
+            </div>
+            <button id="receipt-drawer-close" type="button" class="fluxy-drawer-close" aria-label="Close">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <form id="receipt-form" class="fluxy-drawer-body" novalidate>
+            <div class="fluxy-drawer-field">
+                <label class="fluxy-drawer-label" for="receipt-outlet">Outlet</label>
+                <!-- Rebuilt as a fresh <select> each time the drawer opens.
+                     fluxy-select.js enhances a select ONCE (it marks the node and
+                     skips it thereafter), so repopulating an already-enhanced
+                     select leaves the custom menu showing the old options. A new
+                     node gets picked up by the enhancer's MutationObserver. -->
+                <div id="receipt-outlet-host"></div>
+                <p class="fluxy-drawer-hint">Where the stock landed. This is what makes a per-outlet P&amp;L possible later.</p>
+                <div id="receipt-new-outlet" class="hidden" style="margin-top:8px; display:flex; gap:8px;">
+                    <input id="receipt-new-outlet-name" type="text" class="fluxy-drawer-input" maxlength="80" placeholder="Kemang" autocomplete="off" style="flex:1;">
+                    <button id="receipt-new-outlet-save" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Create</button>
+                </div>
+            </div>
+
+            <div class="fluxy-drawer-field-grid">
+                <div class="fluxy-drawer-field">
+                    <label class="fluxy-drawer-label" for="receipt-vendor">Supplier</label>
+                    <input id="receipt-vendor" type="text" class="fluxy-drawer-input" maxlength="160" placeholder="CV Sumber Pangan" autocomplete="off">
+                </div>
+                <div class="fluxy-drawer-field">
+                    <label class="fluxy-drawer-label" for="receipt-reference">Delivery note <span class="inv-muted">(optional)</span></label>
+                    <input id="receipt-reference" type="text" class="fluxy-drawer-input" maxlength="60" placeholder="DN-1042" autocomplete="off">
+                </div>
+            </div>
+
+            <div class="fluxy-drawer-field">
+                <label class="fluxy-drawer-label">Received on</label>
+                <div id="receipt-date-picker"></div>
+                <p class="fluxy-drawer-hint">Sets the accounting period this lands in.</p>
+            </div>
+
+            <div class="fluxy-drawer-section">
+                <div class="fluxy-drawer-section-head">
+                    <h3 class="fluxy-drawer-section-title">What arrived</h3>
+                </div>
+                <div id="receipt-lines"></div>
+                <button id="receipt-add-line" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--secondary fluxy-drawer-btn--block" style="margin-top:8px;">Add another item</button>
+            </div>
+
+            <div id="receipt-form-error" class="fluxy-drawer-callout fluxy-drawer-callout--warning hidden"></div>
+        </form>
+
+        <!-- Outside the scrolling body on purpose: with several lines the running
+             total is the number you keep checking, and it must not scroll away. -->
+        <div class="fluxy-drawer-summary">
+            <div class="fluxy-drawer-summary-head">Total cost</div>
+            <div id="receipt-total" class="fluxy-drawer-summary-amount">Rp0</div>
+            <div class="fluxy-drawer-summary-amount-note">Posts to 1200 Inventory, against 2050 GRNI.</div>
+        </div>
+
+        <div class="fluxy-drawer-footer">
+            <button id="receipt-cancel-btn" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Cancel</button>
+            <button id="receipt-save-btn" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--primary" disabled>Receive stock</button>
+        </div>
+    </div>
+
     <script src="assets/js/sidebar-loader.js"></script>
     <script src="assets/js/money-format.js"></script>
     <script src="assets/js/shared-dashboard.js"></script>
     <script src="assets/js/dashboard-i18n.js"></script>
     <script src="assets/js/fluxy-select.js"></script>
+    <script src="assets/js/date-range-picker.js"></script>
 
     <script type="module">
         import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import DataService from './assets/js/db-service.js';
         import { applyToPage } from './assets/js/onboarding-gate.js';
+        // Conversion lives in the engine, not here. A page that reimplements
+        // "kg → g" is a second place for the arithmetic behind COGS to be wrong.
+        import { itemUnits, toBase, INV } from './assets/js/inventory-engine.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -291,6 +446,12 @@
         let allRows = [];        // items joined with their stock
         let editingItem = null;  // null = create mode
         let paginator = null;
+        let stockItems = [];     // type 'stock' only — composites cannot be received
+        let dimensions = [];
+        let receiptLines = [];   // [{ uid, itemId, qty, unitCode, amount }]
+        let receiptDatePicker = null;
+        let receiptDate = null;  // 'YYYY-MM-DD'
+        let lineSeq = 0;
 
         // ── Formatting ───────────────────────────────────────────────────────
         // Rp with dot separators and no space, per DESIGN_SYSTEM. Negative stock
@@ -311,11 +472,18 @@
 
         // ── Load ─────────────────────────────────────────────────────────────
         async function loadInventory() {
-            const [items, onHand, dimensions] = await Promise.all([
+            const [items, onHand, dims, receipts] = await Promise.all([
                 ds.getItems(currentUid),
                 ds.getStockOnHand(currentUid, { byDimension: true }),
-                ds.getDimensions(currentUid)
+                ds.getDimensions(currentUid),
+                ds.getGoodsReceipts(currentUid, { limitCount: 10 })
             ]);
+
+            dimensions = dims;
+            // Composites are recipes — receiving one would put it into stock
+            // without consuming its ingredients, so the DAL rejects it. Keep them
+            // out of the picker rather than letting the user find out on submit.
+            stockItems = items.filter((i) => i.type === 'stock');
 
             const dimName = {};
             dimensions.forEach((d) => { dimName[d.id] = d.name; });
@@ -348,7 +516,42 @@
             });
 
             renderHeadline(allRows, dimensions);
+            renderReceipts(receipts, dimName);
             applySearch();
+
+            // Nothing to receive into until a stock item exists.
+            const receiveBtn = document.getElementById('receive-stock-btn');
+            receiveBtn.disabled = stockItems.length === 0;
+            receiveBtn.title = stockItems.length
+                ? 'Receive stock'
+                : 'Add an item first — there is nothing to receive into yet.';
+        }
+
+        function renderReceipts(receipts, dimName) {
+            const card = document.getElementById('receipts-card');
+            if (!receipts.length) { card.classList.add('hidden'); return; }
+            card.classList.remove('hidden');
+            document.getElementById('receipts-body').innerHTML = receipts.map((r) => {
+                const when = r.timestamp && typeof r.timestamp.toDate === 'function'
+                    ? r.timestamp.toDate() : null;
+                const dateText = when
+                    ? (window.FluxyI18n ? window.FluxyI18n.formatDate(when) : when.toLocaleDateString())
+                    : '—';
+                const outlet = r.dimension_id
+                    ? esc(dimName[r.dimension_id] || 'Unknown outlet')
+                    : '<span class="inv-muted">Unassigned</span>';
+                const lineCount = Number(r.line_count) || 0;
+                return `
+                    <tr class="fluxy-table-row">
+                        <td class="fluxy-table-cell">
+                            <span class="fluxy-table-cell-primary">${esc(dateText)}</span>
+                            <span class="fluxy-table-cell-meta">${lineCount} ${lineCount === 1 ? 'item' : 'items'}${r.reference ? ' · ' + esc(r.reference) : ''}</span>
+                        </td>
+                        <td class="fluxy-table-cell">${r.vendor_name ? esc(r.vendor_name) : '<span class="inv-muted">—</span>'}</td>
+                        <td class="fluxy-table-cell">${outlet}</td>
+                        <td class="fluxy-table-cell fluxy-table-money">${rp(r.total_amount)}</td>
+                    </tr>`;
+            }).join('');
         }
 
         function renderHeadline(rows, dimensions) {
@@ -584,6 +787,240 @@
             }
         }
 
+        // ── Receive stock ────────────────────────────────────────────────────
+        const ADD_OUTLET = '__add__';
+
+        function dayKey(d = new Date()) {
+            return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'),
+                String(d.getDate()).padStart(2, '0')].join('-');
+        }
+
+        // Indonesian thousands separators while typing; the raw integer is what
+        // is read back on save. A formatted string must never reach Firestore.
+        function formatAmountInput(value) {
+            return String(value).replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+        function parseAmountInput(value) {
+            const digits = String(value).replace(/\D/g, '');
+            return digits ? parseInt(digits, 10) : 0;
+        }
+
+        function renderOutletSelect(selectedId = null) {
+            const options = dimensions.map((d) =>
+                `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('');
+            document.getElementById('receipt-outlet-host').innerHTML =
+                `<select id="receipt-outlet" class="fluxy-drawer-select" aria-label="Outlet">`
+                + options
+                + '<option value="">Not assigned to an outlet</option>'
+                + `<option value="${ADD_OUTLET}">Add an outlet…</option>`
+                + '</select>';
+            const sel = document.getElementById('receipt-outlet');
+            const wanted = selectedId || (dimensions.length ? dimensions[0].id : '');
+            if ([...sel.options].some((o) => o.value === wanted)) sel.value = wanted;
+        }
+
+        function blankLine() {
+            const item = stockItems[0] || null;
+            return {
+                uid: `l${++lineSeq}`,
+                itemId: item ? item.id : '',
+                unitCode: item ? (item.base_unit || '') : '',
+                qty: '',
+                amount: 0
+            };
+        }
+
+        function itemById(id) { return stockItems.find((i) => i.id === id) || null; }
+
+        // The line's quantity in BASE units, or an error to show the user. This is
+        // the only place the page converts, and it delegates to the engine.
+        function lineBase(line) {
+            const item = itemById(line.itemId);
+            if (!item) return { error: 'Pick an item.' };
+            const raw = String(line.qty).trim().replace(',', '.');
+            if (!raw) return { pending: true };
+            const n = Number(raw);
+            if (!Number.isFinite(n) || n <= 0) return { error: 'Quantity must be more than zero.' };
+            try {
+                return { base: toBase(item, n, line.unitCode || item.base_unit), item };
+            } catch (err) {
+                if (err.code === INV.NON_INTEGER_QUANTITY) {
+                    return { error: `${n} ${line.unitCode} is not a whole number of ${item.base_unit}. Use a rounder quantity, or give the item a finer stock unit.` };
+                }
+                return { error: err.message || 'That quantity cannot be converted.' };
+            }
+        }
+
+        function renderLines() {
+            const host = document.getElementById('receipt-lines');
+            host.innerHTML = receiptLines.map((line) => {
+                const item = itemById(line.itemId);
+                const units = item ? itemUnits(item) : [];
+                const itemOptions = stockItems.map((i) =>
+                    `<option value="${esc(i.id)}"${i.id === line.itemId ? ' selected' : ''}>${esc(i.name)}</option>`).join('');
+                const unitOptions = units.map((u) =>
+                    `<option value="${esc(u.code)}"${u.code === line.unitCode ? ' selected' : ''}>${esc(u.code)}</option>`).join('');
+                return `
+                    <div class="inv-line" data-line="${line.uid}">
+                        <select class="fluxy-drawer-select" data-field="item" aria-label="Item">${itemOptions}</select>
+                        <div class="inv-line-grid">
+                            <input type="text" inputmode="decimal" class="fluxy-drawer-input" data-field="qty"
+                                   value="${esc(line.qty)}" placeholder="25" aria-label="Quantity">
+                            <select class="fluxy-drawer-select" data-field="unit" aria-label="Unit">${unitOptions}</select>
+                            <input type="text" inputmode="numeric" class="fluxy-drawer-input inv-line-cost" data-field="amount"
+                                   value="${line.amount ? formatAmountInput(line.amount) : ''}" placeholder="Cost, e.g. 300.000" aria-label="Cost">
+                        </div>
+                        <div class="inv-line-foot">
+                            <span class="inv-line-derived" data-field="derived"></span>
+                            <button type="button" class="inv-line-remove" data-field="remove"${receiptLines.length === 1 ? ' disabled' : ''}>Remove</button>
+                        </div>
+                    </div>`;
+            }).join('');
+            // The selects here are brand-new nodes on every render, so
+            // fluxy-select.js's MutationObserver enhances them automatically.
+            refreshDerived();
+        }
+
+        // Shows what each line resolves to before it is committed: the base
+        // quantity and the unit cost the ledger will actually use. Catching a
+        // wrong factor here beats finding it in a COGS figure next month.
+        function refreshDerived() {
+            let total = 0;
+            let ok = receiptLines.length > 0;
+
+            receiptLines.forEach((line) => {
+                const row = document.querySelector(`[data-line="${line.uid}"]`);
+                if (!row) return;
+                const out = row.querySelector('[data-field="derived"]');
+                const resolved = lineBase(line);
+                const item = itemById(line.itemId);
+
+                if (resolved.error) {
+                    out.textContent = resolved.error;
+                    out.style.color = '#EF4444';
+                    ok = false;
+                } else if (resolved.pending || !line.amount) {
+                    out.textContent = '';
+                    ok = false;
+                } else {
+                    total += line.amount;
+                    // Unit cost is a RATE and may be fractional — Rp0,012 per gram
+                    // is legitimate. It is displayed, never stored.
+                    const rate = line.amount / resolved.base;
+                    const shown = rate >= 1
+                        ? rp(Math.round(rate))
+                        : 'Rp' + rate.toLocaleString('id-ID', { maximumFractionDigits: 4 });
+                    out.textContent = `${resolved.base.toLocaleString('id-ID')} ${item.base_unit} · ${shown} per ${item.base_unit}`;
+                    out.style.color = '';
+                }
+            });
+
+            document.getElementById('receipt-total').textContent = rp(total);
+            document.getElementById('receipt-save-btn').disabled = !ok;
+        }
+
+        async function openReceiptDrawer() {
+            receiptLines = [blankLine()];
+            receiptDate = dayKey();
+            renderOutletSelect();
+            document.getElementById('receipt-vendor').value = '';
+            document.getElementById('receipt-reference').value = '';
+            document.getElementById('receipt-new-outlet').classList.add('hidden');
+            document.getElementById('receipt-new-outlet-name').value = '';
+            document.getElementById('receipt-form-error').classList.add('hidden');
+            renderLines();
+
+            document.getElementById('receipt-drawer-backdrop').classList.remove('hidden');
+            document.getElementById('receipt-drawer').classList.remove('translate-x-full');
+            document.body.style.overflow = 'hidden';
+
+            // Shared picker in single-date mode — never a native date input.
+            if (!receiptDatePicker) {
+                try {
+                    receiptDatePicker = window.FluxyDateRangePicker?.mount('#receipt-date-picker', {
+                        mode: 'single',
+                        start: receiptDate,
+                        end: receiptDate,
+                        defaultStart: receiptDate,
+                        defaultEnd: receiptDate,
+                        maxDate: dayKey(),
+                        onChange: ({ start }) => { receiptDate = start; }
+                    });
+                } catch (_) { /* the field degrades to today, which is the default */ }
+            }
+        }
+
+        function closeReceiptDrawer() {
+            document.getElementById('receipt-drawer').classList.add('translate-x-full');
+            document.getElementById('receipt-drawer-backdrop').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        async function createOutletInline() {
+            const input = document.getElementById('receipt-new-outlet-name');
+            const name = input.value.trim();
+            if (!name) return;
+            const btn = document.getElementById('receipt-new-outlet-save');
+            btn.disabled = true;
+            try {
+                const created = await ds.saveDimension(currentUid, { name, type: 'outlet' }, { create: true });
+                dimensions = await ds.getDimensions(currentUid);
+                renderOutletSelect(created.id);
+                document.getElementById('receipt-new-outlet').classList.add('hidden');
+                input.value = '';
+                window.showToast('Outlet added.', 'success');
+            } catch (err) {
+                showReceiptError(err.message || 'Could not add that outlet.');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function showReceiptError(message) {
+            const el = document.getElementById('receipt-form-error');
+            el.textContent = message;
+            el.classList.remove('hidden');
+        }
+
+        async function saveReceipt() {
+            const btn = document.getElementById('receipt-save-btn');
+            document.getElementById('receipt-form-error').classList.add('hidden');
+
+            const lines = [];
+            for (const line of receiptLines) {
+                const resolved = lineBase(line);
+                if (resolved.error || resolved.pending) {
+                    showReceiptError('Finish every line before receiving.');
+                    return;
+                }
+                lines.push({ item_id: line.itemId, quantity: resolved.base, amount: line.amount });
+            }
+
+            const outletValue = document.getElementById('receipt-outlet').value;
+            const [y, m, d] = (receiptDate || dayKey()).split('-').map(Number);
+
+            btn.disabled = true;
+            btn.textContent = 'Receiving…';
+            try {
+                await ds.createGoodsReceipt(currentUid, {
+                    dimension_id: outletValue === ADD_OUTLET ? null : (outletValue || null),
+                    vendor_name: document.getElementById('receipt-vendor').value.trim(),
+                    reference: document.getElementById('receipt-reference').value.trim() || null,
+                    received_at: new Date(y, m - 1, d),
+                    lines
+                });
+                window.showToast('Stock received.', 'success');
+                closeReceiptDrawer();
+                await loadInventory();
+            } catch (err) {
+                showReceiptError(err.message || 'Could not record this delivery.');
+            } finally {
+                btn.textContent = 'Receive stock';
+                btn.disabled = false;
+                refreshDerived();
+            }
+        }
+
         // ── Wiring ───────────────────────────────────────────────────────────
         document.getElementById('new-item-btn').addEventListener('click', () => openDrawer(null));
         document.getElementById('item-drawer-close').addEventListener('click', closeDrawer);
@@ -592,13 +1029,78 @@
         document.getElementById('item-save-btn').addEventListener('click', saveItem);
         document.getElementById('item-form').addEventListener('submit', (e) => { e.preventDefault(); saveItem(); });
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !document.getElementById('item-drawer-backdrop').classList.contains('hidden')) closeDrawer();
+            if (e.key !== 'Escape') return;
+            if (!document.getElementById('item-drawer-backdrop').classList.contains('hidden')) closeDrawer();
+            else if (!document.getElementById('receipt-drawer-backdrop').classList.contains('hidden')) closeReceiptDrawer();
         });
         ['item-name', 'item-base-unit'].forEach((id) => {
             document.getElementById(id).addEventListener('input', validateForm);
         });
         ['item-base-unit', 'item-purchase-unit', 'item-purchase-factor'].forEach((id) => {
             document.getElementById(id).addEventListener('input', updatePurchasePreview);
+        });
+
+        // Receive-stock drawer
+        document.getElementById('receive-stock-btn').addEventListener('click', openReceiptDrawer);
+        document.getElementById('receipt-drawer-close').addEventListener('click', closeReceiptDrawer);
+        document.getElementById('receipt-cancel-btn').addEventListener('click', closeReceiptDrawer);
+        document.getElementById('receipt-drawer-backdrop').addEventListener('click', closeReceiptDrawer);
+        document.getElementById('receipt-save-btn').addEventListener('click', saveReceipt);
+        document.getElementById('receipt-form').addEventListener('submit', (e) => { e.preventDefault(); saveReceipt(); });
+        document.getElementById('receipt-new-outlet-save').addEventListener('click', createOutletInline);
+        document.getElementById('receipt-add-line').addEventListener('click', () => {
+            receiptLines.push(blankLine());
+            renderLines();
+        });
+        // Delegated: the select itself is replaced on every drawer open.
+        document.getElementById('receipt-outlet-host').addEventListener('change', (e) => {
+            if (e.target.id !== 'receipt-outlet') return;
+            const adding = e.target.value === ADD_OUTLET;
+            document.getElementById('receipt-new-outlet').classList.toggle('hidden', !adding);
+            if (adding) document.getElementById('receipt-new-outlet-name').focus();
+        });
+
+        // Line edits are delegated: rows are re-rendered, so per-row listeners
+        // would have to be rebound on every keystroke.
+        const linesHost = document.getElementById('receipt-lines');
+        linesHost.addEventListener('input', (e) => {
+            const row = e.target.closest('[data-line]');
+            if (!row) return;
+            const line = receiptLines.find((l) => l.uid === row.dataset.line);
+            if (!line) return;
+            const field = e.target.dataset.field;
+            if (field === 'qty') line.qty = e.target.value;
+            if (field === 'amount') {
+                line.amount = parseAmountInput(e.target.value);
+                const formatted = formatAmountInput(e.target.value);
+                if (e.target.value !== formatted) e.target.value = formatted;
+            }
+            refreshDerived();
+        });
+        linesHost.addEventListener('change', (e) => {
+            const row = e.target.closest('[data-line]');
+            if (!row) return;
+            const line = receiptLines.find((l) => l.uid === row.dataset.line);
+            if (!line) return;
+            if (e.target.dataset.field === 'item') {
+                line.itemId = e.target.value;
+                // The old unit belongs to the old item; fall back to the new
+                // item's base unit rather than carrying a unit it does not have.
+                const item = itemById(line.itemId);
+                line.unitCode = item ? item.base_unit : '';
+                renderLines();
+                return;
+            }
+            if (e.target.dataset.field === 'unit') {
+                line.unitCode = e.target.value;
+                refreshDerived();
+            }
+        });
+        linesHost.addEventListener('click', (e) => {
+            if (e.target.dataset.field !== 'remove') return;
+            const row = e.target.closest('[data-line]');
+            receiptLines = receiptLines.filter((l) => l.uid !== row.dataset.line);
+            renderLines();
         });
 
         let searchTimer = null;
