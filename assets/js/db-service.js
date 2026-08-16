@@ -5,7 +5,7 @@ import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJo
 import { buildTaxAppendix, billWithheldAmount, TAX_RATES } from "./tax-engine.js";
 import { computeAging } from "./aging-engine.js";
 import { buildIncomeStatement, buildBalanceSheet, buildCashFlow } from "./statements-engine.js";
-import { validateItemDraft, ITEM_TYPES } from "./inventory-engine.js";
+import { validateItemDraft, normalizeComponents, explodeRecipe, recipeCost, ITEM_TYPES } from "./inventory-engine.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
 // See docs/TRIAL_ACCESS_AND_PAYMENT_BANNER_PLAN.md and PROJECT_BACKGROUND §4k.
@@ -5363,17 +5363,38 @@ class DataService {
         const sku = this._nullableString(data.sku, 60);
         const cogsCode = this._nullableString(data.default_cogs_account_code, 12);
 
+        // Recipe/BOM. Throws INV_010 if a stock item carries components, INV_011
+        // on a bad batch size, INV_005 on a fractional component quantity.
+        const recipe = normalizeComponents({ ...data, type: draft.type });
+
         const fields = {
             name: draft.name,
             type: draft.type,
             base_unit: draft.base_unit,
             units: draft.units,
+            components: recipe.components,
+            batch_size: recipe.batch_size,
             sku: sku || null,
             // Which account this item's cost lands in when it eventually posts.
             // Defaults to 5100 rather than being required, so an item can be
             // created before anyone has thought about the chart.
             default_cogs_account_code: cogsCode || '5100',
             notes: this._nullableString(data.notes, 500)
+        };
+
+        // Every component must exist, and the resulting graph must be acyclic.
+        // Checked against the CANDIDATE graph — the item as it would be after this
+        // write — because a cycle is only ever created by the write itself, and
+        // checking the pre-write graph would let it through.
+        const validateGraph = async (candidateId) => {
+            if (!recipe.components.length) return;
+            const all = await this.getItems(userId, { includeArchived: true });
+            const byId = {};
+            all.forEach((i) => { byId[i.id] = i; });
+            byId[candidateId] = { ...(byId[candidateId] || {}), id: candidateId, ...fields };
+            // Exploding one batch touches every reachable node, so this surfaces
+            // both a missing component (INV_009) and a cycle (INV_008).
+            explodeRecipe(byId, candidateId, recipe.batch_size);
         };
 
         if (create) {
@@ -5386,6 +5407,9 @@ class DataService {
             if (sku && existing.some((i) => i.sku && i.sku.toLowerCase() === sku.toLowerCase())) {
                 throw new Error(`SKU "${sku}" is already used by another item.`);
             }
+            // A brand-new item cannot yet be referenced, so a self-cycle is the
+            // only one reachable here — but a missing component id is not.
+            await validateGraph('__new__');
             const payload = {
                 ...fields, name_key: nameKey, status: 'active',
                 created_at: serverTimestamp(), updated_at: serverTimestamp()
@@ -5409,6 +5433,7 @@ class DataService {
         if (draft.base_unit !== prev.base_unit) {
             throw new Error(`Base unit cannot change (${prev.base_unit} → ${draft.base_unit}); every recorded quantity is expressed in it.`);
         }
+        await validateGraph(itemId);
         await updateDoc(ref, { ...fields, updated_at: serverTimestamp() });
         await this.addAuditLog(userId, {
             action: 'item.updated', target_collection: 'items', target_id: itemId,
@@ -5416,6 +5441,17 @@ class DataService {
             after: { name: draft.name, type: draft.type, sku: sku || null }, source: 'dashboard'
         });
         return { id: itemId, ...prev, ...fields };
+    }
+
+    // Resolve a composite to the stock items it consumes, and cost it.
+    // Quantities may be fractional — this is a requirement, not a stored
+    // quantity; rounding belongs at the point a movement is recorded.
+    async explodeItem(userId, itemId, quantityBase, { unitCostByItemId = null } = {}) {
+        const all = await this.getItems(userId, { includeArchived: true });
+        const byId = {};
+        all.forEach((i) => { byId[i.id] = i; });
+        if (!unitCostByItemId) return { components: explodeRecipe(byId, itemId, quantityBase) };
+        return recipeCost(byId, unitCostByItemId, itemId, quantityBase);
     }
 
     async archiveItem(userId, itemId, { restore = false } = {}) {

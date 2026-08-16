@@ -106,3 +106,79 @@ test('item drafts are validated and normalized', async ({ page }) => {
     expect(r.noBase).toBe('INV_003');
     expect(r.badRole, 'an unrecognised role degrades to null rather than failing').toBeNull();
 });
+
+
+// A recipe is the whole point of the composite type: menu COGS requires
+// exploding ingredients at sale time, not decrementing one SKU. This is what
+// PRODUCT_STRATEGY §7 means when it says a generic warehouse model produces
+// "confidently wrong COGS" for F&B.
+test('recipes explode through nesting, merge shared ingredients, and cost once', async ({ page }) => {
+    await page.goto('/pricing');
+    const r = await page.evaluate(async () => {
+        const e = await import('/assets/js/inventory-engine.js');
+        const items = {
+            rice: { id: 'rice', name: 'Beras', type: 'stock', base_unit: 'g' },
+            oil: { id: 'oil', name: 'Minyak', type: 'stock', base_unit: 'ml' },
+            egg: { id: 'egg', name: 'Telur', type: 'stock', base_unit: 'pcs' },
+            // Sub-preparation: one batch makes 500 g of sauce.
+            sauce: {
+                id: 'sauce', name: 'Bumbu', type: 'composite', base_unit: 'g', batch_size: 500,
+                components: [{ item_id: 'oil', quantity: 400 }, { item_id: 'rice', quantity: 100 }]
+            },
+            // Menu item: one batch makes 10 portions and uses the sauce.
+            nasgor: {
+                id: 'nasgor', name: 'Nasi Goreng', type: 'composite', base_unit: 'porsi', batch_size: 10,
+                components: [
+                    { item_id: 'rice', quantity: 1500 },
+                    { item_id: 'egg', quantity: 20 },
+                    { item_id: 'sauce', quantity: 250 }
+                ]
+            }
+        };
+        const err = (fn) => { try { fn(); return null; } catch (x) { return x.code; } };
+        const cycle = { ...items, sauce: { ...items.sauce, components: [{ item_id: 'nasgor', quantity: 1 }] } };
+        return {
+            batch: e.explodeRecipe(items, 'nasgor', 10),
+            one: e.explodeRecipe(items, 'nasgor', 1),
+            costOne: e.recipeCost(items, { rice: 12, oil: 25, egg: 2500 }, 'nasgor', 1),
+            missingCost: e.recipeCost(items, { rice: 12 }, 'nasgor', 1).missingCost.sort(),
+            stockPassthrough: e.explodeRecipe(items, 'rice', 250),
+            emptyRecipe: e.explodeRecipe({ x: { id: 'x', type: 'composite', base_unit: 'porsi', components: [] } }, 'x', 5),
+            cycle: err(() => e.explodeRecipe(cycle, 'nasgor', 1)),
+            selfCycle: err(() => e.explodeRecipe(
+                { a: { id: 'a', type: 'composite', base_unit: 'g', batch_size: 1, components: [{ item_id: 'a', quantity: 1 }] } }, 'a', 1)),
+            missingItem: err(() => e.explodeRecipe(items, 'ghost', 1)),
+            componentsOnStock: err(() => e.normalizeComponents({ name: 'x', type: 'stock', components: [{ item_id: 'a', quantity: 1 }] })),
+            zeroBatch: err(() => e.normalizeComponents({ name: 'x', type: 'composite', batch_size: 0 })),
+            dupComponent: err(() => e.normalizeComponents({ name: 'x', type: 'composite', components: [{ item_id: 'a', quantity: 1 }, { item_id: 'a', quantity: 2 }] })),
+            fractionalComponent: err(() => e.normalizeComponents({ name: 'x', type: 'composite', components: [{ item_id: 'a', quantity: 1.5 }] })),
+            badYield: err(() => e.normalizeComponents({ name: 'x', type: 'composite', components: [{ item_id: 'a', quantity: 1, yield_percent: 140 }] })),
+            yieldKept: e.normalizeComponents({ name: 'x', type: 'composite', components: [{ item_id: 'a', quantity: 1000, yield_percent: 80 }] }).components[0]
+        };
+    });
+
+    // One batch is the recipe as written, plus the sauce resolved to its own inputs.
+    expect(r.batch).toEqual({ rice: 1550, egg: 20, oil: 200 });
+    // Per portion: rice arrives BOTH directly (150) and through the sauce (5).
+    // Merging is the behaviour that makes nested recipes cost correctly.
+    expect(r.one).toEqual({ rice: 155, egg: 2, oil: 20 });
+    // 155×12 + 2×2500 + 20×25 = 1860 + 5000 + 500
+    expect(r.costOne.cost).toBe(7360);
+    expect(r.costOne.missingCost).toEqual([]);
+    // An uncosted ingredient is reported, never silently treated as free.
+    expect(r.missingCost).toEqual(['egg', 'oil']);
+    expect(r.stockPassthrough).toEqual({ rice: 250 });
+    expect(r.emptyRecipe, 'a composite with no recipe yet resolves to nothing').toEqual({});
+
+    expect(r.cycle).toBe('INV_008');
+    expect(r.selfCycle).toBe('INV_008');
+    expect(r.missingItem).toBe('INV_009');
+    expect(r.componentsOnStock).toBe('INV_010');
+    expect(r.zeroBatch).toBe('INV_011');
+    expect(r.dupComponent, 'two lines for one ingredient hide a typo').toBe('INV_009');
+    expect(r.fractionalComponent).toBe('INV_005');
+    expect(r.badYield).toBe('INV_002');
+    // Yield is RECORDED, not applied: quantity stays the gross amount that
+    // leaves stock, so no division — and no rounding — enters the cost path.
+    expect(r.yieldKept).toEqual({ item_id: 'a', quantity: 1000, yield_percent: 80 });
+});

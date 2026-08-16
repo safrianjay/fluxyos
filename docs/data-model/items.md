@@ -30,6 +30,8 @@ recipes. Those are steps 3–5.
 | `units` | array | Alternate units: `{ code, factor, role }`. `factor` is a **positive integer** multiple of `base_unit`. `role` ∈ `purchase` \| `sales` \| `stock` \| `null` |
 | `sku` | string ≤60 \| null | The join to `commerce_orders.items[].sku`. Enforced unique at create |
 | `default_cogs_account_code` | string | Where this item's cost lands when it posts. Defaults to `5100` |
+| `components` | array | **Recipe/BOM.** `{ item_id, quantity, yield_percent }` — what ONE BATCH consumes. Empty on a stock item |
+| `batch_size` | integer ≥1 | How much output one batch produces, in this item's own base unit. Default `1` |
 | `notes` | string ≤500 \| null | |
 | `status` | enum | `active` \| `archived`. Soft archive only |
 | `created_at` / `updated_at` | Timestamp | Server-set |
@@ -66,7 +68,57 @@ a single-unit item needs no `units` at all. Restating it at factor 1 is dropped;
 *contradicting* it (`1 g = 5 g`) throws `INV_004`, because that would corrupt
 every conversion.
 
-## 3. Engine and errors
+## 3. Recipes (bill of materials)
+
+A `composite` item is a recipe — a menu item, a sub-preparation, a sauce.
+`components` say what **one batch** consumes; `batch_size` says how much output
+that batch produces in the composite's own base unit. A dish making 10 portions
+from 1500 g of rice is `batch_size: 10` with a component of `1500`.
+
+**Components are embedded**, not a subcollection. You always want the whole
+recipe at once and always change it as a unit, so one read and one atomic write
+beat N. Same call the commerce connector made for order lines (`models.js`,
+Phase 0 deviation #5); invoices went the other way because their lines are
+separately queryable, which recipe lines are not.
+
+### Yield is recorded, not computed
+
+`yield_percent` documents that 1000 g of raw chicken gives 800 g usable.
+**`quantity` is always the GROSS amount that leaves stock.** Deriving gross from
+net would put a division — and therefore a rounding — into a number that flows
+into a journal. Stock relief is gross consumption; yield explains how the recipe
+author arrived at it.
+
+### Explosion
+
+`explodeRecipe(itemsById, itemId, quantityBase)` resolves a composite to the
+**stock** items it consumes, recursing through nested composites.
+
+Two behaviours that matter:
+
+1. **Shared ingredients merge.** Rice reached directly (150 g) and through a
+   sauce (5 g) is one entry of 155 g, not two. Without merging, a nested recipe
+   costs wrong.
+2. **Quantities may be fractional.** Three portions from a 1000 g batch makes one
+   portion 333.33 g. That is deliberate — explosion returns a *requirement*, not
+   a stored quantity. **Rounding happens once, when a stock movement is
+   recorded**, so per-component rounding cannot accumulate across a recipe.
+   `recipeCost` likewise rounds once, at the end.
+
+An ingredient with no unit cost is returned in `missingCost`, never silently
+treated as free.
+
+### Cycles
+
+A recipe containing itself — directly, or through a sub-preparation — recurses
+forever and is always a data error. `explodeRecipe` throws `INV_008` with the
+path (`nasgor → sauce → nasgor`), and `MAX_RECIPE_DEPTH` (12) is the backstop.
+
+`saveItem` validates against the **candidate** graph — the item as it would be
+*after* the write — because a cycle is only ever created by the write itself.
+Checking the pre-write graph would let it through.
+
+## 4. Engine and errors
 
 Validation and conversion are pure, in `assets/js/inventory-engine.js`
 (`toBase`, `fromBase`, `convert`, `itemUnits`, `resolveUnit`,
@@ -87,10 +139,15 @@ control flow.
 | `INV_005` | Quantity is not a whole number of base units |
 | `INV_006` | Invalid item type |
 | `INV_007` | Invalid name |
+| `INV_008` | Recipe cycle |
+| `INV_009` | Component item missing, or listed twice |
+| `INV_010` | Components on a stock item |
+| `INV_011` | Invalid `batch_size` |
+| `INV_012` | Recipe nested deeper than `MAX_RECIPE_DEPTH` |
 
 Guard: `tests/inventory-engine.spec.js`.
 
-## 4. Rules
+## 5. Rules
 
 Read = all member roles; create/update = owner/admin/finance/accountant;
 `delete: if false` — an item will shortly be referenced by stock movements and
@@ -103,4 +160,17 @@ Firestore has no unique constraint, so this is a convention the writing surface
 upholds. A duplicate SKU would make the commerce join ambiguous and relieve the
 wrong item's cost on a marketplace sale.
 
-Emulator coverage: `tests/items-rules-emulator-test.mjs`.
+**`components` and `batch_size` needed no rules change** — the `items` validator
+uses explicit field checks with no `hasOnly`, so new fields pass. Array contents
+are the engine's job either way; rules cannot iterate cheaply.
+
+Emulator coverage: `tests/items-rules-emulator-test.mjs`. Deployed-rules
+coverage: `tests/items-live-smoke.spec.js`.
+
+## 6. Naming collision worth knowing
+
+`items` means two different things in this repo: this top-level inventory master
+(`workspaces/{ws}/items`), and invoice line items (`workspaces/{ws}/invoices/{id}/items`).
+They are disambiguated by path and by nesting depth in `firestore.rules`, and the
+structure-drift rules-coverage check only counts top-level matches — but a reader
+grepping for `items` will hit both.

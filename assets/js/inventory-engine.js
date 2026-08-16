@@ -26,8 +26,18 @@ export const INV = {
     DUPLICATE_UNIT: 'INV_004',
     NON_INTEGER_QUANTITY: 'INV_005',
     INVALID_TYPE: 'INV_006',
-    INVALID_NAME: 'INV_007'
+    INVALID_NAME: 'INV_007',
+    RECIPE_CYCLE: 'INV_008',
+    COMPONENT_NOT_FOUND: 'INV_009',
+    COMPONENTS_ON_STOCK_ITEM: 'INV_010',
+    INVALID_BATCH_SIZE: 'INV_011',
+    RECIPE_TOO_DEEP: 'INV_012'
 };
+
+// A recipe nested this deep is a data error, not a menu. Cycles are caught
+// separately; this is the belt to that braces, so a pathological DAG cannot
+// blow the stack.
+export const MAX_RECIPE_DEPTH = 12;
 
 export function invError(code, message, details) {
     const err = new Error(message);
@@ -171,4 +181,124 @@ export function validateItemDraft(data = {}) {
     }).filter(Boolean);
 
     return { name, type, base_unit: base, units };
+}
+
+
+// --- recipes / bill of materials ---------------------------------------------
+//
+// A `composite` item is a recipe: a menu item, a sub-preparation, a sauce. Its
+// `components` say what ONE BATCH consumes, and `batch_size` says how much
+// output that batch produces, in the composite's own base unit. A dish that
+// makes 10 portions from 1500 g of rice is batch_size 10, component 1500.
+//
+// Components are EMBEDDED on the item rather than living in a subcollection.
+// You always want the whole recipe at once and you always change it as a unit,
+// so one read and one atomic write beat N. Same call the commerce connector made
+// for order lines (`models.js`, Phase 0 deviation #5); invoices went the other
+// way because their lines are separately queryable, which recipe lines are not.
+//
+// YIELD IS RECORDED, NOT COMPUTED. `yield_percent` on a component documents that
+// 1000 g of raw chicken gives 800 g usable — but `quantity` is always the GROSS
+// amount that actually leaves stock. Deriving gross from net would reintroduce
+// division, and therefore rounding, into a number that flows to a journal.
+// Stock relief is gross consumption; yield explains how the author got there.
+
+export function normalizeComponents(data = {}) {
+    const type = data.type;
+    const raw = Array.isArray(data.components) ? data.components : [];
+
+    if (type === 'stock' && raw.length) {
+        throw invError(INV.COMPONENTS_ON_STOCK_ITEM,
+            'inventory: a stock item cannot have components — make it a composite item',
+            { name: String(data.name || '') });
+    }
+
+    const batchRaw = data.batch_size === undefined || data.batch_size === null ? 1 : Number(data.batch_size);
+    if (!Number.isInteger(batchRaw) || batchRaw <= 0) {
+        throw invError(INV.INVALID_BATCH_SIZE,
+            `inventory: batch_size must be a positive whole number (got ${data.batch_size})`,
+            { batch_size: String(data.batch_size) });
+    }
+
+    const seen = new Set();
+    const components = raw.map((c) => {
+        const itemId = String((c && c.item_id) || '').trim();
+        if (!itemId) throw invError(INV.COMPONENT_NOT_FOUND, 'inventory: a component is missing item_id', {});
+        if (seen.has(itemId)) {
+            // Two lines for the same ingredient hide a typo and make the recipe
+            // read as if it uses less than it does. Merge upstream, in the UI.
+            throw invError(INV.COMPONENT_NOT_FOUND,
+                `inventory: component "${itemId}" is listed twice — combine the quantities`, { item_id: itemId });
+        }
+        seen.add(itemId);
+        const quantity = Number(c.quantity);
+        if (!Number.isInteger(quantity) || quantity <= 0) {
+            throw invError(INV.NON_INTEGER_QUANTITY,
+                `inventory: component quantity must be a positive whole number of the component's base unit (got ${c.quantity})`,
+                { item_id: itemId, quantity: String(c.quantity) });
+        }
+        const yieldPct = c.yield_percent === undefined || c.yield_percent === null ? null : Number(c.yield_percent);
+        if (yieldPct !== null && (!(yieldPct > 0) || yieldPct > 100)) {
+            throw invError(INV.NON_INTEGER_FACTOR,
+                `inventory: yield_percent must be between 0 and 100 (got ${c.yield_percent})`,
+                { item_id: itemId, yield_percent: String(c.yield_percent) });
+        }
+        return { item_id: itemId, quantity, yield_percent: yieldPct };
+    });
+
+    return { components, batch_size: batchRaw };
+}
+
+// Resolve a composite down to the STOCK items it actually consumes.
+//
+// Returns `{ itemId: quantity }` in each stock item's own base unit. Quantities
+// here may be FRACTIONAL — a batch of 3 portions from 1000 g of rice makes one
+// portion 333.33 g — and that is deliberate: this is a requirement, not a stored
+// quantity. Rounding happens once, at the point a stock movement is recorded,
+// so per-component rounding cannot accumulate across a recipe.
+export function explodeRecipe(itemsById, itemId, quantityBase, _seen = []) {
+    if (_seen.length > MAX_RECIPE_DEPTH) {
+        throw invError(INV.RECIPE_TOO_DEEP,
+            `inventory: recipe nesting exceeded ${MAX_RECIPE_DEPTH} levels`, { path: _seen.join(' → ') });
+    }
+    const item = itemsById[itemId];
+    if (!item) {
+        throw invError(INV.COMPONENT_NOT_FOUND,
+            `inventory: component item "${itemId}" does not exist`, { item_id: itemId });
+    }
+    if (item.type !== 'composite') return { [itemId]: Number(quantityBase) || 0 };
+
+    if (_seen.includes(itemId)) {
+        // A recipe that contains itself, directly or through a sub-preparation,
+        // would recurse forever and is always a data error.
+        throw invError(INV.RECIPE_CYCLE,
+            `inventory: recipe cycle — ${[..._seen, itemId].join(' → ')}`,
+            { path: [..._seen, itemId].join(' → '), item_id: itemId });
+    }
+
+    const batch = Number(item.batch_size) || 1;
+    const scale = (Number(quantityBase) || 0) / batch;
+    const out = {};
+    (Array.isArray(item.components) ? item.components : []).forEach((c) => {
+        const sub = explodeRecipe(itemsById, c.item_id, (Number(c.quantity) || 0) * scale, [..._seen, itemId]);
+        // Merge, so one ingredient reached through two sub-recipes is counted once.
+        Object.entries(sub).forEach(([id, qty]) => { out[id] = (out[id] || 0) + qty; });
+    });
+    return out;
+}
+
+// Cost of producing `quantityBase` of a composite, given unit costs per base unit.
+//
+// Rounds ONCE, at the end. Rounding each component would compound the error
+// across a recipe, and this figure becomes a journal amount.
+export function recipeCost(itemsById, unitCostByItemId, itemId, quantityBase) {
+    const exploded = explodeRecipe(itemsById, itemId, quantityBase);
+    let total = 0;
+    const missing = [];
+    Object.entries(exploded).forEach(([id, qty]) => {
+        const unitCost = unitCostByItemId[id];
+        if (unitCost === undefined || unitCost === null) { missing.push(id); return; }
+        total += qty * Number(unitCost);
+    });
+    return { cost: Math.round(total), components: exploded, missingCost: missing };
 }
