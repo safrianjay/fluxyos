@@ -5254,9 +5254,12 @@ class DataService {
     // Modelled on `vendors`, which is this codebase's proven master-data shape:
     // deterministic `name_key`, soft archive, never deleted.
     //
-    // Nothing sets a dimension on a document yet — `dimension_id` rides journal
-    // lines (accounting-engine.js `stampDimension`) and every line is currently
-    // null. This is the master the picker will read once documents carry one.
+    // `dimension_id` rides journal lines: buildJournal calls stampDimension with
+    // the SOURCE DOCUMENT's dimension_id, so any document that carries one
+    // produces dimensioned lines with no change to the posting path. Goods
+    // receipts, stock adjustments and transactions set it today (the Add
+    // Transaction drawer's Outlet field); bills, invoices and subscriptions do
+    // not yet, so their cost lands in "Unassigned" on /outlet-pnl.
     // Design: docs/DIMENSION_SEAM_DESIGN.md.
     // =====================================================================
 

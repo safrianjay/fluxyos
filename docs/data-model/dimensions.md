@@ -16,10 +16,35 @@ as opposed to the *what* the account already answers. Design rationale and the
 reason the line-level field shipped ahead of everything else:
 [`DIMENSION_SEAM_DESIGN.md`](../DIMENSION_SEAM_DESIGN.md).
 
-**Status:** the collections and the rollup are live. **Nothing sets a dimension
-on a document yet** — every `dimension_id` on every journal line is `null`, so
-the whole ledger rolls up under `__unassigned__`. The document-level picker and
-the management UI are the next increment.
+**Status:** live end to end. The collections, the rollup, the document-level
+pickers and `/outlet-pnl` all ship. Outlets are created from the receive-stock
+drawer; goods receipts, stock adjustments and transactions carry a dimension (see
+the table below), and the per-outlet income statement reads the rollup.
+
+Still open: bills, invoices and subscriptions carry no dimension, so their cost
+sits in "Unassigned"; and there is no dedicated outlet-management screen —
+renaming or archiving an outlet is DAL-only.
+
+
+## Which documents carry a dimension
+
+`buildJournal` stamps the **source document's** `dimension_id` onto every line it
+produces (`accounting-engine.js` → `stampDimension`), so a document only has to
+carry the field — the posting path needs no change per collection.
+
+| Carries `dimension_id` | Set where |
+|---|---|
+| `goods_receipts` | Receive-stock drawer (`inventory.html`) |
+| `stock_adjustments` | Count sheet and waste drawer (`inventory-count.html`) |
+| `transactions` | **Outlet** field on the Add Transaction drawer |
+
+**Bills, invoices and subscriptions do not yet.** Their cost therefore lands in
+"Unassigned" on `/outlet-pnl`, which the page states in words rather than leaving
+the reader to infer it from a suspiciously healthy margin.
+
+`firestore.rules` had to allow the field: `wsValidTxCreate` / `wsValidTxUpdate`
+use `hasOnly`, so an unlisted key is rejected outright (`permission-denied`, not a
+dropped field). Adding it to the other three means editing their validators too.
 
 ## 1. `dimensions/{dimensionId}`
 

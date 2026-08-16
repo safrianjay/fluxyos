@@ -89,6 +89,7 @@ const APP_PAGES = [
     'net-profit.html',
     'onboarding.html',
     'opex-budget.html',
+    'outlet-pnl.html',
     'payment-pending.html',
     'report-preview.html',
     'reports.html',

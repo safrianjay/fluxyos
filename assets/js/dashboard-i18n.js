@@ -4708,7 +4708,24 @@
         "Could not record this waste.": "Susut ini tidak bisa dicatat.",
         "How much was thrown away?": "Berapa banyak yang dibuang?",
         "That quantity cannot be used.": "Kuantitas itu tidak bisa dipakai.",
-        "That count cannot be used.": "Hitungan itu tidak bisa dipakai."
+        "That count cannot be used.": "Hitungan itu tidak bisa dipakai.",
+
+        // ── Outlet P&L (outlet-pnl.html) ─────────────────────────────────────
+        "Outlet P&L": "Laba Rugi per Outlet",
+        "Which outlet is making money and which is not, from the same ledger as your company statements.": "Outlet mana yang menghasilkan uang dan mana yang tidak, dari buku besar yang sama dengan laporan perusahaan Anda.",
+        "Every outlet, side by side": "Semua outlet, berdampingan",
+        "Built by the same engine as your company income statement, once per outlet — so the rows below always add up to it.": "Dibuat oleh mesin yang sama dengan laporan laba rugi perusahaan Anda, sekali untuk tiap outlet — jadi baris di bawah selalu berjumlah sama dengannya.",
+        "Cost of sales": "Harga pokok penjualan",
+        "Operating costs": "Biaya operasional",
+        "All outlets": "Semua outlet",
+        "Not tagged to any outlet": "Belum ditandai ke outlet mana pun",
+        "Nothing posted to an outlet this period": "Belum ada yang diposting ke outlet pada periode ini",
+        "Receive stock into an outlet and count it, and tag revenue with the outlet it came from. Both then show up here.": "Catat penerimaan barang ke sebuah outlet lalu lakukan stock opname, dan tandai pendapatan dengan outlet asalnya. Keduanya lalu muncul di sini.",
+        "Every account behind that row.": "Semua akun di balik baris itu.",
+        "Nothing posted": "Belum ada yang diposting",
+
+        // Outlet field on the Add Transaction drawer
+        "Which outlet this belongs to. Without it the amount still posts, but it lands outside every outlet's P&L.": "Outlet mana yang memiliki catatan ini. Tanpa itu jumlahnya tetap diposting, tapi jatuh di luar Laba Rugi setiap outlet."
     };
 
     // ─────────────────────────────────────────────────────────────────────────

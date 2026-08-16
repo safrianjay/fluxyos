@@ -148,6 +148,7 @@ any Future item as present.
 | Invoices | `invoices.html` | App | ✅ | **No** | ✅ |
 | Inventory | `inventory.html` | App | ✅ | **No** | ✅ |
 | Stock Count | `inventory-count.html` | App | ✅ | **No** | ✅ |
+| Outlet P&L | `outlet-pnl.html` | App | ✅ | **No** | ✅ |
 | Accounting Center | `accounting.html` | App | ✅ | **No** | ✅ |
 | Accounting Records | `accounting-records.html` | App | ✅ | **No** | ✅ |
 | Reports & Exports | `reports.html` | App | ✅ | **No** | ✅ |
@@ -724,6 +725,7 @@ Sidebar is injected into every app page at `#sidebar`. Active item is detected b
 | Operations | Inventory | `nav-inventory` | Link | `/inventory` | ✅ Shipped — item master + stock on hand |
 | Operations | Approvals | `nav-approvals` | Disabled button | `Soon` | 📋 Planned |
 | Reporting | Accounting Center | `nav-accounting` | Link | `/accounting` | ✅ Shipped |
+| Reporting | Outlet P&L | `nav-outlet-pnl` | Link | `/outlet-pnl` | ✅ Shipped — per-dimension income statement |
 | Reporting | Reports & Exports | `nav-reports` | Link | `/reports` | ✅ Shipped MVP |
 | Reporting | Activity Log | `nav-activity-log` | Link (`hidden`) | `/activity-log` | 🚧 Built, hidden |
 | Tax & Compliance | Tax Center | `nav-tax-center` | Link | `/tax-center` | ✅ Shipped Phase 1 |

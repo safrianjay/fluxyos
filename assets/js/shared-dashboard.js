@@ -1264,6 +1264,19 @@ window.showAddTransactionModal = function(options = {}) {
                         <section class="fluxy-drawer-section">
                             <h3 class="fluxy-drawer-section-title">Additional Information</h3>
                             ${context === 'transaction' ? `
+                            <!-- Outlet. Hidden unless the workspace actually has
+                                 dimensions, so businesses that don't run outlets
+                                 never see an empty picker. Revenue tagged here is
+                                 what makes /outlet-pnl add up: buildJournal stamps
+                                 document.dimension_id onto every line it produces,
+                                 so nothing else in the posting path changes. -->
+                            <div id="tx-outlet-section" class="fluxy-drawer-field hidden">
+                                <label for="tx-outlet" class="fluxy-drawer-label">Outlet</label>
+                                <select id="tx-outlet" name="outlet" class="fluxy-drawer-select">
+                                    <option value="">Not assigned to an outlet</option>
+                                </select>
+                                <p class="fluxy-drawer-hint">Which outlet this belongs to. Without it the amount still posts, but it lands outside every outlet's P&L.</p>
+                            </div>
                             <div id="tx-allocation-section" class="fluxy-drawer-field hidden">
                                 <label for="tx-allocation" class="fluxy-drawer-label">Budget allocation</label>
                                 <select id="tx-allocation" name="allocation" class="fluxy-drawer-select">
@@ -1524,6 +1537,7 @@ window.showAddTransactionModal = function(options = {}) {
     const amountInput = document.getElementById('tx-amount');
     const vendorInput = document.getElementById('tx-vendor');
     mountEntryDatePickers();
+    mountOutletPicker();
     // Bill currency (Stage B): IDR uses dot-thousands digit formatting; USD/SGD
     // allow a decimal amount (major units, converted to cents on save).
     const currencySelect = document.getElementById('tx-currency');
@@ -1588,6 +1602,25 @@ window.showAddTransactionModal = function(options = {}) {
                 updateSingleSubmitState();
             }
         } catch (_) { /* non-fatal — vendor defaults are a convenience */ }
+    }
+
+    // Reveal the outlet picker only for workspaces that actually have outlets.
+    // A business with one location should never be shown an empty dropdown, and
+    // a failure here must not block recording a transaction.
+    async function mountOutletPicker() {
+        if (context !== 'transaction') return;
+        const section = document.getElementById('tx-outlet-section');
+        const select = document.getElementById('tx-outlet');
+        if (!section || !select) return;
+        try {
+            const { ds, scopeId } = await getTransactionDataService();
+            const dims = await ds.getDimensions(scopeId);
+            if (!dims.length) return;
+            select.insertAdjacentHTML('beforeend', dims.map((d) =>
+                `<option value="${escapeHtml(d.id)}">${escapeHtml(d.name)}</option>`).join(''));
+            section.classList.remove('hidden');
+            window.FluxySelect?.enhance(select);
+        } catch (_) { /* the field simply stays hidden */ }
     }
 
     async function mountEntryDatePickers() {
@@ -3386,6 +3419,14 @@ window.showAddTransactionModal = function(options = {}) {
                             allocationId: document.getElementById('tx-allocation')?.value || ''
                         }));
                     }
+                    // Outlet. addTransaction spreads its input straight onto the
+                    // document, and buildJournal stamps document.dimension_id onto
+                    // every line — so this one field is the whole of revenue
+                    // attribution. Omitted entirely when blank rather than written
+                    // as null, so records from before outlets existed and records
+                    // deliberately left unassigned look the same.
+                    const txOutlet = document.getElementById('tx-outlet')?.value || '';
+                    if (txOutlet) data.dimension_id = txOutlet;
                     const txRef = await ds.addTransaction(scopeId, data);
                     if (attachedDocId && txRef?.id) {
                         try { await ds.linkDocumentTarget(user.uid, attachedDocId, 'transactions', txRef.id); } catch (_) {}

@@ -1018,7 +1018,13 @@
             }
 
             const outletValue = document.getElementById('receipt-outlet').value;
-            const [y, m, d] = (receiptDate || dayKey()).split('-').map(Number);
+            // Same convention as buildTransactionTimestamp in shared-dashboard.js:
+            // today keeps the real moment (so same-day deliveries list in the order
+            // they were entered), and a backdated one sits at NOON rather than
+            // midnight, which a timezone shift can flip to the previous day.
+            const chosen = receiptDate || dayKey();
+            const [y, m, d] = chosen.split('-').map(Number);
+            const receivedAt = chosen === dayKey() ? new Date() : new Date(y, m - 1, d, 12, 0, 0);
 
             btn.disabled = true;
             btn.textContent = 'Receiving…';
@@ -1027,7 +1033,7 @@
                     dimension_id: outletValue === ADD_OUTLET ? null : (outletValue || null),
                     vendor_name: document.getElementById('receipt-vendor').value.trim(),
                     reference: document.getElementById('receipt-reference').value.trim() || null,
-                    received_at: new Date(y, m - 1, d),
+                    received_at: receivedAt,
                     lines
                 });
                 window.showToast('Stock received.', 'success');

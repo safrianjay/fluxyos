@@ -237,6 +237,11 @@
                 <span class="sidebar-text text-[13px] sidebar-hide">Accounting Center</span>
             </a>
 
+            <a href="/outlet-pnl" id="nav-outlet-pnl" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-800/50 text-gray-400 hover:text-white font-medium transition-all w-full justify-center lg:justify-start">
+                <svg class="w-6 h-6 lg:w-5 lg:h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3v18h18M8 17V9m5 8V5m5 12v-6"></path></svg>
+                <span class="sidebar-text text-[13px] sidebar-hide">Outlet P&amp;L</span>
+            </a>
+
             <a href="/reports" id="nav-reports" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-800/50 text-gray-400 hover:text-white font-medium transition-all w-full justify-center lg:justify-start">
                 <svg class="w-6 h-6 lg:w-5 lg:h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3v18h18"></path></svg>
                 <span class="sidebar-text text-[13px] sidebar-hide">Reports & Exports</span>
@@ -482,6 +487,7 @@
             // what we want — they are one destination in the nav. No other key
             // is a substring of 'inventory', so placement here is not
             // load-bearing.
+            'outlet-pnl': 'nav-outlet-pnl',
             'inventory': 'nav-inventory',
             'budget': 'nav-budgets'
         };
