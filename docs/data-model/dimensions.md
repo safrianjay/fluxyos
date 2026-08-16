@@ -21,9 +21,9 @@ pickers and `/outlet-pnl` all ship. Outlets are created from the receive-stock
 drawer; goods receipts, stock adjustments and transactions carry a dimension (see
 the table below), and the per-outlet income statement reads the rollup.
 
-Still open: bills, invoices and subscriptions carry no dimension, so their cost
-sits in "Unassigned"; and there is no dedicated outlet-management screen —
-renaming or archiving an outlet is DAL-only.
+Still open: **invoices** carry no dimension, so invoiced revenue sits in
+"Unassigned"; and there is no dedicated outlet-management screen — renaming or
+archiving an outlet is DAL-only.
 
 
 ## Which documents carry a dimension
@@ -36,15 +36,26 @@ carry the field — the posting path needs no change per collection.
 |---|---|
 | `goods_receipts` | Receive-stock drawer (`inventory.html`) |
 | `stock_adjustments` | Count sheet and waste drawer (`inventory-count.html`) |
-| `transactions` | **Outlet** field on the Add Transaction drawer |
+| `transactions` | **Outlet** field on the entry drawer |
+| `bills` | Same field — the drawer is shared across all three contexts |
+| `subscriptions` | Same field |
 
-**Bills, invoices and subscriptions do not yet.** Their cost therefore lands in
-"Unassigned" on `/outlet-pnl`, which the page states in words rather than leaving
-the reader to infer it from a suspiciously healthy margin.
+**Invoices do not yet.** Their revenue therefore lands in "Unassigned" on
+`/outlet-pnl`, which the page states in words rather than leaving the reader to
+infer it from a suspiciously healthy margin.
 
-`firestore.rules` had to allow the field: `wsValidTxCreate` / `wsValidTxUpdate`
-use `hasOnly`, so an unlisted key is rejected outright (`permission-denied`, not a
-dropped field). Adding it to the other three means editing their validators too.
+The two directions are not symmetrical, and the page says which is which:
+stranded **revenue** makes an outlet look worse than it is; stranded **cost**
+makes it look better. The second is the dangerous one — it is what keeps a losing
+outlet open — and bills carry the biggest outlet costs (rent, utilities, staff),
+which is why they were the first gap closed after transactions.
+
+`firestore.rules` has to allow the field explicitly. `wsValidTxCreate/Update`,
+`wsValidBillCreate/Update` and `wsValidSubCreate/Update` all use `hasOnly`, so an
+unlisted key is **rejected outright** — `permission-denied` for the whole write,
+not a silently dropped field. All six list `dimension_id`. Adding invoices means
+editing theirs the same way, and re-checking the rules size (92% of the usable
+ceiling as of 2026-08-16).
 
 ## 1. `dimensions/{dimensionId}`
 

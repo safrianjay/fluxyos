@@ -4725,7 +4725,12 @@
         "Nothing posted": "Belum ada yang diposting",
 
         // Outlet field on the Add Transaction drawer
-        "Which outlet this belongs to. Without it the amount still posts, but it lands outside every outlet's P&L.": "Outlet mana yang memiliki catatan ini. Tanpa itu jumlahnya tetap diposting, tapi jatuh di luar Laba Rugi setiap outlet."
+        "Which outlet this belongs to. Without it the amount still posts, but it lands outside every outlet's P&L.": "Outlet mana yang memiliki catatan ini. Tanpa itu jumlahnya tetap diposting, tapi jatuh di luar Laba Rugi setiap outlet.",
+
+        // Stranded-money notice on /outlet-pnl. The two halves that carry a live
+        // figure are in PATTERNS; this closing sentence is fixed.
+        "Untagged amounts are still in the company total; they are just in none of the outlets.": "Jumlah yang belum ditandai tetap masuk total perusahaan; hanya saja tidak masuk ke outlet mana pun.",
+        "No revenue is tagged to an outlet yet.": "Belum ada pendapatan yang ditandai ke outlet."
     };
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -4745,6 +4750,23 @@
         // Outlet cell when one item sits in more than one place: "3 outlets".
         { re: /^(\d+) outlets$/,
           id: function (m) { return m[1] + ' outlet'; } },
+        // /outlet-pnl stranded-money notice. Both halves carry a live Rupiah
+        // figure, and the two say OPPOSITE things about the table below them:
+        // stranded revenue understates the outlets, stranded cost flatters them.
+        { re: /^All (Rp[\d.]+) of it sits in Unassigned, so every outlet below shows its costs with none of its income\.$/,
+          id: function (m) {
+              return 'Seluruhnya ' + m[1] + ' berada di Belum ditetapkan, jadi setiap outlet di bawah menampilkan biayanya tanpa pendapatannya.';
+          } },
+        { re: /^(Rp[\d.]+) of revenue is not tagged to an outlet$/,
+          id: function (m) { return m[1] + ' pendapatan belum ditandai ke outlet'; } },
+        { re: /^, so the outlets below understate what they earned\.$/,
+          id: function () { return ', jadi outlet di bawah menampilkan pendapatan lebih rendah dari yang sebenarnya.'; } },
+        { re: /^(Rp[\d.]+) of cost is not tagged to an outlet$/,
+          id: function (m) { return m[1] + ' biaya belum ditandai ke outlet'; } },
+        { re: /^, so every outlet below looks more profitable than it is\. Rent, utilities and staff usually arrive as bills — tag those and this shrinks\.$/,
+          id: function () {
+              return ', jadi setiap outlet di bawah terlihat lebih untung daripada yang sebenarnya. Sewa, listrik, dan gaji biasanya masuk sebagai tagihan — tandai itu dan angka ini mengecil.';
+          } },
         // Delivery row meta: "3 items" or "1 item · DN-1042".
         { re: /^(\d+) items?(?: · (.+))?$/,
           id: function (m) { return m[1] + ' item' + (m[2] ? ' · ' + m[2] : ''); } },

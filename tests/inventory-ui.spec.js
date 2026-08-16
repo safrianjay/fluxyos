@@ -1,5 +1,12 @@
 const { test, expect } = require('@playwright/test');
 
+// These specs run serially against REAL Firebase, and the QA workspace has grown
+// large enough (49 items, 20+ outlets, 70+ movements) that page boot alone can
+// take tens of seconds under full-suite contention. The default 60s per-test
+// budget is what makes this file flake when it runs after the others rather than
+// alone — see the "slow runs = contention" note in the QA docs.
+test.describe.configure({ timeout: 150_000 });
+
 // The Inventory page, driven the way a user drives it.
 //
 // tests/inventory-cogs.spec.js already proves the kernel — receive, waste,
@@ -19,7 +26,7 @@ async function gotoInventory(page) {
     await expect(page.locator('#inventory-total-value')).not.toContainText('…', { timeout: 30000 });
     await page.waitForFunction(
         () => !document.querySelector('#inventory-total-value .inv-headline-skeleton'),
-        { timeout: 30000 }
+        undefined, { timeout: 60000 }
     );
 }
 

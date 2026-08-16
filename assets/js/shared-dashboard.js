@@ -1263,11 +1263,14 @@ window.showAddTransactionModal = function(options = {}) {
                         ${context !== 'bill' ? `
                         <section class="fluxy-drawer-section">
                             <h3 class="fluxy-drawer-section-title">Additional Information</h3>
-                            ${context === 'transaction' ? `
-                            <!-- Outlet. Hidden unless the workspace actually has
-                                 dimensions, so businesses that don't run outlets
-                                 never see an empty picker. Revenue tagged here is
-                                 what makes /outlet-pnl add up: buildJournal stamps
+                            <!-- Outlet — every context, not just transactions.
+                                 An outlet's rent and utilities arrive as BILLS, so
+                                 leaving them undimensioned overstated every
+                                 outlet's profit on /outlet-pnl.
+
+                                 Hidden unless the workspace actually has
+                                 dimensions, so a single-location business never
+                                 sees an empty picker. buildJournal stamps
                                  document.dimension_id onto every line it produces,
                                  so nothing else in the posting path changes. -->
                             <div id="tx-outlet-section" class="fluxy-drawer-field hidden">
@@ -1277,6 +1280,7 @@ window.showAddTransactionModal = function(options = {}) {
                                 </select>
                                 <p class="fluxy-drawer-hint">Which outlet this belongs to. Without it the amount still posts, but it lands outside every outlet's P&L.</p>
                             </div>
+                            ${context === 'transaction' ? `
                             <div id="tx-allocation-section" class="fluxy-drawer-field hidden">
                                 <label for="tx-allocation" class="fluxy-drawer-label">Budget allocation</label>
                                 <select id="tx-allocation" name="allocation" class="fluxy-drawer-select">
@@ -1608,7 +1612,6 @@ window.showAddTransactionModal = function(options = {}) {
     // A business with one location should never be shown an empty dropdown, and
     // a failure here must not block recording a transaction.
     async function mountOutletPicker() {
-        if (context !== 'transaction') return;
         const section = document.getElementById('tx-outlet-section');
         const select = document.getElementById('tx-outlet');
         if (!section || !select) return;
@@ -3363,6 +3366,22 @@ window.showAddTransactionModal = function(options = {}) {
                     ? data.attached_documents[0].document_id
                     : null;
 
+                // Outlet, for every context. buildJournal stamps the source
+                // document's dimension_id onto every line it produces, so this one
+                // field is all three collections' attribution.
+                //
+                // Bills matter most: rent, utilities and staff are an outlet's
+                // largest operating costs, and while they carried no dimension
+                // every outlet's net profit on /outlet-pnl was OVERSTATED — the
+                // flattering direction, which is the one that keeps a losing
+                // outlet open.
+                //
+                // Omitted rather than written as null when blank, so a record
+                // deliberately left unassigned looks the same as one made before
+                // outlets existed.
+                const chosenOutlet = document.getElementById('tx-outlet')?.value || '';
+                if (chosenOutlet) data.dimension_id = chosenOutlet;
+
                 if (context === 'bill') {
                     // Phase 1.5 — attach optional budget fields when an active
                     // budget exists. Omit all five when there is no active
@@ -3419,14 +3438,6 @@ window.showAddTransactionModal = function(options = {}) {
                             allocationId: document.getElementById('tx-allocation')?.value || ''
                         }));
                     }
-                    // Outlet. addTransaction spreads its input straight onto the
-                    // document, and buildJournal stamps document.dimension_id onto
-                    // every line — so this one field is the whole of revenue
-                    // attribution. Omitted entirely when blank rather than written
-                    // as null, so records from before outlets existed and records
-                    // deliberately left unassigned look the same.
-                    const txOutlet = document.getElementById('tx-outlet')?.value || '';
-                    if (txOutlet) data.dimension_id = txOutlet;
                     const txRef = await ds.addTransaction(scopeId, data);
                     if (attachedDocId && txRef?.id) {
                         try { await ds.linkDocumentTarget(user.uid, attachedDocId, 'transactions', txRef.id); } catch (_) {}

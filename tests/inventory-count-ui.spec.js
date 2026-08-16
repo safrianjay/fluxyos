@@ -1,5 +1,12 @@
 const { test, expect } = require('@playwright/test');
 
+// These specs run serially against REAL Firebase, and the QA workspace has grown
+// large enough (49 items, 20+ outlets, 70+ movements) that page boot alone can
+// take tens of seconds under full-suite contention. The default 60s per-test
+// budget is what makes this file flake when it runs after the others rather than
+// alone — see the "slow runs = contention" note in the QA docs.
+test.describe.configure({ timeout: 150_000 });
+
 // The count sheet, driven through the DOM.
 //
 // The assertions that matter are the ones a screenshot cannot make:
@@ -23,7 +30,7 @@ async function seed(page) {
     await page.goto('/inventory');
     await page.waitForFunction(
         () => !document.querySelector('#inventory-total-value .inv-headline-skeleton'),
-        { timeout: 30000 }
+        undefined, { timeout: 60000 }
     );
 
     for (const [name, shelf] of [[ITEM_A, `${TAG} Shelf B`], [ITEM_Z, `${TAG} Shelf A`]]) {
@@ -59,7 +66,7 @@ async function gotoCount(page) {
     await page.goto('/inventory-count');
     await page.waitForFunction(
         () => document.querySelectorAll('#count-list .cnt-row').length > 0,
-        { timeout: 30000 }
+        undefined, { timeout: 60000 }
     );
     await page.selectOption('#count-outlet', { label: `${TAG} Outlet` });
     await page.waitForTimeout(300);
@@ -111,7 +118,7 @@ test('an in-progress count survives a reload', async ({ page }) => {
     await page.reload();
     await page.waitForFunction(
         () => document.querySelectorAll('#count-list .cnt-row').length > 0,
-        { timeout: 30000 }
+        undefined, { timeout: 60000 }
     );
     await page.selectOption('#count-outlet', { label: `${TAG} Outlet` });
     await expect(page.locator(`.cnt-row:has-text("${ITEM_Z}") [data-field="counted"]`)).toHaveValue('480');

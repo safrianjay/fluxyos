@@ -1,5 +1,12 @@
 const { test, expect } = require('@playwright/test');
 
+// These specs run serially against REAL Firebase, and the QA workspace has grown
+// large enough (49 items, 20+ outlets, 70+ movements) that page boot alone can
+// take tens of seconds under full-suite contention. The default 60s per-test
+// budget is what makes this file flake when it runs after the others rather than
+// alone — see the "slow runs = contention" note in the QA docs.
+test.describe.configure({ timeout: 150_000 });
+
 // Outlet P&L — the number the F&B prospects actually asked for.
 //
 // The assertions that matter here are about TRUTHFULNESS, not layout:
@@ -22,7 +29,7 @@ async function gotoPnl(page) {
     await page.goto('/outlet-pnl');
     await page.waitForFunction(
         () => document.querySelector('#outlet-body tr') || document.querySelector('#outlet-empty .fluxy-table-empty'),
-        { timeout: 30000 }
+        undefined, { timeout: 60000 }
     );
 }
 
@@ -31,7 +38,7 @@ test('an outlet P&L is built, and the outlets tie out to the company', async ({ 
     // screens to arrange the data would test them a second time. An app page has
     // to be loaded first — module specifiers do not resolve on about:blank.
     await page.goto('/inventory');
-    await page.waitForFunction(() => window.FluxyWorkspace && window.FluxyWorkspace.id, { timeout: 30000 });
+    await page.waitForFunction(() => window.FluxyWorkspace && window.FluxyWorkspace.id, undefined, { timeout: 60000 });
 
     const seeded = await page.evaluate(async ({ tag }) => {
         const { getApps } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
@@ -112,7 +119,7 @@ test('untagged revenue is surfaced, not quietly dropped', async ({ page }) => {
     // Revenue with NO outlet. It is real money and must remain visible, or the
     // outlets stop summing to the company.
     await page.goto('/inventory');
-    await page.waitForFunction(() => window.FluxyWorkspace && window.FluxyWorkspace.id, { timeout: 30000 });
+    await page.waitForFunction(() => window.FluxyWorkspace && window.FluxyWorkspace.id, undefined, { timeout: 60000 });
 
     await page.evaluate(async ({ tag }) => {
         const { getApps } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
@@ -154,6 +161,86 @@ test('the transaction drawer offers an outlet once outlets exist', async ({ page
     await expect(page.locator(`#tx-outlet option:has-text("${TAG} Kemang")`)).toHaveCount(1);
     // Default is unassigned — tagging is opt-in, never guessed.
     await expect(page.locator('#tx-outlet')).toHaveValue('');
+});
+
+// Bills are where an outlet's rent, utilities and staff arrive. While they
+// carried no dimension every outlet's net profit was OVERSTATED — the flattering
+// direction, which is the one that keeps a losing outlet open.
+//
+// This spec is also the deploy verification for the rules change:
+// wsValidBillCreate uses hasOnly, so before it was deployed this write failed
+// with permission-denied rather than silently dropping the field.
+test('a bill tagged to an outlet lands in that outlet, and drags its net down', async ({ page }) => {
+    await page.goto('/inventory');
+    await page.waitForFunction(() => window.FluxyWorkspace && window.FluxyWorkspace.id, undefined, { timeout: 60000 });
+
+    const seeded = await page.evaluate(async ({ tag }) => {
+        const { getApps } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+        const { getAuth } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+        const { Timestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        const DataService = (await import('/assets/js/db-service.js')).default;
+        const app = getApps()[0];
+        const uid = getAuth(app).currentUser.uid;
+        const ds = new DataService(app);
+        ds.actorUid = uid;
+
+        const dims = await ds.getDimensions(uid);
+        const outlet = dims.find((d) => d.name === `${tag} Kemang`);
+        const out = { outletName: outlet.name, error: null };
+        try {
+            await ds.addBill(uid, {
+                vendor_name: `${tag} Sewa`, category: 'Operations', amount: 50000,
+                // `type` is required by isValidBaseRecord — omitting it is a
+                // permission-denied, not a validation message.
+                type: 'expense', status: 'Upcoming', payment_status: 'unpaid', icon: 'building',
+                due_date: Timestamp.fromDate(new Date()),
+                timestamp: Timestamp.fromDate(new Date()),
+                dimension_id: outlet.id
+            });
+        } catch (e) { out.error = `${e.code || ''} ${e.message || e}`.trim(); }
+        return out;
+    }, { tag: TAG });
+
+    // If the rules change is not live this is `permission-denied`, not a dropped
+    // field — hasOnly rejects the whole write.
+    expect(seeded.error, 'bill with dimension_id must be accepted by the deployed rules').toBeNull();
+
+    await gotoPnl(page);
+    const row = page.locator(`#outlet-body tr:has-text("${seeded.outletName}")`);
+    const cells = row.locator('td');
+    // Revenue 250.000, COGS 20.000, and now Rp50.000 of operating cost.
+    expect(rpToInt(await cells.nth(5).innerText())).toBe(50000);   // operating costs
+    expect(rpToInt(await cells.nth(6).innerText())).toBe(180000);  // net = 230.000 - 50.000
+});
+
+test('the notice warns about stranded COSTS, not only stranded revenue', async ({ page }) => {
+    await page.goto('/inventory');
+    await page.waitForFunction(() => window.FluxyWorkspace && window.FluxyWorkspace.id, undefined, { timeout: 60000 });
+
+    // An untagged bill. This is the flattering case: it makes every outlet look
+    // more profitable than it is, and the page said nothing about it before.
+    await page.evaluate(async ({ tag }) => {
+        const { getApps } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+        const { getAuth } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+        const { Timestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        const DataService = (await import('/assets/js/db-service.js')).default;
+        const app = getApps()[0];
+        const uid = getAuth(app).currentUser.uid;
+        const ds = new DataService(app);
+        ds.actorUid = uid;
+        await ds.addBill(uid, {
+            vendor_name: `${tag} Listrik`, category: 'Operations', amount: 70000,
+            type: 'expense', status: 'Upcoming', payment_status: 'unpaid', icon: 'building',
+            due_date: Timestamp.fromDate(new Date()),
+            timestamp: Timestamp.fromDate(new Date())
+        });
+    }, { tag: TAG });
+
+    await gotoPnl(page);
+    const notice = page.locator('#outlet-notice');
+    await expect(notice).toBeVisible();
+    await expect(notice).toContainText('of cost is not tagged to an outlet');
+    await expect(notice).toContainText('more profitable than it is');
 });
 
 test('outlet P&L holds at 375px', async ({ page }) => {

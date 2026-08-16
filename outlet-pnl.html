@@ -285,30 +285,43 @@
                 </tr>`;
         }
 
-        // The honesty notice. Revenue only reaches an outlet if the transaction was
-        // tagged with one, and until it is, every outlet reads as pure cost while
-        // all the income sits in Unassigned. Saying so is the difference between a
-        // useful report and one that makes an owner close a profitable outlet.
+        // The honesty notice. Money only reaches an outlet if its source document
+        // was tagged with one, and untagged money distorts the table in a
+        // DIRECTION that depends on which side it sits on:
+        //
+        //   stranded revenue  -> outlets look WORSE than they are
+        //   stranded cost     -> outlets look BETTER than they are
+        //
+        // The second is the dangerous one, because it is the direction that keeps
+        // a losing outlet open — and rent, utilities and staff arrive as bills, so
+        // it is also the likelier one. Reporting only stranded revenue (as this
+        // page first did) warns about the flattering case and stays silent on the
+        // flattering one.
         function renderNotice() {
             const el = document.getElementById('outlet-notice');
             const assigned = rows.filter((r) => r.dimension_id !== null);
             const unassigned = rows.find((r) => r.dimension_id === null);
-            const outletRevenue = assigned.reduce((s, r) => s + r.statement.totalRevenue, 0);
-            const strandedRevenue = unassigned ? unassigned.statement.totalRevenue : 0;
 
-            if (!assigned.length || (outletRevenue > 0 && strandedRevenue === 0)) {
-                el.classList.add('hidden');
-                return;
-            }
+            if (!assigned.length || !unassigned) { el.classList.add('hidden'); return; }
+
+            const strandedRevenue = unassigned.statement.totalRevenue;
+            const strandedCost = unassigned.statement.totalCogs + unassigned.statement.totalOpEx;
+            const outletRevenue = assigned.reduce((s, r) => s + r.statement.totalRevenue, 0);
+
+            if (!strandedRevenue && !strandedCost) { el.classList.add('hidden'); return; }
             el.classList.remove('hidden');
+
+            const parts = [];
             if (outletRevenue === 0 && strandedRevenue > 0) {
-                el.innerHTML = '<strong>No revenue is tagged to an outlet yet.</strong> '
-                    + `All ${esc(rp(strandedRevenue))} of it is sitting in Unassigned, so every outlet below shows its costs with none of its income. `
-                    + 'Pick an outlet when you add a transaction and it will land in the right column.';
-            } else {
-                el.innerHTML = `<strong>${esc(rp(strandedRevenue))} of revenue is not tagged to an outlet.</strong> `
-                    + 'It is counted in the company total but in none of the outlets, so the margins below understate every outlet that earned it.';
+                parts.push(`<strong>No revenue is tagged to an outlet yet.</strong> All ${esc(rp(strandedRevenue))} of it sits in Unassigned, so every outlet below shows its costs with none of its income.`);
+            } else if (strandedRevenue > 0) {
+                parts.push(`<strong>${esc(rp(strandedRevenue))} of revenue is not tagged to an outlet</strong>, so the outlets below understate what they earned.`);
             }
+            if (strandedCost > 0) {
+                parts.push(`<strong>${esc(rp(strandedCost))} of cost is not tagged to an outlet</strong>, so every outlet below looks more profitable than it is. Rent, utilities and staff usually arrive as bills — tag those and this shrinks.`);
+            }
+            parts.push('Untagged amounts are still in the company total; they are just in none of the outlets.');
+            el.innerHTML = parts.join(' ');
         }
 
         function stmtRows(lines) {

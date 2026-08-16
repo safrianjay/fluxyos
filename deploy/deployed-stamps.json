@@ -12,7 +12,7 @@
   ],
   "artifacts": {
     "firestore.rules": {
-      "sha256": "791a91d79fd2a6446f7851d4d3c3800e130439ab9b42202ef0dde57ab4f0f4db",
+      "sha256": "588a232c22c720e065821b62ba10cd468ede7c23c29323cf75f940912960fe83",
       "stamped_at": "2026-08-16"
     },
     "firestore.indexes.json": {
