@@ -15,9 +15,12 @@ Ingredients, finished goods, and menu items. Step 2 of the F&B chain
 (`INVENTORY_DEMAND_VALIDATION.md` §7): ~15 blocked F&B prospects need ingredient
 stock and usage, recipe/menu COGS, waste, and stock per outlet.
 
-**Status:** the collection, the DAL, and unit conversion are live. **Nothing
-posts to the ledger from an item yet** — no stock movements, no costing, no
-recipes. Those are steps 3–5.
+**Status:** steps 2–5 are live — the collection, the DAL, unit conversion,
+recipes, stock movements and costing. `inventory.html` is the writing surface:
+items are created and edited there, and it shows each item's on-hand quantity
+and value alongside the master. The recipe editor is still v2, so the drawer
+creates `stock` items and preserves — but does not edit — a `composite`'s
+`components`.
 
 ## 1. `items/{itemId}`
 
@@ -32,6 +35,7 @@ recipes. Those are steps 3–5.
 | `default_cogs_account_code` | string | Where this item's cost lands when it posts. Defaults to `5100` |
 | `components` | array | **Recipe/BOM.** `{ item_id, quantity, yield_percent }` — what ONE BATCH consumes. Empty on a stock item |
 | `batch_size` | integer ≥1 | How much output one batch produces, in this item's own base unit. Default `1` |
+| `storage_location` | string ≤60 \| null | Where it physically sits ("Dry store — shelf A"). **Sorts the count sheet**, because a count is done by walking the shelf; an alphabetical sheet sends the counter back and forth across the stockroom |
 | `notes` | string ≤500 \| null | |
 | `status` | enum | `active` \| `archived`. Soft archive only |
 | `created_at` / `updated_at` | Timestamp | Server-set |

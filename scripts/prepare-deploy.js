@@ -81,6 +81,7 @@ const APP_PAGES = [
     'dashboard.html',
     'integration.html',
     'internal.html',
+    'inventory.html',
     'invoices.html',
     'ledger.html',
     'login.html',

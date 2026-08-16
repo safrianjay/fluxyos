@@ -146,6 +146,7 @@ any Future item as present.
 | Subscriptions | `subscription.html` | App | ✅ | **No** | ✅ |
 | Budgets | `budget.html` | App | ✅ | **No** | ✅ |
 | Invoices | `invoices.html` | App | ✅ | **No** | ✅ |
+| Inventory | `inventory.html` | App | ✅ | **No** | ✅ |
 | Accounting Center | `accounting.html` | App | ✅ | **No** | ✅ |
 | Accounting Records | `accounting-records.html` | App | ✅ | **No** | ✅ |
 | Reports & Exports | `reports.html` | App | ✅ | **No** | ✅ |
@@ -719,6 +720,7 @@ Sidebar is injected into every app page at `#sidebar`. Active item is detected b
 | Money Movement | Subscriptions | `nav-subscriptions` | Link | `/subscription` | ✅ Shipped |
 | Operations | Budgets | `nav-budgets` | Link | `/budget` | ✅ Shipped Phase 1 |
 | Operations | Invoices | `nav-invoices` | Link | `/invoices` | ✅ Shipped MVP |
+| Operations | Inventory | `nav-inventory` | Link | `/inventory` | ✅ Shipped — item master + stock on hand |
 | Operations | Approvals | `nav-approvals` | Disabled button | `Soon` | 📋 Planned |
 | Reporting | Accounting Center | `nav-accounting` | Link | `/accounting` | ✅ Shipped |
 | Reporting | Reports & Exports | `nav-reports` | Link | `/reports` | ✅ Shipped MVP |

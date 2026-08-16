@@ -156,6 +156,43 @@ main > header {
     .scan-loader-bg, .scan-loader-pulse, .scan-loader-spin { animation: none; }
 }
 
+/* --- Sidebar: off-canvas below 640px -----------------------------------------
+   The sidebar is a fixed 220px column, which on a 375px screen leaves 155px of
+   content — not enough for a topbar title plus its actions, so page titles
+   collapsed to zero width. Every app page already ships the `md:hidden`
+   hamburger for this; until now nothing was listening to it (wired in
+   sidebar-loader.js).
+
+   Taking the sidebar out of flow gives the page its full width back. Above
+   640px nothing changes. */
+@media (max-width: 640px) {
+    #sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 60;
+        transform: translateX(-100%);
+        transition: transform 240ms ease-in-out;
+        box-shadow: 0 24px 48px rgba(11, 15, 25, 0.18);
+    }
+    #sidebar.sidebar-mobile-open { transform: translateX(0); }
+
+    .sidebar-mobile-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 55;
+        background: rgba(11, 15, 25, 0.5);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 240ms ease-in-out;
+    }
+    .sidebar-mobile-backdrop.is-visible { opacity: 1; pointer-events: auto; }
+}
+@media (max-width: 640px) and (prefers-reduced-motion: reduce) {
+    #sidebar, .sidebar-mobile-backdrop { transition: none; }
+}
+
 /* App Sidebar Design System */
 #sidebar.app-sidebar-light {
     width: 220px !important;

@@ -219,6 +219,11 @@
                 <span class="sidebar-text text-[13px] sidebar-hide">Invoices</span>
             </a>
 
+            <a href="/inventory" id="nav-inventory" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-800/50 text-gray-400 hover:text-white font-medium transition-all w-full justify-center lg:justify-start">
+                <svg class="w-6 h-6 lg:w-5 lg:h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                <span class="sidebar-text text-[13px] sidebar-hide">Inventory</span>
+            </a>
+
             <button type="button" id="nav-approvals" class="nav-item nav-item-disabled flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 font-medium w-full justify-center lg:justify-start" disabled aria-disabled="true">
                 <svg class="w-6 h-6 lg:w-5 lg:h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"></path></svg>
                 <span class="sidebar-text text-[13px] sidebar-hide">Approvals</span>
@@ -473,6 +478,11 @@
             // other route contains the substring 'invoice', and '/invoices'
             // contains no other nav key, so ordering is not load-bearing here.
             'invoices': 'nav-invoices',
+            // Matches '/inventory' and every '/inventory-*' sub-page, which is
+            // what we want — they are one destination in the nav. No other key
+            // is a substring of 'inventory', so placement here is not
+            // load-bearing.
+            'inventory': 'nav-inventory',
             'budget': 'nav-budgets'
         };
 
@@ -484,6 +494,45 @@
                 const icon = el.querySelector('svg');
                 if (icon) icon.classList.add('text-[#EA580C]');
             }
+        }
+
+        // Mobile nav. Every app page already renders a `md:hidden` hamburger in
+        // its topbar; nothing was listening to it, so below 640px the sidebar sat
+        // there as a fixed 220px column with no way to dismiss it. Paired with the
+        // off-canvas rules in shared-dashboard.css.
+        const sidebarEl = document.getElementById('sidebar');
+        const menuBtn = document.querySelector('header button.md\\:hidden');
+        if (sidebarEl && menuBtn) {
+            const backdrop = document.createElement('div');
+            backdrop.className = 'sidebar-mobile-backdrop';
+            backdrop.hidden = true;
+            document.body.appendChild(backdrop);
+
+            const setOpen = (open) => {
+                sidebarEl.classList.toggle('sidebar-mobile-open', open);
+                backdrop.classList.toggle('is-visible', open);
+                backdrop.hidden = !open;
+                menuBtn.setAttribute('aria-expanded', String(open));
+                document.body.style.overflow = open ? 'hidden' : '';
+            };
+
+            menuBtn.setAttribute('aria-controls', 'sidebar');
+            menuBtn.setAttribute('aria-expanded', 'false');
+            if (!menuBtn.getAttribute('aria-label')) menuBtn.setAttribute('aria-label', 'Open menu');
+
+            menuBtn.addEventListener('click', () => setOpen(!sidebarEl.classList.contains('sidebar-mobile-open')));
+            backdrop.addEventListener('click', () => setOpen(false));
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && sidebarEl.classList.contains('sidebar-mobile-open')) setOpen(false);
+            });
+            // Tapping a destination should not leave the drawer covering it.
+            sidebarEl.addEventListener('click', (e) => {
+                if (e.target.closest('a[href]')) setOpen(false);
+            });
+            // Crossing back to desktop must not strand a locked body scroll.
+            window.matchMedia('(min-width: 641px)').addEventListener('change', (e) => {
+                if (e.matches) setOpen(false);
+            });
         }
 
         // Logout

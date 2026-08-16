@@ -5666,6 +5666,10 @@ class DataService {
             // Defaults to 5100 rather than being required, so an item can be
             // created before anyone has thought about the chart.
             default_cogs_account_code: cogsCode || '5100',
+            // Where this item physically sits. Sorts the count sheet, because a
+            // count is done by walking the shelf — an alphabetical sheet makes the
+            // counter cross the stockroom for every line.
+            storage_location: this._nullableString(data.storage_location, 60),
             notes: this._nullableString(data.notes, 500)
         };
 

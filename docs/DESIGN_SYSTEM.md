@@ -599,7 +599,21 @@ transaction editor so the two stay identical.
 ---
 
 ## 📐 Layout & Spacing
-- **Dashboard/App Sidebar Width**: `220px` fixed. There is no collapsed sidebar state.
+- **Dashboard/App Sidebar Width**: `220px` fixed. There is no collapsed
+  (mini-rail) state on desktop — do not add one.
+- **Dashboard/App Sidebar below 640px**: the sidebar leaves the flow and becomes
+  an **off-canvas drawer**, opened by the `md:hidden` hamburger every app topbar
+  already renders. Wired centrally in `sidebar-loader.js`; styles are
+  `#sidebar` / `.sidebar-mobile-open` / `.sidebar-mobile-backdrop` in
+  `shared-dashboard.css`. Closes on backdrop click, Escape, following a nav
+  link, and on crossing back above 640px (which must also release the body
+  scroll lock).
+  **Why it exists:** a fixed 220px column leaves 155px of content on a 375px
+  screen, which is not enough for a topbar title plus its actions — page titles
+  were being squeezed to zero width. The hamburger shipped on every page from
+  the start with nothing listening to it. Guard:
+  `tests/inventory-ui.spec.js` → "below 640px the sidebar is a dismissable
+  drawer, on every app page".
 - **Dashboard/App Sidebar Theme**: `bg-white`, `border-slate-200`, dark navy text `#1E2F4A`, active item text/icon `#EA580C` with no orange background.
 - **Dashboard/App Sidebar Header**: `64px` tall to align with the main app topbar divider. Logo mark is `36px`, logo text is `18px`, vertically centered.
 - **Dashboard/App Sidebar Menu Type**: Menu text is `14px` max, icon size is `16px` max, Lucide-style stroke icons only. Do not enlarge sidebar nav text or icons.

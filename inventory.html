@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Inventory</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <style>
+        /* Topbar copy classes live in accounting.css / dashboard.css, which this
+           page does not load. Copied verbatim per DESIGN_SYSTEM.md — without them
+           the title and subtitle render as unstyled default text. */
+        .dashboard-topbar-copy { display: flex; flex-direction: column; min-width: 0; }
+        .dashboard-topbar-title {
+            color: #0B0F19;
+            font-size: 18px;
+            line-height: 1.15;
+            font-weight: 700;
+            letter-spacing: -0.015em;
+        }
+        .dashboard-topbar-subtitle {
+            margin: 3px 0 0;
+            color: #6B7280;
+            font-size: 13px;
+            line-height: 1.35;
+            font-weight: 500;
+            letter-spacing: -0.005em;
+        }
+
+        /* Stock-value headline. Deliberately not a KPI card grid: there is one
+           number worth stating here, and wrapping it in a card alongside three
+           filler metrics is the pattern DESIGN_SYSTEM bans. */
+        .inv-headline { display: flex; flex-direction: column; gap: 4px; }
+        .inv-headline-value {
+            font-size: 20px;
+            font-weight: 600;
+            line-height: 1;
+            letter-spacing: -0.02em;
+            color: #0B0F19;
+            font-variant-numeric: tabular-nums;
+        }
+        .inv-headline-value.is-negative { color: #EF4444; }
+        .inv-headline-context {
+            font-size: 12px;
+            font-weight: 400;
+            line-height: 1.4;
+            color: #6B7280;
+        }
+        .inv-headline-skeleton {
+            display: inline-block;
+            width: 140px;
+            height: 20px;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 37%, #F1F5F9 63%);
+            background-size: 400% 100%;
+            animation: inv-shimmer 1.4s ease infinite;
+        }
+        @keyframes inv-shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+        @media (prefers-reduced-motion: reduce) { .inv-headline-skeleton { animation: none; } }
+
+        /* Quantities are integers in the item's base unit; the unit rides along
+           at lower emphasis so the digits stay the thing you scan. */
+        .inv-qty { font-variant-numeric: tabular-nums; color: #0F172A; font-weight: 500; }
+        .inv-qty-unit { color: #94A3B8; font-weight: 400; margin-left: 3px; }
+        .inv-muted { color: #94A3B8; }
+
+        .inv-tag {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 1px 6px;
+            border: 1px solid #E2E8F0;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #64748B;
+            vertical-align: 1px;
+        }
+
+        .inv-search {
+            width: 100%;
+            max-width: 320px;
+            padding: 8px 12px 8px 32px;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #fff;
+        }
+        .inv-search:focus { outline: none; border-color: #EA580C; box-shadow: 0 0 0 1px #EA580C; }
+        .inv-search-wrap { position: relative; display: flex; align-items: center; flex: 1; min-width: 0; }
+        .inv-search-icon { position: absolute; left: 10px; width: 16px; height: 16px; color: #94A3B8; pointer-events: none; }
+
+        /* 375px: the topbar keeps the title and both actions; the subtitle is the
+           only thing that drops, and the action labels shorten rather than wrap. */
+        /* `header.inv-topbar` rather than `.inv-topbar` so it outranks Tailwind's
+           equally-specific .px-6, which the CDN injects after this stylesheet. */
+        @media (max-width: 640px) {
+            header.inv-topbar { padding-left: 16px; padding-right: 16px; gap: 8px; }
+            .inv-search { max-width: none; }
+        }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+        <!-- Sidebar content loaded by sidebar-loader.js -->
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="dashboard-main-topbar inv-topbar h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-4">
+            <div class="dashboard-topbar-left flex items-center gap-4 min-w-0 flex-1">
+                <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <div class="dashboard-topbar-copy">
+                    <span class="dashboard-topbar-title">Inventory</span>
+                    <p class="dashboard-topbar-subtitle hidden sm:block">Every item you stock, what it is worth right now, and which outlet is holding it.</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                <!-- Below 640px the label drops and the button stays as the "+"
+                     glyph: still the one primary action, still labelled for
+                     assistive tech, but narrow enough to leave the page title
+                     its room. The empty state carries the spelled-out CTA. -->
+                <button id="new-item-btn" type="button" aria-label="New item" title="New item" class="px-2.5 sm:px-4 py-2 bg-gray-900 text-white rounded-lg text-[14px] font-bold hover:bg-gray-800 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"></path></svg>
+                    <span class="hidden sm:inline">New item</span>
+                </button>
+                <!-- The launcher is owned by `.fluxy-ai-btn` — enhanceFluxyAIButtons()
+                     in shared-dashboard.js replaces this element's className and
+                     innerHTML wholesale. Styling it here would be dead code that
+                     only flashes before the enhancer runs, which is exactly how
+                     the banned orange background reached the other pages. -->
+                <button type="button" onclick="window.toggleFluxyAI()" class="fluxy-ai-btn" title="Open Fluxy AI">Fluxy AI</button>
+            </div>
+        </header>
+
+        <div class="fluxy-page-shell">
+            <div class="fluxy-page-canvas fluxy-section-stack">
+
+                <!-- One number worth stating: what the stock is worth, and the
+                     account it has to agree with. -->
+                <div class="inv-headline">
+                    <span id="inventory-total-value" class="inv-headline-value"><span class="inv-headline-skeleton"></span></span>
+                    <span id="inventory-total-context" class="inv-headline-context">Stock on hand</span>
+                </div>
+
+                <section class="fluxy-table-card">
+                    <div class="fluxy-table-card-header">
+                        <div>
+                            <h2 class="fluxy-table-title">Items</h2>
+                            <p class="fluxy-table-subtitle">Quantities are summed from every receipt, count, and waste record — nothing here is typed in by hand.</p>
+                        </div>
+                    </div>
+
+                    <div class="fluxy-table-toolbar">
+                        <div class="inv-search-wrap">
+                            <svg class="inv-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            <input id="inventory-search" type="text" class="inv-search" placeholder="Search by name, shelf, or SKU" autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div id="inventory-table-container" class="fluxy-table-scroll hidden">
+                        <table class="fluxy-table">
+                            <thead>
+                                <tr class="fluxy-table-header">
+                                    <th>Item</th>
+                                    <th>Outlet</th>
+                                    <th class="fluxy-table-money">On hand</th>
+                                    <th class="fluxy-table-money">Value</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventory-body"></tbody>
+                        </table>
+                    </div>
+
+                    <div id="inventory-empty-state"></div>
+
+                    <div id="inventory-pagination" class="fluxy-table-pagination hidden">
+                        <span id="inventory-page-summary" class="fluxy-table-pagination-summary"></span>
+                        <div class="fluxy-table-pagination-actions">
+                            <button id="inventory-prev-page" type="button" class="fluxy-table-action">Previous</button>
+                            <span id="inventory-page-indicator" class="fluxy-table-pagination-summary"></span>
+                            <button id="inventory-next-page" type="button" class="fluxy-table-action">Next</button>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- ITEM DRAWER — create / edit -->
+    <div id="item-drawer-backdrop" class="fixed inset-0 bg-black/50 z-40 hidden"></div>
+    <div id="item-drawer" class="fixed top-0 right-0 h-full w-full max-w-[480px] bg-white fluxy-drawer-floating z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col" role="dialog" aria-modal="true" aria-labelledby="item-drawer-title">
+        <div class="fluxy-drawer-header">
+            <div>
+                <h2 id="item-drawer-title" class="fluxy-drawer-title">New item</h2>
+                <p id="item-drawer-desc" class="fluxy-drawer-desc">Ingredients and goods you buy and hold. Once an item exists you can receive stock against it and count it.</p>
+            </div>
+            <button id="item-drawer-close" type="button" class="fluxy-drawer-close" aria-label="Close">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <form id="item-form" class="fluxy-drawer-body" novalidate>
+            <div class="fluxy-drawer-field">
+                <label class="fluxy-drawer-label" for="item-name">Name</label>
+                <input id="item-name" type="text" class="fluxy-drawer-input" maxlength="120" placeholder="Tepung Terigu" autocomplete="off" required>
+            </div>
+
+            <div class="fluxy-drawer-field">
+                <label class="fluxy-drawer-label" for="item-base-unit">Stock unit</label>
+                <input id="item-base-unit" type="text" class="fluxy-drawer-input" maxlength="16" placeholder="g" autocomplete="off" required>
+                <p id="item-base-unit-hint" class="fluxy-drawer-hint">The smallest unit you actually count in. Every quantity is stored in it, so it cannot be changed once the item exists.</p>
+            </div>
+
+            <div class="fluxy-drawer-section">
+                <div class="fluxy-drawer-section-head">
+                    <h3 class="fluxy-drawer-section-title">Purchase unit</h3>
+                </div>
+                <p class="fluxy-drawer-section-desc">Only if you buy in a larger unit than you count in — flour bought by the sack, counted in grams.</p>
+                <div class="fluxy-drawer-field-grid">
+                    <div class="fluxy-drawer-field">
+                        <label class="fluxy-drawer-label" for="item-purchase-unit">Unit</label>
+                        <input id="item-purchase-unit" type="text" class="fluxy-drawer-input" maxlength="16" placeholder="kg" autocomplete="off">
+                    </div>
+                    <div class="fluxy-drawer-field">
+                        <label class="fluxy-drawer-label" for="item-purchase-factor">How many stock units</label>
+                        <input id="item-purchase-factor" type="text" inputmode="numeric" class="fluxy-drawer-input" placeholder="1000" autocomplete="off">
+                    </div>
+                </div>
+                <p id="item-purchase-preview" class="fluxy-drawer-hint"></p>
+            </div>
+
+            <div class="fluxy-drawer-field">
+                <label class="fluxy-drawer-label" for="item-shelf">Shelf or storage area <span class="inv-muted">(optional)</span></label>
+                <input id="item-shelf" type="text" class="fluxy-drawer-input" maxlength="60" placeholder="Dry store — shelf A" autocomplete="off">
+                <p class="fluxy-drawer-hint">Counts are ordered by this, so the sheet follows the walk through your stockroom instead of the alphabet.</p>
+            </div>
+
+            <div class="fluxy-drawer-field">
+                <label class="fluxy-drawer-label" for="item-sku">SKU <span class="inv-muted">(optional)</span></label>
+                <input id="item-sku" type="text" class="fluxy-drawer-input" maxlength="60" placeholder="FLR-001" autocomplete="off">
+            </div>
+
+            <div class="fluxy-drawer-field">
+                <label class="fluxy-drawer-label" for="item-notes">Notes <span class="inv-muted">(optional)</span></label>
+                <textarea id="item-notes" class="fluxy-drawer-textarea" maxlength="500" rows="2" placeholder="Supplier, grade, anything worth remembering."></textarea>
+            </div>
+
+            <div id="item-form-error" class="fluxy-drawer-callout fluxy-drawer-callout--warning hidden"></div>
+        </form>
+
+        <div class="fluxy-drawer-footer">
+            <button id="item-cancel-btn" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Cancel</button>
+            <button id="item-save-btn" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--primary" disabled>Save item</button>
+        </div>
+    </div>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/money-format.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/dashboard-i18n.js"></script>
+    <script src="assets/js/fluxy-select.js"></script>
+
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from './assets/js/db-service.js';
+        import { applyToPage } from './assets/js/onboarding-gate.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
+        };
+
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        const ds = new DataService(app);
+
+        let currentUid = null;
+        let allRows = [];        // items joined with their stock
+        let editingItem = null;  // null = create mode
+        let paginator = null;
+
+        // ── Formatting ───────────────────────────────────────────────────────
+        // Rp with dot separators and no space, per DESIGN_SYSTEM. Negative stock
+        // value means the subledger went below zero — a real data problem, so it
+        // is shown rather than clamped.
+        function rp(value) {
+            const n = Math.round(Number(value) || 0);
+            return (n < 0 ? '-Rp' : 'Rp') + Math.abs(n).toLocaleString('id-ID');
+        }
+        function qty(value) {
+            return (Number(value) || 0).toLocaleString('id-ID');
+        }
+        function esc(str) {
+            return String(str == null ? '' : str).replace(/[&<>"']/g, (c) => (
+                { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+            ));
+        }
+
+        // ── Load ─────────────────────────────────────────────────────────────
+        async function loadInventory() {
+            const [items, onHand, dimensions] = await Promise.all([
+                ds.getItems(currentUid),
+                ds.getStockOnHand(currentUid, { byDimension: true }),
+                ds.getDimensions(currentUid)
+            ]);
+
+            const dimName = {};
+            dimensions.forEach((d) => { dimName[d.id] = d.name; });
+
+            // getStockOnHand keys by `${item_id}__${dimension_id}`. Fold to one
+            // entry per item, keeping which outlets actually hold any.
+            const stockByItem = {};
+            Object.values(onHand).forEach((e) => {
+                const bucket = stockByItem[e.item_id] || (stockByItem[e.item_id] = {
+                    quantity: 0, value: 0, outlets: []
+                });
+                bucket.quantity += Number(e.quantity) || 0;
+                bucket.value += Number(e.value) || 0;
+                if (e.quantity) {
+                    // A movement with no dimension is real stock that nobody
+                    // assigned — name it rather than dropping it.
+                    bucket.outlets.push(e.dimension_id ? (dimName[e.dimension_id] || 'Unknown outlet') : 'Unassigned');
+                }
+            });
+
+            allRows = items.map((item) => {
+                const stock = stockByItem[item.id] || null;
+                return {
+                    item,
+                    // null (never stocked) is deliberately distinct from 0
+                    // (movements that net to zero) — they are different facts.
+                    stock,
+                    haystack: [item.name, item.storage_location, item.sku].filter(Boolean).join(' ').toLowerCase()
+                };
+            });
+
+            renderHeadline(allRows, dimensions);
+            applySearch();
+        }
+
+        function renderHeadline(rows, dimensions) {
+            const totalValue = rows.reduce((sum, r) => sum + (r.stock ? r.stock.value : 0), 0);
+            const stockedOutlets = new Set();
+            rows.forEach((r) => (r.stock ? r.stock.outlets : []).forEach((o) => stockedOutlets.add(o)));
+
+            const valueEl = document.getElementById('inventory-total-value');
+            const contextEl = document.getElementById('inventory-total-context');
+
+            valueEl.textContent = rp(totalValue);
+            valueEl.classList.toggle('is-negative', totalValue < 0);
+
+            if (!rows.length) {
+                contextEl.textContent = 'Stock on hand';
+                return;
+            }
+            const itemPart = `${rows.length} ${rows.length === 1 ? 'item' : 'items'}`;
+            const outletPart = stockedOutlets.size
+                ? ` across ${stockedOutlets.size} ${stockedOutlets.size === 1 ? 'outlet' : 'outlets'}`
+                : '';
+            // Naming the control account is the point: this figure is not a
+            // side-report, it is the balance of 1200 on the balance sheet.
+            contextEl.textContent = `Stock on hand${outletPart} · ${itemPart} · balance of 1200 Inventory`;
+        }
+
+        // ── Render ───────────────────────────────────────────────────────────
+        function outletCell(stock) {
+            if (!stock || !stock.outlets.length) return '<span class="inv-muted">—</span>';
+            const unique = [...new Set(stock.outlets)];
+            if (unique.length === 1) return esc(unique[0]);
+            return `<span title="${esc(unique.join(', '))}">${unique.length} outlets</span>`;
+        }
+
+        function rowHtml(row) {
+            const { item, stock } = row;
+            const meta = [];
+            if (item.storage_location) meta.push(esc(item.storage_location));
+            if (item.sku) meta.push(esc(item.sku));
+            const tag = item.type === 'composite' ? '<span class="inv-tag">Recipe</span>' : '';
+
+            const onHand = stock
+                ? `<span class="inv-qty">${qty(stock.quantity)}</span><span class="inv-qty-unit">${esc(item.base_unit || '')}</span>`
+                : '<span class="inv-muted">Not stocked yet</span>';
+            const value = stock ? rp(stock.value) : '<span class="inv-muted">—</span>';
+
+            return `
+                <tr class="fluxy-table-row fluxy-table-row-clickable" data-item-id="${esc(item.id)}" tabindex="0" role="button">
+                    <td class="fluxy-table-cell">
+                        <span class="fluxy-table-cell-primary">${esc(item.name)}${tag}</span>
+                        ${meta.length ? `<span class="fluxy-table-cell-meta">${meta.join(' · ')}</span>` : ''}
+                    </td>
+                    <td class="fluxy-table-cell">${outletCell(stock)}</td>
+                    <td class="fluxy-table-cell fluxy-table-money">${onHand}</td>
+                    <td class="fluxy-table-cell fluxy-table-money">${value}</td>
+                </tr>`;
+        }
+
+        function renderRows(rows) {
+            document.getElementById('inventory-body').innerHTML = rows.map(rowHtml).join('');
+        }
+
+        function applySearch() {
+            const term = (document.getElementById('inventory-search').value || '').trim().toLowerCase();
+            const rows = term ? allRows.filter((r) => r.haystack.includes(term)) : allRows;
+
+            const container = document.getElementById('inventory-table-container');
+            const emptyHost = document.getElementById('inventory-empty-state');
+
+            if (!rows.length) {
+                container.classList.add('hidden');
+                document.getElementById('inventory-pagination').classList.add('hidden');
+                emptyHost.innerHTML = '';
+                if (term) {
+                    window.renderEmptyState('inventory-empty-state', {
+                        title: 'No item matches that',
+                        description: 'Try part of the name, the shelf it sits on, or its SKU.'
+                    });
+                } else {
+                    window.renderEmptyState('inventory-empty-state', {
+                        title: 'No items yet',
+                        description: 'Add the ingredients and goods you buy. Once an item exists you can receive stock against it, count it, and watch its cost land in your P&L.',
+                        buttonText: 'New item',
+                        onAction: () => openDrawer(null)
+                    });
+                }
+                return;
+            }
+
+            emptyHost.innerHTML = '';
+            container.classList.remove('hidden');
+            paginator.setRows(rows, renderRows);
+        }
+
+        // ── Drawer ───────────────────────────────────────────────────────────
+        function openDrawer(item) {
+            editingItem = item;
+            const isEdit = Boolean(item);
+
+            document.getElementById('item-drawer-title').textContent = isEdit ? 'Edit item' : 'New item';
+            document.getElementById('item-drawer-desc').textContent = isEdit
+                ? 'Changes apply from now on. Quantities already recorded are not affected.'
+                : 'Ingredients and goods you buy and hold. Once an item exists you can receive stock against it and count it.';
+
+            document.getElementById('item-name').value = isEdit ? (item.name || '') : '';
+            document.getElementById('item-shelf').value = isEdit ? (item.storage_location || '') : '';
+            document.getElementById('item-sku').value = isEdit ? (item.sku || '') : '';
+            document.getElementById('item-notes').value = isEdit ? (item.notes || '') : '';
+
+            const baseUnitEl = document.getElementById('item-base-unit');
+            baseUnitEl.value = isEdit ? (item.base_unit || '') : '';
+            // base_unit is immutable — every recorded quantity is an integer count
+            // of it, so changing it would silently reinterpret existing stock.
+            baseUnitEl.disabled = isEdit;
+            document.getElementById('item-base-unit-hint').textContent = isEdit
+                ? 'Fixed once the item exists — every quantity already recorded is counted in it.'
+                : 'The smallest unit you actually count in. Every quantity is stored in it, so it cannot be changed once the item exists.';
+
+            // v1 carries at most one alternate unit, the one you buy in. Recipes
+            // and sales units arrive with the recipe editor.
+            const purchase = (isEdit && Array.isArray(item.units))
+                ? item.units.find((u) => u.role === 'purchase') || item.units[0] || null
+                : null;
+            document.getElementById('item-purchase-unit').value = purchase ? (purchase.code || '') : '';
+            document.getElementById('item-purchase-factor').value = purchase ? String(purchase.factor || '') : '';
+
+            hideError();
+            updatePurchasePreview();
+            validateForm();
+
+            document.getElementById('item-drawer-backdrop').classList.remove('hidden');
+            document.getElementById('item-drawer').classList.remove('translate-x-full');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => { if (!isEdit) document.getElementById('item-name').focus(); }, 320);
+        }
+
+        function closeDrawer() {
+            document.getElementById('item-drawer').classList.add('translate-x-full');
+            document.getElementById('item-drawer-backdrop').classList.add('hidden');
+            document.body.style.overflow = '';
+            editingItem = null;
+        }
+
+        function showError(message) {
+            const el = document.getElementById('item-form-error');
+            el.textContent = message;
+            el.classList.remove('hidden');
+        }
+        function hideError() {
+            document.getElementById('item-form-error').classList.add('hidden');
+        }
+
+        // Shows the conversion in the user's own words before they save, so a
+        // wrong factor is caught here rather than in a stock quantity later.
+        function updatePurchasePreview() {
+            const base = document.getElementById('item-base-unit').value.trim();
+            const code = document.getElementById('item-purchase-unit').value.trim();
+            const factor = document.getElementById('item-purchase-factor').value.trim();
+            const el = document.getElementById('item-purchase-preview');
+            if (code && factor && base && /^\d+$/.test(factor) && Number(factor) > 0) {
+                el.textContent = `1 ${code} = ${Number(factor).toLocaleString('id-ID')} ${base}`;
+            } else {
+                el.textContent = '';
+            }
+        }
+
+        function validateForm() {
+            const name = document.getElementById('item-name').value.trim();
+            const base = document.getElementById('item-base-unit').value.trim();
+            document.getElementById('item-save-btn').disabled = !(name && base);
+        }
+
+        function collectDraft() {
+            const code = document.getElementById('item-purchase-unit').value.trim();
+            const factorRaw = document.getElementById('item-purchase-factor').value.trim();
+            const units = [];
+            if (code || factorRaw) {
+                if (!code) throw new Error('Give the purchase unit a name, or clear the quantity beside it.');
+                if (!/^\d+$/.test(factorRaw) || Number(factorRaw) < 1) {
+                    throw new Error('How many stock units are in one purchase unit? Whole numbers only — a fractional factor would put rounding error into your ledger.');
+                }
+                units.push({ code, factor: Number(factorRaw), role: 'purchase' });
+            }
+            return {
+                name: document.getElementById('item-name').value.trim(),
+                type: editingItem ? editingItem.type : 'stock',
+                base_unit: document.getElementById('item-base-unit').value.trim(),
+                units,
+                storage_location: document.getElementById('item-shelf').value.trim() || null,
+                sku: document.getElementById('item-sku').value.trim() || null,
+                notes: document.getElementById('item-notes').value.trim() || null,
+                // Preserve a recipe made elsewhere; v1's drawer never edits one.
+                components: editingItem ? (editingItem.components || []) : [],
+                batch_size: editingItem ? (editingItem.batch_size || 1) : 1
+            };
+        }
+
+        // Engine errors arrive as INV_* codes so control flow never depends on
+        // translated prose. These are the ones this form can actually produce.
+        const INV_MESSAGES = {
+            INV_002: 'The purchase unit must be a whole number of stock units.',
+            INV_003: 'Give the item a stock unit — the unit you count it in.',
+            INV_004: 'That purchase unit repeats the stock unit with a different size. Remove it, or give it its real conversion.',
+            INV_007: 'Give the item a name.'
+        };
+
+        async function saveItem() {
+            const btn = document.getElementById('item-save-btn');
+            hideError();
+            let draft;
+            try {
+                draft = collectDraft();
+            } catch (err) {
+                showError(err.message);
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Saving…';
+            try {
+                await ds.saveItem(currentUid, draft, editingItem
+                    ? { create: false, itemId: editingItem.id }
+                    : { create: true });
+                window.showToast(editingItem ? 'Item updated.' : 'Item added.', 'success');
+                closeDrawer();
+                await loadInventory();
+            } catch (err) {
+                showError(INV_MESSAGES[err.code] || err.message || 'Could not save this item.');
+            } finally {
+                btn.textContent = 'Save item';
+                btn.disabled = false;
+                validateForm();
+            }
+        }
+
+        // ── Wiring ───────────────────────────────────────────────────────────
+        document.getElementById('new-item-btn').addEventListener('click', () => openDrawer(null));
+        document.getElementById('item-drawer-close').addEventListener('click', closeDrawer);
+        document.getElementById('item-cancel-btn').addEventListener('click', closeDrawer);
+        document.getElementById('item-drawer-backdrop').addEventListener('click', closeDrawer);
+        document.getElementById('item-save-btn').addEventListener('click', saveItem);
+        document.getElementById('item-form').addEventListener('submit', (e) => { e.preventDefault(); saveItem(); });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !document.getElementById('item-drawer-backdrop').classList.contains('hidden')) closeDrawer();
+        });
+        ['item-name', 'item-base-unit'].forEach((id) => {
+            document.getElementById(id).addEventListener('input', validateForm);
+        });
+        ['item-base-unit', 'item-purchase-unit', 'item-purchase-factor'].forEach((id) => {
+            document.getElementById(id).addEventListener('input', updatePurchasePreview);
+        });
+
+        let searchTimer = null;
+        document.getElementById('inventory-search').addEventListener('input', () => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(applySearch, 150);
+        });
+
+        document.getElementById('inventory-body').addEventListener('click', (e) => {
+            const row = e.target.closest('[data-item-id]');
+            if (!row) return;
+            const found = allRows.find((r) => r.item.id === row.dataset.itemId);
+            if (found) openDrawer(found.item);
+        });
+        document.getElementById('inventory-body').addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            const row = e.target.closest('[data-item-id]');
+            if (!row) return;
+            e.preventDefault();
+            const found = allRows.find((r) => r.item.id === row.dataset.itemId);
+            if (found) openDrawer(found.item);
+        });
+
+        // ── Boot ─────────────────────────────────────────────────────────────
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) { window.location.replace('/login'); return; }
+
+            const gated = await applyToPage(user, { pageKey: 'overview' });
+            if (gated) return;
+
+            // Resolve the joined workspace before the first finance read, or an
+            // invited member reads their own empty user scope and sees nothing.
+            try {
+                const { resolveWorkspace } = await import('/assets/js/workspace-service.js');
+                await resolveWorkspace(app, user);
+            } catch (_) {}
+
+            currentUid = user.uid;
+            paginator = window.createTablePaginator({
+                pageSize: 10,
+                label: 'items',
+                paginationId: 'inventory-pagination',
+                summaryId: 'inventory-page-summary',
+                indicatorId: 'inventory-page-indicator',
+                prevBtnId: 'inventory-prev-page',
+                nextBtnId: 'inventory-next-page'
+            });
+
+            await loadInventory();
+        });
+    </script>
+</body>
+</html>

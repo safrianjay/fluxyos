@@ -4593,7 +4593,49 @@
         // ── Page backfill: payment-pending.html ──────────────────────────────
         "Please complete the payment soon so you don’t have to restart checkout.": "Segera selesaikan pembayaran agar Anda tidak perlu mengulang checkout.",
         "Scan the QR code using your banking app or e-wallet. Pay the exact amount shown below. After payment, click “I’ve completed payment” so we can verify it manually.": "Pindai kode QR dengan aplikasi perbankan atau e-wallet Anda. Bayar persis sejumlah yang tertera di bawah. Setelah membayar, klik “Saya sudah menyelesaikan pembayaran” agar kami bisa memverifikasinya secara manual.",
-        "I’ve completed payment": "Saya sudah menyelesaikan pembayaran"
+        "I’ve completed payment": "Saya sudah menyelesaikan pembayaran",
+
+        // ── Inventory (inventory.html) ───────────────────────────────────────
+        // Glossary: LOCALIZATION_PLAN.md §2. "Outlet", "Item" and "SKU" stay as
+        // they are — all three are what Indonesian F&B and retail already say.
+        "Every item you stock, what it is worth right now, and which outlet is holding it.": "Setiap item yang Anda stok, berapa nilainya sekarang, dan outlet mana yang menyimpannya.",
+        "New item": "Item baru",
+        "Stock on hand": "Stok tersedia",
+        "Quantities are summed from every receipt, count, and waste record — nothing here is typed in by hand.": "Kuantitas dijumlahkan dari setiap penerimaan barang, stock opname, dan catatan susut — tidak ada angka di sini yang diketik manual.",
+        "Search by name, shelf, or SKU": "Cari berdasarkan nama, rak, atau SKU",
+        "Item": "Item",
+        "Outlet": "Outlet",
+        "On hand": "Tersedia",
+        "Not stocked yet": "Belum ada stok",
+        "Recipe": "Resep",
+        "No items yet": "Belum ada item",
+        "Add the ingredients and goods you buy. Once an item exists you can receive stock against it, count it, and watch its cost land in your P&L.": "Tambahkan bahan dan barang yang Anda beli. Setelah item ada, Anda bisa mencatat penerimaan barang, melakukan stock opname, dan melihat biayanya masuk ke Laba Rugi.",
+        "No item matches that": "Tidak ada item yang cocok",
+        "Try part of the name, the shelf it sits on, or its SKU.": "Coba sebagian nama, rak tempatnya, atau SKU-nya.",
+
+        // Item drawer
+        "Ingredients and goods you buy and hold. Once an item exists you can receive stock against it and count it.": "Bahan dan barang yang Anda beli dan simpan. Setelah item ada, Anda bisa mencatat penerimaan barang dan melakukan stock opname.",
+        "Changes apply from now on. Quantities already recorded are not affected.": "Perubahan berlaku mulai sekarang. Kuantitas yang sudah tercatat tidak terpengaruh.",
+        "Stock unit": "Satuan stok",
+        "The smallest unit you actually count in. Every quantity is stored in it, so it cannot be changed once the item exists.": "Satuan terkecil yang benar-benar Anda hitung. Semua kuantitas disimpan dalam satuan ini, jadi tidak bisa diubah setelah item dibuat.",
+        "Fixed once the item exists — every quantity already recorded is counted in it.": "Terkunci setelah item dibuat — semua kuantitas yang sudah tercatat dihitung dalam satuan ini.",
+        "Purchase unit": "Satuan beli",
+        "Only if you buy in a larger unit than you count in — flour bought by the sack, counted in grams.": "Hanya jika Anda membeli dalam satuan lebih besar daripada satuan hitung — tepung dibeli per sak, dihitung per gram.",
+        "Unit": "Satuan",
+        "How many stock units": "Berapa satuan stok",
+        "Shelf or storage area": "Rak atau area simpan",
+        "Counts are ordered by this, so the sheet follows the walk through your stockroom instead of the alphabet.": "Urutan stock opname mengikuti ini, jadi lembar hitungnya menyusuri gudang Anda, bukan urutan abjad.",
+        "Dry store — shelf A": "Gudang kering — rak A",
+        "Supplier, grade, anything worth remembering.": "Supplier, kualitas, apa pun yang perlu diingat.",
+        "Item added.": "Item ditambahkan.",
+        "Item updated.": "Item diperbarui.",
+        "Could not save this item.": "Item ini tidak bisa disimpan.",
+        "Give the purchase unit a name, or clear the quantity beside it.": "Beri nama satuan belinya, atau kosongkan kuantitas di sebelahnya.",
+        "How many stock units are in one purchase unit? Whole numbers only — a fractional factor would put rounding error into your ledger.": "Berapa satuan stok dalam satu satuan beli? Hanya bilangan bulat — angka pecahan akan memasukkan galat pembulatan ke pembukuan Anda.",
+        "The purchase unit must be a whole number of stock units.": "Satuan beli harus berupa bilangan bulat dari satuan stok.",
+        "Give the item a stock unit — the unit you count it in.": "Beri item ini satuan stok — satuan yang Anda pakai untuk menghitungnya.",
+        "That purchase unit repeats the stock unit with a different size. Remove it, or give it its real conversion.": "Satuan beli itu mengulang satuan stok dengan ukuran berbeda. Hapus, atau isi konversinya yang sebenarnya.",
+        "Give the item a name.": "Beri nama item ini."
     };
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -4601,6 +4643,18 @@
     //  Applied (in order) only to nodes that miss an exact dictionary key.
     // ─────────────────────────────────────────────────────────────────────────
     var PATTERNS = [
+        // Inventory headline: "Stock on hand across 3 outlets · 12 items ·
+        // balance of 1200 Inventory". Composed from live counts, and the outlet
+        // clause is absent until something is actually stocked. Indonesian does
+        // not pluralise the noun, so "3 outlet" / "12 item" are correct.
+        { re: /^Stock on hand(?: across (\d+) outlets?)? · (\d+) items? · balance of 1200 Inventory$/,
+          id: function (m) {
+              return 'Stok tersedia' + (m[1] ? ' di ' + m[1] + ' outlet' : '')
+                  + ' · ' + m[2] + ' item · saldo 1200 Persediaan';
+          } },
+        // Outlet cell when one item sits in more than one place: "3 outlets".
+        { re: /^(\d+) outlets$/,
+          id: function (m) { return m[1] + ' outlet'; } },
         // Overview chart deltas: "Up 3.49%", "Down 5.1%", "Up 4.2 pts". Composed
         // in overview-charts.js from a live number, so exact match cannot reach it.
         { re: /^(Up|Down) ([\d.,]+)(%| pts)$/,

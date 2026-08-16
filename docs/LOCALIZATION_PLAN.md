@@ -149,6 +149,17 @@ The 8 `id/use-cases/*.html` pages are hand-maintained and are *not* generated.
 | Approval flow | Alur persetujuan | |
 | Audit trail | Riwayat audit | |
 | Bookkeeping | Pembukuan | |
+| Inventory | Persediaan | The accounting term, and what account 1200 is called on the balance sheet |
+| Stock on hand | Stok tersedia | |
+| Item | Item (keep) | Already the norm in Indonesian business software |
+| Stock unit (base unit) | Satuan stok | The unit quantities are stored in |
+| Purchase unit | Satuan beli | |
+| Outlet / Branch | Outlet / Cabang | "Outlet" is standard in Indonesian F&B — keep it |
+| Goods receipt | Penerimaan barang | |
+| Stock count | Stock opname | **Keep the English-derived term.** "Stock opname" is what Indonesian retail and F&B actually call a physical count; "hitung stok" reads as a literal translation nobody uses |
+| Waste / spoilage | Susut | Posts to `5150`, deliberately outside COGS |
+| Shelf / storage area | Rak / area simpan | |
+| SKU | SKU (keep) | |
 | Bank statement | Rekening koran | |
 | Bank feed | Mutasi rekening | "Feed" doesn't translate well |
 | Cash flow | Arus kas | |
