@@ -3207,7 +3207,7 @@ service cloud.firestore {
           'commerce_accounts', 'commerce_orders', 'commerce_transactions', 'commerce_refunds',
           'commerce_settlements', 'commerce_payouts', 'commerce_sync_jobs',
           'commerce_sync_errors', 'commerce_webhook_logs', 'duplicate_reviews',
-          'dimensions', 'ledger_balances_by_dim'
+          'dimensions', 'ledger_balances_by_dim', 'items'
         ]
         && data.target_id is string && data.target_id.size() <= 200
         && data.source in ['dashboard', 'ai', 'integration', 'system']
@@ -3971,6 +3971,25 @@ service cloud.firestore {
       // journal lines. One collection with a `type`, because an F&B outlet is
       // both a P&L unit and a stock location. Soft archive only: deleting one
       // would orphan journal lines that are immutable by rule.
+      // Inventory master: ingredients, finished goods, and menu items.
+      // `type` separates a stock item from a composite (recipe) one, and
+      // `base_unit` is the unit every stored quantity is an integer count of.
+      // Validation of units[] and conversion factors is done in
+      // inventory-engine.js — rules stay at six inline checks because this is
+      // master data written from a form, and the evaluation budget is real
+      // (incidents at lines 3367, 3526, 3546). Soft archive only.
+      match /items/{itemId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 120
+          && request.resource.data.type in ['stock', 'composite']
+          && request.resource.data.base_unit is string
+          && request.resource.data.base_unit.size() > 0
+          && request.resource.data.status in ['active', 'archived'];
+        allow delete: if false;
+      }
       match /dimensions/{dimensionId} {
         allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
         allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])

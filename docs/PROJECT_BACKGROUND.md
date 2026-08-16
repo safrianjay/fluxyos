@@ -397,7 +397,7 @@ FluxyOS design language.
 >    `bank_statement_imports`(+`rows`), `documents`, `report_exports`, `accounting_mappings`,
 >    `chart_of_accounts`, `business_categories`, `journals`, `counters`,
 >    `ledger_balances`, `ledger_balances_by_dim`, `periods`, `vendors`,
->    `dimensions`,
+>    `dimensions`, `items`,
 >    **(Tax Center, §4o)** `company_tax_profile`, `tax_mappings`,
 >    `tax_transactions`, `tax_periods`, `tax_filings`, and
 >    **(Commerce Integration, §4p)** `commerce_accounts`, `commerce_orders`,
@@ -433,7 +433,7 @@ FluxyOS design language.
 >    directly in the HTML (`collection(ds.db, …)`) instead of calling a
 >    DataService method — these bypass the seam and are the easiest place to
 >    reintroduce the bug. Grep guard:
->    `grep -rnE 'users/\$\{[a-zA-Z_.]+\}/(transactions|bills|subscriptions|budgets|budget_allocations|invoices|bank_accounts|bank_balance_snapshots|bank_statement_imports|documents|report_exports|accounting_mappings|chart_of_accounts|business_categories|journals|counters|ledger_balances|ledger_balances_by_dim|periods|vendors|dimensions|audit_logs|company_tax_profile|tax_mappings|tax_transactions|tax_periods|tax_filings|commerce_accounts|commerce_orders|commerce_transactions|commerce_refunds|commerce_settlements|commerce_payouts|commerce_sync_jobs|commerce_sync_errors|commerce_webhook_logs)' *.html assets/js/*.js | grep -v db-service.js`
+>    `grep -rnE 'users/\$\{[a-zA-Z_.]+\}/(transactions|bills|subscriptions|budgets|budget_allocations|invoices|bank_accounts|bank_balance_snapshots|bank_statement_imports|documents|report_exports|accounting_mappings|chart_of_accounts|business_categories|journals|counters|ledger_balances|ledger_balances_by_dim|periods|vendors|dimensions|items|audit_logs|company_tax_profile|tax_mappings|tax_transactions|tax_periods|tax_filings|commerce_accounts|commerce_orders|commerce_transactions|commerce_refunds|commerce_settlements|commerce_payouts|commerce_sync_jobs|commerce_sync_errors|commerce_webhook_logs)' *.html assets/js/*.js | grep -v db-service.js`
 >    must return nothing.
 >
 > 7. **A new module must register its collections in BOTH lists above** — rule 2
@@ -467,6 +467,7 @@ maps changed files to the shard it requires.
 | [`data-model/billing.md`](data-model/billing.md) | `billing_subscription`, `billing_payment_requests`, `voucher_codes` |
 | [`data-model/accounting.md`](data-model/accounting.md) | `accounting_mappings`, `journals`, `ledger_balances`, `periods`, `counters` |
 | [`data-model/dimensions.md`](data-model/dimensions.md) | `dimensions`, `ledger_balances_by_dim` |
+| [`data-model/items.md`](data-model/items.md) | `items` |
 | [`data-model/invoices.md`](data-model/invoices.md) | `invoices` |
 | [`data-model/tax-center.md`](data-model/tax-center.md) | `company_tax_profile`, `tax_mappings`, `tax_transactions`, `tax_periods`, `tax_filings` |
 | [`data-model/commerce.md`](data-model/commerce.md) | `commerce_orders`, `commerce_accounts`, `commerce_settlements` |

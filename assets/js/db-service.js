@@ -5,6 +5,7 @@ import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJo
 import { buildTaxAppendix, billWithheldAmount, TAX_RATES } from "./tax-engine.js";
 import { computeAging } from "./aging-engine.js";
 import { buildIncomeStatement, buildBalanceSheet, buildCashFlow } from "./statements-engine.js";
+import { validateItemDraft, ITEM_TYPES } from "./inventory-engine.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
 // See docs/TRIAL_ACCESS_AND_PAYMENT_BANNER_PLAN.md and PROJECT_BACKGROUND §4k.
@@ -5325,6 +5326,109 @@ class DataService {
             after: { status }, source: 'dashboard'
         });
         return { id: dimensionId, status };
+    }
+
+    // =====================================================================
+    // ITEMS — the inventory master (ingredients, finished goods, menu items)
+    //
+    // `vendors`-shaped again: deterministic name_key, soft archive, never
+    // deleted. Validation is pure and lives in inventory-engine.js.
+    //
+    // Two fields exist from the first write because retrofitting either is a
+    // migration rather than an edit:
+    //   type  'stock' | 'composite' — composite is a recipe/menu item, so BOM
+    //         attaches in the next increment without a schema change
+    //   sku   the join to commerce_orders.items[].sku, which already carries
+    //         SKU, quantity and unit_price from Shopee and TikTok Shop
+    //
+    // Nothing posts to the ledger from here yet. Schema: docs/data-model/items.md
+    // =====================================================================
+
+    async getItems(userId, { includeArchived = false, type = null } = {}) {
+        try {
+            const snap = await getDocs(collection(this.db, `${this._scope(userId)}/items`));
+            return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+                .filter((i) => includeArchived || i.status !== 'archived')
+                .filter((i) => !type || i.type === type)
+                .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+        } catch (_) { return []; }
+    }
+
+    async saveItem(userId, data = {}, { create = false, itemId = null } = {}) {
+        if (!userId) throw new Error('userId required');
+        // Throws INV_* on bad input; the caller renders err.code, never the prose.
+        const draft = validateItemDraft(data);
+        const scope = this._scope(userId);
+        const nameKey = normalizeVendorKey(draft.name);
+        const sku = this._nullableString(data.sku, 60);
+        const cogsCode = this._nullableString(data.default_cogs_account_code, 12);
+
+        const fields = {
+            name: draft.name,
+            type: draft.type,
+            base_unit: draft.base_unit,
+            units: draft.units,
+            sku: sku || null,
+            // Which account this item's cost lands in when it eventually posts.
+            // Defaults to 5100 rather than being required, so an item can be
+            // created before anyone has thought about the chart.
+            default_cogs_account_code: cogsCode || '5100',
+            notes: this._nullableString(data.notes, 500)
+        };
+
+        if (create) {
+            const existing = await this.getItems(userId, { includeArchived: true });
+            if (existing.some((i) => i.name_key === nameKey)) {
+                throw new Error(`An item named "${draft.name}" already exists.`);
+            }
+            // A duplicate SKU would make the commerce join ambiguous, and the
+            // wrong item's cost would be relieved on a marketplace sale.
+            if (sku && existing.some((i) => i.sku && i.sku.toLowerCase() === sku.toLowerCase())) {
+                throw new Error(`SKU "${sku}" is already used by another item.`);
+            }
+            const payload = {
+                ...fields, name_key: nameKey, status: 'active',
+                created_at: serverTimestamp(), updated_at: serverTimestamp()
+            };
+            const ref = await addDoc(collection(this.db, `${scope}/items`), payload);
+            await this.addAuditLog(userId, {
+                action: 'item.created', target_collection: 'items', target_id: ref.id,
+                after: { name: draft.name, type: draft.type, base_unit: draft.base_unit, sku: sku || null },
+                source: 'dashboard'
+            });
+            return { id: ref.id, ...payload };
+        }
+
+        if (!itemId) throw new Error('itemId required');
+        const ref = doc(this.db, `${scope}/items/${itemId}`);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) throw new Error('Item not found.');
+        const prev = snap.data();
+        // base_unit is immutable: every stored quantity is an integer count of
+        // it, so changing it would silently reinterpret all existing stock.
+        if (draft.base_unit !== prev.base_unit) {
+            throw new Error(`Base unit cannot change (${prev.base_unit} → ${draft.base_unit}); every recorded quantity is expressed in it.`);
+        }
+        await updateDoc(ref, { ...fields, updated_at: serverTimestamp() });
+        await this.addAuditLog(userId, {
+            action: 'item.updated', target_collection: 'items', target_id: itemId,
+            before: { name: prev.name, type: prev.type, sku: prev.sku || null },
+            after: { name: draft.name, type: draft.type, sku: sku || null }, source: 'dashboard'
+        });
+        return { id: itemId, ...prev, ...fields };
+    }
+
+    async archiveItem(userId, itemId, { restore = false } = {}) {
+        if (!userId || !itemId) throw new Error('userId and itemId required');
+        const status = restore ? 'active' : 'archived';
+        await updateDoc(doc(this.db, `${this._scope(userId)}/items/${itemId}`), {
+            status, updated_at: serverTimestamp()
+        });
+        await this.addAuditLog(userId, {
+            action: restore ? 'item.reactivated' : 'item.archived',
+            target_collection: 'items', target_id: itemId, after: { status }, source: 'dashboard'
+        });
+        return { id: itemId, status };
     }
 
     // Cached name_key → vendor entity for fast default lookups during entry.
