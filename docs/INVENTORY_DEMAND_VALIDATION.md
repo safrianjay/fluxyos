@@ -314,3 +314,42 @@ them until steps 1–5 ship**. That is a real cash-flow exposure and it argues f
   *with* two or three of them beats building ahead of all fifteen.
 - **Naming the periodic-vs-per-sale distinction up front**, so the first release
   is not measured against a promise nobody made.
+
+---
+
+## Demoing it — `scripts/seed-fnb-demo.js`
+
+Builds a realistic Indonesian F&B workspace so the chain can be **walked**, not
+described: three outlets, twelve ingredients on real shelves, a fortnight of
+supplier deliveries, waste, a physical count that produces genuine COGS, revenue
+tagged per outlet, and rent/utilities/staff as dimensioned bills.
+
+The three outlets tell the story `/outlet-pnl` exists to tell — **Kemang**
+healthy, **Senopati** thin, **Kelapa Gading** losing on waste and food cost.
+Revenue is derived from the *actually posted* COGS, so each outlet's gross margin
+really is the food cost its story claims rather than a number typed in.
+
+```
+node tests/qa-static-server.js
+# open http://127.0.0.1:8765/dashboard.html and sign in
+
+const { seedFnbDemo } = await import('/scripts/seed-fnb-demo.js');
+await seedFnbDemo();                      # dry run — writes nothing
+await seedFnbDemo({ confirm: 'WRITE' });  # applies
+```
+
+**It runs in the browser on purpose.** It calls the same `DataService` a user's
+clicks call, so every journal, movement and balance row comes from the real
+posting path and is checked by the real `firestore.rules`. An Admin-SDK seeder
+would have to reimplement posting — the second set of books `PRODUCT_STRATEGY`
+§6 forbids — and data that took a different path would prove nothing about the
+product.
+
+⚠️ **Use a fresh workspace.** Items, receipts, journals and movements are
+immutable by rule; there is no undo, and demo figures would sit in real
+statements permanently. The seeder refuses a workspace that already holds items
+unless explicitly overridden.
+
+Guard: `tests/seed-fnb-demo.spec.js` runs the real write path (one outlet, three
+items) and pins both safety behaviours — a dry run writes nothing, and an
+already-stocked workspace is refused.
