@@ -14,7 +14,44 @@
          with no bare-element selectors, so loading it here leaks nothing and
          removes a duplicated block. -->
     <link rel="stylesheet" href="assets/css/accounting.css">
+    <!-- dashboard.css carries the shared donut (.chart-card/.chart-donut) that
+         renderDonutCard drives. Verified safe to load here: no bare-element
+         selectors, and its only #sidebar rule is scoped to `.dashboard-page`,
+         which this page is not. -->
+    <link rel="stylesheet" href="assets/css/dashboard.css">
     <style>
+        /* ── Metric cells, arranged the way the reference does it ───────
+           Value first and centred, with an icon + uppercase caption beneath —
+           rather than the label-above-value of the stock strip. Still the shared
+           `.kpi-detail-cell` (card surface, min-height, and the dividers that
+           turn four cells into one card); only the inner arrangement differs. */
+        .inv-metric { text-align: center; display: flex; flex-direction: column; justify-content: center; }
+        .inv-metric-value {
+            font-size: 30px; font-weight: 600; line-height: 1;
+            letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: #0B0F19;
+        }
+        /* Colour stays SEMANTIC. The reference tints each number a different hue
+           for rhythm; here red means critical and orange means warning, and the
+           two metrics that mean neither stay ink — a hue with no meaning is the
+           one thing from that layout worth leaving behind. */
+        .inv-metric-value.is-critical { color: #EF4444; }
+        .inv-metric-value.is-warn { color: #EA580C; }
+        .inv-metric-unit { font-size: 12px; color: #94A3B8; margin-top: 6px; }
+        .inv-metric-foot {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            margin-top: 12px; font-size: 10px; font-weight: 600;
+            letter-spacing: 0.08em; text-transform: uppercase; color: #64748B;
+        }
+        .inv-metric-foot svg { width: 14px; height: 14px; color: #94A3B8; }
+        .inv-metric-link { cursor: pointer; transition: background-color 150ms ease; }
+        .inv-metric-link:hover { background: #F8FAFC; }
+        .inv-metric-link:focus-visible { outline: 2px solid #EA580C; outline-offset: -2px; }
+
+        /* Tinted card headers, as in the reference. `slate-50` is one of the two
+           header backgrounds DESIGN_SYSTEM permits, so this is a sanctioned
+           variant rather than a new look. */
+        #inv-panel-overview .fluxy-table-card-header { background: #F8FAFC; }
+
         /* ── Attention strip ────────────────────────────────────────────
            Chips, not cards. This is the one part of the page that asks for a
            decision, so it sits above the numbers — but it is also the part that
@@ -55,18 +92,6 @@
         .inv-mrow-note a { color: #EA580C; font-weight: 500; text-decoration: none; }
         .inv-mrow-note a:hover { text-decoration: underline; }
 
-        /* Where the stock sits. Bars, not a donut: outlets are a ranking, and a
-           ring makes the reader compare arc lengths to answer "which is biggest".
-           Lightness steps, never a hue wheel (DESIGN_SYSTEM §4b). */
-        .inv-orow { padding: 9px 0; }
-        .inv-orow-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-        .inv-orow-name {
-            font-size: 13px; font-weight: 500; color: #334155;
-            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-        .inv-orow-value { font-size: 13px; font-variant-numeric: tabular-nums; color: #0F172A; flex-shrink: 0; }
-        .inv-obar { height: 5px; border-radius: 999px; background: #F1F5F9; margin-top: 6px; overflow: hidden; }
-        .inv-obar span { display: block; height: 100%; border-radius: 999px; background: #0F172A; }
 
         /* Quantities are integers in the item's base unit; the unit rides along
            at lower emphasis so the digits stay the thing you scan. */
@@ -346,14 +371,20 @@
                             </div>
                         </section>
 
-                        <section id="inv-outlets-card" class="fluxy-table-card hidden">
-                            <div class="fluxy-table-card-header">
+                        <!-- A donut is the right form here and passes the four
+                             guards in DESIGN_SYSTEM: outlet values are all
+                             positive and genuinely compose the total. (The banned
+                             case is a two-slice RATIO, where a part can exceed the
+                             whole.) renderDonutCard folds sub-2% slices, caps the
+                             legend, and puts the compact total in the centre. -->
+                        <section id="inv-outlets-card" class="chart-card hidden">
+                            <div class="chart-card-header">
                                 <div>
-                                    <h2 class="fluxy-table-title">Where the stock sits</h2>
-                                    <p class="fluxy-table-subtitle">Value held per outlet.</p>
+                                    <h2 class="chart-title">Where the stock sits</h2>
+                                    <p class="chart-subtitle">Value held per outlet</p>
                                 </div>
                             </div>
-                            <div id="inv-outlets" style="padding: 4px 20px 20px;"></div>
+                            <div id="inv-outlets" class="chart-donut" data-chart-donut aria-live="polite"></div>
                         </section>
                     </div>
 
@@ -755,7 +786,7 @@
             });
 
             renderAlerts(allRows);
-            renderKpis(allRows, dimensions);
+            renderKpis(allRows);
             renderMonth(movements);
             renderTrend(movements);
             renderActivity(movements, dimName);
@@ -812,29 +843,49 @@
         // One card with dividers, via the shared strip every drill-down uses —
         // four separate cards would be the cloned-grid pattern, and these four
         // only mean anything read together.
-        async function renderKpis(rows, dims) {
-            const { renderKpiStrip } = await import('/assets/js/kpi-detail-shared.js');
+        const ICONS = {
+            value: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>',
+            items: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>',
+            out:   '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>',
+            low:   '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3v18h18M8 17V9m5 8v-5m5 5V5"/>'
+        };
+
+        // The reference's "Sales Activity" strip: four related numbers, centred,
+        // each with an icon and an uppercase caption, in ONE card divided into
+        // columns. Built from `.kpi-detail-cell` — the shared cell that already
+        // supplies the surface and those dividers.
+        function renderKpis(rows) {
             const totalValue = rows.reduce((n, r) => n + (r.stock ? r.stock.value : 0), 0);
             const stocked = rows.filter((r) => r.stock && r.stock.quantity > 0).length;
             const out = rows.filter(FILTERS.out_of_stock.test).length;
             const low = rows.filter(FILTERS.low_stock.test).length;
             const withThreshold = rows.filter((r) => Number.isInteger(r.item.reorder_point)).length;
 
-            renderKpiStrip('inv-kpis', [
-                { label: 'Stock on hand', value: rp(totalValue),
-                  sub: 'Balance of 1200 Inventory' },
-                { label: 'Items holding stock', value: String(stocked),
-                  sub: `${rows.length} tracked in total` },
-                { label: 'Out of stock', value: String(out), negative: out > 0,
-                  sub: out ? 'Held stock before, none now' : 'Nothing has run out' },
-                // Says plainly when it cannot answer, rather than showing a
-                // reassuring 0 that only means nobody set a threshold.
-                { label: 'Low stock', value: withThreshold ? String(low) : '—',
-                  negative: low > 0,
-                  sub: withThreshold
-                      ? `of ${withThreshold} with a reorder point`
-                      : 'Set a reorder point on an item' }
-            ]);
+            const cell = ({ value, unit, label, icon, tone = '', filter = null }) => `
+                <${filter ? 'button type="button"' : 'div'} class="kpi-detail-cell inv-metric${filter ? ' inv-metric-link' : ''}"${filter ? ` data-alert="${esc(filter)}"` : ''}>
+                    <span class="inv-metric-value${tone}">${esc(value)}</span>
+                    <span class="inv-metric-unit">${esc(unit)}</span>
+                    <span class="inv-metric-foot">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">${icon}</svg>
+                        ${esc(label)}
+                    </span>
+                </${filter ? 'button' : 'div'}>`;
+
+            document.getElementById('inv-kpis').innerHTML = [
+                cell({ value: rp(totalValue), unit: 'Balance of 1200 Inventory',
+                       label: 'Stock on hand', icon: ICONS.value }),
+                cell({ value: String(stocked), unit: `${rows.length} tracked in total`,
+                       label: 'Items holding stock', icon: ICONS.items }),
+                cell({ value: String(out), unit: out ? 'Held stock before, none now' : 'Nothing has run out',
+                       label: 'Out of stock', icon: ICONS.out,
+                       tone: out ? ' is-critical' : '', filter: out ? 'out_of_stock' : null }),
+                // Says plainly when it cannot answer, rather than a reassuring 0
+                // that only means nobody set a threshold.
+                cell({ value: withThreshold ? String(low) : '—',
+                       unit: withThreshold ? `of ${withThreshold} with a reorder point` : 'Set a reorder point on an item',
+                       label: 'Low stock', icon: ICONS.low,
+                       tone: low ? ' is-warn' : '', filter: low ? 'low_stock' : null })
+            ].join('');
         }
 
         // ── This month ──────────────────────────────────────────────────────
@@ -895,7 +946,7 @@
         // ── Where the stock sits ────────────────────────────────────────────
         // Bars rather than a donut: outlets are a ranking, and a ring would make
         // the reader compare arc lengths to answer "which holds the most".
-        function renderOutlets(onHand, dimName) {
+        async function renderOutlets(onHand, dimName) {
             const card = document.getElementById('inv-outlets-card');
             const byDim = {};
             Object.values(onHand).forEach((e) => {
@@ -903,27 +954,27 @@
                 const key = e.dimension_id || '__unassigned__';
                 byDim[key] = (byDim[key] || 0) + (Number(e.value) || 0);
             });
-            const rows = Object.entries(byDim)
-                .map(([id, value]) => ({
-                    id,
-                    name: id === '__unassigned__' ? 'Unassigned' : (dimName[id] || 'Unknown outlet'),
-                    value
-                }))
-                .filter((r) => r.value > 0)
-                .sort((a, b) => b.value - a.value);
+            const rows = Object.entries(byDim).map(([id, value]) => ({
+                // Unassigned is a real holding, not a rounding error — naming it
+                // keeps the slices summing to the headline figure.
+                label: id === '__unassigned__' ? 'Unassigned' : (dimName[id] || 'Unknown outlet'),
+                value
+            })).filter((r) => r.value > 0);
 
             if (!rows.length) { card.classList.add('hidden'); return; }
             card.classList.remove('hidden');
-            const max = rows[0].value;
-            document.getElementById('inv-outlets').innerHTML = rows.slice(0, 6).map((r) => `
-                <div class="inv-orow">
-                    <div class="inv-orow-head">
-                        <span class="inv-orow-name">${esc(r.name)}</span>
-                        <span class="inv-orow-value">${rp(r.value)}</span>
-                    </div>
-                    <div class="inv-obar"><span style="width:${Math.max(2, Math.round((r.value / max) * 100))}%"></span></div>
-                </div>`).join('')
-                + (rows.length > 6 ? `<p class="inv-mrow-note" style="margin-top:10px;">and ${rows.length - 6} more</p>` : '');
+            try {
+                const { renderDonutCard } = await import('/assets/js/overview-charts.js');
+                renderDonutCard(card, {
+                    rows,
+                    totalLabel: 'Total value',
+                    ariaLabel: 'Stock value by outlet',
+                    emptyState: {
+                        title: 'No stock in any outlet yet',
+                        description: 'Receive stock into an outlet and it shows up here.'
+                    }
+                });
+            } catch (_) { card.classList.add('hidden'); }
         }
 
         // ── Recent activity ─────────────────────────────────────────────────

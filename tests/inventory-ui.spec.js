@@ -113,7 +113,7 @@ test('stock can be received through the page, in the unit it was bought in', asy
     await page.click('#item-save-btn');
     await expect(page.locator('#item-drawer')).toHaveClass(/translate-x-full/, { timeout: 20000 });
 
-    const valueBefore = await page.locator('#inv-kpis .kpi-detail-cell-value').first().textContent();
+    const valueBefore = await page.locator('#inv-kpis .inv-metric-value').first().textContent();
 
     await page.click('#receive-stock-btn');
     await expect(page.locator('#receipt-drawer')).not.toHaveClass(/translate-x-full/);
@@ -148,7 +148,7 @@ test('stock can be received through the page, in the unit it was bought in', asy
 
     // The headline moved, and the delivery shows on the Overview's activity feed
     // (which replaced the old deliveries strip and links each row to its journal).
-    await expect(page.locator('#inv-kpis .kpi-detail-cell-value').first()).not.toHaveText(valueBefore);
+    await expect(page.locator('#inv-kpis .inv-metric-value').first()).not.toHaveText(valueBefore);
     await page.click('[data-inv-tab="overview"]');
     await expect(page.locator('#receipts-card')).toBeVisible();
     await expect(page.locator('#receipts-body')).toContainText('Stock received');

@@ -4653,6 +4653,9 @@
         "Stock in, at cost.": "Barang masuk, sebesar biayanya.",
         "From counts. Posts to": "Dari stock opname. Diposting ke",
         "Where the stock sits": "Di mana stoknya berada",
+        "Total value": "Total nilai",
+        "No stock in any outlet yet": "Belum ada stok di outlet mana pun",
+        "Receive stock into an outlet and it shows up here.": "Catat penerimaan barang ke sebuah outlet dan akan muncul di sini.",
         "Value held per outlet.": "Nilai yang disimpan per outlet.",
 
         "What left your shelves this month, and the accounts it landed in.": "Apa yang keluar dari rak Anda bulan ini, dan akun tempat biayanya masuk.",

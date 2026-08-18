@@ -33,7 +33,7 @@ test('Overview is the default entry point, and Items is one click away', async (
     // The strip still names the account the value must agree with, and money is
     // Rp with dot separators and NO space (DESIGN_SYSTEM, strict).
     await expect(page.locator('#inv-kpis')).toContainText('1200 Inventory');
-    await expect(page.locator('#inv-kpis .kpi-detail-cell-value').first()).toHaveText(/^-?Rp[\d.]+$/);
+    await expect(page.locator('#inv-kpis .inv-metric-value').first()).toHaveText(/^-?Rp[\d.]+$/);
 
     // Switching tabs moves the URL, so the view is linkable and reloadable.
     await page.click('#inv-tab-items');
@@ -94,7 +94,14 @@ test('a real defect fires its alert, and the alert opens the item', async ({ pag
     await expect(page.locator('#inv-panel-items')).toBeVisible();
     expect(new URL(page.url()).searchParams.get('filter')).toBe('no_cost');
     await expect(page.locator('.inv-filter-chip')).toContainText('No cost recorded');
+
+    // The filtered list paginates at 10 like any other, so an aggregate alert
+    // lands the user on page 1 of the matches — not necessarily on this spec's
+    // item. Narrowing with search is the intended combination (filter first,
+    // then search WITHIN it) and is what proves the item really is in the set.
+    await page.fill('#inventory-search', TAG);
     await expect(page.locator(`#inventory-body tr:has-text("${TAG} Air Galon")`)).toHaveCount(1);
+    await page.fill('#inventory-search', '');
 
     // The same item is also below its reorder point (19.000 of 50.000 ml), which
     // proves low stock counts only where a threshold was actually set.
@@ -103,7 +110,9 @@ test('a real defect fires its alert, and the alert opens the item', async ({ pag
         () => !document.getElementById('inv-panel-items').classList.contains('hidden'),
         undefined, { timeout: 60000 }
     );
+    await page.fill('#inventory-search', TAG);
     await expect(page.locator(`#inventory-body tr:has-text("${TAG} Air Galon")`)).toHaveCount(1);
+    await page.fill('#inventory-search', '');
 
     // Clearing the chip restores the full list.
     await page.click('#inv-filter-clear');
