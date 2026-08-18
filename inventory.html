@@ -15,36 +15,58 @@
          removes a duplicated block. -->
     <link rel="stylesheet" href="assets/css/accounting.css">
     <style>
-        /* Stock-value headline. Deliberately not a KPI card grid: there is one
-           number worth stating here, and wrapping it in a card alongside three
-           filler metrics is the pattern DESIGN_SYSTEM bans. */
-        .inv-headline { display: flex; flex-direction: column; gap: 4px; }
-        .inv-headline-value {
-            font-size: 20px;
-            font-weight: 600;
-            line-height: 1;
-            letter-spacing: -0.02em;
-            color: #0B0F19;
-            font-variant-numeric: tabular-nums;
+        /* ── Attention strip ────────────────────────────────────────────
+           Chips, not cards. This is the one part of the page that asks for a
+           decision, so it sits above the numbers — but it is also the part that
+           should vanish entirely when there is nothing to say. */
+        .inv-attn {
+            display: flex; align-items: flex-start; gap: 12px;
+            padding: 12px 16px; border: 1px solid #FED7AA; background: #FFF7ED;
+            border-radius: 10px;
         }
-        .inv-headline-value.is-negative { color: #EF4444; }
-        .inv-headline-context {
-            font-size: 12px;
-            font-weight: 400;
-            line-height: 1.4;
-            color: #6B7280;
+        .inv-attn-icon { width: 18px; height: 18px; color: #EA580C; flex-shrink: 0; margin-top: 3px; }
+        .inv-attn-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+        .inv-chip {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 10px; border-radius: 999px; border: 1px solid #E2E8F0;
+            background: #fff; font-size: 12px; font-weight: 500; color: #475569;
+            cursor: pointer; transition: border-color 150ms ease;
         }
-        .inv-headline-skeleton {
-            display: inline-block;
-            width: 140px;
-            height: 20px;
-            border-radius: 4px;
-            background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 37%, #F1F5F9 63%);
-            background-size: 400% 100%;
-            animation: inv-shimmer 1.4s ease infinite;
+        .inv-chip:hover { border-color: #CBD5E1; }
+        .inv-chip:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
+        .inv-chip svg { color: #CBD5E1; }
+        .inv-chip-count { font-weight: 700; font-variant-numeric: tabular-nums; }
+        /* Severity rides on the NUMBER, never a filled surface — orange
+           backgrounds are banned and a red pill would shout at a restock. */
+        .inv-chip-critical .inv-chip-count { color: #EF4444; }
+        .inv-chip-warn .inv-chip-count { color: #EA580C; }
+        .inv-chip-info .inv-chip-count { color: #0F172A; }
+
+        /* This month — label/value rows with the account they post to. */
+        .inv-mrow { padding: 12px 0; border-bottom: 1px solid #F1F5F9; }
+        .inv-mrow:last-child { border-bottom: 0; padding-bottom: 0; }
+        .inv-mrow-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+        .inv-mrow-label { font-size: 14px; font-weight: 500; color: #475569; }
+        .inv-mrow-value {
+            font-size: 16px; font-weight: 600; color: #0B0F19;
+            font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
         }
-        @keyframes inv-shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
-        @media (prefers-reduced-motion: reduce) { .inv-headline-skeleton { animation: none; } }
+        .inv-mrow-note { font-size: 12px; color: #6B7280; margin-top: 4px; line-height: 1.45; }
+        .inv-mrow-note a { color: #EA580C; font-weight: 500; text-decoration: none; }
+        .inv-mrow-note a:hover { text-decoration: underline; }
+
+        /* Where the stock sits. Bars, not a donut: outlets are a ranking, and a
+           ring makes the reader compare arc lengths to answer "which is biggest".
+           Lightness steps, never a hue wheel (DESIGN_SYSTEM §4b). */
+        .inv-orow { padding: 9px 0; }
+        .inv-orow-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+        .inv-orow-name {
+            font-size: 13px; font-weight: 500; color: #334155;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .inv-orow-value { font-size: 13px; font-variant-numeric: tabular-nums; color: #0F172A; flex-shrink: 0; }
+        .inv-obar { height: 5px; border-radius: 999px; background: #F1F5F9; margin-top: 6px; overflow: hidden; }
+        .inv-obar span { display: block; height: 100%; border-radius: 999px; background: #0F172A; }
 
         /* Quantities are integers in the item's base unit; the unit rides along
            at lower emphasis so the digits stay the thing you scan. */
@@ -242,7 +264,7 @@
                      two page actions plus the notification bell beside it, keeping
                      the launcher squeezed the page title down to "Invent…". AI
                      stays reachable from the sidebar and every other page. -->
-                <button type="button" onclick="window.toggleFluxyAI()" class="fluxy-ai-btn hidden md:inline-flex" title="Open Fluxy AI">Fluxy AI</button>
+                <button type="button" onclick="window.toggleFluxyAI()" class="fluxy-ai-btn hidden sm:inline-flex" title="Open Fluxy AI">Fluxy AI</button>
             </div>
         </header>
 
@@ -264,89 +286,79 @@
                 <!-- ═══ OVERVIEW ═══ -->
                 <div id="inv-panel-overview" class="fluxy-section-stack" role="tabpanel" aria-labelledby="inv-tab-overview">
 
-                    <!-- One number worth stating: what the stock is worth, and the
-                         account it has to agree with. -->
-                    <div class="inv-headline">
-                        <span id="inventory-total-value" class="inv-headline-value"><span class="inv-headline-skeleton"></span></span>
-                        <span id="inventory-total-context" class="inv-headline-context">Stock on hand</span>
+                    <!-- Attention. Compact, and rendered ONLY when something is
+                         actually wrong — an empty "nothing to see" card is the
+                         thing that makes a dashboard feel like it is hiding
+                         something. Sits above the numbers because it is the one
+                         part that asks for a decision. -->
+                    <div id="inv-alerts" class="hidden"></div>
+
+                    <!-- 1. What is the situation? Four related numbers in ONE
+                         card with dividers, not four floating cards — the shared
+                         KPI strip every drill-down page uses. -->
+                    <section id="inv-kpis" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"></section>
+
+                    <!-- 2. What changed, and what did it cost? -->
+                    <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.9fr)] gap-4">
+                        <section class="fluxy-table-card">
+                            <div class="fluxy-table-card-header">
+                                <div>
+                                    <h2 class="fluxy-table-title">Stock value over time</h2>
+                                    <p class="fluxy-table-subtitle">Every receipt, count and waste record, added up as it happened.</p>
+                                </div>
+                            </div>
+                            <div style="padding: 4px 20px 20px;">
+                                <div id="inv-trend"></div>
+                            </div>
+                        </section>
+
+                        <section class="fluxy-table-card">
+                            <div class="fluxy-table-card-header">
+                                <div>
+                                    <h2 class="fluxy-table-title">This month</h2>
+                                    <p class="fluxy-table-subtitle">What left your shelves, and the accounts it landed in.</p>
+                                </div>
+                            </div>
+                            <div id="inv-month" style="padding: 4px 20px 20px;"></div>
+                        </section>
                     </div>
 
-                    <section class="fluxy-table-card">
-                        <div class="fluxy-table-card-header">
-                            <div>
-                                <h2 class="fluxy-table-title">Needs attention</h2>
-                                <p class="fluxy-table-subtitle">Only what is actually wrong. Each one opens the items it is about.</p>
-                            </div>
-                        </div>
-                        <div style="padding: 4px 20px 20px;">
-                            <div id="inv-alerts"></div>
-                        </div>
-                    </section>
-
-                    <section class="fluxy-table-card">
-                        <div class="fluxy-table-card-header">
-                            <div>
-                                <h2 class="fluxy-table-title">Where the stock went</h2>
-                                <p class="fluxy-table-subtitle">What left your shelves this month, and the accounts it landed in.</p>
-                            </div>
-                        </div>
-                        <div style="padding: 4px 20px 20px;">
-                            <div class="inv-cogs-grid">
+                    <!-- 3. What happened recently, and where does it all sit? -->
+                    <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.9fr)] gap-4">
+                        <section id="receipts-card" class="fluxy-table-card hidden">
+                            <div class="fluxy-table-card-header">
                                 <div>
-                                    <div class="inv-cogs-label">Consumed</div>
-                                    <div id="inv-cogs-value" class="inv-cogs-value">—</div>
-                                    <p class="inv-cogs-note">Cost of what was used, from counts. Posts to <a href="/accounting?tab=income">5100 Cost of Goods Sold</a>.</p>
-                                </div>
-                                <div>
-                                    <div class="inv-cogs-label">Wasted</div>
-                                    <div id="inv-waste-value" class="inv-cogs-value">—</div>
-                                    <p class="inv-cogs-note">Kept out of COGS on purpose, in <a href="/accounting?tab=income">5150</a>, so gross margin still shows the loss. <a href="/outlet-pnl">See it per outlet</a>.</p>
+                                    <h2 class="fluxy-table-title">Recent stock activity</h2>
+                                    <p class="fluxy-table-subtitle">The last few things that moved. Open one to see the journal it posted.</p>
                                 </div>
                             </div>
-                        </div>
-                    </section>
-
-                    <section class="fluxy-table-card">
-                        <div class="fluxy-table-card-header">
-                            <div>
-                                <h2 class="fluxy-table-title">Stock value over time</h2>
-                                <p class="fluxy-table-subtitle">Every receipt, count and waste record, added up as it happened.</p>
+                            <div class="fluxy-table-scroll">
+                                <table class="fluxy-table">
+                                    <thead>
+                                        <tr class="fluxy-table-header">
+                                            <th>When</th>
+                                            <th>What happened</th>
+                                            <th class="fluxy-table-money">Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="receipts-body"></tbody>
+                                </table>
                             </div>
-                        </div>
-                        <div style="padding: 4px 20px 20px;">
-                            <div id="inv-trend"></div>
-                        </div>
-                    </section>
+                        </section>
 
-                    <!-- Recent activity. Every row links to the JOURNAL that
-                         posted it — which is the inventory→finance connection
-                         itself, not a description of one. Replaces the old
-                         deliveries strip: this is a superset (receipts, counts and
-                         waste), and two lists of the same events is the
-                         duplicate-nearby-content pattern DESIGN_SYSTEM bans. -->
-                    <section id="receipts-card" class="fluxy-table-card hidden">
-                        <div class="fluxy-table-card-header">
-                            <div>
-                                <h2 class="fluxy-table-title">Recent stock activity</h2>
-                                <p class="fluxy-table-subtitle">The last few things that moved. Open one to see the journal it posted.</p>
+                        <section id="inv-outlets-card" class="fluxy-table-card hidden">
+                            <div class="fluxy-table-card-header">
+                                <div>
+                                    <h2 class="fluxy-table-title">Where the stock sits</h2>
+                                    <p class="fluxy-table-subtitle">Value held per outlet.</p>
+                                </div>
                             </div>
-                        </div>
-                        <div class="fluxy-table-scroll">
-                            <table class="fluxy-table">
-                                <thead>
-                                    <tr class="fluxy-table-header">
-                                        <th>When</th>
-                                        <th>What happened</th>
-                                        <th>Outlet</th>
-                                        <th class="fluxy-table-money">Value</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="receipts-body"></tbody>
-                            </table>
-                        </div>
-                    </section>
+                            <div id="inv-outlets" style="padding: 4px 20px 20px;"></div>
+                        </section>
+                    </div>
 
                 </div>
+
 
                 <!-- ═══ ITEMS ═══ -->
                 <div id="inv-panel-items" class="fluxy-section-stack hidden" role="tabpanel" aria-labelledby="inv-tab-items">
@@ -742,11 +754,12 @@
                 };
             });
 
-            renderHeadline(allRows, dimensions);
             renderAlerts(allRows);
-            renderCogsStrip(movements);
+            renderKpis(allRows, dimensions);
+            renderMonth(movements);
             renderTrend(movements);
             renderActivity(movements, dimName);
+            renderOutlets(onHand, dimName);
             applySearch();
 
             // Nothing to receive into until a stock item exists.
@@ -757,19 +770,16 @@
                 : 'Add an item first — there is nothing to receive into yet.';
         }
 
-        // ── Needs attention ─────────────────────────────────────────────
-        // A row appears ONLY when its count is non-zero. Four cards reading
-        // "0" is reassurance theatre and the cloned-grid pattern DESIGN_SYSTEM
-        // bans; an empty list that says so is both smaller and more honest.
+        // ── Attention ───────────────────────────────────────────────────
+        // Compact chips, and the WHOLE strip is hidden when nothing is wrong. A
+        // card saying "nothing needs attention" is visual weight spent on the
+        // absence of news, and it makes a clean dashboard feel like it is
+        // withholding something.
         const ALERTS = [
-            { key: 'out_of_stock', tone: 'critical', title: 'Out of stock',
-              desc: 'Held stock before, has none now.' },
-            { key: 'no_cost', tone: 'critical', title: 'On the shelf with no cost recorded',
-              desc: 'Counting these posts no cost of goods sold, so gross margin reads better than it is.' },
-            { key: 'low_stock', tone: 'warn', title: 'At or below the reorder point',
-              desc: 'Only items you gave a reorder point.' },
-            { key: 'stale', tone: 'info', title: 'Never counted',
-              desc: 'Their quantity is what the system believes, not what anyone has seen.' }
+            { key: 'out_of_stock', tone: 'critical', label: 'out of stock' },
+            { key: 'no_cost',      tone: 'critical', label: 'with no cost recorded' },
+            { key: 'low_stock',    tone: 'warn',     label: 'at or below reorder point' },
+            { key: 'stale',        tone: 'info',     label: 'never counted' }
         ];
 
         function renderAlerts(rows) {
@@ -778,44 +788,81 @@
                 .map((a) => ({ ...a, count: rows.filter(FILTERS[a.key].test).length }))
                 .filter((a) => a.count > 0);
 
-            if (!live.length) {
-                host.innerHTML = `
-                    <div class="inv-ok">
-                        <svg class="w-4 h-4" fill="none" stroke="#16A34A" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        Nothing needs attention right now.
-                    </div>`;
-                return;
-            }
-            host.innerHTML = live.map((a) => `
-                <button type="button" class="inv-alert inv-alert-${a.tone}" data-alert="${esc(a.key)}">
-                    <span class="inv-alert-count">${a.count}</span>
-                    <span class="inv-alert-body">
-                        <span class="inv-alert-title">${esc(a.title)}</span>
-                        <span class="inv-alert-desc">${esc(a.desc)}</span>
-                    </span>
-                    <svg class="w-4 h-4 inv-alert-chev" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                </button>`).join('');
+            if (!live.length) { host.classList.add('hidden'); host.innerHTML = ''; return; }
+
+            host.classList.remove('hidden');
+            host.innerHTML = `
+                <div class="inv-attn">
+                    <svg class="inv-attn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg>
+                    <div class="inv-attn-chips">
+                        ${live.map((a) => `
+                            <button type="button" class="inv-chip inv-chip-${a.tone}" data-alert="${esc(a.key)}">
+                                <span class="inv-chip-count">${a.count}</span>${esc(a.label)}
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            </button>`).join('')}
+                    </div>
+                </div>`;
         }
 
-        // ── Where the stock went ────────────────────────────────────────────
-        // Read from the movements themselves rather than recomputed from the
-        // ledger: same rows, and it keeps this page from becoming a second place
-        // that calculates COGS.
+        // Exposed so a spec can prove the empty case directly, rather than
+        // hoping the QA workspace happens to be clean.
+        window.__invRenderAlerts = renderAlerts;
+
+        // ── The situation, in four related numbers ──────────────────────────
+        // One card with dividers, via the shared strip every drill-down uses —
+        // four separate cards would be the cloned-grid pattern, and these four
+        // only mean anything read together.
+        async function renderKpis(rows, dims) {
+            const { renderKpiStrip } = await import('/assets/js/kpi-detail-shared.js');
+            const totalValue = rows.reduce((n, r) => n + (r.stock ? r.stock.value : 0), 0);
+            const stocked = rows.filter((r) => r.stock && r.stock.quantity > 0).length;
+            const out = rows.filter(FILTERS.out_of_stock.test).length;
+            const low = rows.filter(FILTERS.low_stock.test).length;
+            const withThreshold = rows.filter((r) => Number.isInteger(r.item.reorder_point)).length;
+
+            renderKpiStrip('inv-kpis', [
+                { label: 'Stock on hand', value: rp(totalValue),
+                  sub: 'Balance of 1200 Inventory' },
+                { label: 'Items holding stock', value: String(stocked),
+                  sub: `${rows.length} tracked in total` },
+                { label: 'Out of stock', value: String(out), negative: out > 0,
+                  sub: out ? 'Held stock before, none now' : 'Nothing has run out' },
+                // Says plainly when it cannot answer, rather than showing a
+                // reassuring 0 that only means nobody set a threshold.
+                { label: 'Low stock', value: withThreshold ? String(low) : '—',
+                  negative: low > 0,
+                  sub: withThreshold
+                      ? `of ${withThreshold} with a reorder point`
+                      : 'Set a reorder point on an item' }
+            ]);
+        }
+
+        // ── This month ──────────────────────────────────────────────────────
         function monthKey(d = new Date()) {
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         }
-        function renderCogsStrip(movements) {
+        function renderMonth(movements) {
             const pk = monthKey();
-            let consumed = 0;
-            let wasted = 0;
+            let consumed = 0, wasted = 0, received = 0;
             movements.forEach((m) => {
                 if (m.period_key !== pk) return;
                 const amt = Number(m.amount) || 0;
                 if (m.movement_type === 'count' && amt < 0) consumed += Math.abs(amt);
-                if (m.movement_type === 'waste') wasted += Math.abs(amt);
+                else if (m.movement_type === 'waste') wasted += Math.abs(amt);
+                else if (m.movement_type === 'receipt') received += amt;
             });
-            document.getElementById('inv-cogs-value').textContent = consumed ? rp(consumed) : 'Rp0';
-            document.getElementById('inv-waste-value').textContent = wasted ? rp(wasted) : 'Rp0';
+            const row = (label, value, noteHtml) => `
+                <div class="inv-mrow">
+                    <div class="inv-mrow-head">
+                        <span class="inv-mrow-label">${esc(label)}</span>
+                        <span class="inv-mrow-value">${rp(value)}</span>
+                    </div>
+                    <p class="inv-mrow-note">${noteHtml}</p>
+                </div>`;
+            document.getElementById('inv-month').innerHTML =
+                row('Received', received, 'Stock in, at cost.')
+                + row('Consumed', consumed, 'From counts. Posts to <a href="/accounting?tab=income">5100 Cost of Goods Sold</a>.')
+                + row('Wasted', wasted, 'Kept out of COGS on purpose, in <a href="/accounting?tab=income">5150</a>, so gross margin still shows the loss. <a href="/outlet-pnl">See it per outlet</a>.');
         }
 
         // ── Value over time ─────────────────────────────────────────────────
@@ -830,9 +877,8 @@
                 const key = [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
                 byDay[key] = (byDay[key] || 0) + (Number(m.amount) || 0);
             });
-            const days = Object.keys(byDay).sort();
             let running = 0;
-            const points = days.map((key) => {
+            const points = Object.keys(byDay).sort().map((key) => {
                 running += byDay[key];
                 return { label: key, value: running };
             });
@@ -843,7 +889,41 @@
                     valueName: 'Stock value',
                     emptyText: 'No stock movements yet. Receive something and this fills in.'
                 });
-            } catch (_) { /* the section simply stays empty */ }
+            } catch (_) { /* the card simply stays empty */ }
+        }
+
+        // ── Where the stock sits ────────────────────────────────────────────
+        // Bars rather than a donut: outlets are a ranking, and a ring would make
+        // the reader compare arc lengths to answer "which holds the most".
+        function renderOutlets(onHand, dimName) {
+            const card = document.getElementById('inv-outlets-card');
+            const byDim = {};
+            Object.values(onHand).forEach((e) => {
+                if (!e.quantity) return;
+                const key = e.dimension_id || '__unassigned__';
+                byDim[key] = (byDim[key] || 0) + (Number(e.value) || 0);
+            });
+            const rows = Object.entries(byDim)
+                .map(([id, value]) => ({
+                    id,
+                    name: id === '__unassigned__' ? 'Unassigned' : (dimName[id] || 'Unknown outlet'),
+                    value
+                }))
+                .filter((r) => r.value > 0)
+                .sort((a, b) => b.value - a.value);
+
+            if (!rows.length) { card.classList.add('hidden'); return; }
+            card.classList.remove('hidden');
+            const max = rows[0].value;
+            document.getElementById('inv-outlets').innerHTML = rows.slice(0, 6).map((r) => `
+                <div class="inv-orow">
+                    <div class="inv-orow-head">
+                        <span class="inv-orow-name">${esc(r.name)}</span>
+                        <span class="inv-orow-value">${rp(r.value)}</span>
+                    </div>
+                    <div class="inv-obar"><span style="width:${Math.max(2, Math.round((r.value / max) * 100))}%"></span></div>
+                </div>`).join('')
+                + (rows.length > 6 ? `<p class="inv-mrow-note" style="margin-top:10px;">and ${rows.length - 6} more</p>` : '');
         }
 
         // ── Recent activity ─────────────────────────────────────────────────
@@ -865,48 +945,30 @@
             document.getElementById('receipts-body').innerHTML = rows.map((m) => {
                 const d = m.created_at && typeof m.created_at.toDate === 'function' ? m.created_at.toDate() : null;
                 const when = d ? (window.FluxyI18n ? window.FluxyI18n.formatDate(d) : d.toLocaleDateString()) : '—';
-                const outlet = m.dimension_id
-                    ? esc(dimName[m.dimension_id] || 'Unknown outlet')
-                    : '<span class="inv-muted">Unassigned</span>';
+                // Outlet rides in the meta line rather than its own column: the
+                // card is the narrow half of a two-column row now, and a fourth
+                // column would force a horizontal scroll to read a value.
+                const outlet = m.dimension_id ? (dimName[m.dimension_id] || 'Unknown outlet') : 'Unassigned';
                 const qty = Number(m.quantity) || 0;
                 const what = MOVEMENT_COPY[m.movement_type] || 'Stock moved';
                 const clickable = m.journal_ref ? ' fluxy-table-row-clickable' : '';
+                const meta = [
+                    m.item_name || '',
+                    `${qty > 0 ? '+' : ''}${qty.toLocaleString('id-ID')} ${m.base_unit || ''}`.trim(),
+                    outlet
+                ].filter(Boolean).join(' · ');
                 return `
                     <tr class="fluxy-table-row${clickable}"${m.journal_ref ? ` data-journal="${esc(m.journal_ref)}" tabindex="0" role="button"` : ''}>
                         <td class="fluxy-table-cell">${esc(when)}</td>
                         <td class="fluxy-table-cell">
                             <span class="fluxy-table-cell-primary">${esc(what)}</span>
-                            <span class="fluxy-table-cell-meta">${esc(m.item_name || '')} · ${qty > 0 ? '+' : ''}${qty.toLocaleString('id-ID')} ${esc(m.base_unit || '')}</span>
+                            <span class="fluxy-table-cell-meta">${esc(meta)}</span>
                         </td>
-                        <td class="fluxy-table-cell">${outlet}</td>
                         <td class="fluxy-table-cell fluxy-table-money">${rp(m.amount)}</td>
                     </tr>`;
             }).join('');
         }
 
-        function renderHeadline(rows, dimensions) {
-            const totalValue = rows.reduce((sum, r) => sum + (r.stock ? r.stock.value : 0), 0);
-            const stockedOutlets = new Set();
-            rows.forEach((r) => (r.stock ? r.stock.outlets : []).forEach((o) => stockedOutlets.add(o)));
-
-            const valueEl = document.getElementById('inventory-total-value');
-            const contextEl = document.getElementById('inventory-total-context');
-
-            valueEl.textContent = rp(totalValue);
-            valueEl.classList.toggle('is-negative', totalValue < 0);
-
-            if (!rows.length) {
-                contextEl.textContent = 'Stock on hand';
-                return;
-            }
-            const itemPart = `${rows.length} ${rows.length === 1 ? 'item' : 'items'}`;
-            const outletPart = stockedOutlets.size
-                ? ` across ${stockedOutlets.size} ${stockedOutlets.size === 1 ? 'outlet' : 'outlets'}`
-                : '';
-            // Naming the control account is the point: this figure is not a
-            // side-report, it is the balance of 1200 on the balance sheet.
-            contextEl.textContent = `Stock on hand${outletPart} · ${itemPart} · balance of 1200 Inventory`;
-        }
 
         // ── Render ───────────────────────────────────────────────────────────
         function outletCell(stock) {

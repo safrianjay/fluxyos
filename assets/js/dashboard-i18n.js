@@ -4640,6 +4640,21 @@
         "Their quantity is what the system believes, not what anyone has seen.": "Kuantitasnya adalah yang diyakini sistem, bukan yang benar-benar dilihat orang.",
 
         "Where the stock went": "Ke mana stoknya pergi",
+        // Redesigned Overview: chips, KPI strip, month card, outlet bars
+        "out of stock": "stok habis",
+        "with no cost recorded": "biayanya belum tercatat",
+        "at or below reorder point": "di titik pemesanan ulang atau di bawahnya",
+        "never counted": "belum pernah dihitung",
+        "Balance of 1200 Inventory": "Saldo 1200 Persediaan",
+        "Items holding stock": "Item yang ada stoknya",
+        "Nothing has run out": "Tidak ada yang habis",
+        "Set a reorder point on an item": "Atur titik pemesanan ulang pada sebuah item",
+        "What left your shelves, and the accounts it landed in.": "Apa yang keluar dari rak Anda, dan akun tempat biayanya masuk.",
+        "Stock in, at cost.": "Barang masuk, sebesar biayanya.",
+        "From counts. Posts to": "Dari stock opname. Diposting ke",
+        "Where the stock sits": "Di mana stoknya berada",
+        "Value held per outlet.": "Nilai yang disimpan per outlet.",
+
         "What left your shelves this month, and the accounts it landed in.": "Apa yang keluar dari rak Anda bulan ini, dan akun tempat biayanya masuk.",
         "Consumed": "Terpakai",
         "Wasted": "Susut",
@@ -4815,6 +4830,15 @@
           id: function () {
               return ', jadi setiap outlet di bawah terlihat lebih untung daripada yang sebenarnya. Sewa, listrik, dan gaji biasanya masuk sebagai tagihan — tandai itu dan angka ini mengecil.';
           } },
+        // Outlet list tail on the Overview: "and 30 more".
+        { re: /^and (\d+) more$/,
+          id: function (m) { return 'dan ' + m[1] + ' lainnya'; } },
+        // KPI sub-line: "of 12 with a reorder point".
+        { re: /^of (\d+) with a reorder point$/,
+          id: function (m) { return 'dari ' + m[1] + ' yang punya titik pemesanan ulang'; } },
+        // KPI sub-line: "93 tracked in total".
+        { re: /^(\d+) tracked in total$/,
+          id: function (m) { return m[1] + ' item terdaftar seluruhnya'; } },
         // Delivery row meta: "3 items" or "1 item · DN-1042".
         { re: /^(\d+) items?(?: · (.+))?$/,
           id: function (m) { return m[1] + ' item' + (m[2] ? ' · ' + m[2] : ''); } },

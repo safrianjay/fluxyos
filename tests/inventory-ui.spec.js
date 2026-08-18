@@ -25,7 +25,7 @@ const TAG = `QA-UI-${Date.now()}`;
 async function gotoInventory(page) {
     await page.goto('/inventory?tab=items');
     await page.waitForFunction(
-        () => !document.querySelector('#inventory-total-value .inv-headline-skeleton')
+        () => document.querySelector('#inv-kpis .kpi-detail-cell')
             && !document.getElementById('inv-panel-items').classList.contains('hidden'),
         undefined, { timeout: 60000 }
     );
@@ -44,10 +44,6 @@ test('an item can be created from the page and shows up in the table', async ({ 
 
     await gotoInventory(page);
 
-    // The headline states the tie to the control account rather than a bare total.
-    await expect(page.locator('#inventory-total-context')).toContainText('1200 Inventory');
-    // Rp with dot separators and NO space after Rp (DESIGN_SYSTEM, strict).
-    await expect(page.locator('#inventory-total-value')).toHaveText(/^-?Rp[\d.]+$/);
 
     // ── Create an item through the drawer ────────────────────────────────────
     await page.click('#new-item-btn');
@@ -117,7 +113,7 @@ test('stock can be received through the page, in the unit it was bought in', asy
     await page.click('#item-save-btn');
     await expect(page.locator('#item-drawer')).toHaveClass(/translate-x-full/, { timeout: 20000 });
 
-    const valueBefore = await page.locator('#inventory-total-value').textContent();
+    const valueBefore = await page.locator('#inv-kpis .kpi-detail-cell-value').first().textContent();
 
     await page.click('#receive-stock-btn');
     await expect(page.locator('#receipt-drawer')).not.toHaveClass(/translate-x-full/);
@@ -152,7 +148,7 @@ test('stock can be received through the page, in the unit it was bought in', asy
 
     // The headline moved, and the delivery shows on the Overview's activity feed
     // (which replaced the old deliveries strip and links each row to its journal).
-    await expect(page.locator('#inventory-total-value')).not.toHaveText(valueBefore);
+    await expect(page.locator('#inv-kpis .kpi-detail-cell-value').first()).not.toHaveText(valueBefore);
     await page.click('[data-inv-tab="overview"]');
     await expect(page.locator('#receipts-card')).toBeVisible();
     await expect(page.locator('#receipts-body')).toContainText('Stock received');

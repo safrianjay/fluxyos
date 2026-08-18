@@ -14,7 +14,7 @@ const TAG = `QA-OVW-${Date.now()}`;
 async function gotoOverview(page) {
     await page.goto('/inventory');
     await page.waitForFunction(
-        () => !document.querySelector('#inventory-total-value .inv-headline-skeleton'),
+        () => document.querySelectorAll('#inv-kpis .kpi-detail-cell').length === 4,
         undefined, { timeout: 60000 }
     );
 }
@@ -30,9 +30,10 @@ test('Overview is the default entry point, and Items is one click away', async (
     await expect(page.locator('#inv-panel-items')).toBeHidden();
     await expect(page.locator('#inv-tab-overview')).toHaveAttribute('aria-selected', 'true');
 
-    // The headline still names the account it must agree with.
-    await expect(page.locator('#inventory-total-context')).toContainText('1200 Inventory');
-    await expect(page.locator('#inventory-total-value')).toHaveText(/^-?Rp[\d.]+$/);
+    // The strip still names the account the value must agree with, and money is
+    // Rp with dot separators and NO space (DESIGN_SYSTEM, strict).
+    await expect(page.locator('#inv-kpis')).toContainText('1200 Inventory');
+    await expect(page.locator('#inv-kpis .kpi-detail-cell-value').first()).toHaveText(/^-?Rp[\d.]+$/);
 
     // Switching tabs moves the URL, so the view is linkable and reloadable.
     await page.click('#inv-tab-items');
@@ -83,10 +84,10 @@ test('a real defect fires its alert, and the alert opens the item', async ({ pag
 
     await gotoOverview(page);
 
-    // The alert fired.
+    // The alert fired, as a compact chip rather than a card.
     const alert = page.locator('[data-alert="no_cost"]');
     await expect(alert).toBeVisible({ timeout: 30000 });
-    await expect(alert.locator('.inv-alert-count')).toHaveText(/^[1-9]/);
+    await expect(alert.locator('.inv-chip-count')).toHaveText(/^[1-9]/);
 
     // And it is an ENTRY POINT: clicking opens Items, filtered, chip shown.
     await alert.click();
@@ -110,14 +111,32 @@ test('a real defect fires its alert, and the alert opens the item', async ({ pag
     expect(new URL(page.url()).searchParams.get('filter')).toBeNull();
 });
 
-test('a signal with nothing wrong does not render a reassuring zero', async ({ page }) => {
+test('the attention strip only exists when something is wrong', async ({ page }) => {
     await gotoOverview(page);
-    // Rows appear only when their count is non-zero. Four cards reading "0" is
-    // the cloned-grid pattern DESIGN_SYSTEM bans, and it buries the one row that
-    // matters. Whatever is clean must be absent, not present-and-empty.
-    const counts = await page.locator('#inv-alerts .inv-alert-count').allTextContents();
+
+    // Every chip that renders must carry a real count — a "0 out of stock" chip
+    // is weight spent on the absence of news.
+    const counts = await page.locator('#inv-alerts .inv-chip-count').allTextContents();
     expect(counts.every((c) => Number(c.replace(/\D/g, '')) > 0),
-        `every rendered alert must have a non-zero count, got: ${counts.join(', ')}`).toBe(true);
+        `every chip must have a non-zero count, got: ${counts.join(', ')}`).toBe(true);
+
+    // And with nothing wrong the WHOLE strip is gone — not an empty card, not a
+    // placeholder. Proven by emptying the signal set the page reads.
+    await page.addInitScript(() => {
+        window.__invForceClean = true;
+    });
+    await page.goto('/inventory');
+    await page.waitForFunction(
+        () => document.querySelectorAll('#inv-kpis .kpi-detail-cell').length === 4,
+        undefined, { timeout: 60000 }
+    );
+    const hiddenWhenClean = await page.evaluate(() => {
+        const host = document.getElementById('inv-alerts');
+        // Re-render with no rows at all: the strip must hide itself.
+        window.__invRenderAlerts([]);
+        return host.classList.contains('hidden') && host.innerHTML === '';
+    });
+    expect(hiddenWhenClean, 'with nothing wrong the attention strip must not exist at all').toBe(true);
 });
 
 test('recent activity links each row to the journal that posted it', async ({ page }) => {
@@ -128,6 +147,12 @@ test('recent activity links each row to the journal that posted it', async ({ pa
     // post, so its rows are deliberately inert and carry no data-journal. Assert
     // on the linkable ones — and that at least one exists, or the feature is
     // decorative.
+    // Header and body must agree on the column count — a mismatch silently
+    // shunts every value into the wrong column, which reads as plausible data.
+    const headCols = await page.locator('#receipts-card thead th').count();
+    const bodyCols = await page.locator('#receipts-body tr').first().locator('td').count();
+    expect(bodyCols, 'activity rows must match the header column count').toBe(headCols);
+
     const linkable = page.locator('#receipts-body tr[data-journal]');
     await expect(linkable.first()).toBeVisible({ timeout: 30000 });
 
@@ -150,9 +175,13 @@ test('the Overview holds together at 375px and 1280px', async ({ page }) => {
 
         await expect(page.locator('#inv-tab-overview')).toBeVisible();
         await expect(page.locator('#inv-tab-items')).toBeVisible();
-        // The title must not be squeezed out by the topbar actions.
-        const titleW = await page.locator('.dashboard-topbar-title')
-            .evaluate((el) => Math.round(el.getBoundingClientRect().width));
-        expect(titleW, `${label}: page title collapsed`).toBeGreaterThan(40);
+        // The title must not be squeezed out by the topbar actions — and it must
+        // fit its own text, not be silently clipped to "Invent…".
+        const title = await page.locator('.dashboard-topbar-title').evaluate((el) => ({
+            width: Math.round(el.getBoundingClientRect().width),
+            clipped: el.scrollWidth > el.clientWidth + 1
+        }));
+        expect(title.width, `${label}: page title collapsed`).toBeGreaterThan(40);
+        expect(title.clipped, `${label}: page title is clipped`).toBe(false);
     }
 });
