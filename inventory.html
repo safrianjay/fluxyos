@@ -26,9 +26,15 @@
            `.kpi-detail-cell` (card surface, min-height, and the dividers that
            turn four cells into one card); only the inner arrangement differs. */
         .inv-metric { text-align: center; display: flex; flex-direction: column; justify-content: center; }
+        /* Matches `.kpi-detail-cell-value` exactly — 20px is the `xl` step the
+           dashboard scale reserves for a KPI value, and it is what every other
+           KPI in the app uses. The 30px this started at was off-scale entirely;
+           the reference's larger numerals are not worth breaking the type ramp
+           that makes these pages read as one product. */
         .inv-metric-value {
-            font-size: 30px; font-weight: 600; line-height: 1;
-            letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: #0B0F19;
+            font-size: 20px; font-weight: 600; line-height: 1;
+            letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum"; color: #0B0F19;
         }
         /* Colour stays SEMANTIC. The reference tints each number a different hue
            for rhythm; here red means critical and orange means warning, and the
