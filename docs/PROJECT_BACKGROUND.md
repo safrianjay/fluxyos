@@ -146,7 +146,7 @@ any Future item as present.
 | Subscriptions | `subscription.html` | App | ✅ | **No** | ✅ |
 | Budgets | `budget.html` | App | ✅ | **No** | ✅ |
 | Invoices | `invoices.html` | App | ✅ | **No** | ✅ |
-| Inventory | `inventory.html` | App | ✅ | **No** | ✅ |
+| Inventory (Overview \| Items) | `inventory.html` | App | ✅ | **No** | ✅ |
 | Stock Count | `inventory-count.html` | App | ✅ | **No** | ✅ |
 | Outlet P&L | `outlet-pnl.html` | App | ✅ | **No** | ✅ |
 | Accounting Center | `accounting.html` | App | ✅ | **No** | ✅ |

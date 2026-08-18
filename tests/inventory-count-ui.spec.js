@@ -27,9 +27,10 @@ const ITEM_A = `${TAG} Aaa Beras`;   // shelf B
 const ITEM_Z = `${TAG} Zzz Garam`;   // shelf A
 
 async function seed(page) {
-    await page.goto('/inventory');
+    await page.goto('/inventory?tab=items');
     await page.waitForFunction(
-        () => !document.querySelector('#inventory-total-value .inv-headline-skeleton'),
+        () => !document.querySelector('#inventory-total-value .inv-headline-skeleton')
+            && !document.getElementById('inv-panel-items').classList.contains('hidden'),
         undefined, { timeout: 60000 }
     );
 

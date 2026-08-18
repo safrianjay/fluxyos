@@ -5638,6 +5638,23 @@ class DataService {
     // Stock on hand, from the subledger. Summed per item (and per dimension when
     // asked) rather than stored as a running total: the movements ARE the record,
     // and a cached balance is one more thing that can disagree with them.
+    // Raw movements, newest first. getStockOnHand reads the same rows and throws
+    // the detail away, so a caller that needs on-hand AND activity AND a trend —
+    // the Inventory Overview — takes this once instead of aggregating twice.
+    //
+    // Bounded, unlike getStockOnHand. Ordering is on a single field, so no
+    // composite index is required.
+    async getStockMovements(userId, { limitCount = 500 } = {}) {
+        try {
+            const q = query(
+                collection(this.db, `${this._scope(userId)}/stock_movements`),
+                orderBy('created_at', 'desc'), limit(limitCount)
+            );
+            const snap = await getDocs(q);
+            return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        } catch (_) { return []; }
+    }
+
     async getStockOnHand(userId, { byDimension = false } = {}) {
         const out = {};
         try {
@@ -5712,6 +5729,14 @@ class DataService {
             // count is done by walking the shelf — an alphabetical sheet makes the
             // counter cross the stockroom for every line.
             storage_location: this._nullableString(data.storage_location, 60),
+            // Reorder point, in BASE units. Null means "no threshold set", which
+            // is not the same as zero — the Overview's low-stock count only ever
+            // considers items where someone actually set one. Inferring a
+            // threshold from usage history would produce a confident-looking
+            // number from days of data.
+            reorder_point: Number.isInteger(Number(data.reorder_point)) && Number(data.reorder_point) >= 0
+                ? Number(data.reorder_point)
+                : null,
             notes: this._nullableString(data.notes, 500)
         };
 

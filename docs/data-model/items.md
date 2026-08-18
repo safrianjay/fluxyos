@@ -36,6 +36,7 @@ creates `stock` items and preserves — but does not edit — a `composite`'s
 | `components` | array | **Recipe/BOM.** `{ item_id, quantity, yield_percent }` — what ONE BATCH consumes. Empty on a stock item |
 | `batch_size` | integer ≥1 | How much output one batch produces, in this item's own base unit. Default `1` |
 | `storage_location` | string ≤60 \| null | Where it physically sits ("Dry store — shelf A"). **Sorts the count sheet**, because a count is done by walking the shelf; an alphabetical sheet sends the counter back and forth across the stockroom |
+| `reorder_point` | integer ≥0 \| null | Warn when on-hand drops to this, in BASE units. **`null` means no threshold, which is not `0`** — the Overview's low-stock count only ever considers items where one was actually set. Never inferred from usage history: with days of data that produces a confident-looking number from noise |
 | `notes` | string ≤500 \| null | |
 | `status` | enum | `active` \| `archived`. Soft archive only |
 | `created_at` / `updated_at` | Timestamp | Server-set |

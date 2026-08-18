@@ -8,27 +8,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <!-- accounting.css owns `.acct-tabs`/`.acct-tab` (the mandated in-page tab
+         component) AND `.dashboard-topbar-*`, which this page previously copied
+         by hand. Every one of its 169 rules is `.acct-`/`.dashboard-`-prefixed
+         with no bare-element selectors, so loading it here leaks nothing and
+         removes a duplicated block. -->
+    <link rel="stylesheet" href="assets/css/accounting.css">
     <style>
-        /* Topbar copy classes live in accounting.css / dashboard.css, which this
-           page does not load. Copied verbatim per DESIGN_SYSTEM.md — without them
-           the title and subtitle render as unstyled default text. */
-        .dashboard-topbar-copy { display: flex; flex-direction: column; min-width: 0; }
-        .dashboard-topbar-title {
-            color: #0B0F19;
-            font-size: 18px;
-            line-height: 1.15;
-            font-weight: 700;
-            letter-spacing: -0.015em;
-        }
-        .dashboard-topbar-subtitle {
-            margin: 3px 0 0;
-            color: #6B7280;
-            font-size: 13px;
-            line-height: 1.35;
-            font-weight: 500;
-            letter-spacing: -0.005em;
-        }
-
         /* Stock-value headline. Deliberately not a KPI card grid: there is one
            number worth stating here, and wrapping it in a card alongside three
            filler metrics is the pattern DESIGN_SYSTEM bans. */
@@ -95,6 +81,68 @@
 
         /* 375px: the topbar keeps the title and both actions; the subtitle is the
            only thing that drops, and the action labels shorten rather than wrap. */
+        /* ── Overview ───────────────────────────────────────────────────────
+           Needs-attention is a LIST, not a card grid. A row renders only when
+           its count is non-zero, so a healthy workspace reads "nothing needs
+           attention" instead of four reassuring zeros — and four equal-weight
+           cards is the cloned-grid pattern DESIGN_SYSTEM bans. */
+        .inv-alert {
+            display: flex; align-items: center; gap: 12px;
+            width: 100%; text-align: left;
+            padding: 14px 16px; border: 1px solid #E2E8F0; border-radius: 10px;
+            background: #fff; margin-bottom: 8px; cursor: pointer;
+            transition: border-color 150ms ease, box-shadow 150ms ease;
+        }
+        .inv-alert:hover { border-color: #CBD5E1; box-shadow: 0 1px 3px rgba(11,15,25,.06); }
+        .inv-alert:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
+        .inv-alert-count {
+            font-size: 20px; font-weight: 600; line-height: 1; letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums; min-width: 34px; flex-shrink: 0;
+        }
+        .inv-alert-body { flex: 1; min-width: 0; }
+        .inv-alert-title { font-size: 14px; font-weight: 600; color: #0F172A; }
+        .inv-alert-desc { font-size: 12px; color: #64748B; margin-top: 2px; line-height: 1.4; }
+        .inv-alert-chev { color: #CBD5E1; flex-shrink: 0; }
+        /* Severity is carried by the COUNT only, never by a filled surface —
+           orange backgrounds are banned project-wide and a red card would shout
+           at a routine restock. */
+        .inv-alert-critical .inv-alert-count { color: #EF4444; }
+        .inv-alert-warn .inv-alert-count { color: #EA580C; }
+        .inv-alert-info .inv-alert-count { color: #0F172A; }
+
+        .inv-ok {
+            display: flex; align-items: center; gap: 10px;
+            padding: 14px 16px; border: 1px dashed #E2E8F0; border-radius: 10px;
+            font-size: 14px; color: #64748B; background: #fff;
+        }
+
+        /* Stock → COGS. A strip, not a statement: /outlet-pnl and the Accounting
+           Center own the real numbers, and a second place to compute margin is a
+           second place for it to disagree. */
+        .inv-cogs-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        @media (max-width: 560px) { .inv-cogs-grid { grid-template-columns: 1fr; } }
+        .inv-cogs-label {
+            font-size: 10px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; color: #64748B;
+        }
+        .inv-cogs-value {
+            font-size: 20px; font-weight: 600; line-height: 1; letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums; color: #0B0F19; margin-top: 6px;
+        }
+        .inv-cogs-note { font-size: 12px; color: #6B7280; margin-top: 4px; line-height: 1.4; }
+        .inv-cogs-note a { color: #EA580C; font-weight: 500; text-decoration: none; }
+        .inv-cogs-note a:hover { text-decoration: underline; }
+
+        .inv-filter-chip {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 6px 10px 6px 12px; border: 1px solid #FED7AA; background: #FFF7ED;
+            border-radius: 999px; font-size: 12px; font-weight: 500; color: #9A3412;
+        }
+        .inv-filter-chip button {
+            border: 0; background: none; color: #9A3412; cursor: pointer;
+            line-height: 1; padding: 0 2px; font-size: 14px;
+        }
+
         /* Receipt lines. One card per line rather than a table row: at 375px a
            4-column row is unreadable, and a line carries a derived figure (unit
            cost) that a table row has nowhere to put. */
@@ -178,30 +226,132 @@
                      exists, because there would be nothing to receive INTO. -->
                 <button id="new-item-btn" type="button" aria-label="New item" title="New item" class="px-2.5 sm:px-4 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"></path></svg>
-                    <span class="hidden sm:inline">New item</span>
+                    <span class="hidden lg:inline">New item</span>
                 </button>
                 <button id="receive-stock-btn" type="button" aria-label="Receive stock" title="Receive stock" class="px-2.5 sm:px-4 py-2 bg-gray-900 text-white rounded-lg text-[14px] font-bold hover:bg-gray-800 transition-all duration-200 flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
-                    <span class="hidden sm:inline">Receive stock</span>
+                    <span class="hidden lg:inline">Receive stock</span>
                 </button>
                 <!-- The launcher is owned by `.fluxy-ai-btn` — enhanceFluxyAIButtons()
                      in shared-dashboard.js replaces this element's className and
                      innerHTML wholesale. Styling it here would be dead code that
                      only flashes before the enhancer runs, which is exactly how
                      the banned orange background reached the other pages. -->
-                <button type="button" onclick="window.toggleFluxyAI()" class="fluxy-ai-btn" title="Open Fluxy AI">Fluxy AI</button>
+                <!-- `hidden sm:inline-flex` is the documented opt-out the enhancer
+                     reads (applies .fluxy-ai-btn--sm, hiding it below 640px). With
+                     two page actions plus the notification bell beside it, keeping
+                     the launcher squeezed the page title down to "Invent…". AI
+                     stays reachable from the sidebar and every other page. -->
+                <button type="button" onclick="window.toggleFluxyAI()" class="fluxy-ai-btn hidden md:inline-flex" title="Open Fluxy AI">Fluxy AI</button>
             </div>
         </header>
 
         <div class="fluxy-page-shell">
             <div class="fluxy-page-canvas fluxy-section-stack">
 
-                <!-- One number worth stating: what the stock is worth, and the
-                     account it has to agree with. -->
-                <div class="inv-headline">
-                    <span id="inventory-total-value" class="inv-headline-value"><span class="inv-headline-skeleton"></span></span>
-                    <span id="inventory-total-context" class="inv-headline-context">Stock on hand</span>
+                <!-- Two views of one module, one route. State lives in the URL so
+                     the Overview's alerts can deep-link into a filtered Items
+                     table (DESIGN_SYSTEM → In-Page Section Navigation). Panels
+                     toggle by class rather than unmounting, so a half-typed
+                     search survives a tab switch. -->
+                <div class="acct-tabs" role="tablist" aria-label="Inventory sections">
+                    <button type="button" id="inv-tab-overview" class="acct-tab is-active" role="tab"
+                            data-inv-tab="overview" aria-selected="true" aria-controls="inv-panel-overview">Overview</button>
+                    <button type="button" id="inv-tab-items" class="acct-tab" role="tab"
+                            data-inv-tab="items" aria-selected="false" aria-controls="inv-panel-items">Items</button>
                 </div>
+
+                <!-- ═══ OVERVIEW ═══ -->
+                <div id="inv-panel-overview" class="fluxy-section-stack" role="tabpanel" aria-labelledby="inv-tab-overview">
+
+                    <!-- One number worth stating: what the stock is worth, and the
+                         account it has to agree with. -->
+                    <div class="inv-headline">
+                        <span id="inventory-total-value" class="inv-headline-value"><span class="inv-headline-skeleton"></span></span>
+                        <span id="inventory-total-context" class="inv-headline-context">Stock on hand</span>
+                    </div>
+
+                    <section class="fluxy-table-card">
+                        <div class="fluxy-table-card-header">
+                            <div>
+                                <h2 class="fluxy-table-title">Needs attention</h2>
+                                <p class="fluxy-table-subtitle">Only what is actually wrong. Each one opens the items it is about.</p>
+                            </div>
+                        </div>
+                        <div style="padding: 4px 20px 20px;">
+                            <div id="inv-alerts"></div>
+                        </div>
+                    </section>
+
+                    <section class="fluxy-table-card">
+                        <div class="fluxy-table-card-header">
+                            <div>
+                                <h2 class="fluxy-table-title">Where the stock went</h2>
+                                <p class="fluxy-table-subtitle">What left your shelves this month, and the accounts it landed in.</p>
+                            </div>
+                        </div>
+                        <div style="padding: 4px 20px 20px;">
+                            <div class="inv-cogs-grid">
+                                <div>
+                                    <div class="inv-cogs-label">Consumed</div>
+                                    <div id="inv-cogs-value" class="inv-cogs-value">—</div>
+                                    <p class="inv-cogs-note">Cost of what was used, from counts. Posts to <a href="/accounting?tab=income">5100 Cost of Goods Sold</a>.</p>
+                                </div>
+                                <div>
+                                    <div class="inv-cogs-label">Wasted</div>
+                                    <div id="inv-waste-value" class="inv-cogs-value">—</div>
+                                    <p class="inv-cogs-note">Kept out of COGS on purpose, in <a href="/accounting?tab=income">5150</a>, so gross margin still shows the loss. <a href="/outlet-pnl">See it per outlet</a>.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="fluxy-table-card">
+                        <div class="fluxy-table-card-header">
+                            <div>
+                                <h2 class="fluxy-table-title">Stock value over time</h2>
+                                <p class="fluxy-table-subtitle">Every receipt, count and waste record, added up as it happened.</p>
+                            </div>
+                        </div>
+                        <div style="padding: 4px 20px 20px;">
+                            <div id="inv-trend"></div>
+                        </div>
+                    </section>
+
+                    <!-- Recent activity. Every row links to the JOURNAL that
+                         posted it — which is the inventory→finance connection
+                         itself, not a description of one. Replaces the old
+                         deliveries strip: this is a superset (receipts, counts and
+                         waste), and two lists of the same events is the
+                         duplicate-nearby-content pattern DESIGN_SYSTEM bans. -->
+                    <section id="receipts-card" class="fluxy-table-card hidden">
+                        <div class="fluxy-table-card-header">
+                            <div>
+                                <h2 class="fluxy-table-title">Recent stock activity</h2>
+                                <p class="fluxy-table-subtitle">The last few things that moved. Open one to see the journal it posted.</p>
+                            </div>
+                        </div>
+                        <div class="fluxy-table-scroll">
+                            <table class="fluxy-table">
+                                <thead>
+                                    <tr class="fluxy-table-header">
+                                        <th>When</th>
+                                        <th>What happened</th>
+                                        <th>Outlet</th>
+                                        <th class="fluxy-table-money">Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="receipts-body"></tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                </div>
+
+                <!-- ═══ ITEMS ═══ -->
+                <div id="inv-panel-items" class="fluxy-section-stack hidden" role="tabpanel" aria-labelledby="inv-tab-items">
+
+                <div id="inv-filter-bar" class="hidden"></div>
 
                 <section class="fluxy-table-card">
                     <div class="fluxy-table-card-header">
@@ -253,31 +403,7 @@
                     </div>
                 </section>
 
-                <!-- A recency strip, not a second ledger: it answers "did what I
-                     received actually land, and at what cost?". Bounded at 10 and
-                     labelled as such, so it is never a truncated list with no way
-                     to see the rest. -->
-                <section id="receipts-card" class="fluxy-table-card hidden">
-                    <div class="fluxy-table-card-header">
-                        <div>
-                            <h2 class="fluxy-table-title">Last 10 deliveries</h2>
-                            <p class="fluxy-table-subtitle">Each one raised stock and parked its cost in Goods Received Not Invoiced until the supplier's bill clears it.</p>
-                        </div>
-                    </div>
-                    <div class="fluxy-table-scroll">
-                        <table class="fluxy-table">
-                            <thead>
-                                <tr class="fluxy-table-header">
-                                    <th>Received</th>
-                                    <th>Supplier</th>
-                                    <th>Outlet</th>
-                                    <th class="fluxy-table-money">Cost</th>
-                                </tr>
-                            </thead>
-                            <tbody id="receipts-body"></tbody>
-                        </table>
-                    </div>
-                </section>
+                </div><!-- /items panel -->
 
             </div>
         </div>
@@ -330,6 +456,12 @@
                 <label class="fluxy-drawer-label" for="item-shelf">Shelf or storage area <span class="inv-muted">(optional)</span></label>
                 <input id="item-shelf" type="text" class="fluxy-drawer-input" maxlength="60" placeholder="Dry store — shelf A" autocomplete="off">
                 <p class="fluxy-drawer-hint">Counts are ordered by this, so the sheet follows the walk through your stockroom instead of the alphabet.</p>
+            </div>
+
+            <div class="fluxy-drawer-field">
+                <label class="fluxy-drawer-label" for="item-reorder">Reorder point <span class="inv-muted">(optional)</span></label>
+                <input id="item-reorder" type="text" inputmode="numeric" class="fluxy-drawer-input" placeholder="5000" autocomplete="off">
+                <p id="item-reorder-hint" class="fluxy-drawer-hint">Warn me when stock drops to this. Left blank, the item is never counted as low — a threshold guessed from a few days of history would be noise dressed as advice.</p>
             </div>
 
             <div class="fluxy-drawer-field">
@@ -451,6 +583,59 @@
         const auth = getAuth(app);
         const ds = new DataService(app);
 
+        // ── Tabs & deep links ────────────────────────────────────────────────
+        // State lives in the URL so an Overview alert can hand the Items tab a
+        // filter, and so a reload or a shared link lands where it should.
+        const FILTERS = {
+            low_stock:    { label: 'Low stock',           test: (r) => r.isLow },
+            out_of_stock: { label: 'Out of stock',        test: (r) => r.isOut },
+            no_cost:      { label: 'No cost recorded',    test: (r) => r.hasNoCost },
+            stale:        { label: 'Never counted',       test: (r) => r.isStale }
+        };
+        let activeFilter = null;
+
+        function readUrlState() {
+            const p = new URLSearchParams(window.location.search);
+            const tab = p.get('tab') === 'items' ? 'items' : 'overview';
+            const f = p.get('filter');
+            return { tab, filter: FILTERS[f] ? f : null };
+        }
+
+        function writeUrlState(tab, filter, { replace = false } = {}) {
+            const p = new URLSearchParams(window.location.search);
+            if (tab === 'items') p.set('tab', 'items'); else p.delete('tab');
+            if (filter) p.set('filter', filter); else p.delete('filter');
+            const qs = p.toString();
+            const url = window.location.pathname + (qs ? `?${qs}` : '');
+            if (replace) window.history.replaceState({}, '', url);
+            else window.history.pushState({}, '', url);
+        }
+
+        function setTab(tab, { filter = undefined, push = true } = {}) {
+            const isItems = tab === 'items';
+            if (filter !== undefined) activeFilter = filter;
+
+            document.querySelectorAll('[data-inv-tab]').forEach((btn) => {
+                const on = btn.dataset.invTab === (isItems ? 'items' : 'overview');
+                btn.classList.toggle('is-active', on);
+                btn.setAttribute('aria-selected', String(on));
+            });
+            // Hidden, not unmounted — a half-typed search survives a switch.
+            document.getElementById('inv-panel-overview').classList.toggle('hidden', isItems);
+            document.getElementById('inv-panel-items').classList.toggle('hidden', !isItems);
+
+            if (push) writeUrlState(isItems ? 'items' : 'overview', isItems ? activeFilter : null);
+            renderFilterChip();
+            if (isItems) applySearch();
+        }
+
+        function renderFilterChip() {
+            const bar = document.getElementById('inv-filter-bar');
+            if (!activeFilter || !FILTERS[activeFilter]) { bar.classList.add('hidden'); bar.innerHTML = ''; return; }
+            bar.classList.remove('hidden');
+            bar.innerHTML = `<span class="inv-filter-chip">${esc(FILTERS[activeFilter].label)}<button type="button" id="inv-filter-clear" aria-label="Clear filter">&times;</button></span>`;
+        }
+
         let currentUid = null;
         let allRows = [];        // items joined with their stock
         let editingItem = null;  // null = create mode
@@ -492,11 +677,14 @@
         }
 
         async function loadInventory() {
-            const [items, onHand, dims, receipts] = await Promise.all([
+            // getStockOnHand reads every movement and discards the detail, so
+            // the raw rows serve on-hand AND the alerts AND the activity feed AND
+            // the trend from one read — fewer than the page made before.
+            const [items, onHand, dims, movements] = await Promise.all([
                 ds.getItems(currentUid),
                 ds.getStockOnHand(currentUid, { byDimension: true }),
                 ds.getDimensions(currentUid),
-                ds.getGoodsReceipts(currentUid, { limitCount: 10 })
+                ds.getStockMovements(currentUid, { limitCount: 500 })
             ]);
 
             dimensions = dims;
@@ -524,19 +712,41 @@
                 }
             });
 
+            // Which items have ever been counted. An on-hand figure for an item
+            // that has never been counted is an assumption, not an observation.
+            const countedItems = new Set(
+                movements.filter((m) => m.movement_type === 'count').map((m) => m.item_id)
+            );
+
             allRows = items.map((item) => {
                 const stock = stockByItem[item.id] || null;
+                const qty = stock ? stock.quantity : 0;
+                const val = stock ? stock.value : 0;
+                const reorder = Number.isInteger(item.reorder_point) ? item.reorder_point : null;
                 return {
                     item,
                     // null (never stocked) is deliberately distinct from 0
                     // (movements that net to zero) — they are different facts.
                     stock,
+                    // Out of stock means it HAD stock and now has none. An item
+                    // never stocked at all reads "Not stocked yet" in the table,
+                    // and calling that an alert would invent one.
+                    isOut: !!stock && qty <= 0,
+                    // Low only where a threshold was actually set. Never inferred.
+                    isLow: !!stock && reorder !== null && qty > 0 && qty <= reorder,
+                    // Stock with no cost basis: every count on it posts ZERO COGS
+                    // and silently overstates gross margin.
+                    hasNoCost: !!stock && qty > 0 && val === 0,
+                    isStale: !!stock && qty > 0 && !countedItems.has(item.id),
                     haystack: [item.name, item.storage_location, item.sku].filter(Boolean).join(' ').toLowerCase()
                 };
             });
 
             renderHeadline(allRows, dimensions);
-            renderReceipts(receipts, dimName);
+            renderAlerts(allRows);
+            renderCogsStrip(movements);
+            renderTrend(movements);
+            renderActivity(movements, dimName);
             applySearch();
 
             // Nothing to receive into until a stock item exists.
@@ -547,29 +757,129 @@
                 : 'Add an item first — there is nothing to receive into yet.';
         }
 
-        function renderReceipts(receipts, dimName) {
+        // ── Needs attention ─────────────────────────────────────────────
+        // A row appears ONLY when its count is non-zero. Four cards reading
+        // "0" is reassurance theatre and the cloned-grid pattern DESIGN_SYSTEM
+        // bans; an empty list that says so is both smaller and more honest.
+        const ALERTS = [
+            { key: 'out_of_stock', tone: 'critical', title: 'Out of stock',
+              desc: 'Held stock before, has none now.' },
+            { key: 'no_cost', tone: 'critical', title: 'On the shelf with no cost recorded',
+              desc: 'Counting these posts no cost of goods sold, so gross margin reads better than it is.' },
+            { key: 'low_stock', tone: 'warn', title: 'At or below the reorder point',
+              desc: 'Only items you gave a reorder point.' },
+            { key: 'stale', tone: 'info', title: 'Never counted',
+              desc: 'Their quantity is what the system believes, not what anyone has seen.' }
+        ];
+
+        function renderAlerts(rows) {
+            const host = document.getElementById('inv-alerts');
+            const live = ALERTS
+                .map((a) => ({ ...a, count: rows.filter(FILTERS[a.key].test).length }))
+                .filter((a) => a.count > 0);
+
+            if (!live.length) {
+                host.innerHTML = `
+                    <div class="inv-ok">
+                        <svg class="w-4 h-4" fill="none" stroke="#16A34A" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        Nothing needs attention right now.
+                    </div>`;
+                return;
+            }
+            host.innerHTML = live.map((a) => `
+                <button type="button" class="inv-alert inv-alert-${a.tone}" data-alert="${esc(a.key)}">
+                    <span class="inv-alert-count">${a.count}</span>
+                    <span class="inv-alert-body">
+                        <span class="inv-alert-title">${esc(a.title)}</span>
+                        <span class="inv-alert-desc">${esc(a.desc)}</span>
+                    </span>
+                    <svg class="w-4 h-4 inv-alert-chev" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </button>`).join('');
+        }
+
+        // ── Where the stock went ────────────────────────────────────────────
+        // Read from the movements themselves rather than recomputed from the
+        // ledger: same rows, and it keeps this page from becoming a second place
+        // that calculates COGS.
+        function monthKey(d = new Date()) {
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        }
+        function renderCogsStrip(movements) {
+            const pk = monthKey();
+            let consumed = 0;
+            let wasted = 0;
+            movements.forEach((m) => {
+                if (m.period_key !== pk) return;
+                const amt = Number(m.amount) || 0;
+                if (m.movement_type === 'count' && amt < 0) consumed += Math.abs(amt);
+                if (m.movement_type === 'waste') wasted += Math.abs(amt);
+            });
+            document.getElementById('inv-cogs-value').textContent = consumed ? rp(consumed) : 'Rp0';
+            document.getElementById('inv-waste-value').textContent = wasted ? rp(wasted) : 'Rp0';
+        }
+
+        // ── Value over time ─────────────────────────────────────────────────
+        // Cumulative: each point is what the stock was worth on that day, built
+        // by running the movements forward. A per-day delta would answer a
+        // question nobody asked.
+        async function renderTrend(movements) {
+            const byDay = {};
+            movements.forEach((m) => {
+                const d = m.created_at && typeof m.created_at.toDate === 'function' ? m.created_at.toDate() : null;
+                if (!d) return;
+                const key = [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
+                byDay[key] = (byDay[key] || 0) + (Number(m.amount) || 0);
+            });
+            const days = Object.keys(byDay).sort();
+            let running = 0;
+            const points = days.map((key) => {
+                running += byDay[key];
+                return { label: key, value: running };
+            });
+            try {
+                const { renderTrendChart } = await import('/assets/js/kpi-detail-shared.js');
+                renderTrendChart('inv-trend', {
+                    points,
+                    valueName: 'Stock value',
+                    emptyText: 'No stock movements yet. Receive something and this fills in.'
+                });
+            } catch (_) { /* the section simply stays empty */ }
+        }
+
+        // ── Recent activity ─────────────────────────────────────────────────
+        // Each row opens the journal that posted it. That link IS the
+        // inventory→finance connection, rather than a sentence claiming one.
+        const MOVEMENT_COPY = {
+            receipt: 'Stock received',
+            count: 'Counted',
+            waste: 'Waste recorded',
+            adjustment: 'Adjusted',
+            issue: 'Stock issued',
+            transfer: 'Transferred'
+        };
+        function renderActivity(movements, dimName) {
             const card = document.getElementById('receipts-card');
-            if (!receipts.length) { card.classList.add('hidden'); return; }
+            const rows = movements.slice(0, 12);
+            if (!rows.length) { card.classList.add('hidden'); return; }
             card.classList.remove('hidden');
-            document.getElementById('receipts-body').innerHTML = receipts.map((r) => {
-                const when = r.timestamp && typeof r.timestamp.toDate === 'function'
-                    ? r.timestamp.toDate() : null;
-                const dateText = when
-                    ? (window.FluxyI18n ? window.FluxyI18n.formatDate(when) : when.toLocaleDateString())
-                    : '—';
-                const outlet = r.dimension_id
-                    ? esc(dimName[r.dimension_id] || 'Unknown outlet')
+            document.getElementById('receipts-body').innerHTML = rows.map((m) => {
+                const d = m.created_at && typeof m.created_at.toDate === 'function' ? m.created_at.toDate() : null;
+                const when = d ? (window.FluxyI18n ? window.FluxyI18n.formatDate(d) : d.toLocaleDateString()) : '—';
+                const outlet = m.dimension_id
+                    ? esc(dimName[m.dimension_id] || 'Unknown outlet')
                     : '<span class="inv-muted">Unassigned</span>';
-                const lineCount = Number(r.line_count) || 0;
+                const qty = Number(m.quantity) || 0;
+                const what = MOVEMENT_COPY[m.movement_type] || 'Stock moved';
+                const clickable = m.journal_ref ? ' fluxy-table-row-clickable' : '';
                 return `
-                    <tr class="fluxy-table-row">
+                    <tr class="fluxy-table-row${clickable}"${m.journal_ref ? ` data-journal="${esc(m.journal_ref)}" tabindex="0" role="button"` : ''}>
+                        <td class="fluxy-table-cell">${esc(when)}</td>
                         <td class="fluxy-table-cell">
-                            <span class="fluxy-table-cell-primary">${esc(dateText)}</span>
-                            <span class="fluxy-table-cell-meta">${lineCount} ${lineCount === 1 ? 'item' : 'items'}${r.reference ? ' · ' + esc(r.reference) : ''}</span>
+                            <span class="fluxy-table-cell-primary">${esc(what)}</span>
+                            <span class="fluxy-table-cell-meta">${esc(m.item_name || '')} · ${qty > 0 ? '+' : ''}${qty.toLocaleString('id-ID')} ${esc(m.base_unit || '')}</span>
                         </td>
-                        <td class="fluxy-table-cell">${r.vendor_name ? esc(r.vendor_name) : '<span class="inv-muted">—</span>'}</td>
                         <td class="fluxy-table-cell">${outlet}</td>
-                        <td class="fluxy-table-cell fluxy-table-money">${rp(r.total_amount)}</td>
+                        <td class="fluxy-table-cell fluxy-table-money">${rp(m.amount)}</td>
                     </tr>`;
             }).join('');
         }
@@ -636,7 +946,12 @@
 
         function applySearch() {
             const term = (document.getElementById('inventory-search').value || '').trim().toLowerCase();
-            const rows = term ? allRows.filter((r) => r.haystack.includes(term)) : allRows;
+            // Filter first, then search within it — an Overview alert hands over a
+            // filter, and typing must narrow that set rather than escape it.
+            const scoped = activeFilter && FILTERS[activeFilter]
+                ? allRows.filter(FILTERS[activeFilter].test)
+                : allRows;
+            const rows = term ? scoped.filter((r) => r.haystack.includes(term)) : scoped;
 
             const container = document.getElementById('inventory-table-container');
             const emptyHost = document.getElementById('inventory-empty-state');
@@ -645,7 +960,14 @@
                 container.classList.add('hidden');
                 document.getElementById('inventory-pagination').classList.add('hidden');
                 emptyHost.innerHTML = '';
-                if (term) {
+                if (activeFilter && FILTERS[activeFilter]) {
+                    window.renderEmptyState('inventory-empty-state', {
+                        title: 'Nothing matches that filter any more',
+                        description: 'These items were flagged when the page loaded. Clear the filter to see everything.',
+                        buttonText: 'Clear filter',
+                        onAction: () => setTab('items', { filter: null })
+                    });
+                } else if (term) {
                     window.renderEmptyState('inventory-empty-state', {
                         title: 'No item matches that',
                         description: 'Try part of the name, the shelf it sits on, or its SKU.'
@@ -679,6 +1001,8 @@
             document.getElementById('item-name').value = isEdit ? (item.name || '') : '';
             document.getElementById('item-shelf').value = isEdit ? (item.storage_location || '') : '';
             document.getElementById('item-sku').value = isEdit ? (item.sku || '') : '';
+            document.getElementById('item-reorder').value = (isEdit && Number.isInteger(item.reorder_point))
+                ? String(item.reorder_point) : '';
             document.getElementById('item-notes').value = isEdit ? (item.notes || '') : '';
 
             const baseUnitEl = document.getElementById('item-base-unit');
@@ -745,6 +1069,10 @@
         }
 
         function collectDraft() {
+            const reorderRaw = document.getElementById('item-reorder').value.trim();
+            if (reorderRaw !== '' && (!/^\d+$/.test(reorderRaw))) {
+                throw new Error('The reorder point must be a whole number of base units, or blank.');
+            }
             const code = document.getElementById('item-purchase-unit').value.trim();
             const factorRaw = document.getElementById('item-purchase-factor').value.trim();
             const units = [];
@@ -762,6 +1090,8 @@
                 units,
                 storage_location: document.getElementById('item-shelf').value.trim() || null,
                 sku: document.getElementById('item-sku').value.trim() || null,
+                // Blank stays null — "no threshold" is not "a threshold of zero".
+                reorder_point: reorderRaw === '' ? null : Number(reorderRaw),
                 notes: document.getElementById('item-notes').value.trim() || null,
                 // Preserve a recipe made elsewhere; v1's drawer never edits one.
                 components: editingItem ? (editingItem.components || []) : [],
@@ -1069,6 +1399,39 @@
             document.getElementById(id).addEventListener('input', updatePurchasePreview);
         });
 
+        // Tabs, alerts, filter chip, activity deep-links
+        document.querySelectorAll('[data-inv-tab]').forEach((btn) => {
+            btn.addEventListener('click', () => setTab(btn.dataset.invTab, { filter: null }));
+        });
+        document.getElementById('inv-alerts').addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-alert]');
+            if (btn) setTab('items', { filter: btn.dataset.alert });
+        });
+        document.getElementById('inv-filter-bar').addEventListener('click', (e) => {
+            if (e.target.id === 'inv-filter-clear') setTab('items', { filter: null });
+        });
+        // Back/forward must move between tabs, or the URL state is a lie.
+        window.addEventListener('popstate', () => {
+            const st = readUrlState();
+            activeFilter = st.filter;
+            setTab(st.tab, { filter: st.filter, push: false });
+        });
+        // Activity row -> the journal it posted. The link IS the finance connection.
+        const activityBody = document.getElementById('receipts-body');
+        const openJournal = (row) => {
+            if (row && row.dataset.journal) {
+                window.location.href = `accounting-journal.html?id=${encodeURIComponent(row.dataset.journal)}`;
+            }
+        };
+        activityBody.addEventListener('click', (e) => openJournal(e.target.closest('[data-journal]')));
+        activityBody.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            const row = e.target.closest('[data-journal]');
+            if (!row) return;
+            e.preventDefault();
+            openJournal(row);
+        });
+
         // Receive-stock drawer
         document.getElementById('receive-stock-btn').addEventListener('click', openReceiptDrawer);
         document.getElementById('receipt-drawer-close').addEventListener('click', closeReceiptDrawer);
@@ -1179,6 +1542,13 @@
             });
 
             await loadInventory();
+
+            // Deep link last: the panels need their data before a filter can mean
+            // anything. `push: false` so arriving at /inventory?tab=items does not
+            // stack a duplicate history entry.
+            const st = readUrlState();
+            activeFilter = st.filter;
+            setTab(st.tab, { filter: st.filter, push: false });
         });
     </script>
 </body>

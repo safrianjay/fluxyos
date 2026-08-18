@@ -20,12 +20,13 @@ test.describe.configure({ timeout: 150_000 });
 
 const TAG = `QA-UI-${Date.now()}`;
 
+// Overview is the default tab now, so anything driving the ITEM TABLE asks for
+// it explicitly. ?tab=items is the documented deep-link, so this exercises it.
 async function gotoInventory(page) {
-    await page.goto('/inventory');
-    // The table only renders after auth + workspace resolution + the first read.
-    await expect(page.locator('#inventory-total-value')).not.toContainText('…', { timeout: 30000 });
+    await page.goto('/inventory?tab=items');
     await page.waitForFunction(
-        () => !document.querySelector('#inventory-total-value .inv-headline-skeleton'),
+        () => !document.querySelector('#inventory-total-value .inv-headline-skeleton')
+            && !document.getElementById('inv-panel-items').classList.contains('hidden'),
         undefined, { timeout: 60000 }
     );
 }
@@ -149,10 +150,13 @@ test('stock can be received through the page, in the unit it was bought in', asy
     await expect(row).toContainText('Rp300.000');
     await expect(row).not.toContainText('Not stocked yet');
 
-    // The headline moved, and the delivery is listed.
+    // The headline moved, and the delivery shows on the Overview's activity feed
+    // (which replaced the old deliveries strip and links each row to its journal).
     await expect(page.locator('#inventory-total-value')).not.toHaveText(valueBefore);
+    await page.click('[data-inv-tab="overview"]');
     await expect(page.locator('#receipts-card')).toBeVisible();
-    await expect(page.locator('#receipts-body')).toContainText('QA Sumber Pangan');
+    await expect(page.locator('#receipts-body')).toContainText('Stock received');
+    await expect(page.locator('#receipts-body tr').first()).toHaveAttribute('data-journal', /.+/);
 });
 
 test('a quantity that is not a whole number of stock units is refused, not rounded', async ({ page }) => {
