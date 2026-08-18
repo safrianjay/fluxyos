@@ -711,7 +711,7 @@
         // ── Boot ─────────────────────────────────────────────────────────────
         onAuthStateChanged(auth, async (user) => {
             if (!user) { window.location.replace('/login'); return; }
-            const gated = await applyToPage(user, { pageKey: 'overview' });
+            const gated = await applyToPage(user, { pageKey: 'overview', feature: 'inventory' });
             if (gated) return;
             try {
                 const { resolveWorkspace } = await import('/assets/js/workspace-service.js');

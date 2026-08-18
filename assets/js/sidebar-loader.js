@@ -219,7 +219,7 @@
                 <span class="sidebar-text text-[13px] sidebar-hide">Invoices</span>
             </a>
 
-            <a href="/inventory" id="nav-inventory" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-800/50 text-gray-400 hover:text-white font-medium transition-all w-full justify-center lg:justify-start">
+            <a href="/inventory" id="nav-inventory" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-800/50 text-gray-400 hover:text-white font-medium transition-all w-full justify-center lg:justify-start hidden">
                 <svg class="w-6 h-6 lg:w-5 lg:h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
                 <span class="sidebar-text text-[13px] sidebar-hide">Inventory</span>
             </a>
@@ -237,7 +237,7 @@
                 <span class="sidebar-text text-[13px] sidebar-hide">Accounting Center</span>
             </a>
 
-            <a href="/outlet-pnl" id="nav-outlet-pnl" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-800/50 text-gray-400 hover:text-white font-medium transition-all w-full justify-center lg:justify-start">
+            <a href="/outlet-pnl" id="nav-outlet-pnl" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-800/50 text-gray-400 hover:text-white font-medium transition-all w-full justify-center lg:justify-start hidden">
                 <svg class="w-6 h-6 lg:w-5 lg:h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3v18h18M8 17V9m5 8V5m5 12v-6"></path></svg>
                 <span class="sidebar-text text-[13px] sidebar-hide">Outlet P&amp;L</span>
             </a>
@@ -626,6 +626,30 @@
                             navActivity.classList.toggle('hidden', !canAudit);
                         }
                     } catch (_) { /* non-fatal */ }
+
+                    // Business-eligibility nav. Inventory and Outlet P&L do not
+                    // apply to every business — a GTM/sales-led startup has no
+                    // stock to count — so both entries ship hidden and are
+                    // revealed only for an eligible workspace. Same shape as the
+                    // Activity Log gate above, and the same status: a UI guard,
+                    // not a boundary. Eligibility is resolved from the workspace
+                    // OWNER, so a teammate can use the stock data already there.
+                    //
+                    // NOT rendered as a disabled `Soon` badge: that advertises
+                    // something coming, and these modules simply do not apply to
+                    // this business.
+                    try {
+                        const { canUseFeature } = await import('/assets/js/feature-access.js');
+                        const reveal = async (navId, feature) => {
+                            const el = document.getElementById(navId);
+                            if (!el) return;
+                            if (await canUseFeature(app, user, feature)) el.classList.remove('hidden');
+                        };
+                        await Promise.all([
+                            reveal('nav-inventory', 'inventory'),
+                            reveal('nav-outlet-pnl', 'outlet_pnl')
+                        ]);
+                    } catch (_) { /* stays hidden — non-fatal */ }
 
                     // Keep the internal operations index (internal_users/{uid}) in
                     // sync from the user's own session. Best-effort.

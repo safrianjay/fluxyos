@@ -671,6 +671,12 @@ transaction editor so the two stay identical.
   - `Reporting`: Reports & Exports, Audit Log.
   - `Workspace`: Integrations, Settings.
 - **Dashboard/App Future Features**: Future dashboard features may appear only as disabled `Soon` entries until a real authenticated app page exists. Do not link sidebar entries to marketing/landing pages.
+- **Dashboard/App Ineligible Features**: A shipped module that does not apply to
+  the user's business is **absent from the nav entirely** — never a disabled
+  `Soon` entry. The two states say different things: `Soon` advertises something
+  coming, while an ineligible module is simply not part of that business's
+  workflow, and showing it as "coming" would be a false promise. Mechanism:
+  `assets/js/feature-access.js` (Inventory and Outlet P&L are the first two).
 - **Main Padding**: `p-6` or `p-8` for desktop.
 - **Content Max-Width**: `1280px` for marketing/content containers; app surfaces may use `1400px` when tables or dense dashboards need more width.
 - **4px Spacing Scale**: Use `4, 8, 12, 16, 20, 24, 32, 40, 52, 60, 80, 96px`. Avoid custom spacing values unless necessary.

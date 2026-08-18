@@ -512,9 +512,13 @@ function disableActions(selectors) {
  * @param {object} authUser  Firebase auth user
  * @param {object} options
  * @param {string} options.pageKey  one of PAGE_CONFIG keys
+ * @param {string} [options.feature] a `feature-access.js` FEATURE_RULES key. When
+ *   the workspace is not eligible the page redirects to /dashboard and this
+ *   returns true — the same "gated" contract every caller already honours by
+ *   returning early. A UI guard only; firestore.rules remains the real boundary.
  */
 export async function applyToPage(authUser, options = {}) {
-    const { pageKey = 'overview' } = options;
+    const { pageKey = 'overview', feature = null } = options;
 
     // Resolve the active workspace BEFORE the page reads any finance data. Every
     // app page calls applyToPage right after auth and before its data load, so
@@ -539,12 +543,31 @@ export async function applyToPage(authUser, options = {}) {
         // function before its data load and skips it on a truthy return, so the
         // whole platform locks without touching a single page. Dynamically
         // imported so legacy users — who are never enforced — don't pay for it.
+        let kycGated = false;
         try {
             const { applyToPage: applyKycGate } = await import('/assets/js/kyc-gate.js');
-            return await applyKycGate(authUser);
+            kycGated = await applyKycGate(authUser);
         } catch (_) {
-            return false; // fail open: a module load failure must never lock a user out
+            kycGated = false; // fail open: a module load failure must never lock a user out
         }
+        if (kycGated) return true;
+
+        // Feature eligibility — LAST, and only for a user who is otherwise fully
+        // let in. Redirecting someone who is still mid-onboarding or awaiting KYC
+        // would bounce them off the lock screen they are supposed to be reading.
+        //
+        // Visibility only: the module stays deployed and every posting rule keeps
+        // working. See assets/js/feature-access.js.
+        if (feature) {
+            try {
+                const { canUseFeature } = await import('/assets/js/feature-access.js');
+                if (!(await canUseFeature(getApp(), authUser, feature))) {
+                    window.location.replace('/dashboard');
+                    return true;
+                }
+            } catch (_) { /* fail open — never strand a user on a blank page */ }
+        }
+        return false;
     }
 
     injectStyles();

@@ -722,10 +722,10 @@ Sidebar is injected into every app page at `#sidebar`. Active item is detected b
 | Money Movement | Subscriptions | `nav-subscriptions` | Link | `/subscription` | ✅ Shipped |
 | Operations | Budgets | `nav-budgets` | Link | `/budget` | ✅ Shipped Phase 1 |
 | Operations | Invoices | `nav-invoices` | Link | `/invoices` | ✅ Shipped MVP |
-| Operations | Inventory | `nav-inventory` | Link | `/inventory` | ✅ Shipped — item master + stock on hand |
+| Operations | Inventory | `nav-inventory` | Link | `/inventory` | ✅ Shipped — **eligibility-gated** (`feature-access.js`); ships `hidden` |
 | Operations | Approvals | `nav-approvals` | Disabled button | `Soon` | 📋 Planned |
 | Reporting | Accounting Center | `nav-accounting` | Link | `/accounting` | ✅ Shipped |
-| Reporting | Outlet P&L | `nav-outlet-pnl` | Link | `/outlet-pnl` | ✅ Shipped — per-dimension income statement |
+| Reporting | Outlet P&L | `nav-outlet-pnl` | Link | `/outlet-pnl` | ✅ Shipped — **eligibility-gated** (`feature-access.js`); ships `hidden` |
 | Reporting | Reports & Exports | `nav-reports` | Link | `/reports` | ✅ Shipped MVP |
 | Reporting | Activity Log | `nav-activity-log` | Link (`hidden`) | `/activity-log` | 🚧 Built, hidden |
 | Tax & Compliance | Tax Center | `nav-tax-center` | Link | `/tax-center` | ✅ Shipped Phase 1 |
@@ -740,6 +740,21 @@ no chart of accounts, journals, retained earnings, or equity logic, and reported
 Center's ledger-derived Balance Sheet is now the only one, and it carries the CSV
 export ported from the retired page (`exportBalanceSheet` in `accounting.js`,
 audit-logged through `report_exports`). See `docs/ACCOUNTING_CENTER_IA.md` Phase 3.
+
+**Feature eligibility (2026-08-17).** Some modules do not apply to every
+business — a GTM-led startup has no stock to count. `assets/js/feature-access.js`
+holds a `FEATURE_RULES` map; entries ship `hidden` and are revealed by
+`sidebar-loader.js` for an eligible workspace, and pages pass
+`applyToPage(user, { pageKey, feature })` to redirect an ineligible visitor to
+`/dashboard`. **Eligibility resolves from the workspace OWNER**, so a teammate can
+use data the business already has. Today the rule is an email allowlist; it is
+built to switch to business category, which onboarding does not yet capture
+(`settings/company.business_type` is free text). **A UI guard, not a security
+boundary** — `firestore.rules` is unchanged and remains the real one.
+
+An ineligible feature is **absent**, not a disabled `Soon` badge: `Soon`
+advertises something coming, and these modules simply do not apply to that
+business.
 
 Future sidebar entries stay visible only as disabled `Soon` buttons until a real
 authenticated app page exists. Dashboard sidebar entries must never link to
