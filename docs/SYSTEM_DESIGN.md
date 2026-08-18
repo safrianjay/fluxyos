@@ -187,7 +187,7 @@ These functions are public internal APIs:
 - `window.closeAddTransactionModal()`
 - `window.showToast(message, type)`
 - `window.renderEmptyState(containerId, config)`
-- `window.renderShimmer(containerId, rowCount)`
+- `window.renderShimmer(containerId, rowCount, columns)`
 - `window.toggleFluxyAI(state)`
 
 Rules:

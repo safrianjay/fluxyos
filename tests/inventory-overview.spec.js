@@ -14,7 +14,7 @@ const TAG = `QA-OVW-${Date.now()}`;
 async function gotoOverview(page) {
     await page.goto('/inventory');
     await page.waitForFunction(
-        () => document.querySelectorAll('#inv-kpis .kpi-detail-cell').length === 4,
+        () => document.querySelectorAll('#inv-kpis .kpi-detail-cell:not([data-skeleton])').length === 4,
         undefined, { timeout: 60000 }
     );
 }
@@ -136,7 +136,7 @@ test('the attention strip only exists when something is wrong', async ({ page })
     });
     await page.goto('/inventory');
     await page.waitForFunction(
-        () => document.querySelectorAll('#inv-kpis .kpi-detail-cell').length === 4,
+        () => document.querySelectorAll('#inv-kpis .kpi-detail-cell:not([data-skeleton])').length === 4,
         undefined, { timeout: 60000 }
     );
     const hiddenWhenClean = await page.evaluate(() => {
@@ -169,6 +169,43 @@ test('recent activity links each row to the journal that posted it', async ({ pa
     // somewhere — a dead href would make the whole claim decorative.
     await linkable.first().click();
     await page.waitForURL(/accounting-journal\.html\?id=/, { timeout: 30000 });
+});
+
+test('the page shimmers while it loads, and nothing jumps when data lands', async ({ page }) => {
+    // Throttled so the loading state is observable rather than a single frame.
+    await page.route('**/firestore.googleapis.com/**', async (route) => {
+        await new Promise((r) => setTimeout(r, 700));
+        await route.continue();
+    });
+
+    await page.goto('/inventory');
+
+    // Placeholders of roughly the final shape, on every surface that will hold
+    // data — not a spinner, and not a blank page.
+    await page.waitForSelector('#inv-kpis [data-skeleton]', { timeout: 30000 });
+    expect(await page.locator('#inv-kpis [data-skeleton]').count()).toBe(4);
+    await expect(page.locator('#inv-month [data-skeleton]').first()).toBeVisible();
+    await expect(page.locator('#inv-trend [data-skeleton]')).toBeVisible();
+    await expect(page.locator('#receipts-body tr[data-skeleton]').first()).toBeVisible();
+
+    // The activity and outlet cards are revealed for the placeholder, so the page
+    // does not grow by two cards the moment the read lands.
+    await expect(page.locator('#receipts-card')).toBeVisible();
+    await expect(page.locator('#inv-outlets-card')).toBeVisible();
+
+    // Shimmer rows carry the table's REAL column count — a mismatched
+    // placeholder widens the table and everything shifts when data arrives.
+    const headCols = await page.locator('#receipts-card thead th').count();
+    const skelCols = await page.locator('#receipts-body tr[data-skeleton]').first().locator('td').count();
+    expect(skelCols, 'shimmer must match the header column count').toBe(headCols);
+
+    // And every placeholder is gone once the data is in.
+    await page.waitForFunction(
+        () => document.querySelectorAll('#inv-kpis .kpi-detail-cell:not([data-skeleton])').length === 4,
+        undefined, { timeout: 60000 }
+    );
+    expect(await page.locator('#inv-panel-overview [data-skeleton]').count(),
+        'no placeholder may survive the load').toBe(0);
 });
 
 test('the Overview holds together at 375px and 1280px', async ({ page }) => {

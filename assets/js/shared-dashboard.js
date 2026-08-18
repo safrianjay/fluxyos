@@ -3830,19 +3830,29 @@ window.createTablePaginator = function({ pageSize = 20, label = 'records', pagin
     };
 };
 
-window.renderShimmer = function(containerId, rowCount = 5) {
+// `columns` defaults to 5 for backwards compatibility. It exists because a
+// shimmer with the wrong column count is worse than none — the placeholder rows
+// widen the table, then everything jumps sideways when the real data lands.
+// Safe to add: this helper had no callers at all despite being documented in
+// four places, so nothing can break on the new argument.
+//
+// Rows are marked `data-skeleton` so a test can wait for REAL rows rather than
+// matching the placeholder and proceeding early.
+window.renderShimmer = function(containerId, rowCount = 5, columns = 5) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    const rows = Array(rowCount).fill(0).map(() => `
-        <tr class="animate-pulse">
-            <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-24"></div></td>
-            <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-48"></div></td>
-            <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-20"></div></td>
-            <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-16"></div></td>
-            <td class="px-6 py-4 text-right"><div class="h-4 bg-gray-200 rounded w-12 ml-auto"></div></td>
-        </tr>
-    `).join('');
+    // Varying widths read as content rather than as a progress bar; the last
+    // column is right-aligned because it is almost always the money column.
+    const widths = ['w-24', 'w-48', 'w-20', 'w-16', 'w-12'];
+    const rows = Array(rowCount).fill(0).map(() => {
+        const cells = Array(Math.max(1, columns)).fill(0).map((_, i) => {
+            const last = i === columns - 1;
+            const w = widths[Math.min(i, widths.length - 1)];
+            return `<td class="px-6 py-4${last ? ' text-right' : ''}"><div class="h-4 bg-gray-200 rounded ${last ? 'w-12 ml-auto' : w}"></div></td>`;
+        }).join('');
+        return `<tr class="animate-pulse" data-skeleton>${cells}</tr>`;
+    }).join('');
 
     container.innerHTML = rows;
 };

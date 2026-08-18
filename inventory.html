@@ -58,6 +58,36 @@
            variant rather than a new look. */
         #inv-panel-overview .fluxy-table-card-header { background: #F8FAFC; }
 
+        /* ── Receipt drawer: the running total ──────────────────────────
+           This block sits OUTSIDE `.fluxy-drawer-body` on purpose — with several
+           lines the total is the number you keep checking and it must not scroll
+           away. But the body is what supplies drawer padding, so placed there it
+           rendered flush against the panel edge with no separation from the form.
+
+           Give it the treatment its new position needs: the footer's horizontal
+           rhythm (32px, matching the body), a top rule, and a tint so it reads as
+           chrome rather than one more form section. */
+        #receipt-drawer .fluxy-drawer-summary {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 14px 32px;
+            border-top: 1px solid #E5E7EB;
+            background: #F8FAFC;
+        }
+        #receipt-drawer .fluxy-drawer-summary-head {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #64748B;
+        }
+        /* 20px, not the shared 24px: the dashboard scale reserves 24 for a page
+           title, and this is a field total sitting directly above a 14px button.
+           Scoped to this drawer so the bill and transaction drawers keep theirs. */
+        #receipt-drawer .fluxy-drawer-summary-amount { font-size: 20px; line-height: 1.1; }
+        #receipt-drawer .fluxy-drawer-summary-amount-note { margin-top: 3px; }
+
         /* ── Attention strip ────────────────────────────────────────────
            Chips, not cards. This is the one part of the page that asks for a
            decision, so it sits above the numbers — but it is also the part that
@@ -711,6 +741,47 @@
             return String(str == null ? '' : str).replace(/[&<>"']/g, (c) => (
                 { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
             ));
+        }
+
+        // ── Loading ─────────────────────────────────────────────────────────
+        // Every surface that will hold data gets a placeholder of roughly its
+        // final shape, so nothing jumps when the read lands. Tables go through
+        // the shared window.renderShimmer; the others reuse its exact idiom
+        // (`animate-pulse` + `h-4 bg-gray-200 rounded`) so there is one loading
+        // language on the page rather than three.
+        const bar = (w, h = 'h-4') => `<div class="${h} bg-gray-200 rounded ${w}"></div>`;
+
+        function showLoading() {
+            // Cells carry `data-skeleton` so a test waits for real ones.
+            document.getElementById('inv-kpis').innerHTML = Array(4).fill(0).map(() => `
+                <div class="kpi-detail-cell inv-metric animate-pulse" data-skeleton>
+                    <span class="flex justify-center">${bar('w-28', 'h-5')}</span>
+                    <span class="flex justify-center mt-2">${bar('w-20', 'h-3')}</span>
+                    <span class="flex justify-center mt-3">${bar('w-24', 'h-3')}</span>
+                </div>`).join('');
+
+            document.getElementById('inv-month').innerHTML = Array(3).fill(0).map(() => `
+                <div class="inv-mrow animate-pulse" data-skeleton>
+                    <div class="inv-mrow-head">${bar('w-24')}${bar('w-28')}</div>
+                    <div class="mt-2">${bar('w-full', 'h-3')}</div>
+                </div>`).join('');
+
+            document.getElementById('inv-trend').innerHTML =
+                `<div class="animate-pulse" data-skeleton>${bar('w-full', 'h-[240px]')}</div>`;
+
+            // The activity and outlet cards are hidden until they have something
+            // to show, so reveal them for the placeholder — otherwise the page
+            // grows by two cards the moment data arrives.
+            document.getElementById('receipts-card').classList.remove('hidden');
+            window.renderShimmer('receipts-body', 5, 3);
+
+            const outlets = document.getElementById('inv-outlets-card');
+            outlets.classList.remove('hidden');
+            document.getElementById('inv-outlets').innerHTML =
+                `<div class="animate-pulse flex justify-center py-6" data-skeleton>${bar('w-[180px]', 'h-[180px] rounded-full')}</div>`;
+
+            window.renderShimmer('inventory-body', 5, 4);
+            document.getElementById('inventory-table-container').classList.remove('hidden');
         }
 
         // ── Load ─────────────────────────────────────────────────────────────
@@ -1650,6 +1721,7 @@
             } catch (_) {}
 
             currentUid = user.uid;
+            showLoading();
             paginator = window.createTablePaginator({
                 pageSize: 10,
                 label: 'items',

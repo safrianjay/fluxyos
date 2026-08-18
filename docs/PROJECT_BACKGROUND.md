@@ -629,8 +629,16 @@ window.renderEmptyState('ledger-empty-state', {
 })
 ```
 
-### `window.renderShimmer(containerId, rowCount = 5)`
-Shows skeleton loading rows inside a container while data loads.
+### `window.renderShimmer(containerId, rowCount = 5, columns = 5)`
+Shows skeleton loading rows inside a `<tbody>` while data loads. **Pass the
+table's real column count** — a mismatched placeholder widens the table and the
+whole layout shifts when data arrives. Rows carry `data-skeleton`, so a spec can
+wait for real rows instead of matching the placeholder and proceeding early.
+
+For non-table surfaces (KPI strips, chart hosts) reuse the same idiom rather than
+inventing a second loading language: `animate-pulse` + `h-4 bg-gray-200 rounded`,
+shaped to whatever will land there. `inventory.html` `showLoading()` is the
+reference.
 
 ### Authenticated app table standard
 **File:** `assets/css/shared-dashboard.css`

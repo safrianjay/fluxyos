@@ -25,7 +25,7 @@ const TAG = `QA-UI-${Date.now()}`;
 async function gotoInventory(page) {
     await page.goto('/inventory?tab=items');
     await page.waitForFunction(
-        () => document.querySelector('#inv-kpis .kpi-detail-cell')
+        () => document.querySelector('#inv-kpis .kpi-detail-cell:not([data-skeleton])')
             && !document.getElementById('inv-panel-items').classList.contains('hidden'),
         undefined, { timeout: 60000 }
     );
