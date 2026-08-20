@@ -88,6 +88,49 @@
         #receipt-drawer .fluxy-drawer-summary-amount { font-size: 20px; line-height: 1.1; }
         #receipt-drawer .fluxy-drawer-summary-amount-note { margin-top: 3px; }
 
+        /* ── Restock ────────────────────────────────────────────────────
+           The recommendation cell states the RELATIONSHIP, not just a number:
+           "+28 kg" over "to reach 40 kg". A bare 28 makes the reader work out
+           what it is 28 of, and against what. */
+        .rst-rec { display: flex; flex-direction: column; align-items: flex-end; }
+        .rst-rec-qty {
+            font-size: 14px; font-weight: 600; color: #0F172A;
+            font-variant-numeric: tabular-nums;
+        }
+        .rst-rec-why { font-size: 12px; color: #64748B; margin-top: 2px; white-space: nowrap; }
+        .rst-qty { font-variant-numeric: tabular-nums; color: #0F172A; }
+        .rst-unit { color: #94A3B8; margin-left: 3px; }
+
+        /* Order bar. Fixed, so a long list never puts the action out of reach. */
+        .rst-bar {
+            position: fixed; left: 220px; right: 0; bottom: 0; z-index: 40;
+            background: #fff; border-top: 1px solid #E2E8F0;
+            box-shadow: 0 -8px 24px rgba(11, 15, 25, 0.08);
+        }
+        @media (max-width: 640px) { .rst-bar { left: 0; } }
+        .rst-bar-inner {
+            max-width: 1540px; margin-inline: auto;
+            padding: 12px 16px;
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 12px; flex-wrap: wrap;
+        }
+        @media (min-width: 640px) { .rst-bar-inner { padding: 12px 24px; } }
+        @media (min-width: 1024px) { .rst-bar-inner { padding: 12px 32px; } }
+        .rst-bar-figure { display: flex; flex-direction: column; min-width: 0; }
+        .rst-bar-count { font-size: 14px; font-weight: 600; color: #0F172A; }
+        .rst-bar-cost { font-size: 12px; color: #6B7280; margin-top: 2px; font-variant-numeric: tabular-nums; }
+        .rst-bar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        /* An advisory note, not an alert: these items simply cannot be judged. */
+        .rst-note {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 12px 16px; border: 1px dashed #E2E8F0; border-radius: 10px;
+            background: #fff; font-size: 13px; color: #475569; line-height: 1.5;
+        }
+        .rst-note svg { width: 16px; height: 16px; color: #94A3B8; flex-shrink: 0; margin-top: 2px; }
+        .rst-note a { color: #EA580C; font-weight: 500; text-decoration: none; }
+        .rst-note a:hover { text-decoration: underline; }
+
         /* ── Attention strip ────────────────────────────────────────────
            Chips, not cards. This is the one part of the page that asks for a
            decision, so it sits above the numbers — but it is also the part that
@@ -342,6 +385,8 @@
                             data-inv-tab="overview" aria-selected="true" aria-controls="inv-panel-overview">Overview</button>
                     <button type="button" id="inv-tab-items" class="acct-tab" role="tab"
                             data-inv-tab="items" aria-selected="false" aria-controls="inv-panel-items">Items</button>
+                    <button type="button" id="inv-tab-restock" class="acct-tab" role="tab"
+                            data-inv-tab="restock" aria-selected="false" aria-controls="inv-panel-restock">Restock<span id="inv-restock-count" class="acct-tab-count hidden"></span></button>
                 </div>
 
                 <!-- ═══ OVERVIEW ═══ -->
@@ -490,9 +535,74 @@
 
                 </div><!-- /items panel -->
 
+                <!-- ═══ RESTOCK ═══ -->
+                <div id="inv-panel-restock" class="fluxy-section-stack hidden" role="tabpanel" aria-labelledby="inv-tab-restock">
+
+                    <!-- The situation, before the list. Three numbers that say what
+                         needs ordering, roughly what it costs, and how much of the
+                         catalogue this judgement can even cover. -->
+                    <section id="inv-restock-kpis" class="grid grid-cols-1 sm:grid-cols-3 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"></section>
+
+                    <div id="inv-restock-unassessable" class="hidden"></div>
+
+                    <section class="fluxy-table-card">
+                        <div class="fluxy-table-card-header">
+                            <div>
+                                <h2 class="fluxy-table-title">Items to reorder</h2>
+                                <p class="fluxy-table-subtitle">Everything at or below the reorder point you set, with how much to order to get back to it.</p>
+                            </div>
+                        </div>
+
+                        <div class="fluxy-table-toolbar">
+                            <div class="inv-search-wrap">
+                                <svg class="inv-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                <input id="restock-search" type="text" class="inv-search" placeholder="Search item, SKU, or supplier" autocomplete="off">
+                            </div>
+                        </div>
+
+                        <div id="restock-table-container" class="fluxy-table-scroll hidden">
+                            <table class="fluxy-table">
+                                <thead>
+                                    <tr class="fluxy-table-header">
+                                        <th style="width:36px;"><input type="checkbox" id="restock-select-all" aria-label="Select every item to reorder"></th>
+                                        <th>Item</th>
+                                        <th>Status</th>
+                                        <th class="fluxy-table-money">Current stock</th>
+                                        <th class="fluxy-table-money">Reorder point</th>
+                                        <th class="fluxy-table-money">Used last 30 days</th>
+                                        <th class="fluxy-table-money">Recommended order</th>
+                                        <th>Order from</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="restock-body"></tbody>
+                            </table>
+                        </div>
+
+                        <div id="restock-empty-state"></div>
+                    </section>
+
+                </div><!-- /restock panel -->
+
+
             </div>
         </div>
     </main>
+
+    <!-- Order bar. Appears only when something is selected, and sits outside the
+         page shell so a long list cannot scroll it out of reach. -->
+    <div id="restock-bar" class="rst-bar hidden">
+        <div class="rst-bar-inner">
+            <div class="rst-bar-figure">
+                <span id="restock-bar-count" class="rst-bar-count"></span>
+                <span id="restock-bar-cost" class="rst-bar-cost"></span>
+            </div>
+            <div class="rst-bar-actions">
+                <button id="restock-clear" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Clear</button>
+                <button id="restock-csv" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Download CSV</button>
+                <button id="restock-copy" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--primary">Copy order list</button>
+            </div>
+        </div>
+    </div>
 
     <!-- ITEM DRAWER — create / edit -->
     <div id="item-drawer-backdrop" class="fixed inset-0 bg-black/50 z-40 hidden"></div>
@@ -681,14 +791,15 @@
 
         function readUrlState() {
             const p = new URLSearchParams(window.location.search);
-            const tab = p.get('tab') === 'items' ? 'items' : 'overview';
+            const raw = p.get('tab');
+            const tab = (raw === 'items' || raw === 'restock') ? raw : 'overview';
             const f = p.get('filter');
             return { tab, filter: FILTERS[f] ? f : null };
         }
 
         function writeUrlState(tab, filter, { replace = false } = {}) {
             const p = new URLSearchParams(window.location.search);
-            if (tab === 'items') p.set('tab', 'items'); else p.delete('tab');
+            if (tab && tab !== 'overview') p.set('tab', tab); else p.delete('tab');
             if (filter) p.set('filter', filter); else p.delete('filter');
             const qs = p.toString();
             const url = window.location.pathname + (qs ? `?${qs}` : '');
@@ -696,22 +807,29 @@
             else window.history.pushState({}, '', url);
         }
 
+        const TABS = ['overview', 'items', 'restock'];
+
         function setTab(tab, { filter = undefined, push = true } = {}) {
-            const isItems = tab === 'items';
+            const active = TABS.includes(tab) ? tab : 'overview';
             if (filter !== undefined) activeFilter = filter;
 
             document.querySelectorAll('[data-inv-tab]').forEach((btn) => {
-                const on = btn.dataset.invTab === (isItems ? 'items' : 'overview');
+                const on = btn.dataset.invTab === active;
                 btn.classList.toggle('is-active', on);
                 btn.setAttribute('aria-selected', String(on));
             });
             // Hidden, not unmounted — a half-typed search survives a switch.
-            document.getElementById('inv-panel-overview').classList.toggle('hidden', isItems);
-            document.getElementById('inv-panel-items').classList.toggle('hidden', !isItems);
+            TABS.forEach((t) => {
+                document.getElementById(`inv-panel-${t}`).classList.toggle('hidden', t !== active);
+            });
+            // The order bar belongs to Restock; it must not hang over another tab.
+            if (active !== 'restock') document.getElementById('restock-bar').classList.add('hidden');
 
-            if (push) writeUrlState(isItems ? 'items' : 'overview', isItems ? activeFilter : null);
+            if (push) writeUrlState(active, active === 'items' ? activeFilter : null);
             renderFilterChip();
-            if (isItems) applySearch();
+            if (active === 'items') applySearch();
+            // Lazy per view (tab standard): Restock reads receipts on first open.
+            if (active === 'restock') renderRestock();
         }
 
         function renderFilterChip() {
@@ -731,6 +849,7 @@
         let receiptDatePicker = null;
         let receiptDate = null;  // 'YYYY-MM-DD'
         let lineSeq = 0;
+        let lastMovements = [];
 
         // ── Formatting ───────────────────────────────────────────────────────
         // Rp with dot separators and no space, per DESIGN_SYSTEM. Negative stock
@@ -814,6 +933,7 @@
             ]);
 
             dimensions = dims;
+            lastMovements = movements;
             // Composites are recipes — receiving one would put it into stock
             // without consuming its ingredients, so the DAL rejects it. Keep them
             // out of the picker rather than letting the user find out on submit.
@@ -1184,6 +1304,211 @@
             container.classList.remove('hidden');
             paginator.setRows(rows, renderRows);
         }
+
+        // ── Restock ─────────────────────────────────────────────────────────
+        // Everything here is derived from data that already exists. Nothing is
+        // modelled, forecast, or assumed:
+        //
+        //   recommended = reorder_point - on hand      (get back to the line
+        //                                               YOU drew, nothing more)
+        //   used 30d    = |count + waste movements|    (what actually left)
+        //   supplier    = vendor on the most recent receipt for that item
+        //   est. cost   = recommended x weighted-average unit cost
+        //
+        // An item with NO reorder point is not guessed at — it is excluded and
+        // counted separately, because a threshold inferred from a few days of
+        // history is a number with a confidence it has not earned.
+        let restockRows = [];
+        let restockSelected = new Set();
+        let restockReceipts = null;   // lazy: only read when the tab is opened
+
+        const RESTOCK_WINDOW_DAYS = 30;
+
+        function buildRestock(rows, movements, receipts) {
+            const since = Date.now() - RESTOCK_WINDOW_DAYS * 86400000;
+            const usedByItem = {};
+            movements.forEach((m) => {
+                if (m.movement_type !== 'count' && m.movement_type !== 'waste') return;
+                const q = Number(m.quantity) || 0;
+                if (q >= 0) return;                       // only stock LEAVING
+                const d = m.created_at && typeof m.created_at.toDate === 'function' ? m.created_at.toDate() : null;
+                if (!d || d.getTime() < since) return;
+                usedByItem[m.item_id] = (usedByItem[m.item_id] || 0) + Math.abs(q);
+            });
+
+            // Most recent receipt wins: newest first, so the first hit per item is
+            // the last supplier who actually delivered it.
+            const supplierByItem = {};
+            (receipts || []).forEach((r) => {
+                (r.lines || []).forEach((l) => {
+                    if (!supplierByItem[l.item_id] && r.vendor_name) supplierByItem[l.item_id] = r.vendor_name;
+                });
+            });
+
+            return rows
+                .filter((r) => Number.isInteger(r.item.reorder_point) && r.item.reorder_point > 0)
+                .map((r) => {
+                    const onHand = r.stock ? r.stock.quantity : 0;
+                    const value = r.stock ? r.stock.value : 0;
+                    const point = r.item.reorder_point;
+                    const recommended = Math.max(0, point - onHand);
+                    // Unit cost is derived from movements, so an item with stock
+                    // but no recorded cost has none — say so instead of showing 0.
+                    const unitCost = onHand > 0 && value > 0 ? value / onHand : null;
+                    return {
+                        item: r.item,
+                        onHand, point, recommended,
+                        used: usedByItem[r.item.id] || 0,
+                        supplier: supplierByItem[r.item.id] || null,
+                        estCost: unitCost == null ? null : Math.round(recommended * unitCost),
+                        status: onHand <= 0 ? 'out' : 'low',
+                        haystack: [r.item.name, r.item.sku, supplierByItem[r.item.id]]
+                            .filter(Boolean).join(' ').toLowerCase()
+                    };
+                })
+                .filter((r) => r.recommended > 0)
+                .sort((a, b) => (a.status === b.status ? b.recommended - a.recommended : (a.status === 'out' ? -1 : 1)));
+        }
+
+        async function renderRestock() {
+            if (!restockReceipts) {
+                // Lazy per view, per the tab standard — a user who never opens
+                // Restock never pays for this read.
+                restockReceipts = await ds.getGoodsReceipts(currentUid, { limitCount: 200 });
+            }
+            restockRows = buildRestock(allRows, lastMovements, restockReceipts);
+
+            const noPoint = allRows.filter((r) => !Number.isInteger(r.item.reorder_point) || r.item.reorder_point <= 0).length;
+            const totalCost = restockRows.reduce((n, r) => n + (r.estCost || 0), 0);
+            const anyUncosted = restockRows.some((r) => r.estCost == null);
+
+            document.getElementById('inv-restock-kpis').innerHTML = [
+                { v: String(restockRows.length), u: restockRows.length === 1 ? 'item is at or below its reorder point' : 'items are at or below their reorder point',
+                  l: 'To reorder', icon: ICONS.low, tone: restockRows.length ? ' is-warn' : '' },
+                { v: totalCost ? rp(totalCost) : '—',
+                  u: anyUncosted ? 'Some items have no recorded cost yet' : 'At the average cost you last paid',
+                  l: 'Estimated cost', icon: ICONS.value },
+                { v: String(noPoint), u: noPoint ? 'No reorder point, so not assessed' : 'Every item has a reorder point',
+                  l: 'Not assessed', icon: ICONS.items }
+            ].map((c) => `
+                <div class="kpi-detail-cell inv-metric">
+                    <span class="inv-metric-value${c.tone || ''}">${esc(c.v)}</span>
+                    <span class="inv-metric-unit">${esc(c.u)}</span>
+                    <span class="inv-metric-foot">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">${c.icon}</svg>${esc(c.l)}
+                    </span>
+                </div>`).join('');
+
+            // Said plainly rather than hidden: these items cannot be judged, and
+            // the fix is one field away.
+            const note = document.getElementById('inv-restock-unassessable');
+            if (noPoint > 0) {
+                note.classList.remove('hidden');
+                note.innerHTML = `
+                    <div class="rst-note">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span><strong>${noPoint} ${noPoint === 1 ? 'item has' : 'items have'} no reorder point</strong>, so nothing here can say whether they are running low. Open one from <a href="?tab=items">Items</a> and set the level you want to be warned at — a threshold guessed from a few days of history would be a number pretending to be advice.</span>
+                    </div>`;
+            } else {
+                note.classList.add('hidden');
+                note.innerHTML = '';
+            }
+
+            const badge = document.getElementById('inv-restock-count');
+            badge.textContent = String(restockRows.length);
+            badge.classList.toggle('hidden', restockRows.length === 0);
+
+            applyRestockSearch();
+        }
+
+        function applyRestockSearch() {
+            const term = (document.getElementById('restock-search').value || '').trim().toLowerCase();
+            const rows = term ? restockRows.filter((r) => r.haystack.includes(term)) : restockRows;
+            const container = document.getElementById('restock-table-container');
+            const emptyHost = document.getElementById('restock-empty-state');
+
+            if (!rows.length) {
+                container.classList.add('hidden');
+                emptyHost.innerHTML = '';
+                window.renderEmptyState('restock-empty-state', term ? {
+                    title: 'No item matches that',
+                    description: 'Try part of the name, its SKU, or the supplier.'
+                } : {
+                    title: 'Nothing needs reordering',
+                    description: 'Every item with a reorder point is above it. This list fills itself in as stock is counted down.'
+                });
+                updateRestockBar();
+                return;
+            }
+            emptyHost.innerHTML = '';
+            container.classList.remove('hidden');
+            document.getElementById('restock-body').innerHTML = rows.map(restockRowHtml).join('');
+            updateRestockBar();
+        }
+
+        function restockRowHtml(r) {
+            const unit = esc(r.item.base_unit || '');
+            const checked = restockSelected.has(r.item.id) ? ' checked' : '';
+            // Status carries its own words, never colour alone.
+            const badge = r.status === 'out'
+                ? '<span class="fluxy-table-status fluxy-status-danger">Out of stock</span>'
+                : '<span class="fluxy-table-status fluxy-status-warning">Low stock</span>';
+            return `
+                <tr class="fluxy-table-row" data-restock="${esc(r.item.id)}">
+                    <td class="fluxy-table-cell"><input type="checkbox" data-restock-pick${checked} aria-label="Add ${esc(r.item.name)} to the order list"></td>
+                    <td class="fluxy-table-cell">
+                        <span class="fluxy-table-cell-primary">${esc(r.item.name)}</span>
+                        ${r.item.sku ? `<span class="fluxy-table-cell-meta">${esc(r.item.sku)}</span>` : ''}
+                    </td>
+                    <td class="fluxy-table-cell">${badge}</td>
+                    <td class="fluxy-table-cell fluxy-table-money"><span class="rst-qty">${r.onHand.toLocaleString('id-ID')}</span><span class="rst-unit">${unit}</span></td>
+                    <td class="fluxy-table-cell fluxy-table-money"><span class="rst-qty">${r.point.toLocaleString('id-ID')}</span><span class="rst-unit">${unit}</span></td>
+                    <td class="fluxy-table-cell fluxy-table-money">${r.used ? `<span class="rst-qty">${r.used.toLocaleString('id-ID')}</span><span class="rst-unit">${unit}</span>` : '<span class="inv-muted">—</span>'}</td>
+                    <td class="fluxy-table-cell fluxy-table-money">
+                        <span class="rst-rec">
+                            <span class="rst-rec-qty">+${r.recommended.toLocaleString('id-ID')} ${unit}</span>
+                            <span class="rst-rec-why">to reach ${r.point.toLocaleString('id-ID')} ${unit}</span>
+                        </span>
+                    </td>
+                    <td class="fluxy-table-cell">
+                        <span class="fluxy-table-cell-primary">${r.supplier ? esc(r.supplier) : 'Not ordered before'}</span>
+                        <span class="fluxy-table-cell-meta">${r.estCost == null ? 'No recorded cost yet' : `about ${esc(rp(r.estCost))}`}</span>
+                    </td>
+                </tr>`;
+        }
+
+        function updateRestockBar() {
+            const bar = document.getElementById('restock-bar');
+            const picked = restockRows.filter((r) => restockSelected.has(r.item.id));
+            if (!picked.length) { bar.classList.add('hidden'); return; }
+            bar.classList.remove('hidden');
+            const cost = picked.reduce((n, r) => n + (r.estCost || 0), 0);
+            const uncosted = picked.filter((r) => r.estCost == null).length;
+            document.getElementById('restock-bar-count').textContent =
+                `${picked.length} ${picked.length === 1 ? 'item' : 'items'} to order`;
+            document.getElementById('restock-bar-cost').textContent = uncosted
+                ? `Around ${rp(cost)} — ${uncosted} without a recorded cost`
+                : `Around ${rp(cost)}, at the average cost you last paid`;
+        }
+
+        // Grouped by supplier, because that is how it gets sent — one message per
+        // supplier, not one list to sort out by hand.
+        function buildOrderList() {
+            const picked = restockRows.filter((r) => restockSelected.has(r.item.id));
+            const groups = {};
+            picked.forEach((r) => {
+                const key = r.supplier || 'No supplier on record';
+                (groups[key] || (groups[key] = [])).push(r);
+            });
+            return Object.entries(groups).map(([supplier, items]) => {
+                const lines = items.map((r) =>
+                    `- ${r.item.name}${r.item.sku ? ` (${r.item.sku})` : ''}: ${r.recommended.toLocaleString('id-ID')} ${r.item.base_unit || ''}`.trim());
+                const cost = items.reduce((n, r) => n + (r.estCost || 0), 0);
+                return `${supplier}\n${lines.join('\n')}\nEstimated: ${rp(cost)}`;
+            }).join('\n\n');
+        }
+
+        window.__invBuildOrderList = buildOrderList;
 
         // ── Drawer ───────────────────────────────────────────────────────────
         function openDrawer(item) {
@@ -1600,9 +1925,19 @@
         document.querySelectorAll('[data-inv-tab]').forEach((btn) => {
             btn.addEventListener('click', () => setTab(btn.dataset.invTab, { filter: null }));
         });
+        // "at or below reorder point" now has a better home than a filtered item
+        // list: Restock answers how much to order, which is the actual next step.
+        const alertDestination = (key) => (key === 'low_stock'
+            ? setTab('restock')
+            : setTab('items', { filter: key }));
         document.getElementById('inv-alerts').addEventListener('click', (e) => {
             const btn = e.target.closest('[data-alert]');
-            if (btn) setTab('items', { filter: btn.dataset.alert });
+            if (btn) alertDestination(btn.dataset.alert);
+        });
+        // The KPI strip's Out of stock / Low stock cells are buttons too.
+        document.getElementById('inv-kpis').addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-alert]');
+            if (btn) alertDestination(btn.dataset.alert);
         });
         document.getElementById('inv-filter-bar').addEventListener('click', (e) => {
             if (e.target.id === 'inv-filter-clear') setTab('items', { filter: null });
@@ -1627,6 +1962,78 @@
             if (!row) return;
             e.preventDefault();
             openJournal(row);
+        });
+
+        // Restock: selection, search, and the order list
+        let restockSearchTimer = null;
+        document.getElementById('restock-search').addEventListener('input', () => {
+            clearTimeout(restockSearchTimer);
+            restockSearchTimer = setTimeout(applyRestockSearch, 150);
+        });
+        document.getElementById('restock-body').addEventListener('change', (e) => {
+            if (!e.target.matches('[data-restock-pick]')) return;
+            const id = e.target.closest('[data-restock]').dataset.restock;
+            if (e.target.checked) restockSelected.add(id); else restockSelected.delete(id);
+            syncSelectAll();
+            updateRestockBar();
+        });
+        document.getElementById('restock-select-all').addEventListener('change', (e) => {
+            // Applies to what is VISIBLE, not the whole set — a filtered "select
+            // all" that quietly picks hidden rows is how a wrong order gets sent.
+            document.querySelectorAll('#restock-body [data-restock]').forEach((row) => {
+                const box = row.querySelector('[data-restock-pick]');
+                box.checked = e.target.checked;
+                if (e.target.checked) restockSelected.add(row.dataset.restock);
+                else restockSelected.delete(row.dataset.restock);
+            });
+            updateRestockBar();
+        });
+        function syncSelectAll() {
+            const boxes = [...document.querySelectorAll('#restock-body [data-restock-pick]')];
+            const all = document.getElementById('restock-select-all');
+            all.checked = boxes.length > 0 && boxes.every((b) => b.checked);
+            all.indeterminate = !all.checked && boxes.some((b) => b.checked);
+        }
+        document.getElementById('restock-clear').addEventListener('click', () => {
+            restockSelected.clear();
+            document.querySelectorAll('#restock-body [data-restock-pick]').forEach((b) => { b.checked = false; });
+            syncSelectAll();
+            updateRestockBar();
+        });
+        document.getElementById('restock-copy').addEventListener('click', async () => {
+            const text = buildOrderList();
+            if (!text) return;
+            try {
+                await navigator.clipboard.writeText(text);
+                window.showToast('Order list copied.', 'success');
+            } catch (_) {
+                // Clipboard needs a secure context and permission; falling back to
+                // a dialog beats a button that silently does nothing.
+                await window.showAlertDialog({
+                    title: 'Copy this order list',
+                    body: `<pre style="white-space:pre-wrap;font-family:Inter,sans-serif;font-size:13px;margin:0;">${esc(text)}</pre>`,
+                    confirmLabel: 'Done'
+                });
+            }
+        });
+        document.getElementById('restock-csv').addEventListener('click', () => {
+            const picked = restockRows.filter((r) => restockSelected.has(r.item.id));
+            if (!picked.length) return;
+            const cell = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+            const rows = [
+                ['Item', 'SKU', 'Supplier', 'Order quantity', 'Unit', 'On hand', 'Reorder point', 'Estimated cost'],
+                // Raw integers, never formatted strings — same rule as every
+                // other export in the app.
+                ...picked.map((r) => [r.item.name, r.item.sku || '', r.supplier || '',
+                    r.recommended, r.item.base_unit || '', r.onHand, r.point,
+                    r.estCost == null ? '' : r.estCost])
+            ].map((line) => line.map(cell).join(',')).join('\n');
+            const url = URL.createObjectURL(new Blob([rows], { type: 'text/csv;charset=utf-8;' }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `restock-${new Date().toISOString().slice(0, 10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
         });
 
         // Receive-stock drawer

@@ -4672,6 +4672,38 @@
         "No stock movements yet. Receive something and this fills in.": "Belum ada pergerakan stok. Catat penerimaan barang dan grafik ini akan terisi.",
 
         "Recent stock activity": "Aktivitas stok terbaru",
+        // ── Restock tab ─────────────────────────────────────────────────────
+        "Restock": "Pesan ulang",
+        "To reorder": "Perlu dipesan",
+        "item is at or below its reorder point": "item berada di titik pemesanan ulang atau di bawahnya",
+        "items are at or below their reorder point": "item berada di titik pemesanan ulang atau di bawahnya",
+        "The last 10 things that moved. Open one to see the journal it posted.": "10 pergerakan terakhir. Buka salah satu untuk melihat jurnalnya.",
+        "Estimated cost": "Perkiraan biaya",
+        "At the average cost you last paid": "Berdasarkan biaya rata-rata terakhir yang Anda bayar",
+        "Some items have no recorded cost yet": "Sebagian item belum punya biaya tercatat",
+        "Not assessed": "Belum bisa dinilai",
+        "No reorder point, so not assessed": "Belum ada titik pemesanan ulang, jadi belum bisa dinilai",
+        "Every item has a reorder point": "Semua item sudah punya titik pemesanan ulang",
+        ", so nothing here can say whether they are running low. Open one from": ", jadi tidak ada yang bisa memastikan apakah stoknya menipis. Buka salah satunya dari",
+        "and set the level you want to be warned at — a threshold guessed from a few days of history would be a number pretending to be advice.": "lalu tentukan batas yang ingin Anda jadikan peringatan — ambang yang ditebak dari riwayat beberapa hari hanyalah angka yang berlagak jadi saran.",
+        "Items to reorder": "Item yang perlu dipesan ulang",
+        "Everything at or below the reorder point you set, with how much to order to get back to it.": "Semua yang berada di titik pemesanan ulang Anda atau di bawahnya, lengkap dengan jumlah yang perlu dipesan untuk kembali ke titik itu.",
+        "Search item, SKU, or supplier": "Cari item, SKU, atau supplier",
+        "Select every item to reorder": "Pilih semua item yang perlu dipesan ulang",
+        "Current stock": "Stok saat ini",
+        "Reorder point": "Titik pemesanan ulang",
+        "Used last 30 days": "Terpakai 30 hari terakhir",
+        "Recommended order": "Rekomendasi pemesanan",
+        "Order from": "Pesan dari",
+        "Not ordered before": "Belum pernah dipesan",
+        "No recorded cost yet": "Belum ada biaya tercatat",
+        "Low stock": "Stok menipis",
+        "Nothing needs reordering": "Tidak ada yang perlu dipesan ulang",
+        "Every item with a reorder point is above it. This list fills itself in as stock is counted down.": "Semua item yang punya titik pemesanan ulang masih di atasnya. Daftar ini akan terisi sendiri saat stok berkurang.",
+        "Try part of the name, its SKU, or the supplier.": "Coba sebagian nama, SKU, atau nama suppliernya.",
+        "Copy order list": "Salin daftar pesanan",
+        "Copy this order list": "Salin daftar pesanan ini",
+        "Order list copied.": "Daftar pesanan disalin.",
         // ── Stock Activity subpage (inventory-activity.html) ─────────────────
         "Stock activity": "Aktivitas stok",
         "Every movement of stock, newest first, each one linked to the journal it posted.": "Setiap pergerakan stok, terbaru dulu, masing-masing tertaut ke jurnalnya.",
@@ -4696,12 +4728,10 @@
         "Stock moved": "Stok berpindah",
 
         // Items tab: filters + reorder point
-        "Low stock": "Stok menipis",
         "No cost recorded": "Biaya belum tercatat",
         "Clear filter": "Hapus filter",
         "Nothing matches that filter any more": "Tidak ada lagi yang cocok dengan filter itu",
         "These items were flagged when the page loaded. Clear the filter to see everything.": "Item ini ditandai saat halaman dimuat. Hapus filternya untuk melihat semuanya.",
-        "Reorder point": "Titik pemesanan ulang",
         "Warn me when stock drops to this. Left blank, the item is never counted as low — a threshold guessed from a few days of history would be noise dressed as advice.": "Ingatkan saya saat stok turun ke angka ini. Jika dikosongkan, item ini tidak pernah dihitung menipis — ambang yang ditebak dari riwayat beberapa hari hanyalah tebakan yang menyamar sebagai saran.",
         "The reorder point must be a whole number of base units, or blank.": "Titik pemesanan ulang harus bilangan bulat dalam satuan stok, atau dikosongkan.",
 
@@ -4846,6 +4876,21 @@
           id: function () {
               return ', jadi setiap outlet di bawah terlihat lebih untung daripada yang sebenarnya. Sewa, listrik, dan gaji biasanya masuk sebagai tagihan — tandai itu dan angka ini mengecil.';
           } },
+        // Restock: "+31.000 ml" is a figure with a unit; only the reason needs words.
+        { re: /^to reach ([\d.,]+) (.+)$/,
+          id: function (m) { return 'agar kembali ke ' + m[1] + ' ' + m[2]; } },
+        { re: /^(\d+) items? (?:has|have) no reorder point$/,
+          id: function (m) { return m[1] + ' item belum punya titik pemesanan ulang'; } },
+        { re: /^(\d+) items? to order$/,
+          id: function (m) { return m[1] + ' item untuk dipesan'; } },
+        { re: /^Around (Rp[\d.]+), at the average cost you last paid$/,
+          id: function (m) { return 'Sekitar ' + m[1] + ', berdasarkan biaya rata-rata terakhir yang Anda bayar'; } },
+        { re: /^Around (Rp[\d.]+) — (\d+) without a recorded cost$/,
+          id: function (m) { return 'Sekitar ' + m[1] + ' — ' + m[2] + ' tanpa biaya tercatat'; } },
+        { re: /^Add (.+) to the order list$/,
+          id: function (m) { return 'Tambahkan ' + m[1] + ' ke daftar pesanan'; } },
+        { re: /^(\d+) items? (?:is|are) at or below (?:its|their) reorder point$/,
+          id: function (m) { return m[1] + ' item berada di titik pemesanan ulang atau di bawahnya'; } },
         // Stock Activity subtitle when the bounded read came back full.
         { re: /^The most recent ([\d.]+) movements\. Older ones are still in the ledger\.$/,
           id: function (m) {

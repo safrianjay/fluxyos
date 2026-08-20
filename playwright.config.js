@@ -26,7 +26,13 @@ module.exports = defineConfig({
     use: {
         baseURL: 'http://127.0.0.1:8765',
         actionTimeout: 10_000,
-        navigationTimeout: 20_000,
+        // 20s was set when the QA workspace was small. It now holds 120+ items,
+        // 30+ outlets and hundreds of movements, and every app page boots through
+        // auth + workspace resolution + its first read against REAL Firebase — so
+        // navigation alone can exceed 20s when the suite runs serially. Raising
+        // the ceiling does not slow a fast run; it stops a slow one being
+        // reported as a failure, which is how five green specs looked broken.
+        navigationTimeout: 60_000,
         trace: 'retain-on-failure',
         video: 'retain-on-failure',
         screenshot: 'only-on-failure',

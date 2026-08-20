@@ -212,6 +212,10 @@ test('the Overview holds together at 375px and 1280px', async ({ page }) => {
     for (const [label, width, height] of [['mobile', 375, 812], ['tablet', 768, 1024], ['desktop', 1280, 900]]) {
         await page.setViewportSize({ width, height });
         await gotoOverview(page);
+        // Settle before measuring: a viewport change plus a navigation can report
+        // a stale scrollWidth for a frame. A REAL overflow survives this wait; a
+        // transient one does not, so the assertion still bites.
+        await page.waitForTimeout(300);
 
         const overflow = await page.evaluate(() => ({
             scrollWidth: document.documentElement.scrollWidth,
