@@ -378,6 +378,13 @@ function laneProduct(changed) {
   if (FORCE_ALL || orgSurfaceTouched) {
     ok = record('product', run('seo:check-org (Organization entity in sync)', 'node',
       ['scripts/sync-org-schema.js', '--check'])) && ok;
+    // The /id/ mirrors are generated from the root pages through the i18n
+    // dictionary, and a dictionary miss ships English into a Bahasa page with
+    // no error and no visible defect. That is how id/pricing.html regressed to
+    // English review quotes (37% English) while hreflang, canonicals and the
+    // schema all still looked correct. Fail the lane on an untranslated segment.
+    ok = record('product', run('seo:check-id (no untranslated /id/ segments)', 'node',
+      ['scripts/build-id-mirrors.js', '--check'])) && ok;
   }
 
   const appCopyTouched = changed.some((f) => /^assets\/js\/|^[^/]+\.html$/.test(f));

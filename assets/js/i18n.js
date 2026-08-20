@@ -168,6 +168,64 @@
         "operational spend processed and categorized annually": "biaya operasional diproses dan dikategorikan setiap tahun",
         "countries from which you can track localized expenses": "negara untuk pantau biaya lokal",
 
+        // ── Homepage / feature labels + bare review bodies (JSON-LD) ────────
+        "I used to only find out whether we made money at the end of the month, and even then only after the receipts were collected. Now ingredient purchases and sales land in one place, so I can see where we stand that same day.":
+            "Dulu saya baru tahu untung atau rugi pas akhir bulan, itu pun setelah nota-nota dikumpulin dulu. Sekarang belanja bahan dan penjualan masuk ke satu tempat, jadi saya bisa lihat posisinya hari itu juga.",
+        "Bank reconciliation used to be the longest part of every close. Now the transactions are already matched and I only review the exceptions. The journals are clean and I can defend them.":
+            "Rekonsiliasi rekening koran dulu makan waktu paling lama tiap tutup buku. Sekarang transaksinya sudah kepasang duluan, saya tinggal cek yang tidak cocok. Jurnalnya rapi dan bisa saya pertanggungjawabkan.",
+        "Running several outlets means the numbers get buried into one total. What I needed was to see which outlet is working and which isn't, without asking my team for a manual report.":
+            "Punya beberapa outlet artinya angkanya gampang ketimbun jadi satu. Yang saya butuh itu lihat per outlet mana yang jalan dan mana yang nggak, tanpa harus minta laporan manual ke tim.",
+        "Indonesian books, ready for when you sell abroad":
+            "Pembukuan Indonesia, siap saat Anda jualan ke luar",
+        "Your ledger stays in Rupiah and stays SAK-aligned, so your accountant can defend it at close. Selling or paying across the border doesn't break that: foreign-currency invoices convert at the live rate on the day they're paid, and the journal behind them posts in IDR like everything else.":
+            "Buku besar Anda tetap dalam Rupiah dan tetap mengikuti SAK, jadi akuntan Anda bisa mempertanggungjawabkannya saat tutup buku. Transaksi lintas negara tidak merusak itu: invoice mata uang asing dikonversi dengan kurs live di hari pembayaran, dan jurnal di baliknya tetap diposting dalam IDR.",
+        "invoice currencies, stored as minor units so rounding never drifts":
+            "mata uang invoice, disimpan sebagai satuan terkecil supaya pembulatan tidak melenceng",
+        "Live FX":
+            "Kurs live",
+        "foreign invoices convert to IDR at the rate on the payment date":
+            "invoice mata uang asing dikonversi ke IDR dengan kurs di tanggal pembayaran",
+        "statement import and reconciliation for Indonesian banks":
+            "import rekening koran dan rekonsiliasi untuk bank Indonesia",
+        "SAK-aligned":
+            "Sesuai SAK",
+        "chart of accounts, trial balance, and period close out of the box":
+            "chart of accounts, neraca saldo, dan tutup buku sejak awal",
+        "Live connectors":
+            "Konektor aktif",
+        "Orders, refunds, settlements":
+            "Pesanan, refund, settlement",
+        "Synced to your ledger":
+            "Masuk ke buku besar Anda",
+        "3 ways":
+            "3 cara",
+        "to send a receipt":
+            "kirim struk",
+        "Reads photos and PDFs":
+            "Baca foto dan PDF",
+        "Per outlet":
+            "Per outlet",
+        "Moka POS Outlet A":
+            "Moka POS Outlet A",
+
+        // ── Pricing page — customer reviews ─────────────────────────────────
+        // Real named customers (published 2026-08-12). The quotes are their own
+        // words; the Bahasa side is the original and the English is the
+        // translation. Both live here so build-id-mirrors.js cannot regenerate
+        // the mirror in English again.
+        "What finance teams say": "Kata tim keuangan",
+        "Every quote below is from a named customer who agreed to be published.":
+            "Semua kutipan di bawah berasal dari pelanggan bernama yang sudah setuju dipublikasikan.",
+        "\"I used to only find out whether we made money at the end of the month, and even then only after the receipts were collected. Now ingredient purchases and sales land in one place, so I can see where we stand that same day.\"":
+            "\"Dulu saya baru tahu untung atau rugi pas akhir bulan, itu pun setelah nota-nota dikumpulin dulu. Sekarang belanja bahan dan penjualan masuk ke satu tempat, jadi saya bisa lihat posisinya hari itu juga.\"",
+        "\"Bank reconciliation used to be the longest part of every close. Now the transactions are already matched and I only review the exceptions. The journals are clean and I can defend them.\"":
+            "\"Rekonsiliasi rekening koran dulu makan waktu paling lama tiap tutup buku. Sekarang transaksinya sudah kepasang duluan, saya tinggal cek yang tidak cocok. Jurnalnya rapi dan bisa saya pertanggungjawabkan.\"",
+        "\"Running several outlets means the numbers get buried into one total. What I needed was to see which outlet is working and which isn\'t, without asking my team for a manual report.\"":
+            "\"Punya beberapa outlet artinya angkanya gampang ketimbun jadi satu. Yang saya butuh itu lihat per outlet mana yang jalan dan mana yang nggak, tanpa harus minta laporan manual ke tim.\"",
+        "Owner, Bakkery Bread": "Owner, Bakkery Bread",
+        "Accounting, Kelapa Merdeka": "Accounting, Kelapa Merdeka",
+        "CEO, Pujasera Group": "CEO, Pujasera Group",
+
         // ── Revenue Sync page ───────────────────────────────────────────────
         "Sync revenue from every channel, instantly": "Sinkronkan pendapatan dari semua saluran, instan",
         "Connect TikTok Shop and Shopee. Orders, refunds, and settlements post straight to your double-entry ledger, so marketplace revenue reconciles itself.":
@@ -791,7 +849,7 @@
         "From: billing@figma.com": "Dari: billing@figma.com",
 
         // ── Revenue Sync page backfill ───────────────────────────────────────
-        "Revenue Sync — Connect Stripe, Tokopedia, Shopify | FluxyOS": "Revenue Sync — Hubungkan Stripe, Tokopedia, Shopify | FluxyOS",
+        "Revenue Sync — TikTok Shop & Shopee in Your Ledger | FluxyOS": "Revenue Sync — Hubungkan Stripe, Tokopedia, Shopify | FluxyOS",
         "What is Revenue Sync?": "Apa itu Revenue Sync?",
         "Revenue Sync is a FluxyOS feature that connects sales channels, payment processors, POS systems, and marketplaces into one live ledger. It gives Indonesian businesses a real-time view of revenue without waiting for manual CSV exports or end-of-month reconciliation.": "Revenue Sync adalah fitur FluxyOS yang menghubungkan kanal penjualan, pemroses pembayaran, sistem POS, dan marketplace ke satu buku besar live. Bisnis Indonesia bisa melihat pendapatan real-time tanpa menunggu ekspor CSV manual atau rekonsiliasi akhir bulan.",
         "Which platforms does Revenue Sync connect to?": "Platform apa saja yang terhubung dengan Revenue Sync?",

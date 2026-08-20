@@ -17,6 +17,8 @@
     "check:deploy": "node tests/prepare-deploy.check.js",
     "seo:sync-org": "node scripts/sync-org-schema.js",
     "seo:check-org": "node scripts/sync-org-schema.js --check",
+    "seo:build-id": "node scripts/build-id-mirrors.js",
+    "seo:check-id": "node scripts/build-id-mirrors.js --check",
     "qa": "node scripts/qa-run.js",
     "qa:design": "node scripts/qa/lint-design.js",
     "cbm:extract": "node scripts/cbm-extract-inline.js",

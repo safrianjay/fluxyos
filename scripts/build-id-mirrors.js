@@ -46,7 +46,7 @@ const PAGES = {
     'fluxyos.html': {
         slug: 'fluxyos', rootPath: '/',
         title: 'FluxyOS — Sistem Operasi Keuangan Cerdas',
-        description: 'Satukan operasional keuangan, akuntansi, dan intelligence dalam satu sistem. Untuk bisnis di setiap tahap pertumbuhan.',
+        description: 'FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System) yang menyatukan operasional keuangan, akuntansi, dan intelligence.',
     },
     'pricing.html': {
         slug: 'pricing', rootPath: '/pricing',
@@ -60,7 +60,7 @@ const PAGES = {
     },
     'revenuesync.html': {
         slug: 'revenuesync', rootPath: '/revenuesync',
-        title: 'Revenue Sync — Hubungkan Stripe, Tokopedia, Shopify | FluxyOS',
+        title: 'Revenue Sync — TikTok Shop & Shopee ke Buku Besar | FluxyOS',
         description: 'Masukkan order, refund, dan settlement marketplace ke buku besar double-entry Anda secara otomatis.',
     },
     'receiptcapture.html': {
@@ -70,7 +70,7 @@ const PAGES = {
     },
     'aiagents.html': {
         slug: 'aiagents', rootPath: '/aiagents',
-        title: 'AI Finance Agents — 6 Spesialis untuk Pembukuan Anda | FluxyOS',
+        title: 'AI Finance Agents — 6 Spesialis Pembukuan | FluxyOS',
         description: 'Enam agent AI menangani rekonsiliasi bank, penandaan transaksi, penagihan invoice, dan laporan bulanan — otomatis.',
     },
     'budgetlanding.html': {
@@ -106,11 +106,53 @@ function encodeBasic(s) {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// Only prose is worth reporting. Brand names, product names, numbers, currency,
+// and single tokens are expected to stay English (LOCALIZATION_PLAN section 2 —
+// brand and product names are deliberately not translated).
+const KEEP_ENGLISH = new Set([
+    'FluxyOS', 'Fluxy AI', 'Revenue Sync', 'Vendor Spend', 'Receipt Capture',
+    'Dynamic Budgeting', 'AI Agents', 'Tax Center', 'TikTok Shop', 'Shopee',
+    'BCA', 'Mandiri', 'BNI', 'BRI', 'IDR', 'USD', 'SGD', 'SAK', 'PPN',
+]);
+function LOOKS_TRANSLATABLE(s) {
+    if (!s) return false;
+    if (/SHIELD\d/.test(s)) return false;                   // shielded script/style
+    if (KEEP_ENGLISH.has(s)) return false;
+    // Only PROSE is worth failing a build over. Product mockups are full of
+    // realistic-looking labels ("Transaction #1268", "Tokopedia: 45%",
+    // "200 OK - 14ms", vendor names) that are illustration, not copy, and are
+    // meant to stay as-is. Requiring four words plus no mockup punctuation
+    // keeps the signal on sentences — which is where the real regression was.
+    const words = s.trim().split(/\s+/);
+    if (words.length < 4) return false;
+    if (/[#%_•·|]|\bRp\s|\d{3,}|\.\.\.|\/\/|:\s*\d/.test(s)) return false;
+    // Brand/vendor strings are mostly Capitalised tokens; prose is not.
+    const caps = words.filter((w) => /^[A-Z]/.test(w)).length;
+    if (caps / words.length > 0.6) return false;
+    // Detect by ABSENCE of Indonesian rather than presence of specific English
+    // words. An earlier version keyed off an English wordlist and silently
+    // passed "What finance teams say", which contains none of them — exactly
+    // the class of string that caused this bug.
+    const ID_MARKER = /\b(yang|dan|untuk|dari|dengan|Anda|bisa|tidak|ini|itu|ke|di|pada|sudah|akan|atau|saat|jadi|supaya|per|adalah|lebih|semua|setiap|tanpa|kalau|juga)\b/i;
+    return !ID_MARKER.test(s);
+}
+
 function main() {
     const dict = loadDict();
-    const translate = (raw) => {
+    // A dictionary miss silently ships English into the mirror. That is how
+    // id/pricing.html regressed to English review quotes: the section was added
+    // to the root page, the mirrors were rebuilt, and the new strings were not
+    // in the dictionary. Nothing failed, nothing warned. Misses are recorded and
+    // reported below so it cannot happen quietly again.
+    const misses = new Map();
+    const translate = (raw, where) => {
         const decoded = decodeEntities(raw).replace(/\s+/g, ' ').trim();
-        return Object.prototype.hasOwnProperty.call(dict, decoded) ? dict[decoded] : null;
+        if (Object.prototype.hasOwnProperty.call(dict, decoded)) return dict[decoded];
+        if (LOOKS_TRANSLATABLE(decoded)) {
+            if (!misses.has(decoded)) misses.set(decoded, new Set());
+            misses.get(decoded).add(where);
+        }
+        return null;
     };
 
     for (const file of Object.keys(PAGES)) {
@@ -133,7 +175,7 @@ function main() {
 
         // 1. Translate text segments (what the runtime walker sees as text nodes).
         html = html.replace(/>([^<>]+)</g, (m, seg) => {
-            const t = translate(seg);
+            const t = translate(seg, meta.slug);
             if (t === null) return m;
             const lead = seg.match(/^\s*/)[0];
             const trail = seg.match(/\s*$/)[0];
@@ -142,7 +184,7 @@ function main() {
 
         // 2. Translate display attributes.
         html = html.replace(/(placeholder|aria-label|title|alt|data-tooltip)="([^"]*)"/g, (m, attr, val) => {
-            const t = translate(val);
+            const t = translate(val, meta.slug);
             return t === null ? m : attr + '="' + encodeBasic(t).replace(/"/g, '&quot;') + '"';
         });
 
@@ -192,9 +234,42 @@ function main() {
         // Restore shielded blocks.
         html = html.replace(/ SHIELD(\d+) /g, (_, i) => shields[Number(i)]);
 
+        // JSON-LD is shielded above, so the dictionary never reaches it. That is
+        // right for most of it (see the header note) but WRONG for reviewBody:
+        // Google requires a review's markup text to match the review shown on the
+        // page. Once the visible card is translated, an English reviewBody makes
+        // the pair disagree and disqualifies the snippet. Localize those, and the
+        // reviewer-facing strings beside them, so the two stay identical.
+        html = html.replace(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g, (block, json) => {
+            const localized = json.replace(/"reviewBody":\s*"((?:[^"\\]|\\.)*)"/g, (m2, body) => {
+                const plain = body.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+                const t = translate(plain, meta.slug);
+                if (t === null) return m2;
+                return '"reviewBody": "' + t.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+            });
+            return localized === json ? block
+                : '<script type="application/ld+json">' + localized + '</script>';
+        });
+
         const out = path.join(ROOT, 'id', meta.slug + '.html');
         fs.writeFileSync(out, html);
         console.log('built id/' + meta.slug + '.html  (' + (html.length / 1024).toFixed(0) + ' KB)');
+    }
+
+    // Untranslated prose report. `--check` makes it a build failure so QA can
+    // gate on it; a bare run just warns, so local rebuilds are not blocked.
+    if (misses.size) {
+        const strict = process.argv.includes('--check');
+        console.error('\n' + (strict ? 'FAIL' : 'WARNING') + ': ' + misses.size +
+            ' untranslated segment(s) shipped to /id/ in English:');
+        for (const [text, pages] of misses) {
+            console.error('  [' + [...pages].sort().join(', ') + '] ' +
+                (text.length > 96 ? text.slice(0, 96) + '…' : text));
+        }
+        console.error('\nAdd each one to the ID dictionary in assets/js/i18n.js, then re-run.\n');
+        if (strict) process.exit(1);
+    } else {
+        console.log('\nNo untranslated prose — every /id/ segment resolved through the dictionary.');
     }
 }
 
