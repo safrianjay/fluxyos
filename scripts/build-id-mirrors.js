@@ -137,6 +137,8 @@ function LOOKS_TRANSLATABLE(s) {
     return !ID_MARKER.test(s);
 }
 
+const CHECK_ONLY = process.argv.includes('--check');
+
 function main() {
     const dict = loadDict();
     // A dictionary miss silently ships English into the mirror. That is how
@@ -251,15 +253,23 @@ function main() {
                 : '<script type="application/ld+json">' + localized + '</script>';
         });
 
+        // --check must not mutate the tree. It shares the whole render path so
+        // the coverage report is exact, but writing here would re-copy the
+        // ENGLISH JSON-LD into every mirror and undo `seo:sync-org` — which is
+        // precisely what a verification run must never do.
         const out = path.join(ROOT, 'id', meta.slug + '.html');
-        fs.writeFileSync(out, html);
-        console.log('built id/' + meta.slug + '.html  (' + (html.length / 1024).toFixed(0) + ' KB)');
+        if (CHECK_ONLY) {
+            console.log('checked id/' + meta.slug + '.html');
+        } else {
+            fs.writeFileSync(out, html);
+            console.log('built id/' + meta.slug + '.html  (' + (html.length / 1024).toFixed(0) + ' KB)');
+        }
     }
 
     // Untranslated prose report. `--check` makes it a build failure so QA can
     // gate on it; a bare run just warns, so local rebuilds are not blocked.
     if (misses.size) {
-        const strict = process.argv.includes('--check');
+        const strict = CHECK_ONLY;
         console.error('\n' + (strict ? 'FAIL' : 'WARNING') + ': ' + misses.size +
             ' untranslated segment(s) shipped to /id/ in English:');
         for (const [text, pages] of misses) {
