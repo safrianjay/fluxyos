@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <link rel="stylesheet" href="assets/css/accounting.css">
     <style>
         .dashboard-topbar-copy { display: flex; flex-direction: column; min-width: 0; }
         .dashboard-topbar-title {
@@ -31,40 +32,72 @@
             letter-spacing: 0.08em; color: #64748B;
             padding: 0 4px 8px;
         }
+        /* A count is done standing up, on a phone, walking a shelf — but the
+           three figures still need naming, or "100 / 87 / -13" is a puzzle. Each
+           gets a label, laid out as a row on a wide screen and stacked on a
+           narrow one. Same DOM either way. */
         .cnt-row {
-            display: flex; align-items: center; gap: 12px;
-            padding: 12px; border: 1px solid #E2E8F0; border-radius: 10px;
+            display: grid;
+            grid-template-columns: minmax(0, 1.6fr) 108px 132px minmax(140px, 1fr);
+            align-items: end; gap: 14px;
+            padding: 12px 14px; border: 1px solid #E2E8F0; border-radius: 10px;
             background: #fff; margin-bottom: 8px;
         }
+        @media (max-width: 720px) {
+            .cnt-row { grid-template-columns: minmax(0, 1fr) 132px; align-items: center; }
+            .cnt-row-var { grid-column: 1 / -1; }
+        }
         .cnt-row.is-counted { border-color: #CBD5E1; background: #FAFCFF; }
-        .cnt-row-main { flex: 1; min-width: 0; }
+        .cnt-row-main { min-width: 0; }
         .cnt-row-name {
             font-size: 14px; font-weight: 600; color: #0F172A;
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
-        .cnt-row-system {
-            font-size: 12px; color: #64748B; margin-top: 2px;
+        .cnt-row-sku { font-size: 12px; color: #94A3B8; margin-top: 2px; }
+
+        .cnt-row-fig { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+        @media (max-width: 720px) {
+            /* Expected is already stated inside the variance line on a phone, so
+               its own column would be a third place to read the same number. */
+            .cnt-row-fig.cnt-row-expected { display: none; }
+        }
+        .cnt-fig-label {
+            font-size: 10px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.06em; color: #94A3B8;
+        }
+        .cnt-fig-value {
+            font-size: 14px; font-weight: 500; color: #475569;
             font-variant-numeric: tabular-nums;
         }
+        .cnt-input-wrap { display: flex; align-items: center; gap: 6px; }
         .cnt-row-input {
-            width: 108px; flex-shrink: 0; text-align: right;
+            width: 100%; min-width: 0; text-align: right;
             font-size: 16px; /* 16px stops iOS zooming the page on focus */
             font-weight: 600; font-variant-numeric: tabular-nums;
-            padding: 10px 10px; border: 1px solid #CBD5E1; border-radius: 8px;
+            padding: 10px; border: 1px solid #CBD5E1; border-radius: 8px;
             background: #fff; color: #0F172A;
         }
         .cnt-row-input:focus { outline: none; border-color: #EA580C; box-shadow: 0 0 0 1px #EA580C; }
-        .cnt-row-unit {
-            font-size: 12px; color: #94A3B8; flex-shrink: 0;
-            width: 28px; text-align: left;
-        }
-        .cnt-row-variance {
-            font-size: 12px; margin-top: 2px; font-variant-numeric: tabular-nums;
-            font-weight: 500;
-        }
+        .cnt-row-unit { font-size: 12px; color: #94A3B8; flex-shrink: 0; margin-left: 3px; }
+
+        /* Variance says what happened in words first, then by how much. Never
+           colour alone — "Short" and "Over" carry the meaning themselves. */
+        .cnt-row-variance { font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; color: #94A3B8; }
         .cnt-var-short { color: #EF4444; }
         .cnt-var-over { color: #16A34A; }
-        .cnt-var-exact { color: #64748B; }
+        .cnt-var-exact { color: #16A34A; }
+
+        .cnt-sum { text-align: center; }
+        .cnt-sum-value {
+            font-size: 20px; font-weight: 600; line-height: 1; letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums; color: #0B0F19;
+        }
+        .cnt-sum-value.is-short { color: #EF4444; }
+        .cnt-sum-value.is-warn { color: #EA580C; }
+        .cnt-sum-label {
+            font-size: 10px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.08em; color: #64748B; margin-top: 8px;
+        }
 
         .cnt-progress-track {
             height: 6px; border-radius: 999px; background: #E2E8F0; overflow: hidden;
@@ -150,6 +183,16 @@
         <div class="fluxy-page-shell">
             <div class="fluxy-page-canvas fluxy-section-stack">
 
+                <!-- Breadcrumb first, per DESIGN_SYSTEM's fixed reading order,
+                     and matching the Stock Activity subpage. -->
+                <div>
+                    <nav class="acct-breadcrumb" aria-label="Breadcrumb">
+                        <a href="/inventory">Inventory</a>
+                        <span>/</span>
+                        <span style="color:#374151;font-weight:500;">Stock count</span>
+                    </nav>
+                </div>
+
                 <div class="cnt-toolbar">
                     <div class="cnt-toolbar-field">
                         <label class="cnt-label" for="count-outlet">Which outlet are you counting?</label>
@@ -160,6 +203,10 @@
                         <input id="count-search" type="text" class="fluxy-drawer-input" placeholder="Name or shelf" autocomplete="off" style="width:100%;">
                     </div>
                 </div>
+
+                <!-- After the outlet picker: these figures describe ONE outlet, so
+                     they cannot precede the control that chooses it. -->
+                <section id="count-summary" class="grid grid-cols-2 sm:grid-cols-4 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"></section>
 
                 <div>
                     <div class="flex items-center justify-between gap-3 mb-2">
@@ -437,16 +484,29 @@
         function rowHtml(item) {
             const sys = systemFor(item.id);
             const raw = counted[item.id] == null ? '' : counted[item.id];
+            const unit = esc(item.base_unit || '');
             return `
                 <div class="cnt-row" data-item="${esc(item.id)}">
                     <div class="cnt-row-main">
                         <div class="cnt-row-name">${esc(item.name)}</div>
-                        <div class="cnt-row-system">System: ${sys.quantity.toLocaleString('id-ID')} ${esc(item.base_unit || '')}</div>
-                        <div class="cnt-row-variance" data-field="variance"></div>
+                        ${item.sku ? `<div class="cnt-row-sku">${esc(item.sku)}</div>` : ''}
                     </div>
-                    <input class="cnt-row-input" type="text" inputmode="decimal" data-field="counted"
-                           value="${esc(raw)}" placeholder="—" aria-label="Counted quantity for ${esc(item.name)}">
-                    <span class="cnt-row-unit">${esc(item.base_unit || '')}</span>
+                    <div class="cnt-row-fig cnt-row-expected">
+                        <span class="cnt-fig-label">Expected</span>
+                        <span class="cnt-fig-value">${sys.quantity.toLocaleString('id-ID')}<span class="cnt-row-unit">${unit}</span></span>
+                    </div>
+                    <div class="cnt-row-fig">
+                        <label class="cnt-fig-label" for="cnt-${esc(item.id)}">Counted</label>
+                        <span class="cnt-input-wrap">
+                            <input id="cnt-${esc(item.id)}" class="cnt-row-input" type="text" inputmode="decimal" data-field="counted"
+                                   value="${esc(raw)}" placeholder="—" aria-label="Counted quantity for ${esc(item.name)}">
+                            <span class="cnt-row-unit">${unit}</span>
+                        </span>
+                    </div>
+                    <div class="cnt-row-fig cnt-row-var">
+                        <span class="cnt-fig-label">Variance</span>
+                        <span class="cnt-row-variance" data-field="variance">Not counted</span>
+                    </div>
                 </div>`;
         }
 
@@ -465,7 +525,7 @@
 
                 row.classList.toggle('is-counted', !line.blank && !line.error);
 
-                if (line.blank) { out.textContent = ''; out.className = 'cnt-row-variance'; return; }
+                if (line.blank) { out.textContent = 'Not counted'; out.className = 'cnt-row-variance'; return; }
                 if (line.error) {
                     out.textContent = line.error;
                     out.className = 'cnt-row-variance cnt-var-short';
@@ -476,18 +536,23 @@
                 total += line.amount;
                 if (line.varianceQty !== 0) quantitiesDiffer = true;
 
+                // Words first: "Short 13 g" reads without decoding a sign, and it
+                // survives being printed in black and white.
                 if (line.varianceQty === 0) {
-                    out.textContent = 'Matches the system';
+                    out.textContent = 'Matches — no variance';
                     out.className = 'cnt-row-variance cnt-var-exact';
                 } else {
-                    const sign = line.varianceQty > 0 ? '+' : '';
-                    out.textContent = `${sign}${line.varianceQty.toLocaleString('id-ID')} ${item.base_unit} · ${rp(line.amount)}`;
-                    out.className = 'cnt-row-variance ' + (line.varianceQty < 0 ? 'cnt-var-short' : 'cnt-var-over');
+                    const short = line.varianceQty < 0;
+                    const mag = Math.abs(line.varianceQty).toLocaleString('id-ID');
+                    const money = line.amount ? ` · ${rp(Math.abs(line.amount))}` : '';
+                    out.textContent = `${short ? 'Short' : 'Over'} ${mag} ${item.base_unit}${money}`;
+                    out.className = 'cnt-row-variance ' + (short ? 'cnt-var-short' : 'cnt-var-over');
                 }
             });
 
             // Progress counts the whole sheet, not the filtered view — otherwise
             // searching would make it look as though the count were finished.
+            renderSummary();
             const totalItems = stockItems.length;
             const doneAll = stockItems.filter((i) => {
                 const p = parseCounted(counted[i.id]);
@@ -527,6 +592,35 @@
             void countedCount;
         }
 
+        // Where the count stands, counted from the sheet itself. Every figure is
+        // observed — none is estimated, and none appears before it can be.
+        function renderSummary() {
+            let counted_ = 0, variances = 0, net = 0;
+            stockItems.forEach((item) => {
+                const line = lineFor(item);
+                if (line.blank || line.error) return;
+                counted_++;
+                if (line.varianceQty !== 0) variances++;
+                net += line.amount;
+            });
+            const total = stockItems.length;
+            const remaining = Math.max(0, total - counted_);
+
+            const cell = (value, label, tone = '') =>
+                `<div class="kpi-detail-cell cnt-sum">
+                    <div class="cnt-sum-value${tone}">${esc(value)}</div>
+                    <div class="cnt-sum-label">${esc(label)}</div>
+                </div>`;
+
+            document.getElementById('count-summary').innerHTML =
+                cell(String(total), 'To count')
+                + cell(String(counted_), 'Counted')
+                + cell(String(remaining), 'Remaining', remaining ? ' is-warn' : '')
+                + cell(variances ? rp(net) : (counted_ ? 'None' : '—'),
+                       variances ? `Variance · ${variances} ${variances === 1 ? 'item' : 'items'}` : 'Variance',
+                       net < 0 ? ' is-short' : '');
+        }
+
         // ── Post ─────────────────────────────────────────────────────────────
         async function postCount() {
             const btn = document.getElementById('count-post-btn');
@@ -547,6 +641,45 @@
                 });
             }
             if (!lines.length) return;
+
+            // ── Review before it becomes accounting ──────────────────────────
+            // Posting a count writes a journal and moves cost of goods sold. Until
+            // now the only thing between typing a number and that happening was
+            // one button. This is the confirm step the workflow was missing: it
+            // states what will change, in words, and names the account it lands
+            // in — the shared dialog, not a bespoke modal.
+            const reviewed = stockItems
+                .map((item) => ({ item, line: lineFor(item) }))
+                .filter((r) => !r.line.blank && !r.line.error && r.line.varianceQty !== 0);
+            const netAmount = reviewed.reduce((n, r) => n + r.line.amount, 0);
+            const skipped = stockItems.length - lines.length;
+
+            const listed = reviewed.slice(0, 8).map((r) => {
+                const short = r.line.varianceQty < 0;
+                return `<li style="margin:2px 0;"><strong>${esc(r.item.name)}</strong> — ${short ? 'short' : 'over'} `
+                    + `${Math.abs(r.line.varianceQty).toLocaleString('id-ID')} ${esc(r.item.base_unit || '')}`
+                    + `${r.line.amount ? ` (${esc(rp(Math.abs(r.line.amount)))})` : ''}</li>`;
+            }).join('');
+
+            const body = reviewed.length
+                ? `<p style="margin:0 0 8px;">${reviewed.length} ${reviewed.length === 1 ? 'item does' : 'items do'} not match the system:</p>`
+                    + `<ul style="margin:0 0 10px;padding-left:18px;">${listed}</ul>`
+                    + (reviewed.length > 8 ? `<p style="margin:0 0 10px;color:#6B7280;">…and ${reviewed.length - 8} more.</p>` : '')
+                    + `<p style="margin:0;">This posts <strong>${esc(rp(Math.abs(netAmount)))}</strong> `
+                    + `${netAmount < 0 ? 'to <strong>5100 Cost of Goods Sold</strong> as stock used' : 'back to <strong>1200 Inventory</strong>'}`
+                    + `, and sets ${lines.length} ${lines.length === 1 ? 'item' : 'items'} to what you counted.`
+                    + (skipped ? ` ${skipped} uncounted ${skipped === 1 ? 'item is' : 'items are'} left untouched.` : '')
+                    + `</p>`
+                : `<p style="margin:0;">Everything you counted matches the system, so nothing will post.</p>`;
+
+            const go = await window.showConfirmDialog({
+                title: 'Post this count?',
+                body,
+                confirmLabel: 'Post count',
+                cancelLabel: 'Keep counting',
+                icon: 'check'
+            });
+            if (!go) return;
 
             btn.disabled = true;
             btn.textContent = 'Posting…';

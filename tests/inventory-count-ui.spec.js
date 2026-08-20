@@ -87,32 +87,38 @@ test('counting posts consumption, and a blank line is skipped rather than zeroed
 
     const rowA = page.locator(`.cnt-row:has-text("${ITEM_A}")`);
     const rowZ = page.locator(`.cnt-row:has-text("${ITEM_Z}")`);
-    await expect(rowA.locator('.cnt-row-system')).toHaveText('System: 1.000 g');
+    await expect(rowA.locator('.cnt-row-expected .cnt-fig-value')).toHaveText('1.000g');
 
     // Count ONE item short and leave the other blank entirely.
     await rowA.locator('[data-field="counted"]').fill('850');
-    await expect(rowA.locator('[data-field="variance"]')).toHaveText('-150 g · -Rp3.000');
-    await expect(rowZ.locator('[data-field="variance"]')).toHaveText('');
+    await expect(rowA.locator('[data-field="variance"]')).toHaveText('Short 150 g · Rp3.000');
+    // Uncounted says so rather than sitting blank — blank reads as "zero found".
+    await expect(rowZ.locator('[data-field="variance"]')).toHaveText('Not counted');
 
     // Progress counts the sheet, not the filtered view.
     await expect(page.locator('#count-progress-label')).toContainText('counted');
     await expect(page.locator('#count-total-value')).toHaveText('-Rp3.000');
     await expect(page.locator('#count-total-note')).toContainText('5100');
 
+    // Posting now goes through a review step — it writes a journal and moves
+    // COGS, so it states what will change before it happens.
     await page.click('#count-post-btn');
+    const review = page.locator('text=Post this count?');
+    await expect(review).toBeVisible({ timeout: 15000 });
+    await page.getByRole('button', { name: 'Post count', exact: true }).last().click();
     await expect(page.locator('#count-total-note')).toHaveText('Nothing to post yet', { timeout: 25000 });
 
     // The counted item moved to what was physically there. The BLANK one is
     // untouched — treating blank as zero would have written off all 500 g.
-    await expect(rowA.locator('.cnt-row-system')).toHaveText('System: 850 g');
-    await expect(rowZ.locator('.cnt-row-system')).toHaveText('System: 500 g');
+    await expect(rowA.locator('.cnt-row-expected .cnt-fig-value')).toHaveText('850g');
+    await expect(rowZ.locator('.cnt-row-expected .cnt-fig-value')).toHaveText('500g');
 });
 
 test('an in-progress count survives a reload', async ({ page }) => {
     await gotoCount(page);
     const rowZ = page.locator(`.cnt-row:has-text("${ITEM_Z}")`);
     await rowZ.locator('[data-field="counted"]').fill('480');
-    await expect(rowZ.locator('[data-field="variance"]')).toContainText('-20 g');
+    await expect(rowZ.locator('[data-field="variance"]')).toContainText('Short 20 g');
 
     // A real count takes twenty minutes on a phone; losing it to a reload or a
     // dropped connection is not acceptable.
@@ -130,7 +136,7 @@ test('stock moving mid-count is refused, not booked as consumption', async ({ pa
 
     const rowZ = page.locator(`.cnt-row:has-text("${ITEM_Z}")`);
     await rowZ.locator('[data-field="counted"]').fill('400');
-    await expect(rowZ.locator('[data-field="variance"]')).toContainText('-100 g');
+    await expect(rowZ.locator('[data-field="variance"]')).toContainText('Short 100 g');
 
     // Now move the stock underneath the open sheet, exactly as a delivery landing
     // mid-count would. Without the guard the variance would be measured against a
@@ -158,9 +164,11 @@ test('stock moving mid-count is refused, not booked as consumption', async ({ pa
     expect(receipt.ok).toBe(true);
 
     // The sheet still shows the stale figure — it has no idea anything happened.
-    await expect(rowZ.locator('.cnt-row-system')).toHaveText('System: 500 g');
+    await expect(rowZ.locator('.cnt-row-expected .cnt-fig-value')).toHaveText('500g');
 
     await page.click('#count-post-btn');
+    await expect(page.locator('text=Post this count?')).toBeVisible({ timeout: 15000 });
+    await page.getByRole('button', { name: 'Post count', exact: true }).last().click();
 
     // Refused, by name, with the counts preserved.
     const dialog = page.locator('text=Stock moved while you were counting');
@@ -169,7 +177,7 @@ test('stock moving mid-count is refused, not booked as consumption', async ({ pa
 
     // Reloaded against reality: the system column now shows the delivery, and the
     // count the user actually took is still in the box.
-    await expect(rowZ.locator('.cnt-row-system')).toHaveText('System: 700 g', { timeout: 20000 });
+    await expect(rowZ.locator('.cnt-row-expected .cnt-fig-value')).toHaveText('700g', { timeout: 20000 });
     await expect(rowZ.locator('[data-field="counted"]')).toHaveValue('400');
 });
 
@@ -198,8 +206,8 @@ test('waste is written off outside cost of goods sold', async ({ page }) => {
 
     // Waste reduced the system quantity — which is precisely what stops the next
     // count double-counting it as consumption.
-    await expect(page.locator(`.cnt-row:has-text("${ITEM_A}") .cnt-row-system`))
-        .toHaveText('System: 800 g', { timeout: 20000 });
+    await expect(page.locator(`.cnt-row:has-text("${ITEM_A}") .cnt-row-expected .cnt-fig-value`))
+        .toHaveText('800g', { timeout: 20000 });
 });
 
 test('the count sheet works at 375px', async ({ page }) => {

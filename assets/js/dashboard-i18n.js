@@ -4799,6 +4799,18 @@
         "Go to Inventory": "Buka Persediaan",
         "Try part of the name or the shelf it sits on.": "Coba sebagian nama atau rak tempatnya.",
         "Matches the system": "Sesuai catatan sistem",
+        // Revamped Stock count: labelled figures + the review step
+        "To count": "Perlu dihitung",
+        "Variance": "Selisih",
+        "Expected": "Seharusnya",
+        "Not counted": "Belum dihitung",
+        "Matches — no variance": "Cocok — tidak ada selisih",
+        "Post this count?": "Posting hitungan ini?",
+        "Keep counting": "Lanjut menghitung",
+        "Everything you counted matches the system, so nothing will post.": "Semua yang Anda hitung cocok dengan catatan sistem, jadi tidak ada yang diposting.",
+        "This posts": "Ini memposting",
+        "to <strong>5100 Cost of Goods Sold</strong> as stock used": "ke <strong>5100 Harga Pokok Penjualan</strong> sebagai stok terpakai",
+        "back to <strong>1200 Inventory</strong>": "kembali ke <strong>1200 Persediaan</strong>",
         "Enter a number, or leave it blank to skip.": "Masukkan angka, atau kosongkan untuk melewati.",
         "Nothing to post yet": "Belum ada yang bisa diposting",
         "Cost of stock used — posts to 5100 Cost of Goods Sold": "Biaya stok terpakai — diposting ke 5100 Harga Pokok Penjualan",
@@ -4878,6 +4890,20 @@
           id: function () {
               return ', jadi setiap outlet di bawah terlihat lebih untung daripada yang sebenarnya. Sewa, listrik, dan gaji biasanya masuk sebagai tagihan — tandai itu dan angka ini mengecil.';
           } },
+        // Stock count: variance stated in words, then magnitude.
+        { re: /^(Short|Over) ([\d.,]+) (.+?)(?: · (Rp[\d.]+))?$/,
+          id: function (m) {
+              return (m[1] === 'Short' ? 'Kurang ' : 'Lebih ') + m[2] + ' ' + m[3]
+                  + (m[4] ? ' · ' + m[4] : '');
+          } },
+        { re: /^(\d+) of (\d+) counted$/,
+          id: function (m) { return m[1] + ' dari ' + m[2] + ' sudah dihitung'; } },
+        { re: /^Variance · (\d+) items?$/,
+          id: function (m) { return 'Selisih · ' + m[1] + ' item'; } },
+        { re: /^Counted quantity for (.+)$/,
+          id: function (m) { return 'Kuantitas terhitung untuk ' + m[1]; } },
+        { re: /^…and (\d+) more\.$/,
+          id: function (m) { return '…dan ' + m[1] + ' lainnya.'; } },
         // Restock: "+31.000 ml" is a figure with a unit; only the reason needs words.
         { re: /^to reach ([\d.,]+) (.+)$/,
           id: function (m) { return 'agar kembali ke ' + m[1] + ' ' + m[2]; } },
