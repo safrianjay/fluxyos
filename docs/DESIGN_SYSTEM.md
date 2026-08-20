@@ -897,6 +897,35 @@ visual hierarchy, semantic color logic, and task-first UX clarity.
 - Financial and tabular values should stay visually scannable and aligned with
   existing dashboard conventions.
 
+### 3b) Numbers Must Be Legible On Their Own (Hard Rules)
+
+A number the reader has to decode is a design defect, not a data problem.
+
+- **Never render two numbers adjacent without a label between them.** The Stock
+  Count sheet shipped `System: 2.394 1000` — a quantity and a unit concatenated.
+  It reads as two numbers because nothing says which is which. Every figure gets
+  a label (`EXPECTED 1.000 g`), and a value plus its unit gets visible
+  separation.
+- **A sequence like `100 | 87 | -13` is banned.** Label each figure, and state
+  the relationship the reader is meant to draw: `Short 150 g`, `to reach 40.000 g`.
+- **State the meaning in words before the magnitude.** `Short 13` survives being
+  skimmed, printed in greyscale, or read by someone who does not distinguish red
+  from green. `-13` does not.
+- **Blank is not zero.** An uncounted, unset, or unknown figure says so
+  (`Not counted`, `—`, `No cost yet`). A blank cell reads as "we looked and found
+  none", which is a different and often costly claim.
+- **The layout must stay legible when the data is wrong.** Bad input is normal:
+  someone types the conversion factor into the unit field, a name runs to sixty
+  characters, a cost is missing. A layout that only reads correctly with clean
+  data is not finished. Labels, separation, and explicit empty states are what
+  make it degrade rather than collapse.
+
+**When someone says a screen is confusing, that is a design bug.** Do not answer
+it by explaining that the underlying values are technically correct, or that the
+data was entered wrong — both can be true while the screen is still at fault.
+Fix the presentation first; the data quality issue is a separate, additional
+finding.
+
 ### 4) Component Discipline (Hard Rules)
 - Buttons must follow role mapping:
   - one dominant primary style

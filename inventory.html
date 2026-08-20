@@ -1598,6 +1598,14 @@
         }
 
         function collectDraft() {
+            // A purely numeric stock unit is almost always the conversion factor
+            // typed into the wrong field, and base_unit is IMMUTABLE — every
+            // recorded quantity is a count of it — so the item can never be
+            // repaired afterwards, only replaced. Caught here, once, for free.
+            const baseUnitRaw = document.getElementById('item-base-unit').value.trim();
+            if (/^[\d.,]+$/.test(baseUnitRaw)) {
+                throw new Error(`"${baseUnitRaw}" looks like a quantity, not a unit. The stock unit is what you count in — g, ml, pcs, botol. If you meant "1 sak = ${baseUnitRaw}", that belongs in Purchase unit below.`);
+            }
             const reorderRaw = document.getElementById('item-reorder').value.trim();
             if (reorderRaw !== '' && (!/^\d+$/.test(reorderRaw))) {
                 throw new Error('The reorder point must be a whole number of base units, or blank.');

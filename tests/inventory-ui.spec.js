@@ -101,6 +101,29 @@ test('an item can be created from the page and shows up in the table', async ({ 
     expect(consoleErrors, `console errors: ${consoleErrors.join(' | ')}`).toEqual([]);
 });
 
+test('a quantity typed into the stock-unit field is refused', async ({ page }) => {
+    await gotoInventory(page);
+    await page.click('#new-item-btn');
+    await page.fill('#item-name', `${TAG} Salah Unit`);
+
+    // The exact mistake that produced "System: 2.394 1000" on the count sheet:
+    // the conversion factor typed into Stock unit. base_unit is immutable, so an
+    // item created this way can never be fixed — only this moment can catch it.
+    await page.fill('#item-base-unit', '1000');
+    await page.click('#item-save-btn');
+
+    const err = page.locator('#item-form-error');
+    await expect(err).toBeVisible();
+    await expect(err).toContainText('looks like a quantity, not a unit');
+    // And it points at where the number actually belongs.
+    await expect(err).toContainText('Purchase unit');
+
+    // A real unit saves fine — the guard must not block ordinary work.
+    await page.fill('#item-base-unit', 'g');
+    await page.click('#item-save-btn');
+    await expect(page.locator('#item-drawer')).toHaveClass(/translate-x-full/, { timeout: 20000 });
+});
+
 test('stock can be received through the page, in the unit it was bought in', async ({ page }) => {
     await gotoInventory(page);
 

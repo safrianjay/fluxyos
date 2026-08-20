@@ -4890,6 +4890,12 @@
           id: function () {
               return ', jadi setiap outlet di bawah terlihat lebih untung daripada yang sebenarnya. Sewa, listrik, dan gaji biasanya masuk sebagai tagihan — tandai itu dan angka ini mengecil.';
           } },
+        // Item drawer: a quantity typed into the Stock unit field.
+        { re: /^"(.+)" looks like a quantity, not a unit\. The stock unit is what you count in — g, ml, pcs, botol\. If you meant "1 sak = (.+)", that belongs in Purchase unit below\.$/,
+          id: function (m) {
+              return '"' + m[1] + '" tampak seperti kuantitas, bukan satuan. Satuan stok adalah satuan yang Anda hitung — g, ml, pcs, botol. '
+                  + 'Kalau maksud Anda "1 sak = ' + m[2] + '", itu tempatnya di Satuan beli di bawah.';
+          } },
         // Stock count: variance stated in words, then magnitude.
         { re: /^(Short|Over) ([\d.,]+) (.+?)(?: · (Rp[\d.]+))?$/,
           id: function (m) {
