@@ -4716,6 +4716,7 @@
         "Nothing matches that": "Tidak ada yang cocok",
         "Try a different search, or show all activity.": "Coba pencarian lain, atau tampilkan semua aktivitas.",
         "Clear filters": "Hapus filter",
+        "Clear search": "Hapus pencarian",
         "No stock has moved yet": "Belum ada stok yang bergerak",
         "Receive stock against an item and every movement shows up here.": "Catat penerimaan barang untuk sebuah item dan semua pergerakannya muncul di sini.",
         "movements": "pergerakan",

@@ -101,6 +101,40 @@ test('an item can be created from the page and shows up in the table', async ({ 
     expect(consoleErrors, `console errors: ${consoleErrors.join(' | ')}`).toEqual([]);
 });
 
+test('empty states never offer an action the page cannot perform', async ({ page }) => {
+    await gotoInventory(page);
+
+    // Searching for nothing is not an invitation to create a transaction. This
+    // shipped as an orange "Add Record" wired to the generic income/expense
+    // drawer, because renderEmptyState defaulted to one when a caller passed
+    // only a title — see DESIGN_SYSTEM.md 3c.
+    await page.fill('#inventory-search', 'zzz-no-such-item-zzz');
+    const itemsEmpty = page.locator('#inventory-empty-state');
+    await expect(itemsEmpty).toContainText('No item matches that');
+    await expect(itemsEmpty).not.toContainText('Add Record');
+
+    // What it offers instead actually resolves the state the user is in.
+    await itemsEmpty.getByRole('button', { name: 'Clear search' }).click();
+    await expect(page.locator('#inventory-search')).toHaveValue('');
+    await expect(page.locator('#inventory-body tr').first()).toBeVisible();
+
+    // ── Restock: the tab where this was reported ─────────────────────────────
+    await page.click('[data-inv-tab="restock"]');
+    await expect(page.locator('#inv-panel-restock')).not.toHaveClass(/hidden/);
+
+    await page.fill('#restock-search', 'zzz-no-such-item-zzz');
+    const restockEmpty = page.locator('#restock-empty-state');
+    await expect(restockEmpty).toContainText('No item matches that');
+    await expect(restockEmpty).not.toContainText('Add Record');
+    await restockEmpty.getByRole('button', { name: 'Clear search' }).click();
+    await expect(page.locator('#restock-search')).toHaveValue('');
+
+    // And with the search cleared, whatever state Restock lands in must never
+    // offer to log a transaction: restocking happens through Receive stock when
+    // the goods arrive, so there is no honest "add" on this surface.
+    await expect(restockEmpty).not.toContainText('Add Record');
+});
+
 test('a quantity typed into the stock-unit field is refused', async ({ page }) => {
     await gotoInventory(page);
     await page.click('#new-item-btn');

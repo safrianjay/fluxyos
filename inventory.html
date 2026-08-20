@@ -1293,14 +1293,21 @@
                     });
                 } else if (term) {
                     window.renderEmptyState('inventory-empty-state', {
+                        icon: `<svg class="w-8 h-8 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>`,
                         title: 'No item matches that',
-                        description: 'Try part of the name, the shelf it sits on, or its SKU.'
+                        description: 'Try part of the name, the shelf it sits on, or its SKU.',
+                        buttonText: 'Clear search',
+                        onAction: () => {
+                            document.getElementById('inventory-search').value = '';
+                            applySearch();
+                        }
                     });
                 } else {
                     window.renderEmptyState('inventory-empty-state', {
                         title: 'No items yet',
                         description: 'Add the ingredients and goods you buy. Once an item exists you can receive stock against it, count it, and watch its cost land in your P&L.',
                         buttonText: 'New item',
+                        buttonIcon: 'plus',
                         onAction: () => openDrawer(null)
                     });
                 }
@@ -1438,9 +1445,20 @@
                 container.classList.add('hidden');
                 emptyHost.innerHTML = '';
                 window.renderEmptyState('restock-empty-state', term ? {
+                    icon: `<svg class="w-8 h-8 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>`,
                     title: 'No item matches that',
-                    description: 'Try part of the name, its SKU, or the supplier.'
+                    description: 'Try part of the name, its SKU, or the supplier.',
+                    buttonText: 'Clear search',
+                    onAction: () => {
+                        document.getElementById('restock-search').value = '';
+                        applyRestockSearch();
+                    }
                 } : {
+                    // Nothing to order is the GOOD outcome, so it offers no action.
+                    // Restocking is not a transaction you log here — it happens when
+                    // the goods arrive, through Receive stock — so there is no
+                    // honest button to put on this state.
+                    icon: `<svg class="w-8 h-8 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
                     title: 'Nothing needs reordering',
                     description: 'Every item with a reorder point is above it. This list fills itself in as stock is counted down.'
                 });

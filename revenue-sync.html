@@ -810,6 +810,7 @@
                     title: "No revenue in this period.",
                     description: "Connect a sales channel to auto-sync revenue, or add a manual revenue entry to get started.",
                     buttonText: "Add Manual Revenue",
+                    buttonIcon: 'plus',
                     onAction: () => window.showAddTransactionModal({ title: 'Add Revenue', submitLabel: 'Add Revenue', defaultType: 'income', defaultCategory: 'Revenue', context: 'transaction' })
                 });
                 if (countEl) countEl.textContent = '';

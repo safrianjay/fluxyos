@@ -926,6 +926,37 @@ data was entered wrong — both can be true while the screen is still at fault.
 Fix the presentation first; the data quality issue is a separate, additional
 finding.
 
+### 3c) A Control Must Do What Its Label Says (Hard Rules)
+
+A button that performs something other than what it reads is worse than no
+button, because the user trusts it once and then stops trusting the screen.
+
+- **No shared component may default to an action.** `renderEmptyState` defaulted
+  to an orange **Add Record** wired to `showAddTransactionModal()`, so any caller
+  that passed only a title and description silently shipped a primary button
+  aimed at the generic income/expense drawer. On the Restock tab it offered to
+  log a transaction, which is not what restocking means; on the Tax Center it sat
+  under copy that already said to go to Bills. A caller now names **both** the
+  label and the action, or gets no button. Defaults are for appearance, never for
+  behaviour.
+- **An empty state with no action is a correct outcome, not an omission.** A
+  search that matched nothing needs *Clear search*, not *Add*. A healthy list
+  with nothing to do — "Nothing needs reordering" — needs no button at all.
+  Manufacturing one to fill the space sends the user somewhere unrelated.
+- **Never offer an action the page cannot perform.** Restocking is not logged on
+  the Restock tab; it happens when goods arrive, through *Receive stock*. If no
+  honest action exists on this surface, say what the state means and stop.
+- **Icons are part of the label.** A `+` glyph in front of *Go to Inventory* or
+  *Clear filters* describes an action the button does not perform. The plus is
+  reserved for controls that genuinely create something.
+- **Match the icon to the mood of the state.** A plus-in-a-circle above
+  "Nothing needs reordering" reads as "something is missing" when the state is
+  actually the good one. Use a check for healthy, a magnifier for no-match.
+
+The general form: every affordance is a promise. Before shipping one, read its
+label aloud and confirm the click does exactly that — this is the same failure
+class as 3b, where the screen said something other than what was true.
+
 ### 4) Component Discipline (Hard Rules)
 - Buttons must follow role mapping:
   - one dominant primary style

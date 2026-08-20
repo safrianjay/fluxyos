@@ -3709,12 +3709,27 @@ window.renderEmptyState = function(containerId, config) {
     const defaultConfig = {
         title: "No Data Found",
         description: "Start by adding your first record to see the engine in motion.",
-        buttonText: "Add Record",
-        onAction: () => window.showAddTransactionModal(),
         icon: `<svg class="w-8 h-8 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>`
     };
 
     const c = { ...defaultConfig, ...config };
+
+    // The action button is OPT-IN: a caller must name BOTH the label and what it
+    // does. An empty state with no action is a normal, correct outcome — a
+    // search that matched nothing, or a healthy list with nothing to do.
+    //
+    // This used to default to "Add Record" wired to showAddTransactionModal(),
+    // so any caller that merely omitted the field shipped a primary button
+    // pointing at the generic income/expense drawer. On Restock that button
+    // offered to log a transaction, which is not what restocking is; on Tax
+    // Center it appeared under copy that already said to go to Bills. A control
+    // must do what its label says — see DESIGN_SYSTEM.md 3c.
+    const hasAction = typeof c.onAction === 'function' && !!c.buttonText;
+    // The plus glyph is opt-in for the same reason: "Go to Inventory" behind a
+    // "+" describes an action the button does not perform.
+    const plusIcon = c.buttonIcon === 'plus'
+        ? `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>`
+        : '';
 
     container.innerHTML = `
         <div class="flex flex-col items-center justify-center py-20 text-center px-6 animate-in fade-in duration-700">
@@ -3722,15 +3737,14 @@ window.renderEmptyState = function(containerId, config) {
                 ${c.icon}
             </div>
             <h3 class="text-xl font-bold text-gray-900 mb-2 tracking-tight">${c.title}</h3>
-            <p class="text-[14px] text-gray-500 max-w-[320px] leading-relaxed mb-8">${c.description}</p>
-            <button id="empty-state-action" class="inline-flex items-center gap-2 bg-[#EA580C] hover:bg-[#D94E0B] text-white font-bold text-[13px] px-6 py-3 rounded-xl transition-all shadow-md hover:shadow-lg">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
-                ${c.buttonText}
-            </button>
+            <p class="text-[14px] text-gray-500 max-w-[320px] leading-relaxed${hasAction ? ' mb-8' : ''}">${c.description}</p>
+            ${hasAction ? `<button id="empty-state-action" type="button" class="inline-flex items-center gap-2 bg-[#EA580C] hover:bg-[#D94E0B] text-white font-bold text-[13px] px-6 py-3 rounded-xl transition-all shadow-md hover:shadow-lg">
+                ${plusIcon}${c.buttonText}
+            </button>` : ''}
         </div>
     `;
 
-    document.getElementById('empty-state-action').onclick = c.onAction;
+    if (hasAction) document.getElementById('empty-state-action').onclick = c.onAction;
 };
 
 // Global toggle for Fluxy AI (Drawer)

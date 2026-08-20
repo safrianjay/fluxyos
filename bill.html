@@ -816,6 +816,7 @@
                     title: "No upcoming bills.",
                     description: "Add your first bill to start tracking upcoming payments, vendor invoices, and payable obligations.",
                     buttonText: "Add First Bill",
+                    buttonIcon: 'plus',
                     onAction: () => window.showAddTransactionModal({ title: 'Add New Bill', submitLabel: 'Save Bill', defaultCategory: 'Operations', context: 'bill' })
                 });
                 if (countEl) countEl.textContent = '';
