@@ -49,7 +49,7 @@ const LANDING_PAGES = [
 const APP_PAGES = [
     'dashboard.html', 'ledger.html', 'bill.html', 'subscription.html', 'invoices.html',
     'budget.html', 'budget-period.html', 'budget-allocation.html',
-    'inventory.html', 'inventory-count.html', 'outlet-pnl.html',
+    'inventory.html', 'inventory-count.html', 'inventory-activity.html', 'outlet-pnl.html',
     'revenue-overview.html', 'cash-position.html', 'cash-pressure.html', 'opex-budget.html', 'net-profit.html',
     'accounting.html', 'accounting-account.html', 'accounting-journal.html', 'accounting-journal-new.html', 'accounting-records.html',
     'reports.html', 'report-preview.html',

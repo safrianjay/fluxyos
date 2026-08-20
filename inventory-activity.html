@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Stock Activity</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <!-- accounting.css owns `.acct-breadcrumb` (the shared breadcrumb) and the
+         `.dashboard-topbar-*` classes. All 169 of its rules are prefixed and none
+         are bare-element selectors, so nothing leaks. -->
+    <link rel="stylesheet" href="assets/css/accounting.css">
+    <style>
+        .dashboard-topbar-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .act-back {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 14px; font-weight: 600; color: #6B7280;
+            text-decoration: none; flex-shrink: 0;
+        }
+        .act-back:hover { color: #111827; }
+        .act-muted { color: #94A3B8; }
+        .act-search {
+            width: 100%; max-width: 320px;
+            padding: 8px 12px 8px 32px;
+            border: 1px solid #E2E8F0; border-radius: 8px;
+            font-size: 14px; background: #fff;
+        }
+        .act-search:focus { outline: none; border-color: #EA580C; box-shadow: 0 0 0 1px #EA580C; }
+        .act-search-wrap { position: relative; display: flex; align-items: center; flex: 1; min-width: 0; }
+        .act-search-icon { position: absolute; left: 10px; width: 16px; height: 16px; color: #94A3B8; pointer-events: none; }
+        .act-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+        /* fluxy-select.js wraps an enhanced <select> in a `.fluxy-select--enhanced`
+           div that is `display:block; width:100%` — sized for a form field, which
+           pushed the filter onto its own row here. Constrain the WRAPPER, since
+           that is what the flex row actually lays out. */
+        .act-toolbar .fluxy-select--enhanced { width: 220px; flex: 0 0 auto; }
+        .act-toolbar select { min-width: 170px; }
+        @media (max-width: 640px) {
+            .act-toolbar .fluxy-select--enhanced { width: 100%; }
+        }
+        @media (max-width: 640px) {
+            header.act-topbar { padding-left: 16px; padding-right: 16px; gap: 8px; }
+            .act-search { max-width: none; }
+        }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <aside id="sidebar" class="w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden"></aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="dashboard-main-topbar act-topbar h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-4">
+            <div class="dashboard-topbar-left flex items-center gap-3 min-w-0 flex-1">
+                <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <!-- Back navigation is a topbar text link, top-left, per DESIGN_SYSTEM. -->
+                <a href="/inventory" class="act-back" aria-label="Back to Inventory">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    <span class="hidden sm:inline">Inventory</span>
+                </a>
+                <div class="dashboard-topbar-copy">
+                    <span class="dashboard-topbar-title">Stock activity</span>
+                    <p class="dashboard-topbar-subtitle hidden lg:block">Every movement of stock, newest first, each one linked to the journal it posted.</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                <button type="button" onclick="window.toggleFluxyAI()" class="fluxy-ai-btn hidden sm:inline-flex" title="Open Fluxy AI">Fluxy AI</button>
+            </div>
+        </header>
+
+        <div class="fluxy-page-shell">
+            <div class="fluxy-page-canvas fluxy-section-stack">
+
+                <!-- Breadcrumb at the very top of the content, above any toolbar
+                     or card — the reading order DESIGN_SYSTEM fixes as a hard
+                     rule: breadcrumb, then title, then filters, then data. -->
+                <div>
+                    <nav class="acct-breadcrumb" aria-label="Breadcrumb">
+                        <a href="/inventory">Inventory</a>
+                        <span>/</span>
+                        <span style="color:#374151;font-weight:500;">Stock activity</span>
+                    </nav>
+                </div>
+
+                <section class="fluxy-table-card">
+                    <div class="fluxy-table-card-header">
+                        <div>
+                            <h2 class="fluxy-table-title">Stock activity</h2>
+                            <p id="act-subtitle" class="fluxy-table-subtitle">Every receipt, count, waste record and adjustment.</p>
+                        </div>
+                    </div>
+
+                    <div class="fluxy-table-toolbar">
+                        <div class="act-toolbar" style="width:100%;">
+                            <div class="act-search-wrap">
+                                <svg class="act-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                <input id="act-search" type="text" class="act-search" placeholder="Search item, outlet, or what happened" autocomplete="off">
+                            </div>
+                            <select id="act-type" class="fluxy-drawer-select" aria-label="Activity type">
+                                <option value="">All activity</option>
+                                <option value="receipt">Stock received</option>
+                                <option value="count">Counted</option>
+                                <option value="waste">Waste recorded</option>
+                                <option value="adjustment">Adjusted</option>
+                                <option value="issue">Stock issued</option>
+                                <option value="transfer">Transferred</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="act-table-container" class="fluxy-table-scroll hidden">
+                        <table class="fluxy-table">
+                            <thead>
+                                <tr class="fluxy-table-header">
+                                    <th>When</th>
+                                    <th>What happened</th>
+                                    <th>Outlet</th>
+                                    <th class="fluxy-table-money">Quantity</th>
+                                    <th class="fluxy-table-money">Value</th>
+                                </tr>
+                            </thead>
+                            <tbody id="act-body"></tbody>
+                        </table>
+                    </div>
+
+                    <div id="act-empty-state"></div>
+
+                    <div id="act-pagination" class="fluxy-table-pagination hidden">
+                        <span id="act-page-summary" class="fluxy-table-pagination-summary"></span>
+                        <div class="fluxy-table-pagination-actions">
+                            <button id="act-prev-page" type="button" class="fluxy-table-action">Previous</button>
+                            <span id="act-page-indicator" class="fluxy-table-pagination-summary"></span>
+                            <button id="act-next-page" type="button" class="fluxy-table-action">Next</button>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </main>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/money-format.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/dashboard-i18n.js"></script>
+    <script src="assets/js/fluxy-select.js"></script>
+
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from './assets/js/db-service.js';
+        import { applyToPage } from './assets/js/onboarding-gate.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360"
+        };
+
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        const ds = new DataService(app);
+
+        // The read is bounded, like every other list in the app. If it comes back
+        // full the subtitle says so rather than implying this is all there is.
+        const FETCH_LIMIT = 1000;
+        const PAGE_SIZE = 25;
+
+        let currentUid = null;
+        let allRows = [];
+        let paginator = null;
+
+        const MOVEMENT_COPY = {
+            receipt: 'Stock received',
+            count: 'Counted',
+            waste: 'Waste recorded',
+            adjustment: 'Adjusted',
+            issue: 'Stock issued',
+            transfer: 'Transferred'
+        };
+
+        function rp(value) {
+            const n = Math.round(Number(value) || 0);
+            return (n < 0 ? '-Rp' : 'Rp') + Math.abs(n).toLocaleString('id-ID');
+        }
+        function esc(str) {
+            return String(str == null ? '' : str).replace(/[&<>"']/g, (c) => (
+                { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+            ));
+        }
+
+        async function load() {
+            const [movements, dims] = await Promise.all([
+                ds.getStockMovements(currentUid, { limitCount: FETCH_LIMIT }),
+                ds.getDimensions(currentUid)
+            ]);
+            const dimName = {};
+            dims.forEach((d) => { dimName[d.id] = d.name; });
+
+            allRows = movements.map((m) => {
+                const d = m.created_at && typeof m.created_at.toDate === 'function' ? m.created_at.toDate() : null;
+                const what = MOVEMENT_COPY[m.movement_type] || 'Stock moved';
+                const outlet = m.dimension_id ? (dimName[m.dimension_id] || 'Unknown outlet') : 'Unassigned';
+                return {
+                    m, when: d, what, outlet,
+                    haystack: [what, m.item_name, outlet, m.movement_type].filter(Boolean).join(' ').toLowerCase()
+                };
+            });
+
+            if (movements.length >= FETCH_LIMIT) {
+                document.getElementById('act-subtitle').textContent =
+                    `The most recent ${FETCH_LIMIT.toLocaleString('id-ID')} movements. Older ones are still in the ledger.`;
+            }
+            apply();
+        }
+
+        function apply() {
+            const term = (document.getElementById('act-search').value || '').trim().toLowerCase();
+            const type = document.getElementById('act-type').value;
+            let rows = type ? allRows.filter((r) => r.m.movement_type === type) : allRows;
+            if (term) rows = rows.filter((r) => r.haystack.includes(term));
+
+            const container = document.getElementById('act-table-container');
+            const emptyHost = document.getElementById('act-empty-state');
+
+            if (!rows.length) {
+                container.classList.add('hidden');
+                document.getElementById('act-pagination').classList.add('hidden');
+                emptyHost.innerHTML = '';
+                window.renderEmptyState('act-empty-state', (term || type) ? {
+                    title: 'Nothing matches that',
+                    description: 'Try a different search, or show all activity.',
+                    buttonText: 'Clear filters',
+                    onAction: () => {
+                        document.getElementById('act-search').value = '';
+                        document.getElementById('act-type').value = '';
+                        apply();
+                    }
+                } : {
+                    title: 'No stock has moved yet',
+                    description: 'Receive stock against an item and every movement shows up here.',
+                    buttonText: 'Go to Inventory',
+                    onAction: () => { window.location.href = '/inventory'; }
+                });
+                return;
+            }
+            emptyHost.innerHTML = '';
+            container.classList.remove('hidden');
+            paginator.setRows(rows, renderRows);
+        }
+
+        function renderRows(rows) {
+            document.getElementById('act-body').innerHTML = rows.map((r) => {
+                const m = r.m;
+                const when = r.when
+                    ? (window.FluxyI18n ? window.FluxyI18n.formatDate(r.when) : r.when.toLocaleDateString())
+                    : '—';
+                const qty = Number(m.quantity) || 0;
+                // Not every movement carries a journal — a zero-value receipt has
+                // nothing to post — so those rows are inert rather than dead links.
+                const linkable = !!m.journal_ref;
+                return `
+                    <tr class="fluxy-table-row${linkable ? ' fluxy-table-row-clickable' : ''}"${linkable ? ` data-journal="${esc(m.journal_ref)}" tabindex="0" role="button"` : ''}>
+                        <td class="fluxy-table-cell">${esc(when)}</td>
+                        <td class="fluxy-table-cell">
+                            <span class="fluxy-table-cell-primary">${esc(r.what)}</span>
+                            <span class="fluxy-table-cell-meta">${esc(m.item_name || '')}</span>
+                        </td>
+                        <td class="fluxy-table-cell">${m.dimension_id ? esc(r.outlet) : `<span class="act-muted">${esc(r.outlet)}</span>`}</td>
+                        <td class="fluxy-table-cell fluxy-table-money">${qty > 0 ? '+' : ''}${qty.toLocaleString('id-ID')} <span class="act-muted">${esc(m.base_unit || '')}</span></td>
+                        <td class="fluxy-table-cell fluxy-table-money">${rp(m.amount)}</td>
+                    </tr>`;
+            }).join('');
+        }
+
+        // ── Wiring ───────────────────────────────────────────────────────────
+        let searchTimer = null;
+        document.getElementById('act-search').addEventListener('input', () => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(apply, 150);
+        });
+        document.getElementById('act-type').addEventListener('change', apply);
+
+        const body = document.getElementById('act-body');
+        const openJournal = (row) => {
+            if (row && row.dataset.journal) {
+                window.location.href = `accounting-journal.html?id=${encodeURIComponent(row.dataset.journal)}`;
+            }
+        };
+        body.addEventListener('click', (e) => openJournal(e.target.closest('[data-journal]')));
+        body.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            const row = e.target.closest('[data-journal]');
+            if (!row) return;
+            e.preventDefault();
+            openJournal(row);
+        });
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) { window.location.replace('/login'); return; }
+            const gated = await applyToPage(user, { pageKey: 'overview', feature: 'inventory' });
+            if (gated) return;
+            try {
+                const { resolveWorkspace } = await import('/assets/js/workspace-service.js');
+                await resolveWorkspace(app, user);
+            } catch (_) {}
+
+            currentUid = user.uid;
+            document.getElementById('act-table-container').classList.remove('hidden');
+            window.renderShimmer('act-body', 8, 5);
+
+            paginator = window.createTablePaginator({
+                pageSize: PAGE_SIZE,
+                label: 'movements',
+                paginationId: 'act-pagination',
+                summaryId: 'act-page-summary',
+                indicatorId: 'act-page-indicator',
+                prevBtnId: 'act-prev-page',
+                nextBtnId: 'act-next-page'
+            });
+            await load();
+        });
+    </script>
+</body>
+</html>

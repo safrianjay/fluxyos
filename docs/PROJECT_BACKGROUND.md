@@ -148,6 +148,7 @@ any Future item as present.
 | Invoices | `invoices.html` | App | ✅ | **No** | ✅ |
 | Inventory (Overview \| Items) | `inventory.html` | App | ✅ | **No** | ✅ |
 | Stock Count | `inventory-count.html` | App | ✅ | **No** | ✅ |
+| Stock Activity | `inventory-activity.html` | App | ✅ | **No** | ✅ |
 | Outlet P&L | `outlet-pnl.html` | App | ✅ | **No** | ✅ |
 | Accounting Center | `accounting.html` | App | ✅ | **No** | ✅ |
 | Accounting Records | `accounting-records.html` | App | ✅ | **No** | ✅ |

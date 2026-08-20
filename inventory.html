@@ -390,7 +390,13 @@
                             <div class="fluxy-table-card-header">
                                 <div>
                                     <h2 class="fluxy-table-title">Recent stock activity</h2>
-                                    <p class="fluxy-table-subtitle">The last few things that moved. Open one to see the journal it posted.</p>
+                                    <p class="fluxy-table-subtitle">The last 10 things that moved. Open one to see the journal it posted.</p>
+                                </div>
+                                <div class="fluxy-table-actions">
+                                    <a id="act-view-all" href="/inventory-activity" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 inline-flex items-center gap-2 shadow-sm whitespace-nowrap">
+                                        View all
+                                        <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                    </a>
                                 </div>
                             </div>
                             <div class="fluxy-table-scroll">
@@ -1067,7 +1073,8 @@
         };
         function renderActivity(movements, dimName) {
             const card = document.getElementById('receipts-card');
-            const rows = movements.slice(0, 12);
+            // Ten, and the card says ten. The full history is behind View all.
+            const rows = movements.slice(0, 10);
             if (!rows.length) { card.classList.add('hidden'); return; }
             card.classList.remove('hidden');
             document.getElementById('receipts-body').innerHTML = rows.map((m) => {

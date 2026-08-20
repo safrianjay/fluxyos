@@ -4672,6 +4672,19 @@
         "No stock movements yet. Receive something and this fills in.": "Belum ada pergerakan stok. Catat penerimaan barang dan grafik ini akan terisi.",
 
         "Recent stock activity": "Aktivitas stok terbaru",
+        // ── Stock Activity subpage (inventory-activity.html) ─────────────────
+        "Stock activity": "Aktivitas stok",
+        "Every movement of stock, newest first, each one linked to the journal it posted.": "Setiap pergerakan stok, terbaru dulu, masing-masing tertaut ke jurnalnya.",
+        "Every receipt, count, waste record and adjustment.": "Setiap penerimaan barang, stock opname, catatan susut, dan penyesuaian.",
+        "Search item, outlet, or what happened": "Cari item, outlet, atau yang terjadi",
+        "Activity type": "Jenis aktivitas",
+        "All activity": "Semua aktivitas",
+        "Nothing matches that": "Tidak ada yang cocok",
+        "Try a different search, or show all activity.": "Coba pencarian lain, atau tampilkan semua aktivitas.",
+        "Clear filters": "Hapus filter",
+        "No stock has moved yet": "Belum ada stok yang bergerak",
+        "Receive stock against an item and every movement shows up here.": "Catat penerimaan barang untuk sebuah item dan semua pergerakannya muncul di sini.",
+        "movements": "pergerakan",
         "The last few things that moved. Open one to see the journal it posted.": "Beberapa pergerakan terakhir. Buka salah satu untuk melihat jurnalnya.",
         "What happened": "Yang terjadi",
         "Stock received": "Barang diterima",
@@ -4832,6 +4845,11 @@
         { re: /^, so every outlet below looks more profitable than it is\. Rent, utilities and staff usually arrive as bills — tag those and this shrinks\.$/,
           id: function () {
               return ', jadi setiap outlet di bawah terlihat lebih untung daripada yang sebenarnya. Sewa, listrik, dan gaji biasanya masuk sebagai tagihan — tandai itu dan angka ini mengecil.';
+          } },
+        // Stock Activity subtitle when the bounded read came back full.
+        { re: /^The most recent ([\d.]+) movements\. Older ones are still in the ledger\.$/,
+          id: function (m) {
+              return m[1] + ' pergerakan terbaru. Yang lebih lama tetap ada di buku besar.';
           } },
         // Outlet list tail on the Overview: "and 30 more".
         { re: /^and (\d+) more$/,
