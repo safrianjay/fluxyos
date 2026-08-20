@@ -785,6 +785,7 @@
             low_stock:    { label: 'Low stock',           test: (r) => r.isLow },
             out_of_stock: { label: 'Out of stock',        test: (r) => r.isOut },
             no_cost:      { label: 'No cost recorded',    test: (r) => r.hasNoCost },
+            negative:     { label: 'Negative stock',      test: (r) => r.isNegative },
             stale:        { label: 'Never counted',       test: (r) => r.isStale }
         };
         let activeFilter = null;
@@ -977,7 +978,12 @@
                     // Out of stock means it HAD stock and now has none. An item
                     // never stocked at all reads "Not stocked yet" in the table,
                     // and calling that an alert would invent one.
-                    isOut: !!stock && qty <= 0,
+                    isOut: !!stock && qty === 0,
+                    // Below zero means more left than ever arrived — a missed
+                    // delivery, or a sale relieved against stock nobody recorded.
+                    // Per-sale COGS relieves anyway rather than misstating margin,
+                    // so this is the surface that makes that gap visible.
+                    isNegative: !!stock && qty < 0,
                     // Low only where a threshold was actually set. Never inferred.
                     isLow: !!stock && reorder !== null && qty > 0 && qty <= reorder,
                     // Stock with no cost basis: every count on it posts ZERO COGS
@@ -1012,6 +1018,7 @@
         const ALERTS = [
             { key: 'out_of_stock', tone: 'critical', label: 'out of stock' },
             { key: 'no_cost',      tone: 'critical', label: 'with no cost recorded' },
+            { key: 'negative',     tone: 'critical', label: 'below zero — more left than ever arrived' },
             { key: 'low_stock',    tone: 'warn',     label: 'at or below reorder point' },
             { key: 'stale',        tone: 'info',     label: 'never counted' }
         ];

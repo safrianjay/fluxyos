@@ -112,7 +112,7 @@ waste         Dr 5150      / Cr 1200    STOCK-WASTE
 
 | Field | Type | Notes |
 |---|---|---|
-| `adjustment_type` | enum | `count` \| `waste` |
+| `adjustment_type` | enum | `count` \| `waste` \| `sale` |
 | `dimension_id` | string \| null | Which outlet was counted |
 | `lines` | array | count: `{item_id, system_quantity, counted_quantity, quantity, amount}` · waste: `{item_id, system_quantity, quantity, amount}` |
 | `total_amount` | integer, **signed** | Negative means stock left. Deliberately not bounded ≥ 0 the way a receipt total is |
@@ -134,6 +134,31 @@ journal.
 
 A count that nets to zero is rejected rather than posted — a zero journal would
 fail the engine's balance assertion and would mean nothing.
+
+### Per-sale relief — `adjustment_type: 'sale'`
+
+```
+marketplace sale   Dr 5100 COGS / Cr 1200 Inventory    CM-ORDER-COGS
+```
+
+`commerce_orders` has posted revenue since it shipped (`CM-ORDER-REV`) and never
+relieved stock, so every marketplace sale booked at full margin.
+`DataService.relieveCommerceCogs` closes that: order lines resolve to items by
+**`items.sku`** — the join that field was designed for — composites explode to
+their ingredients, and stock relieves at weighted average.
+
+**Idempotency carries no flag.** `commerce_orders` is `allow update: if false`, so
+relief cannot be marked on the order. It does not need to be: the movement already
+records `source: { collection: 'commerce_orders', id }`, so the subledger *is* the
+record of what has been relieved. Same principle as on-hand being summed rather
+than cached.
+
+**Overselling relieves anyway, at the last known cost.** If a sale exceeds what the
+subledger believes is on hand, the goods still left — a wrong subledger is a data
+problem, not a reason to misstate COGS. Stock goes negative so the gap is visible,
+which is why `inventory.html` surfaces a **Negative stock** signal.
+
+Guard: `tests/commerce-cogs.spec.js`.
 
 ### Optimistic concurrency
 

@@ -570,6 +570,10 @@ export function selectRule(collection, document) {
     }
     if (collection === 'goods_receipts') return 'GR-RECEIPT';
     if (collection === 'stock_adjustments') {
+        // A marketplace sale relieving what it consumed. Lives in
+        // stock_adjustments because it IS one — a stock movement with a journal —
+        // and a separate collection would cost a rules block for no new shape.
+        if (doc.adjustment_type === 'sale') return 'CM-ORDER-COGS';
         if (doc.adjustment_type === 'waste') return 'STOCK-WASTE';
         // A count that found MORE than the books expected reverses into stock
         // rather than crediting COGS with a negative, so the ledger reads as
@@ -687,6 +691,19 @@ const RULES = {
             line(COGS, 0, amt, doc.reference || 'Stock count gain')
         ];
     },
+    // A marketplace sale relieving the stock it consumed. Same journal as a
+    // count's consumption — the difference is that this one is caused by a
+    // specific order rather than discovered by counting.
+    //
+    // Until this existed, commerce_orders posted revenue (CM-ORDER-REV) and never
+    // touched inventory, so every marketplace sale booked at full margin.
+    'CM-ORDER-COGS': (doc) => {
+        const amt = requireAmount(Math.abs(toInt(doc.total_amount)), 'commerce order cost of goods');
+        return [
+            line(COGS, amt, 0, doc.reference || 'Cost of goods sold'),
+            line(INVENTORY, 0, amt, doc.reference || 'Stock relieved by sale')
+        ];
+    },
     'STOCK-WASTE': (doc) => {
         const amt = requireAmount(Math.abs(toInt(doc.total_amount)), 'stock waste');
         return [
@@ -734,6 +751,7 @@ const RULE_DESCRIPTIONS = {
     'INV-ISSUE': 'Invoice issued',
     'INV-PAY': 'Invoice paid',
     'CM-ORDER-REV': 'Marketplace order',
+    'CM-ORDER-COGS': 'Marketplace cost of goods',
     'CM-ORDER-FEE': 'Marketplace fee',
     'CM-ORDER-REFUND': 'Marketplace refund',
     'CM-SETTLE': 'Marketplace payout',

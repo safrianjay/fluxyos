@@ -4643,6 +4643,8 @@
         // Redesigned Overview: chips, KPI strip, month card, outlet bars
         "out of stock": "stok habis",
         "with no cost recorded": "biayanya belum tercatat",
+        "below zero — more left than ever arrived": "di bawah nol — lebih banyak keluar daripada yang pernah masuk",
+        "Negative stock": "Stok minus",
         "at or below reorder point": "di titik pemesanan ulang atau di bawahnya",
         "never counted": "belum pernah dihitung",
         "Balance of 1200 Inventory": "Saldo 1200 Persediaan",

@@ -3399,7 +3399,7 @@ service cloud.firestore {
       match /stock_adjustments/{adjustmentId} {
         allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
         allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
-          && request.resource.data.adjustment_type in ['count', 'waste']
+          && request.resource.data.adjustment_type in ['count', 'waste', 'sale']
           && request.resource.data.total_amount is number
           && request.resource.data.lines is list
           && request.resource.data.status in ['posted', 'reversed'];

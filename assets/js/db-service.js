@@ -5578,6 +5578,158 @@ class DataService {
         return { id: ref.id, ...payload };
     }
 
+    // ── Per-sale cost of goods, for marketplace orders ───────────────────
+    //
+    // commerce_orders has posted revenue since it shipped (CM-ORDER-REV) and has
+    // NEVER relieved stock, so every marketplace sale booked at full margin. This
+    // closes that: an order's lines are resolved to items by SKU — the join
+    // `items.sku` was designed for and has never been used — exploded if the item
+    // is a recipe, and relieved at weighted-average cost.
+    //
+    //   Dr 5100 Cost of Goods Sold / Cr 1200 Inventory      CM-ORDER-COGS
+    //
+    // IDEMPOTENCY WITHOUT A FLAG. commerce_orders is `allow update: if false` —
+    // only the sync worker may write it — so relief cannot be recorded on the
+    // order. It does not need to be: the movement it produces already carries
+    // `source: { collection: 'commerce_orders', id }`, so the subledger IS the
+    // record of what has been relieved. Same principle as on-hand being summed
+    // from movements rather than cached.
+    //
+    // OVERSELLING RELIEVES ANYWAY, AT THE LAST KNOWN COST. If a sale exceeds what
+    // the subledger believes is on hand, the goods still left the building — a
+    // wrong subledger is a data problem, not a reason to misstate COGS. Stock is
+    // allowed to go negative so the gap is visible and gets fixed, rather than
+    // margin quietly reading better than reality.
+    async relieveCommerceCogs(userId, { limitCount = 100 } = {}) {
+        const scope = this._scope(userId);
+        const entityId = this._resolvedScopeId(userId);
+
+        const [orders, movements, items] = await Promise.all([
+            getDocs(query(collection(this.db, `${scope}/commerce_orders`),
+                orderBy('created_at', 'desc'), limit(limitCount))).then((s2) => s2.docs.map((d) => ({ id: d.id, ...d.data() }))).catch(() => []),
+            this.getStockMovements(userId, { limitCount: 1000 }),
+            this.getItems(userId, { includeArchived: true })
+        ]);
+        if (!orders.length) return { relieved: 0, skipped: 0, unmatched: [] };
+
+        const done = new Set();
+        movements.forEach((m) => {
+            if (m.source && m.source.collection === 'commerce_orders' && m.source.id) done.add(m.source.id);
+        });
+
+        // On-hand and value per item, for the weighted average.
+        const onHand = {};
+        movements.forEach((m) => {
+            const b = onHand[m.item_id] || (onHand[m.item_id] = { quantity: 0, value: 0 });
+            b.quantity += Number(m.quantity) || 0;
+            b.value += Number(m.amount) || 0;
+        });
+
+        const bySku = {};
+        const byId = {};
+        items.forEach((i) => {
+            byId[i.id] = i;
+            if (i.sku) bySku[String(i.sku).toLowerCase()] = i;
+        });
+
+        let relieved = 0;
+        let skipped = 0;
+        const unmatched = new Set();
+
+        for (const order of orders) {
+            if (done.has(order.id)) { skipped++; continue; }
+            const lines = [];
+            let missing = false;
+
+            for (const l of (order.items || [])) {
+                const item = l.sku ? bySku[String(l.sku).toLowerCase()] : null;
+                if (!item) { if (l.sku) unmatched.add(l.sku); missing = true; continue; }
+                const qty = Number(l.quantity) || 0;
+                if (qty <= 0) continue;
+
+                // A recipe is relieved as the ingredients it consumes, never as
+                // itself — the same reason a composite cannot be received.
+                const consumed = item.type === 'composite'
+                    ? explodeRecipe(byId, item.id, qty)
+                    : [{ item_id: item.id, quantity: qty }];
+
+                consumed.forEach((c) => {
+                    const target = byId[c.item_id];
+                    if (!target) return;
+                    const stock = onHand[c.item_id] || { quantity: 0, value: 0 };
+                    // Weighted average, derived. An item with no cost basis yet
+                    // relieves quantity at zero value rather than inventing one.
+                    const rate = unitCostOf(stock.quantity, stock.value);
+                    // Explosion may return a fractional requirement; rounding
+                    // happens once, here, where a movement is actually recorded.
+                    const q = Math.round(c.quantity);
+                    if (q <= 0) return;
+                    lines.push({
+                        item_id: c.item_id,
+                        item_name: target.name,
+                        base_unit: target.base_unit,
+                        quantity: -q,
+                        amount: -Math.round(q * rate)
+                    });
+                });
+            }
+
+            const total = lines.reduce((sum, l) => sum + Math.abs(l.amount), 0);
+            // Nothing to post: no matched line, or every matched item is still
+            // uncosted. Deliberately NOT marked done — once a cost exists, or the
+            // SKU is filled in, the order becomes relievable.
+            if (!lines.length || total === 0) { skipped++; if (missing) continue; continue; }
+
+            const when = order.ordered_at && typeof order.ordered_at.toDate === 'function'
+                ? order.ordered_at.toDate()
+                : (order.created_at && typeof order.created_at.toDate === 'function' ? order.created_at.toDate() : new Date());
+
+            const ref = doc(collection(this.db, `${scope}/stock_adjustments`));
+            const payload = {
+                adjustment_type: 'sale',
+                dimension_id: null,
+                reference: `${order.platform || 'Marketplace'} ${order.order_id || order.id}`,
+                lines: lines.map((l) => ({ ...l })),
+                total_amount: -total,
+                line_count: lines.length,
+                status: 'posted',
+                timestamp: Timestamp.fromDate(when),
+                created_by: this.actorUid || userId,
+                created_at: serverTimestamp()
+            };
+
+            const batch = writeBatch(this.db);
+            await this._postSourceJournal(userId, batch, 'stock_adjustments', ref, payload, { date: when });
+            batch.set(ref, payload);
+
+            const periodKey = acctPeriodKey(when);
+            lines.forEach((l) => {
+                const mref = doc(collection(this.db, `${scope}/stock_movements`));
+                batch.set(mref, {
+                    item_id: l.item_id, item_name: l.item_name, dimension_id: null,
+                    quantity: l.quantity, base_unit: l.base_unit, amount: l.amount,
+                    movement_type: 'issue',
+                    // The idempotency key. Without it the same order would relieve
+                    // stock again on every sweep.
+                    source: { collection: 'commerce_orders', id: order.id },
+                    journal_ref: payload.journal_ref || null,
+                    period_key: periodKey, entity_id: entityId,
+                    created_by: this.actorUid || userId, created_at: serverTimestamp()
+                });
+                // Keep the running average honest across orders in one sweep.
+                const b = onHand[l.item_id] || (onHand[l.item_id] = { quantity: 0, value: 0 });
+                b.quantity += l.quantity;
+                b.value += l.amount;
+            });
+
+            await batch.commit();
+            done.add(order.id);
+            relieved++;
+        }
+
+        return { relieved, skipped, unmatched: [...unmatched] };
+    }
+
     // Per-outlet P&L — the reason the dimension shipped first.
     //
     // Reads ledger_balances_by_dim (the breakdown written alongside every

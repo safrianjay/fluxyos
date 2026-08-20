@@ -12,16 +12,16 @@
   ],
   "artifacts": {
     "firestore.rules": {
-      "sha256": "588a232c22c720e065821b62ba10cd468ede7c23c29323cf75f940912960fe83",
-      "stamped_at": "2026-08-16"
+      "sha256": "da538d43eb78a36026d4522ea7193ee34ca61d782e0533d88c809f34ed36e26b",
+      "stamped_at": "2026-08-20"
     },
     "firestore.indexes.json": {
       "sha256": "f5c43867e16c54fccec0cf1ddf3bf67b0f0b49c54ec7ddc165eac128f1c24685",
-      "stamped_at": "2026-08-16"
+      "stamped_at": "2026-08-20"
     },
     "storage.rules": {
       "sha256": "cd4cbaf56b2a0b52e2fb44992e2539fabfa75c2ac0c983dad37336dabb8db25a",
-      "stamped_at": "2026-08-16"
+      "stamped_at": "2026-08-20"
     }
   }
 }
