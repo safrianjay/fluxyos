@@ -44,19 +44,13 @@ test.describe('Point of Sale', () => {
         // 640px the Takeaway label is hidden and only the glyph remains.
         await expect(page.locator('#pos-new-order')).toHaveAttribute('aria-label', /takeaway/i);
 
-        // The live-order listener reads `pos_orders`, which does not exist in
-        // the DEPLOYED rules until `firebase deploy --only firestore:rules` has
-        // run — firestore.rules never ships with git push. Same opt-in shape as
-        // STORAGE_RULES_DEPLOYED in bank-statement-import.spec.js: once the
-        // rules are live, set POS_RULES_DEPLOYED=1 and this becomes strict.
-        const posRulesLive = !!process.env.POS_RULES_DEPLOYED;
-        const real = errors
-            .filter((e) => !/tailwindcss\.com|favicon|net::ERR_/i.test(e))
-            .filter((e) => posRulesLive || !/live orders unavailable/i.test(e));
+        // Strict. `pos_orders` is in the DEPLOYED rules (stamped 2026-08-21), so
+        // the live-order listener must connect — and if it stops, this is the
+        // only place that would notice. A "live orders unavailable" error here
+        // means the rules were rolled back or never redeployed, which makes the
+        // till blind to QR orders and to a second device on the floor.
+        const real = errors.filter((e) => !/tailwindcss\.com|favicon|net::ERR_/i.test(e));
         expect(real, `console errors: ${real.join(' | ')}`).toEqual([]);
-        if (!posRulesLive) {
-            console.log('  ℹ POS_RULES_DEPLOYED unset — the live-order listener error is tolerated.');
-        }
     });
 
     test('the till figure is labelled operational and points at the accounting one', async ({ page }) => {
