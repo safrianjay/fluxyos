@@ -16,7 +16,7 @@ is denied by default.
 ## 1. `chart_of_accounts/{code}` (doc id = account code)
 
 Single source of truth for the seed: `CHART_OF_ACCOUNTS_SEED` in
-`assets/js/accounting-engine.js` (**37 accounts**; this line read "32" and
+`assets/js/accounting-engine.js` (**38 accounts**; this line read "32" and
 `accounting.md` read "33" while the seed held 34 — count it, don't quote it).
 The db-service mapping catalog
 (`ACCOUNTING_ACCOUNT_CATALOG`) and the Accounting Center mapping select

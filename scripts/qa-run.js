@@ -137,7 +137,7 @@ const FINANCE_COLLECTIONS = [
   'dimensions', 'ledger_balances_by_dim', 'items',
   'goods_receipts', 'stock_movements', 'stock_adjustments',
   // Point of sale (2026-08-21).
-  'pos_tables', 'pos_orders',
+  'pos_tables', 'pos_orders', 'pos_shifts',
 ];
 
 function scopeGuard() {

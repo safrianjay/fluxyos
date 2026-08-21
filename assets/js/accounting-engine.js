@@ -137,6 +137,15 @@ export const CHART_OF_ACCOUNTS_SEED = [
     { code: '6450', name: 'Travel & Entertainment', name_id: 'Perjalanan & Entertain', type: 'expense', sak_category: 'operating_expense', parent_code: '6400' },
     { code: '6460', name: 'Professional Services', name_id: 'Jasa Profesional', type: 'expense', sak_category: 'operating_expense', parent_code: '6400' },
     { code: '6500', name: 'Tax Expense', name_id: 'Beban Pajak', type: 'expense', sak_category: 'operating_expense', is_system: true },
+    // Cash Over & Short. The drawer never counts to the penny, and the gap is a
+    // real operating cost the moment it is systematic. A SINGLE account that
+    // swings both ways is the standard treatment: a credit balance means the
+    // tills ran over, which is as much a control signal as running short.
+    //
+    // Deliberately NOT netted into sales. Folding a short into revenue hides the
+    // exact thing a shift close exists to expose, the same way waste is kept out
+    // of COGS (5150) so spoilage cannot hide inside gross margin.
+    { code: '6700', name: 'Cash Over & Short', name_id: 'Selisih Kas', type: 'expense', sak_category: 'operating_expense', is_system: true, mappable: false, allow_direct_transaction: false },
     { code: '6600', name: 'Bank Fees', name_id: 'Biaya Bank', type: 'expense', sak_category: 'operating_expense', is_system: true },
     { code: '6999', name: 'Other Expense', name_id: 'Beban Lainnya', type: 'expense', sak_category: 'other_expense', is_system: true },
     // --- Other income
@@ -229,6 +238,8 @@ const COGS = '5100';
 // difference between a margin an owner can act on and one that hides the
 // problem (PRODUCT_STRATEGY.md §7).
 const WASTE = '5150';
+// The drawer's counted-versus-expected gap at shift close.
+const CASH_VARIANCE = '6700';
 
 // Category/type → expense (or revenue) account. Mirrors ACCOUNTING_CATEGORY_DEFAULTS
 // and ACCOUNTING_TYPE_DEFAULTS in db-service.js. Kept here so the engine resolves
@@ -604,6 +615,11 @@ export function selectRule(collection, document) {
         if (doc.goods_receipt_id) return 'BILL-GRNI';
         return 'BILL-ACCRUE';
     }
+    // A closed shift whose drawer did not match. Only a NON-ZERO variance posts —
+    // a drawer that counted exactly right has nothing to say to the ledger.
+    if (collection === 'pos_shifts') {
+        return toInt(document && document.variance) !== 0 ? 'POS-SHIFT-VARIANCE' : null;
+    }
     if (collection === 'goods_receipts') return 'GR-RECEIPT';
     if (collection === 'stock_adjustments') {
         // A marketplace sale relieving what it consumed. Lives in
@@ -705,6 +721,19 @@ const RULES = {
     // income, for the same reason CM-ORDER-REFUND is: posting it as `refund`
     // income (which elsewhere in the app means a refund RECEIVED) would inflate
     // both revenue and cash on every return.
+    // Drawer short  →  Dr 6700 / Cr 1000   (cash that should be there is not)
+    // Drawer over   →  Dr 1000 / Cr 6700   (more cash than the sales explain)
+    //
+    // `variance` is SIGNED: counted − expected. Negative is short, which is the
+    // common case and the one that matters.
+    'POS-SHIFT-VARIANCE': (doc) => {
+        const v = toInt(doc.variance);
+        const amt = requireAmount(Math.abs(v), 'shift cash variance');
+        const memo = doc.reference || 'Shift cash count';
+        return v < 0
+            ? [line(CASH_VARIANCE, amt, 0, memo), line(CASH, 0, amt, 'Cash short in drawer')]
+            : [line(CASH, amt, 0, 'Cash over in drawer'), line(CASH_VARIANCE, 0, amt, memo)];
+    },
     'POS-REFUND': (doc) => {
         const amt = requireAmount(doc.amount, 'POS refund');
         const settle = posSettlementAccount(doc);
@@ -837,6 +866,7 @@ const RULE_DESCRIPTIONS = {
     'CM-SETTLE': 'Settlement payout',
     'POS-SALE': 'Till sale',
     'POS-REFUND': 'Till refund',
+    'POS-SHIFT-VARIANCE': 'Cash drawer count',
     'OPENING': 'Opening balance',
     'CLOSE': 'Period close'
 };

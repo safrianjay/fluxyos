@@ -156,3 +156,58 @@ test('a POS sale and a marketplace sale produce the same gross margin arithmetic
     expect(r['1200']).toBe(-18000);
     expect(-r['4000'] - r['5100']).toBe(27000);
 });
+
+test('a drawer variance posts to 6700 and never touches sales', async ({ page }) => {
+    // The genuinely new accounting in Phase 1.5. A shift that counted short is a
+    // real operating cost; folding it into sales would hide the exact thing a
+    // cash count exists to find — the same reason waste posts to 5150 rather
+    // than COGS.
+    await page.goto('/pricing');
+    const r = await page.evaluate(async () => {
+        const e = await import('/assets/js/accounting-engine.js');
+        const at = new Date('2026-08-22T05:00:00Z');
+        const shift = (variance) => e.buildJournal({
+            collection: 'pos_shifts', id: 's1', date: at,
+            document: { variance, reference: 'Shift abc123', timestamp: at }
+        });
+        const net = (j) => {
+            const n = {};
+            (j ? j.lines : []).forEach((l) => { n[l.account_code] = (n[l.account_code] || 0) + l.debit - l.credit; });
+            return n;
+        };
+        const short = shift(-5000);
+        const over = shift(12000);
+        return {
+            rules: { short: short.posting_rule_id, over: over.posting_rule_id },
+            balanced: short.is_balanced && over.is_balanced,
+            shortNet: net(short),
+            overNet: net(over),
+            // A drawer that counted exactly right has nothing to say to the ledger.
+            balancedDrawer: shift(0),
+            desc: e.describeRule('POS-SHIFT-VARIANCE')
+        };
+    });
+
+    expect(r.rules).toEqual({ short: 'POS-SHIFT-VARIANCE', over: 'POS-SHIFT-VARIANCE' });
+    expect(r.balanced).toBe(true);
+
+    // Short: the missing cash is an expense, and cash comes down to match reality.
+    expect(r.shortNet['6700']).toBe(5000);
+    expect(r.shortNet['1000']).toBe(-5000);
+
+    // Over: more cash than the sales explain. Same account, other direction —
+    // a credit balance on 6700 is a control signal, not an error.
+    expect(r.overNet['6700']).toBe(-12000);
+    expect(r.overNet['1000']).toBe(12000);
+
+    // Neither may touch revenue or COGS.
+    expect(r.shortNet['4000']).toBeUndefined();
+    expect(r.overNet['4000']).toBeUndefined();
+    expect(r.shortNet['5100']).toBeUndefined();
+
+    // A balanced drawer posts NOTHING — not a zero journal, which would fail the
+    // engine's own balance assertion and would mean nothing anyway.
+    expect(r.balancedDrawer).toBeNull();
+
+    expect(r.desc).toBe('Cash drawer count');
+});

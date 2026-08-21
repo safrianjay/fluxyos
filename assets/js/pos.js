@@ -53,6 +53,7 @@ const state = {
     orderId: null,
     order: null,
     overview: null,
+    shift: null,
     unwatch: null,
     busy: false
 };
@@ -113,6 +114,11 @@ async function loadOutlets() {
     sel.disabled = false;
     const stored = localStorage.getItem(OUTLET_KEY);
     state.outletId = state.outlets.some((o) => o.id === stored) ? stored : state.outlets[0].id;
+    // Persist the FIRST resolution too, not just an explicit change. Without
+    // this the till re-picked outlets[0] on every load, so adding an outlet that
+    // sorted earlier would silently move a running till to a different room —
+    // and its sales with it.
+    localStorage.setItem(OUTLET_KEY, state.outletId);
     sel.innerHTML = state.outlets.map((o) =>
         `<option value="${esc(o.id)}"${o.id === state.outletId ? ' selected' : ''}>${esc(o.name)}</option>`).join('');
     return true;
@@ -439,7 +445,10 @@ async function startOrder(tableId) {
             dimensionId: state.outletId,
             tableId: tableId || null,
             tableLabel: t ? t.label : null,
-            channel: 'staff'
+            channel: 'staff',
+            // Stamps which drawer rang it up. Null when no shift is open — the
+            // sale is still real, it just sits outside every cash count.
+            shiftId: state.shift ? state.shift.id : null
         });
         state.orderId = order.id;
         state.order = order;
@@ -877,15 +886,216 @@ function openTableDrawer() {
     });
 }
 
+// ── The cash drawer ──────────────────────────────────────────────────────────
+//
+// The bit that makes a till reconcilable. Without it an owner ends the day with
+// a sales figure and a drawer full of cash and no way to ask whether they agree.
+
+function renderShift() {
+    const bar = $('pos-shiftbar');
+    const s = state.shift;
+    const mayManage = !!state.outletId;
+
+    if (!s) {
+        bar.className = 'pos-shiftbar is-closed';
+        bar.innerHTML = `
+            <span class="pos-shift-state"><span class="pos-shift-dot"></span>No shift open</span>
+            <span class="pos-shift-meta">Sales still record, but they sit outside every cash count.</span>
+            <span class="pos-shift-actions">
+                <button type="button" id="pos-open-shift" class="pos-shift-btn is-primary" ${mayManage ? '' : 'disabled'}>Open shift</button>
+            </span>`;
+        $('pos-open-shift')?.addEventListener('click', openShiftDrawer);
+        return;
+    }
+
+    const since = s.opened_at && typeof s.opened_at.toDate === 'function'
+        ? s.opened_at.toDate().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '';
+    const moves = (s.movements || []).length;
+    bar.className = 'pos-shiftbar is-open';
+    // Deliberately NOT showing expected cash here. The whole point of a blind
+    // close is that the person counting has not been told the answer.
+    bar.innerHTML = `
+        <span class="pos-shift-state"><span class="pos-shift-dot"></span>Shift open</span>
+        <span class="pos-shift-meta">Since ${esc(since)} · float ${rp(s.opening_float)}${moves ? ` · ${moves} drawer ${moves === 1 ? 'movement' : 'movements'}` : ''}</span>
+        <span class="pos-shift-actions">
+            <button type="button" id="pos-drawer-move" class="pos-shift-btn">Paid in / out</button>
+            <button type="button" id="pos-close-shift" class="pos-shift-btn is-primary">Close shift</button>
+        </span>`;
+    $('pos-drawer-move').addEventListener('click', openMovementDrawer);
+    $('pos-close-shift').addEventListener('click', () => once(openCloseShiftDrawer));
+}
+
+function openShiftDrawer() {
+    const outlet = state.outlets.find((o) => o.id === state.outletId);
+    drawer({
+        title: 'Open shift',
+        subtitle: outlet ? outlet.name : '',
+        submitLabel: 'Open shift',
+        body: `
+            <div>
+                <label class="block text-[12px] font-semibold text-slate-700 mb-2" for="pos-float">Opening float</label>
+                <input id="pos-float" name="float" inputmode="numeric" class="pos-amount-input" value="0" autocomplete="off">
+                <p class="text-[11px] text-slate-500 mt-2">The cash already in the drawer for change. It is not income and posts nothing — it just changes what the drawer should hold at close.</p>
+            </div>`,
+        onSubmit: async (fd) => {
+            const float = Number(String(fd.get('float')).replace(/\D/g, ''));
+            state.shift = await ds.openPosShift(state.uid, { dimensionId: state.outletId, openingFloat: float });
+            toast('Shift open.');
+            renderShift();
+            await refresh();
+        }
+    });
+    const el = $('pos-float');
+    el.addEventListener('input', () => {
+        const d = el.value.replace(/\D/g, '');
+        el.value = d ? Number(d).toLocaleString('id-ID') : '';
+    });
+}
+
+function openMovementDrawer() {
+    let kind = 'paid_out';
+    drawer({
+        title: 'Paid in / out',
+        subtitle: 'Cash that moved without a sale.',
+        submitLabel: 'Record',
+        body: `
+            <div>
+                <div class="pos-methods" id="pos-move-kind">
+                    <button type="button" class="pos-method is-on" data-kind="paid_out">Paid out</button>
+                    <button type="button" class="pos-method" data-kind="paid_in">Paid in</button>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-2" id="pos-move-note"></p>
+            </div>
+            <div>
+                <label class="block text-[12px] font-semibold text-slate-700 mb-2" for="pos-move-amt">Amount</label>
+                <input id="pos-move-amt" name="amount" inputmode="numeric" class="pos-amount-input" value="0" autocomplete="off">
+            </div>
+            <div>
+                <label class="block text-[12px] font-semibold text-slate-700 mb-2" for="pos-move-why">What for?</label>
+                <input id="pos-move-why" name="reason" class="w-full min-h-[44px] px-3 border border-slate-300 rounded-lg text-[14px]" placeholder="Beli es, bayar kurir, tambah kembalian…" required>
+            </div>`,
+        onSubmit: async (fd) => {
+            const amount = Number(String(fd.get('amount')).replace(/\D/g, ''));
+            state.shift = await ds.recordPosShiftMovement(state.uid, state.shift.id, {
+                kind, amount, reason: fd.get('reason')
+            });
+            toast(kind === 'paid_out' ? 'Paid out recorded.' : 'Paid in recorded.');
+            renderShift();
+        }
+    });
+    const note = () => {
+        // Say what each one does to the books, because they differ and it is not
+        // obvious: one is an expense, the other is moving your own cash around.
+        $('pos-move-note').textContent = kind === 'paid_out'
+            ? 'Records an expense — this money left the business.'
+            : 'Change topped up from the safe. Moves cash around; posts nothing.';
+    };
+    $('pos-move-kind').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-kind]');
+        if (!b) return;
+        kind = b.dataset.kind;
+        document.querySelectorAll('#pos-move-kind .pos-method').forEach((x) => x.classList.toggle('is-on', x === b));
+        note();
+    });
+    const el = $('pos-move-amt');
+    el.addEventListener('input', () => {
+        const d = el.value.replace(/\D/g, '');
+        el.value = d ? Number(d).toLocaleString('id-ID') : '';
+    });
+    note();
+}
+
+// BLIND CLOSE.
+//
+// The expected figure is not on screen — not in the shift bar, not in this
+// drawer — until the count has been entered and submitted. Showing it first
+// turns a count into a transcription, and the variance stops measuring
+// anything. That is the whole reason a blind close exists, so the reveal is
+// staged deliberately rather than by accident of layout.
+async function openCloseShiftDrawer() {
+    const tally = await ds.getPosShiftTally(state.uid, state.shift.id).catch(() => null);
+    drawer({
+        title: 'Close shift',
+        subtitle: tally ? `${tally.order_count} ${tally.order_count === 1 ? 'order' : 'orders'} this shift` : '',
+        submitLabel: 'Count and close',
+        body: `
+            <div>
+                <label class="block text-[12px] font-semibold text-slate-700 mb-2" for="pos-counted">Cash counted in the drawer</label>
+                <input id="pos-counted" name="counted" inputmode="numeric" class="pos-amount-input" value="" placeholder="0" autocomplete="off" required>
+                <p class="text-[11px] text-slate-500 mt-2">Count it before you look. FluxyOS shows what it expected only after you submit — a count taken against a number you were already shown cannot tell you anything.</p>
+            </div>
+            <div>
+                <label class="block text-[12px] font-semibold text-slate-700 mb-2" for="pos-close-note">Note <span class="font-normal text-slate-400">(optional)</span></label>
+                <input id="pos-close-note" name="note" class="w-full min-h-[44px] px-3 border border-slate-300 rounded-lg text-[14px]" placeholder="Anything worth remembering about this shift">
+            </div>`,
+        onSubmit: async (fd) => {
+            const counted = Number(String(fd.get('counted')).replace(/\D/g, ''));
+            const closed = await ds.closePosShift(state.uid, state.shift.id, {
+                countedCash: counted, note: fd.get('note')
+            });
+            state.shift = null;
+            renderShift();
+            await refresh();
+            showShiftResult(closed);
+        }
+    });
+    const el = $('pos-counted');
+    el.addEventListener('input', () => {
+        const d = el.value.replace(/\D/g, '');
+        el.value = d ? Number(d).toLocaleString('id-ID') : '';
+    });
+}
+
+// The reveal. Now — and only now — the expected figure and the variance.
+function showShiftResult(s) {
+    const v = Number(s.variance) || 0;
+    const tone = v === 0 ? 'is-ok' : (v < 0 ? 'is-short' : 'is-over');
+    const word = v === 0 ? 'Drawer balanced' : (v < 0 ? 'Short' : 'Over');
+    const methods = Object.entries(s.by_method || {});
+    drawer({
+        title: 'Shift closed',
+        subtitle: `${s.order_count} ${s.order_count === 1 ? 'order' : 'orders'} this shift`,
+        submitLabel: 'Done',
+        body: `
+            <div>
+                <div class="pos-total-row"><span>Opening float</span><span>${rp(s.opening_float)}</span></div>
+                <div class="pos-total-row"><span>Cash sales</span><span>${rp(s.cash_sales)}</span></div>
+                ${(s.movements || []).filter((m) => m.kind === 'paid_in').length
+                    ? `<div class="pos-total-row"><span>Paid in</span><span>${rp((s.movements || []).filter((m) => m.kind === 'paid_in').reduce((a, m) => a + m.amount, 0))}</span></div>` : ''}
+                ${(s.movements || []).filter((m) => m.kind === 'paid_out').length
+                    ? `<div class="pos-total-row"><span>Paid out</span><span>−${rp((s.movements || []).filter((m) => m.kind === 'paid_out').reduce((a, m) => a + m.amount, 0))}</span></div>` : ''}
+                <div class="pos-total-row is-grand"><span>Expected in drawer</span><span>${rp(s.expected_cash)}</span></div>
+                <div class="pos-total-row"><span>You counted</span><span>${rp(s.counted_cash)}</span></div>
+                <div class="pos-variance ${tone}"><span>${word}</span><span>${v === 0 ? rp(0) : (v < 0 ? '−' : '+') + rp(v)}</span></div>
+                ${v !== 0 ? `<p class="text-[11px] text-slate-500 mt-2">Posted to 6700 Cash Over &amp; Short. It is kept out of sales on purpose — folding it in would hide the very thing this count exists to find.</p>` : ''}
+            </div>
+            ${s.non_cash_sales ? `<div class="pos-count-reveal">
+                <p class="text-[12px] font-semibold text-slate-700 mb-2">Not in the drawer</p>
+                <div class="pos-total-row"><span>Card, QRIS and transfer</span><span>${rp(s.non_cash_sales)}</span></div>
+                <p class="text-[11px] text-slate-500 mt-2">Settles when the provider pays out, so it was never cash you could count.</p>
+            </div>` : ''}
+            ${methods.length ? `<div class="pos-count-reveal">
+                <p class="text-[12px] font-semibold text-slate-700 mb-2">By payment method</p>
+                ${methods.map(([m, amt]) => {
+                    const label = (DataService.POS_PAYMENT_METHODS.find((x) => x.id === m) || {}).label || m;
+                    return `<div class="pos-total-row"><span>${esc(label)}</span><span>${rp(amt)}</span></div>`;
+                }).join('')}
+            </div>` : ''}`,
+        onSubmit: async () => {}
+    });
+}
+
 // ── Load ─────────────────────────────────────────────────────────────────────
 
 async function refresh({ keepOrder = false } = {}) {
-    const [overview, menu] = await Promise.all([
+    const [overview, menu, shift] = await Promise.all([
         ds.getPosOverview(state.uid, { dimensionId: state.outletId }),
-        ds.getPosMenu(state.uid)
+        ds.getPosMenu(state.uid),
+        ds.getOpenPosShift(state.uid, { dimensionId: state.outletId })
     ]);
     state.overview = overview;
     state.menu = menu;
+    state.shift = shift;
 
     // Re-bind the open order to the freshly-read copy, so the panel can never
     // show a stale version and lose the concurrency race on the next write.
@@ -898,6 +1108,7 @@ async function refresh({ keepOrder = false } = {}) {
         }
     }
 
+    renderShift();
     renderMetrics();
     renderBanners();
     renderTables();

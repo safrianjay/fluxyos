@@ -5970,7 +5970,7 @@ class DataService {
         };
     }
 
-    async createPosOrder(userId, { dimensionId, tableId = null, tableLabel = null, channel = 'staff', note = null } = {}) {
+    async createPosOrder(userId, { dimensionId, tableId = null, tableLabel = null, channel = 'staff', note = null, shiftId = null } = {}) {
         if (!userId) throw new Error('userId required');
         if (!dimensionId) throw new Error('Pick an outlet before opening an order.');
         const scope = this._scope(userId);
@@ -6000,6 +6000,10 @@ class DataService {
             service_charge_amount: 0, tax_amount: 0, total_amount: 0,
             payments: [], paid_amount: 0,
             note: this._nullableString(note, 200),
+            // Which drawer rang this up. Null when no shift was open — those
+            // sales are real but sit outside every cash count, which is exactly
+            // what the POS overview nudges about.
+            shift_id: shiftId || null,
             version: 1,
             opened_at: Timestamp.fromDate(now),
             paid_at: null, voided_at: null, void_reason: null,
@@ -6189,6 +6193,223 @@ class DataService {
             }
         }
         return order;
+    }
+
+
+    // ── The cash drawer ─────────────────────────────────────────────────────
+    //
+    // A shift is what makes the till reconcilable. Without it an owner has a
+    // sales figure and a drawer full of cash and no way to ask whether they
+    // agree — which is the single question every close-of-day actually asks.
+    //
+    // THE OPENING FLOAT DOES NOT POST. Moving cash from the safe to the drawer
+    // is an internal movement inside `1000 Cash & Bank`; a journal would be
+    // Dr 1000 / Cr 1000, which nets to nothing and fails the balance assertion
+    // anyway. The float still changes what the drawer SHOULD hold, so it is
+    // arithmetic, not accounting. Counterintuitive enough to be worth stating.
+    //
+    // Only the VARIANCE posts (POS-SHIFT-VARIANCE → 6700), and only when it is
+    // non-zero.
+
+    _shiftExpectedCash(shift) {
+        const paidIn = (shift.movements || [])
+            .filter((m) => m.kind === 'paid_in').reduce((s, m) => s + (Number(m.amount) || 0), 0);
+        const paidOut = (shift.movements || [])
+            .filter((m) => m.kind === 'paid_out').reduce((s, m) => s + (Number(m.amount) || 0), 0);
+        return Math.round(Number(shift.opening_float) || 0)
+            + Math.round(Number(shift.cash_sales) || 0)
+            + paidIn - paidOut;
+    }
+
+    async getOpenPosShift(userId, { dimensionId } = {}) {
+        try {
+            const snap = await getDocs(query(
+                collection(this.db, `${this._scope(userId)}/pos_shifts`),
+                orderBy('created_at', 'desc'), limit(20)
+            ));
+            return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+                .find((s) => s.status === 'open' && (!dimensionId || s.dimension_id === dimensionId)) || null;
+        } catch (_) { return null; }
+    }
+
+    async listPosShifts(userId, { dimensionId = null, limitCount = 20 } = {}) {
+        try {
+            const snap = await getDocs(query(
+                collection(this.db, `${this._scope(userId)}/pos_shifts`),
+                orderBy('created_at', 'desc'), limit(limitCount)
+            ));
+            return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+                .filter((s) => !dimensionId || s.dimension_id === dimensionId);
+        } catch (_) { return []; }
+    }
+
+    async openPosShift(userId, { dimensionId, openingFloat = 0, note = null } = {}) {
+        if (!userId) throw new Error('userId required');
+        if (!dimensionId) throw new Error('Pick an outlet before opening a shift.');
+        const float = Math.round(Number(openingFloat) || 0);
+        if (float < 0) throw new Error('The opening float cannot be negative.');
+
+        // One drawer per outlet. Two open shifts would each claim the same sales
+        // and neither would reconcile. Rules cannot query, so this is the DAL's
+        // job — the same class of guard as `sku` uniqueness on items.
+        const existing = await this.getOpenPosShift(userId, { dimensionId });
+        if (existing) throw new Error('This outlet already has a shift open. Close it before starting another.');
+
+        const ref = doc(collection(this.db, `${this._scope(userId)}/pos_shifts`));
+        const payload = {
+            dimension_id: dimensionId,
+            status: 'open',
+            opened_at: Timestamp.fromDate(new Date()),
+            opened_by: this.actorUid || userId,
+            opening_float: float,
+            movements: [],
+            closed_at: null, closed_by: null,
+            counted_cash: null, expected_cash: null, variance: null,
+            cash_sales: 0, non_cash_sales: 0, order_count: 0,
+            note: this._nullableString(note, 200),
+            journal_ref: null, accounting_status: null,
+            version: 1,
+            created_at: serverTimestamp(), updated_at: serverTimestamp()
+        };
+        await setDoc(ref, payload);
+        await this._auditCreateBestEffort(userId, 'pos_shift.opened', 'pos_shifts', ref.id,
+            { opening_float: float, dimension_id: dimensionId });
+        return { id: ref.id, ...payload };
+    }
+
+    // Cash in or out of the drawer that is not a sale.
+    //
+    // PAID OUT posts an ordinary expense — buying ice, paying a courier — because
+    // that money genuinely left the business. PAID IN does not: it is almost
+    // always change topped up from the safe, which is internal. If a paid-in ever
+    // needs to post, it is not a paid-in; it is a sale or a refund and belongs on
+    // an order.
+    async recordPosShiftMovement(userId, shiftId, { kind, amount, reason, category = 'Operations' } = {}) {
+        if (!['paid_in', 'paid_out'].includes(kind)) throw new Error('A drawer movement is either paid in or paid out.');
+        const amt = Math.round(Number(amount) || 0);
+        if (amt <= 0) throw new Error('Enter how much went in or out.');
+        const why = this._nullableString(reason, 120);
+        if (!why) throw new Error('Say what the money was for — it is the only record of it.');
+
+        const scope = this._scope(userId);
+        const ref = doc(this.db, `${scope}/pos_shifts/${shiftId}`);
+        const out = await runTransaction(this.db, async (tx) => {
+            const snap = await tx.get(ref);
+            if (!snap.exists()) throw new Error('That shift no longer exists.');
+            const cur = { id: snap.id, ...snap.data() };
+            if (cur.status !== 'open') throw new Error('This shift is closed.');
+            const movements = [...(cur.movements || []), {
+                id: `m${Date.now().toString(36)}`,
+                kind, amount: amt, reason: why,
+                at: Timestamp.fromDate(new Date()),
+                by: this.actorUid || userId
+            }];
+            tx.update(ref, { movements, version: (Number(cur.version) || 1) + 1, updated_at: serverTimestamp() });
+            return { ...cur, movements, version: (Number(cur.version) || 1) + 1 };
+        });
+
+        if (kind === 'paid_out') {
+            try {
+                await this.addTransaction(userId, {
+                    amount: amt, vendor_name: why, category, type: 'expense', icon: '💸',
+                    status: 'Completed', timestamp: new Date(), dimension_id: out.dimension_id
+                });
+            } catch (err) {
+                console.error('[pos] paid-out recorded in the drawer but not posted:', err && err.message);
+            }
+        }
+        return out;
+    }
+
+    // What the shift sold, read from the orders that carry its id. Exact rather
+    // than a time-range guess, which two tills at one outlet would make
+    // ambiguous the moment that ships.
+    async getPosShiftTally(userId, shiftId) {
+        const orders = await this.getPosOrders(userId, { statuses: ['paid'], limitCount: 300 });
+        const mine = orders.filter((o) => o.shift_id === shiftId);
+        const cashMethods = DataService.POS_PAYMENT_METHODS
+            .filter((m) => m.settlement === 'cash').map((m) => m.id);
+        let cash = 0; let nonCash = 0;
+        const byMethod = {};
+        mine.forEach((o) => {
+            (o.payments || []).filter((p) => p.status === 'settled').forEach((p) => {
+                const amt = Number(p.amount) || 0;
+                byMethod[p.method] = (byMethod[p.method] || 0) + amt;
+                if (cashMethods.includes(p.method)) cash += amt; else nonCash += amt;
+            });
+            // A refund hands cash back out of the same drawer.
+            if (o.refund_transaction_id) cash -= Number(o.total_amount) || 0;
+        });
+        return { cash_sales: cash, non_cash_sales: nonCash, order_count: mine.length, by_method: byMethod };
+    }
+
+    // Close it. `countedCash` is what was physically counted, and the caller is
+    // expected NOT to have shown the expected figure first — see closePosShift's
+    // note in pos.js. The variance posts only when it is non-zero.
+    async closePosShift(userId, shiftId, { countedCash, note = null } = {}) {
+        const counted = Math.round(Number(countedCash));
+        if (!Number.isFinite(counted) || counted < 0) throw new Error('Enter the cash you counted in the drawer.');
+
+        const scope = this._scope(userId);
+        const ref = doc(this.db, `${scope}/pos_shifts/${shiftId}`);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) throw new Error('That shift no longer exists.');
+        const shift = { id: snap.id, ...snap.data() };
+        if (shift.status !== 'open') throw new Error('This shift is already closed.');
+
+        const tally = await this.getPosShiftTally(userId, shiftId);
+        const withSales = { ...shift, cash_sales: tally.cash_sales };
+        const expected = this._shiftExpectedCash(withSales);
+        const variance = counted - expected;
+        const when = new Date();
+
+        const patch = {
+            status: 'closed',
+            closed_at: Timestamp.fromDate(when),
+            closed_by: this.actorUid || userId,
+            counted_cash: counted,
+            expected_cash: expected,
+            variance,
+            cash_sales: tally.cash_sales,
+            non_cash_sales: tally.non_cash_sales,
+            order_count: tally.order_count,
+            note: this._nullableString(note, 200) || shift.note || null,
+            version: (Number(shift.version) || 1) + 1,
+            updated_at: serverTimestamp()
+        };
+
+        // A drawer that counted exactly right has nothing to say to the ledger.
+        //
+        // The SHIFT is the source document and posts directly, exactly as
+        // `goods_receipts` and `stock_adjustments` do. An earlier cut also wrote
+        // a `transactions` row so the variance would show in the ledger view —
+        // which was a double count waiting to happen: that row carried
+        // `accounting_status: 'pending'`, so postPendingJournals would have
+        // posted it a SECOND time as an ordinary expense, on top of this
+        // journal. The variance is visible in the Accounting Center and on
+        // /outlet-pnl, which is where a posting belongs.
+        if (variance !== 0) {
+            const batch = writeBatch(this.db);
+            if (this._canPostJournals()) {
+                // `patch` itself goes in, so _postSourceJournal stamps
+                // journal_ref + accounting_status onto the object that is
+                // actually written. Passing a copy — as the first cut did —
+                // posts the journal and leaves the shift unable to name it.
+                patch.reference = `Shift ${shiftId.slice(0, 6)}`;
+                await this._postSourceJournal(userId, batch, 'pos_shifts', ref, patch, { date: when });
+                delete patch.reference;
+            }
+            batch.update(ref, patch);
+            await batch.commit();
+        } else {
+            await updateDoc(ref, patch);
+        }
+
+        await this._auditCreateBestEffort(userId, 'pos_shift.closed', 'pos_shifts', shiftId, {
+            counted_cash: counted, expected_cash: expected, variance,
+            order_count: tally.order_count, dimension_id: shift.dimension_id
+        });
+        return { id: shiftId, ...shift, ...patch, by_method: tally.by_method };
     }
 
     // ── Emission: where an operational event becomes a financial one ────────

@@ -2579,6 +2579,44 @@ service cloud.firestore {
         && data.pos_settlement in ['cash', 'clearing']
         && data.created_at == request.time;
     }
+    // ---- POS shift (the cash drawer) ----
+    // Split create/close for the same reason the order validators are split: one
+    // validator that evaluates both branches on every write is how the 1000-
+    // expression budget gets spent.
+    function wsPosShiftKeys(data) {
+      return data.keys().hasOnly([
+          'dimension_id', 'status', 'opened_at', 'opened_by', 'opening_float',
+          'movements', 'closed_at', 'closed_by', 'counted_cash', 'expected_cash',
+          'variance', 'cash_sales', 'non_cash_sales', 'order_count', 'note',
+          'journal_ref', 'accounting_status', 'reference', 'version', 'created_at', 'updated_at'
+        ]);
+    }
+    function wsValidPosShiftCreate(data) {
+      return wsPosShiftKeys(data)
+        && data.dimension_id is string
+        && data.status == 'open'
+        && data.opening_float is number
+        && data.opening_float >= 0
+        && data.movements is list
+        && data.version == 1
+        && data.counted_cash == null
+        && data.created_at == request.time;
+    }
+    // An open shift takes paid-in / paid-out, then closes ONCE.
+    // `counted_cash` is what the person physically counted; it may never be
+    // rewritten, because a second count with the first one visible is not a
+    // blind count and the variance stops meaning anything.
+    function wsValidPosShiftUpdate(data, prev) {
+      return wsPosShiftKeys(data)
+        && data.version == prev.version + 1
+        && data.dimension_id == prev.dimension_id
+        && data.opening_float == prev.opening_float
+        && data.created_at == prev.created_at
+        && data.status in ['open', 'closed']
+        && data.movements is list
+        && (prev.counted_cash == null || data.counted_cash == prev.counted_cash)
+        && (data.status != 'closed' || data.counted_cash is number);
+    }
     function wsPosOrderKeys(data) {
       return data.keys().hasOnly([
           'order_number', 'dimension_id', 'table_id', 'table_label', 'channel', 'status',
@@ -2586,6 +2624,7 @@ service cloud.firestore {
           'service_charge_amount', 'tax_amount', 'total_amount', 'payments', 'paid_amount',
           'note', 'version', 'opened_at', 'paid_at', 'voided_at', 'void_reason',
           'transaction_id', 'stock_adjustment_id', 'refund_transaction_id', 'refund_reason', 'refunded_at',
+          'shift_id',
           'created_at', 'updated_at', 'created_by', 'updated_by'
         ]);
     }
@@ -3608,6 +3647,17 @@ service cloud.firestore {
           && request.resource.data.label.size() <= 40
           && request.resource.data.dimension_id is string
           && request.resource.data.status in ['active', 'archived'];
+        allow delete: if false;
+      }
+      // The cash drawer. A cashier opens, runs and closes their own shift — they
+      // are the one holding the money, so withholding this would make the
+      // feature unusable by the only role that needs it.
+      match /pos_shifts/{shiftId} {
+        allow read: if wsReadPos(workspaceId);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'cashier'])
+          && wsValidPosShiftCreate(request.resource.data);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'cashier'])
+          && wsValidPosShiftUpdate(request.resource.data, resource.data);
         allow delete: if false;
       }
       // Orders. Mutable while open, frozen once paid — correction is by refund,

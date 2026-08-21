@@ -292,6 +292,54 @@ async function main() {
             version: 7, refund_reason: 'x', refund_transaction_id: 'tx-r2'
         }));
 
+    console.log('\n— pos_shifts: the cash drawer —');
+    await setMemberRole(uid, 'cashier');
+    const shift = (o = {}) => ({
+        dimension_id: 'outlet-kemang', status: 'open',
+        opened_at: new Date(), opened_by: 'qa', opening_float: 200000,
+        movements: [], closed_at: null, closed_by: null,
+        counted_cash: null, expected_cash: null, variance: null,
+        cash_sales: 0, non_cash_sales: 0, order_count: 0, note: null,
+        journal_ref: null, accounting_status: null, version: 1,
+        created_at: serverTimestamp(), updated_at: serverTimestamp(), ...o
+    });
+
+    // A cashier runs their own drawer — they are the one holding the money, so
+    // withholding this would make the feature unusable by the role that needs it.
+    await expectOutcome('cashier opens a shift', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_shifts/s1`), shift()));
+    await expectOutcome('a negative opening float is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_shifts/s-neg`), shift({ opening_float: -1 })));
+    await expectOutcome('a shift created already closed is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_shifts/s-closed`), shift({ status: 'closed', counted_cash: 5 })));
+    await expectOutcome('a shift created with a count already in it is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_shifts/s-counted`), shift({ counted_cash: 100 })));
+
+    await expectOutcome('recording a drawer movement is allowed', true, () =>
+        updateDoc(doc(db, `workspaces/${WS}/pos_shifts/s1`), {
+            version: 2, movements: [{ id: 'm1', kind: 'paid_out', amount: 15000, reason: 'Beli es' }]
+        }));
+    await expectOutcome('a stale version is denied', false, () =>
+        updateDoc(doc(db, `workspaces/${WS}/pos_shifts/s1`), { version: 2, movements: [] }));
+    await expectOutcome('changing the opening float after the fact is denied', false, () =>
+        updateDoc(doc(db, `workspaces/${WS}/pos_shifts/s1`), { version: 3, opening_float: 999999 }));
+    await expectOutcome('closing without a count is denied', false, () =>
+        updateDoc(doc(db, `workspaces/${WS}/pos_shifts/s1`), { version: 3, status: 'closed' }));
+
+    await expectOutcome('closing WITH a count is allowed', true, () =>
+        updateDoc(doc(db, `workspaces/${WS}/pos_shifts/s1`), {
+            version: 3, status: 'closed', counted_cash: 480000,
+            expected_cash: 500000, variance: -20000, closed_at: new Date(),
+            journal_ref: 'j-var', accounting_status: 'posted'
+        }));
+    // THE blind-count invariant. A second count entered after the first — with
+    // the expected figure now on screen — is not a blind count, and the variance
+    // stops measuring anything at all.
+    await expectOutcome('recounting a closed drawer is denied', false, () =>
+        updateDoc(doc(db, `workspaces/${WS}/pos_shifts/s1`), { version: 4, counted_cash: 500000 }));
+    await expectOutcome('deleting a shift is denied', false, () =>
+        deleteDoc(doc(db, `workspaces/${WS}/pos_shifts/s1`)));
+
     console.log('\n— viewer has no till —');
     await setMemberRole(uid, 'viewer');
     await expectOutcome('viewer creating an order is denied', false, () =>

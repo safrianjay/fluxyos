@@ -13,7 +13,8 @@ source: docs/POS_IMPLEMENTATION_PLAN.md
 
 Phase 1 of [`POS_IMPLEMENTATION_PLAN.md`](../POS_IMPLEMENTATION_PLAN.md).
 
-**Status:** the staff till ships in full — tables (create + archive), orders,
+**Status:** Phase 1.5 (shifts and the cash drawer) ships too — see §10. The
+staff till ships in full — tables (create + archive), orders,
 per-line and per-order discounts (amount or percent), line notes, manual payment
 with partial tender, void, refund, a 58mm receipt, and posting through the
 existing kernel. QR customer ordering (Phase 2), shifts
@@ -255,9 +256,84 @@ could read another outlet's orders. Same honest distinction `feature-access.js`
 documents for itself. Enforcing it needs a member-doc field read per evaluation —
 check the budget first; Phase 3.
 
+## 10. `pos_shifts/{shiftId}` — the cash drawer
+
+What makes the till reconcilable. Without it an owner ends the day with a sales
+figure and a drawer full of cash and no way to ask whether they agree — which is
+the only question a close-of-day actually asks.
+
+| Field | Type | Notes |
+|---|---|---|
+| `dimension_id` | string | Outlet. **One open shift per outlet** — two would each claim the same sales and neither would reconcile. Enforced in the DAL; rules cannot query |
+| `status` | enum | `open` \| `closed` |
+| `opening_float` | integer | Cash in the drawer at open. **Immutable after create** |
+| `movements` | array | `{id, kind: 'paid_in'\|'paid_out', amount, reason, at, by}` |
+| `counted_cash` | integer \| null | What was physically counted. **Write-once** — see below |
+| `expected_cash` / `variance` | integer \| null | Computed at close. `variance = counted − expected` |
+| `cash_sales` / `non_cash_sales` / `order_count` | integer | Tallied from orders carrying this `shift_id` |
+| `journal_ref` / `accounting_status` | | Standard source-document link |
+| `version` | integer | Concurrency guard, as on orders |
+
+`pos_orders.shift_id` says which drawer rang a sale up. Exact, rather than a time
+range — which two tills at one outlet would make ambiguous the moment that ships.
+Null when no shift was open: the sale is real, it just sits outside every cash
+count, which is what the shift bar says in words.
+
+### The float does not post
+
+Moving cash from the safe to the drawer is internal to `1000 Cash & Bank`. A
+journal would be `Dr 1000 / Cr 1000` — nets to nothing and fails the engine's
+balance assertion. The float still changes what the drawer *should* hold, so it
+is arithmetic, not accounting. Counterintuitive enough to be worth stating.
+
+### Paid in and paid out are not symmetrical
+
+**Paid out** posts an ordinary expense — buying ice, paying a courier. That money
+left the business. **Paid in** does not: it is change topped up from the safe,
+which is internal. If a paid-in ever needs to post it is not a paid-in; it is a
+sale or a refund and belongs on an order.
+
+### Only the variance posts
+
+```
+drawer short   Dr 6700 Cash Over & Short / Cr 1000    POS-SHIFT-VARIANCE
+drawer over    Dr 1000 / Cr 6700 Cash Over & Short    POS-SHIFT-VARIANCE
+```
+
+`6700` is new in the seed. A **single** account that swings both ways is the
+standard treatment: a credit balance means the tills ran over, which is as much a
+control signal as running short. Deliberately **not** netted into sales — folding
+a short into revenue hides the exact thing the count exists to expose, the same
+way waste posts to `5150` so spoilage cannot hide inside gross margin.
+
+**A balanced drawer posts nothing.** `selectRule` returns null on a zero
+variance; a zero journal would fail the balance assertion and would mean nothing.
+
+**The shift is the source document and posts directly**, as `goods_receipts` and
+`stock_adjustments` do. An earlier cut also wrote a `transactions` row so the
+variance would appear in the ledger view — a double count waiting to happen: that
+row carried `accounting_status: 'pending'`, so `postPendingJournals` would have
+posted it a second time as an ordinary expense on top of the journal. Found
+2026-08-22 by reading the shift back after a close.
+
+### The blind count
+
+`counted_cash` is **write-once** — rules refuse a second count once one exists.
+A recount taken with the expected figure now on screen is not a blind count, and
+the variance stops measuring anything. The UI holds the same line: expected cash
+appears nowhere — not in the shift bar, not in the close drawer — until the count
+has been submitted.
+
+### Rules
+
+Read = all member roles plus `cashier`. Create/update = finance+ **and
+`cashier`**: they are the one holding the money, so withholding this would make
+the feature unusable by the only role that needs it. Never deleted.
+`opening_float` is immutable after create; `version` must advance by one.
+
 ## 9. What is NOT built
 
 Offline-first (v1 is online-only with a visible connection banner — the largest
-honest limitation), shifts and the cash drawer, kitchen display, split-by-seat,
+honest limitation), kitchen display, split-by-seat,
 per-outlet menu pricing, QR ordering, payment providers, and any AI over POS
 data. §15 of the plan sequences all of them.
