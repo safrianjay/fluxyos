@@ -173,7 +173,15 @@ vendor."
 4. **Only then** consider a first-party till, and only if the connector route is
    demonstrably insufficient.
 
-**Before step 1**, the outstanding gate is unchanged: nobody has walked the
-inventory chain on real data. `scripts/seed-fnb-demo.js` exists for exactly that.
-Building per-sale costing on top of a chain no human has used would compound
-unvalidated work rather than de-risk it.
+**Before step 1**, the outstanding gate was: nobody has walked the inventory
+chain on real data. `scripts/seed-fnb-demo.js` exists for exactly that.
+
+**Gate closed 2026-08-21.** The chain was driven end to end through the real UI
+— every screen opened, every screenshot looked at — rather than through
+DataService. The kernel specs were all green and the console was clean, and it
+still turned up three defects no spec was asking about: a blank reorder point
+stored as `0` (so the Overview and Restock reported 78 and 27 items for the same
+population), a tab badge whose `hidden` class lost on specificity and rendered
+an empty pill, and `Net` sitting 38px off the right edge of Outlet P&L behind a
+scroll nobody looks for. All three were user-visible; none was detectable from
+the assertions that existed. Walking it is what found them.

@@ -241,7 +241,7 @@ the full module.**
 |---|---|
 | **Volume** | ~15 F&B prospects |
 | **Requirement** | POS **and** intelligent inventory |
-| **Depth** | Ingredient stock/usage · recipe & menu COGS · waste & spoilage · stock per outlet — **all four** |
+| **Depth** | Ingredient stock/usage · recipe & menu COGS · waste & spoilage · stock per outlet — **all four**. All four now have a user-facing path: the recipe editor shipped 2026-08-21, which was the last of them (the engine, posting path and data model already existed; only the authoring UI was missing) |
 | **POS today** | **Mixed** — some run a till, some do not |
 | **Sales stage** | **Blocked.** No signature until it ships |
 | **Source** | Founder sales pipeline. Not in the repository; recorded here so it is |

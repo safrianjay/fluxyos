@@ -4717,6 +4717,34 @@
         "Try a different search, or show all activity.": "Coba pencarian lain, atau tampilkan semua aktivitas.",
         "Clear filters": "Hapus filter",
         "Clear search": "Hapus pencarian",
+        "Ingredient": "Bahan",
+        "Quantity per batch": "Kuantitas per batch",
+        "Batch size": "Ukuran batch",
+        "Usable yield percent": "Persen hasil terpakai",
+        "What is this?": "Ini apa?",
+        "Something you buy and hold": "Sesuatu yang Anda beli dan simpan",
+        "A recipe made from other items": "Resep yang dibuat dari item lain",
+        "A recipe is not held as stock. When one is sold, FluxyOS relieves the ingredients it consumes — so its cost follows its ingredients instead of being typed in.": "Resep tidak disimpan sebagai stok. Saat satu porsi terjual, FluxyOS mengurangi bahan yang dipakainya — jadi biayanya mengikuti bahannya, bukan diketik manual.",
+        "A dish or preparation made from items you already stock. Its cost comes from its ingredients, and selling one relieves them.": "Hidangan atau olahan dari item yang sudah Anda stok. Biayanya berasal dari bahannya, dan setiap penjualan mengurangi bahan itu.",
+        "A recipe. Its ingredients can change; what it is cannot.": "Sebuah resep. Bahannya bisa diubah; jenis itemnya tidak.",
+        "Something you buy and hold. Its stock history depends on that, so it cannot become a recipe.": "Sesuatu yang Anda beli dan simpan. Riwayat stoknya bergantung pada itu, jadi tidak bisa diubah menjadi resep.",
+        "What one batch uses": "Yang dipakai satu batch",
+        "List the ingredients and how much of each a single batch consumes. Quantities are what actually leaves the shelf, before any trimming loss.": "Daftarkan bahan dan berapa banyak yang dipakai satu batch. Kuantitasnya adalah yang benar-benar keluar dari rak, sebelum susut potong.",
+        "One batch makes": "Satu batch menghasilkan",
+        "A pot of soup that fills 10 bowls is 10, and the quantities below are for the whole pot.": "Sepanci sup yang mengisi 10 mangkuk berarti 10, dan kuantitas di bawah adalah untuk satu panci penuh.",
+        "What one serving is called — portion, pcs, gelas. A recipe is measured in this, and its ingredients keep their own units.": "Sebutan untuk satu sajian — porsi, pcs, gelas. Resep diukur dengan satuan ini, dan bahannya tetap memakai satuannya sendiri.",
+        "Add another ingredient": "Tambah bahan lain",
+        "Choose an ingredient…": "Pilih bahan…",
+        "Cost per batch": "Biaya per batch",
+        "Add an ingredient": "Tambahkan bahan",
+        "Set a batch size": "Tentukan ukuran batch",
+        "Not yet known": "Belum diketahui",
+        "An ingredient quantity has to be a whole number of that ingredient’s own stock unit. Switch its unit, or round the amount.": "Kuantitas bahan harus berupa bilangan bulat dalam satuan stok bahan itu sendiri. Ganti satuannya, atau bulatkan jumlahnya.",
+        "That would make a recipe contain itself, through one of its own ingredients. Remove the ingredient that leads back to this dish.": "Itu membuat resep mengandung dirinya sendiri lewat salah satu bahannya. Hapus bahan yang mengarah balik ke hidangan ini.",
+        "One of the ingredients no longer exists. Remove that row and pick it again.": "Salah satu bahan sudah tidak ada. Hapus barisnya lalu pilih ulang.",
+        "Only a recipe can have ingredients. This item is something you buy and hold.": "Hanya resep yang bisa punya bahan. Item ini adalah sesuatu yang Anda beli dan simpan.",
+        "How many servings does one batch make? A whole number, at least 1.": "Satu batch menghasilkan berapa sajian? Bilangan bulat, minimal 1.",
+        "This recipe is nested too deeply through its sub-preparations. Flatten one of them.": "Resep ini bertingkat terlalu dalam lewat olahan turunannya. Ratakan salah satunya.",
         "A reorder point of 0 can never warn you: an item is low while it still has stock, and reaching zero is already reported as Out of stock. Leave this blank for no warning, or enter the level you want to be told at.": "Titik pemesanan ulang 0 tidak akan pernah memberi peringatan: sebuah item disebut menipis selagi stoknya masih ada, dan stok yang habis sudah dilaporkan sebagai Stok habis. Kosongkan kalau tidak ingin diperingatkan, atau isi dengan level saat Anda ingin diberi tahu.",
         "The reorder point is a quantity in stock units — a whole number above zero, or blank for no warning.": "Titik pemesanan ulang adalah kuantitas dalam satuan stok — bilangan bulat di atas nol, atau kosongkan kalau tidak ingin diperingatkan.",
         "No stock has moved yet": "Belum ada stok yang bergerak",
@@ -4899,6 +4927,30 @@
               return '"' + m[1] + '" tampak seperti kuantitas, bukan satuan. Satuan stok adalah satuan yang Anda hitung — g, ml, pcs, botol. '
                   + 'Kalau maksud Anda "1 sak = ' + m[2] + '", itu tempatnya di Satuan beli di bawah.';
           } },
+        // Recipe editor: the per-unit cost row names the recipe's own unit.
+        { re: /^Cost per (.+)$/,
+          id: function (m) { return 'Biaya per ' + m[1]; } },
+        // "Rice has no recorded cost yet, so …" — the ingredient names are data.
+        { re: /^(.+?) (has|have) no recorded cost yet, so (none of this recipe can be priced|this is only the part that can be)\. Receive stock against (it|them) and (the cost appears here|this figure completes itself)\.$/,
+          id: function (m) {
+              return m[1] + ' belum punya biaya tercatat, jadi '
+                  + (m[3] === 'none of this recipe can be priced'
+                      ? 'resep ini belum bisa dihitung biayanya'
+                      : 'ini baru bagian yang bisa dihitung')
+                  + '. Catat penerimaan stok untuk ' + (m[4] === 'it' ? 'bahan itu' : 'bahan-bahan itu')
+                  + ' dan ' + (m[5] === 'the cost appears here' ? 'biayanya akan muncul di sini' : 'angka ini akan lengkap sendiri') + '.';
+          } },
+        // Duplicate ingredient, named.
+        { re: /^(.+?) is listed twice\. Combine it into one row with the total amount a batch uses — two rows read as if the recipe uses less than it does\.$/,
+          id: function (m) {
+              return m[1] + ' tercantum dua kali. Gabungkan jadi satu baris dengan total yang dipakai satu batch — dua baris terbaca seolah resepnya memakai lebih sedikit.';
+          } },
+        // Batch size, stated with the recipe's unit.
+        { re: /^How many servings does one batch make\? A whole number of (.+)\.$/,
+          id: function (m) { return 'Satu batch menghasilkan berapa sajian? Bilangan bulat dalam ' + m[1] + '.'; } },
+        // Ingredient row: not a whole number of the ingredient's base unit.
+        { re: /^Not a whole number of (.+)$/,
+          id: function (m) { return 'Bukan bilangan bulat dalam ' + m[1]; } },
         // Stock count: variance stated in words, then magnitude.
         { re: /^(Short|Over) ([\d.,]+) (.+?)(?: · (Rp[\d.]+))?$/,
           id: function (m) {

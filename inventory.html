@@ -315,6 +315,60 @@
         .inv-line-remove:disabled { opacity: .4; cursor: not-allowed; }
         .inv-line-remove:disabled:hover { color: #94A3B8; }
 
+        /* Recipe editor. The ingredient row reuses .inv-line from the receipt
+           drawer — same shape of question (which item, how much, in what unit),
+           so it gets the same shape of control. Only the pieces the receipt
+           drawer has no equivalent for are defined here. */
+        .rcp-batch {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 8px;
+            align-items: center;
+        }
+        .rcp-batch-unit {
+            font-size: 13px;
+            color: #64748B;
+            font-weight: 500;
+        }
+        .rcp-line-grid {
+            display: grid;
+            grid-template-columns: 1fr 90px 108px;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        @media (max-width: 420px) {
+            .rcp-line-grid { grid-template-columns: 1fr 90px; }
+            .rcp-line-yield { grid-column: 1 / -1; }
+        }
+        .rcp-cost {
+            margin-top: 12px;
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            padding: 12px;
+            background: #F8FAFC;
+        }
+        .rcp-cost-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .rcp-cost-row + .rcp-cost-row { margin-top: 6px; }
+        .rcp-cost-label { font-size: 12px; color: #64748B; }
+        .rcp-cost-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #0B0F19;
+            font-variant-numeric: tabular-nums;
+        }
+        .rcp-cost-value--muted { color: #94A3B8; font-weight: 500; }
+        .rcp-cost-note {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #92400E;
+            line-height: 1.45;
+        }
+
         /* `header.inv-topbar` rather than `.inv-topbar` so it outranks Tailwind's
            equally-specific .px-6, which the CDN injects after this stylesheet. */
         @media (max-width: 640px) {
@@ -618,6 +672,15 @@
         </div>
 
         <form id="item-form" class="fluxy-drawer-body" novalidate>
+            <div class="fluxy-drawer-field" id="item-type-field">
+                <label class="fluxy-drawer-label" for="item-type">What is this?</label>
+                <select id="item-type" class="fluxy-drawer-select">
+                    <option value="stock">Something you buy and hold</option>
+                    <option value="composite">A recipe made from other items</option>
+                </select>
+                <p id="item-type-hint" class="fluxy-drawer-hint">A recipe is not held as stock. When one is sold, FluxyOS relieves the ingredients it consumes — so its cost follows its ingredients instead of being typed in.</p>
+            </div>
+
             <div class="fluxy-drawer-field">
                 <label class="fluxy-drawer-label" for="item-name">Name</label>
                 <input id="item-name" type="text" class="fluxy-drawer-input" maxlength="120" placeholder="Tepung Terigu" autocomplete="off" required>
@@ -629,7 +692,7 @@
                 <p id="item-base-unit-hint" class="fluxy-drawer-hint">The smallest unit you actually count in. Every quantity is stored in it, so it cannot be changed once the item exists.</p>
             </div>
 
-            <div class="fluxy-drawer-section">
+            <div class="fluxy-drawer-section" id="item-purchase-section">
                 <div class="fluxy-drawer-section-head">
                     <h3 class="fluxy-drawer-section-title">Purchase unit</h3>
                 </div>
@@ -647,13 +710,37 @@
                 <p id="item-purchase-preview" class="fluxy-drawer-hint"></p>
             </div>
 
+            <!-- RECIPE — shown only for a composite item. `components` say what ONE
+                 BATCH consumes; `batch_size` says how much that batch produces, in
+                 this item's own base unit. -->
+            <div class="fluxy-drawer-section hidden" id="item-recipe-section">
+                <div class="fluxy-drawer-section-head">
+                    <h3 class="fluxy-drawer-section-title">What one batch uses</h3>
+                </div>
+                <p class="fluxy-drawer-section-desc">List the ingredients and how much of each a single batch consumes. Quantities are what actually leaves the shelf, before any trimming loss.</p>
+
+                <div class="fluxy-drawer-field">
+                    <label class="fluxy-drawer-label" for="item-batch-size">One batch makes</label>
+                    <div class="rcp-batch">
+                        <input id="item-batch-size" type="text" inputmode="numeric" class="fluxy-drawer-input" value="1" placeholder="10" aria-label="Batch size">
+                        <span class="rcp-batch-unit" id="item-batch-unit">portion</span>
+                    </div>
+                    <p class="fluxy-drawer-hint">A pot of soup that fills 10 bowls is 10, and the quantities below are for the whole pot.</p>
+                </div>
+
+                <div id="recipe-lines"></div>
+                <button type="button" id="recipe-add-line" class="fluxy-drawer-btn fluxy-drawer-btn--secondary fluxy-drawer-btn--block" style="margin-top:8px;">Add another ingredient</button>
+                <div id="recipe-cost" class="rcp-cost"></div>
+                <div id="recipe-error" class="fluxy-drawer-callout fluxy-drawer-callout--warning hidden"></div>
+            </div>
+
             <div class="fluxy-drawer-field">
                 <label class="fluxy-drawer-label" for="item-shelf">Shelf or storage area <span class="inv-muted">(optional)</span></label>
                 <input id="item-shelf" type="text" class="fluxy-drawer-input" maxlength="60" placeholder="Dry store — shelf A" autocomplete="off">
                 <p class="fluxy-drawer-hint">Counts are ordered by this, so the sheet follows the walk through your stockroom instead of the alphabet.</p>
             </div>
 
-            <div class="fluxy-drawer-field">
+            <div class="fluxy-drawer-field" id="item-reorder-field">
                 <label class="fluxy-drawer-label" for="item-reorder">Reorder point <span class="inv-muted">(optional)</span></label>
                 <input id="item-reorder" type="text" inputmode="numeric" class="fluxy-drawer-input" placeholder="5000" autocomplete="off">
                 <p id="item-reorder-hint" class="fluxy-drawer-hint">Warn me when stock drops to this. Left blank, the item is never counted as low — a threshold guessed from a few days of history would be noise dressed as advice.</p>
@@ -763,7 +850,7 @@
         import { applyToPage } from './assets/js/onboarding-gate.js';
         // Conversion lives in the engine, not here. A page that reimplements
         // "kg → g" is a second place for the arithmetic behind COGS to be wrong.
-        import { itemUnits, toBase, INV, reorderPointOf } from './assets/js/inventory-engine.js';
+        import { itemUnits, toBase, INV, reorderPointOf, recipeCost, unitCostOf } from './assets/js/inventory-engine.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -1535,6 +1622,240 @@
 
         window.__invBuildOrderList = buildOrderList;
 
+        // ── Recipe editor ────────────────────────────────────────────────────
+        //
+        // A composite item's `components` are what ONE BATCH consumes. The engine
+        // owns every rule (duplicate ingredient, fractional quantity, cycle,
+        // nesting depth) and db-service validates the graph against the item as
+        // it WOULD BE after the write — so this is a form, not a second
+        // implementation. It converts units and shows the cost; it decides
+        // nothing.
+        let recipeLines = [];
+        let recipeUid = 0;
+
+        function newRecipeLine() {
+            recipeUid += 1;
+            return { uid: `r${recipeUid}`, itemId: '', qty: '', unit: '', yieldPct: '' };
+        }
+
+        // Anything can be an ingredient except the item being edited — a recipe
+        // containing itself is a cycle, which the engine refuses. Excluding it
+        // here means the user never has to be told.
+        function ingredientCandidates() {
+            return allRows
+                .map((r) => r.item)
+                .filter((i) => !editingItem || i.id !== editingItem.id)
+                .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'id'));
+        }
+
+        function renderRecipeLines() {
+            const host = document.getElementById('recipe-lines');
+            const candidates = ingredientCandidates();
+            if (!recipeLines.length) recipeLines = [newRecipeLine()];
+
+            host.innerHTML = recipeLines.map((line) => {
+                const chosen = candidates.find((i) => i.id === line.itemId) || null;
+                const options = ['<option value="">Choose an ingredient…</option>']
+                    .concat(candidates.map((i) => {
+                        const tag = i.type === 'composite' ? ' (recipe)' : '';
+                        return `<option value="${esc(i.id)}"${i.id === line.itemId ? ' selected' : ''}>${esc(i.name)}${tag}</option>`;
+                    })).join('');
+                const units = chosen ? itemUnits(chosen) : [];
+                const unitOptions = units.map((u) =>
+                    `<option value="${esc(u.code)}"${u.code === line.unit ? ' selected' : ''}>${esc(u.code)}</option>`).join('');
+                return `
+                    <div class="inv-line" data-rline="${line.uid}">
+                        <select class="fluxy-drawer-select" data-field="item" aria-label="Ingredient">${options}</select>
+                        <div class="rcp-line-grid">
+                            <input type="text" inputmode="decimal" class="fluxy-drawer-input" data-field="qty"
+                                   value="${esc(line.qty)}" placeholder="1500" aria-label="Quantity per batch">
+                            <select class="fluxy-drawer-select" data-field="unit" aria-label="Unit"${units.length ? '' : ' disabled'}>${unitOptions}</select>
+                            <input type="text" inputmode="numeric" class="fluxy-drawer-input rcp-line-yield" data-field="yield"
+                                   value="${esc(line.yieldPct)}" placeholder="Yield %" aria-label="Usable yield percent">
+                        </div>
+                        <div class="inv-line-foot">
+                            <span class="inv-line-derived" data-field="derived"></span>
+                            <button type="button" class="inv-line-remove" data-field="remove"${recipeLines.length === 1 ? ' disabled' : ''}>Remove</button>
+                        </div>
+                    </div>`;
+            }).join('');
+            refreshRecipeCost();
+        }
+
+        // Everything the page already knows about cost, keyed for the engine.
+        // Unit cost is weighted average — value on hand over quantity on hand —
+        // and an item with no stock has no cost basis at all, which the readout
+        // has to say rather than treat as free.
+        function costIndex() {
+            const idx = {};
+            allRows.forEach((r) => {
+                if (r.stock && r.stock.quantity > 0) idx[r.item.id] = unitCostOf(r.stock.quantity, r.stock.value);
+            });
+            return idx;
+        }
+
+        function itemsById() {
+            const map = {};
+            allRows.forEach((r) => { map[r.item.id] = r.item; });
+            return map;
+        }
+
+        // What one line resolves to in the ingredient's own base unit, which is
+        // what actually gets stored. Shown before saving for the same reason the
+        // receipt drawer shows it: a wrong unit is cheap here and expensive in a
+        // COGS figure next month.
+        function resolvedComponents() {
+            const byId = itemsById();
+            const out = [];
+            recipeLines.forEach((line) => {
+                const item = byId[line.itemId];
+                if (!item || line.qty === '') return;
+                const qty = Number(String(line.qty).replace(',', '.'));
+                if (!Number.isFinite(qty) || qty <= 0) return;
+                let base;
+                try {
+                    base = toBase(item, qty, line.unit || item.base_unit);
+                } catch (_) {
+                    return; // engine refuses a fractional base quantity; surfaced on save
+                }
+                const y = String(line.yieldPct).trim();
+                out.push({
+                    item_id: item.id,
+                    quantity: base,
+                    yield_percent: y === '' ? null : Number(y),
+                    _item: item
+                });
+            });
+            return out;
+        }
+
+        function refreshRecipeCost() {
+            const byId = itemsById();
+            document.querySelectorAll('#recipe-lines .inv-line').forEach((row) => {
+                const line = recipeLines.find((l) => l.uid === row.dataset.rline);
+                const cell = row.querySelector('[data-field="derived"]');
+                const item = line ? byId[line.itemId] : null;
+                if (!item || line.qty === '') { cell.textContent = ''; return; }
+                const qty = Number(String(line.qty).replace(',', '.'));
+                if (!Number.isFinite(qty) || qty <= 0) { cell.textContent = ''; return; }
+                try {
+                    const base = toBase(item, qty, line.unit || item.base_unit);
+                    cell.textContent = `${base.toLocaleString('id-ID')} ${item.base_unit || ''}`.trim();
+                } catch (err) {
+                    cell.textContent = err && err.code === INV.NON_INTEGER_QUANTITY
+                        ? 'Not a whole number of ' + (item.base_unit || 'stock units')
+                        : '';
+                }
+            });
+
+            const host = document.getElementById('recipe-cost');
+            const components = resolvedComponents();
+            const batch = Number(document.getElementById('item-batch-size').value.trim());
+            const batchOk = Number.isInteger(batch) && batch > 0;
+
+            if (!components.length) {
+                host.innerHTML = `<div class="rcp-cost-row">
+                    <span class="rcp-cost-label">Cost per batch</span>
+                    <span class="rcp-cost-value rcp-cost-value--muted">Add an ingredient</span>
+                </div>`;
+                return;
+            }
+
+            // Cost the draft as it stands, by putting it into the graph under a
+            // temporary id. The engine explodes nested sub-recipes for free, so a
+            // sauce inside a dish costs correctly without this knowing about it.
+            const DRAFT = '__draft__';
+            const byIdDraft = { ...byId };
+            byIdDraft[DRAFT] = {
+                id: DRAFT, type: 'composite',
+                batch_size: batchOk ? batch : 1,
+                components: components.map((c) => ({ item_id: c.item_id, quantity: c.quantity }))
+            };
+            let res;
+            try {
+                res = recipeCost(byIdDraft, costIndex(), DRAFT, batchOk ? batch : 1);
+            } catch (err) {
+                host.innerHTML = `<div class="rcp-cost-row">
+                    <span class="rcp-cost-label">Cost per batch</span>
+                    <span class="rcp-cost-value rcp-cost-value--muted">—</span>
+                </div>`;
+                return;
+            }
+
+            const unitName = document.getElementById('item-base-unit').value.trim() || 'unit';
+            const perUnit = batchOk && batch > 0 ? Math.round(res.cost / batch) : null;
+            const missingNames = res.missingCost
+                .map((id) => (byId[id] && byId[id].name) || id)
+                .filter(Boolean);
+            // When NOTHING could be priced, the total is not "Rp0" — it is
+            // unknown, and rendering a figure for it would be a number standing
+            // in for an absence (DESIGN_SYSTEM 3b). "At least Rp28.000" is
+            // honest when part of the recipe priced; "At least Rp0" is not.
+            const nothingPriced = missingNames.length > 0 && res.cost === 0;
+            const prefix = missingNames.length ? 'At least ' : '';
+            const batchText = nothingPriced
+                ? '<span class="rcp-cost-value rcp-cost-value--muted">Not yet known</span>'
+                : `<span class="rcp-cost-value">${prefix}${rp(res.cost)}</span>`;
+            const unitText = perUnit === null
+                ? '<span class="rcp-cost-value rcp-cost-value--muted">Set a batch size</span>'
+                : (nothingPriced
+                    ? '<span class="rcp-cost-value rcp-cost-value--muted">Not yet known</span>'
+                    : `<span class="rcp-cost-value">${prefix}${rp(perUnit)}</span>`);
+
+            host.innerHTML = `
+                <div class="rcp-cost-row">
+                    <span class="rcp-cost-label">Cost per batch</span>
+                    ${batchText}
+                </div>
+                <div class="rcp-cost-row">
+                    <span class="rcp-cost-label">Cost per ${esc(unitName)}</span>
+                    ${unitText}
+                </div>
+                ${missingNames.length ? `<p class="rcp-cost-note">${esc(missingNames.join(', '))} ${missingNames.length === 1 ? 'has' : 'have'} no recorded cost yet, so ${nothingPriced ? 'none of this recipe can be priced' : 'this is only the part that can be'}. Receive stock against ${missingNames.length === 1 ? 'it' : 'them'} and ${nothingPriced ? 'the cost appears here' : 'this figure completes itself'}.</p>` : ''}`;
+        }
+
+        function readRecipeFromForm() {
+            document.querySelectorAll('#recipe-lines .inv-line').forEach((row) => {
+                const line = recipeLines.find((l) => l.uid === row.dataset.rline);
+                if (!line) return;
+                line.itemId = row.querySelector('[data-field="item"]').value;
+                line.qty = row.querySelector('[data-field="qty"]').value.trim();
+                const unitEl = row.querySelector('[data-field="unit"]');
+                line.unit = unitEl ? unitEl.value : '';
+                line.yieldPct = row.querySelector('[data-field="yield"]').value.trim();
+            });
+        }
+
+        // A recipe and a stock item ask different questions. Showing a purchase
+        // unit for a dish, or a reorder point for something never held, would be
+        // fields that cannot be answered — so the form becomes the one being
+        // filled in rather than both at once.
+        function applyItemType() {
+            const isRecipe = document.getElementById('item-type').value === 'composite';
+            document.getElementById('item-recipe-section').classList.toggle('hidden', !isRecipe);
+            document.getElementById('item-purchase-section').classList.toggle('hidden', isRecipe);
+            document.getElementById('item-reorder-field').classList.toggle('hidden', isRecipe);
+            // The drawer's own description has to follow the choice too — it
+            // opened saying "goods you buy and hold", which stops being true the
+            // moment someone picks a recipe.
+            if (!editingItem) {
+                document.getElementById('item-drawer-desc').textContent = isRecipe
+                    ? 'A dish or preparation made from items you already stock. Its cost comes from its ingredients, and selling one relieves them.'
+                    : 'Ingredients and goods you buy and hold. Once an item exists you can receive stock against it and count it.';
+            }
+            // On an existing item the hint explains why the field is locked, and
+            // that outranks describing what to type into it.
+            if (!editingItem) {
+                document.getElementById('item-base-unit-hint').textContent = isRecipe
+                    ? 'What one serving is called — portion, pcs, gelas. A recipe is measured in this, and its ingredients keep their own units.'
+                    : 'The smallest unit you actually count in. Every quantity is stored in it, so it cannot be changed once the item exists.';
+            }
+            document.getElementById('item-batch-unit').textContent =
+                document.getElementById('item-base-unit').value.trim() || 'portion';
+            if (isRecipe) renderRecipeLines();
+            validateForm();
+        }
+
         // ── Drawer ───────────────────────────────────────────────────────────
         function openDrawer(item) {
             editingItem = item;
@@ -1552,6 +1873,37 @@
                 ? String(reorderPointOf(item)) : '';
             document.getElementById('item-notes').value = isEdit ? (item.notes || '') : '';
 
+            // `type` is immutable once the item exists: a stock item may already
+            // carry movements, and a recipe is relieved as its ingredients — so
+            // flipping it would reinterpret history rather than change a setting.
+            const typeEl = document.getElementById('item-type');
+            typeEl.value = isEdit ? (item.type || 'stock') : 'stock';
+            typeEl.disabled = isEdit;
+            document.getElementById('item-type-hint').textContent = isEdit
+                ? (item.type === 'composite'
+                    ? 'A recipe. Its ingredients can change; what it is cannot.'
+                    : 'Something you buy and hold. Its stock history depends on that, so it cannot become a recipe.')
+                : 'A recipe is not held as stock. When one is sold, FluxyOS relieves the ingredients it consumes — so its cost follows its ingredients instead of being typed in.';
+
+            document.getElementById('item-batch-size').value = isEdit && item.batch_size
+                ? String(item.batch_size) : '1';
+            recipeLines = (isEdit && Array.isArray(item.components) && item.components.length)
+                ? item.components.map((c) => {
+                    recipeUid += 1;
+                    return {
+                        uid: `r${recipeUid}`,
+                        itemId: c.item_id,
+                        // Stored quantities are always in the component's base
+                        // unit, so the row opens in that unit and the user can
+                        // switch if they think in a bigger one.
+                        qty: String(c.quantity),
+                        unit: '',
+                        yieldPct: c.yield_percent === null || c.yield_percent === undefined ? '' : String(c.yield_percent)
+                    };
+                })
+                : [newRecipeLine()];
+            document.getElementById('recipe-error').classList.add('hidden');
+
             const baseUnitEl = document.getElementById('item-base-unit');
             baseUnitEl.value = isEdit ? (item.base_unit || '') : '';
             // base_unit is immutable — every recorded quantity is an integer count
@@ -1561,8 +1913,8 @@
                 ? 'Fixed once the item exists — every quantity already recorded is counted in it.'
                 : 'The smallest unit you actually count in. Every quantity is stored in it, so it cannot be changed once the item exists.';
 
-            // v1 carries at most one alternate unit, the one you buy in. Recipes
-            // and sales units arrive with the recipe editor.
+            // One alternate unit, the one you buy in. A recipe has none — it is
+            // never purchased, only made.
             const purchase = (isEdit && Array.isArray(item.units))
                 ? item.units.find((u) => u.role === 'purchase') || item.units[0] || null
                 : null;
@@ -1571,6 +1923,10 @@
 
             hideError();
             updatePurchasePreview();
+            // Shows or hides the recipe half of the form, and renders its rows.
+            // Must run after the prefill above, since it reads the type and the
+            // base unit it just set.
+            applyItemType();
             validateForm();
 
             document.getElementById('item-drawer-backdrop').classList.remove('hidden');
@@ -1612,7 +1968,11 @@
         function validateForm() {
             const name = document.getElementById('item-name').value.trim();
             const base = document.getElementById('item-base-unit').value.trim();
-            document.getElementById('item-save-btn').disabled = !(name && base);
+            // A recipe with no ingredients is not a recipe — it would save as a
+            // composite that explodes to nothing and relieves no stock at all.
+            const isRecipe = document.getElementById('item-type').value === 'composite';
+            const hasIngredient = !isRecipe || resolvedComponents().length > 0;
+            document.getElementById('item-save-btn').disabled = !(name && base && hasIngredient);
         }
 
         function collectDraft() {
@@ -1646,9 +2006,31 @@
                     ? 'A reorder point of 0 can never warn you: an item is low while it still has stock, and reaching zero is already reported as Out of stock. Leave this blank for no warning, or enter the level you want to be told at.'
                     : 'The reorder point is a quantity in stock units — a whole number above zero, or blank for no warning.');
             }
+            const isRecipe = document.getElementById('item-type').value === 'composite';
+            if (isRecipe) {
+                const batchRaw = document.getElementById('item-batch-size').value.trim();
+                if (!/^\d+$/.test(batchRaw) || Number(batchRaw) < 1) {
+                    throw new Error('How many servings does one batch make? A whole number of ' + (document.getElementById('item-base-unit').value.trim() || 'units') + '.');
+                }
+            }
+            if (isRecipe) {
+                // The engine refuses a repeated ingredient and its message says
+                // "combine the quantities" — an instruction to the UI, so it is
+                // caught here where the row and its name are still in hand.
+                const components = resolvedComponents();
+                const seen = new Set();
+                const dupe = components.find((c) => {
+                    if (seen.has(c.item_id)) return true;
+                    seen.add(c.item_id);
+                    return false;
+                });
+                if (dupe) {
+                    throw new Error(`${dupe._item.name} is listed twice. Combine it into one row with the total amount a batch uses — two rows read as if the recipe uses less than it does.`);
+                }
+            }
             return {
                 name: document.getElementById('item-name').value.trim(),
-                type: editingItem ? editingItem.type : 'stock',
+                type: editingItem ? editingItem.type : (isRecipe ? 'composite' : 'stock'),
                 base_unit: document.getElementById('item-base-unit').value.trim(),
                 units,
                 storage_location: document.getElementById('item-shelf').value.trim() || null,
@@ -1656,9 +2038,12 @@
                 // Blank stays null — "no threshold" is not "a threshold of zero".
                 reorder_point: reorderRaw === '' ? null : Number(reorderRaw),
                 notes: document.getElementById('item-notes').value.trim() || null,
-                // Preserve a recipe made elsewhere; v1's drawer never edits one.
-                components: editingItem ? (editingItem.components || []) : [],
-                batch_size: editingItem ? (editingItem.batch_size || 1) : 1
+                components: isRecipe
+                    ? resolvedComponents().map((c) => ({
+                        item_id: c.item_id, quantity: c.quantity, yield_percent: c.yield_percent
+                    }))
+                    : [],
+                batch_size: isRecipe ? Number(document.getElementById('item-batch-size').value.trim()) : 1
             };
         }
 
@@ -1668,7 +2053,16 @@
             INV_002: 'The purchase unit must be a whole number of stock units.',
             INV_003: 'Give the item a stock unit — the unit you count it in.',
             INV_004: 'That purchase unit repeats the stock unit with a different size. Remove it, or give it its real conversion.',
-            INV_007: 'Give the item a name.'
+            INV_005: 'An ingredient quantity has to be a whole number of that ingredient\u2019s own stock unit. Switch its unit, or round the amount.',
+            INV_007: 'Give the item a name.',
+            // The engine's own prose for these carries raw item ids, which is
+            // right for a log and wrong for a drawer — db-service says as much:
+            // "the caller renders err.code, never the prose".
+            INV_008: 'That would make a recipe contain itself, through one of its own ingredients. Remove the ingredient that leads back to this dish.',
+            INV_009: 'One of the ingredients no longer exists. Remove that row and pick it again.',
+            INV_010: 'Only a recipe can have ingredients. This item is something you buy and hold.',
+            INV_011: 'How many servings does one batch make? A whole number, at least 1.',
+            INV_012: 'This recipe is nested too deeply through its sub-preparations. Flatten one of them.'
         };
 
         async function saveItem() {
@@ -1960,6 +2354,55 @@
         });
         ['item-base-unit', 'item-purchase-unit', 'item-purchase-factor'].forEach((id) => {
             document.getElementById(id).addEventListener('input', updatePurchasePreview);
+        });
+
+        // ── Recipe editor wiring ─────────────────────────────────────────────
+        document.getElementById('item-type').addEventListener('change', applyItemType);
+        // The batch unit is the item's own base unit, so it follows that field.
+        document.getElementById('item-base-unit').addEventListener('input', () => {
+            document.getElementById('item-batch-unit').textContent =
+                document.getElementById('item-base-unit').value.trim() || 'portion';
+            refreshRecipeCost();
+        });
+        document.getElementById('item-batch-size').addEventListener('input', refreshRecipeCost);
+        document.getElementById('recipe-add-line').addEventListener('click', () => {
+            readRecipeFromForm();
+            recipeLines.push(newRecipeLine());
+            renderRecipeLines();
+            validateForm();
+        });
+        // One delegated listener: rows are re-rendered on every change, so a
+        // per-node listener would be re-attached constantly and leak.
+        document.getElementById('recipe-lines').addEventListener('change', (e) => {
+            const row = e.target.closest('[data-rline]');
+            if (!row) return;
+            readRecipeFromForm();
+            // Changing the ingredient changes which units are offered, so the
+            // row has to be rebuilt rather than patched.
+            if (e.target.dataset.field === 'item') {
+                const line = recipeLines.find((l) => l.uid === row.dataset.rline);
+                if (line) line.unit = '';
+                renderRecipeLines();
+            } else {
+                refreshRecipeCost();
+            }
+            validateForm();
+        });
+        document.getElementById('recipe-lines').addEventListener('input', (e) => {
+            if (!e.target.closest('[data-rline]')) return;
+            readRecipeFromForm();
+            refreshRecipeCost();
+            validateForm();
+        });
+        document.getElementById('recipe-lines').addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-field="remove"]');
+            if (!btn) return;
+            const row = btn.closest('[data-rline]');
+            readRecipeFromForm();
+            recipeLines = recipeLines.filter((l) => l.uid !== row.dataset.rline);
+            if (!recipeLines.length) recipeLines = [newRecipeLine()];
+            renderRecipeLines();
+            validateForm();
         });
 
         // Tabs, alerts, filter chip, activity deep-links
