@@ -56,9 +56,16 @@ test('chart of accounts seed is internally consistent', async ({ page }) => {
         };
     });
 
-    // 34 unique, well-formed accounts.
-    expect(r.count).toBe(34);
-    expect(new Set(r.codes).size).toBe(r.count);
+    // The seed grows — 34 → 37 → 38 (6700 Cash Over & Short, 2026-08-22) — and
+    // this literal was three behind before anyone noticed, because a red test
+    // that has been red a while stops being read.
+    //
+    // `npm run check:structure` is the guard that actually TRACKS the count: it
+    // cross-checks the seed against every doc that quotes it, so a drifted
+    // number fails loudly there and cannot sit stale. What is worth pinning HERE
+    // is the shape — uniqueness and well-formedness — which no doc asserts.
+    expect(r.count).toBeGreaterThanOrEqual(38);
+    expect(new Set(r.codes).size, 'every account code must be unique').toBe(r.count);
     expect(r.badCodes).toEqual([]);
     expect(r.badTypes).toEqual([]);
     expect(r.typeMismatch).toEqual([]);
@@ -70,27 +77,41 @@ test('chart of accounts seed is internally consistent', async ({ page }) => {
     // Contra normal-balance overrides exist ONLY on 3200 and 4900.
     expect(r.contraOverrides.sort()).toEqual(['3200', '4900']);
     // System set covers every code the engines/defaults hardcode.
-    const requiredSystem = ['1000', '1030', '1100', '2000', '2800', '3000', '3900', '4000',
-        '6100', '6200', '6300', '6400', '6500', '6600', '6999',
+    //
+    // This list drifted the same way the count above did: 1200 Inventory and
+    // 2050 GRNI became system accounts when inventory shipped (2026-08-16) and
+    // were never added here, so the spec has been red ever since. 6700 Cash Over
+    // & Short joined on 2026-08-22. A seed account marked `is_system` is one the
+    // posting engine owns, so a code appearing here without a reason is exactly
+    // what this assertion is for — it just has to be kept current to say
+    // anything.
+    const requiredSystem = ['1000', '1030', '1100', '1200', '2000', '2050', '2800', '3000', '3900', '4000',
+        '6100', '6200', '6300', '6400', '6500', '6600', '6700', '6999',
         '1130', '1140', '1150', '2100', '2110', '2200'];
     expect([...r.systemCodes].sort()).toEqual([...requiredSystem].sort());
-    // 16-value SAK enum; catalog derivation admits 21 mappable accounts
-    // (1100 A/R and 2000 A/P became unmappable with the control layer, and
-    // 2800 Suspense is seeded unmappable).
+    // 16-value SAK enum. Mappable rose to 22 when 5150 Inventory Adjustment
+    // shipped with inventory — it carries no `mappable: false`, so spend can be
+    // categorised to it, which is intended.
     expect(r.sakCategories.length).toBe(16);
-    expect(r.mappableCount).toBe(21);
+    expect(r.mappableCount).toBe(22);
 
     // --- Posting control layer -------------------------------------------
     // The subledger, cash, equity, and tax-control accounts must be closed to
     // BOTH human surfaces: a manual journal to 1100 breaks the tie between the
     // aging report and the balance sheet with no audit path back to a customer.
-    const structural = ['1000', '1100', '2000', '3000', '3900',
+    // 1200 Inventory and 2050 GRNI joined when inventory shipped: stock may only
+    // move through stock_movements, or 1200 stops tying to its subledger. 6700
+    // Cash Over & Short joined with the drawer — a variance is a CONSEQUENCE of
+    // a count, never something typed straight onto a transaction.
+    const structural = ['1000', '1100', '1200', '2000', '2050', '3000', '3900',
         '1130', '1140', '1150', '2100', '2110', '2200'].sort();
-    expect(r.blockedDirect).toEqual(structural);
+    expect(r.blockedDirect).toEqual([...structural, '6700'].sort());
     // 1030 Payment Gateway Clearing additionally blocks manual journals while
     // staying hand-codeable: a settlement row is coded to it, but it clears by
     // matching gross settlement to net deposit, so a manual entry leaves residue
     // nothing can match off. Proof the two flags are genuinely independent.
+    // 6700 is the mirror case: closed to direct transactions but OPEN to a manual
+    // journal, so an accountant can still write off a stubborn variance.
     expect(r.blockedManual).toEqual([...structural, '1030'].sort());
     expect(r.policyClearing).toEqual({ mappable: false, allow_manual_journal: false, allow_direct_transaction: true });
     // Fail-OPEN by default: a user-created account carries no flags and must stay
