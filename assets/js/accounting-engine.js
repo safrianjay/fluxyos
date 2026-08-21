@@ -516,6 +516,26 @@ function isCommerceSourced(doc) {
     return String(doc && doc.source || '').trim().toLowerCase() === 'commerce';
 }
 
+// A row the point of sale wrote. POS is commerce that happens in the room rather
+// than on a marketplace (PRODUCT_STRATEGY.md §6) — same shape: an order document,
+// a posting rule, and the kernel does the rest.
+//
+// It gets its own rule rather than reusing TXN-INC-CASH for one reason: a POS sale
+// carries a DISCOUNT, and a discount folded into the price is gone forever — no
+// menu price integrity, no discount analytics, no anomaly detection. POS-SALE
+// posts it as contra-revenue so the gross price survives into the ledger.
+function isPosSourced(doc) {
+    return String(doc && doc.source || '').trim().toLowerCase() === 'pos';
+}
+
+// Cash reaches the drawer immediately; QRIS / card / e-wallet sit with the
+// acquirer until payout. Routing non-cash to 1030 rather than 1000 is what keeps
+// the bank reconciliation tieable and makes 1030's balance the unsettled float —
+// the same reason CM-ORDER-REV does it, and the payout clears through CM-SETTLE.
+function posSettlementAccount(doc) {
+    return String(doc && doc.pos_settlement || '').trim().toLowerCase() === 'clearing' ? CLEARING : CASH;
+}
+
 export function selectRule(collection, document) {
     const doc = document || {};
     if (collection === 'transactions') {
@@ -540,6 +560,22 @@ export function selectRule(collection, document) {
                     return 'CM-SETTLE';
                 default:
                     break; // anything else falls through to the standard rules
+            }
+        }
+        // A till sale. Cash and non-cash both post POS-SALE; the settlement side
+        // differs inside the rule. A non-cash payout later clears 1030 through
+        // CM-SETTLE, which is a `transfer` and already routed above.
+        if (isPosSourced(doc)) {
+            switch (type) {
+                case 'income':
+                case 'revenue':
+                    return 'POS-SALE';
+                case 'refund':
+                    return 'POS-REFUND';
+                case 'transfer':
+                    return 'CM-SETTLE';
+                default:
+                    break;
             }
         }
         switch (type) {
@@ -635,8 +671,47 @@ const RULES = {
         return [line(SALES_RETURNS, amt, 0, 'Marketplace refund'), line(CLEARING, 0, amt, 'Deducted from payout')];
     },
     'CM-SETTLE': (doc) => {
-        const amt = requireAmount(doc.amount, 'commerce settlement');
-        return [line(CASH, amt, 0, 'Marketplace payout received'), line(CLEARING, 0, amt, 'Float cleared')];
+        const amt = requireAmount(doc.amount, 'settlement payout');
+        return [line(CASH, amt, 0, 'Payout received'), line(CLEARING, 0, amt, 'Float cleared')];
+    },
+    // A till sale. `amount` is NET revenue (gross − discount), which is what every
+    // existing revenue surface counts — the dashboard KPI, the income statement,
+    // /outlet-pnl. The gross price and the discount are recovered from
+    // `pos_discount_amount` so the journal can state both:
+    //
+    //   Dr 1000 Cash  or  1030 Clearing   (net — what the customer actually paid)
+    //   Dr 4900 Sales Discounts           (discount given, when there is one)
+    //       Cr 4000 Revenue               (GROSS, the menu price)
+    //
+    // With no discount this degrades to the ordinary two-line cash sale.
+    //
+    // Tax is deliberately absent. Indonesian F&B is generally liable for a
+    // REGIONAL tax (PB1 / PBJT), not PPN, and it is a liability collected on the
+    // government's behalf rather than revenue — so booking it here would overstate
+    // revenue. The rate and liability vary by regency; the number needs an
+    // Indonesian tax practitioner before it reaches a journal, and the account does
+    // not exist in the seed yet. See docs/POS_IMPLEMENTATION_PLAN.md §18.7.
+    'POS-SALE': (doc) => {
+        const net = requireAmount(doc.amount, 'POS sale');
+        const discount = Math.max(0, toInt(doc.pos_discount_amount));
+        const settle = posSettlementAccount(doc);
+        const acct = explicitAccount(doc, 'revenue') || REVENUE;
+        const lines = [line(settle, net, 0, settle === CLEARING ? 'Awaiting payout' : 'Cash received')];
+        if (discount > 0) lines.push(line(SALES_RETURNS, discount, 0, doc.pos_discount_reason || 'Discount given'));
+        lines.push(line(acct, 0, net + discount, doc.category || 'Sales'));
+        return lines;
+    },
+    // Money handed back for a till sale. Contra-revenue rather than negative
+    // income, for the same reason CM-ORDER-REFUND is: posting it as `refund`
+    // income (which elsewhere in the app means a refund RECEIVED) would inflate
+    // both revenue and cash on every return.
+    'POS-REFUND': (doc) => {
+        const amt = requireAmount(doc.amount, 'POS refund');
+        const settle = posSettlementAccount(doc);
+        return [
+            line(SALES_RETURNS, amt, 0, doc.pos_refund_reason || 'Sale refunded'),
+            line(settle, 0, amt, settle === CLEARING ? 'Deducted from payout' : 'Cash refunded')
+        ];
     },
     'TXN-ACCRUE-AR': (doc) => {
         const amt = requireAmount(doc.amount, 'pending receivable');
@@ -751,10 +826,17 @@ const RULE_DESCRIPTIONS = {
     'INV-ISSUE': 'Invoice issued',
     'INV-PAY': 'Invoice paid',
     'CM-ORDER-REV': 'Marketplace order',
-    'CM-ORDER-COGS': 'Marketplace cost of goods',
+    // Source-neutral: a till sale relieves stock through the SAME rule, because it
+    // is the same journal (Dr 5100 / Cr 1200) caused by the same event — a sale.
+    // The rule ID still reads CM-* because it is stamped on immutable posted
+    // journals and renaming it would orphan every one of them; the journal's
+    // `source.collection` is what says which front end caused it.
+    'CM-ORDER-COGS': 'Cost of goods sold',
     'CM-ORDER-FEE': 'Marketplace fee',
     'CM-ORDER-REFUND': 'Marketplace refund',
-    'CM-SETTLE': 'Marketplace payout',
+    'CM-SETTLE': 'Settlement payout',
+    'POS-SALE': 'Till sale',
+    'POS-REFUND': 'Till refund',
     'OPENING': 'Opening balance',
     'CLOSE': 'Period close'
 };

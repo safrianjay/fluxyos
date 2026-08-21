@@ -2523,6 +2523,85 @@ service cloud.firestore {
     function hasRole(workspaceId, roles) {
       return isMember(workspaceId) && (callerMember(workspaceId).role in roles);
     }
+    // Till operator. NOT a finance role — never add it to a `viewer` read list,
+    // that would hand floor staff the ledger. Create-without-read on transactions
+    // + stock_adjustments is the design. docs/POS_IMPLEMENTATION_PLAN.md §9.2.
+    function wsCashier(workspaceId) {
+      return isMember(workspaceId) && callerMember(workspaceId).role == 'cashier';
+    }
+
+    // ---- POS order validators ----
+    // Split per transition, not one big validator: the invoice open→paid rule
+    // tripped the evaluation budget in production 2026-07-14. lines[]/payments[]
+    // contents are validated in db-service.js (rules can't iterate cheaply).
+    // A till sale, validated on its own terms. wsValidTxCreate is a 70-key
+    // validator with a dozen sub-validators (tax, budget, recon, cash, capture);
+    // adding the cashier clause on top of it tripped the 1000-expression
+    // EVALUATION budget in the emulator — the same failure the invoice open→paid
+    // transition hit in production on 2026-07-14. Finance callers keep the full
+    // validator; a cashier evaluates only this.
+    function wsValidPosTxCreate(data) {
+      return data.keys().hasOnly([
+          'amount', 'vendor_name', 'category', 'type', 'status', 'timestamp', 'created_at',
+          'source', 'created_via', 'accounting_status', 'dimension_id',
+          'pos_order_id', 'pos_discount_amount', 'pos_discount_reason', 'pos_settlement', 'pos_refund_reason'
+        ])
+        && data.source == 'pos'
+        && data.accounting_status == 'pending'
+        && data.type in ['income', 'refund']
+        && data.amount is number && data.amount > 0
+        && data.pos_order_id is string && data.pos_order_id.size() > 0
+        && data.pos_settlement in ['cash', 'clearing']
+        && data.created_at == request.time;
+    }
+    function wsPosOrderKeys(data) {
+      return data.keys().hasOnly([
+          'order_number', 'dimension_id', 'table_id', 'table_label', 'channel', 'status',
+          'lines', 'subtotal', 'discount_amount', 'discount_reason', 'discount_total',
+          'service_charge_amount', 'tax_amount', 'total_amount', 'payments', 'paid_amount',
+          'note', 'version', 'opened_at', 'paid_at', 'voided_at', 'void_reason',
+          'transaction_id', 'stock_adjustment_id', 'refund_transaction_id', 'refund_reason', 'refunded_at',
+          'created_at', 'updated_at', 'created_by', 'updated_by'
+        ]);
+    }
+    function wsValidPosOrderCreate(data) {
+      return wsPosOrderKeys(data)
+        && data.dimension_id is string
+        && data.channel in ['staff', 'qr', 'connector']
+        && data.status in ['open', 'submitted']
+        && data.lines is list
+        && data.total_amount is number
+        && data.version == 1
+        && data.created_at == request.time;
+    }
+    // Open order. `version` must advance by exactly one — that is what makes a
+    // stale second device lose the race instead of overwriting the first's lines.
+    function wsValidPosOrderUpdate(data, prev) {
+      return wsPosOrderKeys(data)
+        && data.status in ['open', 'submitted', 'sent', 'served', 'awaiting_payment', 'paid', 'void']
+        && data.version == prev.version + 1
+        && data.dimension_id == prev.dimension_id
+        && data.created_at == prev.created_at
+        && data.total_amount is number
+        && data.paid_amount is number
+        // Paid is DERIVED, never asserted — else a client flips the flag and
+        // emits revenue for an unpaid table.
+        && (data.status != 'paid' || data.paid_amount >= data.total_amount)
+        && (data.status != 'void' || (data.void_reason is string && data.void_reason.size() > 0));
+    }
+    // Paid orders are frozen except the refund trail: what was sold and for how
+    // much must stay identical to what posted, or order and ledger silently part.
+    function wsValidPosOrderRefund(data, prev) {
+      return data.version == prev.version + 1
+        && data.status in ['paid', 'void']
+        && data.total_amount == prev.total_amount
+        && data.paid_amount == prev.paid_amount
+        && data.lines == prev.lines
+        && data.dimension_id == prev.dimension_id
+        && data.transaction_id == prev.transaction_id
+        && data.refund_reason is string
+        && data.refund_reason.size() > 0;
+    }
     // Accounting kernel: a journal may only post into a period that is not closed
     // or locked. A missing period doc means the period has never been closed (open).
     // The closing journal itself is allowed because the period lock write commits
@@ -2582,7 +2661,7 @@ service cloud.firestore {
     function isValidMember(data) {
       return data.keys().hasOnly(['uid', 'email', 'display_name', 'role', 'status', 'invited_by', 'joined_at', 'updated_at'])
         && data.uid is string
-        && data.role in ['owner', 'admin', 'finance', 'accountant', 'viewer']
+        && data.role in ['owner', 'admin', 'finance', 'accountant', 'viewer', 'cashier']
         && data.status in ['active', 'pending', 'removed']
         && (!('email' in data) || data.email == null || (data.email is string && data.email.size() <= 200))
         && (!('display_name' in data) || data.display_name == null || (data.display_name is string && data.display_name.size() <= 200))
@@ -2592,7 +2671,7 @@ service cloud.firestore {
       return data.keys().hasOnly(['email', 'role', 'status', 'invited_by', 'invited_by_email', 'created_at', 'updated_at', 'expires_at', 'accepted_by', 'accepted_at'])
         && data.email is string && data.email.size() > 0 && data.email.size() <= 200
         && data.email == inviteId
-        && data.role in ['admin', 'finance', 'accountant', 'viewer']
+        && data.role in ['admin', 'finance', 'accountant', 'viewer', 'cashier']
         && data.status in ['pending', 'accepted', 'revoked', 'expired']
         && (!('invited_by' in data) || data.invited_by == null || (data.invited_by is string && data.invited_by.size() <= 160))
         && (!('invited_by_email' in data) || data.invited_by_email == null || (data.invited_by_email is string && data.invited_by_email.size() <= 200))
@@ -2692,6 +2771,9 @@ service cloud.firestore {
           'imported_at', 'bank_account_id', 'recon_status', 'recon_import_id', 'recon_row_id', 'recon_at',
           'linked_bill_id', 'linked_invoice_id',
           'journal_ref', 'accounting_status', 'account_code', 'account_name', 'commerce_order_id', 'commerce_account_id',
+          // POS. pos_discount_amount lets POS-SALE credit revenue GROSS and debit
+          // the discount to 4900; folded into the price it is lost forever.
+          'pos_order_id', 'pos_discount_amount', 'pos_discount_reason', 'pos_settlement', 'pos_refund_reason',
           'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number',
           'withholding_rate', 'withholding_type', 'withholding_code', 'bukti_potong_no',
           'customer_npwp', 'customer_withholding_amount', 'customer_withholding_rate',
@@ -2730,6 +2812,9 @@ service cloud.firestore {
           'bank_account_id', 'recon_status', 'recon_import_id', 'recon_row_id', 'recon_at',
           'linked_bill_id', 'linked_invoice_id', 'journal_ref', 'accounting_status', 'account_code', 'account_name',
           'commerce_order_id', 'commerce_account_id',
+          // POS. pos_discount_amount lets POS-SALE credit revenue GROSS and debit
+          // the discount to 4900; folded into the price it is lost forever.
+          'pos_order_id', 'pos_discount_amount', 'pos_discount_reason', 'pos_settlement', 'pos_refund_reason',
           'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number',
           'withholding_rate', 'withholding_type', 'withholding_code', 'bukti_potong_no',
           'customer_npwp', 'customer_withholding_amount', 'customer_withholding_rate',
@@ -3147,8 +3232,14 @@ service cloud.firestore {
       // read: any active member incl. viewer · create/update: owner/admin/finance
       // · delete/void: owner/admin (most use status changes, not deletes).
       match /transactions/{transactionId} {
+        // No 'cashier' on read — deliberate. Their figures come from pos_orders.
         allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
-        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && wsValidTxCreate(request.resource.data);
+        // Two independent clauses, not one shared validator: see wsValidPosTxCreate.
+        // 'pending' because a cashier cannot write journals — an inline attempt
+        // would fail the whole atomic batch; a finance session sweeps them later.
+        allow create: if (hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+            && wsValidTxCreate(request.resource.data))
+          || (wsCashier(workspaceId) && wsValidPosTxCreate(request.resource.data));
         allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant']) && wsValidTxUpdate(request.resource.data, resource.data);
         allow delete: if false;
       }
@@ -3398,7 +3489,10 @@ service cloud.firestore {
       // Never deleted: it carries an immutable journal.
       match /stock_adjustments/{adjustmentId} {
         allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
-        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+        // Cashiers relieve stock for a SALE only — count/waste are how a
+        // shortfall gets papered over, and are stock control, not a till action.
+        allow create, update: if (hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+            || (wsCashier(workspaceId) && request.resource.data.adjustment_type == 'sale'))
           && request.resource.data.adjustment_type in ['count', 'waste', 'sale']
           && request.resource.data.total_amount is number
           && request.resource.data.lines is list
@@ -3429,7 +3523,10 @@ service cloud.firestore {
       // master data written from a form, and the evaluation budget is real
       // (incidents at lines 3367, 3526, 3546). Soft archive only.
       match /items/{itemId} {
-        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        // 'cashier' reads: the menu IS this collection, and nothing on an item is
+        // sensitive (unit cost derives from stock_movements, which they can't
+        // read). Writes stay finance+ — a till must not reprice the menu.
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer', 'cashier']);
         allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
           && request.resource.data.name is string
           && request.resource.data.name.size() > 0
@@ -3441,13 +3538,47 @@ service cloud.firestore {
         allow delete: if false;
       }
       match /dimensions/{dimensionId} {
-        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
+        // 'cashier' reads: a till must know its outlet, or the sale it posts
+        // lands in "Unassigned" on /outlet-pnl.
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer', 'cashier']);
         allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
           && request.resource.data.name is string
           && request.resource.data.name.size() > 0
           && request.resource.data.name.size() <= 80
           && request.resource.data.type in ['outlet', 'branch', 'warehouse']
           && request.resource.data.status in ['active', 'archived'];
+        allow delete: if false;
+      }
+      // ---- Point of sale ----
+      // Only two new collections: outlets are `dimensions`, the menu is `items`,
+      // stock relief is `stock_adjustments`, revenue is `transactions`, per-outlet
+      // P&L is `ledger_balances_by_dim`. docs/POS_IMPLEMENTATION_PLAN.md §7.
+      //
+      // Tables. Occupancy is NOT stored — it derives from whether an open order
+      // references the table; a stored status eventually disagrees with reality.
+      match /pos_tables/{tableId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer', 'cashier']);
+        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && request.resource.data.label is string
+          && request.resource.data.label.size() > 0
+          && request.resource.data.label.size() <= 40
+          && request.resource.data.dimension_id is string
+          && request.resource.data.status in ['active', 'archived'];
+        allow delete: if false;
+      }
+      // Orders. Mutable while open, frozen once paid — correction is by refund,
+      // never by edit, exactly as journals are corrected by reversal.
+      match /pos_orders/{orderId} {
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer', 'cashier']);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'cashier'])
+          && wsValidPosOrderCreate(request.resource.data);
+        // Refunds are finance+ only: handing money back out is the till-fraud
+        // direction, withheld from cashiers by design (perms-service.js).
+        allow update: if resource.data.status == 'paid'
+          ? (hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+              && wsValidPosOrderRefund(request.resource.data, resource.data))
+          : (hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'cashier'])
+              && wsValidPosOrderUpdate(request.resource.data, resource.data));
         allow delete: if false;
       }
       // Period lifecycle. Closing requires finance+; locking is owner/admin only.
@@ -3641,6 +3772,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
     match /commerce_shop_directory/{shopKey} {
+      allow read, write: if false;
+    }
+
+    // QR table token -> workspace. Admin SDK only, exactly like
+    // commerce_shop_directory above: a guessed token cannot even confirm a
+    // workspace exists, and the customer surface never touches Firestore.
+    match /pos_table_directory/{tokenKey} {
       allow read, write: if false;
     }
 
