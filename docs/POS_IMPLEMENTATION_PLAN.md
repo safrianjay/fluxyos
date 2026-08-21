@@ -1,6 +1,7 @@
 ---
-status: proposed
+status: current
 updated: 2026-08-21
+built: Phase 0 + Phase 1 shipped 2026-08-21 (see POS_READINESS.md §7)
 owns: [pos scope, pos data model, pos posting rules, qr ordering architecture]
 supersedes: POS_READINESS.md §6 step 1 (shipped 2026-08-20) — §5 and §6 steps 3–4 stand
 source: grounded in the codebase as of `53532d6`
@@ -453,6 +454,12 @@ unposted count above zero for more than a day is an alert, not a footnote.
 | `cashier` in existing role lists | ~120 B |
 | **Total** | **~2.2 KB — 12% of remaining headroom** |
 
+> ⚠️ **Measured after building it: ~10KB, not 2.2KB** — `firestore.rules` went
+> 199,709 → 209,981 bytes (96% of ceiling, ~8KB left). The 31-key order validator
+> and the comments were both under-counted here. The customer-facing surface did
+> cost nothing, as predicted; the estimate was simply too low for the rest. **A
+> trim is now a prerequisite for the next collection, not a "plan one".**
+
 This fits, and it fits *because* the customer-facing surface adds nothing (§10)
 and because four capabilities reuse shipped collections. `POS_READINESS.md` §5
 warned that "a `pos_*` collection family would spend a large part of that" — true
@@ -862,6 +869,10 @@ be source-neutral.
 
 *Exit:* a POS sale can be posted from a test script and appears correctly on the
 trial balance, the income statement, and `/outlet-pnl`.
+
+> **Phase 0 and Phase 1 shipped 2026-08-21.** Rules deployed and stamped. See
+> `docs/data-model/pos.md` for the built schema and
+> `POS_READINESS.md` §7 for what the build proved and disproved.
 
 ### Phase 1 — Staff POS
 

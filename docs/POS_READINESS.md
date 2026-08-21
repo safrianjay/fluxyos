@@ -176,6 +176,53 @@ vendor."
 **Before step 1**, the outstanding gate was: nobody has walked the inventory
 chain on real data. `scripts/seed-fnb-demo.js` exists for exactly that.
 
+---
+
+## 7. What actually shipped (2026-08-21)
+
+Phase 0 + Phase 1 of `POS_IMPLEMENTATION_PLAN.md` are built and deployed: a staff
+till at `/pos`, a `cashier` role, `POS-SALE`, and two new collections.
+
+Three predictions in this document are worth marking against the outcome.
+
+**"A `pos_*` collection family would spend a large part of that [rules budget]"**
+— broadly right, and understated by the plan. Two collections plus the cashier
+grants cost **~10KB**, not the 2.2KB the plan estimated; the 31-key order
+validator and the comments were both under-counted. `firestore.rules` is now at
+**96% of ceiling with ~8KB left**. A trim is no longer "plan one" — it is a
+prerequisite for the next collection.
+
+**"Rules budget… that trim is a prerequisite, not cleanup"** — this turned out to
+apply to the *evaluation* budget rather than the size one. Reusing the 70-key
+`wsValidTxCreate` for the cashier clause tripped the 1000-expression limit
+immediately. Worth recording how that failure presents: **the DENY cases still
+pass**, because a budget trip denies. They would have passed with the rule
+inverted.
+
+**"Integrate with the tills these prospects already run before building one"** —
+still unanswered, and still the right question. What the build did change is the
+cost of being wrong: `pos_orders` is a normalized document with a `channel`
+field, so a connector writes the same document and shares everything downstream.
+
+### What walking it found
+
+Six defects, none of which any spec was asking about. The two that mattered:
+
+1. **`relieveCommerceCogs` has never relieved a recipe item.** `explodeRecipe`
+   returns an object; the code called `.forEach` on it, so the sweep threw on the
+   first composite. Marketplace sales of recipe items booked at full margin —
+   *the exact defect `CM-ORDER-COGS` was built to close*, live since it shipped,
+   invisible because `commerce-cogs.spec.js` only ever sells `stock` items.
+2. **The emission stamp was refused, which double-booked revenue.** A paid order
+   is frozen except for refunds, so `transaction_id` — the idempotency key —
+   could not be written. The sale posted, the order stayed unmarked, and the next
+   sweep emitted it again. Two transactions for one order, silently.
+
+Both are fixed and guarded. The first is the stronger argument for this
+document's own §6 step 2: *validate against real data*. It shipped green.
+
+---
+
 **Gate closed 2026-08-21.** The chain was driven end to end through the real UI
 — every screen opened, every screenshot looked at — rather than through
 DataService. The kernel specs were all green and the console was clean, and it

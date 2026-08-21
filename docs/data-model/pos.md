@@ -103,7 +103,8 @@ client could flip the flag and emit revenue for a table that never paid.
 
 ### A paid order is frozen
 
-Rules permit only the refund fields to change once `paid`. Correction is by
+Rules permit only the emission stamp (§4) and the refund fields to change once
+`paid`. Correction is by
 refund, never by editing a paid order — the discipline journals have. `lines`,
 `total_amount`, `paid_amount` and `dimension_id` must be identical to what
 posted, or the order and the ledger part company with no way to tell which is
@@ -142,12 +143,24 @@ still reads `CM-*` because it is stamped on immutable posted journals and
 renaming it would orphan every one of them; `source.collection` says which front
 end rang it up.
 
-### Emission is idempotent without a flag
+### Emission is idempotent without a flag, and atomic
 
-`transaction_id` being set **is** the record that this order has emitted. The
-order is stamped **last**, so a crash mid-emission leaves it retryable rather than
-marked done with nothing behind it. `emitUnpostedPosSales` retries; the POS
-overview surfaces the backlog.
+`transaction_id` being set **is** the record that this order has emitted.
+
+**The stamp is written in the SAME batch as what it stamps.** The first cut
+stamped after the commit, on the reasoning that a crash mid-emission should leave
+the order retryable. That was backwards: it opened a window where the transaction
+existed and the order did not know it, and since `transaction_id` is the
+idempotency key, the next sweep emitted the same sale **again**. Two transactions,
+one order, silently — observed on 2026-08-21 while walking a shift.
+
+A paid order is otherwise frozen, so this needs its own rules transition:
+`wsValidPosOrderStamp` allows exactly one non-refund mutation, guarded by
+`prev.transaction_id == null` so the key is write-once. Without it the stamp was
+refused outright, which is how the double-emit was found.
+
+`emitUnpostedPosSales` retries anything that still has no stamp; the POS overview
+surfaces the backlog rather than hiding it.
 
 ### Who posts the journal
 
@@ -200,8 +213,21 @@ it reused the 70-key `wsValidTxCreate` and tripped the budget, and **the DENY
 cases still passed**, because a budget trip denies. `wsValidPosTxCreate` is the
 16-key validator a cashier evaluates instead.
 
-Emulator coverage: `tests/pos-rules-emulator-test.mjs` (47 cases, over half of
-them the cashier boundary). Posting rules: `tests/pos-posting.spec.js`.
+`source: 'pos'` had to be added to the `isValidAICaptureMetadata` enum. Despite
+the name that enum is "how did this row get here" and already carried two non-AI
+values; `source` is load-bearing because `selectRule` reads it to choose
+`POS-SALE`. Commerce is absent from the enum only because its writer is the Admin
+SDK, which bypasses rules — the till writes from the client and must pass them.
+
+**An owner is held to the stricter validator.** `hasRole()` is true for an owner,
+so `||` short-circuits into the `wsValidTxCreate` clause and never reaches the
+lean cashier one. Both must therefore accept the identical payload — which is how
+a missing `icon` (required by `isValidBaseRecord`'s `hasAll`) refused the write
+for everyone.
+
+Emulator coverage: `tests/pos-rules-emulator-test.mjs` (52 cases, over half of
+them the cashier boundary). Posting rules: `tests/pos-posting.spec.js`. Page:
+`tests/pos-ui.spec.js`.
 
 ## 8. The `cashier` role
 

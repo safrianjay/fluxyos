@@ -4905,6 +4905,7 @@
         "No tables at this outlet yet": "Belum ada meja di outlet ini",
         "Add the tables in this room so orders can be attached to them. Takeaway orders work without one.": "Tambahkan meja di ruangan ini supaya pesanan bisa ditempelkan ke meja. Pesanan bawa pulang tetap bisa tanpa meja.",
         "Add a table": "Tambah meja",
+        "Add table": "Tambah meja",
         "Table name or number": "Nama atau nomor meja",
         "12, A3, Bar 2": "12, A3, Bar 2",
         "Area": "Area",
@@ -5052,9 +5053,16 @@
           id: function (m) { return m[1] + ' lunas · di kasir'; } },
         { re: /^Table (.+)$/, id: function (m) { return 'Meja ' + m[1]; } },
         { re: /^Order (.+)$/, id: function (m) { return 'Pesanan ' + m[1]; } },
-        { re: /^(Rp[\d.]+) due$/, id: function (m) { return 'tagihan ' + m[1]; } },
+        // The payment drawer subtitle is built as one string —
+        // "Meja 12 · Rp30.000 due" / "Bawa pulang · Rp30.000 due" — so the tail
+        // can only be reached by matching the whole composite. A bare
+        // /^(Rp…) due$/ never fires and left "due" in English mid-sentence.
+        { re: /^(.+) · (Rp[\d.]+) due$/, id: function (m) { return m[1] + ' · tagihan ' + m[2]; } },
         { re: /^(Rp[\d.]+) before discount$/, id: function (m) { return m[1] + ' sebelum diskon'; } },
-        { re: /^(Rp[\d.]+) each$/, id: function (m) { return m[1] + ' per porsi'; } },
+        // "each" is unit-agnostic in English. "per porsi" is not — Es Teh is
+        // sold in `gelas`, so it read "Rp8.000 per porsi" for a glass of tea.
+        // "per satuan" carries the same meaning without inventing a unit.
+        { re: /^(Rp[\d.]+) each$/, id: function (m) { return m[1] + ' per satuan'; } },
         { re: /^Paid — (Rp[\d.]+) recorded\.$/,
           id: function (m) { return 'Lunas — ' + m[1] + ' tercatat.'; } },
         { re: /^(Rp[\d.]+) discount applied\.$/,

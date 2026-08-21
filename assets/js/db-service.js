@@ -5629,8 +5629,13 @@ class DataService {
 
             // A recipe is relieved as the ingredients it consumes, never as
             // itself — the same reason a composite cannot be received.
+            //
+            // ⚠️ `explodeRecipe` returns an OBJECT keyed by item id
+            // ({ riceId: 300, oilId: 15 }), NOT an array. Treating it as one
+            // throws `consumed.forEach is not a function`, which is exactly
+            // what shipped in relieveCommerceCogs — see the note there.
             const consumed = item.type === 'composite'
-                ? explodeRecipe(byId, item.id, qty)
+                ? Object.entries(explodeRecipe(byId, item.id, qty)).map(([id, q]) => ({ item_id: id, quantity: q }))
                 : [{ item_id: item.id, quantity: qty }];
 
             consumed.forEach((c) => {
@@ -5703,38 +5708,27 @@ class DataService {
             const lines = [];
             let missing = false;
 
-            for (const l of (order.items || [])) {
-                const item = l.sku ? bySku[String(l.sku).toLowerCase()] : null;
-                if (!item) { if (l.sku) unmatched.add(l.sku); missing = true; continue; }
-                const qty = Number(l.quantity) || 0;
-                if (qty <= 0) continue;
-
-                // A recipe is relieved as the ingredients it consumes, never as
-                // itself — the same reason a composite cannot be received.
-                const consumed = item.type === 'composite'
-                    ? explodeRecipe(byId, item.id, qty)
-                    : [{ item_id: item.id, quantity: qty }];
-
-                consumed.forEach((c) => {
-                    const target = byId[c.item_id];
-                    if (!target) return;
-                    const stock = onHand[c.item_id] || { quantity: 0, value: 0 };
-                    // Weighted average, derived. An item with no cost basis yet
-                    // relieves quantity at zero value rather than inventing one.
-                    const rate = unitCostOf(stock.quantity, stock.value);
-                    // Explosion may return a fractional requirement; rounding
-                    // happens once, here, where a movement is actually recorded.
-                    const q = Math.round(c.quantity);
-                    if (q <= 0) return;
-                    lines.push({
-                        item_id: c.item_id,
-                        item_name: target.name,
-                        base_unit: target.base_unit,
-                        quantity: -q,
-                        amount: -Math.round(q * rate)
-                    });
-                });
-            }
+            // Routed through the SHARED resolver, which is what the extraction
+            // was for — and which is also the fix for a real defect this code
+            // shipped with. The inline copy this replaced did:
+            //
+            //     const consumed = explodeRecipe(byId, item.id, qty);
+            //     consumed.forEach(...)
+            //
+            // but `explodeRecipe` returns an OBJECT keyed by item id, so
+            // `.forEach` is not a function and the sweep threw on the FIRST
+            // order containing a recipe item. Marketplace sales of composites
+            // have therefore never relieved stock — they booked at full margin,
+            // the exact defect CM-ORDER-COGS was built to close. It went
+            // unnoticed because tests/commerce-cogs.spec.js only ever sells
+            // `stock` items; nothing exercised the recipe path.
+            // Found 2026-08-21 by walking a POS sale of a recipe item.
+            const resolved = this._resolveSaleConsumption({
+                soldLines: (order.items || []).map((l) => ({ sku: l.sku, quantity: Number(l.quantity) || 0 })),
+                byId, bySku, onHand
+            });
+            resolved.unmatched.forEach((u) => { unmatched.add(u); missing = true; });
+            lines.push(...resolved.lines);
 
             const total = lines.reduce((sum, l) => sum + Math.abs(l.amount), 0);
             // Nothing to post: no matched line, or every matched item is still
@@ -5778,10 +5772,6 @@ class DataService {
                     period_key: periodKey, entity_id: entityId,
                     created_by: this.actorUid || userId, created_at: serverTimestamp()
                 });
-                // Keep the running average honest across orders in one sweep.
-                const b = onHand[l.item_id] || (onHand[l.item_id] = { quantity: 0, value: 0 });
-                b.quantity += l.quantity;
-                b.value += l.amount;
             });
 
             await batch.commit();
@@ -6218,11 +6208,15 @@ class DataService {
             vendor_name: order.table_label ? `Meja ${order.table_label}` : `Order ${order.order_number || ''}`.trim(),
             category: 'Sales',
             type: 'income',
+            // Required: isValidBaseRecord uses hasAll and lists `icon`. Without
+            // it the write is refused for an owner — who is held to the full
+            // wsValidTxCreate, since hasRole() short-circuits into that clause
+            // before the lean cashier one is ever reached.
+            icon: '💰',
             status: 'Completed',
             timestamp: Timestamp.fromDate(when),
             created_at: serverTimestamp(),
             source: 'pos',
-            created_via: 'pos',
             accounting_status: 'pending',
             dimension_id: order.dimension_id || null,
             pos_order_id: order.id,
@@ -6305,16 +6299,19 @@ class DataService {
             console.error('[pos] stock relief skipped for this order:', err && err.message);
         }
 
-        await batch.commit();
-
-        // Stamp the order LAST, so a crash mid-emission leaves it retryable
-        // rather than marked done with nothing behind it.
-        await updateDoc(doc(this.db, `${scope}/pos_orders/${order.id}`), {
+        // The stamp goes in the SAME batch as what it stamps. Doing it after the
+        // commit left a window where the transaction existed and the order did
+        // not know it — and `transaction_id` IS the idempotency key, so the next
+        // sweep emitted the sale again. Atomic means both land or neither, and
+        // there is no such window.
+        batch.update(doc(this.db, `${scope}/pos_orders/${order.id}`), {
             transaction_id: txRef.id,
             stock_adjustment_id: adjRef ? adjRef.id : null,
             version: (Number(order.version) || 1) + 1,
             updated_at: serverTimestamp()
         });
+
+        await batch.commit();
 
         await this._auditCreateBestEffort(userId, 'pos_order.paid', 'pos_orders', order.id, {
             order_number: order.order_number, total_amount: order.total_amount,
@@ -6356,9 +6353,9 @@ class DataService {
         const tx = {
             amount: net,
             vendor_name: order.table_label ? `Meja ${order.table_label}` : `Order ${order.order_number || ''}`.trim(),
-            category: 'Sales', type: 'refund', status: 'Completed',
+            category: 'Sales', type: 'refund', icon: '💸', status: 'Completed',
             timestamp: Timestamp.fromDate(when), created_at: serverTimestamp(),
-            source: 'pos', created_via: 'pos', accounting_status: 'pending',
+            source: 'pos', accounting_status: 'pending',
             dimension_id: order.dimension_id || null,
             pos_order_id: order.id,
             pos_discount_amount: 0, pos_discount_reason: null,

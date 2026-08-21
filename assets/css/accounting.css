@@ -13,9 +13,12 @@
 .dashboard-topbar-copy { display: flex; flex-direction: column; min-width: 0; }
 .dashboard-topbar-title {
     color: #0B0F19;
-    font-size: 18px;
-    line-height: 1.15;
-    font-weight: 700;
+    /* 16px = the `lg` step. Was 18px, which is not on the 6-step dashboard
+       scale at all (10/12/14/16/20/24). Snapped DOWN rather than up so the
+       persistent chrome never out-shouts an in-page 24px page title. */
+    font-size: 16px;
+    line-height: 1.2;
+    font-weight: 600;
     letter-spacing: -0.015em;
 }
 .dashboard-topbar-subtitle {

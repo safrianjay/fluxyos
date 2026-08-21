@@ -697,9 +697,11 @@
 
 .dashboard-topbar-title {
     color: #111827;
-    font-size: 18px;
-    line-height: 1.15;
-    font-weight: 800;
+    /* On-scale `lg` step — see the note in accounting.css. Weight drops from
+       800 to 600: the scale defines four weights and 800 is not one of them. */
+    font-size: 16px;
+    line-height: 1.2;
+    font-weight: 600;
     letter-spacing: -0.01em;
 }
 
@@ -2781,7 +2783,9 @@
         justify-content: flex-start;
     }
 
-    .dashboard-topbar-title { font-size: 17px; }
+    /* The mobile override was 17px — also off-scale. Now it matches the
+       desktop value, so there is nothing left to override. */
+    .dashboard-topbar-title { font-size: 16px; }
     .overview-period-strip { justify-content: flex-start; width: 100%; }
     .dashboard-period-controls { width: 100%; overflow-x: auto; }
     .dashboard-period-btn { white-space: nowrap; }

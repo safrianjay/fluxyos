@@ -3738,7 +3738,7 @@ window.renderEmptyState = function(containerId, config) {
             </div>
             <h3 class="text-xl font-bold text-gray-900 mb-2 tracking-tight">${c.title}</h3>
             <p class="text-[14px] text-gray-500 max-w-[320px] leading-relaxed${hasAction ? ' mb-8' : ''}">${c.description}</p>
-            ${hasAction ? `<button id="empty-state-action" type="button" class="inline-flex items-center gap-2 bg-[#EA580C] hover:bg-[#D94E0B] text-white font-bold text-[13px] px-6 py-3 rounded-xl transition-all shadow-md hover:shadow-lg">
+            ${hasAction ? `<button id="empty-state-action" type="button" class="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white font-bold text-[13px] px-6 py-3 rounded-xl transition-all shadow-md hover:shadow-lg">
                 ${plusIcon}${c.buttonText}
             </button>` : ''}
         </div>

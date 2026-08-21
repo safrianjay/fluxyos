@@ -90,7 +90,7 @@ function posTx(overrides = {}) {
     return {
         amount: 80000, vendor_name: 'Meja 12', category: 'Sales', type: 'income',
         status: 'Completed', timestamp: new Date(), created_at: serverTimestamp(),
-        source: 'pos', created_via: 'pos', accounting_status: 'pending',
+        source: 'pos', accounting_status: 'pending',
         pos_order_id: 'o1', pos_discount_amount: 10000, pos_discount_reason: 'Promo',
         pos_settlement: 'cash', dimension_id: 'outlet-kemang',
         ...overrides
@@ -181,16 +181,49 @@ async function main() {
             ]
         }));
 
+    console.log('\n— the emission stamp: write-once, and the only non-refund path —');
+    // Before this transition existed, a paid order could not be stamped at all
+    // (the refund validator demands a reason), so `transaction_id` stayed null
+    // and the next sweep emitted the SAME sale again. Two transactions, one
+    // order, silently.
+    await expectOutcome('stamping what a paid order emitted is allowed', true, () =>
+        updateDoc(doc(db, `workspaces/${WS}/pos_orders/o1`), {
+            version: 5, transaction_id: 'tx-1', stock_adjustment_id: 'sa-1', updated_at: serverTimestamp()
+        }));
+    await expectOutcome('re-stamping an already-stamped order is denied', false, () =>
+        updateDoc(doc(db, `workspaces/${WS}/pos_orders/o1`), {
+            version: 6, transaction_id: 'tx-2', updated_at: serverTimestamp()
+        }));
+    // The guard only means anything on a PAID order — an open one may legitimately
+    // change its total, so the fixture has to reach `paid` first.
+    await setDoc(doc(db, `workspaces/${WS}/pos_orders/o-stamp`), order({ order_number: 'S-1', table_id: 't20' }));
+    await updateDoc(doc(db, `workspaces/${WS}/pos_orders/o-stamp`), {
+        version: 2, status: 'paid', paid_amount: 90000, paid_at: new Date(),
+        payments: [{ payment_id: 'p1', method: 'cash', provider: 'manual', amount: 90000, status: 'settled' }]
+    });
+    await expectOutcome('a stamp that also moves the total is denied', false, () =>
+        updateDoc(doc(db, `workspaces/${WS}/pos_orders/o-stamp`), {
+            version: 3, transaction_id: 'tx-x', total_amount: 1
+        }));
+    await expectOutcome('a stamp that also rewrites the lines is denied', false, () =>
+        updateDoc(doc(db, `workspaces/${WS}/pos_orders/o-stamp`), {
+            version: 3, transaction_id: 'tx-x', lines: []
+        }));
+    await expectOutcome('a clean stamp on that order is allowed', true, () =>
+        updateDoc(doc(db, `workspaces/${WS}/pos_orders/o-stamp`), {
+            version: 3, transaction_id: 'tx-ok', stock_adjustment_id: 'sa-ok'
+        }));
+
     console.log('\n— a paid order is frozen —');
     await expectOutcome('editing the lines of a paid order is denied', false, () =>
-        updateDoc(doc(db, `workspaces/${WS}/pos_orders/o1`), { version: 5, lines: [] }));
+        updateDoc(doc(db, `workspaces/${WS}/pos_orders/o1`), { version: 6, lines: [] }));
     await expectOutcome('changing the total of a paid order is denied', false, () =>
-        updateDoc(doc(db, `workspaces/${WS}/pos_orders/o1`), { version: 5, total_amount: 1 }));
+        updateDoc(doc(db, `workspaces/${WS}/pos_orders/o1`), { version: 6, total_amount: 1 }));
     await expectOutcome('a refund with no reason is denied', false, () =>
-        updateDoc(doc(db, `workspaces/${WS}/pos_orders/o1`), { version: 5, refund_transaction_id: 'tx-r' }));
+        updateDoc(doc(db, `workspaces/${WS}/pos_orders/o1`), { version: 6, refund_transaction_id: 'tx-r' }));
     await expectOutcome('a refund WITH a reason is allowed', true, () =>
         updateDoc(doc(db, `workspaces/${WS}/pos_orders/o1`), {
-            version: 5, refund_reason: 'Salah pesan', refund_transaction_id: 'tx-r', refunded_at: new Date()
+            version: 6, refund_reason: 'Salah pesan', refund_transaction_id: 'tx-r', refunded_at: new Date()
         }));
 
     console.log('\n— voiding —');
@@ -256,7 +289,7 @@ async function main() {
     // Refunds move money back out — the till-fraud direction.
     await expectOutcome('cashier refunding a paid order is denied', false, () =>
         updateDoc(doc(db, `workspaces/${WS}/pos_orders/o1`), {
-            version: 6, refund_reason: 'x', refund_transaction_id: 'tx-r2'
+            version: 7, refund_reason: 'x', refund_transaction_id: 'tx-r2'
         }));
 
     console.log('\n— viewer has no till —');

@@ -158,6 +158,16 @@ subledger believes is on hand, the goods still left — a wrong subledger is a d
 problem, not a reason to misstate COGS. Stock goes negative so the gap is visible,
 which is why `inventory.html` surfaces a **Negative stock** signal.
 
+⚠️ **Recipe explosion in this path was broken from the day it shipped.**
+`explodeRecipe` returns an OBJECT keyed by item id, and `relieveCommerceCogs`
+called `.forEach` on it — so the sweep threw on the first order containing a
+composite. Marketplace sales of recipe items therefore never relieved stock and
+booked at full margin, the exact defect `CM-ORDER-COGS` was built to close. It
+went unnoticed because `tests/commerce-cogs.spec.js` only ever sells `stock`
+items; nothing exercised the recipe path. Found 2026-08-21 while walking a POS
+sale of a recipe item, and fixed by routing both channels through the shared
+`_resolveSaleConsumption`.
+
 Guard: `tests/commerce-cogs.spec.js`.
 
 ### Optimistic concurrency
