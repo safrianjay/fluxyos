@@ -26,12 +26,14 @@ things have happened since, and they close the gate it set:
 
 | Gate | State |
 |---|---|
-| Per-sale stock relief + COGS on a real pipeline | **Shipped** — `CM-ORDER-COGS`, `1cc8b8b`, 2026-08-20 |
+| Per-sale stock relief + COGS on a real pipeline | **Shipped** — `CM-ORDER-COGS`, `1cc8b8b`, 2026-08-20. ⚠️ *Corrected 2026-08-21: the rule shipped but nothing called it, so it was inert until wired to the Inventory Overview.* |
 | Recipes authorable without a script | **Shipped** — recipe editor, `53532d6`, 2026-08-21 |
 | Inventory chain walked end-to-end on real data | **Done** — `POS_READINESS.md` §6, gate closed 2026-08-21 |
 
-So the capability that document wanted built *instead of* a POS exists and is
-proven. The open question is no longer "POS or per-sale costing" — it is
+So the capability that document wanted built *instead of* a POS exists — though
+"proven" was too strong: it existed and was correct in isolation, and no
+surface invoked it. Existing is not running, and a spec that asserts a
+contract on an empty input set cannot tell the difference. The open question is no longer "POS or per-sale costing" — it is
 `POS_READINESS.md` §6 **step 3 (a connector) versus step 4 (a first-party till)**.
 
 ### The disagreement, stated once

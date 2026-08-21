@@ -143,7 +143,8 @@ marketplace sale   Dr 5100 COGS / Cr 1200 Inventory    CM-ORDER-COGS
 
 `commerce_orders` has posted revenue since it shipped (`CM-ORDER-REV`) and never
 relieved stock, so every marketplace sale booked at full margin.
-`DataService.relieveCommerceCogs` closes that: order lines resolve to items by
+`DataService.relieveCommerceCogs` closes that **once something calls it** — see
+the wiring note below: order lines resolve to items by
 **`items.sku`** — the join that field was designed for — composites explode to
 their ingredients, and stock relieves at weighted average.
 
@@ -168,7 +169,24 @@ items; nothing exercised the recipe path. Found 2026-08-21 while walking a POS
 sale of a recipe item, and fixed by routing both channels through the shared
 `_resolveSaleConsumption`.
 
-Guard: `tests/commerce-cogs.spec.js`.
+### It was dead code for a day
+
+`relieveCommerceCogs` shipped 2026-08-20 with **exactly one call site: its own
+spec.** No page, no button, no scheduled function. So §1 of `POS_READINESS.md` —
+"every marketplace sale books revenue at full margin and leaves inventory
+untouched" — stayed true after the commit that was supposed to close it.
+
+It is now wired to the **Inventory Overview**: a count of orders that sold stock
+without relieving it, and one action, following the "Post N unposted entries"
+pattern from the Accounting Center. `countUnrelievedCommerceOrders` is the
+dry-run half and must never write — a banner renders on every Overview load.
+
+Guard: `tests/commerce-cogs.spec.js` (contract on an empty set) and
+`tests/commerce-cogs-wiring.spec.js` (the explosion itself, plus the surface).
+The first could not catch either defect and says so in its own comment: it
+asserts "the DAL's CONTRACT on an EMPTY order set", because `commerce_orders` is
+Admin-SDK-only and no browser spec can seed one. The pure resolver is the guard
+that works.
 
 ### Optimistic concurrency
 

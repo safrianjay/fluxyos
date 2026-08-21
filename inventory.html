@@ -451,6 +451,7 @@
                          thing that makes a dashboard feel like it is hiding
                          something. Sits above the numbers because it is the one
                          part that asks for a decision. -->
+                    <div id="inv-commerce-cogs" class="hidden"></div>
                     <div id="inv-alerts" class="hidden"></div>
 
                     <!-- 1. What is the situation? Four related numbers in ONE
@@ -1103,6 +1104,7 @@
             });
 
             renderAlerts(allRows);
+            renderCommerceCogs();
             renderKpis(allRows);
             renderMonth(movements);
             renderTrend(movements);
@@ -1156,6 +1158,66 @@
         // Exposed so a spec can prove the empty case directly, rather than
         // hoping the QA workspace happens to be clean.
         window.__invRenderAlerts = renderAlerts;
+        window.__invRenderCommerceCogs = (c) => renderCommerceCogs(c);
+
+        // ── Marketplace sales that never relieved stock ──────────────────────
+        //
+        // CM-ORDER-COGS shipped 2026-08-20 with a posting rule, a DAL method and
+        // a spec — and NOTHING in the product ever called it. No page, no button,
+        // no scheduled function. So `POS_READINESS.md` §1's headline finding —
+        // "every marketplace sale books revenue at full margin and leaves
+        // inventory untouched" — stayed true after the commit that was supposed
+        // to close it. Found 2026-08-21 while measuring the blast radius of a
+        // separate bug in the same method.
+        //
+        // This is the wiring. Same shape as "Post N unposted entries" in the
+        // Accounting Center: a count that is only shown when there is work, and
+        // one action that does it.
+        // Exposed for the same reason renderAlerts is: the QA workspace has no
+        // commerce orders, so the only way to prove the POSITIVE case is to
+        // drive the renderer directly. `_count` overrides the read.
+        async function renderCommerceCogs(_count) {
+            const host = document.getElementById('inv-commerce-cogs');
+            const { unrelieved } = _count || await ds.countUnrelievedCommerceOrders(currentUid);
+            if (!unrelieved) { host.classList.add('hidden'); host.innerHTML = ''; return; }
+
+            host.classList.remove('hidden');
+            host.innerHTML = `
+                <div class="inv-attn">
+                    <svg class="inv-attn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg>
+                    <div class="inv-attn-chips" style="align-items:center">
+                        <span class="text-[13px] text-slate-700">
+                            <strong>${unrelieved} marketplace ${unrelieved === 1 ? 'order has' : 'orders have'} sold stock that was never relieved.</strong>
+                            Revenue posted; the cost did not, so gross margin is overstated by that much.
+                        </span>
+                        <button type="button" id="inv-relieve-cogs" class="inv-chip inv-chip-warn">Relieve cost now</button>
+                    </div>
+                </div>`;
+
+            document.getElementById('inv-relieve-cogs').addEventListener('click', async (e) => {
+                const btn = e.currentTarget;
+                btn.disabled = true;
+                btn.textContent = 'Relieving…';
+                try {
+                    const r = await ds.relieveCommerceCogs(currentUid, { limitCount: 100 });
+                    // `unmatched` is a SKU the order names and no item carries.
+                    // Naming them matters: the fix is on the item, and a silent
+                    // skip is how a sale keeps booking at full margin forever.
+                    const note = r.unmatched.length
+                        ? ` ${r.unmatched.length} SKU${r.unmatched.length === 1 ? '' : 's'} matched no item: ${r.unmatched.slice(0, 3).join(', ')}.`
+                        : '';
+                    window.showToast(`Relieved ${r.relieved} order${r.relieved === 1 ? '' : 's'}.${note}`,
+                        r.unmatched.length ? 'info' : 'success');
+                    await loadInventory();
+                } catch (err) {
+                    window.showToast(window.formatFluxyError
+                        ? window.formatFluxyError(err, 'Could not relieve those orders')
+                        : (err.message || 'Could not relieve those orders'), 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Relieve cost now';
+                }
+            });
+        }
 
         // ── The situation, in four related numbers ──────────────────────────
         // One card with dividers, via the shared strip every drill-down uses —

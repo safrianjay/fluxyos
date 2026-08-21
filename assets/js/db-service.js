@@ -5667,6 +5667,30 @@ class DataService {
         return { lines, unmatched, missingCost };
     }
 
+    // Count what a sweep WOULD relieve, without writing anything. A surface needs
+    // this to show "N marketplace orders have sold stock that was never
+    // relieved" before offering the action — the same split
+    // countUnpostedSources / postUnpostedSources uses in the Accounting Center.
+    async countUnrelievedCommerceOrders(userId, { limitCount = 200 } = {}) {
+        try {
+            const scope = this._scope(userId);
+            const [snap, movements] = await Promise.all([
+                getDocs(query(collection(this.db, `${scope}/commerce_orders`),
+                    orderBy('created_at', 'desc'), limit(limitCount))),
+                this.getStockMovements(userId, { limitCount: 1000 })
+            ]);
+            const done = new Set();
+            movements.forEach((m) => {
+                if (m.source && m.source.collection === 'commerce_orders' && m.source.id) done.add(m.source.id);
+            });
+            const orders = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+            return {
+                total: orders.length,
+                unrelieved: orders.filter((o) => !done.has(o.id) && (o.items || []).some((l) => l && l.sku)).length
+            };
+        } catch (_) { return { total: 0, unrelieved: 0 }; }
+    }
+
     async relieveCommerceCogs(userId, { limitCount = 100 } = {}) {
         const scope = this._scope(userId);
         const entityId = this._resolvedScopeId(userId);
