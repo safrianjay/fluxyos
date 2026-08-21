@@ -56,6 +56,24 @@ export const FEATURE_RULES = {
         ],
         allowEmailPatterns: [/^fluxyos\.qa\+.*@example\.com$/i],
         allowCategories: null
+    },
+    // Point of sale. Same eligibility shape as Inventory, and for the same
+    // reason: an agency has nothing to ring up.
+    //
+    // ⚠️ A `cashier` may not match this rule — eligibility resolves from the
+    // workspace OWNER's email, and a cashier is not the owner. `sidebar-loader.js`
+    // force-reveals the POS entry for a POS-only role rather than relying on
+    // this, because a till operator who cannot reach the till has no product at
+    // all. Same for the page guard: `pos.html` passes no `feature`.
+    pos: {
+        label: 'Point of Sale',
+        allowEmails: [
+            'renatakurniawan1501@gmail.com',
+            'randikaisraj07@gmail.com',
+            'safrianjayadi77@gmail.com'
+        ],
+        allowEmailPatterns: [/^fluxyos\.qa\+.*@example\.com$/i],
+        allowCategories: null
     }
 };
 

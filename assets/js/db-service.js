@@ -5600,6 +5600,68 @@ class DataService {
     // wrong subledger is a data problem, not a reason to misstate COGS. Stock is
     // allowed to go negative so the gap is visible and gets fixed, rather than
     // margin quietly reading better than reality.
+    // Resolve what a sale consumed, at weighted-average cost.
+    //
+    // Extracted from relieveCommerceCogs so the till uses the SAME arithmetic a
+    // marketplace order does. Reimplementing it for POS would be the second
+    // costing implementation PRODUCT_STRATEGY §6 forbids, and the two would drift
+    // on rounding long before anyone noticed — the numbers would simply be
+    // slightly different depending on which channel sold the dish.
+    //
+    // `soldLines` are [{ sku? | item_id?, quantity }] in the SOLD item's own base
+    // unit. Returns movement lines (negative quantity + negative amount), plus
+    // what it could not resolve — never silently treated as free.
+    //
+    // `onHand` is mutated as lines are produced, so a sweep of several orders
+    // keeps the running average honest across them.
+    _resolveSaleConsumption({ soldLines = [], byId = {}, bySku = {}, onHand = {} } = {}) {
+        const lines = [];
+        const unmatched = [];
+        const missingCost = [];
+
+        (soldLines || []).forEach((l) => {
+            if (!l) return;
+            const item = l.item_id ? byId[l.item_id]
+                : (l.sku ? bySku[String(l.sku).toLowerCase()] : null);
+            if (!item) { unmatched.push(l.sku || l.item_id || '?'); return; }
+            const qty = Number(l.quantity) || 0;
+            if (qty <= 0) return;
+
+            // A recipe is relieved as the ingredients it consumes, never as
+            // itself — the same reason a composite cannot be received.
+            const consumed = item.type === 'composite'
+                ? explodeRecipe(byId, item.id, qty)
+                : [{ item_id: item.id, quantity: qty }];
+
+            consumed.forEach((c) => {
+                const target = byId[c.item_id];
+                if (!target) return;
+                const stock = onHand[c.item_id] || { quantity: 0, value: 0 };
+                // Weighted average, derived. An item with no cost basis relieves
+                // quantity at zero value rather than inventing one — and says so,
+                // because a menu item selling at zero cost inflates gross margin
+                // exactly the way marketplace orders did before CM-ORDER-COGS.
+                const rate = unitCostOf(stock.quantity, stock.value);
+                if (!rate) missingCost.push(target.name || c.item_id);
+                // Explosion may return a fractional requirement; rounding happens
+                // ONCE, here, where a movement is actually recorded, so
+                // per-component error cannot accumulate across a recipe.
+                const q = Math.round(c.quantity);
+                if (q <= 0) return;
+                const amount = -Math.round(q * rate);
+                lines.push({
+                    item_id: c.item_id, item_name: target.name,
+                    base_unit: target.base_unit, quantity: -q, amount
+                });
+                const b = onHand[c.item_id] || (onHand[c.item_id] = { quantity: 0, value: 0 });
+                b.quantity += -q;
+                b.value += amount;
+            });
+        });
+
+        return { lines, unmatched, missingCost };
+    }
+
     async relieveCommerceCogs(userId, { limitCount = 100 } = {}) {
         const scope = this._scope(userId);
         const entityId = this._resolvedScopeId(userId);
@@ -5728,6 +5790,734 @@ class DataService {
         }
 
         return { relieved, skipped, unmatched: [...unmatched] };
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // POINT OF SALE
+    //
+    // Two collections, because everything else already exists: outlets are
+    // `dimensions`, the menu is `items` (a composite item IS a recipe, so its
+    // cost is already computable), stock relief is `stock_adjustments`, revenue
+    // is `transactions`, and the per-outlet P&L is `ledger_balances_by_dim`.
+    // docs/POS_IMPLEMENTATION_PLAN.md §7.
+    //
+    // `pos_orders` is a NORMALIZED order document. The first-party till is
+    // merely its first writer — `channel` distinguishes staff / qr / connector,
+    // so a Moka or Majoo connector later writes the same document and everything
+    // downstream is shared.
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // May THIS session post a journal? A cashier cannot write `journals` or
+    // `ledger_balances` at all, and Firestore batches are ATOMIC — so attempting
+    // the journal inline would fail the whole write, losing the sale rather than
+    // deferring its posting. When false the source rows land
+    // `accounting_status: 'pending'` and the existing postPendingJournals sweep
+    // picks them up in the next finance session. Exactly the bulk-import and
+    // commerce precedent (finance-map.js: "Never post here").
+    _canPostJournals() {
+        try {
+            const ws = (typeof window !== 'undefined' && window.FluxyWorkspace) || null;
+            if (ws && typeof ws.can === 'function') return !!ws.can('accounting.post');
+        } catch (_) { /* fall through */ }
+        return true; // non-browser callers (seeders, specs) post normally
+    }
+
+    // ── Tables ──────────────────────────────────────────────────────────────
+
+    async getPosTables(userId, { dimensionId = null, includeArchived = false } = {}) {
+        try {
+            const snap = await getDocs(collection(this.db, `${this._scope(userId)}/pos_tables`));
+            return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+                .filter((t) => includeArchived || t.status !== 'archived')
+                .filter((t) => !dimensionId || t.dimension_id === dimensionId)
+                .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0)
+                    || String(a.label || '').localeCompare(String(b.label || ''), undefined, { numeric: true }));
+        } catch (_) { return []; }
+    }
+
+    // 256 bits of CSPRNG output, base64url. Never derived from the table id, a
+    // sequence, or a timestamp: a guessable token is a readable menu and a
+    // submittable order for someone else's business.
+    _newQrToken() {
+        const bytes = new Uint8Array(32);
+        (globalThis.crypto || window.crypto).getRandomValues(bytes);
+        let s = '';
+        bytes.forEach((b) => { s += String.fromCharCode(b); });
+        return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    async savePosTable(userId, data = {}, { create = false, tableId = null } = {}) {
+        if (!userId) throw new Error('userId required');
+        const label = String(data.label || '').trim();
+        if (!label) throw new Error('A table needs a name or number.');
+        if (label.length > 40) throw new Error('That table name is too long (40 characters max).');
+        const dimensionId = String(data.dimension_id || '').trim();
+        if (!dimensionId) throw new Error('Pick which outlet this table belongs to.');
+
+        const scope = this._scope(userId);
+        const payload = {
+            label,
+            dimension_id: dimensionId,
+            seats: Number.isInteger(Number(data.seats)) && Number(data.seats) > 0 ? Number(data.seats) : null,
+            zone: this._nullableString(data.zone, 40),
+            status: data.status === 'archived' ? 'archived' : 'active',
+            sort: Number.isInteger(Number(data.sort)) ? Number(data.sort) : 0,
+            updated_at: serverTimestamp()
+        };
+
+        if (create) {
+            const existing = await this.getPosTables(userId, { includeArchived: true });
+            if (existing.some((t) => t.dimension_id === dimensionId
+                && String(t.label).toLowerCase() === label.toLowerCase())) {
+                throw new Error(`This outlet already has a table called "${label}".`);
+            }
+            const ref = doc(collection(this.db, `${scope}/pos_tables`));
+            payload.qr_token = this._newQrToken();
+            payload.created_at = serverTimestamp();
+            await setDoc(ref, payload);
+            await this._auditCreateBestEffort(userId, 'pos_table.created', 'pos_tables', ref.id,
+                { label, dimension_id: dimensionId });
+            return { id: ref.id, ...payload };
+        }
+
+        if (!tableId) throw new Error('tableId required');
+        await updateDoc(doc(this.db, `${scope}/pos_tables/${tableId}`), payload);
+        await this._auditCreateBestEffort(userId, 'pos_table.updated', 'pos_tables', tableId, { label });
+        return { id: tableId, ...payload };
+    }
+
+    async archivePosTable(userId, tableId, { restore = false } = {}) {
+        if (!userId || !tableId) throw new Error('userId and tableId required');
+        await updateDoc(doc(this.db, `${this._scope(userId)}/pos_tables/${tableId}`), {
+            status: restore ? 'active' : 'archived', updated_at: serverTimestamp()
+        });
+        await this._auditCreateBestEffort(userId,
+            restore ? 'pos_table.reactivated' : 'pos_table.archived', 'pos_tables', tableId, {});
+    }
+
+    // ── Menu ────────────────────────────────────────────────────────────────
+
+    // The menu IS `items`: anything with a price that is marked visible. No
+    // separate menu collection, so a dish's recipe — and therefore its true cost
+    // — is the same record the kitchen already maintains.
+    async getPosMenu(userId) {
+        const items = await this.getItems(userId);
+        return items
+            .filter((i) => i.pos_visible === true && Number.isInteger(Number(i.sales_price)) && Number(i.sales_price) > 0)
+            .map((i) => ({
+                id: i.id, name: i.name, type: i.type,
+                sales_price: Number(i.sales_price),
+                pos_category: i.pos_category || null,
+                base_unit: i.base_unit,
+                pos_sort: Number.isInteger(Number(i.pos_sort)) ? Number(i.pos_sort) : 0,
+                // A composite with components has a real cost basis; a bare stock
+                // item is costed from its own movements. Neither is asserted here
+                // — getPosOverview measures it against actual movements.
+                has_recipe: i.type === 'composite' && Array.isArray(i.components) && i.components.length > 0
+            }))
+            .sort((a, b) => (a.pos_sort - b.pos_sort)
+                || String(a.pos_category || '').localeCompare(String(b.pos_category || ''))
+                || String(a.name).localeCompare(String(b.name)));
+    }
+
+    // ── Orders ──────────────────────────────────────────────────────────────
+
+    _posDayKey(d = new Date()) {
+        const p = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
+    }
+
+    // Recompute every derived figure from the lines. Called on every mutation so
+    // a total can never drift from what it is a total OF — the client never sends
+    // a total, it sends lines.
+    _posTotals(order) {
+        const lines = Array.isArray(order.lines) ? order.lines : [];
+        const subtotal = lines.reduce((s, l) => s + (Number(l.gross_amount) || 0), 0);
+        const lineDiscount = lines.reduce((s, l) => s + (Number(l.discount_amount) || 0), 0);
+        const orderDiscount = Math.max(0, Number(order.discount_amount) || 0);
+        // Clamped: an order discount larger than what is left after line discounts
+        // would make the sale negative and post a backwards journal.
+        const capped = Math.min(orderDiscount, Math.max(0, subtotal - lineDiscount));
+        const discountTotal = lineDiscount + capped;
+        const service = Math.max(0, Number(order.service_charge_amount) || 0);
+        const tax = Math.max(0, Number(order.tax_amount) || 0);
+        const paid = (Array.isArray(order.payments) ? order.payments : [])
+            .filter((p) => p && p.status === 'settled')
+            .reduce((s, p) => s + (Number(p.amount) || 0), 0);
+        return {
+            subtotal,
+            discount_amount: capped,
+            discount_total: discountTotal,
+            service_charge_amount: service,
+            tax_amount: tax,
+            total_amount: subtotal - discountTotal + service + tax,
+            paid_amount: paid
+        };
+    }
+
+    async createPosOrder(userId, { dimensionId, tableId = null, tableLabel = null, channel = 'staff', note = null } = {}) {
+        if (!userId) throw new Error('userId required');
+        if (!dimensionId) throw new Error('Pick an outlet before opening an order.');
+        const scope = this._scope(userId);
+        const now = new Date();
+        const dayKey = this._posDayKey(now);
+        // Per-outlet, per-day sequence, reserved transactionally — the same
+        // mechanism journal numbers use. Two tills opening at once get 14 and 15,
+        // not two 14s. Never derived from a timestamp: staff call the number out.
+        const counterRef = doc(this.db, `${scope}/counters/pos-${dimensionId}-${dayKey}`);
+        const orderRef = doc(collection(this.db, `${scope}/pos_orders`));
+
+        const seq = await runTransaction(this.db, async (tx) => {
+            const snap = await tx.get(counterRef);
+            const next = (snap.exists() ? (Number(snap.data().seq) || 0) : 0) + 1;
+            tx.set(counterRef, { seq: next, entity_id: this._resolvedScopeId(userId), updated_at: serverTimestamp() }, { merge: true });
+            return next;
+        });
+
+        const payload = {
+            order_number: `${dayKey}-${String(seq).padStart(3, '0')}`,
+            dimension_id: dimensionId,
+            table_id: tableId || null,
+            table_label: tableLabel || null,
+            channel: ['staff', 'qr', 'connector'].includes(channel) ? channel : 'staff',
+            status: channel === 'qr' ? 'submitted' : 'open',
+            lines: [], subtotal: 0, discount_amount: 0, discount_reason: null, discount_total: 0,
+            service_charge_amount: 0, tax_amount: 0, total_amount: 0,
+            payments: [], paid_amount: 0,
+            note: this._nullableString(note, 200),
+            version: 1,
+            opened_at: Timestamp.fromDate(now),
+            paid_at: null, voided_at: null, void_reason: null,
+            transaction_id: null, stock_adjustment_id: null,
+            refund_transaction_id: null, refund_reason: null, refunded_at: null,
+            created_at: serverTimestamp(), updated_at: serverTimestamp(),
+            created_by: this.actorUid || userId, updated_by: this.actorUid || userId
+        };
+        await setDoc(orderRef, payload);
+        return { id: orderRef.id, ...payload };
+    }
+
+    // Every order mutation goes through here.
+    //
+    // `mutate(order)` returns the changed fields. It runs INSIDE a transaction
+    // against a fresh read, and `version` must advance by exactly one — which is
+    // what makes a second waiter's stale device lose the race loudly instead of
+    // silently overwriting the line the first one just added. Last-write-wins on
+    // an embedded lines[] loses a dish and nothing reports it
+    // (docs/POS_IMPLEMENTATION_PLAN.md §18.2).
+    async updatePosOrder(userId, orderId, mutate) {
+        if (!userId || !orderId) throw new Error('userId and orderId required');
+        const ref = doc(this.db, `${this._scope(userId)}/pos_orders/${orderId}`);
+        return runTransaction(this.db, async (tx) => {
+            const snap = await tx.get(ref);
+            if (!snap.exists()) throw new Error('That order no longer exists.');
+            const current = { id: snap.id, ...snap.data() };
+            if (current.status === 'void') throw new Error('This order was voided and can no longer be changed.');
+            const changes = (await mutate(current)) || {};
+            const merged = { ...current, ...changes };
+            const totals = this._posTotals(merged);
+            const patch = {
+                ...changes, ...totals,
+                version: (Number(current.version) || 1) + 1,
+                updated_at: serverTimestamp(),
+                updated_by: this.actorUid || userId
+            };
+            delete patch.id;
+            tx.update(ref, patch);
+            return { ...merged, ...totals, version: patch.version };
+        });
+    }
+
+    async addPosOrderLine(userId, orderId, { itemId, itemName, quantity = 1, unitPrice, note = null }) {
+        const qty = Number(quantity);
+        if (!Number.isInteger(qty) || qty <= 0) throw new Error('Quantity must be a whole number of one or more.');
+        const price = Number(unitPrice);
+        if (!Number.isInteger(price) || price < 0) throw new Error('That item has no valid price.');
+        return this.updatePosOrder(userId, orderId, (order) => {
+            const lines = [...(order.lines || [])];
+            // Same item, same price, no note → bump the existing line rather than
+            // stacking duplicates. A kitchen ticket reading "1 × Nasi Goreng"
+            // four times is how a portion goes missing.
+            const at = lines.findIndex((l) => l.item_id === itemId && !l.note && !note && Number(l.unit_price) === price);
+            if (at >= 0) {
+                const q = (Number(lines[at].quantity) || 0) + qty;
+                lines[at] = { ...lines[at], quantity: q, gross_amount: q * price };
+            } else {
+                lines.push({
+                    line_id: `l${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`,
+                    item_id: itemId, item_name: itemName, quantity: qty,
+                    unit_price: price, gross_amount: qty * price,
+                    discount_amount: 0, discount_reason: null,
+                    note: this._nullableString(note, 120)
+                });
+            }
+            return { lines };
+        });
+    }
+
+    async setPosOrderLineQuantity(userId, orderId, lineId, quantity) {
+        const qty = Number(quantity);
+        if (!Number.isInteger(qty) || qty < 0) throw new Error('Quantity must be a whole number.');
+        return this.updatePosOrder(userId, orderId, (order) => {
+            const lines = (order.lines || [])
+                .map((l) => (l.line_id === lineId
+                    // The price is the one copied onto the line when it was added,
+                    // never today's menu price: a price edited mid-service must
+                    // not retroactively change an open order.
+                    ? { ...l, quantity: qty, gross_amount: qty * (Number(l.unit_price) || 0) }
+                    : l))
+                .filter((l) => Number(l.quantity) > 0);
+            return { lines };
+        });
+    }
+
+    // A discount is stored SEPARATELY from the price, never as a lower price.
+    // Fold it in and the menu price is gone from the ledger forever: no price
+    // integrity, no discount analytics, no anomaly detection (§18.4).
+    async setPosOrderDiscount(userId, orderId, { lineId = null, amount = 0, reason = null } = {}) {
+        const amt = Math.max(0, Math.round(Number(amount) || 0));
+        const why = this._nullableString(reason, 80);
+        if (amt > 0 && !why) throw new Error('Say why the discount was given — it is the only record of it.');
+        return this.updatePosOrder(userId, orderId, (order) => {
+            if (!lineId) return { discount_amount: amt, discount_reason: amt > 0 ? why : null };
+            const lines = (order.lines || []).map((l) => (l.line_id === lineId
+                ? { ...l, discount_amount: Math.min(amt, Number(l.gross_amount) || 0), discount_reason: amt > 0 ? why : null }
+                : l));
+            return { lines };
+        });
+    }
+
+    async setPosOrderStatus(userId, orderId, status) {
+        const allowed = ['open', 'submitted', 'sent', 'served', 'awaiting_payment'];
+        if (!allowed.includes(status)) throw new Error(`"${status}" is not a status an order can be moved to here.`);
+        return this.updatePosOrder(userId, orderId, () => ({ status }));
+    }
+
+    async voidPosOrder(userId, orderId, reason) {
+        const why = this._nullableString(reason, 200);
+        if (!why) throw new Error('A voided order needs a reason — it is the only trace it leaves.');
+        const out = await this.updatePosOrder(userId, orderId, (order) => {
+            // A paid order has already posted revenue and relieved stock; undoing
+            // that is a refund (which reverses both), not a void.
+            if (order.status === 'paid') throw new Error('This order is already paid. Refund it instead — a void would leave the revenue posted.');
+            return { status: 'void', void_reason: why, voided_at: Timestamp.fromDate(new Date()) };
+        });
+        await this._auditCreateBestEffort(userId, 'pos_order.voided', 'pos_orders', orderId,
+            { reason: why, total_amount: out.total_amount });
+        return out;
+    }
+
+    // ── Payment ─────────────────────────────────────────────────────────────
+
+    // Manual is a PROVIDER, not a special case. Every downstream consumer — the
+    // state machine, the posting rules, reconciliation — is written once against
+    // this shape, so Midtrans/Xendit later add a provider rather than a branch
+    // (docs/POS_IMPLEMENTATION_PLAN.md §11).
+    //
+    // Cash settles to 1000 immediately; QRIS/card/e-wallet sit with the acquirer,
+    // so they settle through 1030 and clear on payout.
+    static get POS_PAYMENT_METHODS() {
+        return [
+            { id: 'cash', label: 'Cash', settlement: 'cash' },
+            { id: 'qris', label: 'QRIS', settlement: 'clearing' },
+            { id: 'transfer', label: 'Bank transfer', settlement: 'cash' },
+            { id: 'card', label: 'Card', settlement: 'clearing' },
+            { id: 'other', label: 'Other', settlement: 'cash' }
+        ];
+    }
+
+    _posSettlementFor(method) {
+        const m = DataService.POS_PAYMENT_METHODS.find((x) => x.id === method);
+        return m ? m.settlement : 'cash';
+    }
+
+    // Record money received. An order becomes `paid` only when what has been
+    // recorded covers the bill — paid is DERIVED, never asserted. Partial
+    // payments accumulate; the order stays awaiting_payment until the balance
+    // reaches zero.
+    async recordPosPayment(userId, orderId, { method = 'cash', amount, reference = null } = {}) {
+        const amt = Math.round(Number(amount) || 0);
+        if (amt <= 0) throw new Error('Enter how much was received.');
+        const methods = DataService.POS_PAYMENT_METHODS.map((m) => m.id);
+        if (!methods.includes(method)) throw new Error('Pick how the customer paid.');
+
+        const order = await this.updatePosOrder(userId, orderId, (o) => {
+            if (o.status === 'paid') throw new Error('This order is already fully paid.');
+            if (!(o.lines || []).length) throw new Error('There is nothing on this order to pay for.');
+            const payments = [...(o.payments || []), {
+                payment_id: `p${Date.now().toString(36)}`,
+                method, provider: 'manual', amount: amt,
+                reference: this._nullableString(reference, 80),
+                status: 'settled',
+                received_at: Timestamp.fromDate(new Date()),
+                received_by: this.actorUid || userId
+            }];
+            const totals = this._posTotals({ ...o, payments });
+            const settled = totals.paid_amount >= totals.total_amount;
+            return {
+                payments,
+                status: settled ? 'paid' : 'awaiting_payment',
+                paid_at: settled ? Timestamp.fromDate(new Date()) : null
+            };
+        });
+
+        // Only a PAID order emits. An open or partially-paid one has produced no
+        // financial event yet, and a voided one never will.
+        if (order.status === 'paid') {
+            try {
+                await this._emitPosSale(userId, order);
+            } catch (err) {
+                // The money is recorded either way. Emission is retried by
+                // `emitUnpostedPosSales`, and the POS overview surfaces the
+                // backlog rather than letting it sit silently.
+                console.error('[pos] sale recorded but not yet emitted to the ledger:', err && err.message);
+            }
+        }
+        return order;
+    }
+
+    // ── Emission: where an operational event becomes a financial one ────────
+    //
+    // One paid order produces exactly two source documents:
+    //   transactions{source:'pos'}          → POS-SALE   (Dr cash|1030, Dr 4900, Cr 4000)
+    //   stock_adjustments{type:'sale'}      → CM-ORDER-COGS (Dr 5100, Cr 1200)
+    //
+    // IDEMPOTENT WITHOUT A FLAG: `transaction_id` being set IS the record that
+    // this order has emitted. Same principle as relieveCommerceCogs using the
+    // movement's `source` rather than a flag on an immutable order.
+    async _emitPosSale(userId, order) {
+        if (!order || order.status !== 'paid') return null;
+        if (order.transaction_id) return { transaction_id: order.transaction_id, already: true };
+
+        const scope = this._scope(userId);
+        const entityId = this._resolvedScopeId(userId);
+        const when = order.paid_at && typeof order.paid_at.toDate === 'function' ? order.paid_at.toDate() : new Date();
+        const canPost = this._canPostJournals();
+
+        // Settlement follows the LARGEST payment: a split bill settling mostly by
+        // QRIS belongs in clearing. Mixed-tender splitting across two journals is
+        // deferred — it needs a per-payment posting model, not a bigger rule.
+        const payments = (order.payments || []).filter((p) => p.status === 'settled');
+        const byMethod = {};
+        payments.forEach((p) => { byMethod[p.method] = (byMethod[p.method] || 0) + (Number(p.amount) || 0); });
+        const dominant = Object.keys(byMethod).sort((a, b) => byMethod[b] - byMethod[a])[0] || 'cash';
+
+        // `amount` is NET revenue (gross − discount) because every existing
+        // revenue surface sums transaction amounts — the dashboard KPI, the
+        // income statement, /outlet-pnl. The gross price is recovered inside
+        // POS-SALE from pos_discount_amount.
+        const net = Math.round(Number(order.total_amount) || 0)
+            - Math.round(Number(order.service_charge_amount) || 0)
+            - Math.round(Number(order.tax_amount) || 0);
+        if (net <= 0) return null;
+
+        const txRef = doc(collection(this.db, `${scope}/transactions`));
+        const tx = {
+            amount: net,
+            vendor_name: order.table_label ? `Meja ${order.table_label}` : `Order ${order.order_number || ''}`.trim(),
+            category: 'Sales',
+            type: 'income',
+            status: 'Completed',
+            timestamp: Timestamp.fromDate(when),
+            created_at: serverTimestamp(),
+            source: 'pos',
+            created_via: 'pos',
+            accounting_status: 'pending',
+            dimension_id: order.dimension_id || null,
+            pos_order_id: order.id,
+            pos_discount_amount: Math.round(Number(order.discount_total) || 0),
+            pos_discount_reason: this._nullableString(order.discount_reason, 80),
+            pos_settlement: this._posSettlementFor(dominant),
+            pos_refund_reason: null
+        };
+
+        const batch = writeBatch(this.db);
+        if (canPost) {
+            // Posts POS-SALE in the same atomic batch as the row, exactly as
+            // addTransaction does. A cashier session skips this — see
+            // _canPostJournals — and the sweep posts it later.
+            await this._postSourceJournal(userId, batch, 'transactions', txRef, tx, { date: when });
+        }
+        batch.set(txRef, tx);
+
+        // ── Stock relief. Independent of revenue on purpose: an item with no
+        // recipe and no cost basis still sells, it just produces no COGS row.
+        // That must be VISIBLE (getPosOverview counts it), never silent.
+        let adjRef = null;
+        try {
+            const [items, movements] = await Promise.all([
+                this.getItems(userId, { includeArchived: true }),
+                this.getStockMovements(userId, { limitCount: 1000 })
+            ]);
+            const byId = {}; const bySku = {};
+            items.forEach((i) => { byId[i.id] = i; if (i.sku) bySku[String(i.sku).toLowerCase()] = i; });
+            const onHand = {};
+            movements.forEach((m) => {
+                const b = onHand[m.item_id] || (onHand[m.item_id] = { quantity: 0, value: 0 });
+                b.quantity += Number(m.quantity) || 0;
+                b.value += Number(m.amount) || 0;
+            });
+
+            // The SAME resolver a marketplace order uses. Recipes explode,
+            // shared ingredients merge, rounding happens once per movement, and
+            // an oversell relieves anyway at the last known cost so the gap shows
+            // as negative stock rather than a flattering margin.
+            const { lines } = this._resolveSaleConsumption({
+                soldLines: (order.lines || []).map((l) => ({ item_id: l.item_id, quantity: Number(l.quantity) || 0 })),
+                byId, bySku, onHand
+            });
+            const cogs = lines.reduce((s, l) => s + Math.abs(l.amount), 0);
+
+            if (lines.length && cogs > 0) {
+                adjRef = doc(collection(this.db, `${scope}/stock_adjustments`));
+                const adj = {
+                    adjustment_type: 'sale',
+                    dimension_id: order.dimension_id || null,
+                    reference: `POS ${order.order_number || order.id}`,
+                    lines: lines.map((l) => ({ ...l })),
+                    total_amount: -cogs,
+                    line_count: lines.length,
+                    status: 'posted',
+                    timestamp: Timestamp.fromDate(when),
+                    created_by: this.actorUid || userId,
+                    created_at: serverTimestamp()
+                };
+                if (canPost) await this._postSourceJournal(userId, batch, 'stock_adjustments', adjRef, adj, { date: when });
+                batch.set(adjRef, adj);
+
+                const pk = acctPeriodKey(when);
+                lines.forEach((l) => {
+                    batch.set(doc(collection(this.db, `${scope}/stock_movements`)), {
+                        item_id: l.item_id, item_name: l.item_name, dimension_id: order.dimension_id || null,
+                        quantity: l.quantity, base_unit: l.base_unit, amount: l.amount,
+                        movement_type: 'issue',
+                        source: { collection: 'pos_orders', id: order.id },
+                        journal_ref: adj.journal_ref || null,
+                        period_key: pk, entity_id: entityId,
+                        created_by: this.actorUid || userId, created_at: serverTimestamp()
+                    });
+                });
+            }
+        } catch (err) {
+            // Cost relief failing must never lose the sale. Revenue still posts;
+            // the missing COGS shows up as an unrelieved order on the overview.
+            console.error('[pos] stock relief skipped for this order:', err && err.message);
+        }
+
+        await batch.commit();
+
+        // Stamp the order LAST, so a crash mid-emission leaves it retryable
+        // rather than marked done with nothing behind it.
+        await updateDoc(doc(this.db, `${scope}/pos_orders/${order.id}`), {
+            transaction_id: txRef.id,
+            stock_adjustment_id: adjRef ? adjRef.id : null,
+            version: (Number(order.version) || 1) + 1,
+            updated_at: serverTimestamp()
+        });
+
+        await this._auditCreateBestEffort(userId, 'pos_order.paid', 'pos_orders', order.id, {
+            order_number: order.order_number, total_amount: order.total_amount,
+            dimension_id: order.dimension_id, settlement: tx.pos_settlement
+        });
+        return { transaction_id: txRef.id, stock_adjustment_id: adjRef ? adjRef.id : null };
+    }
+
+    // Retry emission for orders that were paid but never reached the ledger —
+    // the till lost connectivity mid-commit, or stock relief threw. Idempotent:
+    // an order carrying a transaction_id is skipped.
+    async emitUnpostedPosSales(userId, { limitCount = 50 } = {}) {
+        const orders = await this.getPosOrders(userId, { statuses: ['paid'], limitCount });
+        let emitted = 0;
+        for (const o of orders) {
+            if (o.transaction_id) continue;
+            try { await this._emitPosSale(userId, o); emitted++; } catch (_) { /* next sweep */ }
+        }
+        return { emitted };
+    }
+
+    // ── Refund ──────────────────────────────────────────────────────────────
+
+    // Reverses BOTH sides. A refund that reverses revenue but not COGS inverts
+    // gross margin silently — the mirror of the defect CM-ORDER-COGS fixed.
+    async refundPosOrder(userId, orderId, reason) {
+        const why = this._nullableString(reason, 200);
+        if (!why) throw new Error('A refund needs a reason.');
+        const scope = this._scope(userId);
+        const snap = await getDoc(doc(this.db, `${scope}/pos_orders/${orderId}`));
+        if (!snap.exists()) throw new Error('That order no longer exists.');
+        const order = { id: snap.id, ...snap.data() };
+        if (order.status !== 'paid') throw new Error('Only a paid order can be refunded.');
+        if (order.refund_transaction_id) throw new Error('This order has already been refunded.');
+
+        const when = new Date();
+        const net = Math.round(Number(order.total_amount) || 0);
+        const txRef = doc(collection(this.db, `${scope}/transactions`));
+        const tx = {
+            amount: net,
+            vendor_name: order.table_label ? `Meja ${order.table_label}` : `Order ${order.order_number || ''}`.trim(),
+            category: 'Sales', type: 'refund', status: 'Completed',
+            timestamp: Timestamp.fromDate(when), created_at: serverTimestamp(),
+            source: 'pos', created_via: 'pos', accounting_status: 'pending',
+            dimension_id: order.dimension_id || null,
+            pos_order_id: order.id,
+            pos_discount_amount: 0, pos_discount_reason: null,
+            pos_settlement: 'cash', pos_refund_reason: why
+        };
+
+        const batch = writeBatch(this.db);
+        if (this._canPostJournals()) {
+            await this._postSourceJournal(userId, batch, 'transactions', txRef, tx, { date: when });
+        }
+        batch.set(txRef, tx);
+        await batch.commit();
+
+        // Put the stock back, by an OPPOSING movement rather than by editing the
+        // original — movements are immutable for the same reason journals are.
+        if (order.stock_adjustment_id) {
+            try {
+                const adjSnap = await getDoc(doc(this.db, `${scope}/stock_adjustments/${order.stock_adjustment_id}`));
+                if (adjSnap.exists()) {
+                    const orig = adjSnap.data();
+                    const back = (orig.lines || []).map((l) => ({ ...l, quantity: -l.quantity, amount: -l.amount }));
+                    const total = back.reduce((s, l) => s + l.amount, 0);
+                    if (back.length && total !== 0) {
+                        const rRef = doc(collection(this.db, `${scope}/stock_adjustments`));
+                        const rAdj = {
+                            adjustment_type: 'count', dimension_id: order.dimension_id || null,
+                            reference: `POS refund ${order.order_number || order.id}`,
+                            lines: back, total_amount: total, line_count: back.length, status: 'posted',
+                            timestamp: Timestamp.fromDate(when),
+                            created_by: this.actorUid || userId, created_at: serverTimestamp()
+                        };
+                        const b2 = writeBatch(this.db);
+                        if (this._canPostJournals()) await this._postSourceJournal(userId, b2, 'stock_adjustments', rRef, rAdj, { date: when });
+                        b2.set(rRef, rAdj);
+                        const pk = acctPeriodKey(when);
+                        back.forEach((l) => {
+                            b2.set(doc(collection(this.db, `${scope}/stock_movements`)), {
+                                item_id: l.item_id, item_name: l.item_name, dimension_id: order.dimension_id || null,
+                                quantity: l.quantity, base_unit: l.base_unit, amount: l.amount,
+                                movement_type: 'adjustment',
+                                source: { collection: 'pos_orders', id: `${order.id}__refund` },
+                                journal_ref: rAdj.journal_ref || null,
+                                period_key: pk, entity_id: this._resolvedScopeId(userId),
+                                created_by: this.actorUid || userId, created_at: serverTimestamp()
+                            });
+                        });
+                        await b2.commit();
+                    }
+                }
+            } catch (err) {
+                console.error('[pos] refund posted but stock was not returned:', err && err.message);
+            }
+        }
+
+        await updateDoc(doc(this.db, `${scope}/pos_orders/${orderId}`), {
+            refund_transaction_id: txRef.id, refund_reason: why,
+            refunded_at: Timestamp.fromDate(when),
+            version: (Number(order.version) || 1) + 1
+        });
+        await this._auditCreateBestEffort(userId, 'pos_order.refunded', 'pos_orders', orderId,
+            { reason: why, amount: net });
+        return { refund_transaction_id: txRef.id };
+    }
+
+    // ── Reads ───────────────────────────────────────────────────────────────
+
+    async getPosOrders(userId, { dimensionId = null, statuses = null, sinceDate = null, limitCount = 200 } = {}) {
+        try {
+            const snap = await getDocs(query(
+                collection(this.db, `${this._scope(userId)}/pos_orders`),
+                orderBy('created_at', 'desc'), limit(limitCount)
+            ));
+            const since = sinceDate ? sinceDate.getTime() : null;
+            return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+                .filter((o) => !dimensionId || o.dimension_id === dimensionId)
+                .filter((o) => !statuses || statuses.includes(o.status))
+                .filter((o) => {
+                    if (!since) return true;
+                    const t = o.opened_at && typeof o.opened_at.toDate === 'function' ? o.opened_at.toDate().getTime() : 0;
+                    return t >= since;
+                });
+        } catch (_) { return []; }
+    }
+
+    // A live listener, and the ONLY one in the app outside the internal console.
+    //
+    // shared-dashboard.js records a deliberate decision AGAINST onSnapshot: live
+    // listeners on transactions/bills/invoices multiply reads for a problem that
+    // is really "refetch after a write I already know about". POS is the case
+    // that reasoning does not cover — a QR order is a write this tab does NOT
+    // know about, and a till that needs a manual refresh to see it is not a till.
+    //
+    // Kept narrow on purpose: one query, today's orders for one outlet, on the
+    // POS page only. Logged under the DESIGN_SYSTEM Exception Protocol.
+    watchPosOrders(userId, { dimensionId = null } = {}, onChange) {
+        const q = query(
+            collection(this.db, `${this._scope(userId)}/pos_orders`),
+            orderBy('created_at', 'desc'), limit(120)
+        );
+        return onSnapshot(q, (snap) => {
+            const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+                .filter((o) => !dimensionId || o.dimension_id === dimensionId);
+            try { onChange(rows); } catch (err) { console.error('[pos] watcher handler threw:', err); }
+        }, (err) => console.error('[pos] live orders unavailable:', err && err.message));
+    }
+
+    // The operational picture for one outlet, right now.
+    //
+    // ⚠️ `salesToday` here is OPERATIONAL — a sum over pos_orders, not the ledger.
+    // It is deliberately labelled as such in the UI and linked to the accounting
+    // figure, because a product with two revenue numbers is what
+    // PRODUCT_STRATEGY §6 forbids. `unposted` is what reconciles them, and it is
+    // surfaced rather than hidden.
+    async getPosOverview(userId, { dimensionId = null } = {}) {
+        const start = new Date(); start.setHours(0, 0, 0, 0);
+        const [orders, tables, menu, movements] = await Promise.all([
+            this.getPosOrders(userId, { dimensionId, limitCount: 300 }),
+            this.getPosTables(userId, { dimensionId }),
+            this.getPosMenu(userId),
+            this.getStockMovements(userId, { limitCount: 1000 }).catch(() => [])
+        ]);
+
+        const openStatuses = ['open', 'submitted', 'sent', 'served', 'awaiting_payment'];
+        const active = orders.filter((o) => openStatuses.includes(o.status));
+        const todayPaid = orders.filter((o) => o.status === 'paid' && (() => {
+            const t = o.paid_at && typeof o.paid_at.toDate === 'function' ? o.paid_at.toDate() : null;
+            return t && t >= start;
+        })());
+
+        const occupied = new Set(active.map((o) => o.table_id).filter(Boolean));
+
+        // Which menu items have a real cost basis. An item selling at zero cost
+        // inflates gross margin exactly the way marketplace orders did before
+        // per-sale relief existed — the whole reason this chain was built.
+        const costed = new Set();
+        movements.forEach((m) => { if (Number(m.amount)) costed.add(m.item_id); });
+        const noCostBasis = menu.filter((m) => (m.type === 'composite' ? !m.has_recipe : !costed.has(m.id)));
+
+        return {
+            tables: tables.map((t) => ({ ...t, occupied: occupied.has(t.id) })),
+            counts: {
+                tablesTotal: tables.length,
+                tablesOccupied: occupied.size,
+                tablesFree: Math.max(0, tables.length - occupied.size),
+                activeOrders: active.length,
+                awaitingPayment: active.filter((o) => o.status === 'awaiting_payment').length,
+                newQrOrders: active.filter((o) => o.channel === 'qr' && o.status === 'submitted').length,
+                paidToday: todayPaid.length
+            },
+            salesToday: todayPaid.reduce((s, o) => s + (Number(o.total_amount) || 0), 0),
+            discountToday: todayPaid.reduce((s, o) => s + (Number(o.discount_total) || 0), 0),
+            activeOrders: active,
+            // The two honesty signals. Both are counts of things that are wrong
+            // and would otherwise be invisible.
+            unpostedCount: orders.filter((o) => o.status === 'paid' && !o.transaction_id).length,
+            noCostBasisCount: noCostBasis.length,
+            noCostBasisNames: noCostBasis.slice(0, 5).map((m) => m.name),
+            menuSize: menu.length
+        };
     }
 
     // Per-outlet P&L — the reason the dimension shipped first.
@@ -5887,7 +6677,20 @@ class DataService {
             // threshold from usage history would produce a confident-looking
             // number from days of data.
             reorder_point: normalizeReorderPoint(data.reorder_point),
-            notes: this._nullableString(data.notes, 500)
+            notes: this._nullableString(data.notes, 500),
+            // ── Menu. The menu IS this collection: an item with a price and
+            // `pos_visible` appears on the till. No separate menu master, so a
+            // dish's recipe — and therefore its true cost — is the same record
+            // the kitchen already maintains, and the two can never drift.
+            //
+            // The price is a raw integer Rupiah like every other amount.
+            // `null` means "not sold directly", which is the right default for
+            // an ingredient: flour has a cost, not a menu price.
+            sales_price: Number.isInteger(Number(data.sales_price)) && Number(data.sales_price) > 0
+                ? Number(data.sales_price) : null,
+            pos_visible: data.pos_visible === true,
+            pos_category: this._nullableString(data.pos_category, 40),
+            pos_sort: Number.isInteger(Number(data.pos_sort)) ? Number(data.pos_sort) : 0
         };
 
         // Every component must exist, and the resulting graph must be acyclic.

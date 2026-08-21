@@ -224,6 +224,11 @@
                 <span class="sidebar-text text-[13px] sidebar-hide">Inventory</span>
             </a>
 
+            <a href="/pos" id="nav-pos" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-800/50 text-gray-400 hover:text-white font-medium transition-all w-full justify-center lg:justify-start hidden">
+                <svg class="w-6 h-6 lg:w-5 lg:h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 6a1 1 0 00-1 1v11a1 1 0 001 1h16a1 1 0 001-1V7a1 1 0 00-1-1M9 10h6m-6 4h3"></path></svg>
+                <span class="sidebar-text text-[13px] sidebar-hide">Point of Sale</span>
+            </a>
+
             <button type="button" id="nav-approvals" class="nav-item nav-item-disabled flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 font-medium w-full justify-center lg:justify-start" disabled aria-disabled="true">
                 <svg class="w-6 h-6 lg:w-5 lg:h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"></path></svg>
                 <span class="sidebar-text text-[13px] sidebar-hide">Approvals</span>
@@ -489,6 +494,7 @@
             // load-bearing.
             'outlet-pnl': 'nav-outlet-pnl',
             'inventory': 'nav-inventory',
+            'pos': 'nav-pos',
             'budget': 'nav-budgets'
         };
 
@@ -647,9 +653,31 @@
                         };
                         await Promise.all([
                             reveal('nav-inventory', 'inventory'),
-                            reveal('nav-outlet-pnl', 'outlet_pnl')
+                            reveal('nav-outlet-pnl', 'outlet_pnl'),
+                            reveal('nav-pos', 'pos')
                         ]);
                     } catch (_) { /* stays hidden — non-fatal */ }
+
+                    // A cashier can read almost nothing this sidebar links to.
+                    // Leaving the full nav up would offer a dozen destinations
+                    // that each greet them with permission-denied, so the whole
+                    // thing collapses to the one surface they can use. The Point
+                    // of Sale entry is force-revealed because feature eligibility
+                    // resolves from the OWNER's email, which a cashier may not
+                    // match — and a till operator with no till is nothing.
+                    try {
+                        const { isPosOnlyRole } = await import('/assets/js/perms-service.js');
+                        if (ws && isPosOnlyRole(ws.role)) {
+                            const pos = document.getElementById('nav-pos');
+                            if (pos) pos.classList.remove('hidden');
+                            sidebar.querySelectorAll('.nav-item, .section-label').forEach((el) => {
+                                if (el.id === 'nav-pos' || el.id === 'nav-settings') return;
+                                el.classList.add('hidden');
+                            });
+                            const ops = sidebar.querySelector('.section-label');
+                            if (ops) ops.classList.remove('hidden');
+                        }
+                    } catch (_) { /* full nav stays — rules are the real boundary */ }
 
                     // Keep the internal operations index (internal_users/{uid}) in
                     // sync from the user's own session. Best-effort.

@@ -4884,7 +4884,152 @@
         // Stranded-money notice on /outlet-pnl. The two halves that carry a live
         // figure are in PATTERNS; this closing sentence is fixed.
         "Untagged amounts are still in the company total; they are just in none of the outlets.": "Jumlah yang belum ditandai tetap masuk total perusahaan; hanya saja tidak masuk ke outlet mana pun.",
-        "No revenue is tagged to an outlet yet.": "Belum ada pendapatan yang ditandai ke outlet."
+        "No revenue is tagged to an outlet yet.": "Belum ada pendapatan yang ditandai ke outlet.",
+
+        // ── Point of sale ────────────────────────────────────────────────
+        // Casual professional, "Anda", short sentences — this copy is read
+        // standing up during service. Brand and product names stay English;
+        // "Point of Sale" is a product surface name, so it does too.
+        "FluxyOS | Point of Sale": "FluxyOS | Point of Sale",
+        "Point of Sale": "Point of Sale",
+        "What is happening in the room right now.": "Apa yang sedang terjadi di ruangan sekarang.",
+        "Outlet": "Outlet",
+        "Takeaway": "Bawa pulang",
+        "Start a takeaway order": "Buat pesanan bawa pulang",
+        "No connection. Orders cannot be saved until this clears — do not take payment yet.": "Tidak ada koneksi. Pesanan belum bisa disimpan sampai koneksi pulih — jangan terima pembayaran dulu.",
+
+        // Tables
+        "Tables": "Meja",
+        "Tap a table to open or continue its order.": "Ketuk meja untuk membuka atau melanjutkan pesanannya.",
+        "Manage tables": "Kelola meja",
+        "No tables at this outlet yet": "Belum ada meja di outlet ini",
+        "Add the tables in this room so orders can be attached to them. Takeaway orders work without one.": "Tambahkan meja di ruangan ini supaya pesanan bisa ditempelkan ke meja. Pesanan bawa pulang tetap bisa tanpa meja.",
+        "Add a table": "Tambah meja",
+        "Table name or number": "Nama atau nomor meja",
+        "12, A3, Bar 2": "12, A3, Bar 2",
+        "Area": "Area",
+        "Lantai 2, Teras": "Lantai 2, Teras",
+        "Seats": "Kursi",
+        "Table added.": "Meja ditambahkan.",
+        "Free": "Kosong",
+        "Tables free": "Meja kosong",
+        "TABLES FREE": "MEJA KOSONG",
+
+        // Menu
+        "Menu": "Menu",
+        "Tap an item to add it to the open order.": "Ketuk item untuk menambahkannya ke pesanan yang terbuka.",
+        "Open a table first, then tap items to add them.": "Buka meja dulu, lalu ketuk item untuk menambahkannya.",
+        "Nothing on the menu yet": "Belum ada apa pun di menu",
+        "An item appears here once it has a selling price and is marked visible on the till. Set both in Inventory.": "Item muncul di sini setelah punya harga jual dan ditandai tampil di kasir. Atur keduanya di Inventory.",
+        "Open Inventory": "Buka Inventory",
+
+        // Order panel
+        "No order open": "Belum ada pesanan terbuka",
+        "Pick a table to start.": "Pilih meja untuk mulai.",
+        "Add a table, or start a takeaway order.": "Tambah meja, atau buat pesanan bawa pulang.",
+        "Pick a table": "Pilih meja",
+        "Nothing added yet.": "Belum ada yang ditambahkan.",
+        "Subtotal": "Subtotal",
+        "Discount": "Diskon",
+        "Total": "Total",
+        "Paid so far": "Sudah dibayar",
+        "Balance": "Sisa",
+        "Active orders": "Pesanan aktif",
+        "ACTIVE ORDERS": "PESANAN AKTIF",
+        "Awaiting payment": "Menunggu pembayaran",
+        "AWAITING PAYMENT": "MENUNGGU PEMBAYARAN",
+
+        // Order status + the single advancing action
+        "Open": "Terbuka",
+        "New QR order": "Pesanan QR baru",
+        "In the kitchen": "Di dapur",
+        "Served": "Sudah diantar",
+        "Paid": "Lunas",
+        "Voided": "Dibatalkan",
+        "Send to kitchen": "Kirim ke dapur",
+        "Confirm order": "Konfirmasi pesanan",
+        "Mark served": "Tandai sudah diantar",
+        "Request bill": "Minta bon",
+        "Take payment": "Terima pembayaran",
+        "Close": "Tutup",
+
+        // Payment
+        "How did they pay?": "Bagaimana pembayarannya?",
+        "Cash": "Tunai",
+        "QRIS": "QRIS",
+        "Bank transfer": "Transfer bank",
+        "Card": "Kartu",
+        "Other": "Lainnya",
+        "Amount received": "Jumlah diterima",
+        "Reference": "Referensi",
+        "Transfer note, QRIS ref…": "Catatan transfer, ref QRIS…",
+        "Record payment": "Catat pembayaran",
+        "Settles when the provider pays out — not cash in the drawer today.": "Cair saat penyedia melakukan payout — belum jadi uang tunai di laci hari ini.",
+        "Counts as cash in the drawer today.": "Dihitung sebagai uang tunai di laci hari ini.",
+        "Enter how much was received.": "Masukkan jumlah yang diterima.",
+        "Pick how the customer paid.": "Pilih cara pelanggan membayar.",
+        "This order is already fully paid.": "Pesanan ini sudah lunas.",
+        "There is nothing on this order to pay for.": "Belum ada apa pun di pesanan ini untuk dibayar.",
+
+        // Discount — the copy that explains WHY it is stored separately
+        "Add discount": "Tambah diskon",
+        "Add a discount": "Tambah diskon",
+        "Amount off": "Potongan",
+        "Why?": "Kenapa?",
+        "Promo makan siang, komplain, staff…": "Promo makan siang, komplain, staff…",
+        "Apply discount": "Terapkan diskon",
+        "The menu price stays on the record — the discount is booked separately, so you can see later where margin actually went.": "Harga menu tetap tercatat — diskonnya dibukukan terpisah, jadi nanti Anda bisa lihat ke mana margin sebenarnya pergi.",
+        "Say why the discount was given — it is the only record of it.": "Sebutkan alasan diskonnya — itu satu-satunya catatan yang tersisa.",
+        "Discount removed.": "Diskon dihapus.",
+
+        // Void
+        "Void order": "Batalkan pesanan",
+        "Void this order": "Batalkan pesanan ini",
+        "Nothing is charged and nothing is posted to the books.": "Tidak ada yang ditagih dan tidak ada yang masuk ke pembukuan.",
+        "Reason": "Alasan",
+        "Tamu batal, salah input…": "Tamu batal, salah input…",
+        "A voided order leaves no revenue and no stock movement — the reason is the only trace it leaves.": "Pesanan yang dibatalkan tidak meninggalkan pendapatan maupun pergerakan stok — alasannya satu-satunya jejak yang tersisa.",
+        "A voided order needs a reason — it is the only trace it leaves.": "Pesanan yang dibatalkan butuh alasan — itu satu-satunya jejak yang tersisa.",
+        "Order voided.": "Pesanan dibatalkan.",
+        "This order is already paid. Refund it instead — a void would leave the revenue posted.": "Pesanan ini sudah lunas. Lakukan refund — pembatalan akan menyisakan pendapatannya tetap terposting.",
+        "A refund needs a reason.": "Refund butuh alasan.",
+        "Only a paid order can be refunded.": "Hanya pesanan yang sudah lunas yang bisa direfund.",
+        "This order has already been refunded.": "Pesanan ini sudah pernah direfund.",
+
+        // The honesty banners — §6 of the plan, in words a cashier reads
+        "The sale is recorded; the accounting entry still needs posting.": "Penjualannya sudah tercatat; jurnal akuntansinya masih perlu diposting.",
+        "Posted to the ledger.": "Sudah diposting ke buku besar.",
+        "Could not post those sales.": "Gagal memposting penjualan tersebut.",
+        "Figures here are what the till recorded. The accounting revenue figure lives on": "Angka di sini adalah yang dicatat kasir. Angka pendapatan akuntansinya ada di",
+        ", and matches once everything is posted.": ", dan akan cocok setelah semuanya diposting.",
+        "Revenue": "Pendapatan",
+        "They sell at 100% margin, which will overstate your gross profit.": "Item ini terjual dengan margin 100%, yang akan melebih-lebihkan laba kotor Anda.",
+        "Give each a recipe in": "Beri masing-masing resep di",
+        "Inventory": "Inventory",
+
+        // Errors a cashier can act on
+        "Pick an outlet before opening an order.": "Pilih outlet dulu sebelum membuka pesanan.",
+        "That order no longer exists.": "Pesanan itu sudah tidak ada.",
+        "This order was voided and can no longer be changed.": "Pesanan ini sudah dibatalkan dan tidak bisa diubah lagi.",
+        "Quantity must be a whole number of one or more.": "Jumlah harus bilangan bulat minimal satu.",
+        "That item has no valid price.": "Item ini belum punya harga yang valid.",
+        "Could not add that item.": "Gagal menambahkan item itu.",
+        "Could not change that quantity.": "Gagal mengubah jumlahnya.",
+        "Could not open that order.": "Gagal membuka pesanan itu.",
+        "Could not update that order.": "Gagal memperbarui pesanan itu.",
+        "That did not work.": "Tidak berhasil.",
+        "A table needs a name or number.": "Meja butuh nama atau nomor.",
+        "That table name is too long (40 characters max).": "Nama meja terlalu panjang (maksimal 40 karakter).",
+        "Pick which outlet this table belongs to.": "Pilih outlet mana yang memiliki meja ini.",
+
+        // Item drawer — the menu fields
+        "Selling price": "Harga jual",
+        "What a customer pays for one. Leave blank for an ingredient — flour has a cost, not a menu price.": "Yang dibayar pelanggan untuk satu porsi. Kosongkan untuk bahan baku — tepung punya harga pokok, bukan harga menu.",
+        "Menu group": "Grup menu",
+        "Makanan, Minuman": "Makanan, Minuman",
+        "Show on the till": "Tampilkan di kasir",
+        "Needs a selling price. Without a recipe it will sell at 100% margin, which overstates gross profit.": "Butuh harga jual. Tanpa resep, item ini terjual dengan margin 100%, yang melebih-lebihkan laba kotor.",
+        "Give the item a selling price first — the till needs something to charge.": "Beri harga jual dulu — kasir butuh sesuatu untuk ditagihkan."
     };
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -4892,6 +5037,30 @@
     //  Applied (in order) only to nodes that miss an exact dictionary key.
     // ─────────────────────────────────────────────────────────────────────────
     var PATTERNS = [
+        // ── Point of sale ───────────────────────────────────────────────
+        // Indonesian does not pluralise the noun, so "3 pesanan" is correct for
+        // both, which is why these read more simply than the English.
+        { re: /^(\d+) paid orders? h(?:as|ave) not reached the ledger yet\.$/,
+          id: function (m) { return m[1] + ' pesanan lunas belum masuk ke buku besar.'; } },
+        { re: /^Post (?:it|them) now$/, id: function () { return 'Posting sekarang'; } },
+        { re: /^(\d+) menu items? ha(?:s|ve) no cost basis$/,
+          id: function (m) { return m[1] + ' item menu belum punya dasar harga pokok'; } },
+        { re: /^Change: (Rp[\d.]+)$/, id: function (m) { return 'Kembalian: ' + m[1]; } },
+        { re: /^Part payment — (Rp[\d.]+) would still be due\.$/,
+          id: function (m) { return 'Pembayaran sebagian — sisa ' + m[1] + ' masih harus dibayar.'; } },
+        { re: /^(\d+) paid · at the till$/,
+          id: function (m) { return m[1] + ' lunas · di kasir'; } },
+        { re: /^Table (.+)$/, id: function (m) { return 'Meja ' + m[1]; } },
+        { re: /^Order (.+)$/, id: function (m) { return 'Pesanan ' + m[1]; } },
+        { re: /^(Rp[\d.]+) due$/, id: function (m) { return 'tagihan ' + m[1]; } },
+        { re: /^(Rp[\d.]+) before discount$/, id: function (m) { return m[1] + ' sebelum diskon'; } },
+        { re: /^(Rp[\d.]+) each$/, id: function (m) { return m[1] + ' per porsi'; } },
+        { re: /^Paid — (Rp[\d.]+) recorded\.$/,
+          id: function (m) { return 'Lunas — ' + m[1] + ' tercatat.'; } },
+        { re: /^(Rp[\d.]+) discount applied\.$/,
+          id: function (m) { return 'Diskon ' + m[1] + ' diterapkan.'; } },
+        { re: /^(\d+) new orders? from a table\.$/,
+          id: function (m) { return m[1] + ' pesanan baru dari meja.'; } },
         // Inventory headline: "Stock on hand across 3 outlets · 12 items ·
         // balance of 1200 Inventory". Composed from live counts, and the outlet
         // clause is absent until something is actually stocked. Indonesian does

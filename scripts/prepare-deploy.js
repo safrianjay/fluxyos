@@ -92,6 +92,7 @@ const APP_PAGES = [
     'opex-budget.html',
     'outlet-pnl.html',
     'payment-pending.html',
+    'pos.html',
     'report-preview.html',
     'reports.html',
     'revenue-overview.html',

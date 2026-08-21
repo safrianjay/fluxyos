@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Point of Sale</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <link rel="stylesheet" href="assets/css/accounting.css">
+    <style>
+        /* ── The till is a MOBILE surface first ──────────────────────────────
+           Every other app page is a desktop finance screen that also works on a
+           phone. This one is the reverse: it is used standing up, one-handed,
+           on a phone or a small tablet. So the layout is designed at 375px and
+           widens, and every tap target is >= 44px.
+
+           Everything here reuses the shared type scale and the semantic status
+           colours already in shared-dashboard.css. No new visual language. */
+
+        .pos-shell { display: grid; gap: 16px; grid-template-columns: 1fr; }
+        @media (min-width: 1024px) { .pos-shell { grid-template-columns: minmax(0,1fr) 380px; align-items: start; } }
+
+        /* ── Outlet bar ─────────────────────────────────────────────────── */
+        .pos-outletbar {
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+            padding: 10px 14px; background: #fff; border: 1px solid #E2E8F0;
+            border-radius: 12px;
+        }
+        .pos-outletbar label {
+            font-size: 10px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.08em; color: #64748B;
+        }
+        /* fluxy-select.js wraps the native control in a block-level element that
+           takes the whole flex row unless it is pinned. Left alone the outlet
+           picker stretched to ~1500px for a two-word value. */
+        .pos-outletbar .fluxy-select { flex: 0 1 260px; min-width: 180px; }
+
+        /* ── Metric strip ───────────────────────────────────────────────── */
+        .pos-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: #E2E8F0; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; }
+        @media (min-width: 640px) { .pos-metrics { grid-template-columns: repeat(4, 1fr); } }
+        .pos-metric { background: #fff; padding: 14px 16px; }
+        .pos-metric-value {
+            font-size: 20px; font-weight: 600; line-height: 1; letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; color: #0B0F19;
+        }
+        .pos-metric-label {
+            margin-top: 8px; font-size: 10px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.08em; color: #64748B;
+        }
+        /* Semantic only — a hue with no meaning is the one thing worth leaving out. */
+        .pos-metric-value.is-warn { color: #EA580C; }
+
+        /* ── Table grid ─────────────────────────────────────────────────── */
+        .pos-tables { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+        .pos-table {
+            position: relative; min-height: 88px; padding: 12px 10px;
+            background: #fff; border: 1px solid #E2E8F0; border-radius: 12px;
+            display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between;
+            cursor: pointer; text-align: left; transition: border-color 120ms ease, box-shadow 120ms ease;
+        }
+        .pos-table:hover { border-color: #CBD5E1; box-shadow: 0 1px 3px rgba(15,23,42,.08); }
+        .pos-table:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
+        .pos-table-label { font-size: 16px; font-weight: 600; color: #0B0F19; line-height: 1.2; }
+        .pos-table-zone { font-size: 10px; color: #94A3B8; margin-top: 2px; }
+        .pos-table-foot { font-size: 12px; font-weight: 500; margin-top: 10px; font-variant-numeric: tabular-nums; }
+        /* Status is carried by TEXT and a left rule, never by colour alone —
+           a colour-blind cashier reads the same grid. */
+        .pos-table.is-free { border-left: 3px solid #CBD5E1; }
+        .pos-table.is-busy { border-left: 3px solid #3B82F6; }
+        .pos-table.is-bill { border-left: 3px solid #EA580C; }
+        .pos-table.is-free .pos-table-foot { color: #94A3B8; }
+        .pos-table.is-busy .pos-table-foot { color: #1D4ED8; }
+        .pos-table.is-bill .pos-table-foot { color: #C2410C; font-weight: 600; }
+
+        /* ── Order panel ────────────────────────────────────────────────── */
+        .pos-order { background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; display: flex; flex-direction: column; }
+        @media (min-width: 1024px) { .pos-order { position: sticky; top: 16px; max-height: calc(100vh - 140px); } }
+        .pos-order-head { padding: 14px 16px; border-bottom: 1px solid #E2E8F0; }
+        .pos-order-lines { flex: 1; overflow-y: auto; min-height: 120px; max-height: 44vh; }
+        /* With no order open there is nothing to scroll, and reserving the
+           minimum left a dead gap between the heading and the only action. */
+        .pos-order.is-empty .pos-order-lines { min-height: 0; }
+        .pos-order.is-empty .pos-order-foot { border-top: 0; background: #fff; }
+        .pos-line { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 10px 16px; border-bottom: 1px solid #F1F5F9; }
+        .pos-line-name { font-size: 14px; font-weight: 500; color: #0F172A; }
+        .pos-line-meta { font-size: 12px; color: #64748B; margin-top: 2px; font-variant-numeric: tabular-nums; }
+        .pos-line-amt { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: #0F172A; text-align: right; white-space: nowrap; }
+        .pos-line-strike { text-decoration: line-through; color: #94A3B8; font-weight: 400; font-size: 12px; display: block; }
+        .pos-qty { display: inline-flex; align-items: center; gap: 2px; margin-top: 6px; }
+        .pos-qty button {
+            width: 30px; height: 30px; border: 1px solid #E2E8F0; background: #fff; border-radius: 6px;
+            font-size: 14px; line-height: 1; color: #475569; cursor: pointer;
+        }
+        .pos-qty button:hover { background: #F8FAFC; }
+        .pos-qty span { min-width: 30px; text-align: center; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+        .pos-order-foot { padding: 14px 16px; border-top: 1px solid #E2E8F0; background: #F8FAFC; border-radius: 0 0 12px 12px; }
+        .pos-total-row { display: flex; justify-content: space-between; font-size: 13px; color: #475569; padding: 3px 0; font-variant-numeric: tabular-nums; }
+        .pos-total-row.is-grand { font-size: 16px; font-weight: 600; color: #0B0F19; padding-top: 8px; margin-top: 6px; border-top: 1px solid #E2E8F0; }
+        .pos-total-row.is-discount { color: #C2410C; }
+
+        /* One primary action per zone. The label changes with status; there is
+           never a second button at the same weight beside it. */
+        .pos-primary {
+            width: 100%; min-height: 48px; margin-top: 12px; border-radius: 10px;
+            background: #0F172A; color: #fff; font-size: 15px; font-weight: 600;
+            border: none; cursor: pointer; transition: background 120ms ease;
+        }
+        .pos-primary:hover:not(:disabled) { background: #1E293B; }
+        .pos-primary:disabled { opacity: .45; cursor: not-allowed; }
+        .pos-secondary {
+            display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+            background: none; border: none; padding: 6px 0; cursor: pointer;
+            font-size: 12px; font-weight: 500; color: #64748B;
+        }
+        .pos-secondary:hover { color: #B91C1C; }
+
+        /* ── Menu ───────────────────────────────────────────────────────── */
+        .pos-menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+        .pos-menu-item {
+            min-height: 76px; padding: 12px; background: #fff; border: 1px solid #E2E8F0;
+            border-radius: 10px; text-align: left; cursor: pointer;
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .pos-menu-item:hover { border-color: #CBD5E1; background: #F8FAFC; }
+        .pos-menu-item:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
+        .pos-menu-item:disabled { opacity: .5; cursor: not-allowed; }
+        .pos-menu-name { font-size: 13px; font-weight: 500; color: #0F172A; line-height: 1.3; }
+        .pos-menu-price { font-size: 13px; font-weight: 600; color: #475569; margin-top: 8px; font-variant-numeric: tabular-nums; }
+        .pos-cat { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #94A3B8; margin: 14px 0 8px; }
+        .pos-cat:first-child { margin-top: 0; }
+
+        /* ── Payment ────────────────────────────────────────────────────── */
+        .pos-methods { display: grid; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: 8px; }
+        .pos-method {
+            min-height: 44px; border: 1px solid #E2E8F0; background: #fff; border-radius: 8px;
+            font-size: 13px; font-weight: 500; color: #334155; cursor: pointer;
+        }
+        .pos-method.is-on { border-color: #0F172A; background: #0F172A; color: #fff; }
+        .pos-amount-input {
+            width: 100%; min-height: 48px; padding: 0 14px; border: 1px solid #CBD5E1; border-radius: 10px;
+            font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums;
+            text-align: right; color: #0B0F19;
+        }
+        .pos-amount-input:focus { outline: 2px solid #EA580C; outline-offset: -1px; border-color: transparent; }
+
+        /* ── Honesty banners ────────────────────────────────────────────── */
+        .pos-note {
+            display: flex; gap: 10px; padding: 10px 14px; border-radius: 10px;
+            font-size: 13px; line-height: 1.45; border: 1px solid;
+        }
+        .pos-note svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; }
+        .pos-note.is-warn { background: #FFF7ED; border-color: #FED7AA; color: #9A3412; }
+        .pos-note.is-info { background: #F8FAFC; border-color: #E2E8F0; color: #475569; }
+        .pos-note a { font-weight: 600; text-decoration: underline; color: inherit; }
+
+        .pos-offline {
+            display: none; align-items: center; gap: 8px; padding: 10px 14px;
+            background: #FEF2F2; border: 1px solid #FECACA; color: #991B1B;
+            border-radius: 10px; font-size: 13px; font-weight: 500;
+        }
+        body.is-offline .pos-offline { display: flex; }
+
+        @media (max-width: 640px) {
+            .pos-tables { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); }
+            .pos-menu-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+        }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <aside id="sidebar" class="w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+        <!-- Sidebar content loaded by sidebar-loader.js -->
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="dashboard-main-topbar h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-3">
+            <div class="dashboard-topbar-left flex items-center gap-3 min-w-0 flex-1">
+                <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <div class="dashboard-topbar-copy min-w-0">
+                    <span class="dashboard-topbar-title">Point of Sale</span>
+                    <p class="dashboard-topbar-subtitle hidden sm:block">What is happening in the room right now.</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <button id="pos-new-order" type="button" aria-label="Start a takeaway order" title="Takeaway" class="px-3 sm:px-4 py-2 min-h-[44px] bg-gray-900 text-white rounded-lg text-[14px] font-bold hover:bg-gray-800 transition-all flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"></path></svg>
+                    <span class="hidden sm:inline">Takeaway</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="fluxy-page-shell">
+            <div class="fluxy-page-canvas fluxy-section-stack">
+
+                <div id="pos-offline" class="pos-offline" role="status">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636 5.636 18.364M12 20h.01M8.111 12.111a5.5 5.5 0 017.778 0M4.929 8.929a10 10 0 0114.142 0"></path></svg>
+                    <span>No connection. Orders cannot be saved until this clears — do not take payment yet.</span>
+                </div>
+
+                <!-- Outlet first: without it a sale cannot be attributed and lands
+                     in "Unassigned" on the outlet P&L. Remembered per device. -->
+                <div class="pos-outletbar">
+                    <label for="pos-outlet">Outlet</label>
+                    <!-- Plain <select>. fluxy-select.js enhances it into the shared
+                         custom dropdown automatically (DESIGN_SYSTEM §6 — never the
+                         native control). Do NOT hand-apply `.fluxy-select-native`:
+                         that is the visually-hidden class the ENHANCER applies to the
+                         underlying element, so setting it without the enhancer loaded
+                         hides the control and leaves a bare "Outlet" label. -->
+                    <select id="pos-outlet" style="min-width:200px;"></select>
+                    <span id="pos-outlet-hint" class="text-[12px] text-slate-500"></span>
+                </div>
+
+                <div id="pos-banners" class="fluxy-section-stack" style="gap:8px;"></div>
+
+                <div id="pos-metrics" class="pos-metrics"></div>
+
+                <div class="pos-shell">
+                    <div class="fluxy-section-stack" style="gap:16px;min-width:0;">
+                        <section class="fluxy-table-card">
+                            <div class="fluxy-table-card-header">
+                                <div>
+                                    <h2 class="fluxy-table-title">Tables</h2>
+                                    <p class="fluxy-table-subtitle">Tap a table to open or continue its order.</p>
+                                </div>
+                                <div class="fluxy-table-actions">
+                                    <button id="pos-manage-tables" type="button" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[12px] font-semibold text-gray-700 hover:bg-gray-50">Manage tables</button>
+                                </div>
+                            </div>
+                            <div style="padding:16px;">
+                                <div id="pos-tables" class="pos-tables"></div>
+                                <div id="pos-tables-empty" class="hidden"></div>
+                            </div>
+                        </section>
+
+                        <section class="fluxy-table-card" id="pos-menu-card">
+                            <div class="fluxy-table-card-header">
+                                <div>
+                                    <h2 class="fluxy-table-title">Menu</h2>
+                                    <p class="fluxy-table-subtitle" id="pos-menu-sub">Tap an item to add it to the open order.</p>
+                                </div>
+                            </div>
+                            <div style="padding:16px;">
+                                <div id="pos-menu"></div>
+                                <div id="pos-menu-empty" class="hidden"></div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <aside class="pos-order" id="pos-order-panel" aria-live="polite">
+                        <div class="pos-order-head">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <h2 id="pos-order-title" class="text-[16px] font-semibold text-slate-950 leading-tight">No order open</h2>
+                                    <p id="pos-order-sub" class="text-[12px] text-slate-500 mt-0.5">Pick a table to start.</p>
+                                </div>
+                                <span id="pos-order-status" class="fluxy-status hidden"></span>
+                            </div>
+                        </div>
+                        <div id="pos-order-lines" class="pos-order-lines"></div>
+                        <div class="pos-order-foot">
+                            <div id="pos-order-totals"></div>
+                            <button id="pos-primary" type="button" class="pos-primary" disabled>Pick a table</button>
+                            <div class="flex items-center justify-between">
+                                <button id="pos-discount-btn" type="button" class="pos-secondary hidden">Add discount</button>
+                                <button id="pos-void-btn" type="button" class="pos-secondary hidden">Void order</button>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast-container" class="fixed bottom-6 right-6 z-[100] flex flex-col gap-3"></div>
+
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/fluxy-select.js"></script>
+    <!-- No footer-loader.js. The marketing footer must never load on an app page
+         (PROJECT_BACKGROUND §3) — it auto-runs on include and paints over the
+         entire content area. -->
+    <script src="assets/js/shared-dashboard.js"></script>
+    <!-- Bahasa-first: Indonesian is the default, English is the opt-out via
+         Settings → Language (docs/LOCALIZATION_PLAN.md). -->
+    <script src="assets/js/dashboard-i18n.js"></script>
+    <script type="module" src="assets/js/pos.js"></script>
+</body>
+</html>

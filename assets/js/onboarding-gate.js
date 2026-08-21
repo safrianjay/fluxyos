@@ -535,6 +535,29 @@ export async function applyToPage(authUser, options = {}) {
         } catch (_) { /* _scope falls back safely if resolution is unavailable */ }
     }
 
+    // ── POS-only roles land on the till, not the dashboard ──────────────────
+    //
+    // A `cashier` has no read access to transactions, journals, bank accounts or
+    // any report. Landing them on /dashboard therefore does not show a reduced
+    // view — it shows a wall of permission-denied, because the page reads
+    // collections their role was never granted. They must be ROUTED, not denied.
+    //
+    // Placed before the onboarding and KYC gates on purpose: those are the
+    // workspace OWNER's obligations, and a cashier can neither complete
+    // onboarding nor upload the owner's KYC documents. Stranding them on a lock
+    // screen they cannot action would make the till unusable for a business that
+    // is otherwise perfectly set up. docs/POS_IMPLEMENTATION_PLAN.md §9.2.
+    if (authUser && authUser.uid && pageKey !== 'pos') {
+        try {
+            const ws = (typeof window !== 'undefined' && window.FluxyWorkspace) || null;
+            const { isPosOnlyRole, POS_ONLY_HOME } = await import('/assets/js/perms-service.js');
+            if (ws && isPosOnlyRole(ws.role)) {
+                window.location.replace(POS_ONLY_HOME);
+                return true;
+            }
+        } catch (_) { /* fail open — never strand anyone on a blank page */ }
+    }
+
     const gate = await shouldGateUser(authUser);
     if (!gate) {
         // Onboarding is done (or never applied to this user). A post-cutoff user

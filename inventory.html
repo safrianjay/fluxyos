@@ -751,6 +751,27 @@
                 <input id="item-sku" type="text" class="fluxy-drawer-input" maxlength="60" placeholder="FLR-001" autocomplete="off">
             </div>
 
+            <!-- ── Menu. The menu IS this collection: an item with a price and
+                 "show on the till" ticked appears on the POS. No separate menu
+                 master, so a dish's recipe — and therefore its true cost — is the
+                 same record maintained here, and the two can never drift. -->
+            <div class="fluxy-drawer-field">
+                <label class="fluxy-drawer-label" for="item-price">Selling price <span class="inv-muted">(optional)</span></label>
+                <input id="item-price" type="text" inputmode="numeric" class="fluxy-drawer-input" placeholder="45.000" autocomplete="off">
+                <p class="fluxy-drawer-hint">What a customer pays for one. Leave blank for an ingredient — flour has a cost, not a menu price.</p>
+            </div>
+
+            <div class="fluxy-drawer-field" id="item-pos-field">
+                <label class="fluxy-drawer-label" for="item-pos-category">Menu group <span class="inv-muted">(optional)</span></label>
+                <input id="item-pos-category" type="text" class="fluxy-drawer-input" maxlength="40" placeholder="Makanan, Minuman" autocomplete="off">
+                <label class="flex items-start gap-2 mt-3 cursor-pointer">
+                    <input id="item-pos-visible" type="checkbox" class="mt-0.5 w-4 h-4 accent-gray-900">
+                    <span class="text-[13px] text-slate-700 leading-snug">Show on the till
+                        <span class="block text-[12px] text-slate-500">Needs a selling price. Without a recipe it will sell at 100% margin, which overstates gross profit.</span>
+                    </span>
+                </label>
+            </div>
+
             <div class="fluxy-drawer-field">
                 <label class="fluxy-drawer-label" for="item-notes">Notes <span class="inv-muted">(optional)</span></label>
                 <textarea id="item-notes" class="fluxy-drawer-textarea" maxlength="500" rows="2" placeholder="Supplier, grade, anything worth remembering."></textarea>
@@ -1872,6 +1893,10 @@
             document.getElementById('item-reorder').value = (isEdit && reorderPointOf(item) !== null)
                 ? String(reorderPointOf(item)) : '';
             document.getElementById('item-notes').value = isEdit ? (item.notes || '') : '';
+            document.getElementById('item-price').value = (isEdit && Number(item.sales_price) > 0)
+                ? Number(item.sales_price).toLocaleString('id-ID') : '';
+            document.getElementById('item-pos-category').value = isEdit ? (item.pos_category || '') : '';
+            document.getElementById('item-pos-visible').checked = isEdit ? item.pos_visible === true : false;
 
             // `type` is immutable once the item exists: a stock item may already
             // carry movements, and a recipe is relieved as its ingredients — so
@@ -2038,6 +2063,11 @@
                 // Blank stays null — "no threshold" is not "a threshold of zero".
                 reorder_point: reorderRaw === '' ? null : Number(reorderRaw),
                 notes: document.getElementById('item-notes').value.trim() || null,
+                // Raw integer Rupiah — the dots are display only, exactly as
+                // every other amount in the app.
+                sales_price: Number(document.getElementById('item-price').value.replace(/\D/g, '')) || null,
+                pos_visible: document.getElementById('item-pos-visible').checked,
+                pos_category: document.getElementById('item-pos-category').value.trim() || null,
                 components: isRecipe
                     ? resolvedComponents().map((c) => ({
                         item_id: c.item_id, quantity: c.quantity, yield_percent: c.yield_percent
@@ -2365,6 +2395,22 @@
             refreshRecipeCost();
         });
         document.getElementById('item-batch-size').addEventListener('input', refreshRecipeCost);
+        // Selling price uses the same live thousands formatting every amount in
+        // the app does. The raw integer is what `sales_price` reads back on save
+        // — a formatted string must never reach Firestore.
+        document.getElementById('item-price').addEventListener('input', (e) => {
+            e.target.value = formatAmountInput(e.target.value);
+        });
+        // A price is what makes an item sellable, so ticking "show on the till"
+        // without one would put an unbuyable item on the menu. Say so at the
+        // field rather than failing on save.
+        document.getElementById('item-pos-visible').addEventListener('change', (e) => {
+            const price = parseAmountInput(document.getElementById('item-price').value);
+            if (e.target.checked && !price) {
+                e.target.checked = false;
+                window.showToast('Give the item a selling price first — the till needs something to charge.', 'error');
+            }
+        });
         document.getElementById('recipe-add-line').addEventListener('click', () => {
             readRecipeFromForm();
             recipeLines.push(newRecipeLine());

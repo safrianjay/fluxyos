@@ -3605,12 +3605,17 @@ service cloud.firestore {
       }
       // Per-year journal-number counters (doc id `journal-YYYY`). Reserved in a
       // transaction; `seq` only ever grows so a number is never reissued.
+      // Journal numbering, plus per-outlet/per-day POS order numbers. A cashier
+      // reaches ONLY the `pos-` counters — never `journal-*`, where a bumped
+      // sequence would burn journal numbers and leave gaps in the audit trail.
       match /counters/{counterId} {
-        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer']);
-        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+        allow read: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'viewer', 'cashier']);
+        allow create: if (hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+            || (wsCashier(workspaceId) && counterId.matches('^pos-.*')))
           && request.resource.data.seq is number
           && request.resource.data.seq >= 0;
-        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+        allow update: if (hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+            || (wsCashier(workspaceId) && counterId.matches('^pos-.*')))
           && request.resource.data.seq is number
           && request.resource.data.seq >= resource.data.seq;
         allow delete: if false;
