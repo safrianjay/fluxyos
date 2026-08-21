@@ -316,6 +316,37 @@ export function recipeCost(itemsById, unitCostByItemId, itemId, quantityBase) {
 // each line becomes its own stock_movement whose integer amounts must sum to the
 // journal total.
 
+// --- reorder point -----------------------------------------------------------
+
+// A reorder point is a threshold SOMEONE SET. Absence is a different fact from
+// zero, and the two must never collapse into each other: absence means "cannot
+// say whether this is low", zero would mean "warn me when it is gone".
+//
+// This is a named function because the four call sites that grew up around it
+// each wrote their own check and they disagreed. The Overview counted
+// `Number.isInteger(p)`, Restock required `p > 0`, and the drawer prefilled from
+// `Number.isInteger(p)` — so the same workspace reported 78 items with a reorder
+// point on one tab and 27 on the next.
+//
+// Zero is excluded deliberately, not incidentally. Low stock requires
+// `qty > 0 && qty <= point`, which zero can never satisfy, and stock reaching
+// zero is already reported as Out of stock. A stored 0 is therefore a threshold
+// that looks set and can never fire.
+export function reorderPointOf(item) {
+    const raw = item ? item.reorder_point : null;
+    return Number.isInteger(raw) && raw > 0 ? raw : null;
+}
+
+// Normalize a value on its way INTO storage. The bug this exists to prevent:
+// `Number(null)` is 0 and `Number.isInteger(0)` is true, so a blank field passed
+// through Number() was stored as a real-looking 0 on every item saved without
+// one — 51 of them in the QA workspace before this was found.
+export function normalizeReorderPoint(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const n = Number(value);
+    return Number.isInteger(n) && n > 0 ? n : null;
+}
+
 export function unitCostOf(systemQuantity, systemValue) {
     const q = Number(systemQuantity) || 0;
     if (q === 0) return 0;

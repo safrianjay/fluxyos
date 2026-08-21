@@ -36,10 +36,41 @@ creates `stock` items and preserves — but does not edit — a `composite`'s
 | `components` | array | **Recipe/BOM.** `{ item_id, quantity, yield_percent }` — what ONE BATCH consumes. Empty on a stock item |
 | `batch_size` | integer ≥1 | How much output one batch produces, in this item's own base unit. Default `1` |
 | `storage_location` | string ≤60 \| null | Where it physically sits ("Dry store — shelf A"). **Sorts the count sheet**, because a count is done by walking the shelf; an alphabetical sheet sends the counter back and forth across the stockroom |
-| `reorder_point` | integer ≥0 \| null | Warn when on-hand drops to this, in BASE units. **`null` means no threshold, which is not `0`** — the Overview's low-stock count only ever considers items where one was actually set. Never inferred from usage history: with days of data that produces a confident-looking number from noise |
+| `reorder_point` | integer ≥1 \| null | Warn when on-hand drops to this, in BASE units. **`null` means no threshold, and `0` is not a threshold either** — low stock requires `qty > 0 && qty <= point`, which `0` can never satisfy, and stock reaching zero is already reported as Out of stock. Read it through `reorderPointOf(item)` and write it through `normalizeReorderPoint(value)` (`inventory-engine.js`), never with an inline `Number.isInteger` check — see §2a. Never inferred from usage history: with days of data that produces a confident-looking number from noise |
 | `notes` | string ≤500 \| null | |
 | `status` | enum | `active` \| `archived`. Soft archive only |
 | `created_at` / `updated_at` | Timestamp | Server-set |
+
+## 2a. `reorder_point`: absence is not zero
+
+`Number(null)` is `0` and `Number.isInteger(0)` is `true`. `saveItem` normalized
+through that pair, so **every item saved with the field left blank was stored as
+`0`** — 51 of 172 in the QA workspace before this was found on 2026-08-21.
+
+Nothing warned, because `0` is unreachable as a threshold. What it did instead
+was split the catalogue in two, differently, on each screen that counted it:
+
+| Screen | Predicate | Items "with a reorder point" |
+|---|---|---|
+| Overview low-stock cell | `Number.isInteger(p)` | 78 |
+| Restock "not assessed" | `p > 0` | 27 |
+
+So the Overview reported *"26 of 78 with a reorder point"* — implying 52 healthy
+items — when only 27 could be assessed at all and 26 of those were low. 33%
+versus 96%, from the same data on adjacent tabs.
+
+Both directions now go through one definition in `inventory-engine.js`:
+
+- **`reorderPointOf(item)`** — returns the integer or `null`. Every read.
+- **`normalizeReorderPoint(value)`** — `null`/`undefined`/`''`/`0`/negative/
+  fractional all become `null`. Every write.
+
+A typed `0` is refused in the item drawer with an explanation rather than
+silently normalized, because substituting something for what a person entered is
+the same silent failure in the other direction.
+
+The 51 historical zeros are left in place: they read as "not set" through
+`reorderPointOf`, which is what they always meant.
 
 ## 2. The quantity rule
 

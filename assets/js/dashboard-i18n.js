@@ -4717,6 +4717,8 @@
         "Try a different search, or show all activity.": "Coba pencarian lain, atau tampilkan semua aktivitas.",
         "Clear filters": "Hapus filter",
         "Clear search": "Hapus pencarian",
+        "A reorder point of 0 can never warn you: an item is low while it still has stock, and reaching zero is already reported as Out of stock. Leave this blank for no warning, or enter the level you want to be told at.": "Titik pemesanan ulang 0 tidak akan pernah memberi peringatan: sebuah item disebut menipis selagi stoknya masih ada, dan stok yang habis sudah dilaporkan sebagai Stok habis. Kosongkan kalau tidak ingin diperingatkan, atau isi dengan level saat Anda ingin diberi tahu.",
+        "The reorder point is a quantity in stock units — a whole number above zero, or blank for no warning.": "Titik pemesanan ulang adalah kuantitas dalam satuan stok — bilangan bulat di atas nol, atau kosongkan kalau tidak ingin diperingatkan.",
         "No stock has moved yet": "Belum ada stok yang bergerak",
         "Receive stock against an item and every movement shows up here.": "Catat penerimaan barang untuk sebuah item dan semua pergerakannya muncul di sini.",
         "movements": "pergerakan",

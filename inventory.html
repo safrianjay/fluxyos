@@ -763,7 +763,7 @@
         import { applyToPage } from './assets/js/onboarding-gate.js';
         // Conversion lives in the engine, not here. A page that reimplements
         // "kg → g" is a second place for the arithmetic behind COGS to be wrong.
-        import { itemUnits, toBase, INV } from './assets/js/inventory-engine.js';
+        import { itemUnits, toBase, INV, reorderPointOf } from './assets/js/inventory-engine.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -969,7 +969,7 @@
                 const stock = stockByItem[item.id] || null;
                 const qty = stock ? stock.quantity : 0;
                 const val = stock ? stock.value : 0;
-                const reorder = Number.isInteger(item.reorder_point) ? item.reorder_point : null;
+                const reorder = reorderPointOf(item);
                 return {
                     item,
                     // null (never stocked) is deliberately distinct from 0
@@ -1069,7 +1069,7 @@
             const stocked = rows.filter((r) => r.stock && r.stock.quantity > 0).length;
             const out = rows.filter(FILTERS.out_of_stock.test).length;
             const low = rows.filter(FILTERS.low_stock.test).length;
-            const withThreshold = rows.filter((r) => Number.isInteger(r.item.reorder_point)).length;
+            const withThreshold = rows.filter((r) => reorderPointOf(r.item) !== null).length;
 
             const cell = ({ value, unit, label, icon, tone = '', filter = null }) => `
                 <${filter ? 'button type="button"' : 'div'} class="kpi-detail-cell inv-metric${filter ? ' inv-metric-link' : ''}"${filter ? ` data-alert="${esc(filter)}"` : ''}>
@@ -1360,11 +1360,11 @@
             });
 
             return rows
-                .filter((r) => Number.isInteger(r.item.reorder_point) && r.item.reorder_point > 0)
+                .filter((r) => reorderPointOf(r.item) !== null)
                 .map((r) => {
                     const onHand = r.stock ? r.stock.quantity : 0;
                     const value = r.stock ? r.stock.value : 0;
-                    const point = r.item.reorder_point;
+                    const point = reorderPointOf(r.item);
                     const recommended = Math.max(0, point - onHand);
                     // Unit cost is derived from movements, so an item with stock
                     // but no recorded cost has none — say so instead of showing 0.
@@ -1392,7 +1392,7 @@
             }
             restockRows = buildRestock(allRows, lastMovements, restockReceipts);
 
-            const noPoint = allRows.filter((r) => !Number.isInteger(r.item.reorder_point) || r.item.reorder_point <= 0).length;
+            const noPoint = allRows.filter((r) => reorderPointOf(r.item) === null).length;
             const totalCost = restockRows.reduce((n, r) => n + (r.estCost || 0), 0);
             const anyUncosted = restockRows.some((r) => r.estCost == null);
 
@@ -1548,8 +1548,8 @@
             document.getElementById('item-name').value = isEdit ? (item.name || '') : '';
             document.getElementById('item-shelf').value = isEdit ? (item.storage_location || '') : '';
             document.getElementById('item-sku').value = isEdit ? (item.sku || '') : '';
-            document.getElementById('item-reorder').value = (isEdit && Number.isInteger(item.reorder_point))
-                ? String(item.reorder_point) : '';
+            document.getElementById('item-reorder').value = (isEdit && reorderPointOf(item) !== null)
+                ? String(reorderPointOf(item)) : '';
             document.getElementById('item-notes').value = isEdit ? (item.notes || '') : '';
 
             const baseUnitEl = document.getElementById('item-base-unit');
@@ -1637,6 +1637,14 @@
                     throw new Error('How many stock units are in one purchase unit? Whole numbers only — a fractional factor would put rounding error into your ledger.');
                 }
                 units.push({ code, factor: Number(factorRaw), role: 'purchase' });
+            }
+            // A typed reorder point is checked rather than quietly normalized —
+            // storing null for what someone entered is the same silent
+            // substitution that produced 51 items carrying a threshold of 0.
+            if (reorderRaw !== '' && !(/^\d+$/.test(reorderRaw) && Number(reorderRaw) > 0)) {
+                throw new Error(Number(reorderRaw) === 0
+                    ? 'A reorder point of 0 can never warn you: an item is low while it still has stock, and reaching zero is already reported as Out of stock. Leave this blank for no warning, or enter the level you want to be told at.'
+                    : 'The reorder point is a quantity in stock units — a whole number above zero, or blank for no warning.');
             }
             return {
                 name: document.getElementById('item-name').value.trim(),

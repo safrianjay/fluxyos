@@ -182,3 +182,46 @@ test('recipes explode through nesting, merge shared ingredients, and cost once',
     // leaves stock, so no division — and no rounding — enters the cost path.
     expect(r.yieldKept).toEqual({ item_id: 'a', quantity: 1000, yield_percent: 80 });
 });
+
+test('a blank reorder point stays absent and never becomes a threshold of zero', async ({ page }) => {
+    await page.goto('/pricing');
+    const r = await page.evaluate(async () => {
+        const e = await import('/assets/js/inventory-engine.js');
+        return {
+            // The exact coercion that produced 51 items carrying a 0 nobody set:
+            // Number(null) === 0, and Number.isInteger(0) is true.
+            fromNull: e.normalizeReorderPoint(null),
+            fromUndefined: e.normalizeReorderPoint(undefined),
+            fromEmpty: e.normalizeReorderPoint(''),
+            fromZero: e.normalizeReorderPoint(0),
+            fromNegative: e.normalizeReorderPoint(-5),
+            fromFloat: e.normalizeReorderPoint(2.5),
+            fromReal: e.normalizeReorderPoint(2000),
+            fromNumericString: e.normalizeReorderPoint('2000'),
+
+            // Absence and zero must read the same way to every screen. Before
+            // this existed the Overview counted a stored 0 as "has a reorder
+            // point" and Restock did not, so one workspace reported 78 items
+            // with a threshold on one tab and 27 on the next.
+            readsAbsent: e.reorderPointOf({ reorder_point: null }),
+            readsZero: e.reorderPointOf({ reorder_point: 0 }),
+            readsReal: e.reorderPointOf({ reorder_point: 2000 }),
+            readsMissingField: e.reorderPointOf({}),
+            readsNoItem: e.reorderPointOf(null)
+        };
+    });
+    expect(r.fromNull).toBe(null);
+    expect(r.fromUndefined).toBe(null);
+    expect(r.fromEmpty).toBe(null);
+    expect(r.fromZero).toBe(null);
+    expect(r.fromNegative).toBe(null);
+    expect(r.fromFloat).toBe(null);
+    expect(r.fromReal).toBe(2000);
+    expect(r.fromNumericString).toBe(2000);
+
+    expect(r.readsAbsent).toBe(null);
+    expect(r.readsZero).toBe(null);
+    expect(r.readsReal).toBe(2000);
+    expect(r.readsMissingField).toBe(null);
+    expect(r.readsNoItem).toBe(null);
+});

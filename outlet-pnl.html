@@ -60,6 +60,18 @@
         @media (max-width: 640px) {
             header.opl-topbar { padding-left: 16px; padding-right: 16px; gap: 8px; }
         }
+
+        /* Seven columns of a P&L do not fit the default 20px cell padding at
+           1280px: the table came to 1032px inside a 994px scroller, so `Net`
+           — the one number this page exists to report — sat 38px off the right
+           edge behind a horizontal scroll nobody thinks to look for. The
+           columns are numeric and already tabular, so the space came out of
+           padding rather than out of a column. */
+        .opnl-table th,
+        .opnl-table td {
+            padding-left: 14px;
+            padding-right: 14px;
+        }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
@@ -104,7 +116,7 @@
                         </div>
                     </div>
                     <div class="fluxy-table-scroll">
-                        <table class="fluxy-table">
+                        <table class="fluxy-table opnl-table">
                             <thead>
                                 <tr class="fluxy-table-header">
                                     <th>Outlet</th>

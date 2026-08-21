@@ -101,6 +101,43 @@ test('an item can be created from the page and shows up in the table', async ({ 
     expect(consoleErrors, `console errors: ${consoleErrors.join(' | ')}`).toEqual([]);
 });
 
+test('Overview and Restock agree on how many items have a reorder point', async ({ page }) => {
+    await gotoInventory(page);
+
+    // The Overview's low-stock cell reads "N of M with a reorder point". The
+    // Restock tab reports the complement: "M2 items have no reorder point", out
+    // of the same catalogue. M and (total - M2) are the same population and must
+    // be the same number.
+    //
+    // They were not. The Overview counted Number.isInteger(reorder_point), which
+    // is true of a stored 0; Restock required > 0. Since saveItem coerced a blank
+    // field through Number(null) === 0, most items carried a 0 nobody typed, and
+    // the two tabs reported 78 and 27 for the same thing — the Overview implying
+    // 52 items were healthy when only 27 could be assessed at all.
+    const overview = await page.locator('#inv-kpis .inv-metric').last().innerText();
+    const m = overview.match(/of\s+([\d.]+)\s+with a reorder point/);
+    // A workspace where nobody has set one shows "Set a reorder point on an item"
+    // instead, and there is nothing to compare.
+    test.skip(!m, 'no reorder point set anywhere in this workspace');
+    const overviewWithPoint = Number(m[1].replace(/\./g, ''));
+
+    const totalText = await page.locator('#inv-kpis .inv-metric').nth(1).innerText();
+    const total = Number(totalText.match(/([\d.]+)\s+tracked in total/)[1].replace(/\./g, ''));
+
+    await page.click('[data-inv-tab="restock"]');
+    await expect(page.locator('#inv-panel-restock')).not.toHaveClass(/hidden/);
+    await page.waitForFunction(
+        () => document.querySelectorAll('#inv-restock-kpis .inv-metric').length > 0,
+        undefined, { timeout: 30000 }
+    );
+    const notAssessed = await page.locator('#inv-restock-kpis .inv-metric').last().innerText();
+    const withoutPoint = Number(notAssessed.match(/^([\d.]+)/m)[1].replace(/\./g, ''));
+
+    expect(overviewWithPoint + withoutPoint,
+        `Overview says ${overviewWithPoint} items have a reorder point and Restock says `
+        + `${withoutPoint} do not, but the catalogue holds ${total}.`).toBe(total);
+});
+
 test('empty states never offer an action the page cannot perform', async ({ page }) => {
     await gotoInventory(page);
 

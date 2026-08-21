@@ -76,6 +76,13 @@
     justify-content: center;
 }
 .acct-tab.is-active .acct-tab-count { background: #FFEDD5; color: #C2410C; }
+/* The count is optional, and the markup hides it with Tailwind's `.hidden`.
+   That utility is a single class (0,1,0) and the rule above is a descendant
+   selector (0,2,0), so `.hidden` LOSES no matter which stylesheet loads first —
+   the badge stayed on screen as an empty grey pill next to the tab label
+   whenever it had no number to show. Restated here at (0,3,0) so the component
+   honours the affordance its own markup uses. */
+.acct-tab .acct-tab-count.hidden { display: none; }
 
 /* --- View nav (secondary: children of the active group) --- */
 .acct-subtabs {

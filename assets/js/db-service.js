@@ -5,7 +5,7 @@ import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJo
 import { buildTaxAppendix, billWithheldAmount, TAX_RATES } from "./tax-engine.js";
 import { computeAging } from "./aging-engine.js";
 import { buildIncomeStatement, buildBalanceSheet, buildCashFlow } from "./statements-engine.js";
-import { validateItemDraft, normalizeComponents, explodeRecipe, recipeCost, countVariance, wasteValue, unitCostOf, ITEM_TYPES } from "./inventory-engine.js";
+import { validateItemDraft, normalizeComponents, explodeRecipe, recipeCost, countVariance, wasteValue, unitCostOf, normalizeReorderPoint, ITEM_TYPES } from "./inventory-engine.js";
 
 // 3-day trial access & payment status enums (users/{uid}/billing/access).
 // See docs/TRIAL_ACCESS_AND_PAYMENT_BANNER_PLAN.md and PROJECT_BACKGROUND §4k.
@@ -5886,9 +5886,7 @@ class DataService {
             // considers items where someone actually set one. Inferring a
             // threshold from usage history would produce a confident-looking
             // number from days of data.
-            reorder_point: Number.isInteger(Number(data.reorder_point)) && Number(data.reorder_point) >= 0
-                ? Number(data.reorder_point)
-                : null,
+            reorder_point: normalizeReorderPoint(data.reorder_point),
             notes: this._nullableString(data.notes, 500)
         };
 
