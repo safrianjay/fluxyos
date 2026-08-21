@@ -6529,6 +6529,10 @@ class DataService {
                 newQrOrders: active.filter((o) => o.channel === 'qr' && o.status === 'submitted').length,
                 paidToday: todayPaid.length
             },
+            // The paid orders themselves, not just the total — a refund or a
+            // reprint has to be able to REACH the order, and a paid one has
+            // already left the table grid.
+            paidToday: todayPaid,
             salesToday: todayPaid.reduce((s, o) => s + (Number(o.total_amount) || 0), 0),
             discountToday: todayPaid.reduce((s, o) => s + (Number(o.discount_total) || 0), 0),
             activeOrders: active,

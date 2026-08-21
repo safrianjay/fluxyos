@@ -13,8 +13,10 @@ source: docs/POS_IMPLEMENTATION_PLAN.md
 
 Phase 1 of [`POS_IMPLEMENTATION_PLAN.md`](../POS_IMPLEMENTATION_PLAN.md).
 
-**Status:** the staff till ships — tables, orders, manual payment, void, refund,
-and posting through the existing kernel. QR customer ordering (Phase 2), shifts
+**Status:** the staff till ships in full — tables (create + archive), orders,
+per-line and per-order discounts (amount or percent), line notes, manual payment
+with partial tender, void, refund, a 58mm receipt, and posting through the
+existing kernel. QR customer ordering (Phase 2), shifts
 and the cash drawer (Phase 1.5), and payment providers (Phase 5) are not built.
 
 ## 1. Why only two collections

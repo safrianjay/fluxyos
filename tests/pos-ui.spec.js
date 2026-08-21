@@ -142,6 +142,75 @@ test.describe('Point of Sale', () => {
         expect(orange, `orange backgrounds are prohibited: ${orange.join(', ')}`).toEqual([]);
     });
 
+    test('a paid order stays reachable, so refund and reprint are not dead ends', async ({ page }) => {
+        // The gap this closes: Refund lives on the order panel, but a paid order
+        // leaves the table grid AND used to clear the panel the instant it was
+        // paid. The button existed and could never be pressed. A cashier who
+        // rings up the wrong dish and takes payment had no exit — void refuses
+        // (correctly, the revenue posted), so the order was simply stuck.
+        await page.goto('/pos');
+        await page.waitForSelector('#pos-metrics .pos-metric', { timeout: 20000 });
+
+        const rows = page.locator('[data-paid]');
+        const n = await rows.count();
+        test.skip(n === 0, 'no paid orders in the QA workspace today');
+
+        await expect(page.locator('#pos-paid-card')).toBeVisible();
+        await rows.first().click();
+
+        // A paid order opens read-only: no void (the revenue is posted), but a
+        // refund and a reprint, which are the only two things left to do to it.
+        // `Refunded` is the other legitimate terminal state — an order refunded
+        // earlier in the service is still reachable here, and must still reprint.
+        await expect(page.locator('#pos-order-status')).toHaveText(/paid|lunas|refund/i);
+        await expect(page.locator('#pos-void-btn')).toBeHidden();
+        await expect(page.locator('#pos-reprint-btn')).toBeVisible();
+        await expect(page.locator('#pos-primary')).toHaveText(/close|tutup/i);
+
+        // Refund is finance+ only. The QA account is the owner, so it shows —
+        // and it must NOT show twice on an order already refunded.
+        const refund = page.locator('#pos-refund-btn');
+        const alreadyRefunded = await page.evaluate(() => {
+            const el = document.getElementById('pos-order-status');
+            return /refund/i.test(el ? el.textContent : '');
+        });
+        if (alreadyRefunded) await expect(refund).toBeHidden();
+        else await expect(refund).toBeVisible();
+    });
+
+    test('a discount can be entered as a percent, and resolves to Rupiah', async ({ page }) => {
+        // Percent is a data-entry convenience only. The ledger holds Rupiah, and
+        // a stored percentage would have to be re-applied against a base that
+        // can still move — so it is resolved before it is ever saved.
+        await page.goto('/pos');
+        await page.waitForSelector('#pos-metrics .pos-metric', { timeout: 20000 });
+        const free = page.locator('.pos-table.is-free');
+        test.skip(await free.count() === 0, 'no free table in the QA workspace');
+
+        await free.first().click();
+        await page.waitForSelector('.pos-menu-item:not([disabled])', { timeout: 15000 });
+        await page.locator('.pos-menu-item:not([disabled])').first().click();
+        await page.waitForSelector('.pos-line', { timeout: 15000 });
+
+        await page.click('#pos-discount-btn');
+        await page.click('#pos-disc-mode [data-mode="percent"]');
+        await expect(page.locator('#pos-disc-label')).toHaveText(/percent|persen/i);
+        await page.fill('#pos-disc-amt', '20');
+        // The preview shows the resolved Rupiah before it is committed — a
+        // percent a cashier cannot see the value of is a percent they mistype.
+        await expect(page.locator('#pos-disc-preview')).toContainText('Rp');
+
+        // Leave without saving: an unfinished discount must not stick.
+        await page.locator('#pos-drawer [data-close]').first().click();
+        await expect(page.locator('#pos-order-totals')).not.toContainText(/discount|diskon/i);
+
+        // Clean up — this spec opened a real order.
+        await page.click('#pos-void-btn');
+        await page.fill('#pos-void-why', 'Spec cleanup');
+        await page.locator('#pos-drawer-form button[type="submit"], button[form="pos-drawer-form"]').first().click();
+        await expect(page.locator('#pos-order-title')).toHaveText(/no order open|belum ada pesanan/i, { timeout: 20000 });
+    });
+
     test('the menu fields reached the item drawer', async ({ page }) => {
         // The menu IS `items`. Without these three fields nothing can ever
         // appear on the till, and the POS page would show a permanent empty

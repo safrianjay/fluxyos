@@ -95,6 +95,11 @@
         }
         .pos-qty button:hover { background: #F8FAFC; }
         .pos-qty span { min-width: 30px; text-align: center; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+        /* Note and discount sit apart from the +/- pair: they are occasional,
+           and adjacent same-weight buttons is how the wrong one gets pressed
+           on a phone mid-service. */
+        .pos-qty-alt { margin-left: 6px; color: #94A3B8; font-size: 12px; }
+        .pos-qty-alt:hover { color: #0F172A; }
         .pos-order-foot { padding: 14px 16px; border-top: 1px solid #E2E8F0; background: #F8FAFC; border-radius: 0 0 12px 12px; }
         .pos-total-row { display: flex; justify-content: space-between; font-size: 13px; color: #475569; padding: 3px 0; font-variant-numeric: tabular-nums; }
         .pos-total-row.is-grand { font-size: 16px; font-weight: 600; color: #0B0F19; padding-top: 8px; margin-top: 6px; border-top: 1px solid #E2E8F0; }
@@ -130,6 +135,19 @@
         .pos-menu-price { font-size: 13px; font-weight: 600; color: #475569; margin-top: 8px; font-variant-numeric: tabular-nums; }
         .pos-cat { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #94A3B8; margin: 14px 0 8px; }
         .pos-cat:first-child { margin-top: 0; }
+
+        /* ── Paid today ─────────────────────────────────────────────────── */
+        .pos-paid-row {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            width: 100%; min-height: 44px; padding: 8px 10px; border: 0; background: none;
+            border-bottom: 1px solid #F1F5F9; cursor: pointer; text-align: left;
+        }
+        .pos-paid-row:last-child { border-bottom: 0; }
+        .pos-paid-row:hover { background: #F8FAFC; }
+        .pos-paid-label { font-size: 14px; font-weight: 500; color: #0F172A; display: block; }
+        .pos-paid-meta { font-size: 12px; color: #94A3B8; display: block; margin-top: 2px; }
+        .pos-paid-amt { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: #0F172A; white-space: nowrap; }
+        .pos-paid-amt.is-void { text-decoration: line-through; color: #94A3B8; }
 
         /* ── Payment ────────────────────────────────────────────────────── */
         .pos-methods { display: grid; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: 8px; }
@@ -237,6 +255,18 @@
                             </div>
                         </section>
 
+                        <section class="fluxy-table-card hidden" id="pos-paid-card">
+                            <div class="fluxy-table-card-header">
+                                <div>
+                                    <h2 class="fluxy-table-title">Paid today</h2>
+                                    <p class="fluxy-table-subtitle">Open one to reprint its receipt or refund it.</p>
+                                </div>
+                            </div>
+                            <div style="padding:12px 16px;">
+                                <div id="pos-paid-today"></div>
+                            </div>
+                        </section>
+
                         <section class="fluxy-table-card" id="pos-menu-card">
                             <div class="fluxy-table-card-header">
                                 <div>
@@ -268,6 +298,8 @@
                             <div class="flex items-center justify-between">
                                 <button id="pos-discount-btn" type="button" class="pos-secondary hidden">Add discount</button>
                                 <button id="pos-void-btn" type="button" class="pos-secondary hidden">Void order</button>
+                                <button id="pos-refund-btn" type="button" class="pos-secondary hidden">Refund order</button>
+                                <button id="pos-reprint-btn" type="button" class="pos-secondary hidden">Reprint receipt</button>
                             </div>
                         </div>
                     </aside>

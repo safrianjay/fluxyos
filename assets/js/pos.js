@@ -239,6 +239,31 @@ function renderTables() {
             return once(() => startOrder(btn.dataset.table));
         });
     });
+    mountTableArchive(host);
+}
+
+function renderPaidToday() {
+    const host = $('pos-paid-today');
+    const rows = (state.overview && state.overview.paidToday) || [];
+    if (!rows.length) { host.closest('section').classList.add('hidden'); return; }
+    host.closest('section').classList.remove('hidden');
+    host.innerHTML = rows.map((o) => `
+        <button type="button" class="pos-paid-row" data-paid="${esc(o.id)}">
+            <span>
+                <span class="pos-paid-label">${esc(o.table_label ? `Table ${o.table_label}` : 'Takeaway')}</span>
+                <span class="pos-paid-meta">${esc(o.order_number || '')}${o.refund_transaction_id ? ' · Refunded' : ''}</span>
+            </span>
+            <span class="pos-paid-amt${o.refund_transaction_id ? ' is-void' : ''}">${rp(o.total_amount)}</span>
+        </button>`).join('');
+    host.querySelectorAll('[data-paid]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const o = rows.find((x) => x.id === btn.dataset.paid);
+            if (!o) return;
+            state.orderId = o.id; state.order = o;
+            renderOrder(); renderMenu();
+            $('pos-order-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+    });
 }
 
 function renderMenu() {
@@ -303,6 +328,7 @@ function renderOrder() {
     const badge = $('pos-order-status');
     const discountBtn = $('pos-discount-btn');
     const voidBtn = $('pos-void-btn');
+    const refundBtn = $('pos-refund-btn');
 
     document.getElementById('pos-order-panel').classList.toggle('is-empty', !o);
 
@@ -317,6 +343,8 @@ function renderOrder() {
         primary.textContent = 'Pick a table';
         discountBtn.classList.add('hidden');
         voidBtn.classList.add('hidden');
+        refundBtn.classList.add('hidden');
+        $('pos-reprint-btn').classList.add('hidden');
         return;
     }
 
@@ -334,13 +362,15 @@ function renderOrder() {
         return `<div class="pos-line">
             <div>
                 <div class="pos-line-name">${esc(l.item_name)}</div>
-                <div class="pos-line-meta">${rp(l.unit_price)} each${l.note ? ` · ${esc(l.note)}` : ''}</div>
+                <div class="pos-line-meta"><span>${rp(l.unit_price)} each</span>${l.note ? ` · <span>${esc(l.note)}</span>` : ''}</div>
                 ${discounted ? `<div class="pos-line-meta" style="color:#C2410C">${esc(l.discount_reason || 'Discount')} −${rp(l.discount_amount)}</div>` : ''}
                 ${st.next || o.status === 'awaiting_payment' ? `
                 <div class="pos-qty">
                     <button type="button" data-dec="${esc(l.line_id)}" aria-label="One fewer ${esc(l.item_name)}">−</button>
                     <span>${Number(l.quantity)}</span>
                     <button type="button" data-inc="${esc(l.line_id)}" aria-label="One more ${esc(l.item_name)}">+</button>
+                    <button type="button" data-note="${esc(l.line_id)}" class="pos-qty-alt" aria-label="Note for ${esc(l.item_name)}" title="Note">✎</button>
+                    <button type="button" data-disc="${esc(l.line_id)}" class="pos-qty-alt" aria-label="Discount ${esc(l.item_name)}" title="Discount">%</button>
                 </div>` : ''}
             </div>
             <div class="pos-line-amt">
@@ -350,6 +380,12 @@ function renderOrder() {
         </div>`;
     }).join('') : '<div style="padding:24px 16px;text-align:center;color:#94A3B8;font-size:13px">Nothing added yet.</div>';
 
+    lines.querySelectorAll('[data-disc]').forEach((btn) => {
+        btn.addEventListener('click', () => openDiscountDrawer(btn.dataset.disc));
+    });
+    lines.querySelectorAll('[data-note]').forEach((btn) => {
+        btn.addEventListener('click', () => openLineNoteDrawer(btn.dataset.note));
+    });
     lines.querySelectorAll('[data-inc],[data-dec]').forEach((btn) => {
         btn.addEventListener('click', () => once(async () => {
             const id = btn.dataset.inc || btn.dataset.dec;
@@ -381,6 +417,17 @@ function renderOrder() {
     const editable = !['paid', 'void'].includes(o.status);
     discountBtn.classList.toggle('hidden', !editable || empty);
     voidBtn.classList.toggle('hidden', !editable);
+
+    // A paid order's only correction is a refund, and only once.
+    const ws = (typeof window !== 'undefined' && window.FluxyWorkspace) || null;
+    const mayRefund = !!(ws && typeof ws.can === 'function' && ws.can('pos.refund'));
+    refundBtn.classList.toggle('hidden',
+        !(o.status === 'paid' && mayRefund && !o.refund_transaction_id));
+    $('pos-reprint-btn').classList.toggle('hidden', o.status !== 'paid');
+    if (o.refund_transaction_id) {
+        badge.className = 'fluxy-status fluxy-status-danger';
+        badge.textContent = 'Refunded';
+    }
 }
 
 // ── Actions ──────────────────────────────────────────────────────────────────
@@ -504,7 +551,13 @@ function openPaymentDrawer() {
             state.order = order;
             if (order.status === 'paid') {
                 toast(`Paid — ${rp(order.total_amount)} recorded.`);
-                state.orderId = null; state.order = null;
+                // The receipt is asked for at the counter, in the second after
+                // payment — not from a history screen later.
+                openReceipt(order);
+                // The order STAYS on screen. Clearing it immediately was how the
+                // Refund button became unreachable: a paid order leaves the table
+                // grid, so the panel was the only way back to it and the panel
+                // had just emptied itself. The cashier dismisses it with Close.
             } else {
                 toast(`${rp(amount)} recorded. ${rp(Number(order.total_amount) - Number(order.paid_amount))} still due.`);
             }
@@ -545,16 +598,28 @@ function openPaymentDrawer() {
     return d;
 }
 
-function openDiscountDrawer() {
+function openDiscountDrawer(lineId = null) {
     const o = state.order;
+    const line = lineId ? (o.lines || []).find((l) => l.line_id === lineId) : null;
+    const base = line ? Number(line.gross_amount) : Number(o.subtotal);
+    // Percent is entered, then resolved to an AMOUNT before it is stored — the
+    // ledger holds Rupiah, and a stored percentage would have to be re-applied
+    // against a base that can still move.
+    let mode = 'amount';
+
     drawer({
-        title: 'Add a discount',
-        subtitle: `${rp(o.subtotal)} before discount`,
+        title: line ? `Discount ${line.item_name}` : 'Add a discount',
+        subtitle: `${rp(base)} before discount`,
         submitLabel: 'Apply discount',
         body: `
             <div>
-                <label class="block text-[12px] font-semibold text-slate-700 mb-2" for="pos-disc-amt">Amount off</label>
+                <div class="pos-methods" id="pos-disc-mode" style="margin-bottom:12px">
+                    <button type="button" class="pos-method is-on" data-mode="amount">Amount</button>
+                    <button type="button" class="pos-method" data-mode="percent">Percent</button>
+                </div>
+                <label class="block text-[12px] font-semibold text-slate-700 mb-2" for="pos-disc-amt"><span id="pos-disc-label">Amount off</span></label>
                 <input id="pos-disc-amt" name="amount" inputmode="numeric" class="pos-amount-input" value="0" autocomplete="off">
+                <p class="text-[11px] text-slate-500 mt-2" id="pos-disc-preview"></p>
             </div>
             <div>
                 <label class="block text-[12px] font-semibold text-slate-700 mb-2" for="pos-disc-why">Why?</label>
@@ -562,18 +627,165 @@ function openDiscountDrawer() {
                 <p class="text-[11px] text-slate-500 mt-2">The menu price stays on the record — the discount is booked separately, so you can see later where margin actually went.</p>
             </div>`,
         onSubmit: async (fd) => {
-            const amount = Number(String(fd.get('amount')).replace(/\D/g, ''));
+            const typed = Number(String(fd.get('amount')).replace(/\D/g, ''));
+            const amount = mode === 'percent'
+                ? Math.round(base * Math.min(100, typed) / 100)
+                : typed;
             state.order = await ds.setPosOrderDiscount(state.uid, state.orderId, {
-                amount, reason: fd.get('reason')
+                lineId, amount, reason: fd.get('reason')
             });
             renderOrder();
             toast(amount > 0 ? `${rp(amount)} discount applied.` : 'Discount removed.');
         }
     });
+
     const el = $('pos-disc-amt');
+    const preview = () => {
+        const typed = Number(el.value.replace(/\D/g, ''));
+        $('pos-disc-preview').textContent = mode === 'percent' && typed > 0
+            ? `${Math.min(100, typed)}% of ${rp(base)} = ${rp(Math.round(base * Math.min(100, typed) / 100))}`
+            : '';
+    };
     el.addEventListener('input', () => {
         const d = el.value.replace(/\D/g, '');
-        el.value = d ? Number(d).toLocaleString('id-ID') : '';
+        el.value = mode === 'percent' ? d.slice(0, 3) : (d ? Number(d).toLocaleString('id-ID') : '');
+        preview();
+    });
+    $('pos-disc-mode').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-mode]');
+        if (!b) return;
+        mode = b.dataset.mode;
+        document.querySelectorAll('#pos-disc-mode .pos-method').forEach((x) => x.classList.toggle('is-on', x === b));
+        $('pos-disc-label').textContent = mode === 'percent' ? 'Percent off' : 'Amount off';
+        el.value = '0';
+        preview();
+    });
+}
+
+// ── Receipt ──────────────────────────────────────────────────────────────────
+//
+// Deliberately NOT a drawer. A receipt is printed, and print styling on a
+// drawer inside an app shell fights the sidebar, the topbar and the page
+// background. This opens a bare window containing only the receipt, so
+// `window.print()` produces the slip and nothing else — and it works on a
+// phone's share sheet, which is how most of these will actually reach a
+// customer.
+//
+// 58mm is the thermal roll every Indonesian warung printer uses.
+function openReceipt(order) {
+    const o = order;
+    const line = (l) => {
+        const net = (Number(l.gross_amount) || 0) - (Number(l.discount_amount) || 0);
+        return `<tr><td>${esc(l.item_name)}<br><span class="m">${l.quantity} × ${rp(l.unit_price)}</span></td>`
+             + `<td class="r">${rp(net)}</td></tr>`;
+    };
+    const row = (label, value, cls = '') => `<tr class="${cls}"><td>${esc(label)}</td><td class="r">${value}</td></tr>`;
+    const paid = (o.payments || []).filter((p) => p.status === 'settled');
+    // Printed in Bahasa regardless of the staff UI language — the reader is the
+    // customer, not the cashier.
+    const ID_METHOD = { cash: 'Tunai', qris: 'QRIS', transfer: 'Transfer', card: 'Kartu', other: 'Lainnya' };
+    const methodLabel = (id) => ID_METHOD[id] || id;
+    const when = o.paid_at && typeof o.paid_at.toDate === 'function' ? o.paid_at.toDate() : new Date();
+    const outlet = state.outlets.find((x) => x.id === o.dimension_id);
+
+    const html = `<!doctype html><html><head><meta charset="utf-8">
+<title>${esc(o.order_number || 'Receipt')}</title>
+<style>
+  @page { size: 58mm auto; margin: 4mm; }
+  body { width: 58mm; margin: 0 auto; padding: 8px 0;
+         font-family: -apple-system, "Segoe UI", Inter, sans-serif;
+         font-size: 11px; line-height: 1.4; color: #000;
+         font-variant-numeric: tabular-nums; }
+  h1 { font-size: 13px; margin: 0 0 2px; text-align: center; }
+  .c { text-align: center; }
+  .m { color: #555; font-size: 10px; }
+  .r { text-align: right; white-space: nowrap; }
+  hr { border: 0; border-top: 1px dashed #999; margin: 6px 0; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 2px 0; vertical-align: top; }
+  .tot td { font-weight: 700; font-size: 12px; padding-top: 4px; }
+  .dsc td { color: #444; }
+  .foot { margin-top: 8px; text-align: center; font-size: 10px; color: #555; }
+  @media screen {
+    body { box-shadow: 0 0 0 1px #e2e8f0; padding: 16px; margin-top: 24px; }
+    .noprint { display: block; text-align: center; margin: 16px auto; width: 58mm; }
+    .noprint button { font: inherit; padding: 10px 18px; border-radius: 8px;
+                      border: 0; background: #0F172A; color: #fff; cursor: pointer; }
+  }
+  @media print { .noprint { display: none; } }
+</style></head><body>
+  <h1>${esc((outlet && outlet.name) || 'FluxyOS')}</h1>
+  <div class="c m">${esc(o.table_label ? `Meja ${o.table_label}` : 'Bawa pulang')} · ${esc(o.order_number || '')}</div>
+  <div class="c m">${when.toLocaleString('id-ID')}</div>
+  <hr>
+  <table>${(o.lines || []).map(line).join('')}</table>
+  <hr>
+  <table>
+    ${row('Subtotal', rp(o.subtotal))}
+    ${Number(o.discount_total) > 0 ? row(o.discount_reason || 'Diskon', `−${rp(o.discount_total)}`, 'dsc') : ''}
+    ${row('Total', rp(o.total_amount), 'tot')}
+    ${paid.map((p) => row(methodLabel(p.method), rp(p.amount))).join('')}
+  </table>
+  ${o.refund_transaction_id ? '<hr><div class="c"><strong>DIREFUND</strong></div>' : ''}
+  <div class="foot">Terima kasih 🙏</div>
+  <div class="noprint"><button onclick="window.print()">Cetak</button></div>
+<script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 250); });</` + `script>
+</body></html>`;
+
+    // A blocked popup must not fail silently — say what happened and what to do.
+    const w = window.open('', '_blank', 'width=380,height=640');
+    if (!w) { toast('Allow pop-ups for this site to print the receipt.', 'error'); return; }
+    w.document.write(html);
+    w.document.close();
+}
+
+// Refunding is finance+ only (perms-service CASHIER_CAPS): voiding an unpaid
+// order is a floor correction, handing money back out is the till-fraud
+// direction. The button is therefore absent for a cashier rather than present
+// and failing — an action you can see but cannot use is worse than no action.
+function openRefundDrawer() {
+    const o = state.order;
+    drawer({
+        title: 'Refund this order',
+        subtitle: `${o.table_label ? `Table ${o.table_label}` : 'Takeaway'} · ${rp(o.total_amount)}`,
+        submitLabel: 'Refund order',
+        danger: true,
+        body: `
+            <div>
+                <label class="block text-[12px] font-semibold text-slate-700 mb-2" for="pos-refund-why">Reason</label>
+                <input id="pos-refund-why" name="reason" class="w-full min-h-[44px] px-3 border border-slate-300 rounded-lg text-[14px]" placeholder="Salah pesan, komplain tamu…" required>
+                <p class="text-[11px] text-slate-500 mt-2">This reverses the sale in the books and puts the stock back. The original order stays on the record — a refund is a correction, not an erasure.</p>
+            </div>`,
+        onSubmit: async (fd) => {
+            await ds.refundPosOrder(state.uid, state.orderId, fd.get('reason'));
+            toast(`Refunded ${rp(o.total_amount)}.`);
+            state.orderId = null; state.order = null;
+            renderOrder(); renderMenu();
+            await refresh();
+        }
+    });
+}
+
+function openLineNoteDrawer(lineId) {
+    const line = (state.order.lines || []).find((l) => l.line_id === lineId);
+    if (!line) return;
+    drawer({
+        title: `Note for ${line.item_name}`,
+        subtitle: 'Goes to the kitchen with this line.',
+        submitLabel: 'Save note',
+        body: `
+            <div>
+                <label class="block text-[12px] font-semibold text-slate-700 mb-2" for="pos-line-note">Note</label>
+                <input id="pos-line-note" name="note" maxlength="120" value="${esc(line.note || '')}" class="w-full min-h-[44px] px-3 border border-slate-300 rounded-lg text-[14px]" placeholder="Tanpa sambal, pedas, es sedikit…">
+            </div>`,
+        onSubmit: async (fd) => {
+            const note = String(fd.get('note') || '').trim() || null;
+            state.order = await ds.updatePosOrder(state.uid, state.orderId, (o) => ({
+                lines: (o.lines || []).map((l) => (l.line_id === lineId ? { ...l, note } : l))
+            }));
+            renderOrder();
+            toast(note ? 'Note saved.' : 'Note removed.');
+        }
     });
 }
 
@@ -596,6 +808,40 @@ function openVoidDrawer() {
             renderOrder(); renderMenu();
             await refresh();
         }
+    });
+}
+
+// Long-press / right-click a table to archive it. Deliberately not a visible
+// per-tile button: the grid is tapped hundreds of times a service and a delete
+// affordance on every tile is an accident waiting to happen. Archiving is rare.
+function mountTableArchive(host) {
+    host.querySelectorAll('[data-table]').forEach((btn) => {
+        btn.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            if (btn.dataset.order) {
+                toast('That table has an open order. Close or void it first.', 'error');
+                return;
+            }
+            const t = state.overview.tables.find((x) => x.id === btn.dataset.table);
+            if (!t) return;
+            window.showFluxyDialog
+                ? window.showFluxyDialog({
+                    title: `Archive table ${t.label}?`,
+                    message: 'It disappears from the grid. Past orders keep pointing at it, so nothing in the books changes.',
+                    confirmText: 'Archive',
+                    variant: 'danger',
+                    onConfirm: async () => {
+                        await ds.archivePosTable(state.uid, t.id);
+                        toast(`Table ${t.label} archived.`);
+                        await refresh();
+                    }
+                })
+                : once(async () => {
+                    await ds.archivePosTable(state.uid, t.id);
+                    toast(`Table ${t.label} archived.`);
+                    await refresh();
+                });
+        });
     });
 }
 
@@ -644,7 +890,8 @@ async function refresh({ keepOrder = false } = {}) {
     // Re-bind the open order to the freshly-read copy, so the panel can never
     // show a stale version and lose the concurrency race on the next write.
     if (state.orderId && !keepOrder) {
-        const live = (overview.activeOrders || []).find((o) => o.id === state.orderId);
+        const live = (overview.activeOrders || []).concat(overview.paidToday || [])
+            .find((o) => o.id === state.orderId);
         if (live) state.order = live;
         else if (state.order && !['paid', 'void'].includes(state.order.status)) {
             state.orderId = null; state.order = null;
@@ -654,6 +901,7 @@ async function refresh({ keepOrder = false } = {}) {
     renderMetrics();
     renderBanners();
     renderTables();
+    renderPaidToday();
     renderMenu();
     renderOrder();
     $('pos-new-order').disabled = !state.outletId;
@@ -682,6 +930,8 @@ function wire() {
     $('pos-primary').addEventListener('click', () => once(advance));
     $('pos-discount-btn').addEventListener('click', openDiscountDrawer);
     $('pos-void-btn').addEventListener('click', openVoidDrawer);
+    $('pos-refund-btn').addEventListener('click', openRefundDrawer);
+    $('pos-reprint-btn').addEventListener('click', () => openReceipt(state.order));
     $('pos-manage-tables').addEventListener('click', openTableDrawer);
     $('pos-new-order').addEventListener('click', () => once(() => startOrder(null)));
 

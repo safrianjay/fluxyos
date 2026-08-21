@@ -5030,7 +5030,37 @@
         "Makanan, Minuman": "Makanan, Minuman",
         "Show on the till": "Tampilkan di kasir",
         "Needs a selling price. Without a recipe it will sell at 100% margin, which overstates gross profit.": "Butuh harga jual. Tanpa resep, item ini terjual dengan margin 100%, yang melebih-lebihkan laba kotor.",
-        "Give the item a selling price first — the till needs something to charge.": "Beri harga jual dulu — kasir butuh sesuatu untuk ditagihkan."
+        "Give the item a selling price first — the till needs something to charge.": "Beri harga jual dulu — kasir butuh sesuatu untuk ditagihkan.",
+
+        // Refund
+        "Refund order": "Refund pesanan",
+        "Reprint receipt": "Cetak ulang struk",
+        "Paid today": "Lunas hari ini",
+        "Open one to reprint its receipt or refund it.": "Buka salah satu untuk cetak ulang struk atau melakukan refund.",
+        "Refund this order": "Refund pesanan ini",
+        "Salah pesan, komplain tamu…": "Salah pesan, komplain tamu…",
+        "This reverses the sale in the books and puts the stock back. The original order stays on the record — a refund is a correction, not an erasure.": "Ini membalik penjualannya di pembukuan dan mengembalikan stoknya. Pesanan aslinya tetap tercatat — refund adalah koreksi, bukan penghapusan.",
+        "Refunded": "Sudah direfund",
+
+        // Line note
+        "Goes to the kitchen with this line.": "Ikut ke dapur bersama baris ini.",
+        "Note": "Catatan",
+        "Save note": "Simpan catatan",
+        "Tanpa sambal, pedas, es sedikit…": "Tanpa sambal, pedas, es sedikit…",
+        "Note saved.": "Catatan disimpan.",
+        "Note removed.": "Catatan dihapus.",
+
+        // Discount mode
+        "Amount": "Nominal",
+        "Percent": "Persen",
+        "Amount off": "Potongan",
+        "Percent off": "Persen potongan",
+
+        // Table archive
+        "Archive": "Arsipkan",
+        "It disappears from the grid. Past orders keep pointing at it, so nothing in the books changes.": "Meja hilang dari grid. Pesanan lama tetap menunjuk ke meja ini, jadi tidak ada yang berubah di pembukuan.",
+        "That table has an open order. Close or void it first.": "Meja ini masih punya pesanan terbuka. Selesaikan atau batalkan dulu.",
+        "Allow pop-ups for this site to print the receipt.": "Izinkan pop-up di situs ini untuk mencetak struk."
     };
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -5052,6 +5082,14 @@
         { re: /^(\d+) paid · at the till$/,
           id: function (m) { return m[1] + ' lunas · di kasir'; } },
         { re: /^Table (.+)$/, id: function (m) { return 'Meja ' + m[1]; } },
+        { re: /^Discount (.+)$/, id: function (m) { return 'Diskon ' + m[1]; } },
+        { re: /^Note for (.+)$/, id: function (m) { return 'Catatan untuk ' + m[1]; } },
+        { re: /^Archive table (.+)\?$/, id: function (m) { return 'Arsipkan meja ' + m[1] + '?'; } },
+        { re: /^Table (.+) archived\.$/, id: function (m) { return 'Meja ' + m[1] + ' diarsipkan.'; } },
+        { re: /^Refunded (Rp[\d.]+)\.$/, id: function (m) { return 'Direfund ' + m[1] + '.'; } },
+        { re: /^(\d+)% of (Rp[\d.]+) = (Rp[\d.]+)$/,
+          id: function (m) { return m[1] + '% dari ' + m[2] + ' = ' + m[3]; } },
+        { re: /^(Rp[\d.]+) before discount$/, id: function (m) { return m[1] + ' sebelum diskon'; } },
         { re: /^Order (.+)$/, id: function (m) { return 'Pesanan ' + m[1]; } },
         // The payment drawer subtitle is built as one string —
         // "Meja 12 · Rp30.000 due" / "Bawa pulang · Rp30.000 due" — so the tail
