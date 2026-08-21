@@ -4617,7 +4617,21 @@
         "Ingredients and goods you buy and hold. Once an item exists you can receive stock against it and count it.": "Bahan dan barang yang Anda beli dan simpan. Setelah item ada, Anda bisa mencatat penerimaan barang dan melakukan stock opname.",
         "Changes apply from now on. Quantities already recorded are not affected.": "Perubahan berlaku mulai sekarang. Kuantitas yang sudah tercatat tidak terpengaruh.",
         "Stock unit": "Satuan stok",
-        "The smallest unit you actually count in. Every quantity is stored in it, so it cannot be changed once the item exists.": "Satuan terkecil yang benar-benar Anda hitung. Semua kuantitas disimpan dalam satuan ini, jadi tidak bisa diubah setelah item dibuat.",
+        "The smallest unit you count in. Fixed once the item exists.": "Satuan terkecil yang Anda hitung. Tetap setelah item dibuat.",
+        "or type another unit": "atau ketik satuan lain",
+        "or type another": "atau ketik lainnya",
+        "Common stock units": "Satuan stok umum",
+        "Choose a unit…": "Pilih satuan…",
+        "Other…": "Lainnya…",
+        "Type the unit — e.g. sachet, ikat, lembar": "Ketik satuannya — misal sachet, ikat, lembar",
+        "Type the unit — e.g. karton, lusin": "Ketik satuannya — misal karton, lusin",
+        "Stock unit": "Satuan stok",
+        "Purchase unit": "Satuan beli",
+        "What one serving is called — porsi, pcs, gelas. Its ingredients keep their own units.": "Sebutan untuk satu porsi — porsi, pcs, gelas. Bahan-bahannya tetap pakai satuannya sendiri.",
+        "Revenue posted; the cost did not, so gross margin is overstated by that much.": "Pendapatannya sudah diposting, biayanya belum — jadi laba kotor Anda kelebihan sebanyak itu.",
+        "Relieve cost now": "Catat biayanya sekarang",
+        "Relieving…": "Sedang mencatat…",
+        "Could not relieve those orders": "Gagal mencatat biaya pesanan tersebut",
         "Fixed once the item exists — every quantity already recorded is counted in it.": "Terkunci setelah item dibuat — semua kuantitas yang sudah tercatat dihitung dalam satuan ini.",
         "Purchase unit": "Satuan beli",
         "Only if you buy in a larger unit than you count in — flour bought by the sack, counted in grams.": "Hanya jika Anda membeli dalam satuan lebih besar daripada satuan hitung — tepung dibeli per sak, dihitung per gram.",
@@ -5083,6 +5097,11 @@
           id: function (m) { return m[1] + ' lunas · di kasir'; } },
         { re: /^Table (.+)$/, id: function (m) { return 'Meja ' + m[1]; } },
         { re: /^Discount (.+)$/, id: function (m) { return 'Diskon ' + m[1]; } },
+        { re: /^(\d+) marketplace orders? ha(?:s|ve) sold stock that was never relieved\.$/,
+          id: function (m) { return m[1] + ' pesanan marketplace menjual stok yang biayanya belum pernah dicatat.'; } },
+        { re: /^Relieved (\d+) orders?\.$/, id: function (m) { return 'Biaya ' + m[1] + ' pesanan dicatat.'; } },
+        { re: /^Relieved (\d+) orders?\. (\d+) SKUs? matched no item: (.+)\.$/,
+          id: function (m) { return 'Biaya ' + m[1] + ' pesanan dicatat. ' + m[2] + ' SKU tidak cocok dengan item mana pun: ' + m[3] + '.'; } },
         { re: /^Note for (.+)$/, id: function (m) { return 'Catatan untuk ' + m[1]; } },
         { re: /^Archive table (.+)\?$/, id: function (m) { return 'Arsipkan meja ' + m[1] + '?'; } },
         { re: /^Table (.+) archived\.$/, id: function (m) { return 'Meja ' + m[1] + ' diarsipkan.'; } },
@@ -5137,10 +5156,9 @@
               return ', jadi setiap outlet di bawah terlihat lebih untung daripada yang sebenarnya. Sewa, listrik, dan gaji biasanya masuk sebagai tagihan — tandai itu dan angka ini mengecil.';
           } },
         // Item drawer: a quantity typed into the Stock unit field.
-        { re: /^"(.+)" looks like a quantity, not a unit\. The stock unit is what you count in — g, ml, pcs, botol\. If you meant "1 sak = (.+)", that belongs in Purchase unit below\.$/,
+        { re: /^Stock unit needs a unit, not a number — pick one from the list\. \(If you buy in packs of (.+), that goes under Purchase unit\.\)$/,
           id: function (m) {
-              return '"' + m[1] + '" tampak seperti kuantitas, bukan satuan. Satuan stok adalah satuan yang Anda hitung — g, ml, pcs, botol. '
-                  + 'Kalau maksud Anda "1 sak = ' + m[2] + '", itu tempatnya di Satuan beli di bawah.';
+              return 'Satuan stok harus berupa satuan, bukan angka — pilih dari daftar. (Kalau Anda membeli dalam kemasan isi ' + m[1] + ', itu masuk ke Satuan beli.)';
           } },
         // Recipe editor: the per-unit cost row names the recipe's own unit.
         { re: /^Cost per (.+)$/,

@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { setUnit, unitValue } = require('./helpers/inventory-unit');
 
 // The recipe editor, driven the way a person drives it.
 //
@@ -30,8 +31,8 @@ async function gotoItems(page) {
 async function seedIngredient(page, name) {
     await page.click('#new-item-btn');
     await page.fill('#item-name', name);
-    await page.fill('#item-base-unit', 'g');
-    await page.fill('#item-purchase-unit', 'kg');
+    await setUnit(page, 'base', 'g');
+    await setUnit(page, 'purchase', 'kg');
     await page.fill('#item-purchase-factor', '1000');
     await page.click('#item-save-btn');
     await expect(page.locator('#item-drawer')).toHaveClass(/translate-x-full/, { timeout: 30000 });
@@ -70,7 +71,7 @@ test('a recipe can be created, costed, and reopened', async ({ page }) => {
     await expect(page.locator('#item-reorder-field')).toHaveClass(/hidden/);
 
     await page.fill('#item-name', `${TAG} Nasi Goreng`);
-    await page.fill('#item-base-unit', 'porsi');
+    await setUnit(page, 'base', 'porsi');
     // The batch unit is the recipe's own unit — it must follow that field.
     await expect(page.locator('#item-batch-unit')).toHaveText('porsi');
     await page.fill('#item-batch-size', '10');
@@ -132,7 +133,7 @@ test('an ingredient listed twice is refused with the ingredient named', async ({
     await page.click('#new-item-btn');
     await page.selectOption('#item-type', 'composite');
     await page.fill('#item-name', `${TAG} Teh Manis`);
-    await page.fill('#item-base-unit', 'gelas');
+    await setUnit(page, 'base', 'gelas');
     await page.fill('#item-batch-size', '4');
 
     const first = page.locator('#recipe-lines .inv-line').nth(0);

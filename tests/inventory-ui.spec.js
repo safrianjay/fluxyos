@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { setUnit, unitValue } = require('./helpers/inventory-unit');
 
 // These specs run serially against REAL Firebase, and the QA workspace has grown
 // large enough (49 items, 20+ outlets, 70+ movements) that page boot alone can
@@ -53,10 +54,10 @@ test('an item can be created from the page and shows up in the table', async ({ 
     await expect(page.locator('#item-save-btn')).toBeDisabled();
 
     await page.fill('#item-name', `${TAG} Tepung`);
-    await page.fill('#item-base-unit', 'g');
+    await setUnit(page, 'base', 'g');
     await expect(page.locator('#item-save-btn')).toBeEnabled();
 
-    await page.fill('#item-purchase-unit', 'kg');
+    await setUnit(page, 'purchase', 'kg');
     await page.fill('#item-purchase-factor', '1000');
     // The conversion is echoed back in the user's own words before they commit,
     // so a wrong factor is caught here rather than inside a stock quantity later.
@@ -86,9 +87,9 @@ test('an item can be created from the page and shows up in the table', async ({ 
     await row.click();
     await expect(page.locator('#item-drawer-title')).toHaveText('Edit item');
     await expect(page.locator('#item-name')).toHaveValue(`${TAG} Tepung`);
-    await expect(page.locator('#item-purchase-unit')).toHaveValue('kg');
+    expect(await unitValue(page, 'purchase')).toBe('kg');
     // base_unit is immutable: every recorded quantity is an integer count of it.
-    await expect(page.locator('#item-base-unit')).toBeDisabled();
+    await expect(page.locator('#item-base-unit-pick')).toBeDisabled();
     await page.click('#item-cancel-btn');
 
     // ── Search filters, and says so honestly when nothing matches ────────────
@@ -180,17 +181,17 @@ test('a quantity typed into the stock-unit field is refused', async ({ page }) =
     // The exact mistake that produced "System: 2.394 1000" on the count sheet:
     // the conversion factor typed into Stock unit. base_unit is immutable, so an
     // item created this way can never be fixed — only this moment can catch it.
-    await page.fill('#item-base-unit', '1000');
+    await setUnit(page, 'base', '1000');
     await page.click('#item-save-btn');
 
     const err = page.locator('#item-form-error');
     await expect(err).toBeVisible();
-    await expect(err).toContainText('looks like a quantity, not a unit');
+    await expect(err).toContainText('needs a unit, not a number');
     // And it points at where the number actually belongs.
     await expect(err).toContainText('Purchase unit');
 
     // A real unit saves fine — the guard must not block ordinary work.
-    await page.fill('#item-base-unit', 'g');
+    await setUnit(page, 'base', 'g');
     await page.click('#item-save-btn');
     await expect(page.locator('#item-drawer')).toHaveClass(/translate-x-full/, { timeout: 20000 });
 });
@@ -201,8 +202,8 @@ test('stock can be received through the page, in the unit it was bought in', asy
     // Create the item this test will receive into, so the spec owns its data.
     await page.click('#new-item-btn');
     await page.fill('#item-name', `${TAG} Gula`);
-    await page.fill('#item-base-unit', 'g');
-    await page.fill('#item-purchase-unit', 'kg');
+    await setUnit(page, 'base', 'g');
+    await setUnit(page, 'purchase', 'kg');
     await page.fill('#item-purchase-factor', '1000');
     await page.click('#item-save-btn');
     await expect(page.locator('#item-drawer')).toHaveClass(/translate-x-full/, { timeout: 20000 });

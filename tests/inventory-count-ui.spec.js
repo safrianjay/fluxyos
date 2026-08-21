@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { setUnit, unitValue } = require('./helpers/inventory-unit');
 
 // These specs run serially against REAL Firebase, and the QA workspace has grown
 // large enough (49 items, 20+ outlets, 70+ movements) that page boot alone can
@@ -37,7 +38,7 @@ async function seed(page) {
     for (const [name, shelf] of [[ITEM_A, `${TAG} Shelf B`], [ITEM_Z, `${TAG} Shelf A`]]) {
         await page.click('#new-item-btn');
         await page.fill('#item-name', name);
-        await page.fill('#item-base-unit', 'g');
+        await setUnit(page, 'base', 'g');
         await page.fill('#item-shelf', shelf);
         await page.click('#item-save-btn');
         await expect(page.locator('#item-drawer')).toHaveClass(/translate-x-full/, { timeout: 20000 });

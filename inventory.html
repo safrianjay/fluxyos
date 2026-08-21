@@ -53,6 +53,10 @@
         .inv-metric-link:hover { background: #F8FAFC; }
         .inv-metric-link:focus-visible { outline: 2px solid #EA580C; outline-offset: -2px; }
 
+        /* The `Other…` free-text box sits under its dropdown, so it needs the
+           gap the drawer's field rhythm would otherwise supply. */
+        #item-base-unit:not(.hidden), #item-purchase-unit:not(.hidden) { margin-top: 8px; }
+
         /* Tinted card headers, as in the reference. `slate-50` is one of the two
            header backgrounds DESIGN_SYSTEM permits, so this is a sanctioned
            variant rather than a new look. */
@@ -689,8 +693,20 @@
 
             <div class="fluxy-drawer-field">
                 <label class="fluxy-drawer-label" for="item-base-unit">Stock unit</label>
-                <input id="item-base-unit" type="text" class="fluxy-drawer-input" maxlength="16" placeholder="g" autocomplete="off" required>
-                <p id="item-base-unit-hint" class="fluxy-drawer-hint">The smallest unit you actually count in. Every quantity is stored in it, so it cannot be changed once the item exists.</p>
+                <!-- A closed list, not an open box. The field used to be bare
+                     text that looked exactly like the Name field above it, so
+                     typing "100" was a perfectly reasonable thing to do — and the
+                     app answered with a paragraph explaining why that was wrong.
+                     A dropdown makes the wrong answer unreachable instead of
+                     explaining it afterwards. `Other…` keeps every unusual unit
+                     possible; it just stops being the default path.
+                     fluxy-select.js enhances this (DESIGN_SYSTEM §6). -->
+                <select id="item-base-unit-pick" aria-label="Stock unit"></select>
+                <!-- The value of record. Revealed only for `Other…`, but always
+                     the field saveItem reads, so nothing downstream cares which
+                     way the unit was chosen. -->
+                <input id="item-base-unit" type="text" class="fluxy-drawer-input hidden" maxlength="16" placeholder="Type the unit — e.g. sachet, ikat, lembar" autocomplete="off">
+                <p id="item-base-unit-hint" class="fluxy-drawer-hint">The smallest unit you count in. Fixed once the item exists.</p>
             </div>
 
             <div class="fluxy-drawer-section" id="item-purchase-section">
@@ -701,7 +717,8 @@
                 <div class="fluxy-drawer-field-grid">
                     <div class="fluxy-drawer-field">
                         <label class="fluxy-drawer-label" for="item-purchase-unit">Unit</label>
-                        <input id="item-purchase-unit" type="text" class="fluxy-drawer-input" maxlength="16" placeholder="kg" autocomplete="off">
+                        <select id="item-purchase-unit-pick" aria-label="Purchase unit"></select>
+                        <input id="item-purchase-unit" type="text" class="fluxy-drawer-input hidden" maxlength="16" placeholder="Type the unit — e.g. karton, lusin" autocomplete="off">
                     </div>
                     <div class="fluxy-drawer-field">
                         <label class="fluxy-drawer-label" for="item-purchase-factor">How many stock units</label>
@@ -1928,10 +1945,19 @@
             }
             // On an existing item the hint explains why the field is locked, and
             // that outranks describing what to type into it.
+            // A dish is counted in servings, an ingredient in grams. Offering
+            // `g` for a recipe would be suggesting the wrong answer, which is
+            // worse than offering none.
+            // A dish is counted in servings, an ingredient in grams. Offering
+            // `g` for a recipe would be suggesting the wrong answer, which is
+            // worse than offering none.
+            fillUnitSelect('item-base-unit-pick', 'item-base-unit', isRecipe
+                ? ['porsi', 'pcs', 'gelas', 'piring', 'cup']
+                : ['g', 'kg', 'ml', 'l', 'pcs', 'botol', 'bungkus', 'butir', 'lembar', 'porsi']);
             if (!editingItem) {
                 document.getElementById('item-base-unit-hint').textContent = isRecipe
-                    ? 'What one serving is called — portion, pcs, gelas. A recipe is measured in this, and its ingredients keep their own units.'
-                    : 'The smallest unit you actually count in. Every quantity is stored in it, so it cannot be changed once the item exists.';
+                    ? 'What one serving is called — porsi, pcs, gelas. Its ingredients keep their own units.'
+                    : 'The smallest unit you count in. Fixed once the item exists.';
             }
             document.getElementById('item-batch-unit').textContent =
                 document.getElementById('item-base-unit').value.trim() || 'portion';
@@ -1996,9 +2022,10 @@
             // base_unit is immutable — every recorded quantity is an integer count
             // of it, so changing it would silently reinterpret existing stock.
             baseUnitEl.disabled = isEdit;
+            syncUnitPicker('item-base-unit-pick', 'item-base-unit');
             document.getElementById('item-base-unit-hint').textContent = isEdit
                 ? 'Fixed once the item exists — every quantity already recorded is counted in it.'
-                : 'The smallest unit you actually count in. Every quantity is stored in it, so it cannot be changed once the item exists.';
+                : 'The smallest unit you count in. Fixed once the item exists.';
 
             // One alternate unit, the one you buy in. A recipe has none — it is
             // never purchased, only made.
@@ -2006,6 +2033,8 @@
                 ? item.units.find((u) => u.role === 'purchase') || item.units[0] || null
                 : null;
             document.getElementById('item-purchase-unit').value = purchase ? (purchase.code || '') : '';
+            fillUnitSelect('item-purchase-unit-pick', 'item-purchase-unit',
+                ['kg', 'l', 'sak', 'dus', 'pack', 'karton', 'lusin', 'ikat']);
             document.getElementById('item-purchase-factor').value = purchase ? String(purchase.factor || '') : '';
 
             hideError();
@@ -2069,7 +2098,7 @@
             // repaired afterwards, only replaced. Caught here, once, for free.
             const baseUnitRaw = document.getElementById('item-base-unit').value.trim();
             if (/^[\d.,]+$/.test(baseUnitRaw)) {
-                throw new Error(`"${baseUnitRaw}" looks like a quantity, not a unit. The stock unit is what you count in — g, ml, pcs, botol. If you meant "1 sak = ${baseUnitRaw}", that belongs in Purchase unit below.`);
+                throw new Error(`Stock unit needs a unit, not a number — pick one from the list. (If you buy in packs of ${baseUnitRaw}, that goes under Purchase unit.)`);
             }
             const reorderRaw = document.getElementById('item-reorder').value.trim();
             if (reorderRaw !== '' && (!/^\d+$/.test(reorderRaw))) {
@@ -2203,6 +2232,54 @@
         function parseAmountInput(value) {
             const digits = String(value).replace(/\D/g, '');
             return digits ? parseInt(digits, 10) : 0;
+        }
+
+        // ── Unit pickers ────────────────────────────────────────────────────
+        //
+        // The dropdown is what a user touches; `#item-base-unit` is what the
+        // code reads. Picking an option writes the input, so `saveItem`,
+        // validation, the batch-unit mirror and the purchase preview all keep
+        // reading one field and never learn there is a dropdown.
+        //
+        // `Other…` is the escape hatch: it reveals the input for anything not on
+        // the list. Every unit stays reachable — the list just makes the common
+        // ones one tap and the wrong ones unreachable.
+        const OTHER = '__other__';
+
+        function fillUnitSelect(selectId, inputId, units) {
+            const sel = document.getElementById(selectId);
+            const input = document.getElementById(inputId);
+            if (!sel || !input) return;
+            const current = input.value.trim();
+            const known = units.includes(current);
+            sel.innerHTML = ['<option value="">Choose a unit…</option>']
+                .concat(units.map((u) => `<option value="${u}">${u}</option>`))
+                .concat([`<option value="${OTHER}">Other…</option>`])
+                .join('');
+            // An existing item may already carry a unit that is not on the list.
+            sel.value = current ? (known ? current : OTHER) : '';
+            syncUnitPicker(selectId, inputId);
+            // fluxy-select.js enhances on mutation, but re-enhancing after we
+            // rewrite the options keeps the custom trigger's label in step.
+            if (window.FluxySelect && window.FluxySelect.enhance) {
+                try { window.FluxySelect.enhance(sel); } catch (_) { /* already enhanced */ }
+            }
+        }
+
+        // Show the free-text box only for `Other…`, and mirror the picked value
+        // into the input that everything downstream reads.
+        function syncUnitPicker(selectId, inputId) {
+            const sel = document.getElementById(selectId);
+            const input = document.getElementById(inputId);
+            if (!sel || !input) return;
+            const isOther = sel.value === OTHER;
+            input.classList.toggle('hidden', !isOther);
+            // The base unit is immutable once the item exists, so a locked field
+            // must not offer a change it cannot honour.
+            sel.disabled = !!input.disabled;
+            if (!isOther && sel.value) input.value = sel.value;
+            if (!isOther && !sel.value) input.value = '';
+            if (isOther) setTimeout(() => input.focus(), 30);
         }
 
         function renderOutletSelect(selectedId = null) {
@@ -2441,6 +2518,17 @@
             if (!document.getElementById('item-drawer-backdrop').classList.contains('hidden')) closeDrawer();
             else if (!document.getElementById('receipt-drawer-backdrop').classList.contains('hidden')) closeReceiptDrawer();
         });
+        [['item-base-unit-pick', 'item-base-unit'],
+         ['item-purchase-unit-pick', 'item-purchase-unit']].forEach(([selectId, inputId]) => {
+            const sel = document.getElementById(selectId);
+            const input = document.getElementById(inputId);
+            if (!sel || !input) return;
+            sel.addEventListener('change', () => {
+                syncUnitPicker(selectId, inputId);
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+        });
+
         ['item-name', 'item-base-unit'].forEach((id) => {
             document.getElementById(id).addEventListener('input', validateForm);
         });
