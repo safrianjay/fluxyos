@@ -10,6 +10,7 @@ import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/
 import {
     buildCsvBundle,
     downloadFile,
+    formatRupiah,
     formatRupiahCompact,
     formatPercent,
     periodLabel
@@ -418,7 +419,7 @@ function renderProfitLoss(pack) {
                         ${pl.rows.map(r => `
                             <tr>
                                 <td>${escapeHtml(r.metric)}</td>
-                                <td class="amount">${r.is_percent ? formatPercent(r.amount) : Number(r.amount).toLocaleString('id-ID')}</td>
+                                <td class="amount">${r.is_percent ? formatPercent(r.amount) : formatRupiah(r.amount)}</td>
                                 <td>${escapeHtml(r.basis)}</td>
                                 <td>${escapeHtml(r.source_records)}</td>
                             </tr>`).join('')}
@@ -508,9 +509,9 @@ function renderMonthlyTrend(pack) {
                     ${trend.map(m => `
                         <tr>
                             <td>${escapeHtml(m.monthLabel)}</td>
-                            <td class="amount">${Number(m.revenue).toLocaleString('id-ID')}</td>
-                            <td class="amount">${Number(m.opex).toLocaleString('id-ID')}</td>
-                            <td class="amount">${Number(m.netResult).toLocaleString('id-ID')}</td>
+                            <td class="amount">${formatRupiah(m.revenue)}</td>
+                            <td class="amount">${formatRupiah(m.opex)}</td>
+                            <td class="amount">${formatRupiah(m.netResult)}</td>
                             <td class="amount">${m.revenue > 0 ? formatPercent(m.netMargin) : '—'}</td>
                             <td class="amount">${m.recordCount}</td>
                             <td class="amount">${m.warnings}</td>
@@ -586,9 +587,9 @@ function renderYoYProfitLoss(pack) {
                         const tone = r.change_pct === null ? 'gray' : (r.change_pct >= 0 ? 'green' : 'amber');
                         return `<tr>
                             <td>${escapeHtml(r.metric)}</td>
-                            <td class="amount">${Number(r.current).toLocaleString('id-ID')}</td>
-                            <td class="amount">${Number(r.previous).toLocaleString('id-ID')}</td>
-                            <td class="amount">${sign}${Number(r.change).toLocaleString('id-ID')}</td>
+                            <td class="amount">${formatRupiah(r.current)}</td>
+                            <td class="amount">${formatRupiah(r.previous)}</td>
+                            <td class="amount">${sign}${formatRupiah(r.change)}</td>
                             <td class="amount"><span class="pill ${tone}">${pctText}</span></td>
                             <td>${escapeHtml(r.interpretation || '')}</td>
                         </tr>`;
@@ -648,11 +649,11 @@ function renderMonthlyTrendComparison(pack) {
                         const tone = delta === null || delta === undefined ? 'gray' : (delta >= 0 ? 'green' : 'amber');
                         return `<tr>
                             <td>${escapeHtml(m.currentLabel || m.previousLabel || '—')}</td>
-                            <td class="amount">${c.revenue != null ? Number(c.revenue).toLocaleString('id-ID') : '—'}</td>
-                            <td class="amount">${p.revenue != null ? Number(p.revenue).toLocaleString('id-ID') : '—'}</td>
+                            <td class="amount">${c.revenue != null ? formatRupiah(c.revenue) : '—'}</td>
+                            <td class="amount">${p.revenue != null ? formatRupiah(p.revenue) : '—'}</td>
                             <td class="amount"><span class="pill ${tone}">${deltaText}</span></td>
-                            <td class="amount">${c.netResult != null ? Number(c.netResult).toLocaleString('id-ID') : '—'}</td>
-                            <td class="amount">${p.netResult != null ? Number(p.netResult).toLocaleString('id-ID') : '—'}</td>
+                            <td class="amount">${c.netResult != null ? formatRupiah(c.netResult) : '—'}</td>
+                            <td class="amount">${p.netResult != null ? formatRupiah(p.netResult) : '—'}</td>
                         </tr>`;
                     }).join('')}
                 </tbody>
@@ -715,8 +716,8 @@ function renderPeriodComparison(pack) {
                                 const tone = r.inverse ? (r.change > 0 ? 'amber' : 'green') : (r.change > 0 ? 'green' : (r.change < 0 ? 'amber' : 'gray'));
                                 changeCell = `<span class="pill ${tone}">${sign}${(r.change || 0).toFixed(1)}%</span>`;
                             }
-                            const prev = r.is_percent ? formatPercent(r.previous) : Number(r.previous || 0).toLocaleString('id-ID');
-                            const curr = r.is_percent ? formatPercent(r.current) : Number(r.current || 0).toLocaleString('id-ID');
+                            const prev = r.is_percent ? formatPercent(r.previous) : formatRupiah(r.previous || 0);
+                            const curr = r.is_percent ? formatPercent(r.current) : formatRupiah(r.current || 0);
                             return `<tr><td>${escapeHtml(r.metric)}</td><td class="amount">${prev}</td><td class="amount">${curr}</td><td>${changeCell}</td><td>${escapeHtml(r.interpretation || '')}</td></tr>`;
                         }).join('')}
                     </tbody>
@@ -900,11 +901,11 @@ function renderExpenseBreakdown(pack) {
                                     const sign = pct >= 0 ? '+' : '';
                                     pctCell = `<td class="amount delta-col"><span class="pill ${tone}">${sign}${pct.toFixed(1)}%</span></td>`;
                                 }
-                                cmpCells = `<td class="amount previous-col">${prev > 0 ? Number(prev).toLocaleString('id-ID') : '—'}</td>${pctCell}`;
+                                cmpCells = `<td class="amount previous-col">${prev > 0 ? formatRupiah(prev) : '—'}</td>${pctCell}`;
                             }
                             return `<tr>
                                 <td class="vendor-col">${escapeHtml(v.vendor)}</td>
-                                <td class="amount amount-col">${Number(v.amount).toLocaleString('id-ID')}</td>
+                                <td class="amount amount-col">${formatRupiah(v.amount)}</td>
                                 ${cmpCells}
                                 <td class="category-col">${escapeHtml(v.category)}</td>
                                 <td class="records-col">${v.count}</td>
@@ -948,7 +949,7 @@ function renderBillsSubscriptions(pack) {
                 <table>
                     <thead><tr><th>Window</th><th class="amount">Amount</th><th>Meaning</th></tr></thead>
                     <tbody>
-                        ${bs.obligation_windows.map(w => `<tr><td>${escapeHtml(w.window)}</td><td class="amount">${Number(w.amount).toLocaleString('id-ID')}</td><td>${escapeHtml(w.meaning)}</td></tr>`).join('')}
+                        ${bs.obligation_windows.map(w => `<tr><td>${escapeHtml(w.window)}</td><td class="amount">${formatRupiah(w.amount)}</td><td>${escapeHtml(w.meaning)}</td></tr>`).join('')}
                     </tbody>
                 </table>
             </div>
@@ -1112,8 +1113,15 @@ let authCheckTimeout = setTimeout(() => {
     window.location.replace('/login');
 }, 2000);
 
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
     if (user) {
+        // The report renders money, so the base currency is a precondition.
+        // This page stages its payload from sessionStorage and never resolved
+        // the workspace, so every figure formatted against the IDR default.
+        try {
+            const { resolveWorkspace } = await import('/assets/js/workspace-service.js');
+            await resolveWorkspace(app, user);
+        } catch (_) { /* seam falls back to IDR */ }
         clearTimeout(authCheckTimeout);
         state.user = user;
         const payload = readPreviewPayload();

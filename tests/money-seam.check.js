@@ -198,15 +198,52 @@ if (idrTests.length) {
     ok('no-idr-tests', 'no comparison assumes IDR is the accounting currency');
 }
 
-// Every app page must LOAD the seam, or its formatters throw at render time.
-const appPages = fs.readdirSync(ROOT)
-    .filter((f) => f.endsWith('.html'))
-    .filter((f) => fs.readFileSync(path.join(ROOT, f), 'utf8').includes('sidebar-loader.js'));
-const missing = appPages.filter((f) => !fs.readFileSync(path.join(ROOT, f), 'utf8').includes('money-format.js'));
+// Every page whose MODULE GRAPH touches window.FluxyMoney must load the seam, or
+// its formatters throw a TypeError at render time.
+//
+// This was originally keyed on `sidebar-loader.js`, which missed report-preview:
+// it loads report-preview.js, which IMPORTS report-builder.js, which uses the
+// seam. The dependency was two hops away and invisible to a direct-script check —
+// so the report viewer, the document users print and send to a bank, would have
+// thrown on every money cell. Walk the closure instead.
+const jsDir = path.join(ROOT, 'assets/js');
+const consumers = new Set(
+    fs.readdirSync(jsDir)
+        .filter((f) => f.endsWith('.js') && f !== 'money-format.js')
+        .filter((f) => fs.readFileSync(path.join(jsDir, f), 'utf8').includes('window.FluxyMoney'))
+);
+const depCache = new Map();
+function closureOf(mod, seen = new Set()) {
+    if (seen.has(mod)) return seen;
+    seen.add(mod);
+    const file = path.join(jsDir, mod);
+    if (!fs.existsSync(file)) return seen;
+    let imports = depCache.get(mod);
+    if (!imports) {
+        imports = [...fs.readFileSync(file, 'utf8')
+            .matchAll(/from\s+['"](?:\.\/|\/assets\/js\/)([a-z0-9-]+\.js)['"]/g)].map((m) => m[1]);
+        depCache.set(mod, imports);
+    }
+    imports.forEach((m) => closureOf(m, seen));
+    return seen;
+}
+
+const pages = fs.readdirSync(ROOT).filter((f) => f.endsWith('.html'));
+const needSeam = [];
+for (const f of pages) {
+    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    const loaded = new Set([...src.matchAll(/assets\/js\/([a-z0-9-]+\.js)/g)].map((m) => m[1]));
+    const closure = new Set();
+    loaded.forEach((m) => closureOf(m).forEach((d) => closure.add(d)));
+    if ([...closure].some((d) => consumers.has(d))) needSeam.push(f);
+}
+const missing = needSeam.filter((f) => !fs.readFileSync(path.join(ROOT, f), 'utf8').includes('money-format.js'));
 if (missing.length) {
-    fail('seam-loaded', `${missing.length} app page(s) never load money-format.js: ${missing.join(', ')}`);
+    fail('seam-loaded',
+        `${missing.length} page(s) reach window.FluxyMoney through their module graph but never load ` +
+        `money-format.js — every money render there throws:\n        ${missing.join('\n        ')}`);
 } else {
-    ok('seam-loaded', `all ${appPages.length} app pages load the seam`);
+    ok('seam-loaded', `all ${needSeam.length} pages that reach the seam load it`);
 }
 
 // --- report -----------------------------------------------------------------
