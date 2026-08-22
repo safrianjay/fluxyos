@@ -212,6 +212,19 @@
         return dot === -1 ? grouped : grouped + '.' + decPart;
     }
 
+    /*
+     * Fill every element marked `data-money-symbol` with the base currency's
+     * symbol. Static HTML prefix chips (the "Rp" glued to the left of an amount
+     * input) cannot interpolate, and hardcoding them is how "Amount (Rp)" reached
+     * a peso workspace. Idempotent and safe to call after any DOM injection.
+     */
+    function paintSymbols(root) {
+        if (typeof document === 'undefined') return;
+        var scope = root || document;
+        var nodes = scope.querySelectorAll ? scope.querySelectorAll('[data-money-symbol]') : [];
+        for (var i = 0; i < nodes.length; i++) nodes[i].textContent = cfg(BASE).symbol;
+    }
+
     function symbol(currency) { return cfg(currency).symbol; }
     function decimals(currency) { return cfg(currency).decimals; }
     function isSupported(currency) { return SUPPORTED.indexOf(currency) !== -1; }
@@ -233,6 +246,7 @@
         baseDecimals: baseDecimals,
         baseLocale: baseLocale,
         baseCompact: baseCompact,
+        paintSymbols: paintSymbols,
         toBaseUnits: toBaseUnits,
         isForeignCurrency: isForeignCurrency,
         isZeroDecimal: isZeroDecimal,

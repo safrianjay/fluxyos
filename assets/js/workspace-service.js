@@ -43,6 +43,10 @@ function applyBaseCurrency(code) {
     try {
         if (typeof window !== 'undefined' && window.FluxyMoney) {
             window.FluxyMoney.setBaseCurrency(code || window.FluxyMoney.DEFAULT_BASE);
+            // Repaint static prefix chips ("Rp" beside an amount input) now that
+            // the real currency is known. They are plain HTML and cannot
+            // interpolate, so this is the only thing that corrects them.
+            window.FluxyMoney.paintSymbols();
         }
     } catch (_) { /* formatting must never break resolution */ }
 }

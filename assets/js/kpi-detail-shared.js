@@ -614,7 +614,7 @@ export function renderComparisonColumns(containerId, opts = {}) {
         <div class="kpi-cmp">
             <div class="kpi-cmp-axis" aria-hidden="true" style="height:${total}px">
                 <span>${showUpTick ? escapeHtml(formatRpCompact(upPx / pxPerRp)) : ''}</span>
-                <span style="position:absolute; top:${upShare.toFixed(2)}%; right:0; transform:translateY(-50%)">Rp0</span>
+                <span style="position:absolute; top:${upShare.toFixed(2)}%; right:0; transform:translateY(-50%)">${window.FluxyMoney.formatBase(0)}</span>
                 <span>${showDownTick ? escapeHtml('-' + formatRpCompact(downPx / pxPerRp)) : ''}</span>
             </div>
             <div class="kpi-cmp-scroll">

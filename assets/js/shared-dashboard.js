@@ -418,7 +418,7 @@ window.FluxyAmountInput = (function () {
         const caret = typeof input.selectionStart === 'number' ? input.selectionStart : input.value.length;
         const wanted = digitsBefore(input.value, caret);
         const digits = input.value.replace(/\D/g, '');
-        const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        const formatted = window.FluxyMoney.formatMoneyInput(input.value, window.FluxyMoney.baseCurrency());
         if (formatted === input.value) return;
         input.value = formatted;
         // Walk forward until we have passed the same number of digits.
@@ -1152,7 +1152,7 @@ window.showAddTransactionModal = function(options = {}) {
                         <section class="fluxy-drawer-section">
                             <h3 class="fluxy-drawer-section-title">${detailsTitle}</h3>
                             <div class="fluxy-drawer-field">
-                                <label for="tx-amount" class="fluxy-drawer-label">Amount <span id="tx-amount-cur">(Rp)</span></label>
+                                <label for="tx-amount" class="fluxy-drawer-label">Amount <span id="tx-amount-cur">(${window.FluxyMoney.baseSymbol()})</span></label>
                                 <div class="${context === 'bill' ? 'fluxy-amount-row' : ''}">
                                     <input type="text" id="tx-amount" name="amount" required placeholder="0" class="fluxy-drawer-input fluxy-drawer-input--mono">
                                     ${context === 'bill' ? `<select id="tx-currency" name="currency" class="fluxy-drawer-select fluxy-currency-select">
@@ -1452,7 +1452,7 @@ window.showAddTransactionModal = function(options = {}) {
                                 <div class="flex items-start gap-2.5 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2">
                                     <span class="mt-1 inline-block w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></span>
                                     <span class="font-mono font-bold text-gray-900 w-24 flex-shrink-0">Amount</span>
-                                    <span class="text-gray-500">Raw Rp integer — e.g. <span class="font-mono font-bold text-gray-700">1250000</span></span>
+                                    <span class="text-gray-500">Raw ${window.FluxyMoney.baseCurrency()} integer — e.g. <span class="font-mono font-bold text-gray-700">1250000</span></span>
                                 </div>
                                 <div class="flex items-start gap-2.5 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
                                     <span class="mt-1 inline-block w-2 h-2 rounded-full bg-gray-300 flex-shrink-0"></span>
@@ -1545,7 +1545,7 @@ window.showAddTransactionModal = function(options = {}) {
     // Bill currency (Stage B): IDR uses dot-thousands digit formatting; USD/SGD
     // allow a decimal amount (major units, converted to cents on save).
     const currencySelect = document.getElementById('tx-currency');
-    const billCurrency = () => (currencySelect ? currencySelect.value : 'IDR');
+    const billCurrency = () => (currencySelect ? currencySelect.value : window.FluxyMoney.baseCurrency());
     amountInput.oninput = (e) => {
         if (!window.FluxyMoney.isForeignCurrency(billCurrency())) {
             // Shared formatter: reformats on deletion too, and keeps the caret.
@@ -1564,7 +1564,7 @@ window.showAddTransactionModal = function(options = {}) {
     // user's manual change and by applying a vendor's default currency.
     function applyBillCurrency(cur) {
         if (!currencySelect) return;
-        const c = ['IDR', 'USD', 'SGD'].includes(cur) ? cur : 'IDR';
+        const c = ['IDR', 'USD', 'SGD'].includes(cur) ? cur : window.FluxyMoney.baseCurrency();
         currencySelect.value = c;
         const label = document.getElementById('tx-amount-cur');
         if (label) label.textContent = `(${window.FluxyMoney.symbol(c)})`;
@@ -2075,7 +2075,7 @@ window.showAddTransactionModal = function(options = {}) {
     }
 
     function isSingleEntryComplete() {
-        const rawAmount = amountInput.value.replace(/\./g, "");
+        const rawAmount = window.FluxyMoney.toMinor(amountInput.value, billCurrency());
         const hasDate = Boolean(parseLocalDateKey(selectedEntryDate));
         const dateOk = context === 'bill' ? hasDate : (hasDate && selectedEntryDate <= todayKey);
         return Number(rawAmount) > 0 && vendorInput.value.trim().length > 0 && dateOk;
@@ -2686,8 +2686,7 @@ window.showAddTransactionModal = function(options = {}) {
             return;
         }
 
-        const rawAmount = (amountInput.value || '').replace(/\./g, '');
-        const numericAmount = Number(rawAmount) || 0;
+        const numericAmount = window.FluxyMoney.toMinor(amountInput.value || '', billCurrency());
         const billCategory = getCurrentBillCategory();
         // Use the in-progress drawer state (date + category + amount). The
         // matchBillToAllocation helper expects Firestore-style Timestamps or
@@ -3229,11 +3228,11 @@ window.showAddTransactionModal = function(options = {}) {
 
             // Amount parse is currency-aware for bills: IDR strips dot-thousands to a
             // rupiah integer; USD/SGD read a decimal major amount → integer cents.
-            const billCurrency = context === 'bill' ? (document.getElementById('tx-currency')?.value || 'IDR') : 'IDR';
+            const billCurrency = context === 'bill'
+                ? (document.getElementById('tx-currency')?.value || window.FluxyMoney.baseCurrency())
+                : window.FluxyMoney.baseCurrency();
             const amountFieldRaw = document.getElementById('tx-amount').value;
-            const parsedAmount = !window.FluxyMoney.isForeignCurrency(billCurrency)
-                ? parseFloat(amountFieldRaw.replace(/\./g, "") || '0')
-                : Math.round((parseFloat(amountFieldRaw.replace(/[^\d.]/g, '')) || 0) * 100);
+            const parsedAmount = window.FluxyMoney.toMinor(amountFieldRaw, billCurrency);
             const txTypeSel = document.getElementById('tx-type').value;
             let txType = txTypeSel === 'Others'
                 ? (document.getElementById('tx-type-custom')?.value.trim() || 'Others')
@@ -3618,7 +3617,7 @@ window.FluxyDataSync = (function () {
 // something that HAPPENED rather than a value that was always there.
 // Respects prefers-reduced-motion, and skips the animation for tiny deltas where
 // it would just look like a glitch.
-window.animateValue = function (el, from, to, { duration = 650, format = (n) => Math.round(n).toLocaleString('id-ID') } = {}) {
+window.animateValue = function (el, from, to, { duration = 650, format = (n) => window.FluxyMoney.formatBase(Math.round(n)) } = {}) {
     if (!el) return;
     const start = Number(from) || 0;
     const end = Number(to) || 0;

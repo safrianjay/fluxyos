@@ -574,7 +574,7 @@ function renderDivergingPlot(plotEl, buckets, priorBuckets, config) {
         <div class="chart-plot-stage" data-chart-stage>
             <div class="chart-axis chart-axis-diverging">
                 <div><span>${escapeHtml(config.formatAxis(max))}</span></div>
-                <div class="chart-axis-zero" style="top:${posShare}%"><span>Rp0</span></div>
+                <div class="chart-axis-zero" style="top:${posShare}%"><span>${window.FluxyMoney.formatBase(0)}</span></div>
                 <div><span>${min < 0 ? escapeHtml(config.formatAxis(min)) : ''}</span></div>
             </div>
             <div class="chart-scroll" data-chart-scroll>

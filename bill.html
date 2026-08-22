@@ -216,7 +216,7 @@
                     <div id="bill-pay-amount-block">
                         <label for="bill-pay-amount" class="block text-[12px] font-semibold text-gray-500 mb-1.5">Amount to pay</label>
                         <div class="flex items-center gap-2">
-                            <span class="text-[13px] text-gray-500">Rp</span>
+                            <span class="text-[13px] text-gray-500" data-money-symbol>Rp</span>
                             <input id="bill-pay-amount" type="text" inputmode="numeric" class="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] tabular-nums focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]" placeholder="0">
                         </div>
                         <p class="mt-1 text-[11px] text-gray-400">Defaults to the full balance. Enter less for a partial payment.</p>
@@ -1478,7 +1478,7 @@
                         <div class="text-right flex-shrink-0">
                             <span class="block text-[11px] text-gray-400">Outstanding ${formatCurrencyIDR(outstanding)}</span>
                             <span class="inline-flex items-center gap-1 justify-end">
-                                <span class="text-[12px] text-gray-500">Rp</span>
+                                <span class="text-[12px] text-gray-500">${window.FluxyMoney.baseSymbol()}</span>
                                 <input type="text" inputmode="numeric" data-vpay-amount value="${outstanding.toLocaleString('id-ID')}" class="w-28 text-right text-[13px] tabular-nums border border-gray-200 rounded px-2 py-1 focus:border-[#EA580C] focus:outline-none">
                             </span>
                         </div>

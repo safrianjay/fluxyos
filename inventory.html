@@ -984,7 +984,7 @@
         // is shown rather than clamped.
         function rp(value) {
             const n = Math.round(Number(value) || 0);
-            return (n < 0 ? '-Rp' : 'Rp') + Math.abs(n).toLocaleString('id-ID');
+            return window.FluxyMoney.formatBase(n);
         }
         function qty(value) {
             return (Number(value) || 0).toLocaleString('id-ID');

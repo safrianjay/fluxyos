@@ -996,7 +996,7 @@ function formatRpInput(value) {
 
 function parseRp(value) {
     if (value == null) return 0;
-    const cleaned = String(value).replace(/\D/g, '');
+    const cleaned = String(window.FluxyMoney.toMinor(value, window.FluxyMoney.baseCurrency()));
     return cleaned ? parseInt(cleaned, 10) : 0;
 }
 
@@ -1589,7 +1589,7 @@ function renderWizardSizingStep() {
             <div>
                 <label for="budget-wizard-total-input" class="mb-2 block text-[12px] font-bold text-gray-600">Total budget amount <span class="text-[#EA580C]">*</span></label>
                 <div class="flex h-12 items-center overflow-hidden rounded-lg border border-gray-200 bg-white focus-within:border-[#EA580C] focus-within:ring-2 focus-within:ring-orange-100">
-                    <span class="flex h-full items-center border-r border-gray-100 px-4 font-mono text-[14px] font-bold text-gray-400">Rp</span>
+                    <span class="flex h-full items-center border-r border-gray-100 px-4 font-mono text-[14px] font-bold text-gray-400">${window.FluxyMoney.baseSymbol()}</span>
                     <input id="budget-wizard-total-input" type="text" inputmode="numeric" value="${escapeHtml(formatRpInput(budgetWizardState.totalBudget))}" placeholder="0" class="h-full min-w-0 flex-1 border-0 px-4 font-mono text-[16px] font-bold text-gray-900 outline-none">
                 </div>
                 <p id="budget-wizard-total-helper" class="mt-2 flex flex-col gap-1 text-[13px] text-gray-500 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2">${renderWizardParentBudgetHelper()}</p>
@@ -1682,7 +1682,7 @@ function renderWizardAllocationRow(row, index) {
             <div class="lg:col-span-3">
                 <label class="mb-1 block text-[10px] font-bold uppercase text-gray-400">Budget amount</label>
                 <div class="flex h-10 items-center rounded-lg border border-gray-200 bg-gray-50 focus-within:border-[#EA580C] focus-within:ring-2 focus-within:ring-orange-100">
-                    <span class="px-3 font-mono text-[12px] font-bold text-gray-400">Rp</span>
+                    <span class="px-3 font-mono text-[12px] font-bold text-gray-400">${window.FluxyMoney.baseSymbol()}</span>
                     <input type="text" inputmode="numeric" data-field="amount" value="${escapeHtml(formatRpInput(row.amount))}" placeholder="0" class="min-w-0 flex-1 bg-transparent px-2 text-right font-mono text-[13px] font-bold text-gray-900 outline-none">
                 </div>
             </div>

@@ -250,7 +250,7 @@ class DataService {
         const payload = {};
 
         if (Object.prototype.hasOwnProperty.call(patch, 'amount')) {
-            const amount = Math.round(Number(String(patch.amount).replace(/[^\d]/g, '')) || 0);
+            const amount = window.FluxyMoney.toMinor(patch.amount, window.FluxyMoney.baseCurrency());
             if (amount <= 0) throw new Error('Amount must be greater than zero.');
             payload.amount = amount;
         }

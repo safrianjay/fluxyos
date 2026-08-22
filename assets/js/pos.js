@@ -545,7 +545,7 @@ function openPaymentDrawer() {
             </div>
             <div>
                 <label class="block text-[12px] font-semibold text-slate-700 mb-2" for="pos-pay-amount">Amount received</label>
-                <input id="pos-pay-amount" name="amount" inputmode="numeric" class="pos-amount-input" value="${due.toLocaleString('id-ID')}" autocomplete="off">
+                <input id="pos-pay-amount" name="amount" inputmode="numeric" class="pos-amount-input" value="${window.FluxyMoney.formatMoneyInput(window.FluxyMoney.fromMinor(due, window.FluxyMoney.baseCurrency()), window.FluxyMoney.baseCurrency())}" autocomplete="off">
                 <p class="text-[11px] text-slate-500 mt-2" id="pos-change-note"></p>
             </div>
             <div>
@@ -553,7 +553,7 @@ function openPaymentDrawer() {
                 <input id="pos-pay-ref" name="reference" class="w-full min-h-[44px] px-3 border border-slate-300 rounded-lg text-[14px]" placeholder="Transfer note, QRIS ref…">
             </div>`,
         onSubmit: async (fd) => {
-            const amount = Number(String(fd.get('amount')).replace(/\D/g, ''));
+            const amount = window.FluxyMoney.toMinor(fd.get('amount'), window.FluxyMoney.baseCurrency());
             const order = await ds.recordPosPayment(state.uid, state.orderId, {
                 method, amount, reference: fd.get('reference')
             });
@@ -584,7 +584,7 @@ function openPaymentDrawer() {
             : 'Counts as cash in the drawer today.';
     };
     const changeNote = () => {
-        const v = Number(String($('pos-pay-amount').value).replace(/\D/g, ''));
+        const v = window.FluxyMoney.toMinor($('pos-pay-amount').value, window.FluxyMoney.baseCurrency());
         const el = $('pos-change-note');
         if (v > due) el.innerHTML = `<strong>Change: ${rp(v - due)}</strong>`;
         else if (v > 0 && v < due) el.textContent = `Part payment — ${rp(due - v)} would still be due.`;
@@ -600,7 +600,7 @@ function openPaymentDrawer() {
     const amt = $('pos-pay-amount');
     amt.addEventListener('input', () => {
         const digits = amt.value.replace(/\D/g, '');
-        amt.value = digits ? Number(digits).toLocaleString('id-ID') : '';
+        amt.value = digits ? window.FluxyMoney.formatMoneyInput(amt.value, window.FluxyMoney.baseCurrency()) : '';
         changeNote();
     });
     settleNote(); changeNote();
@@ -636,7 +636,7 @@ function openDiscountDrawer(lineId = null) {
                 <p class="text-[11px] text-slate-500 mt-2">The menu price stays on the record — the discount is booked separately, so you can see later where margin actually went.</p>
             </div>`,
         onSubmit: async (fd) => {
-            const typed = Number(String(fd.get('amount')).replace(/\D/g, ''));
+            const typed = window.FluxyMoney.toMinor(fd.get('amount'), window.FluxyMoney.baseCurrency());
             const amount = mode === 'percent'
                 ? Math.round(base * Math.min(100, typed) / 100)
                 : typed;
@@ -650,14 +650,14 @@ function openDiscountDrawer(lineId = null) {
 
     const el = $('pos-disc-amt');
     const preview = () => {
-        const typed = Number(el.value.replace(/\D/g, ''));
+        const typed = window.FluxyMoney.toMinor(el.value, window.FluxyMoney.baseCurrency());
         $('pos-disc-preview').textContent = mode === 'percent' && typed > 0
             ? `${Math.min(100, typed)}% of ${rp(base)} = ${rp(Math.round(base * Math.min(100, typed) / 100))}`
             : '';
     };
     el.addEventListener('input', () => {
         const d = el.value.replace(/\D/g, '');
-        el.value = mode === 'percent' ? d.slice(0, 3) : (d ? Number(d).toLocaleString('id-ID') : '');
+        el.value = mode === 'percent' ? d.slice(0, 3) : (d ? window.FluxyMoney.formatMoneyInput(el.value, window.FluxyMoney.baseCurrency()) : '');
         preview();
     });
     $('pos-disc-mode').addEventListener('click', (e) => {
@@ -938,7 +938,7 @@ function openShiftDrawer() {
                 <p class="text-[11px] text-slate-500 mt-2">The cash already in the drawer for change. It is not income and posts nothing — it just changes what the drawer should hold at close.</p>
             </div>`,
         onSubmit: async (fd) => {
-            const float = Number(String(fd.get('float')).replace(/\D/g, ''));
+            const float = window.FluxyMoney.toMinor(fd.get('float'), window.FluxyMoney.baseCurrency());
             state.shift = await ds.openPosShift(state.uid, { dimensionId: state.outletId, openingFloat: float });
             toast('Shift open.');
             renderShift();
@@ -948,7 +948,7 @@ function openShiftDrawer() {
     const el = $('pos-float');
     el.addEventListener('input', () => {
         const d = el.value.replace(/\D/g, '');
-        el.value = d ? Number(d).toLocaleString('id-ID') : '';
+        el.value = d ? window.FluxyMoney.formatMoneyInput(el.value, window.FluxyMoney.baseCurrency()) : '';
     });
 }
 
@@ -975,7 +975,7 @@ function openMovementDrawer() {
                 <input id="pos-move-why" name="reason" class="w-full min-h-[44px] px-3 border border-slate-300 rounded-lg text-[14px]" placeholder="Beli es, bayar kurir, tambah kembalian…" required>
             </div>`,
         onSubmit: async (fd) => {
-            const amount = Number(String(fd.get('amount')).replace(/\D/g, ''));
+            const amount = window.FluxyMoney.toMinor(fd.get('amount'), window.FluxyMoney.baseCurrency());
             state.shift = await ds.recordPosShiftMovement(state.uid, state.shift.id, {
                 kind, amount, reason: fd.get('reason')
             });
@@ -1000,7 +1000,7 @@ function openMovementDrawer() {
     const el = $('pos-move-amt');
     el.addEventListener('input', () => {
         const d = el.value.replace(/\D/g, '');
-        el.value = d ? Number(d).toLocaleString('id-ID') : '';
+        el.value = d ? window.FluxyMoney.formatMoneyInput(el.value, window.FluxyMoney.baseCurrency()) : '';
     });
     note();
 }
@@ -1042,7 +1042,7 @@ async function openCloseShiftDrawer() {
     const el = $('pos-counted');
     el.addEventListener('input', () => {
         const d = el.value.replace(/\D/g, '');
-        el.value = d ? Number(d).toLocaleString('id-ID') : '';
+        el.value = d ? window.FluxyMoney.formatMoneyInput(el.value, window.FluxyMoney.baseCurrency()) : '';
     });
 }
 

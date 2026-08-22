@@ -21,7 +21,7 @@ function formatRp(n) {
 function formatRpInput(value, allowNegative = false) {
     const raw = String(value || '');
     const negative = allowNegative && raw.trim().startsWith('-');
-    const digits = raw.replace(/[^\d]/g, '');
+    const digits = String(window.FluxyMoney.toMinor(raw, window.FluxyMoney.baseCurrency()));
     if (!digits) return '';
     const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     return negative ? `-${formatted}` : formatted;

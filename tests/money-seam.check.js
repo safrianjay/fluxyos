@@ -125,15 +125,20 @@ const EXCLUDE = [
     'investor.js', 'checkout.js', 'dashboard-i18n.js',
 ];
 // Marketing pages are not workspace surfaces — they advertise IDR pricing.
-const EXCLUDE_HTML = ['onboarding.html', 'pricing.html'];
+const EXCLUDE_HTML = ['onboarding.html', 'pricing.html',
+    // Investor + pitch surfaces quote fixed IDR figures, not workspace money.
+    'investor.html', 'beila.html'];
 
 let offenders = [];
 try {
-    // -I skips binaries; the pattern catches concatenation, interpolation and
-    // bare literals like 'Rp0'. Function NAMES (formatRp) are intentionally not
-    // matched — they are identifiers, not output.
+    // Matches the currency SYMBOL only — concatenation, interpolation, bare
+    // literals ('Rp0'), label text ('(Rp)'), prefix chips ('>Rp<') and the
+    // negative form ('-Rp'). Deliberately NOT bare toLocaleString('id-ID'):
+    // quantities, record counts and dates use it legitimately, and a guard that
+    // flags those gets switched off rather than obeyed. Function NAMES (formatRp)
+    // are identifiers, not output, so they are not matched either.
     const out = execSync(
-        `grep -rnE "'Rp' *\\+|\\"Rp\\" *\\+|Rp\\\\\\$\\{|['\\"\\\`]Rp[0-9]" ` +
+        `grep -rnE "'Rp' *\\+|\\"Rp\\" *\\+|Rp\\\\\\$\\{|['\\"\\\`]Rp[0-9]|\\(Rp\\)|>Rp<|Rp—|'-Rp'|\\\"-Rp\\\"" ` +
         `assets/js/*.js *.html 2>/dev/null || true`,
         { cwd: ROOT, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 }
     );
@@ -142,7 +147,11 @@ try {
         .filter((l) => !EXCLUDE.some((f) => l.startsWith(`assets/js/${f}:`)))
         .filter((l) => !EXCLUDE_HTML.some((f) => l.startsWith(`${f}:`)))
         // drop comment lines — a doc example is not a render site
-        .filter((l) => !/^[^:]+:\d+:\s*(\/\/|\*|<!--)/.test(l));
+        .filter((l) => !/^[^:]+:\d+:\s*(\/\/|\*|<!--)/.test(l))
+        // `data-money-symbol` IS the sanctioned mechanism for a static prefix
+        // chip: plain HTML cannot interpolate, so it ships the IDR default and
+        // FluxyMoney.paintSymbols() rewrites it once the workspace resolves.
+        .filter((l) => !/data-money-symbol(?![\w-])/.test(l));
 } catch (e) {
     fail('no-literals', `grep failed: ${e.message}`);
 }

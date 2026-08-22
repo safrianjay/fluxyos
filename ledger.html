@@ -109,27 +109,27 @@
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-gray-100">
                         <div class="p-5">
                             <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Cash in</p>
-                            <p id="lcm-cash-in" class="mt-1 font-mono text-xl font-bold text-emerald-600">Rp0</p>
+                            <p id="lcm-cash-in" class="mt-1 font-mono text-xl font-bold text-emerald-600">—</p>
                             <p class="mt-1 text-[11px] text-gray-400">Actual inbound</p>
                         </div>
                         <div class="p-5">
                             <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Cash out</p>
-                            <p id="lcm-cash-out" class="mt-1 font-mono text-xl font-bold text-gray-900">Rp0</p>
+                            <p id="lcm-cash-out" class="mt-1 font-mono text-xl font-bold text-gray-900">—</p>
                             <p class="mt-1 text-[11px] text-gray-400">Actual outbound</p>
                         </div>
                         <div class="p-5">
                             <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Net movement</p>
-                            <p id="lcm-net" class="mt-1 font-mono text-xl font-bold text-emerald-600">Rp0</p>
+                            <p id="lcm-net" class="mt-1 font-mono text-xl font-bold text-emerald-600">—</p>
                             <p class="mt-1 text-[11px] text-gray-400">Cash in minus cash out</p>
                         </div>
                         <div class="p-5">
                             <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Pending inflow</p>
-                            <p id="lcm-pending-in" class="mt-1 font-mono text-xl font-bold text-blue-600">Rp0</p>
+                            <p id="lcm-pending-in" class="mt-1 font-mono text-xl font-bold text-blue-600">—</p>
                             <p class="mt-1 text-[11px] text-gray-400">Not moved yet</p>
                         </div>
                         <div class="p-5">
                             <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Pending outflow</p>
-                            <p id="lcm-pending-out" class="mt-1 font-mono text-xl font-bold text-amber-600">Rp0</p>
+                            <p id="lcm-pending-out" class="mt-1 font-mono text-xl font-bold text-amber-600">—</p>
                             <p class="mt-1 text-[11px] text-gray-400">Not paid yet</p>
                         </div>
                     </div>
@@ -252,7 +252,7 @@
                         <p class="mt-3 text-[12px] text-gray-400">
                             <span id="ledger-clean-count" class="font-semibold text-gray-900">0</span>/<span id="ledger-total-count" class="font-semibold text-gray-900">0</span> clean
                             <span class="text-gray-300">&middot;</span>
-                            <span id="ledger-total-risk-amount" class="font-mono font-semibold text-gray-900">Rp0</span> at risk
+                            <span id="ledger-total-risk-amount" class="font-mono font-semibold text-gray-900">—</span> at risk
                         </p>
                     </div>
 
@@ -260,28 +260,28 @@
                         <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Missing Receipt</p>
                         <p id="ledger-missing-receipts-count" class="mt-1 font-mono text-2xl font-bold leading-none text-gray-900">0</p>
                         <p class="mt-1 text-[12px] text-gray-400">Need proof to claim expense</p>
-                        <p id="ledger-missing-receipts-risk" class="mt-2 font-mono text-[12px] font-semibold text-red-600">Rp0 at risk</p>
+                        <p id="ledger-missing-receipts-risk" class="mt-2 font-mono text-[12px] font-semibold text-red-600">— at risk</p>
                     </div>
 
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
                         <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Uncategorized</p>
                         <p id="ledger-uncategorized-count" class="mt-1 font-mono text-2xl font-bold leading-none text-gray-900">0</p>
                         <p class="mt-1 text-[12px] text-gray-400">Won't report cleanly until tagged</p>
-                        <p id="ledger-uncategorized-risk" class="mt-2 font-mono text-[12px] font-semibold text-gray-700">Rp0 at risk</p>
+                        <p id="ledger-uncategorized-risk" class="mt-2 font-mono text-[12px] font-semibold text-gray-700">— at risk</p>
                     </div>
 
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
                         <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Pending Approval</p>
                         <p id="ledger-pending-approval-count" class="mt-1 font-mono text-2xl font-bold leading-none text-gray-900">0</p>
                         <p id="ledger-pending-approval-subtitle" class="mt-1 text-[12px] text-gray-400">No pending approvals</p>
-                        <p id="ledger-pending-approval-risk" class="mt-2 font-mono text-[12px] font-semibold text-gray-700">Rp0 at risk</p>
+                        <p id="ledger-pending-approval-risk" class="mt-2 font-mono text-[12px] font-semibold text-gray-700">— at risk</p>
                     </div>
 
                     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
                         <p class="text-[12px] font-bold text-gray-400 uppercase tracking-wider">Unreconciled</p>
                         <p id="ledger-unreconciled-count" class="mt-1 font-mono text-2xl font-bold leading-none text-gray-900">0</p>
                         <p id="ledger-unreconciled-subtitle" class="mt-1 text-[12px] text-gray-400">No explicit gaps found</p>
-                        <p id="ledger-unreconciled-risk" class="mt-2 font-mono text-[12px] font-semibold text-gray-700">Rp0 at risk</p>
+                        <p id="ledger-unreconciled-risk" class="mt-2 font-mono text-[12px] font-semibold text-gray-700">— at risk</p>
                     </div>
                 </div>
             </div>
@@ -2860,7 +2860,7 @@
                     <section class="fluxy-drawer-section">
                         <h3 class="fluxy-drawer-section-title">Transaction Details</h3>
                         <div class="fluxy-drawer-field">
-                            <label for="tx-edit-amount" class="fluxy-drawer-label">Amount (Rp)</label>
+                            <label for="tx-edit-amount" class="fluxy-drawer-label">Amount <span id="tx-edit-amount-cur">(${window.FluxyMoney.baseSymbol()})</span></label>
                             <input type="text" id="tx-edit-amount" required value="${escapeHtml(String(Number(row.amount || 0).toLocaleString('id-ID')))}" class="fluxy-drawer-input fluxy-drawer-input--mono">
                         </div>
                         <div class="fluxy-drawer-field">

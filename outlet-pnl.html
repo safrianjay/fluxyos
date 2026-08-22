@@ -199,7 +199,7 @@
 
         function rp(value) {
             const n = Math.round(Number(value) || 0);
-            return (n < 0 ? '-Rp' : 'Rp') + Math.abs(n).toLocaleString('id-ID');
+            return window.FluxyMoney.formatBase(n);
         }
         function esc(str) {
             return String(str == null ? '' : str).replace(/[&<>"']/g, (c) => (

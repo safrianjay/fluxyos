@@ -248,7 +248,7 @@ function formatRpInput(value) {
 }
 
 function parseRp(value) {
-    return Math.round(Number(String(value || '').replace(/[^\d]/g, '')) || 0);
+    return window.FluxyMoney.toMinor(value, window.FluxyMoney.baseCurrency());
 }
 
 export function initBudgetPage({ ds, user }) {
@@ -816,7 +816,7 @@ function renderMainWizardSizingStep() {
             <div>
                 <label for="budget-wizard-total-input" class="mb-2 block text-[12px] font-bold text-gray-600">Annual budget amount <span class="text-[#EA580C]">*</span></label>
                 <div class="flex h-12 items-center overflow-hidden rounded-lg border border-gray-200 bg-white focus-within:border-[#EA580C] focus-within:ring-2 focus:ring-orange-100">
-                    <span class="flex h-full items-center border-r border-gray-100 px-4 font-mono text-[14px] font-bold text-gray-400">Rp</span>
+                    <span class="flex h-full items-center border-r border-gray-100 px-4 font-mono text-[14px] font-bold text-gray-400">${window.FluxyMoney.baseSymbol()}</span>
                     <input id="budget-wizard-total-input" type="text" inputmode="numeric" value="${escapeHtml(formatRpInput(state.mainWizard.totalBudget))}" placeholder="0" class="h-full min-w-0 flex-1 border-0 px-4 font-mono text-[16px] font-bold text-gray-900 outline-none">
                 </div>
                 <p id="budget-wizard-total-helper" class="mt-2 text-[13px] text-gray-500">${formatRp(state.mainWizard.totalBudget)} over ${escapeHtml(state.mainWizard.periodLabel || 'this annual period')}</p>
@@ -889,7 +889,7 @@ function renderQuarterSubBudgetRow(row, index) {
                 <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-[12px] font-bold text-gray-600">${escapeHtml(row.periodEnd)}</div>
             </div>
             <div class="flex items-center rounded-lg border border-gray-200 bg-gray-50 focus-within:border-[#EA580C] focus-within:ring-2 focus:ring-orange-100 sm:col-span-2">
-                <span class="px-3 font-mono text-[12px] font-bold text-gray-400">Rp</span>
+                <span class="px-3 font-mono text-[12px] font-bold text-gray-400">${window.FluxyMoney.baseSymbol()}</span>
                 <input type="text" inputmode="numeric" data-field="amount" value="${escapeHtml(formatRpInput(row.amount))}" placeholder="0" class="min-w-0 flex-1 bg-transparent px-2 py-2 text-right font-mono text-[13px] font-bold text-gray-900 outline-none">
             </div>
             <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-right font-mono text-[12px] font-bold text-gray-700 sm:col-span-1">${formatPercent(quarterPercent(row.amount))}</div>
@@ -1322,7 +1322,7 @@ function renderBudgetModal() {
         <div>
             <label for="budget-modal-total" class="mb-2 block text-[12px] font-bold text-gray-600">${isAnnual ? 'Annual budget amount' : 'Period budget amount'} <span class="text-[#EA580C]">*</span></label>
             <div class="flex h-11 items-center rounded-lg border border-gray-200 bg-white px-4 focus-within:border-[#EA580C] focus-within:ring-2 focus-within:ring-orange-100">
-                <span class="mr-2 flex-shrink-0 text-[14px] font-bold text-gray-400">Rp</span>
+                <span class="mr-2 flex-shrink-0 text-[14px] font-bold text-gray-400">${window.FluxyMoney.baseSymbol()}</span>
                 <input id="budget-modal-total" inputmode="numeric" value="${escapeHtml(formatRpInput(modal.totalBudget))}" class="min-w-0 flex-1 border-0 bg-transparent p-0 text-[14px] font-semibold tabular-nums text-gray-900 outline-none">
             </div>
         </div>

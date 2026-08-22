@@ -1730,7 +1730,7 @@ export function initInvoicesPage({ ds, user }) {
                     <div class="text-right flex-shrink-0">
                         <span class="block text-[11px] text-gray-400">Outstanding ${money(outstanding, 'IDR')}</span>
                         <span class="inline-flex items-center gap-1 justify-end">
-                            <span class="text-[12px] text-gray-500">Rp</span>
+                            <span class="text-[12px] text-gray-500">${window.FluxyMoney.baseSymbol()}</span>
                             <input type="text" inputmode="numeric" data-rpay-amount value="${window.FluxyMoney.formatMoneyInput(String(outstanding), 'IDR')}" class="w-28 text-right text-[13px] font-mono tabular-nums border border-gray-200 rounded px-2 py-1 focus:border-[#EA580C] focus:outline-none">
                         </span>
                     </div>

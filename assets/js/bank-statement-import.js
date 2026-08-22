@@ -86,7 +86,7 @@
 
     function formatIDR(amount) {
         const n = Number(amount);
-        if (!Number.isFinite(n)) return 'Rp—';
+        if (!Number.isFinite(n)) return window.FluxyMoney.baseSymbol() + '—';
         return window.FluxyMoney.formatBase(Math.abs(Math.round(n)));
     }
 
