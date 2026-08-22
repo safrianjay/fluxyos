@@ -39,6 +39,30 @@ const state = {
  * app renders in it. Fail-safe: an unknown or absent code leaves the seam on its
  * IDR default rather than throwing — a formatter must never break a page.
  */
+// The base currency survives a failed read.
+//
+// It used to be recovered ONLY from the workspace profile fetch, which lives in a
+// try/catch labelled "name/plan optional" — written when that read fetched just a
+// display name. It is not optional: when the read fails (blocked Firestore
+// channel, offline, rules hiccup) the seam silently reverts to IDR and a peso
+// workspace renders "Rp887.878.700". Caching the last known good value per uid
+// means a transient failure degrades to the PREVIOUS answer, not to the wrong one.
+const CCY_CACHE_KEY = 'fluxy_base_ccy';
+
+function readCachedCurrency(uid) {
+    try {
+        const c = JSON.parse(sessionStorage.getItem(CCY_CACHE_KEY) || 'null');
+        return (c && c.uid === uid && c.ccy) ? c : null;
+    } catch (_) { return null; }
+}
+
+function writeCachedCurrency(uid, ccy, country) {
+    try {
+        if (!uid || !ccy) return;
+        sessionStorage.setItem(CCY_CACHE_KEY, JSON.stringify({ uid, ccy, country: country || null }));
+    } catch (_) {}
+}
+
 function applyBaseCurrency(code) {
     try {
         if (typeof window !== 'undefined' && window.FluxyMoney) {
@@ -224,12 +248,15 @@ async function _resolveWorkspace(app, user) {
         return publish();
     }
     state.uid = user.uid;
-    // Reset the money seam to its IDR default before every resolve. Without this,
-    // signing out of a PHP workspace and into an IDR one in the same tab would
-    // leave every formatter on pesos if the second profile read failed.
-    state.baseCurrency = null;
-    state.country = null;
-    applyBaseCurrency(null);
+    // Seed from the last known good value FOR THIS USER. Resetting unconditionally
+    // to IDR (as this did) meant any failed profile read landed on the wrong
+    // currency rather than the previous one. A different uid gets no seed, so
+    // signing into another account can never inherit the last one's currency.
+    const cachedCcy = readCachedCurrency(user.uid);
+    state.baseCurrency = cachedCcy ? cachedCcy.ccy : null;
+    state.country = cachedCcy ? cachedCcy.country : null;
+    applyBaseCurrency(state.baseCurrency);
+    if (!cachedCcy) { try { sessionStorage.removeItem(CCY_CACHE_KEY); } catch (_) {} }
     // Drop any cached workspace id that belongs to a different user (sign-in
     // switch in the same tab) so db-service._scope never reads a cross-user id.
     try {
@@ -349,10 +376,21 @@ async function _resolveWorkspace(app, user) {
             }
         }
 
-        // 3) Best-effort workspace name + denormalized plan for display.
+        // 3) Workspace profile. The NAME and PLAN here are cosmetic; the BASE
+        //    CURRENCY is not — it decides how every stored integer is read. So this
+        //    read gets one retry, and a total failure keeps the cached value rather
+        //    than falling through to IDR.
+        let wsSnap = null;
+        for (let attempt = 0; attempt < 2 && !wsSnap; attempt += 1) {
+            try {
+                wsSnap = await fs.getDoc(fs.doc(db, `workspaces/${state.id}`));
+            } catch (e) {
+                if (attempt === 0) { await new Promise((r) => setTimeout(r, 400)); continue; }
+                console.warn('[workspace-service] profile read failed; keeping cached currency', state.baseCurrency || 'IDR', e);
+            }
+        }
         try {
-            const wsSnap = await fs.getDoc(fs.doc(db, `workspaces/${state.id}`));
-            if (wsSnap.exists()) {
+            if (wsSnap && wsSnap.exists()) {
                 const d = wsSnap.data() || {};
                 state.name = d.name || null;
                 // Base currency + country are IMMUTABLE workspace financial config
@@ -364,6 +402,7 @@ async function _resolveWorkspace(app, user) {
                 state.baseCurrency = d.base_currency || null;
                 state.country = d.country || null;
                 applyBaseCurrency(state.baseCurrency);
+                writeCachedCurrency(user.uid, state.baseCurrency, state.country);
                 state.plan = (d.plan_id || d.plan_name || d.subscription_status) ? {
                     id: d.plan_id || null,
                     name: d.plan_name || null,
