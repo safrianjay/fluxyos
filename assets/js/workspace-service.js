@@ -49,18 +49,35 @@ const state = {
 // means a transient failure degrades to the PREVIOUS answer, not to the wrong one.
 const CCY_CACHE_KEY = 'fluxy_base_ccy';
 
+// Last currency this tab actually READ, per uid. resolveWorkspace runs more than
+// once per page — the page calls it and so does sidebar-loader — and it used to
+// reset the seam to IDR at the start of EVERY run. A second run whose profile
+// read was slow or blocked therefore left every formatter on rupiah even though
+// the first run had already resolved PHP. The currency now only ever moves
+// FORWARD to a freshly-read value; nothing resets it to a default.
+let lastKnownCurrency = { uid: null, ccy: null, country: null };
+
 function readCachedCurrency(uid) {
-    try {
-        const c = JSON.parse(sessionStorage.getItem(CCY_CACHE_KEY) || 'null');
-        return (c && c.uid === uid && c.ccy) ? c : null;
-    } catch (_) { return null; }
+    if (lastKnownCurrency.uid === uid && lastKnownCurrency.ccy) return lastKnownCurrency;
+    // localStorage, not sessionStorage: a workspace's accounting currency is
+    // immutable, so once read it is safe to reuse across tabs and reloads. That
+    // makes a blocked or flaky read cost nothing after the first success.
+    for (const store of [localStorage, sessionStorage]) {
+        try {
+            const c = JSON.parse(store.getItem(CCY_CACHE_KEY) || 'null');
+            if (c && c.uid === uid && c.ccy) return c;
+        } catch (_) { /* try the next store */ }
+    }
+    return null;
 }
 
 function writeCachedCurrency(uid, ccy, country) {
-    try {
-        if (!uid || !ccy) return;
-        sessionStorage.setItem(CCY_CACHE_KEY, JSON.stringify({ uid, ccy, country: country || null }));
-    } catch (_) {}
+    if (!uid || !ccy) return;
+    lastKnownCurrency = { uid, ccy, country: country || null };
+    const payload = JSON.stringify({ uid, ccy, country: country || null });
+    for (const store of [localStorage, sessionStorage]) {
+        try { store.setItem(CCY_CACHE_KEY, payload); } catch (_) { /* non-fatal */ }
+    }
 }
 
 function applyBaseCurrency(code) {
@@ -253,10 +270,24 @@ async function _resolveWorkspace(app, user) {
     // currency rather than the previous one. A different uid gets no seed, so
     // signing into another account can never inherit the last one's currency.
     const cachedCcy = readCachedCurrency(user.uid);
-    state.baseCurrency = cachedCcy ? cachedCcy.ccy : null;
-    state.country = cachedCcy ? cachedCcy.country : null;
-    applyBaseCurrency(state.baseCurrency);
-    if (!cachedCcy) { try { sessionStorage.removeItem(CCY_CACHE_KEY); } catch (_) {} }
+    if (cachedCcy) {
+        // Known currency for THIS user — keep it in force while we re-resolve.
+        state.baseCurrency = cachedCcy.ccy;
+        state.country = cachedCcy.country;
+        applyBaseCurrency(cachedCcy.ccy);
+    } else if (lastKnownCurrency.uid && lastKnownCurrency.uid !== user.uid) {
+        // A DIFFERENT user signed in — the previous currency must not leak, and
+        // there is nothing cached for this one, so fall back to the default.
+        lastKnownCurrency = { uid: null, ccy: null, country: null };
+        for (const store of [localStorage, sessionStorage]) {
+            try { store.removeItem(CCY_CACHE_KEY); } catch (_) {}
+        }
+        state.baseCurrency = null;
+        state.country = null;
+        applyBaseCurrency(null);
+    }
+    // Otherwise leave the seam alone: a re-resolve for the same user must never
+    // knock a resolved currency back to the default while it re-reads.
     // Drop any cached workspace id that belongs to a different user (sign-in
     // switch in the same tab) so db-service._scope never reads a cross-user id.
     try {

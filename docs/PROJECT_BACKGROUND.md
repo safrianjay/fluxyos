@@ -452,7 +452,13 @@ FluxyOS design language.
 >    workspace disagree about the currency the books are kept in — the money
 >    equivalent of the 0-data scope leak. `settings/finance.currency` is a
 >    read-only mirror; never trust it.
-> 2. **Absent means IDR.** A missing field can never render the wrong symbol; a
+> 2. **The currency only ever moves FORWARD.** `resolveWorkspace` runs more than
+>    once per page — the page calls it and so does `sidebar-loader.js` — and it
+>    must never reset the seam to a default while re-reading. It used to, so a
+>    second run with a slow or blocked profile read left every formatter on rupiah
+>    after the first run had already resolved PHP. The resolved value is cached
+>    per uid in `localStorage` (the accounting currency is immutable, so reuse is
+>    safe) and is cleared only when a DIFFERENT uid signs in. Absent means IDR; a
 >    half-finished backfill can. `workspace-service.js` reads it during
 >    `resolveWorkspace()` and pushes it into the money seam
 >    (`window.FluxyMoney.setBaseCurrency`) before any page's first finance read.
