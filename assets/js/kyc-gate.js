@@ -73,11 +73,26 @@ const OPEN = { blocked: false, variant: null, status: null, note: null };
  * @param {object} authUser  Firebase auth user
  * @returns {Promise<{blocked: boolean, variant: string|null, status: string|null, note: string|null}>}
  */
+/**
+ * Name the branch that decided a user's access.
+ *
+ * Added because a workspace whose internal_users row read 'approved' still saw
+ * the review screen, while every input checked out against live Firestore and the
+ * deployed bundle matched source byte for byte. When static reasoning and the data
+ * disagree with the running app, the running app has to say what it did.
+ */
+function kycTrace(branch, result, extra) {
+    try {
+        console.info('[kyc-gate]', branch, { uid: (result && result.userId) || undefined, ...(extra || {}) });
+    } catch (_) { /* never let a diagnostic break the gate */ }
+    return result;
+}
+
 export async function resolveKycState(authUser) {
     if (!authUser?.uid) return OPEN;
     // Cheap synchronous short-circuit — a pre-cutoff user can never carry the
     // flag checked below, so skip the Firestore reads entirely.
-    if (!isKycEnforcedUser(authUser)) return OPEN;
+    if (!isKycEnforcedUser(authUser)) return kycTrace('open:not-enforced', OPEN);
 
     const ds = getData();
     let progress = null;
@@ -93,13 +108,13 @@ export async function resolveKycState(authUser) {
     // It also keeps this gate and ensureBillingSubscription (which only ever
     // sees a uid, never the auth metadata) deciding from the same field, so the
     // two halves can never disagree about who is enforced.
-    if (progress?.kyc_enforced !== true) return OPEN;
+    if (progress?.kyc_enforced !== true) return kycTrace('open:flag-absent', OPEN, { kyc_enforced: progress?.kyc_enforced });
     // Invited members join an existing workspace and never do owner KYC; the
     // legacy exemption is likewise out of scope. Both are already implied by the
     // flag, but a later merge-write could set them alongside it.
-    if (progress?.onboarding_exempt === true) return OPEN;
+    if (progress?.onboarding_exempt === true) return kycTrace('open:exempt', OPEN);
     // Not submitted yet — the onboarding gate owns that case, not this one.
-    if (progress?.onboarding_completed !== true) return OPEN;
+    if (progress?.onboarding_completed !== true) return kycTrace('open:not-submitted', OPEN, { completed: progress?.onboarding_completed });
 
     let internal;
     try {
@@ -127,7 +142,7 @@ export async function resolveKycState(authUser) {
         // row. applyToPage confirms it against the live listener before locking,
         // because this is the branch that self-heals into 'approved' a moment
         // later and produced the lock-screen flash on an approved account.
-        return { blocked: true, variant: 'review', status: 'submitted', note: null, userId: authUser.uid, speculative: true };
+        return kycTrace('BLOCKED:no-row(speculative)', { blocked: true, variant: 'review', status: 'submitted', note: null, userId: authUser.uid, speculative: true });
     }
 
     if (internal.kyc_status === 'approved') {
@@ -136,10 +151,10 @@ export async function resolveKycState(authUser) {
         // approval check — deliberately not duplicated here, so there is only
         // ever one writer and no create race between the two guards.
         seedLearningToursOnce(authUser.uid, progress);
-        return OPEN;
+        return kycTrace('open:approved', OPEN);
     }
 
-    return {
+    return kycTrace('BLOCKED:status', {
         blocked: true,
         variant: variantForStatus(internal.kyc_status),
         status: internal.kyc_status || 'submitted',
