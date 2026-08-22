@@ -260,7 +260,7 @@
 
             <p class="section-label px-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-6 mb-2 sidebar-hide">Tax &amp; Compliance</p>
 
-            <a href="/tax-center" id="nav-tax-center" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-800/50 text-gray-400 hover:text-white font-medium transition-all w-full justify-center lg:justify-start">
+            <a href="/tax-center" id="nav-tax-center" class="hidden nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-800/50 text-gray-400 hover:text-white font-medium transition-all w-full justify-center lg:justify-start">
                 <svg class="w-6 h-6 lg:w-5 lg:h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg>
                 <span class="sidebar-text text-[13px] sidebar-hide">Tax Center</span>
             </a>
@@ -654,7 +654,8 @@
                         await Promise.all([
                             reveal('nav-inventory', 'inventory'),
                             reveal('nav-outlet-pnl', 'outlet_pnl'),
-                            reveal('nav-pos', 'pos')
+                            reveal('nav-pos', 'pos'),
+                            reveal('nav-tax-center', 'tax_center')
                         ]);
                     } catch (_) { /* stays hidden — non-fatal */ }
 

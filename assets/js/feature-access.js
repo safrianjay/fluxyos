@@ -29,6 +29,18 @@
 // =============================================================================
 
 export const FEATURE_RULES = {
+    // The Tax Center is Indonesian tax law end to end — 83 references to PPN, 31
+    // to PPh, plus NPWP, DJP and e-Faktur. There is no Philippine equivalent to
+    // rename it to: a PH business files 12% VAT and BIR forms, which this module
+    // does not implement. Showing it to them would misrepresent what the product
+    // does, so it is ABSENT for other markets rather than shown-and-wrong.
+    //
+    // This is a scope statement, not a permanent decision. When BIR/IRAS/LHDN
+    // support ships, add the country here and nothing else changes.
+    tax_center: {
+        label: 'Tax Center',
+        allowCountries: ['ID'],
+    },
     inventory: {
         label: 'Inventory',
         // Reached by /inventory and /inventory-count.
@@ -80,7 +92,17 @@ export const FEATURE_RULES = {
 const norm = (email) => String(email || '').trim().toLowerCase();
 
 function matches(rule, email) {
-    if (!rule || !email) return false;
+    if (!rule) return false;
+    // A country rule is about the BUSINESS, not the person, so it is evaluated
+    // independently of the email allowlist. A rule carrying allowCountries is
+    // decided entirely by country.
+    if (rule.allowCountries) {
+        const country = (typeof window !== 'undefined' && window.FluxyWorkspace && window.FluxyWorkspace.country) || null;
+        // Absent country = the Indonesian baseline, matching every other default
+        // in the currency work: an unstamped legacy workspace is Indonesian.
+        return rule.allowCountries.includes(country || 'ID');
+    }
+    if (!email) return false;
     if ((rule.allowEmails || []).some((e) => norm(e) === email)) return true;
     return (rule.allowEmailPatterns || []).some((re) => re.test(email));
 }

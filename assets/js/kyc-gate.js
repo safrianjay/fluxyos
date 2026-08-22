@@ -104,6 +104,13 @@ export async function resolveKycState(authUser) {
     let internal;
     try {
         internal = await ds.getInternalUser(authUser.uid);
+        // One retry before inferring: with a blocked or flaky channel the first
+        // read can come back empty for a row that exists, and an empty read is
+        // what sends us down the speculative-block path below.
+        if (!internal) {
+            await new Promise((r) => setTimeout(r, 400));
+            internal = await ds.getInternalUser(authUser.uid);
+        }
     } catch (_) {
         return OPEN; // read failed → fail open rather than strand a real user
     }
@@ -378,14 +385,27 @@ function confirmBlockedStatus(userId, timeoutMs = 2500) {
     return new Promise((resolve) => {
         let settled = false;
         const done = (blocked) => { if (!settled) { settled = true; resolve(blocked); } };
-        const timer = setTimeout(() => done(true), timeoutMs);
+        // FAIL OPEN when we cannot confirm.
+        //
+        // This path is reached only when we INFERRED a block from an absent row —
+        // we never read a status. If the listener also cannot answer, we have no
+        // evidence at all, and locking someone out on no evidence is the wrong
+        // default. It is also self-defeating: the listener rides the same realtime
+        // channel that ad blockers and strict privacy modes break, so the timeout
+        // fired for exactly the users whose reads were already failing, and showed
+        // an approved account "Your details are under review" on every reload.
+        //
+        // Safe because the lock is not the only control: ensureBillingSubscription
+        // independently refuses to mint a trial until kyc_status is 'approved', so
+        // an genuinely unreviewed user still cannot get a working workspace.
+        const timer = setTimeout(() => done(false), timeoutMs);
         try {
             getData().subscribeInternalUser(userId, (internal) => {
                 if (!internal) return;             // still absent — keep waiting
                 clearTimeout(timer);
                 done(internal.kyc_status !== 'approved');
-            }, () => { clearTimeout(timer); done(true); });
-        } catch (_) { clearTimeout(timer); done(true); }
+            }, () => { clearTimeout(timer); done(false); });
+        } catch (_) { clearTimeout(timer); done(false); }
     });
 }
 

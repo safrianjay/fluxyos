@@ -789,7 +789,7 @@ Sidebar is injected into every app page at `#sidebar`. Active item is detected b
 | Reporting | Outlet P&L | `nav-outlet-pnl` | Link | `/outlet-pnl` | ✅ Shipped — **eligibility-gated** (`feature-access.js`); ships `hidden` |
 | Reporting | Reports & Exports | `nav-reports` | Link | `/reports` | ✅ Shipped MVP |
 | Reporting | Activity Log | `nav-activity-log` | Link (`hidden`) | `/activity-log` | 🚧 Built, hidden |
-| Tax & Compliance | Tax Center | `nav-tax-center` | Link | `/tax-center` | ✅ Shipped Phase 1 |
+| Tax & Compliance | Tax Center | `nav-tax-center` | Link | `/tax-center` | ✅ Shipped Phase 1 — **eligibility-gated by COUNTRY** (`feature-access.js`, `allowCountries: ['ID']`); ships `hidden`. Indonesian PPN/PPh only; absent for PH/SG/MY until local tax support exists |
 | Workspace | Integrations | `nav-integrations` | Link | `/integration` | ✅ Shipped |
 | Workspace | Settings | `nav-settings` | Link | `/settings` | ✅ Shipped MVP |
 

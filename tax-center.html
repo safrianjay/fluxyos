@@ -390,7 +390,7 @@
                 window.location.replace('/login');
                 return;
             }
-            const gated = await applyToPage(user, { pageKey: 'tax-center' });
+            const gated = await applyToPage(user, { pageKey: 'tax-center', feature: 'tax_center' });
             if (gated) return;
             initTaxCenterPage({ ds, user });
         });
