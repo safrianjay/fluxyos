@@ -1210,7 +1210,7 @@
         async function fetchBillFxRate(fromCurrency, dayKey) {
             try {
                 const date = dayKey || todayDayKey();
-                const res = await fetch(`/.netlify/functions/fx-rate?from=${encodeURIComponent(fromCurrency)}&to=IDR&date=${encodeURIComponent(date)}`);
+                const res = await fetch(`/.netlify/functions/fx-rate?from=${encodeURIComponent(fromCurrency)}&to=${encodeURIComponent(window.FluxyMoney.baseCurrency())}&date=${encodeURIComponent(date)}`);
                 if (!res.ok) return null;
                 const data = await res.json();
                 return Number(data.rate) || null;

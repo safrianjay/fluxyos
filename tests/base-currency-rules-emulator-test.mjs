@@ -119,6 +119,42 @@ async function main() {
             created_at: serverTimestamp(), updated_at: serverTimestamp()
         }));
 
+    // ---- a non-IDR workspace can actually operate ------------------------
+    //
+    // Before D3 these validators asserted `data.currency == 'IDR'`, so a
+    // Philippine workspace could not create a bank account at all. Not a soft
+    // default — a write rejection on day one.
+    console.log('\n— a PHP workspace can create finance records —');
+    const WS_PH = 'ws_ph_ops';
+    await seedWorkspace(WS_PH, uid, { country: 'PH', base_currency: 'PHP' });
+
+    await expectOutcome('PHP bank account', true, () =>
+        setDoc(doc(db, `workspaces/${WS_PH}/bank_accounts/acc1`), {
+            account_name: 'BPI Main', bank_name: 'BPI', currency: 'PHP',
+            source_type: 'manual', status: 'active',
+            latest_balance: 12500000, latest_balance_at: serverTimestamp(),
+            sync_status: 'manual',
+            created_at: serverTimestamp(), updated_at: serverTimestamp()
+        }));
+
+    await expectOutcome('PHP budget', true, () =>
+        setDoc(doc(db, `workspaces/${WS_PH}/budgets/b1`), {
+            name: 'Q3', period_type: 'quarterly',
+            period_start: serverTimestamp(), period_end: serverTimestamp(),
+            currency: 'PHP', total_budget: 50000000, status: 'active',
+            created_at: serverTimestamp(), updated_at: serverTimestamp()
+        }));
+
+    // The set is bounded — an unsupported currency is still refused.
+    await expectOutcome('a THB bank account is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS_PH}/bank_accounts/acc2`), {
+            account_name: 'Bangkok', bank_name: 'BBL', currency: 'THB',
+            source_type: 'manual', status: 'active',
+            latest_balance: 1000, latest_balance_at: serverTimestamp(),
+            sync_status: 'manual',
+            created_at: serverTimestamp(), updated_at: serverTimestamp()
+        }));
+
     console.log(`\n${passed} passed, ${failed} failed`);
     process.exit(failed ? 1 : 0);
 }

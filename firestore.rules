@@ -1154,8 +1154,8 @@ service cloud.firestore {
           'categories',
           'updated_at'
         ])
-        && data.currency == 'IDR'
-        && data.locale == 'id-ID'
+        && isWorkspaceCurrency(data.currency)
+        && data.locale in ['id-ID', 'en-PH', 'en-SG', 'ms-MY']
         && data.timezone in ['Asia/Jakarta', 'Asia/Makassar', 'Asia/Jayapura']
         && data.date_format in ['DD MMM YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD']
         && data.categories is list
@@ -1370,7 +1370,7 @@ service cloud.firestore {
         && data.bank_name.size() > 0
         && data.bank_name.size() <= 80
         && (!('bank_code' in data) || data.bank_code == null || (data.bank_code is string && data.bank_code.size() <= 16))
-        && data.currency == 'IDR'
+        && isWorkspaceCurrency(data.currency)
         && (!('last_four' in data) || data.last_four == null || (data.last_four is string && data.last_four.size() <= 4))
         && data.source_type in ['manual', 'statement_upload', 'auto_sync']
         && (!('provider' in data) || data.provider == null || (data.provider is string && data.provider.size() <= 40))
@@ -1450,7 +1450,7 @@ service cloud.firestore {
         && data.balance is number
         && data.balance >= 0
         && data.balance <= 999999999999
-        && data.currency == 'IDR'
+        && isWorkspaceCurrency(data.currency)
         && data.source_type in ['manual', 'statement_upload', 'auto_sync']
         && data.snapshot_at is timestamp
         && (!('confidence' in data) || data.confidence == null || data.confidence in ['user_entered', 'extracted', 'synced'])
@@ -1496,7 +1496,7 @@ service cloud.firestore {
         && (!('period_label' in data) || data.period_label == null || (data.period_label is string && data.period_label.size() <= 120))
         && data.period_start is timestamp
         && data.period_end is timestamp
-        && data.currency == 'IDR'
+        && isWorkspaceCurrency(data.currency)
         && data.total_budget is number
         && data.total_budget >= 0
         && data.total_budget <= 999999999999
@@ -1996,7 +1996,7 @@ service cloud.firestore {
         && (!('bank_name' in data) || data.bank_name == null || (data.bank_name is string && data.bank_name.size() <= 80))
         && (!('account_holder' in data) || data.account_holder == null || (data.account_holder is string && data.account_holder.size() <= 160))
         && (!('account_number_masked' in data) || data.account_number_masked == null || (data.account_number_masked is string && data.account_number_masked.size() <= 32))
-        && data.currency == 'IDR'
+        && isWorkspaceCurrency(data.currency)
         && (!('statement_start_date' in data) || data.statement_start_date == null || data.statement_start_date is timestamp)
         && (!('statement_end_date' in data) || data.statement_end_date == null || data.statement_end_date is timestamp)
         && (!('opening_balance' in data) || data.opening_balance == null || data.opening_balance is number)
@@ -2710,6 +2710,16 @@ service cloud.firestore {
     }
     function pendingInviteRole(workspaceId) {
       return get(invitePathFor(workspaceId)).data.role;
+    }
+
+    // Workspace ACCOUNTING currencies (docs/PROJECT_BACKGROUND.md §4). Rules cannot
+    // cheaply assert the value equals THIS workspace's base_currency — a get() per
+    // write costs a document read and adds to the expression budget, which this
+    // ruleset has already exhausted once in production. So the tight check lives
+    // in the client + tests/money-seam.check.js; rules bound the set.
+    // NOT for FluxyOS's own billing, which stays IDR.
+    function isWorkspaceCurrency(c) {
+      return c in ['IDR', 'PHP', 'SGD', 'MYR'];
     }
 
     function isValidWorkspaceProfile(data) {

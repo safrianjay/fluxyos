@@ -94,6 +94,33 @@
     function baseLocale() { return cfg(BASE).locale; }
     function baseCompact() { return COMPACT_SUFFIXES[cfg(BASE).compact] || COMPACT_SUFFIXES.en; }
 
+    /**
+     * True when a document's FACE currency differs from the workspace's
+     * accounting currency — i.e. it needs an exchange rate to reach the ledger.
+     *
+     * Never write `currency !== 'IDR'`. That test is correct only in an Indonesian
+     * workspace; in an SGD workspace it marks SGD as foreign and IDR as domestic,
+     * which is exactly backwards. Singapore is where it bites first, because SGD
+     * already appears throughout the invoice code as a TRANSACTION currency and
+     * so the groundwork looks finished.
+     *
+     * An absent/empty currency means "same as base" — legacy rows predate the
+     * field and were always in the accounting currency.
+     */
+    function isForeignCurrency(currency) {
+        var c = String(currency == null ? '' : currency).toUpperCase();
+        return !!c && c !== BASE;
+    }
+
+    /**
+     * True when a currency has no minor unit in normal use (IDR). Drives input
+     * placeholders and label shapes — "1.250.000" vs "1,250.00". Key formatting
+     * decisions off THIS, not off `=== 'IDR'`, so PHP/SGD/MYR behave correctly.
+     */
+    function isZeroDecimal(currency) {
+        return cfg(currency || BASE).decimals === 0;
+    }
+
     /** Minor units -> whole currency units, in the base currency. IDR: identity. */
     function toBaseUnits(minor) {
         var n = Number(minor);
@@ -207,6 +234,8 @@
         baseLocale: baseLocale,
         baseCompact: baseCompact,
         toBaseUnits: toBaseUnits,
+        isForeignCurrency: isForeignCurrency,
+        isZeroDecimal: isZeroDecimal,
         formatBase: formatBase,
         formatBasePrecise: formatBasePrecise,
 

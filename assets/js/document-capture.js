@@ -97,9 +97,9 @@
         const c = String(cur || '').toUpperCase();
         return SUPPORTED_CURRENCIES.includes(c) ? c : 'IDR';
     }
-    function isForeign() { return state.currency !== 'IDR'; }
+    function isForeign() { return window.FluxyMoney.isForeignCurrency(state.currency); }
     function currencyLabel(cur) {
-        return cur === 'IDR' ? '(Rp)' : `(${cur})`;
+        return `(${window.FluxyMoney.symbol(cur)})`;
     }
     function formatAmountInput(value, cur) {
         const m = money();
@@ -215,7 +215,7 @@
     async function fetchFxRate(fromCurrency, dayKey) {
         try {
             const date = dayKey || new Date().toISOString().slice(0, 10);
-            const res = await fetch(`/.netlify/functions/fx-rate?from=${encodeURIComponent(fromCurrency)}&to=IDR&date=${encodeURIComponent(date)}`);
+            const res = await fetch(`/.netlify/functions/fx-rate?from=${encodeURIComponent(fromCurrency)}&to=${encodeURIComponent(window.FluxyMoney.baseCurrency())}&date=${encodeURIComponent(date)}`);
             if (!res.ok) return null;
             const data = await res.json();
             const rate = Number(data.rate) || null;
@@ -605,7 +605,7 @@
                     <div class="flex items-end gap-2">
                         <div class="flex-1 min-w-0">
                             <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Amount <span id="scan-amount-cur">${escapeHtml(currencyLabel(state.currency))}</span> ${confidenceMark(conf.amount)}</label>
-                            <input type="text" name="amount" required inputmode="decimal" value="${escapeHtml(amountValue)}" placeholder="${state.currency === 'IDR' ? '1.250.000' : '1,250.00'}"
+                            <input type="text" name="amount" required inputmode="decimal" value="${escapeHtml(amountValue)}" placeholder="${window.FluxyMoney.isZeroDecimal(state.currency) ? '1.250.000' : '1,250.00'}"
                                    class="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-[13px] tabular-nums focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
                         </div>
                         <div class="w-[104px] flex-shrink-0">
@@ -617,7 +617,7 @@
                     </div>
                     <div id="scan-fx-block" class="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 ${isForeign() ? '' : 'hidden'}">
                         <div class="flex items-center gap-2">
-                            <label for="scan-fx-rate" class="text-[11px] font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Rate (Rp)</label>
+                            <label for="scan-fx-rate" class="text-[11px] font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Rate (${window.FluxyMoney.baseSymbol()})</label>
                             <input type="text" id="scan-fx-rate" inputmode="numeric" placeholder="16.250"
                                    class="flex-1 min-w-0 px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] tabular-nums focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]">
                         </div>
@@ -1036,7 +1036,7 @@
                 // rather than wiping the user's input.
                 const digits = String(amountInput.value || '').replace(/[^\d.]/g, '');
                 amountInput.value = formatAmountInput(digits, next);
-                amountInput.placeholder = next === 'IDR' ? '1.250.000' : '1,250.00';
+                amountInput.placeholder = window.FluxyMoney.isZeroDecimal(next) ? '1.250.000' : '1,250.00';
             }
             renderFxBlock();
             if (isForeign()) refreshFxRate();
@@ -1372,7 +1372,7 @@
         // they are paid (same rule as the Add Bill drawer). Everything else posts
         // straight to the IDR ledger, so it must be converted now.
         const fxRate = Number(state.fx.rate) || null;
-        const needsConversion = currency !== 'IDR' && state.mode !== 'bill';
+        const needsConversion = window.FluxyMoney.isForeignCurrency(currency) && state.mode !== 'bill';
         if (needsConversion && !(fxRate > 0)) {
             window.showToast?.('Enter an exchange rate so this can be saved in Rupiah.', 'error');
             return;

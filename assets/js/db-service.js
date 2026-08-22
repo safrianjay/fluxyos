@@ -423,7 +423,7 @@ class DataService {
         if (!(paidNow > 0)) return null; // nothing was settled to give back
 
         const face = Math.round(Math.abs(Number(bill.amount) || 0));
-        const isForeign = !!(bill.currency && bill.currency !== 'IDR');
+        const isForeign = window.FluxyMoney.isForeignCurrency(bill.currency);
         const txAmount = Math.round(Math.abs(Number(tx.amount) || 0));
 
         // How much of the bill this payment settled, in the BILL's units.
@@ -513,7 +513,7 @@ class DataService {
         // so their payment posts no journal and nothing has diverged. Leave them:
         // amount_paid is in the invoice's currency while the transaction carries
         // Rupiah, so there is nothing here to invert exactly.
-        if (inv.currency && inv.currency !== 'IDR') return null;
+        if (window.FluxyMoney.isForeignCurrency(inv.currency)) return null;
 
         // Legacy full payments never wrote amount_paid — a paid invoice with none
         // received its whole total, mirroring invoiceReceived() in invoices.js.
@@ -869,8 +869,8 @@ class DataService {
     // Cash/A-P ledger_balances doc twice, which Firestore forbids.
     async _payBillOnce(userId, bill, payAmount, { paymentDate = null, cashFields = null, amountPaidIdr = null, fxRate = null, fxRateDate = null } = {}) {
         const billId = bill.id;
-        const currency = bill.currency || 'IDR';
-        const isForeign = currency !== 'IDR';
+        const currency = bill.currency || window.FluxyMoney.baseCurrency();
+        const isForeign = window.FluxyMoney.isForeignCurrency(currency);
         const outstanding = this._billOutstanding(bill);
         if (!(outstanding > 0)) throw new Error('This bill is already fully paid.');
         // The journal posts into the PAYMENT date's period. Check it before
@@ -1009,7 +1009,7 @@ class DataService {
         // caller expects. The figure is in the BILL's currency — `foreignAmount`
         // for a USD/SGD bill, `payAmount` in rupiah for an IDR one.
         // _payBillOnce enforces > 0 and <= outstanding.
-        const isForeign = bill.currency && bill.currency !== 'IDR';
+        const isForeign = window.FluxyMoney.isForeignCurrency(bill.currency);
         const requested = isForeign ? foreignAmount : payAmount;
         const settleAmount = requested != null ? requested : outstanding;
         return this._payBillOnce(userId, bill, settleAmount, { paymentDate, cashFields, amountPaidIdr, fxRate, fxRateDate });
@@ -1033,7 +1033,7 @@ class DataService {
                 if (!bill) throw new Error('Bill not found.');
                 // Foreign-currency bills need per-bill FX conversion — pay them one at
                 // a time from the bill's own Record-payment modal, not the multi-pay.
-                if (bill.currency && bill.currency !== 'IDR') throw new Error('Pay foreign-currency bills individually (they need an exchange rate).');
+                if (window.FluxyMoney.isForeignCurrency(bill.currency)) throw new Error('Pay foreign-currency bills individually (they need an exchange rate).');
                 const outstanding = this._billOutstanding(bill);
                 const amount = p.amount != null ? Math.round(Math.abs(Number(p.amount) || 0)) : outstanding;
                 const res = await this._payBillOnce(userId, bill, amount, { paymentDate, cashFields });
@@ -3093,7 +3093,7 @@ class DataService {
         // IDR journals is both wrong and rules-rejected. Skip the INV-ISSUE journal
         // — the IDR ledger entry is created only on payment (markInvoicePaid, at
         // the converted Rupiah amount).
-        const isForeign = (invoice.currency || 'IDR') !== 'IDR';
+        const isForeign = window.FluxyMoney.isForeignCurrency(invoice.currency);
         if (!isForeign) {
             const issueDoc = { ...invoice, ...patch, status: 'open' };
             await this._postSourceJournal(userId, batch, 'invoices', invoiceRef, issueDoc, { date: invoice.issue_date });
@@ -3162,11 +3162,11 @@ class DataService {
         const invoice = await this.getInvoice(userId, invoiceId);
         if (!invoice) throw new Error('Invoice not found.');
         if (!['open', 'partial'].includes(invoice.status)) throw new Error('Only open invoices can be marked as paid.');
-        const currency = invoice.currency || 'IDR';
+        const currency = invoice.currency || window.FluxyMoney.baseCurrency();
         // The ledger is IDR: an IDR invoice posts its total verbatim; a foreign
         // invoice posts the caller-supplied Rupiah amount (live rate at the
         // payment date, user-confirmable). fx_* provenance is stored on the invoice.
-        const isForeign = currency !== 'IDR';
+        const isForeign = window.FluxyMoney.isForeignCurrency(currency);
         const hasWithholding = (Number(invoice.customer_withholding_rate) || 0) > 0 && !!invoice.journal_ref && !isForeign;
         // IDR, non-withholding: pay the full remaining balance through the engine
         // that also handles partials (open→paid or partial→paid, one INV-PAY).
@@ -3272,7 +3272,7 @@ class DataService {
     // would write the shared Cash/A-R ledger_balances doc twice (Firestore forbids).
     async _payInvoiceOnce(userId, invoice, payAmount, { paymentDate = null } = {}) {
         const invoiceId = invoice.id;
-        if ((invoice.currency || 'IDR') !== 'IDR') throw new Error('Pay foreign-currency invoices in full (they need an exchange rate).');
+        if (window.FluxyMoney.isForeignCurrency(invoice.currency)) throw new Error('Pay foreign-currency invoices in full (they need an exchange rate).');
         const outstanding = this._invoiceOutstanding(invoice);
         if (!(outstanding > 0)) throw new Error('This invoice is already fully paid.');
         const amount = Math.round(Math.abs(Number(payAmount) || 0));
@@ -3334,7 +3334,7 @@ class DataService {
         const invoice = await this.getInvoice(userId, invoiceId);
         if (!invoice) throw new Error('Invoice not found.');
         if (!['open', 'partial'].includes(invoice.status)) throw new Error('Only open invoices can take a payment.');
-        if ((invoice.currency || 'IDR') !== 'IDR') throw new Error('Pay foreign-currency invoices in full (they need an exchange rate).');
+        if (window.FluxyMoney.isForeignCurrency(invoice.currency)) throw new Error('Pay foreign-currency invoices in full (they need an exchange rate).');
         if ((Number(invoice.customer_withholding_rate) || 0) > 0 && invoice.journal_ref) {
             throw new Error('This invoice has customer withholding — mark it paid in full.');
         }
@@ -3359,7 +3359,7 @@ class DataService {
             try {
                 const invoice = await this.getInvoice(userId, p.invoiceId);
                 if (!invoice) throw new Error('Invoice not found.');
-                if ((invoice.currency || 'IDR') !== 'IDR') throw new Error('Receive foreign-currency invoices individually (they need an exchange rate).');
+                if (window.FluxyMoney.isForeignCurrency(invoice.currency)) throw new Error('Receive foreign-currency invoices individually (they need an exchange rate).');
                 if ((Number(invoice.customer_withholding_rate) || 0) > 0 && invoice.journal_ref) throw new Error('This invoice has customer withholding — mark it paid in full.');
                 const outstanding = this._invoiceOutstanding(invoice);
                 const amount = p.amount != null ? Math.round(Math.abs(Number(p.amount) || 0)) : outstanding;
@@ -4490,7 +4490,7 @@ class DataService {
         // Foreign-currency source docs (e.g. USD/SGD bills) stay OUTSIDE the IDR
         // kernel until payment converts them to Rupiah — posting their minor units
         // as rupiah would corrupt the ledger. Mark excluded and skip posting.
-        if (payload && payload.currency && payload.currency !== 'IDR') { payload.accounting_status = 'excluded'; return null; }
+        if (payload && window.FluxyMoney.isForeignCurrency(payload.currency)) { payload.accounting_status = 'excluded'; return null; }
         await this._assertOpenPostingPeriod(userId, opts.date || payload.timestamp || payload.due_date || payload.renewal_date || null);
         try {
             const mappings = await this._loadAcctMappings(userId);
@@ -7396,7 +7396,7 @@ class DataService {
             // documented as tying to the balance sheet, so the two disagreed by
             // exactly the outstanding balance.
             if (inv.status !== 'open' && inv.status !== 'partial') return;
-            if (inv.currency && inv.currency !== 'IDR') { fxInvoiceCount += 1; return; }
+            if (window.FluxyMoney.isForeignCurrency(inv.currency)) { fxInvoiceCount += 1; return; }
             // Outstanding, not face value — identical on an untouched invoice and
             // different on a partially paid one.
             const outstanding = this._invoiceOutstanding(inv);
@@ -7422,7 +7422,7 @@ class DataService {
             if (bill.linked_transaction_id && !['partial', 'unpaid'].includes(bill.payment_status)) return;
             // Foreign-currency bills are outside the IDR aging (amounts are in another
             // currency's minor units) — same as foreign invoices above.
-            if (bill.currency && bill.currency !== 'IDR') { fxBillCount += 1; return; }
+            if (window.FluxyMoney.isForeignCurrency(bill.currency)) { fxBillCount += 1; return; }
             payables.push({
                 id: d.id,
                 kind: 'bill',
@@ -13839,7 +13839,7 @@ class DataService {
             // Foreign-currency bills are outside the IDR budget (their amounts are in
             // another currency's minor units); the Rupiah they cost is only known at
             // payment and lands as its own actual expense. Skip them here.
-            if (bill.currency && bill.currency !== 'IDR') return;
+            if (window.FluxyMoney.isForeignCurrency(bill.currency)) return;
             // Commit only the OUTSTANDING balance (full amount for unpaid/legacy
             // bills; the remainder for partially-paid ones). The paid portion has
             // already landed as an actual expense transaction above, so

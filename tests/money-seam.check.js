@@ -158,6 +158,37 @@ if (offenders.length) {
     ok('no-literals', 'every workspace finance surface renders through the seam');
 }
 
+// --- C. no hardcoded IDR comparisons ----------------------------------------
+//
+// `currency !== 'IDR'` is correct ONLY in an Indonesian workspace. In an SGD
+// workspace it marks SGD as foreign and IDR as domestic — exactly backwards.
+// Singapore bites first, because SGD already appears throughout the invoice code
+// as a TRANSACTION currency, so the groundwork looks finished when it is not.
+//   "is it a different currency from the books?" -> isForeignCurrency(x)
+//   "does it have no minor unit?"                -> isZeroDecimal(x)
+let idrTests = [];
+try {
+    const out = execSync(
+        `grep -rnE "[!=]==? *'IDR'|'IDR' *[!=]==?" assets/js/*.js 2>/dev/null || true`,
+        { cwd: ROOT, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 }
+    );
+    idrTests = out.split('\n')
+        .filter(Boolean)
+        .filter((l) => !EXCLUDE.some((f) => l.startsWith(`assets/js/${f}:`)))
+        .filter((l) => !/^[^:]+:\d+:\s*(\/\/|\*)/.test(l));
+} catch (e) {
+    fail('no-idr-tests', `grep failed: ${e.message}`);
+}
+if (idrTests.length) {
+    fail('no-idr-tests',
+        `${idrTests.length} hardcoded IDR comparison(s) — these invert outside Indonesia:\n` +
+        idrTests.map((l) => `        ${l}`).join('\n') +
+        `\n\n      Use window.FluxyMoney.isForeignCurrency(x) for "different from the` +
+        `\n      books", or .isZeroDecimal(x) for "no minor unit".`);
+} else {
+    ok('no-idr-tests', 'no comparison assumes IDR is the accounting currency');
+}
+
 // Every app page must LOAD the seam, or its formatters throw at render time.
 const appPages = fs.readdirSync(ROOT)
     .filter((f) => f.endsWith('.html'))

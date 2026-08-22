@@ -470,6 +470,20 @@ FluxyOS design language.
 >    Philippine workspace still pays its subscription in rupiah.
 > 6. **It is set-once, enforced in `firestore.rules`,** not by hiding the
 >    Settings control. Test: `tests/base-currency-rules-emulator-test.mjs`.
+> 7. **Never test `currency !== 'IDR'`.** That is correct only in an Indonesian
+>    workspace — in an SGD workspace it marks SGD as foreign and IDR as domestic,
+>    exactly backwards. Use `FluxyMoney.isForeignCurrency(x)` for "differs from
+>    the books", and `FluxyMoney.isZeroDecimal(x)` for "has no minor unit"
+>    (placeholders, label shape). Guarded by `check:money-seam`.
+> 8. **Rules bound the currency set; the client enforces the match.**
+>    `isWorkspaceCurrency()` in `firestore.rules` allows the four base currencies
+>    on `bank_accounts`, `bank_balance_snapshots`, `budgets`,
+>    `bank_statement_imports` and `settings/finance`. Rules cannot cheaply assert
+>    the value equals *this* workspace's `base_currency` — a `get()` per write
+>    costs a read and adds to the expression budget, which this ruleset has
+>    already exhausted once in production. **FluxyOS's own billing
+>    (`isValidBillingPaymentRequest`, `isValidVoucherRedemptionCreate`) stays
+>    pinned to IDR** and must not be widened.
 >
 > ⚠️ **Known gap:** the Bahasa dictionary's money `PATTERNS` in
 > `dashboard-i18n.js` are `Rp[\d.]+` regexes, so money-bearing strings will not

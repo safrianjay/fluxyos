@@ -300,7 +300,7 @@ export function initInvoicesPage({ ds, user }) {
         // amounts can't be summed into one figure without a rate. Foreign-currency
         // invoices still appear in the list and counts; their money is excluded here.
         // Amounts use the outstanding balance so a partial payment reduces the total.
-        const isIdr = (i) => (i.currency || 'IDR') === 'IDR';
+        const isIdr = (i) => !window.FluxyMoney.isForeignCurrency(i.currency);
         const openAmount = open.filter(isIdr).reduce((sum, i) => sum + invoiceOutstanding(i), 0);
         const overdueAmount = overdue.filter(isIdr).reduce((sum, i) => sum + invoiceOutstanding(i), 0);
         const paidAmount = paidThisMonth.filter(isIdr).reduce((sum, i) => sum + (Number(i.total_amount) || 0), 0);
@@ -713,14 +713,14 @@ export function initInvoicesPage({ ds, user }) {
     // Reflect the invoice currency in the unit-price label + placeholder.
     function syncItemPriceCurrency() {
         el('inv-item-price-currency').textContent = `(${window.FluxyMoney.symbol(editor.currency)})`;
-        el('inv-item-price').placeholder = editor.currency === 'IDR' ? '1.000.000' : '1,000.00';
+        el('inv-item-price').placeholder = window.FluxyMoney.isZeroDecimal(editor.currency) ? '1.000.000' : '1,000.00';
     }
 
     // PPN tax rate + PPh customer-withholding are Indonesia-specific and only
     // apply to IDR invoices (foreign invoices are export-style / no-PPN in v1).
     // Hide + clear them for USD/SGD so they can't be applied by mistake.
     function syncTaxVisibility() {
-        const foreign = editor.currency !== 'IDR';
+        const foreign = window.FluxyMoney.isForeignCurrency(editor.currency);
         el('inv-tax-field').classList.toggle('hidden', foreign);
         el('inv-wht-field').classList.toggle('hidden', foreign);
         if (foreign) {
@@ -1205,7 +1205,7 @@ export function initInvoicesPage({ ds, user }) {
         const showRate = paidIdr > 0 && fxRate > 0;
         el('detail-fx-rate-row').classList.toggle('hidden', !showRate);
         el('detail-fx-rate-row').classList.toggle('flex', showRate);
-        el('detail-fx-rate').textContent = showRate ? `1 ${cur} = ${money(fxRate, 'IDR')}` : '—';
+        el('detail-fx-rate').textContent = showRate ? `1 ${cur} = ${window.FluxyMoney.formatBase(fxRate)}` : '—';
         // Paid invoices link to the income ledger record created by Mark-Paid
         // (the ledger opens that record's detail via the app-wide ?record= param).
         const hasLedgerLink = invoice.status === 'paid' && Boolean(invoice.linked_transaction_id);
@@ -1521,7 +1521,7 @@ export function initInvoicesPage({ ds, user }) {
     async function fetchFxRate(fromCurrency, dayKey) {
         try {
             const date = dayKey || window.FluxyDateRangePicker.getDayKey();
-            const res = await fetch(`/.netlify/functions/fx-rate?from=${encodeURIComponent(fromCurrency)}&to=IDR&date=${encodeURIComponent(date)}`);
+            const res = await fetch(`/.netlify/functions/fx-rate?from=${encodeURIComponent(fromCurrency)}&to=${encodeURIComponent(window.FluxyMoney.baseCurrency())}&date=${encodeURIComponent(date)}`);
             if (!res.ok) return null;
             const data = await res.json();
             return Number(data.rate) || null;
@@ -1532,7 +1532,7 @@ export function initInvoicesPage({ ds, user }) {
     // IDR amount that will post to the ledger. IDR invoices hide the FX block.
     async function refreshFxConversion() {
         const cur = detailInvoice.currency || 'IDR';
-        if (cur === 'IDR') { el('paid-fx').classList.add('hidden'); paidFxRate = null; return; }
+        if (!window.FluxyMoney.isForeignCurrency(cur)) { el('paid-fx').classList.add('hidden'); paidFxRate = null; return; }
         el('paid-fx').classList.remove('hidden');
         el('paid-fx-rate').textContent = 'Fetching payment-date rate…';
         const reqKey = paidDateKey;
@@ -1541,10 +1541,10 @@ export function initInvoicesPage({ ds, user }) {
         paidFxRate = rate;
         if (rate) {
             const idr = Math.round(window.FluxyMoney.fromMinor(detailInvoice.total_amount, cur) * rate);
-            el('paid-fx-rate').textContent = `1 ${cur} = ${money(rate, 'IDR')} · ${money(detailInvoice.total_amount, cur)} ≈ ${money(idr, 'IDR')}`;
+            el('paid-fx-rate').textContent = `1 ${cur} = ${window.FluxyMoney.formatBase(rate)} · ${money(detailInvoice.total_amount, cur)} ≈ ${window.FluxyMoney.formatBase(idr)}`;
             el('paid-fx-idr').value = window.FluxyMoney.formatMoneyInput(String(idr), 'IDR');
         } else {
-            el('paid-fx-rate').textContent = 'Could not fetch the rate — enter the Rupiah amount you received.';
+            el('paid-fx-rate').textContent = `Could not fetch the rate — enter the ${window.FluxyMoney.baseCurrency()} amount you received.`;
         }
     }
 
@@ -1560,7 +1560,7 @@ export function initInvoicesPage({ ds, user }) {
         // (default = outstanding balance); foreign / withholding invoices pay in full.
         const cur0 = detailInvoice.currency || 'IDR';
         const hasWithholding = (Number(detailInvoice.customer_withholding_rate) || 0) > 0 && !!detailInvoice.journal_ref;
-        paidPartialCapable = cur0 === 'IDR' && !hasWithholding;
+        paidPartialCapable = !window.FluxyMoney.isForeignCurrency(cur0) && !hasWithholding;
         const outstanding = invoiceOutstanding(detailInvoice);
         const amountField = el('paid-amount-field');
         amountField.classList.toggle('hidden', !paidPartialCapable);
@@ -1627,7 +1627,7 @@ export function initInvoicesPage({ ds, user }) {
                 // Foreign-currency invoices post the (rate-converted, user-confirmable)
                 // Rupiah amount; withholding invoices post their total (net of PPh).
                 const opts = { paymentDate };
-                if (cur !== 'IDR') {
+                if (window.FluxyMoney.isForeignCurrency(cur)) {
                     const idr = window.FluxyMoney.toMinor(el('paid-fx-idr').value, 'IDR');
                     if (!(idr > 0)) { showErr('Enter the Rupiah amount received before recording the payment.'); btn.disabled = false; return; }
                     opts.amountPaidIdr = idr;
@@ -1673,7 +1673,7 @@ export function initInvoicesPage({ ds, user }) {
         const map = new Map();
         invoices.forEach((inv) => {
             if (!['open', 'partial'].includes(inv.status)) return;
-            if ((inv.currency || 'IDR') !== 'IDR') return;
+            if (window.FluxyMoney.isForeignCurrency(inv.currency)) return;
             if ((Number(inv.customer_withholding_rate) || 0) > 0 && inv.journal_ref) return;
             if (invoiceOutstanding(inv) <= 0) return;
             const name = inv.customer_name || 'Unknown customer';

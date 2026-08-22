@@ -1547,7 +1547,7 @@ window.showAddTransactionModal = function(options = {}) {
     const currencySelect = document.getElementById('tx-currency');
     const billCurrency = () => (currencySelect ? currencySelect.value : 'IDR');
     amountInput.oninput = (e) => {
-        if (billCurrency() === 'IDR') {
+        if (!window.FluxyMoney.isForeignCurrency(billCurrency())) {
             // Shared formatter: reformats on deletion too, and keeps the caret.
             window.FluxyAmountInput.format(e.target);
         } else {
@@ -1567,8 +1567,8 @@ window.showAddTransactionModal = function(options = {}) {
         const c = ['IDR', 'USD', 'SGD'].includes(cur) ? cur : 'IDR';
         currencySelect.value = c;
         const label = document.getElementById('tx-amount-cur');
-        if (label) label.textContent = c === 'IDR' ? '(Rp)' : `(${c})`;
-        document.getElementById('tx-currency-hint')?.classList.toggle('hidden', c === 'IDR');
+        if (label) label.textContent = `(${window.FluxyMoney.symbol(c)})`;
+        document.getElementById('tx-currency-hint')?.classList.toggle('hidden', !window.FluxyMoney.isForeignCurrency(c));
     }
     if (currencySelect) {
         currencySelect.addEventListener('change', () => {
@@ -3231,7 +3231,7 @@ window.showAddTransactionModal = function(options = {}) {
             // rupiah integer; USD/SGD read a decimal major amount → integer cents.
             const billCurrency = context === 'bill' ? (document.getElementById('tx-currency')?.value || 'IDR') : 'IDR';
             const amountFieldRaw = document.getElementById('tx-amount').value;
-            const parsedAmount = billCurrency === 'IDR'
+            const parsedAmount = !window.FluxyMoney.isForeignCurrency(billCurrency)
                 ? parseFloat(amountFieldRaw.replace(/\./g, "") || '0')
                 : Math.round((parseFloat(amountFieldRaw.replace(/[^\d.]/g, '')) || 0) * 100);
             const txTypeSel = document.getElementById('tx-type').value;
