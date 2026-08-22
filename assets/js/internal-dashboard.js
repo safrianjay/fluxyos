@@ -405,12 +405,44 @@ function renderOverview() {
         list.innerHTML = stateBlock('Nothing needs action', 'No KYC or payment items are currently waiting for review.');
         return;
     }
+    // Market chip — the country/currency a row belongs to.
+//
+// Reviewers were shown near-identical rows for one email ("Business PH",
+// "Business Ph", "PH business") with nothing to tell them apart, and an approval
+// landed on the wrong uid: the account under test stayed locked while its twin
+// was approved. Market is the fastest way to spot the right one.
+function marketChip(x) {
+    const parts = [x.country, x.base_currency].filter(Boolean);
+    if (!parts.length) return '';
+    return `<span class="ml-2 rounded px-1.5 py-0.5 text-[11px] font-semibold bg-slate-100 text-slate-600">${escapeHtml(parts.join(' · '))}</span>`;
+}
+
+// Rows sharing one email address. Stale test accounts accumulate under a single
+// address, and approving the wrong one is silent — the user simply stays locked.
+function duplicateEmailCounts(rows) {
+    const counts = new Map();
+    (rows || []).forEach((r) => {
+        const e = String(r.email || '').trim().toLowerCase();
+        if (e) counts.set(e, (counts.get(e) || 0) + 1);
+    });
+    return counts;
+}
+
+function duplicateChip(x, counts) {
+    const e = String(x.email || '').trim().toLowerCase();
+    const n = e ? (counts.get(e) || 0) : 0;
+    if (n < 2) return '';
+    return `<span class="ml-2 rounded px-1.5 py-0.5 text-[11px] font-semibold bg-amber-100 text-amber-800" title="${n} accounts share this email — check the uid before approving">${n} accounts</span>`;
+}
+
+const __dupCounts = duplicateEmailCounts(needing);
     list.innerHTML = needing.map(x => {
         const uid = x.user_id || x.id;
         return `<div class="flex items-center justify-between gap-4 px-5 py-3">
             <div class="min-w-0">
                 <div class="text-[14px] font-medium truncate">${escapeHtml(userDisplayName(x))}</div>
-                <div class="text-[12px] text-gray-500 truncate">${escapeHtml(x.business_name || '—')}</div>
+                <div class="text-[12px] text-gray-500 truncate">${escapeHtml(x.business_name || '—')}${marketChip(x)}${duplicateChip(x, __dupCounts)}</div>
+                <div class="text-[11px] text-gray-400 mono truncate">${escapeHtml(String(uid).slice(0, 12))}…</div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
                 ${badge(x.kyc_status, KYC_TONE)}
@@ -482,7 +514,7 @@ function userRow(x) {
             <div class="font-medium text-gray-900 truncate max-w-[200px]">${escapeHtml(userDisplayName(x))}</div>
             <div class="text-[12px] text-gray-500 truncate max-w-[200px]">${escapeHtml(x.email || '—')}</div>
         </td>
-        <td class="px-5 py-3.5 text-gray-700">${escapeHtml(x.business_name || '—')}</td>
+        <td class="px-5 py-3.5 text-gray-700">${escapeHtml(x.business_name || '—')}${marketChip(x)}</td>
         <td class="px-5 py-3.5 text-gray-700">${escapeHtml(x.organization || '—')}</td>
         <td class="px-5 py-3.5">${accountTypeCell(x)}</td>
         <td class="px-5 py-3.5 mono text-[13px] text-gray-600">${escapeHtml(x.phone_number || '—')}</td>
@@ -550,7 +582,7 @@ function renderKycTab() {
                 <div class="font-medium text-gray-900 truncate max-w-[220px]">${escapeHtml(userDisplayName(x))}</div>
                 <div class="text-[12px] text-gray-500 truncate max-w-[220px]">${escapeHtml(x.email || '—')}</div>
             </td>
-            <td class="px-5 py-3.5 text-gray-700">${escapeHtml(x.business_name || '—')}</td>
+            <td class="px-5 py-3.5 text-gray-700">${escapeHtml(x.business_name || '—')}${marketChip(x)}</td>
             <td class="px-5 py-3.5">${badge(x.kyc_status, KYC_TONE)}</td>
             <td class="px-5 py-3.5 text-[13px] text-gray-500">${fmtDate(x.kyc_submitted_at)}</td>
             <td class="px-5 py-3.5 text-right"><button class="text-[13px] font-semibold text-[#EA580C] hover:underline" data-review="${escapeHtml(uid)}">Review KYC</button></td>
@@ -577,7 +609,7 @@ function renderPaymentTab() {
                 <div class="font-medium text-gray-900 truncate max-w-[200px]">${escapeHtml(userDisplayName(x))}</div>
                 <div class="text-[12px] text-gray-500 truncate max-w-[200px]">${escapeHtml(x.email || '—')}</div>
             </td>
-            <td class="px-5 py-3.5 text-gray-700">${escapeHtml(x.business_name || '—')}</td>
+            <td class="px-5 py-3.5 text-gray-700">${escapeHtml(x.business_name || '—')}${marketChip(x)}</td>
             <td class="px-5 py-3.5 text-gray-700">${escapeHtml(x.plan_id || '—')}</td>
             <td class="px-5 py-3.5 mono text-[13px] text-gray-700">${fmtMoney(x.payment_amount)}</td>
             <td class="px-5 py-3.5">${badge(x.payment_status, PAYMENT_TONE)}</td>

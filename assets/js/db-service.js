@@ -9716,6 +9716,13 @@ class DataService {
             email: this._nullableString(opts.email, 160),
             display_name: this._nullableString(opts.display_name, 160),
             business_name: profile ? this._nullableString(profile.business_name, 120) : undefined,
+            // Market identity, so a reviewer can tell same-email rows apart. Eight
+            // rows shared one address during PH testing, showing near-identical
+            // business names ("Business PH" / "Business Ph" / "PH business"), and
+            // an approval landed on the wrong uid — the account under test stayed
+            // locked while its twin was approved.
+            country: profile ? this._nullableString(profile.country, 4) : undefined,
+            base_currency: profile ? this._nullableString(profile.base_currency, 4) : undefined,
             role: profile ? this._nullableString(profile.role, 80) : undefined,
             phone_number: profile ? this._nullableString(phoneParts || null, 40) : undefined,
             organization: orgValue !== undefined ? this._nullableString(orgValue, 160) : undefined,

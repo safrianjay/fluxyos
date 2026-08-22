@@ -285,23 +285,24 @@ function laneFE(changed) {
   const scopeNote = env.QA_SWEEP_PAGES || (sharedTouched ? 'core pages (shared module changed)' : 'core pages');
   console.log(`    sweeping: ${scopeNote}`);
 
+  // ONE Playwright invocation for both suites. Running them as two separate
+  // `playwright test` calls made the auth-setup project run twice and contend on
+  // the same static server — the second run intermittently timed out on
+  // /login.html and failed the lane for no real reason. A flaky gate is worse
+  // than a slow one: it teaches you to re-run instead of to read the failure.
+  //
+  // The currency suite is here because currency rendering is a TIMING property.
+  // The static check proves the source is clean; only a real browser proves the
+  // page never paints the wrong currency, that the boot mask lifts, and that the
+  // seam is initialised wherever money renders.
   ok = record('fe', run(
-    'browser console sweep',
+    'browser: console sweep + currency render',
     'npx',
-    ['playwright', 'test', 'tests/zz-console-sweep.spec.js', '--project=chromium', '--reporter=line'],
-    { env, timeout: 10 * 60_000 }
-  )) && ok;
-
-  // Currency rendering is a TIMING property: the static check proves the source
-  // is clean, but only a real browser proves the page never paints the wrong
-  // currency, that the boot mask actually lifts, and that the seam is initialised
-  // wherever money renders. Runs whenever a page or shared module changed —
-  // the same trigger as the console sweep above.
-  ok = record('fe', run(
-    'currency render (no flash, mask lifts, seam live)',
-    'npx',
-    ['playwright', 'test', 'tests/base-currency-render.spec.js', '--project=chromium', '--reporter=line'],
-    { timeout: 10 * 60_000 }
+    ['playwright', 'test',
+      'tests/zz-console-sweep.spec.js',
+      'tests/base-currency-render.spec.js',
+      '--project=chromium', '--reporter=line'],
+    { env, timeout: 12 * 60_000 }
   )) && ok;
 
   return ok;
