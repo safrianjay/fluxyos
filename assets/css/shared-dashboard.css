@@ -2811,3 +2811,43 @@ main > header {
 @media (prefers-reduced-motion: reduce) {
     .fluxy-row-new > td { animation-duration: 1.2s; }
 }
+
+/* ── Boot masking: never paint money in the wrong currency ───────────────────
+ *
+ * The base currency lives on the workspace doc and needs several async reads to
+ * resolve. Until then FluxyMoney sits on its IDR default, so any figure painted
+ * early reads "Rp" — on a peso workspace that is simply wrong, and it produced a
+ * visible Rp -> PHP flip on every load.
+ *
+ * `fluxy-booting` is set on <html> in the markup itself, so it applies BEFORE the
+ * first paint — no JS timing involved. workspace-service removes it the moment
+ * the currency is known (with a 6s failsafe so a failed resolve can never leave
+ * the app masked). Reuses the existing pulse idiom rather than inventing a
+ * second loading language. */
+.fluxy-booting .metric-value,
+.fluxy-booting .fluxy-kpi-value,
+.fluxy-booting .kpi-detail-value,
+.fluxy-booting .acct-kpi-value,
+.fluxy-booting [data-money-symbol],
+.fluxy-booting .fluxy-table-money {
+    color: transparent !important;
+    background: #E5E7EB;
+    border-radius: 6px;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    /* Keep the box the size the real figure will be, so nothing reflows when the
+     * value lands — a layout jump reads as a second flicker. */
+    min-width: 5.5ch;
+    display: inline-block;
+}
+
+/* The value is masked, not the label — a KPI card still reads as a KPI card. */
+.fluxy-booting .metric-value { min-width: 8ch; }
+
+@media (prefers-reduced-motion: reduce) {
+    .fluxy-booting .metric-value,
+    .fluxy-booting .fluxy-kpi-value,
+    .fluxy-booting .kpi-detail-value,
+    .fluxy-booting .acct-kpi-value,
+    .fluxy-booting [data-money-symbol],
+    .fluxy-booting .fluxy-table-money { animation: none; background: #E5E7EB; }
+}

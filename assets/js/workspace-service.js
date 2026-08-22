@@ -146,11 +146,77 @@ function fallbackToSelf(uid) {
     return publish();
 }
 
+// ── Readiness ────────────────────────────────────────────────────────────────
+//
+// The base currency is a PRECONDITION for rendering money, not a nice-to-have.
+// Before this, sidebar-loader.js and each page both called resolveWorkspace
+// independently and whichever finished first decided what the user saw: the page
+// could format every figure while the seam was still on its IDR default, so a
+// peso workspace rendered "Rp" until something happened to repaint. That is the
+// flicker on Overview and the stale "Rp" on the settings pages — one bug.
+//
+// `whenWorkspaceReady()` gives every surface a single thing to await, and
+// `inFlight` collapses concurrent callers onto one resolution instead of racing.
+let inFlight = null;
+let readyResolve = null;
+const readyPromise = new Promise((res) => { readyResolve = res; });
+let isReady = false;
+
+function markReady() {
+    if (isReady) return;
+    isReady = true;
+    try { readyResolve(publish()); } catch (_) {}
+    try {
+        if (typeof document !== 'undefined') {
+            // Reveal the app: money surfaces are skeleton-masked until here.
+            document.documentElement.classList.remove('fluxy-booting');
+            document.dispatchEvent(new CustomEvent('fluxy:workspace-ready'));
+        }
+    } catch (_) {}
+}
+
+// FAILSAFE. markReady() normally fires when resolveWorkspace settles, but a page
+// that never calls it (signed out, a thrown import, an offline SDK) must not be
+// left masked forever. Showing the IDR default is a cosmetic error; a permanently
+// skeletoned app is a broken product. 6s is far beyond a normal resolve.
+if (typeof window !== 'undefined') {
+    setTimeout(() => {
+        if (!isReady) {
+            console.warn('[workspace-service] readiness failsafe fired — revealing with the default currency');
+            markReady();
+        }
+    }, 6000);
+}
+
+/**
+ * Resolves once the workspace (and therefore the base currency) is known.
+ * Already-resolved callers get it immediately. NEVER rejects — a page must not
+ * be stranded because resolution failed; the seam falls back to IDR by design.
+ */
+function whenWorkspaceReady() { return readyPromise; }
+
+/** True once the base currency is settled. For synchronous render guards. */
+function workspaceReady() { return isReady; }
+
 /**
  * Resolve the workspace + role for `user`. Best-effort; returns the published
  * snapshot. Safe to call repeatedly (e.g. on every auth state change).
+ *
+ * Concurrent calls for the SAME user share one in-flight resolution — page code
+ * and sidebar-loader both call this on every load, and two parallel runs meant
+ * two sets of reads and a nondeterministic winner.
  */
 async function resolveWorkspace(app, user) {
+    if (inFlight && inFlight.uid === (user && user.uid)) return inFlight.promise;
+    const promise = _resolveWorkspace(app, user).finally(() => {
+        if (inFlight && inFlight.promise === promise) inFlight = null;
+        markReady();
+    });
+    inFlight = { uid: user && user.uid, promise };
+    return promise;
+}
+
+async function _resolveWorkspace(app, user) {
     if (!user || !user.uid) {
         try { sessionStorage.removeItem('fluxy_ws'); } catch (_) {}
         Object.assign(state, { id: null, role: null, status: null, uid: null, ready: false, name: null, plan: null, baseCurrency: null, country: null });
@@ -332,13 +398,15 @@ function getWorkspace() {
     return publish();
 }
 
-export { resolveWorkspace, getWorkspace };
+export { resolveWorkspace, getWorkspace, whenWorkspaceReady, workspaceReady };
 
 // Expose for classic-script consumers.
 if (typeof window !== 'undefined') {
     window.FluxyWorkspace = Object.assign(window.FluxyWorkspace || {}, {
         resolve: resolveWorkspace,
         get: getWorkspace,
+        whenReady: whenWorkspaceReady,
+        isReady: workspaceReady,
         can: (capability) => false, // replaced by publish() once resolved
     });
 }

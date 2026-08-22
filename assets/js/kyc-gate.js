@@ -116,7 +116,11 @@ export async function resolveKycState(authUser) {
             email: authUser.email || null,
             display_name: authUser.displayName || null
         }).catch(() => { /* best effort */ });
-        return { blocked: true, variant: 'review', status: 'submitted', note: null, userId: authUser.uid };
+        // `speculative` — we did NOT read a status, we inferred one from an absent
+        // row. applyToPage confirms it against the live listener before locking,
+        // because this is the branch that self-heals into 'approved' a moment
+        // later and produced the lock-screen flash on an approved account.
+        return { blocked: true, variant: 'review', status: 'submitted', note: null, userId: authUser.uid, speculative: true };
     }
 
     if (internal.kyc_status === 'approved') {
@@ -361,10 +365,39 @@ function watchForApproval(userId) {
  * @param {object} authUser  Firebase auth user
  * @returns {Promise<boolean>}
  */
+/**
+ * Wait briefly for the realtime status when the gate only INFERRED a block.
+ *
+ * The missing-row branch races its own subscription: it renders the lock, the
+ * listener then reports 'approved', and watchForApproval reloads the page — so
+ * an approved user sees a verification screen appear and vanish. Confirming
+ * against the listener first removes the flash without ever unlocking someone
+ * who is genuinely blocked: a timeout keeps the lock.
+ */
+function confirmBlockedStatus(userId, timeoutMs = 2500) {
+    return new Promise((resolve) => {
+        let settled = false;
+        const done = (blocked) => { if (!settled) { settled = true; resolve(blocked); } };
+        const timer = setTimeout(() => done(true), timeoutMs);
+        try {
+            getData().subscribeInternalUser(userId, (internal) => {
+                if (!internal) return;             // still absent — keep waiting
+                clearTimeout(timer);
+                done(internal.kyc_status !== 'approved');
+            }, () => { clearTimeout(timer); done(true); });
+        } catch (_) { clearTimeout(timer); done(true); }
+    });
+}
+
 export async function applyToPage(authUser) {
     const state = await resolveKycState(authUser);
     if (!state.blocked) return false;
     if (document.querySelector('[data-fluxy-kyc]')) return true;
+    // Only the inferred block waits; a real 'submitted'/'rejected' row locks now.
+    if (state.speculative && authUser?.uid) {
+        const stillBlocked = await confirmBlockedStatus(authUser.uid);
+        if (!stillBlocked) return false;
+    }
     try {
         document.documentElement.classList.add('fluxy-kyc-lock');
         document.body.appendChild(renderKycScreen(state, { mode: 'overlay' }));

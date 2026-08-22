@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="fluxy-booting">
 <head>
     <meta charset="UTF-8">
     <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
@@ -197,6 +197,16 @@
         onAuthStateChanged(auth, async (user) => {
             if (!user) return;
             clearTimeout(authTimeout);
+            // Money cannot render before the base currency is known. Both this
+            // page and sidebar-loader used to resolve independently, and whoever
+            // finished first decided whether a peso workspace showed "Rp" — the
+            // flicker and the stale-currency subpages were the same race.
+            // resolveWorkspace de-duplicates, so this shares the in-flight
+            // resolution rather than issuing a second set of reads.
+            try {
+                const { resolveWorkspace } = await import('/assets/js/workspace-service.js');
+                await resolveWorkspace(app, user);
+            } catch (_) { /* seam falls back to IDR; never strand the page */ }
             setValue('account-id-display', user.uid);
             await loadCompany(user);
         });
