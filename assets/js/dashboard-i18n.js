@@ -3578,6 +3578,26 @@
         "Prepare reports and exports": "Siapkan laporan dan ekspor",
         "Ask Fluxy AI finance questions": "Tanya keuangan ke Fluxy AI",
         "Monthly revenue": "Pendapatan bulanan",
+        "Business country": "Negara bisnis",
+        "Country and base currency": "Negara dan mata uang dasar",
+        "Base currency": "Mata uang dasar",
+        "Accounting currency": "Mata uang akuntansi",
+        "Number format": "Format angka",
+        "Philippines": "Filipina",
+        "Singapore": "Singapura",
+        // IDR/SGD/USD labels already exist earlier in this dictionary — only the
+        // two new APAC currencies need entries here.
+        "PHP — Philippine Peso": "PHP — Peso Filipina",
+        // Bare labels from money-format.js CURRENCIES[].label, for any surface
+        // that renders the name without its code.
+        "Philippine Peso": "Peso Filipina",
+        "Malaysian Ringgit": "Ringgit Malaysia",
+        "MYR — Malaysian Ringgit": "MYR — Ringgit Malaysia",
+        "Your base currency is what all your reports, budgets and financial records are kept in. You can change it here during setup, but not from your dashboard afterwards.": "Mata uang dasar dipakai untuk semua laporan, anggaran, dan catatan keuangan Anda. Anda masih bisa mengubahnya di sini saat penyiapan, tapi tidak lagi dari dasbor setelah selesai.",
+        "Set when this workspace was created. Changing it restates your accounting records, so it needs a guided migration.": "Ditetapkan saat ruang kerja ini dibuat. Mengubahnya menyusun ulang catatan akuntansi Anda, jadi perlu migrasi terpandu.",
+        "Contact support to change it": "Hubungi support untuk mengubahnya",
+        "Set with your accounting currency at setup.": "Ditetapkan bersama mata uang akuntansi saat penyiapan.",
+        "Follows your accounting currency.": "Mengikuti mata uang akuntansi Anda.",
         "Select monthly revenue": "Pilih pendapatan bulanan",
         "Under Rp50.000.000": "Di bawah Rp50.000.000",
         "Above Rp1.000.000.000": "Di atas Rp1.000.000.000",
@@ -5129,6 +5149,12 @@
     //  Applied (in order) only to nodes that miss an exact dictionary key.
     // ─────────────────────────────────────────────────────────────────────────
     var PATTERNS = [
+        // Monthly-revenue bands are generated from the selected base currency
+        // (REVENUE_BANDS in onboarding.js), so no exact key can cover ₱/S$/RM.
+        // These two shapes cover every currency. The "X - Y" band needs no
+        // translation — it is identical in both languages.
+        { re: /^Under ((?:Rp|₱|S\$|RM)[\d.,]+)$/, id: function (m) { return 'Di bawah ' + m[1]; } },
+        { re: /^Above ((?:Rp|₱|S\$|RM)[\d.,]+)$/, id: function (m) { return 'Di atas ' + m[1]; } },
         // ── Point of sale ───────────────────────────────────────────────
         // Indonesian does not pluralise the noun, so "3 pesanan" is correct for
         // both, which is why these read more simply than the English.

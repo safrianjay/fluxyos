@@ -30,6 +30,25 @@ const STEPS = [
 
 const COUNTRY_CODES = ['+62', '+65', '+60', '+1', '+44', '+61'];
 
+/*
+ * Monthly-revenue bands, in WHOLE currency units, per base currency.
+ *
+ * These are round LOCAL numbers, deliberately NOT FX conversions of the
+ * Indonesian bands. Converting Rp50.000.000 gives ₱174,600 — a band no business
+ * owner recognises. The field exists for segmentation (it is stored as a display
+ * string and read by the KYC reviewer, never used in a calculation), so local
+ * legibility beats arithmetic equivalence.
+ *
+ * IDR must stay exactly 50/100/500/1000 million: those exact strings are already
+ * stored on existing profiles and are dictionary keys in dashboard-i18n.js.
+ */
+const REVENUE_BANDS = {
+    IDR: [50000000, 100000000, 500000000, 1000000000],
+    PHP: [250000, 500000, 2500000, 5000000],
+    SGD: [5000, 10000, 50000, 100000],
+    MYR: [10000, 25000, 100000, 250000]
+};
+
 const ONBOARDING_PREFERENCES = [
     { value: 'csv_upload', label: 'Upload CSV', tourId: 'ledger' },
     { value: 'add_transaction', label: 'Add transactions manually', tourId: 'ledger' },
@@ -220,6 +239,11 @@ function initUI() {
         '#f-phone-country-custom'
     ].forEach((selector) => mountOnboardingCustomSelect(selector));
     bindCustomSelectGlobalHandlers();
+    // Seed the seam from the hydrated state (a resumed session may already be on
+    // PHP) BEFORE building the revenue bands, or they render in rupiah for one
+    // paint and then change under the user.
+    window.FluxyMoney.setBaseCurrency(state.fields.base_currency);
+    renderRevenueOptions();
     syncFormFromState();
 
     document.getElementById('f-id-doc').addEventListener('change', (e) => {
@@ -511,7 +535,18 @@ function bindCountryCurrencyDefault() {
     const currency = document.querySelector('#f-base-currency');
     if (!country || !currency) return;
 
-    currency.addEventListener('change', () => { state.currencyTouched = true; });
+    // Preview the whole form in the chosen currency, and rebuild the revenue
+    // bands to match. The seam is reset per page load by workspace-service, so
+    // setting it here cannot leak into a later session.
+    const applyCurrency = (code) => {
+        window.FluxyMoney.setBaseCurrency(code);
+        renderRevenueOptions();
+    };
+
+    currency.addEventListener('change', () => {
+        state.currencyTouched = true;
+        applyCurrency(currency.value);
+    });
 
     country.addEventListener('change', () => {
         if (state.currencyTouched) return;
@@ -525,8 +560,69 @@ function bindCountryCurrencyDefault() {
         // push the value into the enhanced control that renders over the
         // native <select>.
         document.querySelector('#f-base-currency-custom')?.onboardingSelect?.setValue(next);
+        applyCurrency(next);
         clearFieldError('#f-base-currency');
     });
+}
+
+/*
+ * Rebuild the monthly-revenue options in the selected base currency.
+ *
+ * Without this the bands stay in rupiah while the workspace is in pesos — the
+ * screen asks a Philippine owner to classify their revenue in a currency they do
+ * not use. Reported from the live onboarding form on 2026-08-22.
+ */
+function revenueOptionLabels() {
+    const M = window.FluxyMoney;
+    const ccy = M.baseCurrency();
+    const bands = REVENUE_BANDS[ccy] || REVENUE_BANDS[M.DEFAULT_BASE];
+    const minorPerUnit = (M.CURRENCIES[ccy] || M.CURRENCIES[M.DEFAULT_BASE]).minorPerUnit;
+    // Whole units only — "Under ₱250,000" reads as a band; "₱250,000.00" reads as
+    // a price. formatBasePrecise(x, 0) keeps IDR byte-identical to the old labels.
+    const f = (units) => M.formatBasePrecise(units * minorPerUnit, 0);
+    const labels = [`Under ${f(bands[0])}`];
+    for (let i = 0; i < bands.length - 1; i += 1) labels.push(`${f(bands[i])} - ${f(bands[i + 1])}`);
+    labels.push(`Above ${f(bands[bands.length - 1])}`);
+    return labels;
+}
+
+function renderRevenueOptions() {
+    const select = document.querySelector('#f-revenue');
+    if (!select) return;
+    const labels = revenueOptionLabels();
+
+    // A band chosen in the previous currency is meaningless in the new one —
+    // "Rp50.000.000 - Rp100.000.000" on a peso workspace is not a smaller number,
+    // it is a different question. Drop it rather than silently mis-filing them.
+    if (state.fields.monthly_revenue_range && !labels.includes(state.fields.monthly_revenue_range)) {
+        state.fields.monthly_revenue_range = '';
+    }
+
+    select.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.disabled = true;
+    placeholder.selected = !state.fields.monthly_revenue_range;
+    placeholder.textContent = 'Select monthly revenue';
+    select.appendChild(placeholder);
+    labels.forEach((label) => {
+        const opt = document.createElement('option');
+        opt.value = label;
+        opt.textContent = label;
+        if (label === state.fields.monthly_revenue_range) opt.selected = true;
+        select.appendChild(opt);
+    });
+    select.value = state.fields.monthly_revenue_range || '';
+
+    // The enhanced control snapshots its options at mount and refuses to remount,
+    // so clear it before rebuilding or it keeps showing the old currency's bands.
+    const custom = document.querySelector('#f-revenue-custom');
+    if (custom) {
+        custom.onboardingSelect = null;
+        custom.innerHTML = '';
+        mountOnboardingCustomSelect(custom);
+        custom.onboardingSelect?.setValue(state.fields.monthly_revenue_range || '');
+    }
 }
 
 function bindLegalNameInput() {
@@ -1078,6 +1174,11 @@ function renderReview() {
     ].map((label) => `<span class="onboarding-chip">${escapeHtml(label)}</span>`).join('');
     const rows = [
         ['Business details', `${f.business_name || '—'} · ${tt(f.role)}`, false],
+        // Surfaced explicitly because it is the one choice on this form the user
+        // cannot undo afterwards — it should be read before submit, not discovered
+        // in Settings later.
+        ['Country and base currency',
+            `${tt(window.FluxyMoney.COUNTRY_LABELS[f.country] || f.country || '—')} · ${tt(f.base_currency || '—')}`, false],
         ['Business size', `${tt(f.monthly_revenue_range)} · ${tt(f.employee_count_range)}`, false],
         ['Account owner', f.legal_full_name || '—', false],
         ['Preferred WhatsApp number', f.phone_number || '—', false],
