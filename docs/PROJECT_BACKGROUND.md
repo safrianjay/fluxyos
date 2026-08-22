@@ -442,6 +442,40 @@ FluxyOS design language.
 >    `grep -rnE 'users/\$\{[a-zA-Z_.]+\}/(transactions|bills|subscriptions|budgets|budget_allocations|invoices|bank_accounts|bank_balance_snapshots|bank_statement_imports|documents|report_exports|accounting_mappings|chart_of_accounts|business_categories|journals|counters|ledger_balances|ledger_balances_by_dim|periods|vendors|dimensions|items|goods_receipts|stock_movements|stock_adjustments|pos_tables|pos_orders|pos_shifts|audit_logs|company_tax_profile|tax_mappings|tax_transactions|tax_periods|tax_filings|commerce_accounts|commerce_orders|commerce_transactions|commerce_refunds|commerce_settlements|commerce_payouts|commerce_sync_jobs|commerce_sync_errors|commerce_webhook_logs)' *.html assets/js/*.js | grep -v db-service.js`
 >    must return nothing.
 >
+> ### 💱 BASE CURRENCY — the workspace's immutable financial configuration
+>
+> `workspaces/{workspaceId}` carries `country` (ISO 3166-1 alpha-2) and
+> `base_currency` (`IDR`/`PHP`/`SGD`/`MYR`), chosen once at onboarding.
+>
+> 1. **It lives on the workspace doc, never in `settings`.** `settings` is
+>    user-scoped (rule 3 above), so storing it there would let two members of one
+>    workspace disagree about the currency the books are kept in — the money
+>    equivalent of the 0-data scope leak. `settings/finance.currency` is a
+>    read-only mirror; never trust it.
+> 2. **Absent means IDR.** A missing field can never render the wrong symbol; a
+>    half-finished backfill can. `workspace-service.js` reads it during
+>    `resolveWorkspace()` and pushes it into the money seam
+>    (`window.FluxyMoney.setBaseCurrency`) before any page's first finance read.
+> 3. **Every amount renders through the seam.** `assets/js/money-format.js` is
+>    the single formatter: `formatBase(minorUnits)` for workspace money,
+>    `formatMoney(minor, currency)` for an invoice/bill face currency. **Never
+>    write `'Rp' + n.toLocaleString('id-ID')`** — that hardcodes the symbol, the
+>    decimals (IDR has 0, the others have 2, so it renders 100x the money) and
+>    the separators. `npm run check:money-seam` fails the build on any such
+>    literal and runs unconditionally in the BE lane.
+> 4. **Storage is integer MINOR units.** IDR `minorPerUnit: 1` (rupiah *are*
+>    minor units, so existing data is untouched); PHP/SGD/MYR store cents.
+> 5. **FluxyOS's own billing stays IDR.** `billing-config.js`, `checkout.js`,
+>    `internal-dashboard.js` and `investor.js` are deliberately excluded — a
+>    Philippine workspace still pays its subscription in rupiah.
+> 6. **It is set-once, enforced in `firestore.rules`,** not by hiding the
+>    Settings control. Test: `tests/base-currency-rules-emulator-test.mjs`.
+>
+> ⚠️ **Known gap:** the Bahasa dictionary's money `PATTERNS` in
+> `dashboard-i18n.js` are `Rp[\d.]+` regexes, so money-bearing strings will not
+> translate for a non-IDR workspace. Deferred deliberately — rewriting them risks
+> breaking Indonesian for today's customers, and it is its own change.
+>
 > 7. **A new module must register its collections in BOTH lists above** — rule 2
 >    here and `FINANCE_COLLECTIONS` in `scripts/qa-run.js`, which is what `npm run
 >    qa` actually executes. `vendors` shipped workspace-scoped but was added to

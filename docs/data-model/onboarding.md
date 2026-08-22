@@ -21,7 +21,7 @@ redirected.
 | Document | Fields |
 |----------|--------|
 | `progress` | `onboarding_completed` (bool), `onboarding_exempt` (bool), `eligible_for_onboarding_gate` (bool), `kyc_enforced` (bool — see KYC review gate below), `current_step` (`business_setup`/`account_owner`/`finance_setup`/`review`/`complete`), `completed_steps` (string[]), `selected_first_action` (first selected setup preference, backward-compatible), `selected_first_actions` (string[]), `selected_learning_tours` (string[]), `primary_learning_tour` (string \| null), `skipped` (bool), `source` (`onboarding_v2`/`legacy_exemption`), `created_at`, `updated_at`, `completed_at`, `skipped_at` |
-| `profile` | `business_name`, `role` (one of: `Owner / Founder`, `Finance admin`, `Accountant`, `Operations manager`, `Staff`), `main_goal`, `monthly_revenue_range`, `employee_count_range`, `legal_full_name`, `phone_country_code`, `phone_number` (normalized E.164-like string), `created_at`, `updated_at` |
+| `profile` | `business_name`, `country` (ISO 3166-1 alpha-2: `ID`/`PH`/`SG`/`MY`), `base_currency` (`IDR`/`PHP`/`SGD`/`MYR`) — **mirrors** of the canonical workspace fields, carried here so the KYC reviewer sees them alongside the documents, `role` (one of: `Owner / Founder`, `Finance admin`, `Accountant`, `Operations manager`, `Staff`), `main_goal`, `monthly_revenue_range`, `employee_count_range`, `legal_full_name`, `phone_country_code`, `phone_number` (normalized E.164-like string), `created_at`, `updated_at` |
 | `documents` | `identity_document_status` (`not_uploaded`/`uploaded`), `identity_document_storage_path`, `identity_document_file_name`, `business_document_status`, `business_document_storage_path`, `business_document_file_name`, `created_at`, `updated_at` |
 
 **Detection logic** lives in `assets/js/onboarding-gate.js`. Imported as an ES
@@ -141,3 +141,32 @@ dashboard action changes from Dismiss to Completed; clicking it stores
 **Critical order:** App pages must run auth and `FluxyOnboardingGate.applyToPage`
 first. If the onboarding gate renders, clear `sessionStorage.fluxy_pending_tour`
 and do not render Quick ways to get started or start coachmarks.
+
+### Business country & base currency (set once, at signup)
+
+Captured on the `business_setup` step and written to **two** places:
+
+- `workspaces/{workspaceId}.country` / `.base_currency` — **canonical**. Written by
+  `DataService.ensureWorkspace` at onboarding submit. This is what
+  `workspace-service.js` reads and pushes into the money seam
+  (`window.FluxyMoney.setBaseCurrency`), so every formatter in the app follows it.
+- `users/{uid}/onboarding/profile` — a mirror, so the KYC reviewer sees the
+  declared country next to the registration documents and can catch a mismatch
+  **before** any financial data exists.
+
+The country **pre-selects** the currency; it does not constrain it. Functional
+currency follows the primary economic environment, not the place of incorporation
+(IAS 21 / PSAK 10 / PAS 21), so a Singapore entity may legitimately keep books in
+another supported currency. Once the user picks a currency themselves, changing
+the country stops overwriting it.
+
+**Immutable after it is set** — enforced by a set-once clause on the workspace
+`allow update` in `firestore.rules`, not by hiding the Settings control. The base
+currency is how every stored integer is *read* (IDR stores rupiah, the others
+store cents), so changing it after records exist silently re-prices history and
+re-interprets closed periods whose net income is already posted to Retained
+Earnings. Regression test: `tests/base-currency-rules-emulator-test.mjs`.
+
+A legitimate change runs server-side through `/internal` with the Admin SDK,
+which these rules do not gate — safe only while the workspace still has no
+financial records.

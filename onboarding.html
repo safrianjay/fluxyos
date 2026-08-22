@@ -61,6 +61,41 @@
                             <span class="onboarding-error" id="f-business-name-error" aria-live="polite"></span>
                         </label>
 
+                        <!--
+                            Business country + base currency. Set ONCE here and
+                            immutable afterwards — firestore.rules enforces the
+                            set-once, not the absence of a Settings control.
+                            The country PRE-SELECTS the currency but does not
+                            constrain it: functional currency follows the
+                            economic environment, not the place of incorporation
+                            (IAS 21), so a Singapore entity may legitimately keep
+                            books in another supported currency.
+                        -->
+                        <label class="onboarding-field">
+                            <span class="onboarding-label">Business country</span>
+                            <select name="country" id="f-country" class="onboarding-native-select" required aria-describedby="f-country-error">
+                                <option value="ID" selected>Indonesia</option>
+                                <option value="PH">Philippines</option>
+                                <option value="SG">Singapore</option>
+                                <option value="MY">Malaysia</option>
+                            </select>
+                            <span id="f-country-custom" class="onboarding-custom-select" data-source-select="f-country" data-aria-label="Business country"></span>
+                            <span class="onboarding-error" id="f-country-error" aria-live="polite"></span>
+                        </label>
+
+                        <label class="onboarding-field">
+                            <span class="onboarding-label">Base currency</span>
+                            <select name="base_currency" id="f-base-currency" class="onboarding-native-select" required aria-describedby="f-base-currency-error">
+                                <option value="IDR" selected>IDR — Indonesian Rupiah</option>
+                                <option value="PHP">PHP — Philippine Peso</option>
+                                <option value="SGD">SGD — Singapore Dollar</option>
+                                <option value="MYR">MYR — Malaysian Ringgit</option>
+                            </select>
+                            <span id="f-base-currency-custom" class="onboarding-custom-select" data-source-select="f-base-currency" data-aria-label="Base currency"></span>
+                            <span class="onboarding-helper">Your base currency is what all your reports, budgets and financial records are kept in. You can change it here during setup, but not from your dashboard afterwards.</span>
+                            <span class="onboarding-error" id="f-base-currency-error" aria-live="polite"></span>
+                        </label>
+
                         <label class="onboarding-field">
                             <span class="onboarding-label">Your role</span>
                             <select name="role" id="f-role" class="onboarding-native-select" required aria-describedby="f-role-error">
@@ -294,6 +329,7 @@
         </div>
     </main>
 
+    <script src="assets/js/money-format.js"></script>
     <script src="assets/js/shared-dashboard.js"></script>
     <script src="assets/js/duplicate-guard.js"></script>
     <script src="assets/js/dashboard-i18n.js"></script>

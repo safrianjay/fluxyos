@@ -2373,15 +2373,43 @@ class DataService {
     // membership, and the reverse-lookup pointer. Idempotent.
     async ensureWorkspace(uid, opts = {}) {
         const wsRef = doc(this.db, `workspaces/${uid}`);
+        let wsSnap = null;
         let wsExists = false;
-        try { wsExists = (await getDoc(wsRef)).exists(); } catch (_) {}
+        try { wsSnap = await getDoc(wsRef); wsExists = wsSnap.exists(); } catch (_) {}
+        // Business country + base currency are the workspace's IMMUTABLE financial
+        // configuration. They belong on THIS doc, not in settings/ — `settings` is
+        // user-scoped, so storing them there would let two members of one workspace
+        // disagree about what currency the books are kept in (PROJECT_BACKGROUND §4).
+        // Validated against a local allowlist rather than window.FluxyMoney: if the
+        // seam ever failed to load, deferring to it would silently drop the
+        // currency and leave a Philippine workspace keeping books in rupiah.
+        // These two lists are mirrored in firestore.rules (isValidWorkspaceProfile)
+        // and in money-format.js BASE_SUPPORTED / COUNTRY_CURRENCY.
+        const ccy = ['IDR', 'PHP', 'SGD', 'MYR'].includes(opts.baseCurrency) ? opts.baseCurrency : null;
+        const country = ['ID', 'PH', 'SG', 'MY'].includes(opts.country) ? opts.country : null;
         if (!wsExists) {
             await setDoc(wsRef, {
                 owner_uid: uid,
                 name: opts.name || null,
+                ...(country ? { country } : {}),
+                ...(ccy ? { base_currency: ccy } : {}),
                 created_at: serverTimestamp(),
                 updated_at: serverTimestamp()
             });
+        } else if (ccy || country) {
+            // Stamp an existing workspace that predates this field. Rules enforce
+            // set-once, so a second attempt with a DIFFERENT value is rejected —
+            // only write when the field is genuinely absent, so an ordinary
+            // bootstrap never trips a permission error.
+            const cur = wsSnap && wsSnap.data ? (wsSnap.data() || {}) : {};
+            const patch = {};
+            if (ccy && !cur.base_currency) patch.base_currency = ccy;
+            if (country && !cur.country) patch.country = country;
+            if (Object.keys(patch).length) {
+                patch.updated_at = serverTimestamp();
+                try { await setDoc(wsRef, patch, { merge: true }); }
+                catch (e) { console.warn('[workspace] base currency stamp skipped', e); }
+            }
         }
         const memberRef = doc(this.db, `workspaces/${uid}/members/${uid}`);
         let memberExists = false;

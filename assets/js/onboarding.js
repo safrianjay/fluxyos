@@ -46,9 +46,16 @@ let customSelectGlobalHandlersBound = false;
 const state = {
     user: null,
     stepIndex: 0,
+    // True once the user picks a base currency themselves, after which changing
+    // the country stops overwriting it. See bindCountryCurrencyDefault().
+    currencyTouched: false,
     completedSteps: [],
     fields: {
         business_name: '',
+        // Immutable financial configuration once onboarding completes. Defaults
+        // to the primary market; the user may change either before submitting.
+        country: 'ID',
+        base_currency: 'IDR',
         role: '',
         main_goal: '',
         monthly_revenue_range: '',
@@ -130,6 +137,8 @@ async function hydrateSavedState(userId, progress) {
         if (profile) {
             Object.entries({
                 business_name: profile.business_name,
+                country: profile.country,
+                base_currency: profile.base_currency,
                 role: profile.role,
                 main_goal: profile.main_goal,
                 monthly_revenue_range: profile.monthly_revenue_range,
@@ -192,6 +201,9 @@ function initUI() {
 
     // Live-bind form fields
     bindInput('#f-business-name', 'business_name');
+    bindInput('#f-country', 'country');
+    bindInput('#f-base-currency', 'base_currency');
+    bindCountryCurrencyDefault();
     bindInput('#f-role', 'role');
     bindInput('#f-main-goal', 'main_goal');
     bindInput('#f-revenue', 'monthly_revenue_range');
@@ -199,6 +211,8 @@ function initUI() {
     bindLegalNameInput();
     bindPhoneInputs();
     [
+        '#f-country-custom',
+        '#f-base-currency-custom',
         '#f-role-custom',
         '#f-main-goal-custom',
         '#f-revenue-custom',
@@ -483,6 +497,38 @@ function bindInput(selector, fieldKey) {
     });
 }
 
+/*
+ * Country PRE-SELECTS the base currency; it never constrains it.
+ *
+ * Under IAS 21 functional currency follows the primary economic environment,
+ * not the place of incorporation — a Singapore-incorporated entity may
+ * legitimately keep its books in another currency. So changing the country
+ * moves the currency to that country's default ONLY while the user has not
+ * deliberately chosen one themselves; after that, their choice stands.
+ */
+function bindCountryCurrencyDefault() {
+    const country = document.querySelector('#f-country');
+    const currency = document.querySelector('#f-base-currency');
+    if (!country || !currency) return;
+
+    currency.addEventListener('change', () => { state.currencyTouched = true; });
+
+    country.addEventListener('change', () => {
+        if (state.currencyTouched) return;
+        const next = window.FluxyMoney && window.FluxyMoney.currencyForCountry(country.value);
+        if (!next || next === currency.value) return;
+        currency.value = next;
+        state.fields.base_currency = next;
+        // Deliberately NOT dispatching 'change' here: that would fire the
+        // listener above and mark the currency as user-chosen, so the next
+        // country change would stop updating it. Set the state directly and
+        // push the value into the enhanced control that renders over the
+        // native <select>.
+        document.querySelector('#f-base-currency-custom')?.onboardingSelect?.setValue(next);
+        clearFieldError('#f-base-currency');
+    });
+}
+
 function bindLegalNameInput() {
     const el = document.querySelector('#f-legal-name');
     if (!el) return;
@@ -643,6 +689,8 @@ function validateStep() {
     if (step === 'business_setup') {
         const required = [
             ['#f-business-name', state.fields.business_name?.trim(), 'f-business-name-error'],
+            ['#f-country', state.fields.country, 'f-country-error'],
+            ['#f-base-currency', state.fields.base_currency, 'f-base-currency-error'],
             ['#f-role', state.fields.role, 'f-role-error'],
             ['#f-main-goal', state.fields.main_goal, 'f-main-goal-error'],
             ['#f-revenue', state.fields.monthly_revenue_range, 'f-revenue-error'],
@@ -745,6 +793,8 @@ async function onContinue() {
         if (stepKey === 'business_setup') {
             await data.saveOnboardingProfile(state.user.uid, {
                 business_name: state.fields.business_name,
+                country: state.fields.country,
+                base_currency: state.fields.base_currency,
                 role: state.fields.role,
                 main_goal: state.fields.main_goal,
                 monthly_revenue_range: state.fields.monthly_revenue_range,
@@ -843,6 +893,8 @@ async function onSubmit() {
         updateLearningTourState();
         await data.saveOnboardingProfile(state.user.uid, {
             business_name: state.fields.business_name,
+            country: state.fields.country,
+            base_currency: state.fields.base_currency,
             role: state.fields.role,
             main_goal: state.fields.main_goal,
             monthly_revenue_range: state.fields.monthly_revenue_range,
@@ -852,6 +904,24 @@ async function onSubmit() {
             phone_number: state.fields.phone_number
         });
         await data.saveOnboardingDocuments(state.user.uid, docsPayload());
+
+        // Stamp the workspace with its IMMUTABLE financial configuration. This is
+        // the canonical home — workspaces/{id} is shared by every member, whereas
+        // settings/ is user-scoped and would let two people in one company
+        // disagree about the currency the books are kept in.
+        //
+        // Critical, not best-effort: without it the workspace resolves to the IDR
+        // default and a Philippine business would silently keep books in rupiah.
+        // firestore.rules enforces set-once, so a resubmission after
+        // needs_revision cannot change an already-stamped currency.
+        await data.ensureWorkspace(state.user.uid, {
+            email: state.user.email || null,
+            displayName: state.user.displayName || null,
+            name: state.fields.business_name || null,
+            country: state.fields.country,
+            baseCurrency: state.fields.base_currency
+        });
+
         // Mirror the business name into the canonical settings/company doc so
         // the sidebar entity switcher and Settings → Business stay in sync.
         // Treated as critical now — without it the dashboard's first read of

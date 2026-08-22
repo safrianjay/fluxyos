@@ -65,15 +65,28 @@
 
                 <form id="finance-settings-form" class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-section="finance">
                     <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!--
+                            Base currency + country are the workspace's immutable
+                            financial configuration, chosen at onboarding. Read-only
+                            here BY DESIGN: changing it after records exist re-prices
+                            history, because the base currency is how every stored
+                            integer is interpreted. The real enforcement is the
+                            set-once clause in firestore.rules — this is presentation.
+                        -->
                         <label class="block">
-                            <span class="text-[12px] font-bold text-gray-500">Currency</span>
+                            <span class="text-[12px] font-bold text-gray-500">Accounting currency</span>
                             <input id="finance-currency" type="text" value="IDR" disabled class="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[14px] font-bold text-gray-500">
-                            <span class="mt-1 block text-[12px] text-gray-400">IDR is locked for MVP.</span>
+                            <span class="mt-1 block text-[12px] text-gray-400">Set when this workspace was created. Changing it restates your accounting records, so it needs a guided migration — email <a class="font-semibold text-[#EA580C] hover:underline" href="mailto:support@fluxyos.com?subject=Change%20base%20currency">support@fluxyos.com</a>.</span>
                         </label>
                         <label class="block">
-                            <span class="text-[12px] font-bold text-gray-500">Locale</span>
+                            <span class="text-[12px] font-bold text-gray-500">Business country</span>
+                            <input id="finance-country" type="text" value="Indonesia" disabled class="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[14px] font-bold text-gray-500">
+                            <span class="mt-1 block text-[12px] text-gray-400">Set with your accounting currency at setup.</span>
+                        </label>
+                        <label class="block">
+                            <span class="text-[12px] font-bold text-gray-500">Number format</span>
                             <input id="finance-locale" type="text" value="id-ID" disabled class="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[14px] font-bold text-gray-500">
-                            <span class="mt-1 block text-[12px] text-gray-400">Bahasa Indonesia formatting rules.</span>
+                            <span class="mt-1 block text-[12px] text-gray-400">Follows your accounting currency.</span>
                         </label>
                         <label class="block">
                             <span class="text-[12px] font-bold text-gray-500">Timezone</span>
@@ -201,6 +214,21 @@
         function renderFinance(finance) {
             setValue('finance-timezone', finance.timezone || 'Asia/Jakarta');
             setValue('finance-date-format', finance.date_format || 'DD MMM YYYY');
+
+            // Read from the WORKSPACE, not from settings/. `settings` is user-scoped
+            // (docs/data-model/settings.md), so settings.finance.currency is a MIRROR
+            // — workspaces/{id}.base_currency is canonical, and the seam has already
+            // been set from it by workspace-service before this page renders.
+            // Reading the mirror here would let two members of one workspace see
+            // different currencies.
+            const M = window.FluxyMoney;
+            const ccy = M.baseCurrency();
+            const cfg = M.CURRENCIES[ccy] || {};
+            setValue('finance-currency', `${ccy} — ${cfg.label || ccy}`);
+            setValue('finance-locale', cfg.locale || 'id-ID');
+
+            const country = (window.FluxyWorkspace && window.FluxyWorkspace.country) || null;
+            setValue('finance-country', country ? (M.COUNTRY_LABELS[country] || country) : '—');
         }
 
         function renderReports(finance, reports) {
@@ -257,8 +285,12 @@
         async function saveFinance(event) {
             event.preventDefault();
             const payload = {
-                currency: 'IDR',
-                locale: 'id-ID',
+                // Mirror of the workspace's immutable base currency, never a
+                // second source of truth — workspaces/{id}.base_currency is
+                // canonical. Hardcoding IDR here would stamp a PHP workspace's
+                // settings doc with the wrong currency.
+                currency: window.FluxyMoney.baseCurrency(),
+                locale: window.FluxyMoney.baseLocale(),
                 timezone: getValue('finance-timezone'),
                 date_format: getValue('finance-date-format'),
                 categories: Array.isArray(currentFinance.categories) && currentFinance.categories.length ? currentFinance.categories : DEFAULT_CATEGORIES

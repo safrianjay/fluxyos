@@ -19,7 +19,7 @@ tokens, OTPs, card data, bank credentials, or formatted currency strings.
 | Document | Fields |
 |----------|--------|
 | `company` | `business_name`, `business_type`, `country`, `entity_label`, `updated_at` |
-| `finance` | `currency` (`"IDR"`), `locale` (`"id-ID"`), `timezone`, `date_format`, `categories`, `updated_at` |
+| `finance` | `currency`, `locale` — **read-only mirrors** of `workspaces/{id}.base_currency` and its locale, never a second source of truth. `settings` is user-scoped, so a member's own copy must never be what the UI trusts; read `window.FluxyMoney.baseCurrency()` instead. Both are surfaced read-only in `settings-finance.html` with the support route for changes. Also: `timezone`, `date_format`, `categories`, `updated_at` |
 | `import_rules` | `csv_date_behavior`, `unknown_document_route`, `bill_scan_behavior`, `receipt_scan_behavior`, `payment_screenshot_behavior`, `require_confirmation_before_save`, `updated_at` |
 | `ai` | `answer_style`, `default_analysis_period`, `show_data_quality_warnings`, `allow_ai_suggestions`, `allow_ai_draft_actions`, `require_confirmation_before_save`, `updated_at` |
 | `whatsapp` | `status`, `phone_number`, `business_display_name`, `last_sync_at`, `last_verified_at`, `provider`, `updated_at` |
