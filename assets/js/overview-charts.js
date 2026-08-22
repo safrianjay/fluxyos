@@ -245,7 +245,7 @@ export function escapeHtml(value) {
 }
 
 export function formatIDR(value) {
-    return `Rp${Math.round(Math.abs(Number(value) || 0)).toLocaleString('id-ID')}`;
+    return window.FluxyMoney.formatBase(Math.round(Math.abs(Number(value) || 0)));
 }
 
 // Overview convention: a level renders -Rp… (red), never parentheses and never
@@ -257,7 +257,7 @@ export function formatLevelIDR(value) {
 
 export function formatSignedIDR(value) {
     const n = Number(value) || 0;
-    if (n === 0) return 'Rp0';
+    if (n === 0) return window.FluxyMoney.formatBase(0);
     return `${n < 0 ? '-' : '+'}${formatIDR(n)}`;
 }
 
@@ -265,11 +265,12 @@ export function formatSignedIDR(value) {
 // in report-builder.js. Deliberately NOT formatRpCompact from
 // kpi-detail-shared.js, whose "M" means miliar and would mislabel by 1000x.
 export function formatCompactIDR(value) {
-    const n = Math.abs(Number(value) || 0);
-    if (n >= 1_000_000_000) return `Rp${(n / 1_000_000_000).toFixed(1)}B`;
-    if (n >= 1_000_000) return `Rp${(n / 1_000_000).toFixed(1)}M`;
-    if (n >= 1_000) return `Rp${(n / 1_000).toFixed(0)}K`;
-    return `Rp${Math.round(n)}`;
+    const sym = window.FluxyMoney.baseSymbol();
+    const n = Math.abs(window.FluxyMoney.toBaseUnits(Number(value) || 0));
+    if (n >= 1_000_000_000) return `${sym}${(n / 1_000_000_000).toFixed(1)}B`;
+    if (n >= 1_000_000) return `${sym}${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${sym}${(n / 1_000).toFixed(0)}K`;
+    return `${sym}${Math.round(n)}`;
 }
 
 export function formatPercentValue(value, digits = 1) {

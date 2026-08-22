@@ -608,7 +608,7 @@ window.FluxyBudgetPicker = (function () {
     }
 
     function fmtRp(n) {
-        return 'Rp' + Math.max(0, Math.round(Number(n) || 0)).toLocaleString('id-ID');
+        return window.FluxyMoney.formatBase(Math.max(0, Math.round(Number(n) || 0)));
     }
 
     // Build the <option> markup. `selectedId` preserves the current choice across
@@ -2516,7 +2516,7 @@ window.showAddTransactionModal = function(options = {}) {
             if (derived.cash_direction === 'in') cashIn += r.amount; else cashOut += r.amount;
         });
 
-        const rp = (n) => 'Rp' + Math.abs(Number(n) || 0).toLocaleString('id-ID');
+        const rp = (n) => window.FluxyMoney.formatBase(Math.abs(Number(n) || 0));
         const parts = [];
         if (linked) {
             const money = [cashOut ? `${rp(cashOut)} out` : '', cashIn ? `${rp(cashIn)} in` : '']
@@ -2702,7 +2702,7 @@ window.showAddTransactionModal = function(options = {}) {
         const result = billBudgetContext.match(billData);
         billBudgetContext.lastResult = result;
 
-        const fmt = (n) => 'Rp' + Math.abs(Number(n) || 0).toLocaleString('id-ID');
+        const fmt = (n) => window.FluxyMoney.formatBase(Math.abs(Number(n) || 0));
         const label = result.allocation?.name || 'Budget';
         if (result.status === 'out_of_period') {
             previewEl.className = 'rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[12px] text-gray-600';
@@ -2832,7 +2832,7 @@ window.showAddTransactionModal = function(options = {}) {
                     </td>
                     <td class="px-3 py-2 text-gray-600">${escapeHtml(row.category)}</td>
                     <td class="px-3 py-2 text-gray-600">${escapeHtml(row.type.replace(/_/g, ' '))}</td>
-                    <td class="px-3 py-2 font-bold text-gray-900 tabular-nums">Rp${Math.abs(row.amount).toLocaleString('id-ID')}</td>
+                    <td class="px-3 py-2 font-bold text-gray-900 tabular-nums">${window.FluxyMoney.formatBase(Math.abs(row.amount))}</td>
                     <td class="px-3 py-2 text-gray-600">${escapeHtml(row.status)}</td>
                     <td class="px-3 py-2 text-gray-600">${escapeHtml(row.dateKey)}</td>
                     <td class="px-3 py-2 text-gray-600">${cashPreviewCell(row)}</td>
@@ -4637,7 +4637,7 @@ window.attachChartHover = function attachChartHover(container, options) {
         if (allocations.length === 0) {
             return `<p class="px-4 py-8 text-[12px] text-gray-400 text-center">All allocations look healthy.</p>`;
         }
-        const fmtRp = (n) => 'Rp' + Math.abs(Number(n) || 0).toLocaleString('id-ID');
+        const fmtRp = (n) => window.FluxyMoney.formatBase(Math.abs(Number(n) || 0));
         const fmtPct = (v) => Number.isFinite(v) ? (v >= 1000 ? Math.round(v) : v.toFixed(v >= 10 ? 0 : 1)) + '%' : '0%';
         return `<ul class="divide-y divide-gray-100">${allocations.map(a => {
             const isExceeded = a.status === 'exceeded';

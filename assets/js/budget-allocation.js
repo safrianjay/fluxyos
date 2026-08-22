@@ -33,17 +33,19 @@ function escapeHtml(value) {
 
 function formatRp(amount) {
     const value = Number.isFinite(Number(amount)) ? Number(amount) : 0;
-    return 'Rp' + Math.abs(Math.round(value)).toLocaleString('id-ID');
+    return window.FluxyMoney.formatBase(Math.abs(Math.round(value)));
 }
 
 // Compact Rp for chart axis labels (Indonesian magnitudes: rb=ribu,
 // jt=juta, M=miliar). Keeps the y-axis narrow.
 function formatRpCompact(amount) {
     const n = Math.abs(Number(amount) || 0);
-    if (n >= 1e9) return 'Rp' + (n / 1e9).toFixed(n % 1e9 === 0 ? 0 : 1) + 'M';
-    if (n >= 1e6) return 'Rp' + (n / 1e6).toFixed(n % 1e6 === 0 ? 0 : 1) + 'jt';
-    if (n >= 1e3) return 'Rp' + Math.round(n / 1e3) + 'rb';
-    return 'Rp' + Math.round(n);
+    const sym = window.FluxyMoney.baseSymbol();
+    const sfx = window.FluxyMoney.baseCompact();
+    if (n >= 1e9) return sym + (n / 1e9).toFixed(n % 1e9 === 0 ? 0 : 1) + sfx.b;
+    if (n >= 1e6) return sym + (n / 1e6).toFixed(n % 1e6 === 0 ? 0 : 1) + sfx.m;
+    if (n >= 1e3) return sym + Math.round(n / 1e3) + sfx.k;
+    return sym + Math.round(n);
 }
 
 function formatPercent(value) {

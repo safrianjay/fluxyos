@@ -299,27 +299,27 @@ function resolveDashboardPeriod(mode) {
 
 function renderOverviewLoadingState() {
     revenueTransactionsStatus = 'loading';
-    updateKPI('kpi-revenue', 'Rp0');
-    updateKPI('kpi-opex', 'Rp0');
+    updateKPI('kpi-revenue', window.FluxyMoney.formatBase(0));
+    updateKPI('kpi-opex', window.FluxyMoney.formatBase(0));
     updateKPI('kpi-margin', '0%');
-    updateKPI('kpi-cash-pressure', 'Rp0');
-    updateKPI('kpi-bank-cash', 'Rp0');
-    updateKPI('kpi-ledger-cash', 'Rp0');
+    updateKPI('kpi-cash-pressure', window.FluxyMoney.formatBase(0));
+    updateKPI('kpi-bank-cash', window.FluxyMoney.formatBase(0));
+    updateKPI('kpi-ledger-cash', window.FluxyMoney.formatBase(0));
     updateKPI('kpi-ledger-cash-sub', 'Loading...');
-    updateKPI('kpi-net-profit', 'Rp0');
+    updateKPI('kpi-net-profit', window.FluxyMoney.formatBase(0));
     updateKPI('kpi-revenue-change', 'Loading...');
     updateKPI('revenue-scope-label', getRevenuePeriodLabel(dashboardPeriodMode));
     updateKPI('revenue-record-count', 'Loading...');
     updateKPI('revenue-secondary-label', dashboardPeriodMode === 'all_time' ? 'This month' : 'All-time revenue');
-    updateKPI('revenue-secondary-value', 'Rp0');
+    updateKPI('revenue-secondary-value', window.FluxyMoney.formatBase(0));
     updateKPI('kpi-opex-change', 'Loading...');
     updateKPI('kpi-margin-status', 'Loading...');
     updateKPI('kpi-cash-pressure-sub', 'Loading...');
     updateKPI('kpi-bank-cash-sub', 'Loading...');
-    updateKPI('kpi-bank-cash-outlook', 'Rp0');
+    updateKPI('kpi-bank-cash-outlook', window.FluxyMoney.formatBase(0));
     updateKPI('kpi-bank-cash-coverage', 'Not available');
     updateKPI('kpi-opex-budget-used', '0%');
-    updateKPI('kpi-opex-budget-total', 'Rp0');
+    updateKPI('kpi-opex-budget-total', window.FluxyMoney.formatBase(0));
     updateKPI('kpi-net-profit-sub', 'Loading...');
     updateKPI('kpi-net-profit-insight', '');
     setBudgetBar(0);
@@ -344,14 +344,14 @@ function renderOverviewLoadingState() {
 
 function renderOverviewErrorState() {
     revenueTransactionsStatus = 'error';
-    updateKPI('kpi-revenue', 'Rp0');
-    updateKPI('kpi-opex', 'Rp0');
+    updateKPI('kpi-revenue', window.FluxyMoney.formatBase(0));
+    updateKPI('kpi-opex', window.FluxyMoney.formatBase(0));
     updateKPI('kpi-margin', '0%');
-    updateKPI('kpi-cash-pressure', 'Rp0');
-    updateKPI('kpi-bank-cash', 'Rp0');
-    updateKPI('kpi-ledger-cash', 'Rp0');
+    updateKPI('kpi-cash-pressure', window.FluxyMoney.formatBase(0));
+    updateKPI('kpi-bank-cash', window.FluxyMoney.formatBase(0));
+    updateKPI('kpi-ledger-cash', window.FluxyMoney.formatBase(0));
     updateKPI('kpi-ledger-cash-sub', 'No cash transactions yet');
-    updateKPI('kpi-net-profit', 'Rp0');
+    updateKPI('kpi-net-profit', window.FluxyMoney.formatBase(0));
     updateKPI('kpi-revenue-change', 'No data');
     updateKPI('revenue-record-count', 'Revenue records unavailable');
     updateKPI('revenue-secondary-value', 'Unavailable');
@@ -359,10 +359,10 @@ function renderOverviewErrorState() {
     updateKPI('kpi-margin-status', 'No revenue data');
     updateKPI('kpi-cash-pressure-sub', 'No data');
     updateKPI('kpi-bank-cash-sub', 'No bank data connected');
-    updateKPI('kpi-bank-cash-outlook', 'Rp0');
+    updateKPI('kpi-bank-cash-outlook', window.FluxyMoney.formatBase(0));
     updateKPI('kpi-bank-cash-coverage', 'Not available');
     updateKPI('kpi-opex-budget-used', '0%');
-    updateKPI('kpi-opex-budget-total', 'Rp0');
+    updateKPI('kpi-opex-budget-total', window.FluxyMoney.formatBase(0));
     updateKPI('kpi-net-profit-sub', 'No records found');
     updateKPI('kpi-net-profit-insight', '');
     renderMetricArrow('kpi-net-profit-arrow', null, 'revenue');
@@ -585,7 +585,7 @@ function renderOpexBudgetCell(performance, budget) {
     }
 
     updateKPI('kpi-opex-budget-used', monthly > 0 ? `${usedPct.toFixed(1)}%` : '0%');
-    updateKPI('kpi-opex-budget-total', monthly > 0 ? formatIDR(monthly) : 'Rp0');
+    updateKPI('kpi-opex-budget-total', monthly > 0 ? formatIDR(monthly) : window.FluxyMoney.formatBase(0));
     setBudgetBar(monthly > 0 ? usedPct : 0);
     toggleKpiCta('opex-budget-cta', monthly <= 0);
 }
@@ -1599,9 +1599,9 @@ function renderRevenueCard() {
     updateKPI('revenue-secondary-label', secondaryLabel);
 
     if (revenueTransactionsStatus === 'loading') {
-        updateKPI('kpi-revenue', 'Rp0');
+        updateKPI('kpi-revenue', window.FluxyMoney.formatBase(0));
         updateKPI('revenue-record-count', 'Loading...');
-        updateKPI('revenue-secondary-value', 'Rp0');
+        updateKPI('revenue-secondary-value', window.FluxyMoney.formatBase(0));
         updateKPI('kpi-revenue-change', 'Loading...');
         renderMetricArrow('kpi-revenue-arrow', null, 'revenue');
         clearMetricSparklines();
@@ -1683,21 +1683,22 @@ function formatRangeLabel(startKey, endKey) {
 }
 
 function formatIDR(value) {
-    return `Rp${Math.round(Math.abs(Number(value) || 0)).toLocaleString('id-ID')}`;
+    return window.FluxyMoney.formatBase(Math.round(Math.abs(Number(value) || 0)));
 }
 
 function formatSignedIDR(value) {
     const n = Number(value) || 0;
-    if (n === 0) return 'Rp0';
+    if (n === 0) return window.FluxyMoney.formatBase(0);
     return `${n < 0 ? '-' : '+'}${formatIDR(n)}`;
 }
 
 function formatCompactIDR(value) {
-    const n = Math.abs(Number(value) || 0);
-    if (n >= 1_000_000_000) return `Rp${(n / 1_000_000_000).toFixed(1)}B`;
-    if (n >= 1_000_000) return `Rp${(n / 1_000_000).toFixed(1)}M`;
-    if (n >= 1_000) return `Rp${(n / 1_000).toFixed(0)}K`;
-    return `Rp${Math.round(n)}`;
+    const sym = window.FluxyMoney.baseSymbol();
+    const n = Math.abs(window.FluxyMoney.toBaseUnits(Number(value) || 0));
+    if (n >= 1_000_000_000) return `${sym}${(n / 1_000_000_000).toFixed(1)}B`;
+    if (n >= 1_000_000) return `${sym}${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${sym}${(n / 1_000).toFixed(0)}K`;
+    return `${sym}${Math.round(n)}`;
 }
 
 function formatNumber(value, digits = 1) {

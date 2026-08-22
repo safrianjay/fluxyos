@@ -43,7 +43,7 @@ window.FluxyAIContext?.register?.(() => {
     const usagePct = annualTotal > 0 ? Math.round((spent / annualTotal) * 100) : 0;
     const risk = usagePct >= 100 ? 'critical' : usagePct >= 85 ? 'warning' : 'good';
     const riskLabel = usagePct >= 100 ? 'Exceeded' : usagePct >= 85 ? 'At risk' : usagePct >= 70 ? 'Watch' : 'Healthy';
-    const rp = (n) => 'Rp' + (Number(n) || 0).toLocaleString('id-ID');
+    const rp = (n) => window.FluxyMoney.formatBase(Number(n) || 0);
     return {
         pageTitle: budget.name || budget.period_label || 'Budget',
         summary: [
@@ -106,7 +106,7 @@ function escapeHtml(value) {
 
 function formatRp(amount) {
     const value = Math.round(Number(amount) || 0);
-    return `Rp${Math.abs(value).toLocaleString('id-ID')}`;
+    return window.FluxyMoney.formatBase(Math.abs(value));
 }
 
 function formatPercent(value) {

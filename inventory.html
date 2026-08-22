@@ -2386,7 +2386,7 @@
                     const rate = line.amount / resolved.base;
                     const shown = rate >= 1
                         ? rp(Math.round(rate))
-                        : 'Rp' + rate.toLocaleString('id-ID', { maximumFractionDigits: 4 });
+                        : window.FluxyMoney.formatBasePrecise(rate, 4);
                     out.textContent = `${resolved.base.toLocaleString('id-ID')} ${item.base_unit} · ${shown} per ${item.base_unit}`;
                     out.style.color = '';
                 }

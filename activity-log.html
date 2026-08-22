@@ -152,6 +152,7 @@
         </div>
     </div>
 
+    <script src="assets/js/money-format.js"></script>
     <script src="assets/js/sidebar-loader.js"></script>
     <script src="assets/js/shared-dashboard.js"></script>
     <script src="assets/js/duplicate-guard.js"></script>
@@ -278,8 +279,8 @@
 
         function formatCurrencyIDR(amount) {
             const val = Number(amount);
-            if (!Number.isFinite(val)) return 'Rp0';
-            return 'Rp' + Math.abs(Math.round(val)).toLocaleString('id-ID');
+            if (!Number.isFinite(val)) return window.FluxyMoney.formatBase(0);
+            return window.FluxyMoney.formatBase(Math.abs(Math.round(val)));
         }
 
         function titleCase(str) {

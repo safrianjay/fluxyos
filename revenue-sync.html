@@ -242,6 +242,7 @@
         </div>
     </div>
 
+    <script src="assets/js/money-format.js"></script>
     <script src="assets/js/sidebar-loader.js"></script>
     <script src="assets/js/shared-dashboard.js"></script>
     <script src="assets/js/duplicate-guard.js"></script>
@@ -425,7 +426,7 @@
 
         function formatCurrencyIDR(amount) {
             const val = typeof amount === 'number' ? amount : 0;
-            return 'Rp' + Math.abs(val).toLocaleString('id-ID');
+            return window.FluxyMoney.formatBase(Math.abs(val));
         }
 
         function getRowDate(row) {

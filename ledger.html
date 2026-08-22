@@ -1383,7 +1383,7 @@
 
         function formatCurrencyIDR(amount) {
             const val = typeof amount === 'number' ? amount : Number(amount) || 0;
-            return 'Rp' + Math.abs(val).toLocaleString('id-ID');
+            return window.FluxyMoney.formatBase(Math.abs(val));
         }
 
         function getRecordAmount(record) {
@@ -1597,13 +1597,13 @@
 
         function formatTransactionAmount(transaction) {
             const type = getTransactionType(transaction);
-            const amount = Math.abs(Number(transaction.amount) || 0).toLocaleString();
-            if (type === 'Income') return `+ Rp${amount}`;
-            if (type === 'Expense') return `- Rp${amount}`;
-            if (type === 'Refund' && Number(transaction.amount) > 0) return `+ Rp${amount}`;
-            if (type === 'Fee' || type === 'Tax' || type === 'Pending payable') return `- Rp${amount}`;
-            if (type === 'Pending receivable') return `+ Rp${amount}`;
-            return `Rp${amount}`;
+            const amount = window.FluxyMoney.formatBase(Math.abs(Number(transaction.amount) || 0));
+            if (type === 'Income') return `+ ${amount}`;
+            if (type === 'Expense') return `- ${amount}`;
+            if (type === 'Refund' && Number(transaction.amount) > 0) return `+ ${amount}`;
+            if (type === 'Fee' || type === 'Tax' || type === 'Pending payable') return `- ${amount}`;
+            if (type === 'Pending receivable') return `+ ${amount}`;
+            return amount;
         }
 
         function getAmountClass(transaction) {
@@ -2241,7 +2241,7 @@
                 const isVoided = isVoidedTransaction(row);
                 const badge = isVoided ? null : (window.__resolveLedgerBudgetBadge?.(row) || null);
                 const cashBadge = isVoided ? null : getLedgerCashBadge(row);
-                const amountText = 'Rp' + Math.abs(Number(row.amount) || 0).toLocaleString('id-ID');
+                const amountText = window.FluxyMoney.formatBase(Math.abs(Number(row.amount) || 0));
                 const budgetChip = badge ? `
                     <div class="mt-1.5 flex items-center gap-2 flex-wrap">
                         <span class="fluxy-table-status ${badge.cls}">${escapeHtml(badge.label)}</span>

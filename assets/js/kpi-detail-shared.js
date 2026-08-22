@@ -27,7 +27,7 @@ export function escapeHtml(value) {
 
 export function formatRp(amount) {
     const value = Number.isFinite(Number(amount)) ? Number(amount) : 0;
-    return 'Rp' + Math.abs(Math.round(value)).toLocaleString('id-ID');
+    return window.FluxyMoney.formatBase(Math.abs(Math.round(value)));
 }
 
 // Signed money — financial-statement negatives use parentheses.
@@ -37,15 +37,21 @@ export function formatSignedRp(amount) {
     return formatRp(value);
 }
 
-// Compact Rp for chart axis labels (Indonesian magnitudes rb/jt/M).
+// Compact money for chart axis labels. Magnitude suffixes come from the base
+// currency: Indonesian rb/jt/M (ribu/juta/miliar) for IDR, K/M/B elsewhere.
+// NOTE the "M" here means MILIAR (10^9) — deliberately different from
+// formatCompactIDR in overview-charts.js/report-builder.js where M means juta
+// (10^6). Do not unify them; they differ by 1000x.
 export function formatRpCompact(amount) {
     const raw = Number(amount) || 0;
     const sign = raw < 0 ? '-' : '';
-    const n = Math.abs(raw);
-    if (n >= 1e9) return sign + 'Rp' + (n / 1e9).toFixed(n % 1e9 === 0 ? 0 : 1) + 'M';
-    if (n >= 1e6) return sign + 'Rp' + (n / 1e6).toFixed(n % 1e6 === 0 ? 0 : 1) + 'jt';
-    if (n >= 1e3) return sign + 'Rp' + Math.round(n / 1e3) + 'rb';
-    return sign + 'Rp' + Math.round(n);
+    const sym = window.FluxyMoney.baseSymbol();
+    const sfx = window.FluxyMoney.baseCompact();
+    const n = Math.abs(window.FluxyMoney.toBaseUnits(raw));
+    if (n >= 1e9) return sign + sym + (n / 1e9).toFixed(n % 1e9 === 0 ? 0 : 1) + sfx.b;
+    if (n >= 1e6) return sign + sym + (n / 1e6).toFixed(n % 1e6 === 0 ? 0 : 1) + sfx.m;
+    if (n >= 1e3) return sign + sym + Math.round(n / 1e3) + sfx.k;
+    return sign + sym + Math.round(n);
 }
 
 export function formatPercent(value) {

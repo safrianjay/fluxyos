@@ -26,8 +26,8 @@
     }
     function moneyDefault(v) {
         var n = Number(v);
-        if (!isFinite(n)) return 'Rp0';
-        return 'Rp' + Math.round(Math.abs(n)).toLocaleString('id-ID');
+        if (!isFinite(n)) return window.FluxyMoney.formatBase(0);
+        return window.FluxyMoney.formatBase(Math.round(Math.abs(n)));
     }
     function qtyDefault(v) {
         var n = Number(v) || 0;

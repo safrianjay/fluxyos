@@ -91,7 +91,7 @@ function getQuarterEndKey(year, quarter) {
 
 function formatRp(amount) {
     const val = Number(amount) || 0;
-    return 'Rp' + Math.abs(val).toLocaleString('id-ID');
+    return window.FluxyMoney.formatBase(Math.abs(val));
 }
 
 function formatPercent(val) {

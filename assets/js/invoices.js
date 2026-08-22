@@ -69,8 +69,8 @@ function esc(value) {
 
 function formatRp(value) {
     const amount = Number(value);
-    if (!Number.isFinite(amount)) return 'Rp0';
-    return 'Rp' + Math.round(Math.abs(amount)).toLocaleString('id-ID');
+    if (!Number.isFinite(amount)) return window.FluxyMoney.formatBase(0);
+    return window.FluxyMoney.formatBase(Math.round(Math.abs(amount)));
 }
 
 function formatQty(value) {

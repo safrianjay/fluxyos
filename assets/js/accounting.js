@@ -165,13 +165,13 @@ function formatRupiah(n) {
     if (n === null || n === undefined || n === '') return null;
     const value = Number(n);
     if (!Number.isFinite(value)) return null;
-    return `Rp${Math.abs(Math.round(value)).toLocaleString('id-ID')}`;
+    return window.FluxyMoney.formatBase(Math.abs(Math.round(value)));
 }
 
 // Signed display: negatives wrapped in parentheses, e.g. (Rp4.750.000).
 function signedRupiah(n) {
     const value = Number(n) || 0;
-    const text = formatRupiah(value) || 'Rp0';
+    const text = formatRupiah(value) || window.FluxyMoney.formatBase(0);
     return value < 0 ? `(${text})` : text;
 }
 
@@ -1012,8 +1012,8 @@ function renderOverview() {
             !tb ? 'wait' : (tb.balanced ? 'ok' : 'bad'),
             !tb ? 'Loading…'
                 : (tb.balanced
-                    ? `Dr ${formatRupiah(tb.totalDebit) || 'Rp0'} = Cr ${formatRupiah(tb.totalCredit) || 'Rp0'}`
-                    : `Dr ${formatRupiah(tb.totalDebit) || 'Rp0'} vs Cr ${formatRupiah(tb.totalCredit) || 'Rp0'}`),
+                    ? `Dr ${formatRupiah(tb.totalDebit) || window.FluxyMoney.formatBase(0)} = Cr ${formatRupiah(tb.totalCredit) || window.FluxyMoney.formatBase(0)}`
+                    : `Dr ${formatRupiah(tb.totalDebit) || window.FluxyMoney.formatBase(0)} vs Cr ${formatRupiah(tb.totalCredit) || window.FluxyMoney.formatBase(0)}`),
             'trial'),
         healthRow('Balance sheet ties out',
             !bs?.hasData ? 'wait' : (bs.balanced ? 'ok' : 'bad'),
@@ -1436,7 +1436,7 @@ function renderAgingSection(wrap, aging, { empty, link, fxNote }) {
             ${aging.buckets.map(b => `
                 <div class="rounded-xl border ${b.id === 'current' ? 'border-gray-200 bg-gray-50/60' : b.amount > 0 ? 'border-amber-200 bg-amber-50/60' : 'border-gray-200 bg-gray-50/60'} px-3 py-2.5">
                     <p class="text-[12px] font-semibold text-gray-500">${escapeHtml(b.label)}</p>
-                    <p class="mt-1 text-[14px] font-semibold tabular-nums ${b.amount > 0 && b.id !== 'current' ? 'text-amber-700' : 'text-gray-900'}">${escapeHtml(formatRupiah(b.amount) || 'Rp0')}</p>
+                    <p class="mt-1 text-[14px] font-semibold tabular-nums ${b.amount > 0 && b.id !== 'current' ? 'text-amber-700' : 'text-gray-900'}">${escapeHtml(formatRupiah(b.amount) || window.FluxyMoney.formatBase(0))}</p>
                     <p class="text-[12px] text-gray-400">${b.count} item${b.count === 1 ? '' : 's'}</p>
                 </div>`).join('')}
         </div>`;
@@ -1448,13 +1448,13 @@ function renderAgingSection(wrap, aging, { empty, link, fxNote }) {
         return `<tr class="fluxy-table-row fluxy-table-row-clickable" data-href="${escapeHtml(link(row))}" tabindex="0">
             <td class="fluxy-table-cell"><div class="fluxy-table-cell-primary">${escapeHtml(row.label)}</div><div class="fluxy-table-cell-meta">${escapeHtml(agingKindLabel(row.kind))}${row.ref ? ` · ${escapeHtml(row.ref)}` : ''}</div></td>
             <td class="fluxy-table-cell"><span class="fluxy-table-cell-meta ${overdue ? 'text-amber-700' : ''}">${escapeHtml(dueText)}</span></td>
-            <td class="fluxy-table-cell fluxy-table-money">${escapeHtml(formatRupiah(row.amount) || 'Rp0')}</td>
+            <td class="fluxy-table-cell fluxy-table-money">${escapeHtml(formatRupiah(row.amount) || window.FluxyMoney.formatBase(0))}</td>
         </tr>`;
     }).join('');
     const totalRow = `<tr class="fluxy-table-row">
         <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">Total outstanding</span></td>
         <td class="fluxy-table-cell"><span class="fluxy-table-cell-meta">${aging.count} item${aging.count === 1 ? '' : 's'}</span></td>
-        <td class="fluxy-table-cell fluxy-table-money"><strong>${escapeHtml(formatRupiah(aging.total) || 'Rp0')}</strong></td>
+        <td class="fluxy-table-cell fluxy-table-money"><strong>${escapeHtml(formatRupiah(aging.total) || window.FluxyMoney.formatBase(0))}</strong></td>
     </tr>`;
     const fxLine = fxNote > 0
         ? `<p class="px-5 pb-4 text-[12px] text-gray-500">${fxNote} foreign-currency invoice${fxNote === 1 ? '' : 's'} excluded from IDR totals.</p>`
@@ -1607,10 +1607,10 @@ function renderKpis(data) {
     const marginText = (v, label) => (v === null || v === undefined || !Number.isFinite(Number(v)))
         ? `N/A ${label}`
         : `${Math.round(Number(v) * 1000) / 10}% ${label}`;
-    el('kpi-revenue-value').textContent = formatRupiah(is?.totalRevenue || 0) || 'Rp0';
+    el('kpi-revenue-value').textContent = formatRupiah(is?.totalRevenue || 0) || window.FluxyMoney.formatBase(0);
     el('kpi-gross-value').textContent = signedRupiah(is?.grossProfit || 0);
     el('kpi-gross-sub').textContent = marginText(is?.grossMarginPct, 'gross margin');
-    el('kpi-opex-value').textContent = formatRupiah(is?.totalOpEx || 0) || 'Rp0';
+    el('kpi-opex-value').textContent = formatRupiah(is?.totalOpEx || 0) || window.FluxyMoney.formatBase(0);
     el('kpi-net-value').textContent = signedRupiah(is?.netIncome || 0);
     el('kpi-net-sub').textContent = marginText(is?.netMarginPct, 'net margin');
 
@@ -1644,7 +1644,7 @@ function changeDisplay(row) {
         else tone = c > 0 ? 'success' : 'danger';
     }
     let text;
-    if (c === 0) text = 'Rp0';
+    if (c === 0) text = window.FluxyMoney.formatBase(0);
     else if (row.kind === 'cost') text = c > 0 ? `(${formatRupiah(c)})` : formatRupiah(c);
     else text = c > 0 ? formatRupiah(c) : `(${formatRupiah(c)})`;
 

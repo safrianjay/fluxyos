@@ -300,7 +300,7 @@ function composeReportTitle(mode, comparisonMode, currentPeriod) {
 // change, and those were wrong before.
 export function formatRupiah(n) {
     const value = Number(n || 0);
-    const body = `Rp${Math.abs(value).toLocaleString('id-ID')}`;
+    const body = window.FluxyMoney.formatBase(Math.abs(value));
     return value < 0 ? `(${body})` : body;
 }
 
@@ -308,10 +308,12 @@ export function formatRupiahCompact(n) {
     const raw = Number(n || 0);
     const value = Math.abs(raw);
     let body;
-    if (value >= 1_000_000_000) body = `Rp${(value / 1_000_000_000).toFixed(2)}B`;
-    else if (value >= 1_000_000) body = `Rp${(value / 1_000_000).toFixed(1)}M`;
-    else if (value >= 1_000) body = `Rp${(value / 1_000).toFixed(1)}K`;
-    else body = `Rp${value.toLocaleString('id-ID')}`;
+    const sym = window.FluxyMoney.baseSymbol();
+    const units = window.FluxyMoney.toBaseUnits(value);
+    if (units >= 1_000_000_000) body = `${sym}${(units / 1_000_000_000).toFixed(2)}B`;
+    else if (units >= 1_000_000) body = `${sym}${(units / 1_000_000).toFixed(1)}M`;
+    else if (units >= 1_000) body = `${sym}${(units / 1_000).toFixed(1)}K`;
+    else body = window.FluxyMoney.formatBase(value);
     return raw < 0 ? `(${body})` : body;
 }
 

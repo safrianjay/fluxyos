@@ -60,7 +60,7 @@ const state = {
 
 // ── Formatting ───────────────────────────────────────────────────────────────
 // Rupiah, no space after Rp, dot thousands separator. Never a monospace face.
-const rp = (n) => `Rp${Math.round(Math.abs(Number(n) || 0)).toLocaleString('id-ID')}`;
+const rp = (n) => window.FluxyMoney.formatBase(Math.round(Math.abs(Number(n) || 0)));
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const $ = (id) => document.getElementById(id);

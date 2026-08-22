@@ -116,7 +116,7 @@
     function formatMoneyDisplay(minor, cur) {
         const m = money();
         if (m) return m.formatMoney(minor, cur);
-        return `Rp${Number(minor || 0).toLocaleString('id-ID')}`;
+        return String(Number(minor) || 0);
     }
     function minorToMajor(minor, cur) {
         const m = money();

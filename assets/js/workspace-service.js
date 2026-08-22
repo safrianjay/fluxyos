@@ -30,7 +30,22 @@ const state = {
     ready: false,    // true once a real members doc was read
     name: null,      // workspace display name, when available
     plan: null,      // denormalized { id, name, status, frequency } — shared by all members
+    baseCurrency: null, // immutable accounting currency; null = not yet read (treat as IDR)
+    country: null,      // ISO 3166-1 alpha-2 business country, set with the currency
 };
+
+/**
+ * Push the workspace base currency into the money seam so every formatter in the
+ * app renders in it. Fail-safe: an unknown or absent code leaves the seam on its
+ * IDR default rather than throwing — a formatter must never break a page.
+ */
+function applyBaseCurrency(code) {
+    try {
+        if (typeof window !== 'undefined' && window.FluxyMoney) {
+            window.FluxyMoney.setBaseCurrency(code || window.FluxyMoney.DEFAULT_BASE);
+        }
+    } catch (_) { /* formatting must never break resolution */ }
+}
 
 function publish() {
     const snapshot = {
@@ -41,6 +56,8 @@ function publish() {
         ready: state.ready,
         name: state.name,
         plan: state.plan,
+        baseCurrency: state.baseCurrency,
+        country: state.country,
         isOwner: state.role === 'owner',
         can: (capability) => (state.status === 'active' ? permCan(state.role, capability) : false),
     };
@@ -132,10 +149,17 @@ function fallbackToSelf(uid) {
 async function resolveWorkspace(app, user) {
     if (!user || !user.uid) {
         try { sessionStorage.removeItem('fluxy_ws'); } catch (_) {}
-        Object.assign(state, { id: null, role: null, status: null, uid: null, ready: false, name: null, plan: null });
+        Object.assign(state, { id: null, role: null, status: null, uid: null, ready: false, name: null, plan: null, baseCurrency: null, country: null });
+        applyBaseCurrency(null);
         return publish();
     }
     state.uid = user.uid;
+    // Reset the money seam to its IDR default before every resolve. Without this,
+    // signing out of a PHP workspace and into an IDR one in the same tab would
+    // leave every formatter on pesos if the second profile read failed.
+    state.baseCurrency = null;
+    state.country = null;
+    applyBaseCurrency(null);
     // Drop any cached workspace id that belongs to a different user (sign-in
     // switch in the same tab) so db-service._scope never reads a cross-user id.
     try {
@@ -261,6 +285,15 @@ async function resolveWorkspace(app, user) {
             if (wsSnap.exists()) {
                 const d = wsSnap.data() || {};
                 state.name = d.name || null;
+                // Base currency + country are IMMUTABLE workspace financial config
+                // (docs/PROJECT_BACKGROUND.md §4). Publishing them here is what makes
+                // every money formatter currency-aware: applyToPage() awaits this
+                // resolve before the page's first finance read, so nothing renders
+                // money before the base currency is known. Absent means IDR — a
+                // missing field can never show the wrong symbol.
+                state.baseCurrency = d.base_currency || null;
+                state.country = d.country || null;
+                applyBaseCurrency(state.baseCurrency);
                 state.plan = (d.plan_id || d.plan_name || d.subscription_status) ? {
                     id: d.plan_id || null,
                     name: d.plan_name || null,

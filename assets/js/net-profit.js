@@ -55,7 +55,7 @@ function formatProfit(value) {
 // Explicit movement, where the sign IS the message.
 function formatDelta(value) {
     const n = Number(value) || 0;
-    if (Math.round(n) === 0) return 'Rp0';
+    if (Math.round(n) === 0) return window.FluxyMoney.formatBase(0);
     return `${n < 0 ? '−' : '+'}${formatRp(n)}`;
 }
 const toneClass = (n) => (Number(n) < 0 ? 'text-red-600' : 'text-emerald-600');

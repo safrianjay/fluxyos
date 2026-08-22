@@ -18,8 +18,8 @@ function escapeHtml(value) {
 
 function formatRupiah(n) {
     const value = Number(n);
-    if (!Number.isFinite(value)) return 'Rp0';
-    return `Rp${Math.abs(Math.round(value)).toLocaleString('id-ID')}`;
+    if (!Number.isFinite(value)) return window.FluxyMoney.formatBase(0);
+    return window.FluxyMoney.formatBase(Math.abs(Math.round(value)));
 }
 
 function toInt(v) {

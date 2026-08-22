@@ -15,7 +15,7 @@ import { runComplianceChecks, upcomingTaxDeadlines } from './tax-engine.js';
 // Rupiah, raw integer → 'Rp1.234.567' (no space after Rp — design-system rule).
 function formatRp(n) {
     const v = Math.round(Number(n) || 0);
-    return 'Rp' + v.toLocaleString('id-ID');
+    return window.FluxyMoney.formatBase(v);
 }
 
 function formatRpInput(value, allowNegative = false) {

@@ -1922,7 +1922,7 @@
     }
 
     function formatPreviewValue(value) {
-        if (typeof value === 'number' && Number.isFinite(value)) return `Rp${Math.abs(value).toLocaleString('id-ID')}`;
+        if (typeof value === 'number' && Number.isFinite(value)) return window.FluxyMoney.formatBase(Math.abs(value));
         if (Array.isArray(value)) {
             if (value.every(item => item == null || ['string', 'number', 'boolean'].includes(typeof item))) {
                 const labels = value.filter(item => item != null && item !== '').slice(0, 6).map(String);

@@ -86,7 +86,7 @@
                 return window.FluxyMoney.format(amount, currency || 'IDR');
             }
         } catch (_) { /* fall through to the plain Rupiah format */ }
-        return 'Rp' + Math.round(Math.abs(Number(amount) || 0)).toLocaleString('id-ID');
+        return window.FluxyMoney.formatBase(Math.round(Math.abs(Number(amount) || 0)));
     }
 
     function dateLabel(ms) {

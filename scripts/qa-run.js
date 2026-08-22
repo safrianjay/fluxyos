@@ -189,6 +189,13 @@ function laneBE(changed) {
   // it fails every posting. Cheap: three file hashes, no network, no credentials.
   ok = record('be', run('check:deploy-stamp (rules/indexes deployed?)', 'node', ['tests/deploy-stamp.check.js'])) && ok;
 
+  // Unconditional for the same reason as structure-drift: a hardcoded currency
+  // literal is usually reintroduced in a file nobody thinks of as "the currency
+  // file". It never throws — it renders a plausible wrong number (wrong symbol,
+  // wrong decimals, wrong separators), which for a non-IDR workspace means
+  // showing 100x the real money. Cheap: file reads plus one grep.
+  ok = record('be', run('check:money-seam (currency renders via the seam?)', 'node', ['tests/money-seam.check.js'])) && ok;
+
   const jsChanged = changed.filter((f) => /\.(js|mjs)$/.test(f) && fs.existsSync(path.join(REPO_ROOT, f)));
   if (jsChanged.length) {
     for (const f of jsChanged) {
