@@ -50,14 +50,25 @@ export function isNewUserAfterCutoff(authUser) {
     return !Number.isNaN(d.getTime()) && d >= ONBOARDING_RELEASE_CUTOFF;
 }
 
+// Returned when the progress doc could not be READ, as distinct from a user who
+// genuinely has none. It is a plain object with no onboarding fields, so every
+// existing `progress?.onboarding_completed === true` check behaves exactly as it
+// did for null — only shouldGateUser looks for the marker.
+export const PROGRESS_UNAVAILABLE = Object.freeze({ __readFailed: true });
+
 export async function getOnboardingProgress(userId) {
-    try {
-        const snap = await getDoc(doc(getDb(), `users/${userId}/onboarding/progress`));
-        return snap.exists() ? snap.data() : null;
-    } catch (err) {
-        console.warn("[OnboardingGate] progress read failed");
-        return null;
+    // One retry: a single blocked request must not decide whether someone is
+    // shown a setup wall.
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+            const snap = await getDoc(doc(getDb(), `users/${userId}/onboarding/progress`));
+            return snap.exists() ? snap.data() : null;
+        } catch (err) {
+            if (attempt === 0) { await new Promise((r) => setTimeout(r, 400)); continue; }
+            console.warn('[OnboardingGate] progress read failed — failing OPEN', err);
+        }
     }
+    return PROGRESS_UNAVAILABLE;
 }
 
 export async function markLegacyExempt(userId) {
@@ -98,6 +109,13 @@ export async function shouldGateUser(authUser) {
         return false;
     }
     const progress = await getOnboardingProgress(authUser.uid);
+    // FAIL OPEN on a read failure. This used to return null on any error, and
+    // every check below then fell through to `return true` — so a single blocked
+    // Firestore request showed an already-onboarded user the "Secure setup
+    // required" wall, which vanished as soon as a later read succeeded. That is
+    // the reload flicker. kyc-gate.js already fails open on the same class of
+    // error; this is now consistent with it.
+    if (progress === PROGRESS_UNAVAILABLE) return false;
     if (progress?.onboarding_completed === true) return false;
     if (progress?.onboarding_exempt === true && progress?.source === 'legacy_exemption') {
         // Self-heal: the cutoff now classifies this user as new, so any prior

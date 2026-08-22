@@ -292,6 +292,18 @@ function laneFE(changed) {
     { env, timeout: 10 * 60_000 }
   )) && ok;
 
+  // Currency rendering is a TIMING property: the static check proves the source
+  // is clean, but only a real browser proves the page never paints the wrong
+  // currency, that the boot mask actually lifts, and that the seam is initialised
+  // wherever money renders. Runs whenever a page or shared module changed —
+  // the same trigger as the console sweep above.
+  ok = record('fe', run(
+    'currency render (no flash, mask lifts, seam live)',
+    'npx',
+    ['playwright', 'test', 'tests/base-currency-render.spec.js', '--project=chromium', '--reporter=line'],
+    { timeout: 10 * 60_000 }
+  )) && ok;
+
   return ok;
 }
 
