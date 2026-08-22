@@ -2798,7 +2798,7 @@ service cloud.firestore {
           'goods_receipts', 'stock_movements', 'stock_adjustments'
         ]
         && data.target_id is string && data.target_id.size() <= 200
-        && data.source in ['dashboard', 'ai', 'integration', 'system']
+        && data.source in ['dashboard', 'ai', 'integration', 'system', 'onboarding']
         && data.created_at == request.time;
     }
 

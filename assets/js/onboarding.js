@@ -17,6 +17,15 @@ const FIREBASE_CONFIG = {
     measurementId: "G-ZN7J6DRD2L"
 };
 
+// Workspace mode is normally switched on by sidebar-loader.js, which this page
+// does not load (no sidebar). Without it DataService._scope() resolves to
+// users/{uid}, and the user-scoped audit_logs rules were REMOVED on 2026-08-16
+// when those collections moved to workspaces/ — so the onboarding.submit audit
+// write was denied and took the whole submit down with it. Set it here, before
+// any DataService call. Safe: addAuditLog is the only _scope consumer in this
+// flow, and onSubmit calls ensureWorkspace (creating the membership) first.
+window.FLUXY_WORKSPACE_MODE = true;
+
 const app = getApps().length === 0 ? initializeApp(FIREBASE_CONFIG) : getApps()[0];
 const auth = getAuth(app);
 const data = new DataService(app);
@@ -33,7 +42,48 @@ const STEPS = [
     { key: 'review',         shortTitle: 'Final check', context: 'Confirm details', pillLabel: 'Review' }
 ];
 
-const COUNTRY_CODES = ['+62', '+65', '+60', '+1', '+44', '+61'];
+// Dial codes offered for the WhatsApp number. The four supported business
+// countries come first — a Philippine business could not enter its own number
+// at all before +63 was added.
+const COUNTRY_CODES = ['+62', '+63', '+65', '+60', '+1', '+44', '+61'];
+
+// The business country's own dial code, used to preselect the phone prefix.
+const COUNTRY_DIAL = { ID: '+62', PH: '+63', SG: '+65', MY: '+60' };
+
+/*
+ * Document hints per business country.
+ *
+ * "KTP" and "NIB" are Indonesian instruments — a Philippine owner has neither,
+ * and being asked for them reads as "this product is not for you". Each market
+ * gets the names its own registry actually uses; the generic fallback keeps a
+ * new country legible before anyone writes copy for it.
+ */
+const DOC_HINTS_BY_COUNTRY = {
+    ID: {
+        identity: 'KTP, passport, or another government-issued ID. JPG, PNG, or PDF up to 5MB.',
+        business: 'NIB, company registration, or other business proof. JPG, PNG, or PDF up to 5MB.'
+    },
+    PH: {
+        identity: 'National ID (PhilID), passport, or another government-issued ID. JPG, PNG, or PDF up to 5MB.',
+        business: 'DTI or SEC registration, BIR Certificate (2303), or other business proof. JPG, PNG, or PDF up to 5MB.'
+    },
+    SG: {
+        identity: 'NRIC, FIN, passport, or another government-issued ID. JPG, PNG, or PDF up to 5MB.',
+        business: 'ACRA business profile, UEN record, or other business proof. JPG, PNG, or PDF up to 5MB.'
+    },
+    MY: {
+        identity: 'MyKad, passport, or another government-issued ID. JPG, PNG, or PDF up to 5MB.',
+        business: 'SSM registration, business licence, or other business proof. JPG, PNG, or PDF up to 5MB.'
+    }
+};
+const DOC_HINTS_FALLBACK = {
+    identity: 'Passport or another government-issued ID. JPG, PNG, or PDF up to 5MB.',
+    business: 'Company registration or other business proof. JPG, PNG, or PDF up to 5MB.'
+};
+
+function docHints() {
+    return DOC_HINTS_BY_COUNTRY[state.fields.country] || DOC_HINTS_FALLBACK;
+}
 
 /*
  * Monthly-revenue bands, in WHOLE currency units, per base currency.
@@ -271,6 +321,7 @@ function initUI() {
     // paint and then change under the user.
     window.FluxyMoney.setBaseCurrency(state.fields.base_currency);
     renderRevenueOptions();
+    applyCountryDependentCopy();
     syncFormFromState();
 
     document.getElementById('f-id-doc').addEventListener('change', (e) => {
@@ -342,8 +393,8 @@ async function handleDocSelect(docType, file) {
 }
 
 const DOC_DEFAULT_HINT = {
-    identity: 'KTP, passport, or another government-issued ID. JPG, PNG, or PDF up to 5MB.',
-    business: 'NIB, company registration, or other business proof. JPG, PNG, or PDF up to 5MB.'
+    get identity() { return docHints().identity; },
+    get business() { return docHints().business; }
 };
 
 // Files are already in Storage by the time this runs (uploaded on select), so
@@ -625,6 +676,7 @@ function bindCountryCurrencyDefault() {
     });
 
     country.addEventListener('change', () => {
+        applyCountryDependentCopy();
         if (state.currencyTouched) return;
         const next = window.FluxyMoney && window.FluxyMoney.currencyForCountry(country.value);
         if (!next || next === currency.value) return;
@@ -660,6 +712,35 @@ function revenueOptionLabels() {
     for (let i = 0; i < bands.length - 1; i += 1) labels.push(`${f(bands[i])} - ${f(bands[i + 1])}`);
     labels.push(`Above ${f(bands[bands.length - 1])}`);
     return labels;
+}
+
+/*
+ * Re-apply everything downstream of the business country: the KYC document hints
+ * (KTP/NIB mean nothing in Manila) and the WhatsApp dial code. The hints are
+ * literal text in onboarding.html, so nothing repaints them on its own.
+ */
+function applyCountryDependentCopy() {
+    const hints = docHints();
+    const idHint = document.getElementById('f-id-doc-hint');
+    const bizHint = document.getElementById('f-biz-doc-hint');
+    // Only reset a hint that is still showing guidance — never stomp on an
+    // upload result ("Uploaded", or an error the user still needs to read).
+    if (idHint && !idHint.classList.contains('is-ok') && !idHint.classList.contains('is-error')) {
+        idHint.textContent = hints.identity;
+    }
+    if (bizHint && !bizHint.classList.contains('is-ok') && !bizHint.classList.contains('is-error')) {
+        bizHint.textContent = hints.business;
+    }
+
+    // Preselect the country's dial code, but never overwrite a number the user
+    // has already started typing a prefix for.
+    const dial = COUNTRY_DIAL[state.fields.country];
+    const phone = document.querySelector('#f-phone-country');
+    if (dial && phone && !state.fields.phone_local_number) {
+        state.fields.phone_country_code = dial;
+        phone.value = dial;
+        document.querySelector('#f-phone-country-custom')?.onboardingSelect?.setValue(dial);
+    }
 }
 
 function renderRevenueOptions() {

@@ -1628,6 +1628,17 @@ class DataService {
         const payload = this._cleanDefined({
             business_name: Object.prototype.hasOwnProperty.call(data, 'business_name')
                 ? this._stringOrDefault(data.business_name, '', 120) : undefined,
+            // Mirrors of the immutable workspace config + the UI language, carried
+            // here so the KYC reviewer sees them beside the documents. This is an
+            // explicit whitelist: a field missing from it is silently DROPPED, which
+            // is how country/base_currency never reached the profile and left
+            // returning users pinned to the first onboarding step.
+            language: Object.prototype.hasOwnProperty.call(data, 'language')
+                ? this._allowedValue(data.language, ['id', 'en'], '') : undefined,
+            country: Object.prototype.hasOwnProperty.call(data, 'country')
+                ? this._allowedValue(data.country, ['ID', 'PH', 'SG', 'MY'], '') : undefined,
+            base_currency: Object.prototype.hasOwnProperty.call(data, 'base_currency')
+                ? this._allowedValue(data.base_currency, ['IDR', 'PHP', 'SGD', 'MYR'], '') : undefined,
             role: Object.prototype.hasOwnProperty.call(data, 'role')
                 ? this._allowedValue(data.role, allowedRoles, '') : undefined,
             main_goal: Object.prototype.hasOwnProperty.call(data, 'main_goal')
@@ -1739,19 +1750,29 @@ class DataService {
             completed_at: serverTimestamp(),
             updated_at: serverTimestamp()
         }, { merge: true });
-        await this.addAuditLog(userId, {
-            action: 'onboarding.submit',
-            target_collection: 'onboarding',
-            target_id: 'progress',
-            after: {
-                onboarding_completed: true,
-                selected_first_action: selectedAction,
-                selected_first_actions: selectedActions,
-                selected_learning_tours: selectedTours,
-                primary_learning_tour: primaryTour
-            },
-            source: 'onboarding'
-        });
+        // Best-effort ON PURPOSE. Onboarding is already marked complete above; a
+        // rejected audit entry must never undo an account. This exact write being
+        // blocking is what broke every signup between 2026-08-16 and 2026-08-22:
+        // the audit rules moved to workspaces/ and this path was still resolving
+        // to users/, so completeOnboarding threw after the profile was saved and
+        // the user saw "Could not complete setup" with no way forward.
+        try {
+            await this.addAuditLog(userId, {
+                action: 'onboarding.submit',
+                target_collection: 'onboarding',
+                target_id: 'progress',
+                after: {
+                    onboarding_completed: true,
+                    selected_first_action: selectedAction,
+                    selected_first_actions: selectedActions,
+                    selected_learning_tours: selectedTours,
+                    primary_learning_tour: primaryTour
+                },
+                source: 'onboarding'
+            });
+        } catch (e) {
+            console.warn('[onboarding] submit audit log skipped', e);
+        }
         // The trial is deliberately NOT started here. Submitting is not the value
         // moment any more — the platform stays locked until KYC is verified, so a
         // trial minted now would burn down during review and a user approved on
