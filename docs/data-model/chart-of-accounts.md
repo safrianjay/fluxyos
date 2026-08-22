@@ -198,3 +198,35 @@ instead of duplicating it.
    There is no second list to update.
 5. **Contra accounts** (3200, 4900) show negative signed balances in the trial
    balance when carrying balance — correct accounting, not a bug.
+
+### Per-market tax accounts (2026-08-23)
+
+The chart is **one set of 38 codes for every market**. Only the six tax accounts
+are renamed per country:
+
+| Code | ID (baseline) | PH | SG | MY |
+|---|---|---|---|---|
+| `1130` | PPN Masukan (Input VAT) | Input VAT | Input GST | Input Tax (SST) |
+| `1140` | Prepaid PPh 25 | Prepaid Income Tax | Prepaid Income Tax | Prepaid Income Tax |
+| `1150` | PPh Dipotong Pihak Lain | Creditable Withholding Tax (BIR 2307) | Withholding Tax Receivable | Withholding Tax Receivable |
+| `2100` | PPN Keluaran (Output VAT) | Output VAT | Output GST | Output Tax (SST) |
+| `2110` | PPh Payable | Withholding Tax Payable | Withholding Tax Payable | Withholding Tax Payable |
+| `2200` | PPh 29 Payable | Income Tax Payable | Income Tax Payable | Income Tax Payable |
+
+**The codes never change, and that is load-bearing.** Posting rules in
+`accounting-engine.js`, `tax-engine.js` and `db-service.js` resolve accounts by
+literal code, so a market that renumbered one would not fail loudly — it would
+post to a missing account and corrupt the ledger silently. `check:structure`
+asserts every market exposes the baseline's codes in the same order, and an
+unknown country falls back to the Indonesian baseline unchanged.
+
+Selected by `chartForCountry(country)` from `workspaces/{id}.country`, applied by
+`seedChartOfAccounts`. The seeder's backfill branch **never renames an existing
+account**, so a workspace seeded before this keeps its original names.
+
+Seeded accounts now carry the workspace's `base_currency` rather than a hardcoded
+`'IDR'`.
+
+⚠️ **This is naming, not tax compliance.** The Tax Center remains Indonesian
+PPN/PPh — a PH/SG/MY workspace gets correct bookkeeping with locally-named
+accounts, not BIR/IRAS/LHDN filing. See `PROJECT_BACKGROUND.md` §4.

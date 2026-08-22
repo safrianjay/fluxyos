@@ -166,6 +166,65 @@ export const CHART_OF_ACCOUNTS_SEED = [
     { code: '2200', name: 'PPh 29 Payable', name_id: 'Utang PPh 29', type: 'liability', sak_category: 'other_current_liability', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false }
 ];
 
+/*
+ * Per-market names for the six TAX accounts.
+ *
+ * The tax SLOTS are universal — input tax, output tax, prepaid income tax,
+ * creditable withholding, withholding payable, income tax payable — so the CODES
+ * stay identical across markets. That is deliberate and load-bearing: posting
+ * rules in this file, tax-engine.js and db-service.js resolve these accounts by
+ * literal code, so re-numbering per country would silently break every posting
+ * that references one. Only the NAMES differ.
+ *
+ * What changes is the instrument a business actually recognises. "PPN Masukan"
+ * and "PPh 29" are Indonesian tax law; a Philippine owner has neither, and being
+ * shown them in their own chart of accounts reads as somebody else's books.
+ *
+ * ID is the baseline and MUST stay byte-identical to CHART_OF_ACCOUNTS_SEED —
+ * every existing workspace was seeded from it, and the seeder never renames an
+ * account that already exists.
+ */
+const TAX_ACCOUNT_NAMES = {
+    ID: {},   // baseline — the seed's own names
+    PH: {
+        '1130': { name: 'Input VAT', name_id: 'Input VAT' },
+        '1140': { name: 'Prepaid Income Tax', name_id: 'Prepaid Income Tax' },
+        '1150': { name: 'Creditable Withholding Tax (BIR 2307)', name_id: 'Creditable Withholding Tax (BIR 2307)' },
+        '2100': { name: 'Output VAT', name_id: 'Output VAT' },
+        '2110': { name: 'Withholding Tax Payable', name_id: 'Withholding Tax Payable' },
+        '2200': { name: 'Income Tax Payable', name_id: 'Income Tax Payable' },
+    },
+    SG: {
+        '1130': { name: 'Input GST', name_id: 'Input GST' },
+        '1140': { name: 'Prepaid Income Tax', name_id: 'Prepaid Income Tax' },
+        '1150': { name: 'Withholding Tax Receivable', name_id: 'Withholding Tax Receivable' },
+        '2100': { name: 'Output GST', name_id: 'Output GST' },
+        '2110': { name: 'Withholding Tax Payable', name_id: 'Withholding Tax Payable' },
+        '2200': { name: 'Income Tax Payable', name_id: 'Income Tax Payable' },
+    },
+    MY: {
+        '1130': { name: 'Input Tax (SST)', name_id: 'Input Tax (SST)' },
+        '1140': { name: 'Prepaid Income Tax', name_id: 'Prepaid Income Tax' },
+        '1150': { name: 'Withholding Tax Receivable', name_id: 'Withholding Tax Receivable' },
+        '2100': { name: 'Output Tax (SST)', name_id: 'Output Tax (SST)' },
+        '2110': { name: 'Withholding Tax Payable', name_id: 'Withholding Tax Payable' },
+        '2200': { name: 'Income Tax Payable', name_id: 'Income Tax Payable' },
+    },
+};
+
+/**
+ * The chart to seed for a market. Same 38 accounts and the same codes in the same
+ * order — only the six tax names are localised. An unknown or absent country
+ * returns the Indonesian baseline unchanged, so nothing existing can shift.
+ */
+export function chartForCountry(country) {
+    const overrides = TAX_ACCOUNT_NAMES[String(country || '').toUpperCase()];
+    if (!overrides || !Object.keys(overrides).length) return CHART_OF_ACCOUNTS_SEED;
+    return CHART_OF_ACCOUNTS_SEED.map((a) => (overrides[a.code] ? { ...a, ...overrides[a.code] } : a));
+}
+
+export { TAX_ACCOUNT_NAMES };
+
 // Bumped whenever CHART_OF_ACCOUNTS_SEED gains fields the seeder must backfill
 // onto already-seeded workspaces. seedChartOfAccounts heals any doc whose stored
 // seed_version is lower, so the next change is a one-line bump rather than a new

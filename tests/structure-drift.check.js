@@ -306,6 +306,33 @@ if (rulesCollections && qaRun) {
         ok('positioning', `"${CATEGORY}" consistent across ${CANONICAL_SOURCES.length} canonical sources`);
     }
 
+    // --- market chart variants -----------------------------------------------
+    //
+    // Every market's chart MUST expose the same account codes in the same order.
+    // Posting rules in accounting-engine.js, tax-engine.js and db-service.js
+    // resolve accounts by literal code ('2100', '1130', …), so a variant that
+    // renumbered or dropped one would not fail loudly — it would post to a
+    // missing account and corrupt the ledger silently. Only NAMES may differ.
+    try {
+        const eng = await import('../assets/js/accounting-engine.js');
+        const baseline = eng.CHART_OF_ACCOUNTS_SEED.map((a) => a.code).join(',');
+        const markets = Object.keys(eng.TAX_ACCOUNT_NAMES || {});
+        const drifted = [];
+        for (const m of markets) {
+            const codes = eng.chartForCountry(m).map((a) => a.code).join(',');
+            if (codes !== baseline) drifted.push(m);
+        }
+        // An unknown country must fall back to the baseline, never to nothing.
+        if (eng.chartForCountry('ZZ').length !== eng.CHART_OF_ACCOUNTS_SEED.length) drifted.push('unknown-country fallback');
+        if (drifted.length) {
+            fail('chart-variants', `market chart(s) diverged from the baseline codes: ${drifted.join(', ')}`);
+        } else {
+            ok('chart-variants', `${markets.length} market charts share the baseline's ${eng.CHART_OF_ACCOUNTS_SEED.length} codes`);
+        }
+    } catch (e) {
+        fail('chart-variants', `could not verify market charts: ${e.message}`);
+    }
+
     // --- report ------------------------------------------------------------
     if (failures.length) {
         console.error('\nSTRUCTURAL DRIFT\n');

@@ -1,7 +1,7 @@
 import { getFirestore, initializeFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, orderBy, limit, startAfter, writeBatch, runTransaction, doc, Timestamp, arrayUnion, arrayRemove, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { resolveDb } from "/assets/js/firestore-db.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
-import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, assertManualJournalPolicy, GL, glError, CHART_OF_ACCOUNTS_SEED, CHART_SEED_VERSION, accountPolicy, SYSTEM_ACCOUNT_CODES, validateAccountDraft, signedBalance, suggestCategorizingAccount, periodKey as acctPeriodKey } from "./accounting-engine.js";
+import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, assertManualJournalPolicy, GL, glError, CHART_OF_ACCOUNTS_SEED, CHART_SEED_VERSION, accountPolicy, SYSTEM_ACCOUNT_CODES, validateAccountDraft, signedBalance, suggestCategorizingAccount, periodKey as acctPeriodKey, chartForCountry} from "./accounting-engine.js";
 import { buildTaxAppendix, billWithheldAmount, TAX_RATES } from "./tax-engine.js";
 import { computeAging } from "./aging-engine.js";
 import { buildIncomeStatement, buildBalanceSheet, buildCashFlow } from "./statements-engine.js";
@@ -3510,7 +3510,7 @@ class DataService {
         if (!sourceValue) throw new Error('source_value required');
         const code = this._nullableString(data.target_account_code, 12);
         if (!code) throw new Error('target_account_code required');
-        const catalog = ACCOUNTING_ACCOUNT_INDEX[code];
+        const catalog = this._accountCatalog(code);
         const targetName = this._nullableString(data.target_account_name, 80) || (catalog ? catalog.name : null);
         const targetType = data.target_account_type || (catalog ? catalog.type : null);
         if (!targetName || !targetType) throw new Error('target account name/type required');
@@ -4790,15 +4790,41 @@ class DataService {
     // This is durability, NOT the correctness path: it only runs when someone with
     // write access opens Accounting Center. _withAccountPolicy is what makes the
     // policy flags correct on read for everyone.
+    /**
+     * Catalog entry for an account code, with the market's tax names applied.
+     *
+     * ACCOUNTING_ACCOUNT_INDEX is a module constant built from the Indonesian
+     * baseline, so using it directly to LABEL an account would persist "PPN
+     * Masukan" into a Philippine workspace's mappings. Codes are identical across
+     * markets, so only the name needs localising.
+     */
+    _accountCatalog(code) {
+        const base = ACCOUNTING_ACCOUNT_INDEX[code];
+        if (!base) return null;
+        const country = (typeof window !== 'undefined' && window.FluxyWorkspace && window.FluxyWorkspace.country) || null;
+        const localised = chartForCountry(country).find((a) => a.code === code);
+        return localised ? { ...base, name: localised.name } : base;
+    }
+
     async seedChartOfAccounts(userId) {
         const scope = this._scope(userId);
+        // Seed the market's chart. Same 38 codes everywhere — only the six tax
+        // names differ, because "PPN Masukan" and "PPh 29" are Indonesian tax law
+        // and mean nothing to a business in Manila. Absent country = the
+        // Indonesian baseline, so every existing workspace is untouched.
+        const country = (typeof window !== 'undefined' && window.FluxyWorkspace && window.FluxyWorkspace.country) || null;
+        const seed = chartForCountry(country);
+        // An account is denominated in the workspace's books, not in rupiah. This
+        // was hardcoded 'IDR', so a peso workspace's whole chart claimed rupiah.
+        const accountCurrency = (typeof window !== 'undefined' && window.FluxyMoney)
+            ? window.FluxyMoney.baseCurrency() : 'IDR';
         const existing = await getDocs(collection(this.db, `${scope}/chart_of_accounts`));
         const have = new Map(existing.docs.map((d) => [d.id, d.data()]));
         const entityId = this._resolvedScopeId(userId);
         const batch = writeBatch(this.db);
         let created = 0;
         let backfilled = 0;
-        CHART_OF_ACCOUNTS_SEED.forEach((a) => {
+        seed.forEach((a) => {
             const ref = doc(this.db, `${scope}/chart_of_accounts/${a.code}`);
             const normalBalance = a.normal_balance
                 || ((a.type === 'asset' || a.type === 'expense') ? 'debit' : 'credit');
@@ -4817,7 +4843,7 @@ class DataService {
                     seed_version: CHART_SEED_VERSION,
                     normal_balance: normalBalance,
                     is_active: true,
-                    currency: 'IDR',
+                    currency: accountCurrency,
                     entity_id: entityId,
                     opening_balance: 0,
                     created_at: serverTimestamp()
@@ -5200,7 +5226,7 @@ class DataService {
         const vkey = normalizeVendorKey(vendor_name);
         const code = this._nullableString(account_code, 12);
         if (!userId || !vkey || !code || code === ACCOUNTING_UNMAPPED_FALLBACK_CODE) return null;
-        const catalog = ACCOUNTING_ACCOUNT_INDEX[code];
+        const catalog = this._accountCatalog(code);
         const name = this._nullableString(account_name, 80) || (catalog ? catalog.name : code);
         const type = account_type || (catalog ? catalog.type : null);
         if (!type) return null;
