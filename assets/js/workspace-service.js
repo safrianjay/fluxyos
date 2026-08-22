@@ -458,6 +458,25 @@ async function _resolveWorkspace(app, user) {
                 } : null;
             }
         } catch (_) { /* name/plan optional */ }
+        // LAST RESORT: the workspace doc gave us no currency (read blocked, or a
+        // cached copy that predates the field). onboarding/profile mirrors
+        // base_currency and is a DIFFERENT document with its own cache entry, so
+        // one poisoned entry cannot decide the whole app's currency. Only ever
+        // used to FILL a gap — it never overrides a value the workspace supplied.
+        if (!state.baseCurrency) {
+            try {
+                const profSnap = await fs.getDocFromServer(fs.doc(db, `users/${user.uid}/onboarding/profile`))
+                    .catch(() => fs.getDoc(fs.doc(db, `users/${user.uid}/onboarding/profile`)));
+                const pd = (profSnap && profSnap.exists()) ? (profSnap.data() || {}) : {};
+                if (pd.base_currency) {
+                    console.info('[workspace-service] currency recovered from onboarding profile', pd.base_currency);
+                    state.baseCurrency = pd.base_currency;
+                    state.country = state.country || pd.country || null;
+                    applyBaseCurrency(state.baseCurrency);
+                    writeCachedCurrency(user.uid, state.baseCurrency, state.country);
+                }
+            } catch (_) { /* genuinely unavailable — the IDR default stands */ }
+        }
         confirmed = true;
     } catch (err) {
         // Network/rules error — keep the owner-of-self fallback already published.
