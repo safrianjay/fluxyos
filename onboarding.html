@@ -49,16 +49,25 @@
             <!-- RIGHT: Step content -->
             <section class="onboarding-content" aria-live="polite">
 
-                <!-- STEP 1 -->
-                <div class="onboarding-step" data-step="business_setup" hidden>
-                    <h1 class="onboarding-h1">What business are you setting up?</h1>
-                    <p class="onboarding-sub">Start with the few details FluxyOS needs to create the workspace and understand the business size.</p>
+                <!-- STEP 0 — language, country, currency. Deliberately first:
+                     language governs every later question, and country + base
+                     currency are the only choices on this form the user cannot
+                     undo afterwards. Getting them ahead of the KYC detail means
+                     a mistake costs one dropdown, not a support ticket. -->
+                <div class="onboarding-step" data-step="workspace_locale" hidden>
+                    <h1 class="onboarding-h1">Language and region</h1>
+                    <p class="onboarding-sub">These set how FluxyOS talks to you and how your books are kept. The currency cannot be changed from your dashboard later.</p>
 
-                    <form id="form-business" class="onboarding-form" novalidate>
+                    <form id="form-locale" class="onboarding-form" novalidate>
                         <label class="onboarding-field">
-                            <span class="onboarding-label">Business name</span>
-                            <input type="text" name="business_name" id="f-business-name" required maxlength="120" autocomplete="organization" placeholder="e.g. Kopi Senja Digital" aria-describedby="f-business-name-error">
-                            <span class="onboarding-error" id="f-business-name-error" aria-live="polite"></span>
+                            <span class="onboarding-label">Language</span>
+                            <select name="language" id="f-language" class="onboarding-native-select" required aria-describedby="f-language-error">
+                                <option value="id">Bahasa Indonesia</option>
+                                <option value="en">English</option>
+                            </select>
+                            <span id="f-language-custom" class="onboarding-custom-select" data-source-select="f-language" data-aria-label="Language"></span>
+                            <span class="onboarding-helper">You can change this any time from Settings.</span>
+                            <span class="onboarding-error" id="f-language-error" aria-live="polite"></span>
                         </label>
 
                         <!--
@@ -94,6 +103,20 @@
                             <span id="f-base-currency-custom" class="onboarding-custom-select" data-source-select="f-base-currency" data-aria-label="Base currency"></span>
                             <span class="onboarding-helper">Your base currency is what all your reports, budgets and financial records are kept in. You can change it here during setup, but not from your dashboard afterwards.</span>
                             <span class="onboarding-error" id="f-base-currency-error" aria-live="polite"></span>
+                        </label>
+                    </form>
+                </div>
+
+                <!-- STEP 1 -->
+                <div class="onboarding-step" data-step="business_setup" hidden>
+                    <h1 class="onboarding-h1">What business are you setting up?</h1>
+                    <p class="onboarding-sub">Start with the few details FluxyOS needs to create the workspace and understand the business size.</p>
+
+                    <form id="form-business" class="onboarding-form" novalidate>
+                        <label class="onboarding-field">
+                            <span class="onboarding-label">Business name</span>
+                            <input type="text" name="business_name" id="f-business-name" required maxlength="120" autocomplete="organization" placeholder="e.g. Kopi Senja Digital" aria-describedby="f-business-name-error">
+                            <span class="onboarding-error" id="f-business-name-error" aria-live="polite"></span>
                         </label>
 
                         <label class="onboarding-field">
@@ -320,7 +343,6 @@
                 <footer class="onboarding-actions">
                     <button type="button" id="btn-back" class="onboarding-btn onboarding-btn--ghost" hidden>Back</button>
                     <div class="onboarding-actions-spacer"></div>
-                    <button type="button" id="btn-save-later" class="onboarding-link">Save and finish later</button>
                     <button type="button" id="btn-continue" class="onboarding-btn onboarding-btn--primary">Continue</button>
                     <button type="button" id="btn-submit" class="onboarding-btn onboarding-btn--primary" hidden>Submit setup</button>
                 </footer>

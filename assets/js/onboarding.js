@@ -22,6 +22,11 @@ const auth = getAuth(app);
 const data = new DataService(app);
 
 const STEPS = [
+    // Language and region come FIRST: language governs every question after it,
+    // and country + base currency are the only choices in this whole flow the
+    // user cannot undo. Asking them up front means a mistake costs one dropdown
+    // rather than a support ticket and a data migration.
+    { key: 'workspace_locale', shortTitle: 'Language & region', context: 'Language and region', pillLabel: 'Language & region' },
     { key: 'business_setup', shortTitle: 'Basic setup', context: 'Business setup', pillLabel: 'Business setup' },
     { key: 'account_owner',  shortTitle: 'Account owner', context: 'Account owner', pillLabel: 'Account owner' },
     { key: 'finance_setup',  shortTitle: 'Setup focus', context: 'Learning focus', pillLabel: 'Finance setup' },
@@ -68,9 +73,18 @@ const state = {
     // True once the user picks a base currency themselves, after which changing
     // the country stops overwriting it. See bindCountryCurrencyDefault().
     currencyTouched: false,
+    // True once the profile actually carries country + base_currency, i.e. the
+    // locale step has been completed at least once. Drives the resume pin below.
+    localeConfirmed: false,
     completedSteps: [],
     fields: {
         business_name: '',
+        // Device/UI language. Mirrored to the profile so the KYC reviewer knows
+        // which language this business operates in; the live switch itself is
+        // localStorage via FluxyI18n. Empty by default ON PURPOSE — bindLanguageSelect
+        // seeds it from the language actually in effect, and a hardcoded 'id' here
+        // would shadow that for a user already on English.
+        language: '',
         // Immutable financial configuration once onboarding completes. Defaults
         // to the primary market; the user may change either before submitting.
         country: 'ID',
@@ -136,6 +150,16 @@ onAuthStateChanged(auth, async (user) => {
         if (resumeIdx > 0 && resumeIdx < STEPS.length) state.stepIndex = resumeIdx;
     }
 
+    // A user already mid-onboarding when the locale step shipped has
+    // current_step 'business_setup', which now resolves to index 1 — they would
+    // skip the locale step and their workspace would never receive a base
+    // currency. Pin them to step 0 until the profile actually carries one.
+    if (!state.localeConfirmed) state.stepIndex = 0;
+
+    // Restore anything stashed across a language reload. Runs last so it wins
+    // over the resume logic — the user was already on a step when they switched.
+    restoreLocaleStash();
+
     initUI();
 });
 
@@ -156,6 +180,7 @@ async function hydrateSavedState(userId, progress) {
         if (profile) {
             Object.entries({
                 business_name: profile.business_name,
+                language: profile.language,
                 country: profile.country,
                 base_currency: profile.base_currency,
                 role: profile.role,
@@ -168,6 +193,7 @@ async function hydrateSavedState(userId, progress) {
             }).forEach(([key, value]) => {
                 if (value !== undefined && value !== null) state.fields[key] = value;
             });
+            state.localeConfirmed = !!(profile.country && profile.base_currency);
             if (state.fields.phone_number) {
                 const withoutCode = state.fields.phone_number.startsWith(state.fields.phone_country_code)
                     ? state.fields.phone_number.slice(state.fields.phone_country_code.length)
@@ -211,7 +237,6 @@ function initUI() {
     document.getElementById('btn-continue').addEventListener('click', onContinue);
     document.getElementById('btn-back').addEventListener('click', onBack);
     document.getElementById('btn-submit').addEventListener('click', onSubmit);
-    document.getElementById('btn-save-later').addEventListener('click', onSaveLater);
     document.getElementById('tos-agree-checkbox')?.addEventListener('change', () => {
         document.getElementById('tos-agree-label')?.classList.remove('is-invalid');
         const err = document.getElementById('tos-agree-error');
@@ -220,6 +245,7 @@ function initUI() {
 
     // Live-bind form fields
     bindInput('#f-business-name', 'business_name');
+    bindLanguageSelect();
     bindInput('#f-country', 'country');
     bindInput('#f-base-currency', 'base_currency');
     bindCountryCurrencyDefault();
@@ -230,6 +256,7 @@ function initUI() {
     bindLegalNameInput();
     bindPhoneInputs();
     [
+        '#f-language-custom',
         '#f-country-custom',
         '#f-base-currency-custom',
         '#f-role-custom',
@@ -530,6 +557,55 @@ function bindInput(selector, fieldKey) {
  * moves the currency to that country's default ONLY while the user has not
  * deliberately chosen one themselves; after that, their choice stands.
  */
+const LOCALE_STASH_KEY = 'fluxy_onboarding_stash';
+
+/*
+ * Language picker.
+ *
+ * FluxyI18n.setLang('en') RELOADS the page — reverting Bahasa in place would mean
+ * tracking every original string, so the dictionary reloads instead. Mid-onboarding
+ * that would discard whatever the user had typed, so stash the in-flight fields
+ * first and restore them on the way back in.
+ */
+function bindLanguageSelect() {
+    const el = document.querySelector('#f-language');
+    if (!el) return;
+    // Reflect the language actually in effect. A returning user may already be on
+    // English via Settings while their profile carries nothing — showing "Bahasa
+    // Indonesia" over an English page is the control lying about its own state.
+    if (!state.fields.language) state.fields.language = window.FluxyI18n?.getLang?.() || 'id';
+    el.value = state.fields.language;
+    el.addEventListener('change', () => {
+        const lang = el.value === 'en' ? 'en' : 'id';
+        state.fields.language = lang;
+        clearFieldError('#f-language');
+        try {
+            sessionStorage.setItem(LOCALE_STASH_KEY, JSON.stringify({
+                fields: state.fields,
+                stepIndex: state.stepIndex,
+                currencyTouched: state.currencyTouched
+            }));
+        } catch (_) {}
+        // Translates in place for 'id'; reloads for 'en'. Either way the stash
+        // above makes the round trip lossless.
+        window.FluxyI18n?.setLang(lang);
+    });
+}
+
+/** Re-apply anything stashed before a language reload. Consumed once. */
+function restoreLocaleStash() {
+    let raw = null;
+    try { raw = sessionStorage.getItem(LOCALE_STASH_KEY); } catch (_) {}
+    if (!raw) return;
+    try { sessionStorage.removeItem(LOCALE_STASH_KEY); } catch (_) {}
+    try {
+        const saved = JSON.parse(raw);
+        if (saved && saved.fields) Object.assign(state.fields, saved.fields);
+        if (typeof saved?.stepIndex === 'number') state.stepIndex = saved.stepIndex;
+        if (typeof saved?.currencyTouched === 'boolean') state.currencyTouched = saved.currencyTouched;
+    } catch (_) {}
+}
+
 function bindCountryCurrencyDefault() {
     const country = document.querySelector('#f-country');
     const currency = document.querySelector('#f-base-currency');
@@ -782,11 +858,17 @@ function validateStep() {
     const step = STEPS[state.stepIndex].key;
     clearInvalidMarkers();
 
+    if (step === 'workspace_locale') {
+        return validateRequired([
+            ['#f-language', state.fields.language, 'f-language-error'],
+            ['#f-country', state.fields.country, 'f-country-error'],
+            ['#f-base-currency', state.fields.base_currency, 'f-base-currency-error']
+        ]);
+    }
+
     if (step === 'business_setup') {
         const required = [
             ['#f-business-name', state.fields.business_name?.trim(), 'f-business-name-error'],
-            ['#f-country', state.fields.country, 'f-country-error'],
-            ['#f-base-currency', state.fields.base_currency, 'f-base-currency-error'],
             ['#f-role', state.fields.role, 'f-role-error'],
             ['#f-main-goal', state.fields.main_goal, 'f-main-goal-error'],
             ['#f-revenue', state.fields.monthly_revenue_range, 'f-revenue-error'],
@@ -886,6 +968,15 @@ async function onContinue() {
     const stepKey = STEPS[state.stepIndex].key;
 
     try {
+        if (stepKey === 'workspace_locale') {
+            await data.saveOnboardingProfile(state.user.uid, {
+                language: state.fields.language,
+                country: state.fields.country,
+                base_currency: state.fields.base_currency
+            });
+            state.localeConfirmed = true;
+        }
+
         if (stepKey === 'business_setup') {
             await data.saveOnboardingProfile(state.user.uid, {
                 business_name: state.fields.business_name,
@@ -954,15 +1045,6 @@ function onBack() {
     showStep('backward');
 }
 
-async function onSaveLater() {
-    try {
-        await data.skipOnboarding(state.user.uid, STEPS[state.stepIndex].key);
-    } catch (err) {
-        // proceed anyway — dashboard will still render the gate based on fail-open behavior
-    }
-    window.location.href = '/dashboard';
-}
-
 async function onSubmit() {
     if (state.submitting) return;
     const tosCheckbox = document.getElementById('tos-agree-checkbox');
@@ -989,6 +1071,7 @@ async function onSubmit() {
         updateLearningTourState();
         await data.saveOnboardingProfile(state.user.uid, {
             business_name: state.fields.business_name,
+            language: state.fields.language,
             country: state.fields.country,
             base_currency: state.fields.base_currency,
             role: state.fields.role,

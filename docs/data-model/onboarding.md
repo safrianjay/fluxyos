@@ -20,8 +20,8 @@ redirected.
 
 | Document | Fields |
 |----------|--------|
-| `progress` | `onboarding_completed` (bool), `onboarding_exempt` (bool), `eligible_for_onboarding_gate` (bool), `kyc_enforced` (bool — see KYC review gate below), `current_step` (`business_setup`/`account_owner`/`finance_setup`/`review`/`complete`), `completed_steps` (string[]), `selected_first_action` (first selected setup preference, backward-compatible), `selected_first_actions` (string[]), `selected_learning_tours` (string[]), `primary_learning_tour` (string \| null), `skipped` (bool), `source` (`onboarding_v2`/`legacy_exemption`), `created_at`, `updated_at`, `completed_at`, `skipped_at` |
-| `profile` | `business_name`, `country` (ISO 3166-1 alpha-2: `ID`/`PH`/`SG`/`MY`), `base_currency` (`IDR`/`PHP`/`SGD`/`MYR`) — **mirrors** of the canonical workspace fields, carried here so the KYC reviewer sees them alongside the documents, `role` (one of: `Owner / Founder`, `Finance admin`, `Accountant`, `Operations manager`, `Staff`), `main_goal`, `monthly_revenue_range`, `employee_count_range`, `legal_full_name`, `phone_country_code`, `phone_number` (normalized E.164-like string), `created_at`, `updated_at` |
+| `progress` | `onboarding_completed` (bool), `onboarding_exempt` (bool), `eligible_for_onboarding_gate` (bool), `kyc_enforced` (bool — see KYC review gate below), `current_step` (`workspace_locale`/`business_setup`/`account_owner`/`finance_setup`/`review`/`complete`), `completed_steps` (string[]), `selected_first_action` (first selected setup preference, backward-compatible), `selected_first_actions` (string[]), `selected_learning_tours` (string[]), `primary_learning_tour` (string \| null), `skipped` (bool — **legacy**; the skip affordance was removed 2026-08-22, KYC must be completed. `DataService.skipOnboarding` is retained for old records only and has no caller), `source` (`onboarding_v2`/`legacy_exemption`), `created_at`, `updated_at`, `completed_at`, `skipped_at` |
+| `profile` | `business_name`, `language` (`id`/`en` — mirror of the UI language so the reviewer knows which language the business operates in; the live setting is localStorage `fluxyos-lang`), `country` (ISO 3166-1 alpha-2: `ID`/`PH`/`SG`/`MY`), `base_currency` (`IDR`/`PHP`/`SGD`/`MYR`) — **mirrors** of the canonical workspace fields, carried here so the KYC reviewer sees them alongside the documents, `role` (one of: `Owner / Founder`, `Finance admin`, `Accountant`, `Operations manager`, `Staff`), `main_goal`, `monthly_revenue_range`, `employee_count_range`, `legal_full_name`, `phone_country_code`, `phone_number` (normalized E.164-like string), `created_at`, `updated_at` |
 | `documents` | `identity_document_status` (`not_uploaded`/`uploaded`), `identity_document_storage_path`, `identity_document_file_name`, `business_document_status`, `business_document_storage_path`, `business_document_file_name`, `created_at`, `updated_at` |
 
 **Detection logic** lives in `assets/js/onboarding-gate.js`. Imported as an ES
@@ -141,6 +141,29 @@ dashboard action changes from Dismiss to Completed; clicking it stores
 **Critical order:** App pages must run auth and `FluxyOnboardingGate.applyToPage`
 first. If the onboarding gate renders, clear `sessionStorage.fluxy_pending_tour`
 and do not render Quick ways to get started or start coachmarks.
+
+### Step 0 — Language and region (added 2026-08-22)
+
+Onboarding opens on `workspace_locale`: **Language, Business country, Base
+currency**. Language is first because it governs every question after it; the
+other two are the only choices in the flow the user cannot undo, so a mistake
+costs one dropdown rather than a support ticket.
+
+`FluxyI18n.setLang('en')` **reloads the page** (reverting Bahasa in place would
+mean tracking every original string). Mid-onboarding that would discard the
+in-flight form, so `bindLanguageSelect` stashes fields + step into
+`sessionStorage.fluxy_onboarding_stash` first and `restoreLocaleStash()` re-applies
+them on the way back in.
+
+**Resume pin:** a user already mid-onboarding when this shipped carries
+`current_step: 'business_setup'`, which now resolves to index 1 — they would skip
+the locale step and their workspace would never receive a base currency. So the
+wizard pins `stepIndex = 0` until `profile.country` **and** `profile.base_currency`
+both exist (`state.localeConfirmed`).
+
+**Skip removed.** "Save and finish later" is gone: KYC must be completed. The
+`skipped` field and `DataService.skipOnboarding` survive for existing records but
+have no caller.
 
 ### Business country & base currency (set once, at signup)
 
