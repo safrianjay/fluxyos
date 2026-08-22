@@ -414,7 +414,18 @@ async function _resolveWorkspace(app, user) {
         let wsSnap = null;
         for (let attempt = 0; attempt < 2 && !wsSnap; attempt += 1) {
             try {
-                wsSnap = await fs.getDoc(fs.doc(db, `workspaces/${state.id}`));
+                // SERVER read, never the cache. The SDK serves getDoc() from
+                // IndexedDB when the realtime channel is degraded — and that
+                // channel is exactly what ad blockers and strict privacy modes
+                // break. A workspace stamped with base_currency AFTER its doc was
+                // last cached therefore kept resolving to the old copy, so a peso
+                // workspace rendered rupiah on every load with no way to recover.
+                // Falls back to the cached read when the server is unreachable.
+                try {
+                    wsSnap = await fs.getDocFromServer(fs.doc(db, `workspaces/${state.id}`));
+                } catch (_) {
+                    wsSnap = await fs.getDoc(fs.doc(db, `workspaces/${state.id}`));
+                }
             } catch (e) {
                 if (attempt === 0) { await new Promise((r) => setTimeout(r, 400)); continue; }
                 console.warn('[workspace-service] profile read failed; keeping cached currency', state.baseCurrency || 'IDR', e);

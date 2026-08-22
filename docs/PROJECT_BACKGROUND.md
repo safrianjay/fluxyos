@@ -496,6 +496,36 @@ FluxyOS design language.
 > translate for a non-IDR workspace. Deferred deliberately — rewriting them risks
 > breaking Indonesian for today's customers, and it is its own change.
 >
+> ### ⚠️ GATING AND CONFIG READS MUST COME FROM THE SERVER
+>
+> The Firestore web SDK serves `getDoc()` from its IndexedDB cache whenever the
+> realtime channel is degraded — and that channel is exactly what ad blockers,
+> Brave Shields and strict privacy modes break (the same reason
+> `firestore-db.js` forces long polling).
+>
+> For ordinary data a stale read is a cosmetic lag. For a **decision** it is a
+> trap, because nothing can ever invalidate the stale entry while the channel
+> stays blocked. Two production symptoms came from exactly this:
+>
+> - an account approved on the server kept reading its pre-approval
+>   `internal_users` copy and was shown "Your details are under review" on
+>   **every** reload, persistently;
+> - a workspace stamped with `base_currency` after its doc was last cached kept
+>   resolving to the old copy, so a peso workspace rendered rupiah with no way to
+>   recover.
+>
+> These three reads therefore use `getDocFromServer()` with the cached read as a
+> FALLBACK, never as the default:
+>
+> | Read | Decides |
+> |---|---|
+> | `internal_users/{uid}` | KYC lock (`getInternalUserFromServer`) |
+> | `workspaces/{id}` | base currency + country |
+> | `users/{uid}/onboarding/progress` | the onboarding wall |
+>
+> The rule: **if a read decides what a user may see, force the server.** Falling
+> back to cache on a genuine network failure is correct; defaulting to it is not.
+>
 > 7. **A new module must register its collections in BOTH lists above** — rule 2
 >    here and `FINANCE_COLLECTIONS` in `scripts/qa-run.js`, which is what `npm run
 >    qa` actually executes. `vendors` shipped workspace-scoped but was added to

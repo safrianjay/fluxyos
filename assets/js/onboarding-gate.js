@@ -6,7 +6,7 @@ import { getApps, initializeApp } from "https://www.gstatic.com/firebasejs/10.7.
 import {
     getFirestore,
     doc,
-    getDoc,
+    getDoc, getDocFromServer,
     setDoc,
     addDoc,
     collection,
@@ -61,7 +61,15 @@ export async function getOnboardingProgress(userId) {
     // shown a setup wall.
     for (let attempt = 0; attempt < 2; attempt += 1) {
         try {
-            const snap = await getDoc(doc(getDb(), `users/${userId}/onboarding/progress`));
+            // SERVER read: a cached pre-completion copy would show the setup
+            // wall to someone who has already finished. Cache is the fallback,
+            // not the default.
+            let snap;
+            try {
+                snap = await getDocFromServer(doc(getDb(), `users/${userId}/onboarding/progress`));
+            } catch (_) {
+                snap = await getDoc(doc(getDb(), `users/${userId}/onboarding/progress`));
+            }
             return snap.exists() ? snap.data() : null;
         } catch (err) {
             if (attempt === 0) { await new Promise((r) => setTimeout(r, 400)); continue; }

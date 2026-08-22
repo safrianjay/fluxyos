@@ -1,4 +1,4 @@
-import { getFirestore, initializeFirestore, collection, query, where, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, orderBy, limit, startAfter, writeBatch, runTransaction, doc, Timestamp, arrayUnion, arrayRemove, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, initializeFirestore, collection, query, where, getDocs, getDoc, getDocFromServer, setDoc, addDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, orderBy, limit, startAfter, writeBatch, runTransaction, doc, Timestamp, arrayUnion, arrayRemove, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { resolveDb } from "/assets/js/firestore-db.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
 import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, assertManualJournalPolicy, GL, glError, CHART_OF_ACCOUNTS_SEED, CHART_SEED_VERSION, accountPolicy, SYSTEM_ACCOUNT_CODES, validateAccountDraft, signedBalance, suggestCategorizingAccount, periodKey as acctPeriodKey, chartForCountry} from "./accounting-engine.js";
@@ -9529,6 +9529,30 @@ class DataService {
     async getInternalUser(userId) {
         const snap = await getDoc(this._internalUserDoc(userId));
         return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    }
+
+    /**
+     * internal_users row read from the SERVER, never the local cache.
+     *
+     * This is the KYC gate's decision input, and a cached copy is worse than no
+     * copy: the web SDK serves getDoc() from IndexedDB when the realtime channel
+     * is degraded, and the channel that would refresh that cache is exactly the
+     * one ad blockers and strict privacy modes break. So an account approved on
+     * the server kept reading 'submitted' locally and was shown "Your details are
+     * under review" on every single reload — persistently, because nothing could
+     * ever invalidate the stale entry.
+     *
+     * Falls back to the cached read if the server is genuinely unreachable, so a
+     * real offline user is not stranded — resolveKycState already fails open on a
+     * throw, and a stale-but-present answer is better than none there.
+     */
+    async getInternalUserFromServer(userId) {
+        try {
+            const snap = await getDocFromServer(this._internalUserDoc(userId));
+            return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+        } catch (_) {
+            return this.getInternalUser(userId);
+        }
     }
 
     // Public Contact Sales leads (written by the submit-contact-sales Netlify

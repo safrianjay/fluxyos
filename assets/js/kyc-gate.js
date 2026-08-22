@@ -118,13 +118,16 @@ export async function resolveKycState(authUser) {
 
     let internal;
     try {
-        internal = await ds.getInternalUser(authUser.uid);
-        // One retry before inferring: with a blocked or flaky channel the first
-        // read can come back empty for a row that exists, and an empty read is
-        // what sends us down the speculative-block path below.
+        // SERVER read, never the cache. The SDK serves getDoc() from IndexedDB
+        // when the realtime channel is degraded, and that channel is precisely
+        // what ad blockers break — so an approved account kept reading its
+        // pre-approval 'submitted' copy and was locked out on every reload.
+        internal = await ds.getInternalUserFromServer(authUser.uid);
+        // One retry before inferring: an empty read is what sends us down the
+        // speculative-block path below.
         if (!internal) {
             await new Promise((r) => setTimeout(r, 400));
-            internal = await ds.getInternalUser(authUser.uid);
+            internal = await ds.getInternalUserFromServer(authUser.uid);
         }
     } catch (_) {
         return OPEN; // read failed → fail open rather than strand a real user
