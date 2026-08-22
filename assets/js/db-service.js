@@ -795,7 +795,7 @@ class DataService {
         // Multi-currency (Stage B): the bill's face currency. USD/SGD amounts are
         // stored as minor units (cents), same convention as invoices; they stay
         // OUTSIDE the IDR kernel + budget until payment converts them to Rupiah.
-        const currency = ['IDR', 'USD', 'SGD'].includes(rest.currency) ? rest.currency : 'IDR';
+        const currency = window.FluxyMoney.isSupported(rest.currency) ? rest.currency : window.FluxyMoney.baseCurrency();
         const payload = {
             ...rest,
             currency,
@@ -2795,7 +2795,7 @@ class DataService {
                 ? this._stringOrDefault(invoiceData.customer_address, '', 500) || null
                 : null,
             customer_language: this._stringOrDefault(invoiceData.customer_language, 'English', 40),
-            currency: ['IDR', 'USD', 'SGD'].includes(invoiceData.currency) ? invoiceData.currency : 'IDR',
+            currency: window.FluxyMoney.isSupported(invoiceData.currency) ? invoiceData.currency : window.FluxyMoney.baseCurrency(),
             issue_date: this._coerceTimestampOrNow(invoiceData.issue_date),
             due_date: invoiceData.due_date ? this._coerceTimestampOrNow(invoiceData.due_date) : null,
             due_terms: this._allowedValue(invoiceData.due_terms, dueTermsAllowed, 'due_in_30_days'),
@@ -7101,7 +7101,7 @@ class DataService {
         return {
             default_account_code: code || null,
             default_account_name: code ? (this._nullableString(data.default_account_name, 80) || (catalog ? catalog.name : null)) : null,
-            default_currency: ['IDR', 'USD', 'SGD'].includes(data.default_currency) ? data.default_currency : (prev ? (prev.default_currency || 'IDR') : 'IDR'),
+            default_currency: window.FluxyMoney.isSupported(data.default_currency) ? data.default_currency : (prev ? (prev.default_currency || window.FluxyMoney.baseCurrency()) : window.FluxyMoney.baseCurrency()),
             payment_terms: terms.includes(data.payment_terms) ? data.payment_terms : null,
             npwp: this._nullableString(data.npwp, 32),
             notes: this._nullableString(data.notes, 500)

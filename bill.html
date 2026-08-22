@@ -216,7 +216,7 @@
                     <div id="bill-pay-amount-block">
                         <label for="bill-pay-amount" class="block text-[12px] font-semibold text-gray-500 mb-1.5">Amount to pay</label>
                         <div class="flex items-center gap-2">
-                            <span class="text-[13px] text-gray-500" data-money-symbol>Rp</span>
+                            <span class="text-[13px] text-gray-500" data-money-symbol data-money-placeholder></span>
                             <input id="bill-pay-amount" type="text" inputmode="numeric" class="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] tabular-nums focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]" placeholder="0">
                         </div>
                         <p class="mt-1 text-[11px] text-gray-400">Defaults to the full balance. Enter less for a partial payment.</p>
@@ -284,7 +284,7 @@
                 <div class="px-5 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0">
                     <div class="flex-1 min-w-0">
                         <p class="text-[12px] text-gray-500"><span id="vendor-pay-count">0 bills</span> selected</p>
-                        <p class="text-[18px] font-bold text-gray-900 tabular-nums" id="vendor-pay-total">Rp0</p>
+                        <p class="text-[18px] font-bold text-gray-900 tabular-nums" id="vendor-pay-total" data-money-placeholder></p>
                     </div>
                     <button id="vendor-pay-cancel" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Cancel</button>
                     <button id="vendor-pay-confirm" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--primary" disabled>Pay selected</button>

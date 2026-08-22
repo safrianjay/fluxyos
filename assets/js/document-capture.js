@@ -89,7 +89,7 @@
         bankAccounts: [],
     };
 
-    const SUPPORTED_CURRENCIES = ['IDR', 'USD', 'SGD'];
+    const SUPPORTED_CURRENCIES = window.FluxyMoney.SUPPORTED;
     // FluxyMoney owns every currency rule (symbols, decimals, minor units,
     // as-you-type grouping). Never re-implement them here.
     function money() { return window.FluxyMoney || null; }

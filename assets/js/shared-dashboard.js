@@ -1159,6 +1159,8 @@ window.showAddTransactionModal = function(options = {}) {
                                         <option value="IDR" selected>IDR</option>
                                         <option value="USD">USD</option>
                                         <option value="SGD">SGD</option>
+                                        <option value="PHP">PHP</option>
+                                        <option value="MYR">MYR</option>
                                     </select>` : ''}
                                 </div>
                                 ${context === 'bill' ? `<p id="tx-currency-hint" class="fluxy-drawer-hint hidden">Foreign-currency bill — it stays outside your Rupiah ledger until you pay it (you'll enter the exchange rate then).</p>` : ''}
@@ -1564,7 +1566,7 @@ window.showAddTransactionModal = function(options = {}) {
     // user's manual change and by applying a vendor's default currency.
     function applyBillCurrency(cur) {
         if (!currencySelect) return;
-        const c = ['IDR', 'USD', 'SGD'].includes(cur) ? cur : window.FluxyMoney.baseCurrency();
+        const c = window.FluxyMoney.isSupported(cur) ? cur : window.FluxyMoney.baseCurrency();
         currencySelect.value = c;
         const label = document.getElementById('tx-amount-cur');
         if (label) label.textContent = `(${window.FluxyMoney.symbol(c)})`;

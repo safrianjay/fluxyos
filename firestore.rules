@@ -1411,7 +1411,7 @@ service cloud.firestore {
         && data.name_key is string && data.name_key.size() > 0 && data.name_key.size() <= 160
         && (!('default_account_code' in data) || data.default_account_code == null || (data.default_account_code is string && data.default_account_code.size() <= 12))
         && (!('default_account_name' in data) || data.default_account_name == null || (data.default_account_name is string && data.default_account_name.size() <= 80))
-        && data.default_currency in ['IDR', 'USD', 'SGD']
+        && isFaceCurrency(data.default_currency)
         && (!('payment_terms' in data) || data.payment_terms == null || data.payment_terms in ['due_on_receipt', 'due_in_7_days', 'due_in_14_days', 'due_in_30_days'])
         && (!('npwp' in data) || data.npwp == null || (data.npwp is string && data.npwp.size() <= 32))
         && (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 500))
@@ -1698,7 +1698,7 @@ service cloud.firestore {
         && data.invoice_number.size() > 0
         && data.invoice_number.size() <= 40
         && data.status in ['draft', 'open', 'void', 'paid']
-        && data.currency in ['IDR', 'USD', 'SGD']
+        && isFaceCurrency(data.currency)
         && (!('amount_paid_idr' in data) || data.amount_paid_idr == null || (data.amount_paid_idr is int && data.amount_paid_idr >= 0))
         && (!('fx_rate' in data) || data.fx_rate == null || data.fx_rate is number)
         && (!('fx_rate_date' in data) || data.fx_rate_date == null || (data.fx_rate_date is string && data.fx_rate_date.size() <= 20))
@@ -2722,6 +2722,14 @@ service cloud.firestore {
       return c in ['IDR', 'PHP', 'SGD', 'MYR'];
     }
 
+    // Invoice/bill FACE currencies: every workspace accounting currency plus USD.
+    // A business must be able to invoice in its OWN currency — this list omitted
+    // PHP and MYR, so a Philippine workspace could not raise a peso invoice at all.
+    // Mirrored by SUPPORTED in assets/js/money-format.js.
+    function isFaceCurrency(c) {
+      return c in ['IDR', 'USD', 'SGD', 'PHP', 'MYR'];
+    }
+
     function isValidWorkspaceProfile(data) {
       return data.keys().hasOnly(['owner_uid', 'name', 'created_at', 'updated_at', 'plan_id', 'plan_name', 'subscription_status', 'billing_frequency', 'plan_synced_at', 'trial_started_at', 'trial_ends_at', 'current_period_end', 'country', 'base_currency'])
         && data.owner_uid is string
@@ -3012,7 +3020,7 @@ service cloud.firestore {
       return (!('bill_number' in data) || data.bill_number == null || data.bill_number.size() <= 40)
         && (!('outstanding_amount' in data) || data.outstanding_amount == null || (data.outstanding_amount >= 0 && data.outstanding_amount <= 999999999999))
         && (!('amount_paid' in data) || data.amount_paid == null || (data.amount_paid >= 0 && data.amount_paid <= 999999999999))
-        && (!('currency' in data) || data.currency in ['IDR', 'USD', 'SGD'])
+        && (!('currency' in data) || isFaceCurrency(data.currency))
         && (!('amount_paid_idr' in data) || data.amount_paid_idr == null || data.amount_paid_idr >= 0)
         && (!('fx_rate' in data) || data.fx_rate == null || data.fx_rate is number)
         && (!('fx_rate_date' in data) || data.fx_rate_date == null || data.fx_rate_date.size() <= 20);
@@ -3053,7 +3061,7 @@ service cloud.firestore {
         && (!('bill_number' in data) || data.bill_number.size() <= 40)
         && (!('outstanding_amount' in data) || (data.outstanding_amount >= 0 && data.outstanding_amount <= 999999999999))
         && (!('amount_paid' in data) || (data.amount_paid >= 0 && data.amount_paid <= 999999999999))
-        && (!('currency' in data) || data.currency in ['IDR', 'USD', 'SGD'])
+        && (!('currency' in data) || isFaceCurrency(data.currency))
         && (!('amount_paid_idr' in data) || data.amount_paid_idr >= 0)
         && (!('fx_rate' in data) || data.fx_rate is number)
         && (!('fx_rate_date' in data) || data.fx_rate_date.size() <= 20)

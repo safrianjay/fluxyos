@@ -117,15 +117,15 @@
                             <div class="mt-6 grid gap-4 md:grid-cols-3">
                                 <article class="rounded-[10px] border border-slate-200 bg-slate-50 px-5 py-4">
                                     <p class="budget-caps">Annual Budget</p>
-                                    <p id="budget-annual-total" class="budget-number mt-3 text-[20px] font-semibold leading-none tracking-[-0.02em]">Rp0</p>
+                                    <p id="budget-annual-total" class="budget-number mt-3 text-[20px] font-semibold leading-none tracking-[-0.02em]" data-money-placeholder></p>
                                 </article>
                                 <article class="rounded-[10px] border border-slate-200 bg-slate-50 px-5 py-4">
                                     <p class="budget-caps">Spent + Reserved</p>
-                                    <p id="budget-spent-reserved" class="budget-number mt-3 text-[20px] font-semibold leading-none tracking-[-0.02em]">Rp0</p>
+                                    <p id="budget-spent-reserved" class="budget-number mt-3 text-[20px] font-semibold leading-none tracking-[-0.02em]" data-money-placeholder></p>
                                 </article>
                                 <article class="rounded-[10px] border border-slate-200 bg-slate-50 px-5 py-4">
                                     <p class="budget-caps">Not Planned Yet</p>
-                                    <p id="budget-not-planned" class="budget-number mt-3 text-[20px] font-semibold leading-none tracking-[-0.02em]">Rp0</p>
+                                    <p id="budget-not-planned" class="budget-number mt-3 text-[20px] font-semibold leading-none tracking-[-0.02em]" data-money-placeholder></p>
                                 </article>
                             </div>
 
@@ -136,17 +136,17 @@
                                         <p class="mt-2 text-[14px] leading-6 text-slate-500">Shows how much of the annual budget has been split into monthly, quarterly, or custom working budgets.</p>
                                     </div>
                                     <p class="budget-number text-[14px] font-bold text-slate-900">
-                                        <span id="budget-planned-inline">Rp0</span>
-                                        <span class="font-semibold text-slate-400">of <span id="budget-annual-inline">Rp0</span></span>
+                                        <span id="budget-planned-inline" data-money-placeholder></span>
+                                        <span class="font-semibold text-slate-400">of <span id="budget-annual-inline" data-money-placeholder></span></span>
                                     </p>
                                 </div>
                                 <div class="budget-progress-track mt-5">
                                     <div id="budget-planned-bar" class="budget-progress-fill" style="width: 0%"></div>
                                 </div>
                                 <div class="mt-4 flex flex-col gap-2 text-[14px] text-slate-500 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-8">
-                                    <span><strong id="budget-planned-total" class="budget-number text-slate-900">Rp0</strong> planned into periods</span>
-                                    <span><strong id="budget-not-planned-inline" class="budget-number text-slate-900">Rp0</strong> not planned yet</span>
-                                    <span><strong id="budget-spent-year" class="budget-number text-slate-900">Rp0</strong> spent or reserved this year</span>
+                                    <span><strong id="budget-planned-total" class="budget-number text-slate-900" data-money-placeholder></strong> planned into periods</span>
+                                    <span><strong id="budget-not-planned-inline" class="budget-number text-slate-900" data-money-placeholder></strong> not planned yet</span>
+                                    <span><strong id="budget-spent-year" class="budget-number text-slate-900" data-money-placeholder></strong> spent or reserved this year</span>
                                 </div>
                             </div>
                         </div>

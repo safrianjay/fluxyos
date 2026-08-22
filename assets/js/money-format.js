@@ -51,7 +51,7 @@
 
     // Invoice/bill FACE currencies. Mirrored by firestore.rules — widening this
     // without widening the rules produces permission-denied on save.
-    var SUPPORTED = ['IDR', 'USD', 'SGD'];
+    var SUPPORTED = ['IDR', 'USD', 'SGD', 'PHP', 'MYR'];
 
     // Workspace BASE currencies. Mirrored by isValidWorkspaceProfile in
     // firestore.rules and by the onboarding country->currency map.

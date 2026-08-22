@@ -155,6 +155,32 @@ async function main() {
             created_at: serverTimestamp(), updated_at: serverTimestamp()
         }));
 
+    // ---- a business must be able to invoice in its OWN currency -----------
+    console.log('\n— face currencies include the workspace currency —');
+    await expectOutcome('a PHP invoice in a PHP workspace', true, () =>
+        setDoc(doc(db, `workspaces/${WS_PH}/invoices/inv1`), {
+            invoice_number: 'INV-202608-0001', status: 'draft', currency: 'PHP',
+            customer_name: 'Cliente', customer_email: 'c@example.com', customer_language: 'English',
+            issue_date: serverTimestamp(), due_terms: 'due_in_30_days', item_count: 1,
+            subtotal_amount: 1250000, tax_amount: 0, discount_amount: 0,
+            total_amount: 1250000, amount_due: 1250000,
+            payment_collection_method: 'manual_only', payment_link_enabled: false,
+            payment_page_url: null, created_at: serverTimestamp(), updated_at: serverTimestamp(),
+            created_by: uid, updated_by: uid
+        }));
+
+    await expectOutcome('an unsupported face currency (THB) is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS_PH}/invoices/inv2`), {
+            invoice_number: 'INV-202608-0002', status: 'draft', currency: 'THB',
+            customer_name: 'Cliente', customer_email: 'c@example.com', customer_language: 'English',
+            issue_date: serverTimestamp(), due_terms: 'due_in_30_days', item_count: 1,
+            subtotal_amount: 1000, tax_amount: 0, discount_amount: 0,
+            total_amount: 1000, amount_due: 1000,
+            payment_collection_method: 'manual_only', payment_link_enabled: false,
+            payment_page_url: null, created_at: serverTimestamp(), updated_at: serverTimestamp(),
+            created_by: uid, updated_by: uid
+        }));
+
     console.log(`\n${passed} passed, ${failed} failed`);
     process.exit(failed ? 1 : 0);
 }

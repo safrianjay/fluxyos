@@ -2824,6 +2824,7 @@ main > header {
  * the currency is known (with a 6s failsafe so a failed resolve can never leave
  * the app masked). Reuses the existing pulse idiom rather than inventing a
  * second loading language. */
+.fluxy-booting [data-money-placeholder],
 .fluxy-booting .metric-value,
 .fluxy-booting .fluxy-kpi-value,
 .fluxy-booting .kpi-detail-value,
@@ -2843,11 +2844,57 @@ main > header {
 /* The value is masked, not the label — a KPI card still reads as a KPI card. */
 .fluxy-booting .metric-value { min-width: 8ch; }
 
+/* Marked placeholders are EMPTY (their figure was removed from the markup so the
+ * browser cannot paint a rupiah before JS runs), so they need an explicit height
+ * or the skeleton would collapse to a line. */
+.fluxy-booting [data-money-placeholder] {
+    min-height: 1em;
+    vertical-align: middle;
+}
+
 @media (prefers-reduced-motion: reduce) {
+    .fluxy-booting [data-money-placeholder],
     .fluxy-booting .metric-value,
     .fluxy-booting .fluxy-kpi-value,
     .fluxy-booting .kpi-detail-value,
     .fluxy-booting .acct-kpi-value,
     .fluxy-booting [data-money-symbol],
     .fluxy-booting .fluxy-table-money { animation: none; background: #E5E7EB; }
+}
+
+/* ── sr-only: owned here, not borrowed from the CDN ──────────────────────────
+ *
+ * Visually hides an element while leaving it operable by assistive tech and by
+ * a <label for>. Every file input in the app relies on it: the real
+ * <input type="file"> is sr-only and a styled label drives it.
+ *
+ * It was previously only defined in onboarding.css, which app pages do not load,
+ * so on the dashboard it came solely from the Tailwind Play CDN's JIT. That JIT
+ * generates classes by scanning the DOM, and for markup injected LATER — a
+ * drawer opened on demand — it is a race. When it lost, the raw
+ * "Choose File | no file selected" control appeared in the Add Revenue drawer.
+ * Owning the definition removes the timing dependency entirely. */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* Keyboard users must still be able to reach a focused control. */
+.focus\:not-sr-only:focus,
+.sr-only:focus-visible {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
 }

@@ -39,7 +39,9 @@ function firstName(full) {
 const CURRENCY_CFG = {
     IDR: { symbol: 'Rp', decimals: 0, minorPerUnit: 1, locale: 'id-ID' },
     USD: { symbol: '$', decimals: 2, minorPerUnit: 100, locale: 'en-US' },
-    SGD: { symbol: 'S$', decimals: 2, minorPerUnit: 100, locale: 'en-US' },
+    SGD: { symbol: 'S$', decimals: 2, minorPerUnit: 100, locale: 'en-SG' },
+    PHP: { symbol: '₱', decimals: 2, minorPerUnit: 100, locale: 'en-PH' },
+    MYR: { symbol: 'RM', decimals: 2, minorPerUnit: 100, locale: 'ms-MY' },
 };
 function formatMoney(minor, currency) {
     const c = CURRENCY_CFG[currency] || CURRENCY_CFG.IDR;

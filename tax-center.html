@@ -280,7 +280,7 @@
                         <p class="fluxy-table-subtitle mt-1">Monthly corporate income tax prepayment. Posts to Prepaid PPh 25 (1140) — a creditable asset against annual tax, not an expense.</p>
                         <div class="grid grid-cols-1 gap-4 mt-5 max-w-3xl items-end sm:[grid-template-columns:minmax(220px,1fr)_minmax(260px,1fr)_auto]">
                             <label class="flex flex-col gap-1">
-                                <span class="fluxy-kpi-label">Amount (<span data-money-symbol>Rp</span>)</span>
+                                <span class="fluxy-kpi-label">Amount (<span data-money-symbol data-money-placeholder></span>)</span>
                                 <input id="corp-pph25-amount" type="text" inputmode="numeric" placeholder="0" class="border border-gray-200 rounded-lg px-3 py-2 text-[14px] tabular-nums focus:outline-none focus:border-orange-400" />
                             </label>
                             <label class="flex flex-col gap-1">
@@ -304,7 +304,7 @@
                         <div class="mt-5 max-w-3xl">
                             <div class="flex items-center justify-between">
                                 <span class="fluxy-kpi-label">Fiscal adjustments</span>
-                                <span class="fluxy-meta">Total: <span id="fiscal-adj-total" class="tabular-nums">Rp0</span></span>
+                                <span class="fluxy-meta">Total: <span id="fiscal-adj-total" class="tabular-nums" data-money-placeholder></span></span>
                             </div>
                             <p class="fluxy-table-subtitle mt-1">Book-to-tax differences: non-deductible expenses add (+), non-taxable income subtracts (−). Applied to taxable income under the ordinary scheme.</p>
                             <div id="fiscal-adj-list" class="mt-3 flex flex-col gap-2"></div>

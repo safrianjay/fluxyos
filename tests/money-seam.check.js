@@ -198,6 +198,37 @@ if (idrTests.length) {
     ok('no-idr-tests', 'no comparison assumes IDR is the accounting currency');
 }
 
+// No app page may ship a STATIC currency figure in its markup.
+//
+// The browser paints markup before a single line of JS runs, so a literal "Rp0"
+// in a KPI span is on screen for the whole time the workspace is resolving — the
+// Rp -> PHP flicker. Placeholders are emptied and marked `data-money-placeholder`
+// so the boot mask can render a skeleton instead. Excluded: FluxyOS's own IDR
+// billing pages and marketing pricing, which quote fixed rupiah.
+const STATIC_SKIP = new Set([
+    'investor.html', 'pricing.html', 'beila.html', 'onboarding.html',
+    'checkout.html', 'payment-pending.html', 'contact-sales.html',
+]);
+const staticMoney = [];
+for (const f of fs.readdirSync(ROOT).filter((x) => x.endsWith('.html'))) {
+    if (STATIC_SKIP.has(f)) continue;
+    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    if (!src.includes('sidebar-loader.js') && f !== 'report-preview.html') continue;
+    src.split('\n').forEach((line, i) => {
+        if (/>Rp[0-9.,]*</.test(line)) staticMoney.push(`${f}:${i + 1}`);
+    });
+}
+if (staticMoney.length) {
+    fail('no-static-money',
+        `${staticMoney.length} static currency figure(s) in app markup — the browser paints\n` +
+        `      these before any JS runs, so they flash in the wrong currency:\n        ` +
+        staticMoney.join('\n        ') +
+        `\n\n      Empty the element and mark it data-money-placeholder; the boot mask\n` +
+        `      renders a skeleton until the workspace currency is known.`);
+} else {
+    ok('no-static-money', 'no app page paints a currency figure before JS runs');
+}
+
 // Every page whose MODULE GRAPH touches window.FluxyMoney must load the seam, or
 // its formatters throw a TypeError at render time.
 //
