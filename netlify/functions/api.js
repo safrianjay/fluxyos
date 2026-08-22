@@ -222,14 +222,20 @@ function normalizePeriod(input, message = '') {
     return fallback;
 }
 
-function formatIDR(value) {
+// Money in the WORKSPACE's currency. `currency` is an argument, never module
+// state: these builders are reused by the weekly-digest sweep, which renders many
+// workspaces in one invocation, so a shared value would narrate one business's
+// figures with another's symbol. Absent means IDR — byte-identical to before.
+const { formatBase } = require('../../functions/lib/format');
+
+function formatIDR(value, currency) {
     const amount = Number.isFinite(Number(value)) ? Math.round(Number(value)) : 0;
-    return `Rp${Math.abs(amount).toLocaleString('id-ID')}`;
+    return formatBase(Math.abs(amount), currency);
 }
 
-function formatSignedIDR(value) {
+function formatSignedIDR(value, currency) {
     const amount = Number.isFinite(Number(value)) ? Math.round(Number(value)) : 0;
-    return `${amount < 0 ? '-' : ''}Rp${Math.abs(amount).toLocaleString('id-ID')}`;
+    return `${amount < 0 ? '-' : ''}${formatBase(Math.abs(amount), currency)}`;
 }
 
 function formatPercent(value) {
@@ -1033,7 +1039,11 @@ function getLedgerQuality(transactions, period) {
     };
 }
 
-function getCashPressure(transactions, billsAnalysis, today, windowDays, bank = null) {
+function getCashPressure(transactions, billsAnalysis, today, windowDays, bank = null, currency = undefined) {
+    // Bound per call, never module state — this builder is reused by the
+    // weekly-digest sweep, which renders many workspaces per invocation.
+    const __mIDR = (v) => formatIDR(v, currency);
+    const __sIDR = (v) => formatSignedIDR(v, currency);
     const end = addDays(parseDateKey(today), windowDays);
     const period = { start_date: today, end_date: toDateKey(end) };
     const recentPeriod = normalizePeriod({ type: 'this_month' });
@@ -1073,8 +1083,8 @@ function getCashPressure(transactions, billsAnalysis, today, windowDays, bank = 
     const positionPhrase = cashPosition === null
         ? ''
         : (cashPosition < 0
-            ? `a projected shortfall of ${formatIDR(Math.abs(cashPosition))}`
-            : `a projected cash position of ${formatIDR(cashPosition)}`);
+            ? `a projected shortfall of ${__mIDR(Math.abs(cashPosition))}`
+            : `a projected cash position of ${__mIDR(cashPosition)}`);
 
     return {
         bank_connected: bankConnected,
@@ -1089,7 +1099,7 @@ function getCashPressure(transactions, billsAnalysis, today, windowDays, bank = 
         recent_opex: recentOpex,
         risk_level: riskLevel,
         explanation: bankConnected
-            ? `Using your connected bank balance of ${formatIDR(bankBalance)}, after ${formatIDR(nearTermPayables)} in near-term payables (overdue + due soon) and ${formatIDR(pendingReceivables)} in pending receivables you have ${positionPhrase}.`
+            ? `Using your connected bank balance of ${__mIDR(bankBalance)}, after ${__mIDR(nearTermPayables)} in near-term payables (overdue + due soon) and ${__mIDR(pendingReceivables)} in pending receivables you have ${positionPhrase}.`
             : 'I do not have your real bank balance yet, so this is a cash-pressure proxy, not an actual cash runway calculation.',
         limitations: bankConnected
             ? ['Cash position uses your latest connected bank balance, near-term payables (overdue + due soon), and pending receivables. It does not forecast future revenue or non-bill outflows.']
@@ -1908,7 +1918,11 @@ function buildDataUnavailableAnswer(intent, period, missingCollections, language
     return answer;
 }
 
-function buildDeterministicAnswer({ intent, message, pageContext, period, tools, language }) {
+function buildDeterministicAnswer({ currency, intent, message, pageContext, period, tools, language }) {
+    // Bound per call, never module state — this builder is reused by the
+    // weekly-digest sweep, which renders many workspaces per invocation.
+    const __mIDR = (v) => formatIDR(v, currency);
+    const __sIDR = (v) => formatSignedIDR(v, currency);
     language = (language === 'id' || language === 'en') ? language : (isIndonesian(message) ? 'id' : 'en');
     const answer = baseAnswer(intent, 'analysis', period, language);
     const summary = (pageContext === 'dashboard' && ['finance_health', 'action_recommendation'].includes(intent))
@@ -1987,7 +2001,7 @@ function buildDeterministicAnswer({ intent, message, pageContext, period, tools,
 
     if (intent === 'revenue_analysis') {
         answer.direct_answer = revenue.total_revenue > 0
-            ? `Based on the current records, revenue for ${period.label.toLowerCase()} is ${formatIDR(revenue.total_revenue)}.`
+            ? `Based on the current records, revenue for ${period.label.toLowerCase()} is ${__mIDR(revenue.total_revenue)}.`
             : `No confirmed revenue records were found for ${period.label.toLowerCase()}.`;
         answer.key_numbers = [keyNumber('Revenue', revenue.total_revenue, revenue.total_revenue > 0 ? 'good' : 'warning')];
         answer.insights = revenue.top_revenue_records.length
@@ -2000,7 +2014,7 @@ function buildDeterministicAnswer({ intent, message, pageContext, period, tools,
 
     if (intent === 'expense_analysis') {
         answer.direct_answer = expense.total_expense > 0
-            ? `Your OpEx for ${period.label.toLowerCase()} is ${formatIDR(expense.total_expense)}.`
+            ? `Your OpEx for ${period.label.toLowerCase()} is ${__mIDR(expense.total_expense)}.`
             : `No expense records were found for ${period.label.toLowerCase()}.`;
         answer.key_numbers = [keyNumber('OpEx', expense.total_expense, expense.total_expense > summary.revenue && summary.revenue > 0 ? 'critical' : 'neutral')];
         if (expense.top_vendors.length) {
@@ -2024,7 +2038,7 @@ function buildDeterministicAnswer({ intent, message, pageContext, period, tools,
             keyNumber('OpEx', summary.opex, 'neutral'),
             keyNumber('Gross margin', summary.gross_margin, marginStatus, formatPercent),
         ];
-        answer.insights = [insight('Margin signal', summary.revenue > 0 ? `After OpEx, the current records leave ${formatIDR(summary.revenue - summary.opex)} before other costs not tracked here.` : 'Margin cannot be meaningfully calculated without revenue.', marginStatus === 'critical' ? 'critical' : 'info', margin?.largest_expenses?.slice(0, 3) || [])];
+        answer.insights = [insight('Margin signal', summary.revenue > 0 ? `After OpEx, the current records leave ${__mIDR(summary.revenue - summary.opex)} before other costs not tracked here.` : 'Margin cannot be meaningfully calculated without revenue.', marginStatus === 'critical' ? 'critical' : 'info', margin?.largest_expenses?.slice(0, 3) || [])];
         answer.recommended_actions = [action('Review margin drivers', 'Check the largest expense categories and vendors first.', 'high')];
         answer.limitations = margin?.limitations?.length ? margin.limitations : summary.limitations;
         return answer;
@@ -2034,14 +2048,14 @@ function buildDeterministicAnswer({ intent, message, pageContext, period, tools,
         const riskStatus = cash.risk_level === 'high' ? 'critical' : cash.risk_level === 'medium' ? 'warning' : 'neutral';
         if (cash.bank_connected) {
             const positionPhrase = cash.cash_position < 0
-                ? `a projected shortfall of ${formatIDR(Math.abs(cash.cash_position))}`
-                : `a projected cash position of ${formatIDR(cash.cash_position)}`;
+                ? `a projected shortfall of ${__mIDR(Math.abs(cash.cash_position))}`
+                : `a projected cash position of ${__mIDR(cash.cash_position)}`;
             answer.direct_answer = cash.upcoming_payables > 0
-                ? `Your connected bank balance is ${formatIDR(cash.available_cash)}. After ${formatIDR(cash.upcoming_payables)} in near-term payables (overdue + due soon) and ${formatIDR(cash.pending_receivables)} in pending receivables, you have ${positionPhrase}.`
-                : `Your connected bank balance is ${formatIDR(cash.available_cash)} and there are no overdue or due-soon payables in the bill data, leaving ${positionPhrase}.`;
+                ? `Your connected bank balance is ${__mIDR(cash.available_cash)}. After ${__mIDR(cash.upcoming_payables)} in near-term payables (overdue + due soon) and ${__mIDR(cash.pending_receivables)} in pending receivables, you have ${positionPhrase}.`
+                : `Your connected bank balance is ${__mIDR(cash.available_cash)} and there are no overdue or due-soon payables in the bill data, leaving ${positionPhrase}.`;
         } else {
             answer.direct_answer = cash.upcoming_payables > 0
-                ? `I do not have your real bank balance yet, so this is a cash-pressure proxy. Near-term payables (overdue + due soon) are ${formatIDR(cash.upcoming_payables)} against ${formatIDR(cash.pending_receivables)} in pending receivables.`
+                ? `I do not have your real bank balance yet, so this is a cash-pressure proxy. Near-term payables (overdue + due soon) are ${__mIDR(cash.upcoming_payables)} against ${__mIDR(cash.pending_receivables)} in pending receivables.`
                 : 'I do not see overdue or due-soon payables in the supported bill data, but I still do not have your real bank balance.';
         }
         answer.key_numbers = [
@@ -2068,7 +2082,7 @@ function buildDeterministicAnswer({ intent, message, pageContext, period, tools,
     if (intent === 'bills_analysis') {
         const risk = bills.overdue_bills.length ? 'critical' : bills.due_soon_bills.length ? 'warning' : 'neutral';
         answer.direct_answer = bills.total_unpaid_bills
-            ? `You have ${bills.total_unpaid_bills} unpaid bills totaling ${formatIDR(bills.total_unpaid_amount)}.`
+            ? `You have ${bills.total_unpaid_bills} unpaid bills totaling ${__mIDR(bills.total_unpaid_amount)}.`
             : 'No unpaid bills are recorded right now.';
         answer.key_numbers = [
             keyNumber('Unpaid bills', bills.total_unpaid_bills, risk, value => String(value)),
@@ -2084,7 +2098,7 @@ function buildDeterministicAnswer({ intent, message, pageContext, period, tools,
 
     if (intent === 'subscription_analysis') {
         answer.direct_answer = subs.subscription_count
-            ? `Your recorded monthly subscription spend is ${formatIDR(subs.total_monthly_subscriptions)} across ${subs.subscription_count} subscription(s).`
+            ? `Your recorded monthly subscription spend is ${__mIDR(subs.total_monthly_subscriptions)} across ${subs.subscription_count} subscription(s).`
             : 'No active subscriptions were found.';
         answer.key_numbers = [
             keyNumber('Monthly subscriptions', subs.total_monthly_subscriptions, subs.total_monthly_subscriptions > 0 ? 'neutral' : 'warning'),
@@ -2128,7 +2142,7 @@ function buildDeterministicAnswer({ intent, message, pageContext, period, tools,
         ? ` ${cash.explanation}`
         : '';
     answer.direct_answer = summary.transaction_count
-        ? `Here is what I am seeing for ${period.label.toLowerCase()}: ${revenueLabel.toLowerCase()} is ${formatIDR(summary.revenue)}, OpEx is ${formatIDR(summary.opex)}, and gross margin is ${summary.revenue > 0 ? formatPercent(summary.gross_margin) : 'unavailable'}.${cashSentence}`
+        ? `Here is what I am seeing for ${period.label.toLowerCase()}: ${revenueLabel.toLowerCase()} is ${__mIDR(summary.revenue)}, OpEx is ${__mIDR(summary.opex)}, and gross margin is ${summary.revenue > 0 ? formatPercent(summary.gross_margin) : 'unavailable'}.${cashSentence}`
         : `There is not enough ledger data for ${period.label.toLowerCase()} to judge business health yet.`;
     answer.key_numbers = [
         keyNumber(revenueLabel, summary.revenue, summary.revenue > 0 ? 'good' : 'warning'),
@@ -2137,7 +2151,7 @@ function buildDeterministicAnswer({ intent, message, pageContext, period, tools,
         ...(cash.bank_connected ? [keyNumber('Cash position', cash.cash_position, cash.cash_position < 0 ? 'critical' : 'neutral', formatSignedIDR)] : []),
         keyNumber('Missing receipts', summary.missing_receipts_count, summary.missing_receipts_count ? 'warning' : 'good', value => String(value)),
     ];
-    if (cash.bank_connected && cash.cash_position < 0) answer.insights.push(insight('Projected cash shortfall', `After near-term payables and pending receivables, your projected cash position is a shortfall of ${formatIDR(Math.abs(cash.cash_position))}.`, 'critical'));
+    if (cash.bank_connected && cash.cash_position < 0) answer.insights.push(insight('Projected cash shortfall', `After near-term payables and pending receivables, your projected cash position is a shortfall of ${__mIDR(Math.abs(cash.cash_position))}.`, 'critical'));
     if (summary.revenue > 0 && summary.opex > summary.revenue) answer.insights.push(insight('OpEx is above revenue', 'Expenses are higher than confirmed revenue for this period.', 'critical'));
     if (summary.missing_receipts_count) answer.insights.push(insight('Ledger cleanup needed', `${summary.missing_receipts_count} transaction(s) are missing receipts.`, 'warning'));
     if (bills.overdue_bills.length) answer.insights.push(insight('Overdue bill risk', `${bills.overdue_bills.length} unpaid bill(s) are overdue.`, 'critical', bills.overdue_bills.slice(0, 3)));
@@ -2162,28 +2176,32 @@ function legacyIntentFromPlan(intent) {
 
 // Builds the Overview "AI Finance Summary" answer purely from the dashboard's
 // computed KPI numbers (no recompute), so the summary always matches the cards.
-function buildOverviewSummaryAnswer({ kpis, period, language }) {
+function buildOverviewSummaryAnswer({ currency, kpis, period, language }) {
+    // Bound per call, never module state — this builder is reused by the
+    // weekly-digest sweep, which renders many workspaces per invocation.
+    const __mIDR = (v) => formatIDR(v, currency);
+    const __sIDR = (v) => formatSignedIDR(v, currency);
     const id = language === 'id';
     const answer = baseAnswer('business_health', 'analysis', period, language);
     const periodLabel = kpis.period_label || (id ? 'periode terpilih' : 'selected period');
     const margin = kpis.gross_margin;
 
     const parts = [];
-    if (kpis.revenue !== null) parts.push(id ? `pendapatan ${formatIDR(kpis.revenue)}` : `revenue is ${formatIDR(kpis.revenue)}`);
-    if (kpis.opex !== null) parts.push(id ? `OpEx ${formatIDR(kpis.opex)}` : `OpEx is ${formatIDR(kpis.opex)}`);
-    if (kpis.net_profit !== null) parts.push(id ? `laba bersih ${formatSignedIDR(kpis.net_profit)}` : `net profit is ${formatSignedIDR(kpis.net_profit)}`);
+    if (kpis.revenue !== null) parts.push(id ? `pendapatan ${__mIDR(kpis.revenue)}` : `revenue is ${__mIDR(kpis.revenue)}`);
+    if (kpis.opex !== null) parts.push(id ? `OpEx ${__mIDR(kpis.opex)}` : `OpEx is ${__mIDR(kpis.opex)}`);
+    if (kpis.net_profit !== null) parts.push(id ? `laba bersih ${__sIDR(kpis.net_profit)}` : `net profit is ${__sIDR(kpis.net_profit)}`);
     if (margin !== null) parts.push(id ? `margin kotor ${formatPercent(margin)}` : `gross margin is ${formatPercent(margin)}`);
     let direct = id
         ? `Berikut yang saya lihat untuk ${periodLabel}: ${parts.join(', ')}.`
         : `Here is what I am seeing for ${periodLabel}: ${parts.join(', ')}.`;
     if (kpis.cash_position !== null) {
         const tail = [];
-        if (kpis.payables) tail.push(id ? `${formatIDR(kpis.payables)} utang` : `${formatIDR(kpis.payables)} in payables`);
-        if (kpis.receivables) tail.push(id ? `${formatIDR(kpis.receivables)} piutang` : `${formatIDR(kpis.receivables)} in receivables`);
+        if (kpis.payables) tail.push(id ? `${__mIDR(kpis.payables)} utang` : `${__mIDR(kpis.payables)} in payables`);
+        if (kpis.receivables) tail.push(id ? `${__mIDR(kpis.receivables)} piutang` : `${__mIDR(kpis.receivables)} in receivables`);
         const tailText = tail.length ? (id ? `, dengan ${tail.join(' dan ')}` : `, with ${tail.join(' and ')}`) : '';
         direct += id
-            ? ` Posisi kas Anda ${formatIDR(kpis.cash_position)}${tailText}.`
-            : ` Your cash position is ${formatIDR(kpis.cash_position)}${tailText}.`;
+            ? ` Posisi kas Anda ${__mIDR(kpis.cash_position)}${tailText}.`
+            : ` Your cash position is ${__mIDR(kpis.cash_position)}${tailText}.`;
     }
     answer.direct_answer = direct;
 
@@ -2215,7 +2233,11 @@ function buildOverviewSummaryAnswer({ kpis, period, language }) {
     return answer;
 }
 
-function buildPlannedDeterministicAnswer({ plan, message, pageContext, tools, language }) {
+function buildPlannedDeterministicAnswer({ currency, plan, message, pageContext, tools, language }) {
+    // Bound per call, never module state — this builder is reused by the
+    // weekly-digest sweep, which renders many workspaces per invocation.
+    const __mIDR = (v) => formatIDR(v, currency);
+    const __sIDR = (v) => formatSignedIDR(v, currency);
     if (plan.intent === 'unsupported' || !plan.is_supported) {
         return buildDeterministicAnswer({ intent: 'unsupported', message, pageContext, period: plan.period, tools: {}, language });
     }
@@ -2234,7 +2256,7 @@ function buildPlannedDeterministicAnswer({ plan, message, pageContext, tools, la
         const previous = comparison.comparison_period;
         const revenueDirection = comparison.deltas.revenue > 0 ? 'up' : comparison.deltas.revenue < 0 ? 'down' : 'flat';
         const opexDirection = comparison.deltas.opex > 0 ? 'up' : comparison.deltas.opex < 0 ? 'down' : 'flat';
-        answer.direct_answer = `Compared with ${plan.comparison_period.label || 'the comparison period'}, revenue is ${revenueDirection} by ${formatIDR(comparison.deltas.revenue)} and OpEx is ${opexDirection} by ${formatIDR(comparison.deltas.opex)}.`;
+        answer.direct_answer = `Compared with ${plan.comparison_period.label || 'the comparison period'}, revenue is ${revenueDirection} by ${__mIDR(comparison.deltas.revenue)} and OpEx is ${opexDirection} by ${__mIDR(comparison.deltas.opex)}.`;
         answer.key_numbers = [
             keyNumber('Current revenue', current.revenue, current.revenue >= previous.revenue ? 'good' : 'warning'),
             keyNumber('Previous revenue', previous.revenue, 'neutral'),
@@ -2242,8 +2264,8 @@ function buildPlannedDeterministicAnswer({ plan, message, pageContext, tools, la
             keyNumber('Margin change', comparison.deltas.gross_margin, comparison.deltas.gross_margin >= 0 ? 'good' : 'warning', formatPercent),
         ];
         answer.insights = [
-            insight('Revenue movement', `Revenue changed from ${formatIDR(previous.revenue)} to ${formatIDR(current.revenue)}.`, comparison.deltas.revenue >= 0 ? 'info' : 'warning', current.related_records || []),
-            insight('OpEx movement', `OpEx changed from ${formatIDR(previous.opex)} to ${formatIDR(current.opex)}.`, comparison.deltas.opex > 0 ? 'warning' : 'info'),
+            insight('Revenue movement', `Revenue changed from ${__mIDR(previous.revenue)} to ${__mIDR(current.revenue)}.`, comparison.deltas.revenue >= 0 ? 'info' : 'warning', current.related_records || []),
+            insight('OpEx movement', `OpEx changed from ${__mIDR(previous.opex)} to ${__mIDR(current.opex)}.`, comparison.deltas.opex > 0 ? 'warning' : 'info'),
         ];
         answer.recommended_actions = [action('Review the biggest movement', 'Open the related revenue or expense records behind the largest change before deciding what to fix.', 'medium')];
         answer.limitations = comparison.limitations || [];
@@ -2255,7 +2277,7 @@ function buildPlannedDeterministicAnswer({ plan, message, pageContext, tools, la
         const answer = baseAnswer('vendor_analysis', 'analysis', plan.period);
         const totalActivity = vendor.total_expense + vendor.total_revenue + vendor.total_bills + vendor.total_subscriptions;
         answer.direct_answer = totalActivity
-            ? `${vendor.vendor_name} has ${formatIDR(totalActivity)} in matched FluxyOS activity for ${plan.period.label.toLowerCase()}.`
+            ? `${vendor.vendor_name} has ${__mIDR(totalActivity)} in matched FluxyOS activity for ${plan.period.label.toLowerCase()}.`
             : `I could not find matched records for ${vendor.vendor_name} in ${plan.period.label.toLowerCase()}.`;
         answer.key_numbers = [
             keyNumber('Expense', vendor.total_expense, vendor.total_expense ? 'neutral' : 'warning'),
@@ -2274,7 +2296,7 @@ function buildPlannedDeterministicAnswer({ plan, message, pageContext, tools, la
     if (plan.intent === 'category_analysis' && tools.categoryAnalysis) {
         const category = tools.categoryAnalysis;
         const answer = baseAnswer('category_analysis', 'analysis', plan.period);
-        answer.direct_answer = `${category.category} has ${formatIDR(category.total_expense)} in expenses and ${formatIDR(category.total_revenue)} in revenue for ${plan.period.label.toLowerCase()}.`;
+        answer.direct_answer = `${category.category} has ${__mIDR(category.total_expense)} in expenses and ${__mIDR(category.total_revenue)} in revenue for ${plan.period.label.toLowerCase()}.`;
         answer.key_numbers = [
             keyNumber(`${category.category} expense`, category.total_expense, category.total_expense ? 'neutral' : 'warning'),
             keyNumber(`${category.category} revenue`, category.total_revenue, category.total_revenue ? 'good' : 'neutral'),
@@ -2293,8 +2315,8 @@ function buildPlannedDeterministicAnswer({ plan, message, pageContext, tools, la
         const answer = baseAnswer('period_performance', 'analysis', plan.period, language);
         const marginStatus = perf.revenue === 0 ? 'warning' : perf.gross_margin < 20 ? 'critical' : perf.gross_margin < 40 ? 'warning' : 'good';
         answer.direct_answer = id
-            ? `Untuk ${periodLabelId(plan.period.label)}, pendapatan Anda ${formatIDR(perf.revenue)}, beban operasional ${formatIDR(perf.opex)}, dan margin kotor ${perf.revenue > 0 ? formatPercent(perf.gross_margin) : 'belum tersedia'}.`
-            : `For ${plan.period.label}, revenue is ${formatIDR(perf.revenue)}, OpEx is ${formatIDR(perf.opex)}, and gross margin is ${perf.revenue > 0 ? formatPercent(perf.gross_margin) : 'unavailable'}.`;
+            ? `Untuk ${periodLabelId(plan.period.label)}, pendapatan Anda ${__mIDR(perf.revenue)}, beban operasional ${__mIDR(perf.opex)}, dan margin kotor ${perf.revenue > 0 ? formatPercent(perf.gross_margin) : 'belum tersedia'}.`
+            : `For ${plan.period.label}, revenue is ${__mIDR(perf.revenue)}, OpEx is ${__mIDR(perf.opex)}, and gross margin is ${perf.revenue > 0 ? formatPercent(perf.gross_margin) : 'unavailable'}.`;
         answer.key_numbers = [
             keyNumber(id ? 'Pendapatan' : 'Revenue', perf.revenue, perf.revenue > 0 ? 'good' : 'warning'),
             keyNumber(id ? 'Beban operasional' : 'OpEx', perf.opex, perf.opex > perf.revenue && perf.revenue > 0 ? 'critical' : 'neutral'),

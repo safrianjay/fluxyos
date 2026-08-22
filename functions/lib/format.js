@@ -1,11 +1,30 @@
 'use strict';
 
-// Indonesian Rupiah, dot thousands separators, NO space after "Rp" (e.g. Rp1.234.567).
-// Mirrors the strict currency rule in docs/DESIGN_SYSTEM.md.
+// Indonesian Rupiah. DEPRECATED for workspace money — it hardcodes the currency,
+// so it renders "Rp" in a Philippine business's own emails. Use formatBase(value,
+// currency) and pass the workspace's base currency. Retained for FluxyOS's OWN
+// billing, which is genuinely IDR.
 function formatRupiah(value) {
-    const n = Number(value);
-    if (!Number.isFinite(n)) return 'Rp0';
-    return 'Rp' + Math.round(n).toLocaleString('id-ID');
+    return formatBase(value, 'IDR');
+}
+
+/**
+ * Money in a workspace's base currency, from integer MINOR units.
+ *
+ * The currency is a REQUIRED argument by design. This module runs inside Netlify
+ * functions that process many tenants per invocation — the weekly-digest sweep
+ * iterates every subscribed user — so a module-level "current currency" would be
+ * a cross-tenant leak, sending one business's numbers with another's symbol.
+ * Defaults to IDR only when nothing is supplied, matching the client seam.
+ */
+function formatBase(minor, currency) {
+    const c = CURRENCY_CFG[currency] || CURRENCY_CFG.IDR;
+    const n = Number(minor);
+    if (!Number.isFinite(n)) return c.symbol + '0';
+    const neg = n < 0;
+    const units = Math.abs(n) / c.minorPerUnit;
+    const body = units.toLocaleString(c.locale, { minimumFractionDigits: c.decimals, maximumFractionDigits: c.decimals });
+    return (neg ? '-' : '') + c.symbol + body;
 }
 
 // Human date for emails, localized. Node 20 ships full ICU.
@@ -50,4 +69,4 @@ function formatMoney(minor, currency) {
     return c.symbol + units.toLocaleString(c.locale, { minimumFractionDigits: c.decimals, maximumFractionDigits: c.decimals });
 }
 
-module.exports = { formatRupiah, formatDate, escapeHtml, firstName, formatMoney, CURRENCY_CFG };
+module.exports = { formatRupiah, formatBase, formatDate, escapeHtml, firstName, formatMoney, CURRENCY_CFG };

@@ -7,7 +7,7 @@
 // engine (api.js); this file only formats.
 
 const { layout, BRAND } = require('./templates');
-const { formatRupiah, escapeHtml } = require('./format');
+const { formatBase, escapeHtml } = require('./format');
 
 const { NAVY, ORANGE, INK, MUTED } = BRAND;
 const SUCCESS = '#16A34A';
@@ -97,9 +97,11 @@ function card(title, icon, innerHtml) {
 }
 
 // % of total helper for table rows.
-function shareRows(items, total, dp) {
+function shareRows(items, total, money) {
+    // `money` is passed in, not closed over: this helper is module-level and the
+    // formatter is per-build, because one invocation renders many workspaces.
     const t = num(total);
-    return (items || []).slice(0, 5).map((c) => [escapeHtml(c.label || 'Uncategorized'), formatRupiah(c.value || 0), t > 0 ? `${((num(c.value) / t) * 100).toFixed(0)}%` : '—']);
+    return (items || []).slice(0, 5).map((c) => [escapeHtml(c.label || 'Uncategorized'), money(c.value || 0), t > 0 ? `${((num(c.value) / t) * 100).toFixed(0)}%` : '—']);
 }
 
 const L = {
@@ -137,7 +139,11 @@ const L = {
     },
 };
 
-function buildWeeklyDigest({ locale, data }) {
+function buildWeeklyDigest({ locale, data, currency }) {
+    // Bound to THIS build, never module state: the weekly sweep renders many
+    // workspaces per invocation, so a shared "current currency" would send one
+    // business's figures with another's symbol.
+    const money = (v) => formatBase(v, currency || 'IDR');
     const loc = locale === 'id' ? 'id' : 'en';
     const t = L[loc];
     const d = data || {};
@@ -152,7 +158,7 @@ function buildWeeklyDigest({ locale, data }) {
     // Hero — total revenue with WoW change (skip in summary-only / when disabled).
     if (!d.summaryOnly && m.financial_health && cmp) {
         const cur = cmp.current_period; const prev = cmp.comparison_period; const dl = cmp.deltas;
-        sections.push({ html: heroCard({ icon: '📈', eyebrow: t.revenue, value: formatRupiah(cur.revenue), badgeHtml: pctBadge(dl.revenue_percentage, true), sub: `${t.vsLast}: ${formatRupiah(prev.revenue)}` }), text: `${t.revenue}: ${formatRupiah(cur.revenue)}` });
+        sections.push({ html: heroCard({ icon: '📈', eyebrow: t.revenue, value: money(cur.revenue), badgeHtml: pctBadge(dl.revenue_percentage, true), sub: `${t.vsLast}: ${money(prev.revenue)}` }), text: `${t.revenue}: ${money(cur.revenue)}` });
     }
 
     const summaryText = (d.answer && d.answer.direct_answer) || '';
@@ -161,35 +167,35 @@ function buildWeeklyDigest({ locale, data }) {
     if (!d.summaryOnly) {
         if (m.financial_health && cmp) {
             const cur = cmp.current_period; const prev = cmp.comparison_period; const dl = cmp.deltas;
-            sections.push({ html: metricCard({ icon: '💸', eyebrow: t.spend, title: t.opex, value: formatRupiah(cur.opex), badgeHtml: pctBadge(dl.opex_percentage, false), sub: `${t.vsLast}: ${formatRupiah(prev.opex)}` }), text: `${t.opex}: ${formatRupiah(cur.opex)}` });
+            sections.push({ html: metricCard({ icon: '💸', eyebrow: t.spend, title: t.opex, value: money(cur.opex), badgeHtml: pctBadge(dl.opex_percentage, false), sub: `${t.vsLast}: ${money(prev.opex)}` }), text: `${t.opex}: ${money(cur.opex)}` });
             sections.push({ html: metricCard({ icon: '📊', eyebrow: t.profitability, title: t.margin, value: fpct(cur.gross_margin), badgeHtml: ppBadge(dl.gross_margin), sub: `${t.vsLast}: ${fpct(prev.gross_margin)}` }), text: `${t.margin}: ${fpct(cur.gross_margin)}` });
         }
         if (m.cash_position && tools.cashPressure) {
             const cp = tools.cashPressure;
             const tone = cp.risk_level === 'high' ? 'bad' : cp.risk_level === 'low' ? 'good' : 'warn';
-            sections.push({ html: metricCard({ icon: '💵', eyebrow: t.cash, title: t.payables, value: formatRupiah(cp.upcoming_payables), badgeHtml: tonePill(t.riskWord[cp.risk_level] || t.riskWord.unknown, tone), sub: `${formatRupiah(cp.pending_receivables)} ${t.receivables}` }), text: `${t.cash}: ${t.riskWord[cp.risk_level] || ''}` });
+            sections.push({ html: metricCard({ icon: '💵', eyebrow: t.cash, title: t.payables, value: money(cp.upcoming_payables), badgeHtml: tonePill(t.riskWord[cp.risk_level] || t.riskWord.unknown, tone), sub: `${money(cp.pending_receivables)} ${t.receivables}` }), text: `${t.cash}: ${t.riskWord[cp.risk_level] || ''}` });
         }
         if (m.bills && tools.billsAnalysis) {
             const b = tools.billsAnalysis;
             const overdue = (b.overdue_bills || []).length; const due = (b.due_soon_bills || []).length;
-            sections.push({ html: metricCard({ icon: '🧾', eyebrow: t.bills, title: t.unpaidBills, value: formatRupiah(b.total_unpaid_amount), badgeHtml: overdue ? tonePill(t.overduePill(overdue), 'bad') : '', sub: t.billsSub(b.total_unpaid_bills || 0, overdue, due) }), text: `${t.unpaidBills}: ${formatRupiah(b.total_unpaid_amount)}` });
+            sections.push({ html: metricCard({ icon: '🧾', eyebrow: t.bills, title: t.unpaidBills, value: money(b.total_unpaid_amount), badgeHtml: overdue ? tonePill(t.overduePill(overdue), 'bad') : '', sub: t.billsSub(b.total_unpaid_bills || 0, overdue, due) }), text: `${t.unpaidBills}: ${money(b.total_unpaid_amount)}` });
         }
         if (m.budgets && d.budget) {
             const bd = d.budget; const over = num(bd.percent) > 100;
-            sections.push({ html: metricCard({ icon: '🎯', eyebrow: t.budget, title: bd.label ? `${t.budgetUsed} — ${bd.label}` : t.budgetUsed, value: fpct(bd.percent, 0), badgeHtml: tonePill(over ? t.overBudget : t.onTrack, over ? 'bad' : 'good'), sub: t.budgetSub(formatRupiah(bd.used), formatRupiah(bd.total)) }), text: `${t.budgetUsed}: ${fpct(bd.percent, 0)}` });
+            sections.push({ html: metricCard({ icon: '🎯', eyebrow: t.budget, title: bd.label ? `${t.budgetUsed} — ${bd.label}` : t.budgetUsed, value: fpct(bd.percent, 0), badgeHtml: tonePill(over ? t.overBudget : t.onTrack, over ? 'bad' : 'good'), sub: t.budgetSub(money(bd.used), money(bd.total)) }), text: `${t.budgetUsed}: ${fpct(bd.percent, 0)}` });
         }
         if (m.subscriptions && tools.subscriptionAnalysis) {
             const s = tools.subscriptionAnalysis;
-            sections.push({ html: metricCard({ icon: '🔁', eyebrow: t.subs, title: t.monthly, value: formatRupiah(s.total_monthly_subscriptions), badgeHtml: '', sub: t.subsSub(s.subscription_count || 0, (s.upcoming_renewals || []).length) }), text: `${t.monthly}: ${formatRupiah(s.total_monthly_subscriptions)}` });
+            sections.push({ html: metricCard({ icon: '🔁', eyebrow: t.subs, title: t.monthly, value: money(s.total_monthly_subscriptions), badgeHtml: '', sub: t.subsSub(s.subscription_count || 0, (s.upcoming_renewals || []).length) }), text: `${t.monthly}: ${money(s.total_monthly_subscriptions)}` });
         }
         if (m.revenue && tools.revenueAnalysis && (tools.revenueAnalysis.revenue_by_category || []).length) {
-            sections.push({ html: tableCard(t.revByCat, '📈', [t.category, t.amount, t.share], shareRows(tools.revenueAnalysis.revenue_by_category, tools.revenueAnalysis.total_revenue)), text: t.revByCat });
+            sections.push({ html: tableCard(t.revByCat, '📈', [t.category, t.amount, t.share], shareRows(tools.revenueAnalysis.revenue_by_category, tools.revenueAnalysis.total_revenue, money)), text: t.revByCat });
         }
         if (m.expenses && tools.expenseAnalysis && (tools.expenseAnalysis.expense_by_category || []).length) {
-            sections.push({ html: tableCard(t.topSpend, '💸', [t.category, t.amount, t.share], shareRows(tools.expenseAnalysis.expense_by_category, tools.expenseAnalysis.total_expense)), text: t.topSpend });
+            sections.push({ html: tableCard(t.topSpend, '💸', [t.category, t.amount, t.share], shareRows(tools.expenseAnalysis.expense_by_category, tools.expenseAnalysis.total_expense, money)), text: t.topSpend });
         }
         if (m.vendors && tools.expenseAnalysis && (tools.expenseAnalysis.top_vendors || []).length) {
-            sections.push({ html: tableCard(t.vendors, '🏢', [t.vendor, t.amount, t.share], shareRows(tools.expenseAnalysis.top_vendors, tools.expenseAnalysis.total_expense)), text: t.vendors });
+            sections.push({ html: tableCard(t.vendors, '🏢', [t.vendor, t.amount, t.share], shareRows(tools.expenseAnalysis.top_vendors, tools.expenseAnalysis.total_expense, money)), text: t.vendors });
         }
     }
 

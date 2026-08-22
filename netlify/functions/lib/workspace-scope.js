@@ -46,6 +46,25 @@ async function resolveWorkspaceId(db, uid) {
  * the resolved workspace first, the legacy user path last (pre-migration
  * accounts and rollback safety).
  */
+/**
+ * A workspace's base currency, for server-rendered money (emails, PDFs, AI).
+ *
+ * Absent means IDR, the same fail-safe the client seam uses: a missing field can
+ * never render the wrong symbol, whereas a half-finished backfill can. Never
+ * throws — an email must still send if this read fails.
+ */
+async function resolveBaseCurrency(db, uid) {
+    try {
+        const workspaceId = await resolveWorkspaceId(db, uid);
+        if (!workspaceId) return 'IDR';
+        const snap = await db.doc(`workspaces/${workspaceId}`).get();
+        const ccy = snap.exists ? (snap.data() || {}).base_currency : null;
+        return ['IDR', 'PHP', 'SGD', 'MYR'].includes(ccy) ? ccy : 'IDR';
+    } catch (_) {
+        return 'IDR';
+    }
+}
+
 async function resolveFinanceScopes(db, uid) {
     const workspaceId = await resolveWorkspaceId(db, uid);
     const scopes = [];
@@ -101,6 +120,7 @@ module.exports = {
     isValidScopeId,
     resolveWorkspaceId,
     resolveFinanceScopes,
+    resolveBaseCurrency,
     isVoidedTransaction,
     readFinanceCollection,
 };
