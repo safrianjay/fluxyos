@@ -104,7 +104,10 @@
     function formatAmountInput(value, cur) {
         const m = money();
         if (m) return m.formatMoneyInput(value, cur);
-        return String(value == null ? '' : value).replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        // Unreachable: money-format.js is loaded on every page that mounts this
+        // (enforced by check:money-seam). Kept as a defensive branch, but it must
+        // not apply Indonesian grouping to a currency it cannot identify.
+        return String(value == null ? '' : value).replace(/[^\d.,]/g, '');
     }
     // Parse the review input into integer MINOR units of `cur` (rupiah for IDR,
     // cents for USD/SGD) — the same storage convention invoices and bills use.
@@ -146,7 +149,12 @@
         return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
     }
 
-    function normalizeRupiahAmount(raw) {
+    // Parses a number out of scanned text in the DOCUMENT's own units — a USD total
+// stays 20.00, not 2000. Despite the name it is locale-agnostic (it infers the
+// decimal separator from the last comma/dot), and the review step converts to
+// minor units via FluxyMoney.toMinor on save. Do not "fix" it to return minor
+// units; that would double-convert.
+function normalizeRupiahAmount(raw) {
         if (raw == null) return 0;
         if (typeof raw === 'number') return Math.round(raw);
         const cleaned = String(raw).replace(/[^\d,.-]/g, '');

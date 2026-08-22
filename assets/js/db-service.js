@@ -2713,12 +2713,15 @@ class DataService {
     // it NEVER creates a ledger transaction in v1.
     // See docs/fluxyos_create_invoice_feature_plan.md.
 
-    _normalizeInvoiceItem(item = {}, index = 0) {
+    _normalizeInvoiceItem(item = {}, index = 0, currency = undefined) {
         const description = this._stringOrDefault(item.description, '', 240);
         if (!description) throw new Error('Item description is required.');
         const quantity = Math.round((Number(item.quantity) || 0) * 100) / 100;
         if (!(quantity > 0)) throw new Error('Item quantity must be greater than zero.');
-        const unitPrice = Math.round(Number(String(item.unit_price).replace(/[^\d]/g, '')) || 0);
+        // Digit-stripping assumed a 0-decimal currency: on a peso invoice "12"
+        // became 12 CENTAVOS (₱0.12) instead of ₱12. toMinor is currency-aware
+        // and byte-identical for IDR, whose 0-decimal path IS the old expression.
+        const unitPrice = window.FluxyMoney.toMinor(item.unit_price, currency || window.FluxyMoney.baseCurrency());
         if (!(unitPrice > 0)) throw new Error('Item unit price must be greater than zero.');
         return {
             description,
@@ -2919,7 +2922,7 @@ class DataService {
     // full editor item list.
     async createInvoiceDraft(userId, invoiceData = {}) {
         const items = (Array.isArray(invoiceData.items) ? invoiceData.items : [])
-            .map((item, index) => this._normalizeInvoiceItem(item, index));
+            .map((item, index) => this._normalizeInvoiceItem(item, index, invoiceData.currency));
         const invoiceRef = doc(collection(this.db, `${this._scope(userId)}/invoices`));
         const invoiceNumber = invoiceData.invoice_number || await this.generateInvoiceNumber(userId);
         const payload = {
@@ -2968,7 +2971,7 @@ class DataService {
         const existingById = new Map(existingItems.map(item => [item.id, item]));
 
         const incoming = (Array.isArray(invoiceData.items) ? invoiceData.items : [])
-            .map((item, index) => ({ id: item.id || null, ...this._normalizeInvoiceItem(item, index) }));
+            .map((item, index) => ({ id: item.id || null, ...this._normalizeInvoiceItem(item, index, invoiceData.currency) }));
 
         const payload = this._normalizeInvoiceData(userId, invoiceData, incoming);
         const batch = writeBatch(this.db);
@@ -3028,7 +3031,17 @@ class DataService {
     }
 
     async addInvoiceItem(userId, invoiceId, itemData = {}) {
-        const item = this._normalizeInvoiceItem(itemData, Number(itemData.position) || 0);
+        // Read the invoice's own currency: a line item is denominated in the
+        // INVOICE's face currency, which may differ from the workspace's books,
+        // and it decides whether "12" means 12 minor units or 1200.
+        let invoiceCurrency = itemData.currency || null;
+        if (!invoiceCurrency) {
+            try {
+                const invSnap = await getDoc(doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}`));
+                invoiceCurrency = invSnap.exists() ? (invSnap.data() || {}).currency : null;
+            } catch (_) { /* fall back to the books' currency below */ }
+        }
+        const item = this._normalizeInvoiceItem(itemData, Number(itemData.position) || 0, invoiceCurrency);
         const batch = writeBatch(this.db);
         batch.set(doc(collection(this.db, `${this._scope(userId)}/invoices/${invoiceId}/items`)), {
             ...item,
