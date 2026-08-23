@@ -41,6 +41,16 @@ export const FEATURE_RULES = {
         label: 'Tax Center',
         allowCountries: ['ID'],
     },
+    // PPN/PPh fields on invoices and bills. Indonesian tax MECHANICS, not just
+    // Indonesian words: PH VAT is 12% with BIR 2307 withholding, SG GST and MY
+    // SST are different regimes again. Relabelling "PPN rate" to "VAT rate" while
+    // keeping Indonesian arithmetic would produce confidently wrong tax numbers,
+    // which is worse than not offering the field. So it is ABSENT elsewhere until
+    // a real local tax engine exists — same call as the Tax Center.
+    transaction_tax: {
+        label: 'Transaction tax (PPN/PPh)',
+        allowCountries: ['ID'],
+    },
     inventory: {
         label: 'Inventory',
         // Reached by /inventory and /inventory-count.
@@ -151,6 +161,20 @@ function ownerEmail(app, user) {
  * @param {string} feature  a FEATURE_RULES key
  * @returns {Promise<boolean>}
  */
+/**
+ * Synchronous eligibility, for COUNTRY rules only.
+ *
+ * Render toggles cannot await, and a country rule needs no document read — the
+ * workspace is resolved before any page renders. Returns true for a rule this
+ * cannot decide synchronously (an email rule), so it never hides by accident.
+ */
+export function canUseFeatureSync(feature) {
+    const rule = FEATURE_RULES[feature];
+    if (!rule || !rule.allowCountries) return true;
+    const country = (typeof window !== 'undefined' && window.FluxyWorkspace && window.FluxyWorkspace.country) || null;
+    return rule.allowCountries.includes(country || 'ID');
+}
+
 export async function canUseFeature(app, user, feature) {
     const rule = FEATURE_RULES[feature];
     if (!rule) return true;            // unknown feature: never gate by accident
@@ -170,6 +194,7 @@ if (typeof window !== 'undefined') {
     window.FluxyFeatures = {
         RULES: FEATURE_RULES,
         can: canUseFeature,
+        canSync: canUseFeatureSync,
         _reset: _resetFeatureAccessCache
     };
 }

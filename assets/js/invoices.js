@@ -721,7 +721,10 @@ export function initInvoicesPage({ ds, user }) {
     // Hide + clear them for USD/SGD so they can't be applied by mistake.
     function syncTaxVisibility() {
         const foreign = window.FluxyMoney.isForeignCurrency(editor.currency);
-        el('inv-tax-field').classList.toggle('hidden', foreign);
+        // Hidden for a foreign-currency invoice (outside the IDR kernel) AND
+        // outside Indonesia (PPN mechanics do not apply — see FEATURE_RULES).
+        const taxApplies = window.FluxyFeatures?.canSync?.('transaction_tax') !== false;
+        el('inv-tax-field').classList.toggle('hidden', foreign || !taxApplies);
         el('inv-wht-field').classList.toggle('hidden', foreign);
         if (foreign) {
             editor.taxRate = null;

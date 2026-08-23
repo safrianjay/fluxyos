@@ -53,6 +53,15 @@ const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({ '&'
 
 const authTimeout = setTimeout(() => window.location.replace('/login'), 2500);
 onAuthStateChanged(auth, async (user) => {
+    // Resolve the workspace before pricing renders: the indicative line needs the
+    // business's base currency, and without this it would always read IDR and
+    // stay hidden for exactly the customers it exists for.
+    if (user) {
+        try {
+            const { resolveWorkspace } = await import('/assets/js/workspace-service.js');
+            await resolveWorkspace(app, user);
+        } catch (_) { /* price still renders in IDR, which is the real charge */ }
+    }
     if (!user) return;
     clearTimeout(authTimeout);
     currentUser = user;
@@ -126,6 +135,7 @@ function updateCheckout() {
     const { plan } = calculation;
     document.querySelectorAll('[data-billing]').forEach((button) => button.classList.toggle('active', button.dataset.billing === selectedBilling));
     $('summary-total').textContent = formatIDR(calculation.totalAmount);
+    renderIndicativePrice(calculation.totalAmount);
     $('summary-plan-name').textContent = plan.name;
     $('summary-plan-price').textContent = `${formatIDR(calculation.monthlyDisplayAmount)}/mo`;
     $('summary-plan-desc').textContent = plan.description;
@@ -258,3 +268,44 @@ $('submit-button').addEventListener('click', async () => {
 });
 
 updateCheckout();
+
+/*
+ * Indicative price in the workspace's currency — NEVER a replacement for the
+ * charge.
+ *
+ * FluxyOS bills in IDR through QRIS/VA, which are Indonesian rails, and applies
+ * Indonesian PPN because FluxyOS is an Indonesian seller. Rendering "₱2,650" as
+ * the price would claim a peso charge that no provider here can make. So the IDR
+ * figure stays the price, and the converted amount sits beside it, labelled with
+ * what is actually settled.
+ *
+ * Rate comes from the shared /.netlify/functions/fx-rate proxy — the same
+ * centralised source the ledger uses. No page-local conversion constants.
+ *
+ * When market-region pricing arrives this is where it plugs in: the source price
+ * stops being IDR and this line stops being a conversion.
+ */
+async function renderIndicativePrice(idrTotal) {
+    const el = $('summary-indicative');
+    if (!el) return;
+    const M = window.FluxyMoney;
+    const base = M ? M.baseCurrency() : 'IDR';
+    if (!M || base === 'IDR' || !(idrTotal > 0)) { el.classList.add('hidden'); return; }
+
+    // Skeleton until the rate lands, so the line never shows a wrong number first.
+    el.classList.remove('hidden');
+    el.innerHTML = '<span class="inline-block h-3 w-40 rounded bg-gray-200 animate-pulse"></span>';
+    try {
+        const res = await fetch(`/.netlify/functions/fx-rate?from=IDR&to=${encodeURIComponent(base)}`);
+        const data = res.ok ? await res.json() : null;
+        const rate = data && Number(data.rate);
+        if (!(rate > 0)) throw new Error('no rate');
+        const cfg = M.CURRENCIES[base];
+        const converted = Math.round(idrTotal * rate * cfg.minorPerUnit);
+        const shown = `${cfg.symbol}${(converted / cfg.minorPerUnit).toLocaleString(cfg.locale, { minimumFractionDigits: cfg.decimals, maximumFractionDigits: cfg.decimals })}`;
+        el.textContent = `≈ ${shown} — indicative only. You are charged in IDR.`;
+    } catch (_) {
+        // No rate is not an error worth surfacing: the real price is already shown.
+        el.textContent = 'Charged in IDR.';
+    }
+}

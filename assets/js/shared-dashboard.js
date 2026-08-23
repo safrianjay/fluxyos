@@ -1239,8 +1239,8 @@ window.showAddTransactionModal = function(options = {}) {
                             <h3 class="fluxy-drawer-section-title">Tax</h3>
                             <div id="tx-budget-preview" class="hidden rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[12px] text-gray-600"></div>
                             <div class="fluxy-drawer-field">
-                                <label for="tx-bill-tax-rate" class="fluxy-drawer-label">PPN rate (%) — optional, tax-inclusive</label>
-                                <input id="tx-bill-tax-rate" type="text" inputmode="decimal" placeholder="e.g. 11" class="fluxy-drawer-input tabular-nums" />
+                                <label data-tx-tax-field for="tx-bill-tax-rate" class="fluxy-drawer-label">PPN rate (%) — optional, tax-inclusive</label>
+                                <input data-tx-tax-field id="tx-bill-tax-rate" type="text" inputmode="decimal" placeholder="e.g. 11" class="fluxy-drawer-input tabular-nums" />
                                 <p class="fluxy-drawer-hint">If set (PKP workspaces), PPN is extracted from the amount to input VAT (1130).</p>
                             </div>
                             <div class="fluxy-drawer-field-grid">
@@ -1564,6 +1564,17 @@ window.showAddTransactionModal = function(options = {}) {
     let currencyUserTouched = false;
     // Reflect a currency into the label + hint (no amount reset) — used both by the
     // user's manual change and by applying a vendor's default currency.
+    // PPN/PPh only exist for an Indonesian workspace. Hidden rather than
+    // relabelled: PH VAT, SG GST and MY SST are different regimes, and Indonesian
+    // arithmetic under a local label would be confidently wrong.
+    function applyTransactionTaxVisibility(root) {
+        const applies = window.FluxyFeatures?.canSync?.('transaction_tax') !== false;
+        (root || document).querySelectorAll('[data-tx-tax-field]').forEach((el) => {
+            el.classList.toggle('hidden', !applies);
+            if (!applies && el.tagName === 'INPUT') el.value = '';
+        });
+    }
+
     function applyBillCurrency(cur) {
         if (!currencySelect) return;
         const c = window.FluxyMoney.isSupported(cur) ? cur : window.FluxyMoney.baseCurrency();
@@ -1576,6 +1587,7 @@ window.showAddTransactionModal = function(options = {}) {
         currencySelect.addEventListener('change', () => {
             currencyUserTouched = true;
             applyBillCurrency(billCurrency());
+        applyTransactionTaxVisibility();
             amountInput.value = ''; // amount convention changed — start fresh
             updateSingleSubmitState();
         });
