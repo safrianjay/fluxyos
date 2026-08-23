@@ -60,6 +60,11 @@ onAuthStateChanged(auth, async (user) => {
         try {
             const { resolveWorkspace } = await import('/assets/js/workspace-service.js');
             await resolveWorkspace(app, user);
+            // updateCheckout() already ran — on page load and on every option
+            // change — long before this resolved, so the indicative line was
+            // computed against the IDR default and hid itself. Recompute now that
+            // the business currency is actually known.
+            updateCheckout();
         } catch (_) { /* price still renders in IDR, which is the real charge */ }
     }
     if (!user) return;
@@ -285,6 +290,13 @@ updateCheckout();
  * When market-region pricing arrives this is where it plugs in: the source price
  * stops being IDR and this line stops being a conversion.
  */
+// Re-run when the workspace currency lands, wherever it lands from.
+if (typeof document !== 'undefined') {
+    document.addEventListener('fluxy:workspace-ready', () => {
+        try { updateCheckout(); } catch (_) { /* nothing to refresh yet */ }
+    });
+}
+
 async function renderIndicativePrice(idrTotal) {
     const el = $('summary-indicative');
     if (!el) return;
