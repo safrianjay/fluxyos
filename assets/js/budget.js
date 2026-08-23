@@ -242,9 +242,22 @@ function getWizardQuarterRemaining() {
     return Math.max(0, Math.round(Number(state.mainWizard.totalBudget) || 0) - getWizardQuarterTotal());
 }
 
+/*
+ * Display a stored MINOR-unit amount as an editable string.
+ *
+ * This used to dot-group the minor value directly, which is only correct for a
+ * 0-decimal currency. On a peso workspace it round-tripped against a 2-decimal
+ * parser and the amount shrank 100x per keystroke: type 702700, get ₱702,700,
+ * then ₱70.27, then ₱7.03. That is why a million could never be entered.
+ *
+ * Minor -> whole units -> currency-aware grouping. For IDR fromMinor is identity
+ * and formatMoneyInput dot-groups, so the output is byte-identical to before.
+ */
 function formatRpInput(value) {
-    const digits = String(Math.round(Math.max(0, Number(value) || 0)));
-    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const M = window.FluxyMoney;
+    const base = M.baseCurrency();
+    const units = M.fromMinor(Math.max(0, Number(value) || 0), base);
+    return M.formatMoneyInput(String(units), base);
 }
 
 function parseRp(value) {

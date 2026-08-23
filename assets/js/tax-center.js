@@ -23,7 +23,8 @@ function formatRpInput(value, allowNegative = false) {
     const negative = allowNegative && raw.trim().startsWith('-');
     const digits = String(window.FluxyMoney.toMinor(raw, window.FluxyMoney.baseCurrency()));
     if (!digits) return '';
-    const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const M = window.FluxyMoney; const b = M.baseCurrency();
+    const formatted = M.formatMoneyInput(digits, b);
     return negative ? `-${formatted}` : formatted;
 }
 

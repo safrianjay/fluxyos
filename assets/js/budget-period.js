@@ -991,7 +991,10 @@ function pickNextCategory() {
 function formatRpInput(value) {
     const n = Math.round(Math.max(0, Number(value) || 0));
     if (!n) return '';
-    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    // Minor -> units -> currency-aware grouping. Grouping the MINOR value is
+    // only right for a 0-decimal currency; on PHP it shrank 100x per keystroke.
+    const M = window.FluxyMoney; const b = M.baseCurrency();
+    return M.formatMoneyInput(String(M.fromMinor(Math.max(0, Number(n) || 0), b)), b);
 }
 
 function parseRp(value) {

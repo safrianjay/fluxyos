@@ -2435,7 +2435,7 @@ async function handleBudgetSave() {
 function formatAmountInput(input) {
     if (!input) return;
     const digits = String(input.value || '').replace(/\D/g, '');
-    input.value = digits ? Number(digits).toLocaleString('id-ID') : '';
+    input.value = digits ? window.FluxyMoney.formatMoneyInput(input.value, window.FluxyMoney.baseCurrency()) : '';
 }
 
 function formatIntegerForInput(value) {
