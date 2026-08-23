@@ -1656,7 +1656,7 @@ export function initInvoicesPage({ ds, user }) {
                 const opts = { paymentDate };
                 if (window.FluxyMoney.isForeignCurrency(cur)) {
                     const idr = window.FluxyMoney.toMinor(el('paid-fx-idr').value, 'IDR');
-                    if (!(idr > 0)) { showErr('Enter the Rupiah amount received before recording the payment.'); btn.disabled = false; return; }
+                    if (!(idr > 0)) { showErr(`Enter the ${window.FluxyMoney.baseCurrencyName()} amount received before recording the payment.`); btn.disabled = false; return; }
                     opts.amountPaidIdr = idr;
                     opts.fxRate = paidFxRate || null;
                     opts.fxRateDate = paidDateKey || null;

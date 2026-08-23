@@ -1173,7 +1173,7 @@ window.showAddTransactionModal = function(options = {}) {
                                         <option value="MYR">MYR</option>
                                     </select>` : ''}
                                 </div>
-                                ${context === 'bill' ? `<p id="tx-currency-hint" class="fluxy-drawer-hint hidden">Foreign-currency bill — it stays outside your Rupiah ledger until you pay it (you'll enter the exchange rate then).</p>` : ''}
+                                ${context === 'bill' ? `<p id="tx-currency-hint" class="fluxy-drawer-hint hidden">Foreign-currency bill — it stays outside your ${window.FluxyMoney.baseCurrencyName()} ledger until you pay it (you'll enter the exchange rate then).</p>` : ''}
                             </div>
                             <div class="fluxy-drawer-field">
                                 ${context === 'bill' ? `

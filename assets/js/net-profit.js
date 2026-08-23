@@ -395,7 +395,7 @@ function renderComposition(totals) {
             </div>`;
     } else {
         meter = `
-            <div class="np-meter" role="img" aria-label="Of every rupiah of revenue, ${Math.round(spentWidth)} percent was spent">
+            <div class="np-meter" role="img" aria-label="Of every ${window.FluxyMoney.baseCurrencyUnit()} of revenue, ${Math.round(spentWidth)} percent was spent">
                 <div class="np-meter-seg np-meter-spent" style="flex:0 0 ${spentWidth.toFixed(2)}%">${segLabel(spentWidth, 'Spent')}</div>
                 ${keptWidth > 0 ? `<div class="np-meter-seg np-meter-kept" style="flex:0 0 ${keptWidth.toFixed(2)}%">${segLabel(keptWidth, 'Kept')}</div>` : ''}
             </div>`;
@@ -431,10 +431,10 @@ function renderComposition(totals) {
     let keptCopy;
     if (revenue <= 0) keptCopy = 'No revenue to measure against';
     else if (netProfit < 0) keptCopy = `Spending is ${escapeHtml(formatNumber(expenses / revenue))}× revenue this period`;
-    else keptCopy = `You kept ${escapeHtml(formatPercent((netProfit / revenue) * 100))} of every rupiah earned`;
+    else keptCopy = `You kept ${escapeHtml(formatPercent((netProfit / revenue) * 100))} of every ${window.FluxyMoney.baseCurrencyUnit()} earned`;
 
     host.innerHTML = `
-        <p class="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Of every rupiah of revenue</p>
+        <p class="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Of every ${window.FluxyMoney.baseCurrencyUnit()} of revenue</p>
         ${meter}
         ${overrun}
         <div class="mt-5 space-y-3">

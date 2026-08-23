@@ -230,9 +230,9 @@
                         </div>
                         <p id="bill-pay-fx-line" class="text-[12px] text-blue-800"></p>
                         <div>
-                            <label for="bill-pay-idr" class="block text-[12px] font-semibold text-gray-600 mb-1">Rupiah amount paid</label>
+                            <label for="bill-pay-idr" class="block text-[12px] font-semibold text-gray-600 mb-1"><span data-money-name>Rupiah</span> amount paid</label>
                             <input id="bill-pay-idr" type="text" inputmode="numeric" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] tabular-nums focus:outline-none focus:ring-1 focus:ring-[#EA580C] focus:border-[#EA580C]" placeholder="0">
-                            <p class="mt-1 text-[11px] text-gray-400">Prefilled from the rate — override with the actual Rupiah that left your account.</p>
+                            <p class="mt-1 text-[11px] text-gray-400">Prefilled from the rate — override with the actual <span data-money-name>Rupiah</span> that left your account.</p>
                         </div>
                     </div>
                     <div>
@@ -1238,7 +1238,7 @@
                 line.textContent = `1 ${cur} = ${formatCurrencyIDR(payFxRate)} · ${window.FluxyMoney.formatMoney(foreignMinor, cur)} ≈ ${formatCurrencyIDR(idr)}`;
                 window.FluxyAmountInput.seed(idrInput, idr);
             } else {
-                line.textContent = `Live rate unavailable — enter the Rupiah amount you paid.`;
+                line.textContent = `Live rate unavailable — enter the ${window.FluxyMoney.baseCurrencyName()} amount you paid.`;
             }
         }
         async function refreshBillPayFx() {
@@ -1343,7 +1343,7 @@
                     const foreignMinor = billPayForeignMinor();
                     if (!(foreignMinor > 0)) { window.showToast?.('Enter an amount to pay.', 'error'); resetPayConfirmButton(); return; }
                     const idr = Math.round(Math.abs(Number(String(document.getElementById('bill-pay-idr')?.value || '').replace(/[^\d]/g, '')) || 0));
-                    if (!(idr > 0)) { window.showToast?.('Enter the Rupiah amount paid.', 'error'); resetPayConfirmButton(); return; }
+                    if (!(idr > 0)) { window.showToast?.(`Enter the ${window.FluxyMoney.baseCurrencyName()} amount paid.`, 'error'); resetPayConfirmButton(); return; }
                     opts.foreignAmount = foreignMinor;
                     opts.amountPaidIdr = idr;
                     opts.fxRate = payFxRate || null;

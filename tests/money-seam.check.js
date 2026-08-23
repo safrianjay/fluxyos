@@ -406,6 +406,47 @@ if (seedHits.length) {
 }
 
 
+// ── no-currency-name ──────────────────────────────────────────────────────────
+//
+// A hardcoded currency NAME is a hardcoded country just as surely as a hardcoded
+// symbol is — it simply survives a symbol sweep. "Rupiah amount paid" and "of
+// every rupiah of revenue" sat on the bill and net-profit screens of every
+// Philippine workspace.
+//
+// Exempt: identifiers (formatRupiah), comments, the marketing site and FluxyOS's
+// own IDR billing, currency PICKERS (which legitimately name IDR), and
+// data-money-name spans, whose markup ships "Rupiah" as the IDR default and is
+// repainted from the workspace currency at boot.
+const APP_COPY_ALLOWED = new Set([...ID_LOCALE_ALLOWED,
+    'revenuesync.html', 'receiptcapture.html', 'vendorspend.html', 'aiagents.html',
+    'assets/js/i18n.js', 'onboarding.html', 'fluxyos.html',
+]);
+const stripComments = (t) => t
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))  // keep line count
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+const nameHits = [];
+execSync('git ls-files "*.html" "assets/js/*.js"', { cwd: ROOT, encoding: 'utf8' })
+    .split('\n').map((f) => f.trim()).filter(Boolean)
+    .filter((rel) => !APP_COPY_ALLOWED.has(rel) && !rel.startsWith('id/') && !rel.startsWith('docs/'))
+    .forEach((rel) => {
+        stripComments(fs.readFileSync(path.join(ROOT, rel), 'utf8')).split('\n').forEach((line, i) => {
+            if (/data-money-name|<option|shortName:|unit:|data-search=/.test(line)) return;
+            // Skip identifiers: formatRupiah, signedRupiah, normalizeRupiahAmount…
+            const bare = line.replace(/[A-Za-z_$]+[Rr]upiah[A-Za-z_$]*/g, '');
+            if (/\b[Rr]upiah\b/.test(bare)) nameHits.push(`${rel}:${i + 1}`);
+        });
+    });
+if (nameHits.length) {
+    fail('no-currency-name',
+        `${nameHits.length} site(s) name Rupiah in copy shown to every workspace:\n        ` +
+        nameHits.join('\n        ') +
+        `\n\n      Use window.FluxyMoney.baseCurrencyName() / baseCurrencyUnit(), or a\n` +
+        `      <span data-money-name> that paintCurrencyNames() repaints at boot.`);
+} else {
+    ok('no-currency-name', 'no app copy names a currency the workspace may not use');
+}
+
+
 if (failures.length) {
     console.error('\nMONEY SEAM\n');
     for (const f of failures) console.error(`  ✗ ${f.check}: ${f.msg}\n`);

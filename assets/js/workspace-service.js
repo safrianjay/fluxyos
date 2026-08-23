@@ -88,6 +88,7 @@ function applyBaseCurrency(code) {
             // the real currency is known. They are plain HTML and cannot
             // interpolate, so this is the only thing that corrects them.
             window.FluxyMoney.paintSymbols();
+            window.FluxyMoney.paintCurrencyNames();
             window.FluxyMoney.paintCountryExamples();
         }
     } catch (_) { /* formatting must never break resolution */ }

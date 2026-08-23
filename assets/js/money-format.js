@@ -42,11 +42,11 @@
     // ribu/juta/miliar; everything else uses K/M/B. Keeping IDR on 'id' is what
     // makes the compact formatters byte-identical to the inline ones they replaced.
     var CURRENCIES = {
-        IDR: { symbol: 'Rp', decimals: 0, minorPerUnit: 1,   locale: 'id-ID', label: 'Indonesian Rupiah', compact: 'id' },
-        PHP: { symbol: '₱',  decimals: 2, minorPerUnit: 100, locale: 'en-PH', label: 'Philippine Peso',   compact: 'en' },
-        SGD: { symbol: 'S$', decimals: 2, minorPerUnit: 100, locale: 'en-SG', label: 'Singapore Dollar',  compact: 'en' },
-        MYR: { symbol: 'RM', decimals: 2, minorPerUnit: 100, locale: 'ms-MY', label: 'Malaysian Ringgit', compact: 'en' },
-        USD: { symbol: '$',  decimals: 2, minorPerUnit: 100, locale: 'en-US', label: 'US Dollar',         compact: 'en' }
+        IDR: { symbol: 'Rp', decimals: 0, minorPerUnit: 1,   locale: 'id-ID', label: 'Indonesian Rupiah', compact: 'id', shortName: 'Rupiah', unit: 'rupiah' },
+        PHP: { symbol: '₱',  decimals: 2, minorPerUnit: 100, locale: 'en-PH', label: 'Philippine Peso',   compact: 'en', shortName: 'Peso', unit: 'peso' },
+        SGD: { symbol: 'S$', decimals: 2, minorPerUnit: 100, locale: 'en-SG', label: 'Singapore Dollar',  compact: 'en', shortName: 'Singapore Dollar', unit: 'dollar' },
+        MYR: { symbol: 'RM', decimals: 2, minorPerUnit: 100, locale: 'ms-MY', label: 'Malaysian Ringgit', compact: 'en', shortName: 'Ringgit', unit: 'ringgit' },
+        USD: { symbol: '$',  decimals: 2, minorPerUnit: 100, locale: 'en-US', label: 'US Dollar',         compact: 'en', shortName: 'US Dollar', unit: 'dollar' }
     };
 
     // Invoice/bill FACE currencies. Mirrored by firestore.rules — widening this
@@ -79,16 +79,20 @@
     var COUNTRY_PROFILES = {
         ID: { dial: '+62', city: 'Jakarta', postal: '10210',
               address: 'Jl. Sudirman No. 1, Jakarta 10210',
-              business: 'Kopi Senja Digital', vendor: 'Toko Sinar Jaya' },
+              business: 'Kopi Senja Digital', vendor: 'Toko Sinar Jaya',
+              taxId: 'NPWP', taxIdSample: '00.000.000.0-000.000' },
         PH: { dial: '+63', city: 'Makati', postal: '1200',
               address: '123 Ayala Avenue, Makati 1200',
-              business: 'Manila Coffee House', vendor: 'Santos Trading' },
+              business: 'Manila Coffee House', vendor: 'Santos Trading',
+              taxId: 'TIN', taxIdSample: '000-000-000-000' },
         SG: { dial: '+65', city: 'Singapore', postal: '238823',
               address: '10 Orchard Road, Singapore 238823',
-              business: 'Orchard Coffee', vendor: 'Tan Supplies' },
+              business: 'Orchard Coffee', vendor: 'Tan Supplies',
+              taxId: 'UEN', taxIdSample: '200912345A' },
         MY: { dial: '+60', city: 'Kuala Lumpur', postal: '55100',
               address: 'Jalan Bukit Bintang 10, Kuala Lumpur 55100',
-              business: 'Kuala Lumpur Coffee Co.', vendor: 'Lim Trading' }
+              business: 'Kuala Lumpur Coffee Co.', vendor: 'Lim Trading',
+              taxId: 'Tax Identification No.', taxIdSample: 'C1234567890' }
     };
 
     /** Country profile for the active workspace. Unknown country = Indonesia. */
@@ -325,6 +329,26 @@
         return d.toLocaleString(baseLocale(), opts || undefined);
     }
 
+
+    // The currency's NAME, for prose. "Rupiah amount paid" is a hardcoded country
+    // as surely as a hardcoded symbol is — it just survives a symbol sweep.
+    // shortName is title-case for labels ("Peso amount paid"); unit is the
+    // lowercase singular for mid-sentence use ("of every peso of revenue").
+    function baseCurrencyName() { return cfg(BASE).shortName || cfg(BASE).label; }
+    function baseCurrencyUnit() { return cfg(BASE).unit || cfg(BASE).shortName; }
+    function currencyName(currency) { var c = cfg(currency); return c.shortName || c.label; }
+    // Static markup counterpart to paintSymbols, for copy the page ships before
+    // the workspace currency is known.
+    function paintCurrencyNames(root) {
+        if (typeof document === 'undefined') return;
+        var scope = root || document;
+        var nodes = scope.querySelectorAll ? scope.querySelectorAll('[data-money-name]') : [];
+        for (var i = 0; i < nodes.length; i++) {
+            nodes[i].textContent = nodes[i].getAttribute('data-money-name') === 'unit'
+                ? baseCurrencyUnit() : baseCurrencyName();
+        }
+    }
+
     return {
         CURRENCIES: CURRENCIES,
         SUPPORTED: SUPPORTED,
@@ -359,6 +383,10 @@
         isSupported: isSupported,
         isSupportedBase: isSupportedBase,
         currencyForCountry: currencyForCountry,
+        baseCurrencyName: baseCurrencyName,
+        baseCurrencyUnit: baseCurrencyUnit,
+        currencyName: currencyName,
+        paintCurrencyNames: paintCurrencyNames,
         seedMoneyInput: seedMoneyInput,
         liveMoneyInput: liveMoneyInput,
         moneyInputMode: moneyInputMode,

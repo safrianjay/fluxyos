@@ -884,7 +884,7 @@ class DataService {
         let amount, ledgerAmount, newPaid, newOutstanding, fullyPaid;
         if (isForeign) {
             const idr = Math.round(Math.abs(Number(amountPaidIdr) || 0));
-            if (!(idr > 0)) throw new Error('Enter the Rupiah amount paid for this foreign-currency bill.');
+            if (!(idr > 0)) throw new Error(`Enter the ${window.FluxyMoney.baseCurrencyName()} amount paid for this foreign-currency bill.`);
             // payAmount (when given) is the FOREIGN amount settled this time — allows
             // partial foreign payments; defaults to the full remaining foreign balance.
             const foreignPay = payAmount != null ? Math.round(Math.abs(Number(payAmount) || 0)) : outstanding;
@@ -3210,7 +3210,7 @@ class DataService {
         const amount = isForeign
             ? Math.round(Number(amountPaidIdr) || 0)
             : Math.round(Number(invoice.total_amount) || 0);
-        if (!(amount > 0)) throw new Error(isForeign ? 'Enter the Rupiah amount received.' : 'Invoice total must be greater than zero.');
+        if (!(amount > 0)) throw new Error(isForeign ? `Enter the ${window.FluxyMoney.baseCurrencyName()} amount received.` : 'Invoice total must be greater than zero.');
 
         const txRef = doc(collection(this.db, `${this._scope(userId)}/transactions`));
         const transaction = {
@@ -5475,7 +5475,7 @@ class DataService {
             // legitimate cost rate, and it is never stored as money or quantity.
             const amount = Number(l.amount);
             if (!Number.isInteger(amount) || amount < 0) {
-                throw new Error(`Amount for "${item.name}" must be a whole number of Rupiah.`);
+                throw new Error(`Amount for "${item.name}" must be a whole number of ${window.FluxyMoney.baseCurrencyName()}.`);
             }
             return { item_id: itemId, item_name: item.name, base_unit: item.base_unit, quantity, amount };
         });

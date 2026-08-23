@@ -518,7 +518,7 @@
                             <div class="fluxy-table-card-header">
                                 <div>
                                     <h2 class="fluxy-table-title">Line items</h2>
-                                    <p class="fluxy-table-subtitle">Amounts are stored as raw Rupiah integers.</p>
+                                    <p class="fluxy-table-subtitle">Amounts are shown in your books' currency.</p>
                                 </div>
                             </div>
                             <div class="fluxy-table-scroll">
@@ -561,7 +561,7 @@
                                     <div id="detail-address-row" class="hidden justify-between gap-3"><dt class="text-gray-500">Customer address</dt><dd id="detail-address" class="max-w-[60%] whitespace-pre-line text-right text-gray-900">—</dd></div>
                                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Currency</dt><dd id="detail-currency" class="text-gray-900">IDR</dd></div>
                                     <div class="flex justify-between gap-3"><dt class="text-gray-500">Collection</dt><dd id="detail-method" class="text-gray-900">—</dd></div>
-                                    <div id="detail-paid-idr-row" class="hidden justify-between gap-3"><dt class="text-gray-500">Paid in Rupiah</dt><dd id="detail-paid-idr" class="font-mono font-semibold text-gray-900">—</dd></div>
+                                    <div id="detail-paid-idr-row" class="hidden justify-between gap-3"><dt class="text-gray-500">Paid in <span data-money-name>Rupiah</span></dt><dd id="detail-paid-idr" class="font-mono font-semibold text-gray-900">—</dd></div>
                                     <div id="detail-fx-rate-row" class="hidden justify-between gap-3"><dt class="text-gray-500">Exchange rate</dt><dd id="detail-fx-rate" class="font-mono text-gray-900">—</dd></div>
                                     <div id="detail-ledger-row" class="hidden justify-between gap-3"><dt class="text-gray-500">Payment record</dt><dd><a id="detail-ledger-link" href="#" class="font-medium text-[#EA580C] hover:underline">View in Ledger</a></dd></div>
                                 </dl>
@@ -699,7 +699,7 @@
                 </div>
                 <!-- Foreign-currency conversion (shown only for non-IDR invoices). -->
                 <div id="paid-fx" class="mt-4 hidden rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
-                    <p class="text-[12px] font-medium text-gray-700">Recorded in your ledger (Rupiah)</p>
+                    <p class="text-[12px] font-medium text-gray-700">Recorded in your ledger (<span data-money-name>Rupiah</span>)</p>
                     <p id="paid-fx-rate" class="mt-1 text-[12px] text-gray-500">Fetching payment-date rate…</p>
                     <div class="mt-2 flex items-center gap-2">
                         <span class="text-[14px] font-medium text-gray-500" data-money-symbol data-money-placeholder></span>

@@ -264,7 +264,7 @@ function normalizeRupiahAmount(raw) {
         } else if (state.fx.error) {
             note.textContent = 'Could not fetch the rate — enter it manually to continue.';
         } else {
-            note.textContent = 'Enter an exchange rate to see the Rupiah equivalent.';
+            note.textContent = `Enter an exchange rate to see the ${window.FluxyMoney.baseCurrencyName()} equivalent.`;
         }
     }
 
@@ -1382,7 +1382,7 @@ function normalizeRupiahAmount(raw) {
         const fxRate = Number(state.fx.rate) || null;
         const needsConversion = window.FluxyMoney.isForeignCurrency(currency) && state.mode !== 'bill';
         if (needsConversion && !(fxRate > 0)) {
-            window.showToast?.('Enter an exchange rate so this can be saved in Rupiah.', 'error');
+            window.showToast?.(`Enter an exchange rate so this can be saved in ${window.FluxyMoney.baseCurrencyName()}.`, 'error');
             return;
         }
         const amount = needsConversion
