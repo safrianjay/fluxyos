@@ -305,14 +305,19 @@ export function initInvoicesPage({ ds, user }) {
         const overdueAmount = overdue.filter(isIdr).reduce((sum, i) => sum + invoiceOutstanding(i), 0);
         const paidAmount = paidThisMonth.filter(isIdr).reduce((sum, i) => sum + (Number(i.total_amount) || 0), 0);
 
+        // These sum only invoices in the BOOKS' currency (isIdr above filters the
+        // rest), so they render in the books' currency — not a hardcoded 'IDR',
+        // which showed Rp0 on a peso workspace. The literal survived every
+        // currency guard because it is a function ARGUMENT, not a rendered symbol.
+        const baseCcy = window.FluxyMoney.baseCurrency();
         el('invoice-summary-open-count').textContent = String(open.length);
-        el('invoice-summary-open-amount').textContent = money(openAmount, 'IDR');
+        el('invoice-summary-open-amount').textContent = money(openAmount, baseCcy);
         el('invoice-summary-draft-count').textContent = String(drafts.length);
-        el('invoice-summary-due-amount').textContent = money(openAmount, 'IDR');
+        el('invoice-summary-due-amount').textContent = money(openAmount, baseCcy);
         el('invoice-summary-overdue-note').textContent = overdue.length
-            ? `${overdue.length} overdue · ${money(overdueAmount, 'IDR')}`
+            ? `${overdue.length} overdue · ${money(overdueAmount, baseCcy)}`
             : 'No overdue invoices';
-        el('invoice-summary-paid-amount').textContent = money(paidAmount, 'IDR');
+        el('invoice-summary-paid-amount').textContent = money(paidAmount, baseCcy);
         el('invoice-summary-paid-count').textContent = String(paidThisMonth.length);
     }
 
@@ -1203,7 +1208,7 @@ export function initInvoicesPage({ ds, user }) {
         const paidIdr = Number(invoice.amount_paid_idr) || 0;
         el('detail-paid-idr-row').classList.toggle('hidden', !(paidIdr > 0));
         el('detail-paid-idr-row').classList.toggle('flex', paidIdr > 0);
-        el('detail-paid-idr').textContent = paidIdr > 0 ? money(paidIdr, 'IDR') : '—';
+        el('detail-paid-idr').textContent = paidIdr > 0 ? money(paidIdr, window.FluxyMoney.baseCurrency()) : '—';
         const fxRate = Number(invoice.fx_rate) || 0;
         const showRate = paidIdr > 0 && fxRate > 0;
         el('detail-fx-rate-row').classList.toggle('hidden', !showRate);
@@ -1569,7 +1574,7 @@ export function initInvoicesPage({ ds, user }) {
         amountField.classList.toggle('hidden', !paidPartialCapable);
         if (paidPartialCapable) {
             el('paid-amount-input').value = window.FluxyMoney.formatMoneyInput(String(outstanding), 'IDR');
-            el('paid-outstanding-hint').textContent = `Outstanding: ${money(outstanding, 'IDR')}. Enter less to record a partial payment.`;
+            el('paid-outstanding-hint').textContent = `Outstanding: ${money(outstanding, window.FluxyMoney.baseCurrency())}. Enter less to record a partial payment.`;
         }
         el('paid-confirm').textContent = paidPartialCapable ? 'Record payment' : 'Mark as paid';
         if (!paidDatePicker) {
@@ -1613,7 +1618,7 @@ export function initInvoicesPage({ ds, user }) {
         const cur = detailInvoice.currency || 'IDR';
         const paymentDate = paidDateKey ? window.FluxyDateRangePicker.parseDayKey(paidDateKey) : new Date();
         const showErr = (msg) => { const n = el('paid-error'); n.textContent = msg; n.classList.remove('hidden'); };
-        let recorded = money(detailInvoice.total_amount, 'IDR');
+        let recorded = money(detailInvoice.total_amount, window.FluxyMoney.baseCurrency());
         btn.disabled = true;
         try {
             let result;
@@ -1623,8 +1628,8 @@ export function initInvoicesPage({ ds, user }) {
                 const amt = window.FluxyMoney.toMinor(el('paid-amount-input').value, 'IDR');
                 const outstanding = invoiceOutstanding(detailInvoice);
                 if (!(amt > 0)) { showErr('Enter the amount received.'); btn.disabled = false; return; }
-                if (amt > outstanding) { showErr(`Amount cannot exceed the outstanding balance (${money(outstanding, 'IDR')}).`); btn.disabled = false; return; }
-                recorded = money(amt, 'IDR');
+                if (amt > outstanding) { showErr(`Amount cannot exceed the outstanding balance (${money(outstanding, window.FluxyMoney.baseCurrency())}).`); btn.disabled = false; return; }
+                recorded = money(amt, window.FluxyMoney.baseCurrency());
                 result = await ds.recordInvoicePayment(uid, detailInvoice.id, { amount: amt, paymentDate });
             } else {
                 // Foreign-currency invoices post the (rate-converted, user-confirmable)
@@ -1636,7 +1641,7 @@ export function initInvoicesPage({ ds, user }) {
                     opts.amountPaidIdr = idr;
                     opts.fxRate = paidFxRate || null;
                     opts.fxRateDate = paidDateKey || null;
-                    recorded = money(idr, 'IDR');
+                    recorded = money(idr, window.FluxyMoney.baseCurrency());
                 }
                 result = await ds.markInvoicePaid(uid, detailInvoice.id, opts);
             }
@@ -1731,7 +1736,7 @@ export function initInvoicesPage({ ds, user }) {
                         <p class="text-[12px] text-gray-500">${statusBadgeHTML(displayStatus(inv))} · Due ${esc(formatDate(inv.due_date))}</p>
                     </div>
                     <div class="text-right flex-shrink-0">
-                        <span class="block text-[11px] text-gray-400">Outstanding ${money(outstanding, 'IDR')}</span>
+                        <span class="block text-[11px] text-gray-400">Outstanding ${money(outstanding, window.FluxyMoney.baseCurrency())}</span>
                         <span class="inline-flex items-center gap-1 justify-end">
                             <span class="text-[12px] text-gray-500">${window.FluxyMoney.baseSymbol()}</span>
                             <input type="text" inputmode="numeric" data-rpay-amount value="${window.FluxyMoney.formatMoneyInput(String(outstanding), 'IDR')}" class="w-28 text-right text-[13px] font-mono tabular-nums border border-gray-200 rounded px-2 py-1 focus:border-[#EA580C] focus:outline-none">
@@ -1751,7 +1756,7 @@ export function initInvoicesPage({ ds, user }) {
             if (amt > outstanding) { amt = outstanding; amountEl.value = window.FluxyMoney.formatMoneyInput(String(outstanding), 'IDR'); }
             if (row.querySelector('[data-rpay-check]').checked && amt > 0) { total += amt; count += 1; }
         });
-        el('receive-pay-total').textContent = money(total, 'IDR');
+        el('receive-pay-total').textContent = money(total, window.FluxyMoney.baseCurrency());
         el('receive-pay-count').textContent = `${count} invoice${count === 1 ? '' : 's'}`;
         const btn = el('receive-pay-confirm');
         if (btn && !receiveState.inFlight) btn.disabled = !(count > 0 && total > 0);
@@ -1786,7 +1791,7 @@ export function initInvoicesPage({ ds, user }) {
             const { paidCount, totalApplied, results } = await ds.receiveCustomerPayment(uid, payments, { paymentDate });
             const failed = results.filter((r) => !r.ok);
             if (paidCount > 0) {
-                window.showToast?.(`Received ${money(totalApplied, 'IDR')} across ${paidCount} invoice${paidCount === 1 ? '' : 's'}${failed.length ? ` (${failed.length} could not be applied)` : ''}.`, failed.length ? 'info' : 'success');
+                window.showToast?.(`Received ${money(totalApplied, window.FluxyMoney.baseCurrency())} across ${paidCount} invoice${paidCount === 1 ? '' : 's'}${failed.length ? ` (${failed.length} could not be applied)` : ''}.`, failed.length ? 'info' : 'success');
             } else {
                 window.showToast?.(failed[0]?.error || 'Could not record the payments.', 'error');
             }

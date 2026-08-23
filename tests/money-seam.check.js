@@ -198,6 +198,31 @@ if (idrTests.length) {
     ok('no-idr-tests', 'no comparison assumes IDR is the accounting currency');
 }
 
+// No workspace surface may pass a hardcoded currency ARGUMENT.
+//
+// money(amount, 'IDR') renders no literal, so every symbol-based check above is
+// blind to it. That is exactly how the invoice summary cards kept showing "Rp0"
+// on a peso workspace long after the rest of the page was correct.
+let hardArgs = [];
+try {
+    const out = execSync(
+        `grep -rnE "money\\([^,()]+, *'IDR'\\)|formatMoney\\([^,()]+, *'IDR'\\)" assets/js/*.js 2>/dev/null || true`,
+        { cwd: ROOT, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 }
+    );
+    hardArgs = out.split('\n').filter(Boolean)
+        .filter((l) => !EXCLUDE.some((f) => l.startsWith(`assets/js/${f}:`)))
+        .filter((l) => !/^[^:]+:\d+:\s*(\/\/|\*)/.test(l));
+} catch (e) { fail('no-hardcoded-ccy-arg', `grep failed: ${e.message}`); }
+if (hardArgs.length) {
+    fail('no-hardcoded-ccy-arg',
+        `${hardArgs.length} hardcoded currency argument(s) — these render no literal,\n` +
+        `      so the symbol checks cannot see them:\n        ` + hardArgs.join('\n        ') +
+        `\n\n      Pass window.FluxyMoney.baseCurrency() for workspace money, or the\n` +
+        `      document's own currency for an invoice/bill face value.`);
+} else {
+    ok('no-hardcoded-ccy-arg', 'no workspace surface hardcodes a currency argument');
+}
+
 // No app page may ship a STATIC currency figure in its markup.
 //
 // The browser paints markup before a single line of JS runs, so a literal "Rp0"
