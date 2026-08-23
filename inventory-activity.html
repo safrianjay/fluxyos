@@ -215,7 +215,7 @@
 
             if (movements.length >= FETCH_LIMIT) {
                 document.getElementById('act-subtitle').textContent =
-                    `The most recent ${FETCH_LIMIT.toLocaleString('id-ID')} movements. Older ones are still in the ledger.`;
+                    `The most recent ${FETCH_LIMIT.toLocaleString(window.FluxyMoney.baseLocale())} movements. Older ones are still in the ledger.`;
             }
             apply();
         }
@@ -273,7 +273,7 @@
                             <span class="fluxy-table-cell-meta">${esc(m.item_name || '')}</span>
                         </td>
                         <td class="fluxy-table-cell">${m.dimension_id ? esc(r.outlet) : `<span class="act-muted">${esc(r.outlet)}</span>`}</td>
-                        <td class="fluxy-table-cell fluxy-table-money">${qty > 0 ? '+' : ''}${qty.toLocaleString('id-ID')} <span class="act-muted">${esc(m.base_unit || '')}</span></td>
+                        <td class="fluxy-table-cell fluxy-table-money">${qty > 0 ? '+' : ''}${qty.toLocaleString(window.FluxyMoney.baseLocale())} <span class="act-muted">${esc(m.base_unit || '')}</span></td>
                         <td class="fluxy-table-cell fluxy-table-money">${rp(m.amount)}</td>
                     </tr>`;
             }).join('');

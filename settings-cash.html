@@ -483,7 +483,7 @@
             document.getElementById('cash-update-account-label').textContent =
                 `${account.account_name || ''}${account.last_four ? ' · ••' + account.last_four : ''} · ${account.bank_name || ''}`;
             const balanceInput = document.querySelector('#cash-update-form [name="balance"]');
-            balanceInput.value = (Number(account.latest_balance) || 0).toLocaleString('id-ID');
+            window.FluxyAmountInput.seed(balanceInput, account.latest_balance);
 
             const backdrop = document.getElementById('cash-update-backdrop');
             backdrop.classList.add('is-open');
@@ -626,8 +626,9 @@
         }
 
         function formatAmountInput(input) {
-            const digits = String(input.value || '').replace(/\D/g, '');
-            input.value = digits ? Number(digits).toLocaleString('id-ID') : '';
+            // Delegates to the shared formatter: currency-aware grouping,
+            // decimals allowed, caret held in place across the reformat.
+            window.FluxyAmountInput.format(input);
         }
 
         function formatIDR(value) {
@@ -649,14 +650,14 @@
             const today = new Date(); today.setHours(0, 0, 0, 0);
             const t = new Date(date); t.setHours(0, 0, 0, 0);
             const diff = Math.round((today - t) / 86400000);
-            if (diff === 0) return `Today ${date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
+            if (diff === 0) return `Today ${date.toLocaleTimeString(window.FluxyMoney.baseLocale(), { hour: '2-digit', minute: '2-digit' })}`;
             if (diff === 1) return 'Yesterday';
             if (diff < 7) return `${diff} days ago`;
-            return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+            return date.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
         }
 
         function formatDateTime(date) {
-            return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+            return date.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
         }
 
         function todayKey() {

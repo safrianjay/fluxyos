@@ -987,7 +987,7 @@
             return window.FluxyMoney.formatBase(n);
         }
         function qty(value) {
-            return (Number(value) || 0).toLocaleString('id-ID');
+            return (Number(value) || 0).toLocaleString(window.FluxyMoney.baseLocale());
         }
         function esc(str) {
             return String(str == null ? '' : str).replace(/[&<>"']/g, (c) => (
@@ -1403,7 +1403,7 @@
                 const clickable = m.journal_ref ? ' fluxy-table-row-clickable' : '';
                 const meta = [
                     m.item_name || '',
-                    `${qty > 0 ? '+' : ''}${qty.toLocaleString('id-ID')} ${m.base_unit || ''}`.trim(),
+                    `${qty > 0 ? '+' : ''}${qty.toLocaleString(window.FluxyMoney.baseLocale())} ${m.base_unit || ''}`.trim(),
                     outlet
                 ].filter(Boolean).join(' · ');
                 return `
@@ -1673,13 +1673,13 @@
                         ${r.item.sku ? `<span class="fluxy-table-cell-meta">${esc(r.item.sku)}</span>` : ''}
                     </td>
                     <td class="fluxy-table-cell">${badge}</td>
-                    <td class="fluxy-table-cell fluxy-table-money"><span class="rst-qty">${r.onHand.toLocaleString('id-ID')}</span><span class="rst-unit">${unit}</span></td>
-                    <td class="fluxy-table-cell fluxy-table-money"><span class="rst-qty">${r.point.toLocaleString('id-ID')}</span><span class="rst-unit">${unit}</span></td>
-                    <td class="fluxy-table-cell fluxy-table-money">${r.used ? `<span class="rst-qty">${r.used.toLocaleString('id-ID')}</span><span class="rst-unit">${unit}</span>` : '<span class="inv-muted">—</span>'}</td>
+                    <td class="fluxy-table-cell fluxy-table-money"><span class="rst-qty">${r.onHand.toLocaleString(window.FluxyMoney.baseLocale())}</span><span class="rst-unit">${unit}</span></td>
+                    <td class="fluxy-table-cell fluxy-table-money"><span class="rst-qty">${r.point.toLocaleString(window.FluxyMoney.baseLocale())}</span><span class="rst-unit">${unit}</span></td>
+                    <td class="fluxy-table-cell fluxy-table-money">${r.used ? `<span class="rst-qty">${r.used.toLocaleString(window.FluxyMoney.baseLocale())}</span><span class="rst-unit">${unit}</span>` : '<span class="inv-muted">—</span>'}</td>
                     <td class="fluxy-table-cell fluxy-table-money">
                         <span class="rst-rec">
-                            <span class="rst-rec-qty">+${r.recommended.toLocaleString('id-ID')} ${unit}</span>
-                            <span class="rst-rec-why">to reach ${r.point.toLocaleString('id-ID')} ${unit}</span>
+                            <span class="rst-rec-qty">+${r.recommended.toLocaleString(window.FluxyMoney.baseLocale())} ${unit}</span>
+                            <span class="rst-rec-why">to reach ${r.point.toLocaleString(window.FluxyMoney.baseLocale())} ${unit}</span>
                         </span>
                     </td>
                     <td class="fluxy-table-cell">
@@ -1714,7 +1714,7 @@
             });
             return Object.entries(groups).map(([supplier, items]) => {
                 const lines = items.map((r) =>
-                    `- ${r.item.name}${r.item.sku ? ` (${r.item.sku})` : ''}: ${r.recommended.toLocaleString('id-ID')} ${r.item.base_unit || ''}`.trim());
+                    `- ${r.item.name}${r.item.sku ? ` (${r.item.sku})` : ''}: ${r.recommended.toLocaleString(window.FluxyMoney.baseLocale())} ${r.item.base_unit || ''}`.trim());
                 const cost = items.reduce((n, r) => n + (r.estCost || 0), 0);
                 return `${supplier}\n${lines.join('\n')}\nEstimated: ${rp(cost)}`;
             }).join('\n\n');
@@ -1840,7 +1840,7 @@
                 if (!Number.isFinite(qty) || qty <= 0) { cell.textContent = ''; return; }
                 try {
                     const base = toBase(item, qty, line.unit || item.base_unit);
-                    cell.textContent = `${base.toLocaleString('id-ID')} ${item.base_unit || ''}`.trim();
+                    cell.textContent = `${base.toLocaleString(window.FluxyMoney.baseLocale())} ${item.base_unit || ''}`.trim();
                 } catch (err) {
                     cell.textContent = err && err.code === INV.NON_INTEGER_QUANTITY
                         ? 'Not a whole number of ' + (item.base_unit || 'stock units')
@@ -1981,8 +1981,9 @@
             document.getElementById('item-reorder').value = (isEdit && reorderPointOf(item) !== null)
                 ? String(reorderPointOf(item)) : '';
             document.getElementById('item-notes').value = isEdit ? (item.notes || '') : '';
-            document.getElementById('item-price').value = (isEdit && Number(item.sales_price) > 0)
-                ? Number(item.sales_price).toLocaleString('id-ID') : '';
+            const priceEl = document.getElementById('item-price');
+            if (isEdit && Number(item.sales_price) > 0) window.FluxyAmountInput.seed(priceEl, item.sales_price);
+            else priceEl.value = '';
             document.getElementById('item-pos-category').value = isEdit ? (item.pos_category || '') : '';
             document.getElementById('item-pos-visible').checked = isEdit ? item.pos_visible === true : false;
 
@@ -2075,7 +2076,7 @@
             const factor = document.getElementById('item-purchase-factor').value.trim();
             const el = document.getElementById('item-purchase-preview');
             if (code && factor && base && /^\d+$/.test(factor) && Number(factor) > 0) {
-                el.textContent = `1 ${code} = ${Number(factor).toLocaleString('id-ID')} ${base}`;
+                el.textContent = `1 ${code} = ${Number(factor).toLocaleString(window.FluxyMoney.baseLocale())} ${base}`;
             } else {
                 el.textContent = '';
             }
@@ -2387,7 +2388,7 @@
                     const shown = rate >= 1
                         ? rp(Math.round(rate))
                         : window.FluxyMoney.formatBasePrecise(rate, 4);
-                    out.textContent = `${resolved.base.toLocaleString('id-ID')} ${item.base_unit} · ${shown} per ${item.base_unit}`;
+                    out.textContent = `${resolved.base.toLocaleString(window.FluxyMoney.baseLocale())} ${item.base_unit} · ${shown} per ${item.base_unit}`;
                     out.style.color = '';
                 }
             });

@@ -552,10 +552,10 @@ function formatRelativeTimestamp(date) {
     const target = new Date(date);
     target.setHours(0, 0, 0, 0);
     const diff = Math.round((today - target) / 86400000);
-    if (diff === 0) return `Today ${date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
+    if (diff === 0) return `Today ${date.toLocaleTimeString(window.FluxyMoney.baseLocale(), { hour: '2-digit', minute: '2-digit' })}`;
     if (diff === 1) return 'Yesterday';
     if (diff < 7) return `${diff} days ago`;
-    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    return date.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function toggleKpiCta(id, visible) {
@@ -2041,7 +2041,7 @@ window.addEventListener('resize', () => {
 
 function formatRecordDate(record, fieldName) {
     const date = getRecordDate(record, fieldName);
-    return date ? date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+    return date ? date.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 }
 
 function escapeHtml(value) {
@@ -2234,8 +2234,8 @@ function renderBankReview(data) {
     const container = document.getElementById('bank-setup-review-body');
     if (!container) return;
     const balanceDateLabel = data.balance_date
-        ? new Date(data.balance_date + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-        : new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        ? new Date(data.balance_date + 'T00:00:00').toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short', year: 'numeric' })
+        : new Date().toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
     container.innerHTML = `
         <div class="bank-review-card">
             <div class="bank-review-line"><span>Bank</span><strong>${escapeHtml(data.bank_name)}</strong></div>
@@ -2434,13 +2434,12 @@ async function handleBudgetSave() {
 
 function formatAmountInput(input) {
     if (!input) return;
-    const digits = String(input.value || '').replace(/\D/g, '');
-    input.value = digits ? window.FluxyMoney.formatMoneyInput(input.value, window.FluxyMoney.baseCurrency()) : '';
+    input.value = window.FluxyMoney.liveMoneyInput(input.value);
 }
 
 function formatIntegerForInput(value) {
     const n = Math.round(Math.max(0, Number(value) || 0));
-    return n ? n.toLocaleString('id-ID') : '';
+    return n ? window.FluxyMoney.baseNumber(n) : '';
 }
 
 function capitalize(value) {

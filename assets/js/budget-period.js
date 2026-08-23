@@ -478,7 +478,7 @@ function formatPeriod(budget) {
     const end = budget.period_end?.toDate?.();
     if (!start || !end) return '—';
     const fmt = { day: 'numeric', month: 'short', year: 'numeric' };
-    return `${start.toLocaleDateString('id-ID', fmt)} – ${end.toLocaleDateString('id-ID', fmt)}`;
+    return `${start.toLocaleDateString(window.FluxyMoney.baseLocale(), fmt)} – ${end.toLocaleDateString(window.FluxyMoney.baseLocale(), fmt)}`;
 }
 
 function derivePeriodLabel(periodType, start, end) {
@@ -504,7 +504,7 @@ function formatUpdatedAt(budget) {
     if (hours < 24) return `Updated ${hours}h ago`;
     const days = Math.floor(hours / 24);
     if (days < 30) return `Updated ${days}d ago`;
-    return `Updated ${when.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    return `Updated ${when.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short', year: 'numeric' })}`;
 }
 
 function renderWorkspaceHeader(budget, allocations) {
@@ -989,12 +989,15 @@ function pickNextCategory() {
 }
 
 function formatRpInput(value) {
-    const n = Math.round(Math.max(0, Number(value) || 0));
-    if (!n) return '';
-    // Minor -> units -> currency-aware grouping. Grouping the MINOR value is
-    // only right for a 0-decimal currency; on PHP it shrank 100x per keystroke.
-    const M = window.FluxyMoney; const b = M.baseCurrency();
-    return M.formatMoneyInput(String(M.fromMinor(Math.max(0, Number(n) || 0), b)), b);
+    return Math.round(Math.max(0, Number(value) || 0))
+        ? window.FluxyMoney.seedMoneyInput(value) : '';
+}
+
+// See budget.js liveRp — format what was typed, never a value round-tripped
+// through minor units, or the decimal separator is eaten mid-entry.
+function liveRp(el) {
+    el.value = window.FluxyMoney.liveMoneyInput(el.value);
+    return parseRp(el.value);
 }
 
 function parseRp(value) {
@@ -1822,7 +1825,7 @@ function wireWizardStepControls() {
     });
     el('budget-wizard-total-input')?.addEventListener('input', (e) => {
         budgetWizardState.totalBudget = parseRp(e.target.value);
-        e.target.value = formatRpInput(budgetWizardState.totalBudget);
+        e.target.value = window.FluxyMoney.liveMoneyInput(e.target.value);
         refreshWizardFooterAndComputed();
     });
     document.querySelectorAll('[data-template]').forEach(card => {
@@ -1864,7 +1867,7 @@ function wireWizardStepControls() {
         const percentInput = rowEl.querySelector('[data-field="percent"]');
         amountInput?.addEventListener('input', (e) => {
             budgetWizardState.allocations[index].amount = parseRp(e.target.value);
-            e.target.value = formatRpInput(budgetWizardState.allocations[index].amount);
+            e.target.value = window.FluxyMoney.liveMoneyInput(e.target.value);
             if (percentInput) percentInput.value = formatAllocationPercent(budgetWizardState.allocations[index].amount);
             refreshWizardFooterAndComputed();
         });
@@ -2261,7 +2264,7 @@ function renderAllocationDetailFull(alloc, data, usage) {
 
 function renderDetailRecordRow(record, type, alloc) {
     const date = (type === 'bills' && record.due_date?.toDate?.()) || record.timestamp?.toDate?.();
-    const dateText = date ? date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '—';
+    const dateText = date ? date.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short' }) : '—';
     const vendor = record.vendor_name || 'Unknown';
     const amount = formatRp(record.amount);
     const source = record._matchSource === 'manual' ? 'Manual' : record._matchSource === 'explicit' ? 'Explicit' : 'Auto by category';
@@ -2293,7 +2296,7 @@ async function renderUnallocatedQueue() {
 
 function renderUnallocRow(record) {
     const date = (record._type === 'bills' && record.due_date?.toDate?.()) || record.timestamp?.toDate?.();
-    const dateText = date ? date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '—';
+    const dateText = date ? date.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short' }) : '—';
     const vendor = record.vendor_name || 'Unknown';
     const amount = formatRp(record.amount);
     const typeLabel = record._type === 'bills' ? 'Bill' : (record.type || 'transaction').replace(/_/g, ' ');
@@ -2346,7 +2349,7 @@ async function renderExcludedRecords() {
 
 function renderExcludedRow(record) {
     const date = (record._type === 'bills' && record.due_date?.toDate?.()) || record.timestamp?.toDate?.();
-    const dateText = date ? date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '—';
+    const dateText = date ? date.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short' }) : '—';
     const vendor = record.vendor_name || 'Unknown';
     const amount = formatRp(record.amount);
     const reason = record.budget_exclusion_reason || 'No reason recorded.';
@@ -2403,7 +2406,7 @@ async function renderActivityTimeline() {
 
 function renderRecentActivityRow(log) {
     const when = log.created_at?.toDate?.();
-    const whenText = when ? when.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+    const whenText = when ? when.toLocaleString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
     const actionMap = {
         'budget_assignment.update': 'updated an allocation assignment',
         'budget_assignment.exclude': 'excluded a record from this budget',
@@ -2423,7 +2426,7 @@ function renderRecentActivityRow(log) {
 
 function renderActivityRow(log) {
     const when = log.created_at?.toDate?.();
-    const whenText = when ? when.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+    const whenText = when ? when.toLocaleString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
     const actionMap = {
         'budget_assignment.update': 'Assignment updated',
         'budget_assignment.exclude': 'Excluded from budget',

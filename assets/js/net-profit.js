@@ -531,7 +531,7 @@ function comparisonBuckets(grain, anchorDate, count) {
         if (grain === 'month') {
             start = new Date(anchorDate.getFullYear(), anchorDate.getMonth() - i, 1);
             end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
-            label = start.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
+            label = start.toLocaleDateString(window.FluxyMoney.baseLocale(), { month: 'short', year: 'numeric' });
         } else if (grain === 'quarter') {
             const anchorQuarterStart = Math.floor(anchorDate.getMonth() / 3) * 3;
             start = new Date(anchorDate.getFullYear(), anchorQuarterStart - i * 3, 1);

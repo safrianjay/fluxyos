@@ -75,7 +75,7 @@ function formatRp(value) {
 
 function formatQty(value) {
     const qty = Number(value) || 0;
-    return Number.isInteger(qty) ? String(qty) : qty.toLocaleString('id-ID', { maximumFractionDigits: 2 });
+    return Number.isInteger(qty) ? String(qty) : qty.toLocaleString(window.FluxyMoney.baseLocale(), { maximumFractionDigits: 2 });
 }
 
 function toDateObj(value) {

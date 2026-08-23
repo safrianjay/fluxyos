@@ -428,7 +428,7 @@
         const ms = attachedAtMs(entry);
         if (!ms) return '';
         try {
-            return new Date(ms).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+            return new Date(ms).toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
         } catch (_) {
             return '';
         }

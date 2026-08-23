@@ -356,13 +356,13 @@
         function subRenewalDisplay(sub) {
             try {
                 const d = sub.renewal_date?.toDate?.();
-                return d ? d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Not scheduled';
+                return d ? d.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'long', year: 'numeric' }) : 'Not scheduled';
             } catch (_) { return 'Not scheduled'; }
         }
         function subCreatedDisplay(sub) {
             try {
                 const d = sub.timestamp?.toDate?.();
-                return d ? d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+                return d ? d.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'long', year: 'numeric' }) : '';
             } catch (_) { return ''; }
         }
 

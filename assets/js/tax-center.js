@@ -21,10 +21,10 @@ function formatRp(n) {
 function formatRpInput(value, allowNegative = false) {
     const raw = String(value || '');
     const negative = allowNegative && raw.trim().startsWith('-');
-    const digits = String(window.FluxyMoney.toMinor(raw, window.FluxyMoney.baseCurrency()));
-    if (!digits) return '';
-    const M = window.FluxyMoney; const b = M.baseCurrency();
-    const formatted = M.formatMoneyInput(digits, b);
+    // Format what was TYPED. Passing toMinor()'s output here rendered the
+    // minor value as if the user had typed it — 100x on any 2-decimal currency.
+    const formatted = window.FluxyMoney.liveMoneyInput(raw);
+    if (!formatted) return '';
     return negative ? `-${formatted}` : formatted;
 }
 

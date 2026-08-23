@@ -1060,7 +1060,7 @@ function renderOverview() {
         const closedAt = state.kernel.period?.closed_at;
         const when = closedAt?.toDate ? closedAt.toDate() : (closedAt ? new Date(closedAt) : null);
         const suffix = when && !Number.isNaN(when.getTime())
-            ? ` on ${when.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`
+            ? ` on ${when.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short', year: 'numeric' })}`
             : '';
         items.push(healthRow('Period status', 'ok', `${currentPeriodKey()} is ${periodStatus}${suffix}`, 'close'));
     } else if (periodStatus && unposted && unposted.blocking === 0 && tb?.balanced) {

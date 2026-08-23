@@ -254,10 +254,15 @@ function getWizardQuarterRemaining() {
  * and formatMoneyInput dot-groups, so the output is byte-identical to before.
  */
 function formatRpInput(value) {
-    const M = window.FluxyMoney;
-    const base = M.baseCurrency();
-    const units = M.fromMinor(Math.max(0, Number(value) || 0), base);
-    return M.formatMoneyInput(String(units), base);
+    return window.FluxyMoney.seedMoneyInput(value);
+}
+
+// As the user TYPES. Must format the typed string — re-deriving it from the
+// parsed minor value discards an in-progress decimal, so "1250.75" collapsed
+// to "125,075": a silent 100x overstatement.
+function liveRp(el) {
+    el.value = window.FluxyMoney.liveMoneyInput(el.value);
+    return parseRp(el.value);
 }
 
 function parseRp(value) {
@@ -1019,8 +1024,7 @@ function wireMainWizardStepControls() {
         state.mainWizard.notes = event.target.value;
     });
     el('budget-wizard-total-input')?.addEventListener('input', (event) => {
-        state.mainWizard.totalBudget = parseRp(event.target.value);
-        event.target.value = formatRpInput(state.mainWizard.totalBudget);
+        state.mainWizard.totalBudget = liveRp(event.target);
         if (state.mainWizard.template === 'quarterly') {
             state.mainWizard.quarters = buildQuarterSubBudgets();
         }
@@ -1046,8 +1050,7 @@ function wireMainWizardStepControls() {
             refreshMainWizardFooter();
         });
         row.querySelector('[data-field="amount"]')?.addEventListener('input', (event) => {
-            state.mainWizard.quarters[index].amount = parseRp(event.target.value);
-            event.target.value = formatRpInput(state.mainWizard.quarters[index].amount);
+            state.mainWizard.quarters[index].amount = liveRp(event.target);
             refreshMainWizardFooter();
         });
     });
@@ -1363,8 +1366,7 @@ function wireModalInputs() {
         refreshModalSubmit();
     });
     el('budget-modal-total')?.addEventListener('input', (event) => {
-        state.modal.totalBudget = parseRp(event.target.value);
-        event.target.value = formatRpInput(state.modal.totalBudget);
+        state.modal.totalBudget = liveRp(event.target);
         refreshModalSubmit();
     });
     el('budget-modal-notes')?.addEventListener('input', (event) => {

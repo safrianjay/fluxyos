@@ -73,7 +73,7 @@ export function toDate(value) {
 export function formatDate(value) {
     const date = toDate(value);
     if (!date) return 'No date';
-    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    return date.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 // First present date on a record, trying common field names.
@@ -124,7 +124,7 @@ export function resolvePeriod(mode, start, end) {
 export function rangeLabel(startKey, endKey) {
     const s = parseKey(startKey), e = parseKey(endKey);
     if (!s || !e) return 'Selected range';
-    const fmt = (d) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    const fmt = (d) => d.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
     return `${fmt(s)} – ${fmt(e)}`;
 }
 
@@ -311,9 +311,9 @@ export function bucketSeries(records, startKey, endKey, { dateOf, valueOf }) {
 
     let buckets = [];
     const label = (d, g) => {
-        if (g === 'day') return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-        if (g === 'week') return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-        if (g === 'month') return d.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' });
+        if (g === 'day') return d.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short' });
+        if (g === 'week') return d.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short' });
+        if (g === 'month') return d.toLocaleDateString(window.FluxyMoney.baseLocale(), { month: 'short', year: '2-digit' });
         return `Q${Math.floor(d.getMonth() / 3) + 1} ${d.getFullYear()}`;
     };
     let cursor = new Date(s);

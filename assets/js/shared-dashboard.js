@@ -413,12 +413,21 @@ window.FluxyAmountInput = (function () {
         return String(text).slice(0, caret).replace(/\D/g, '').length;
     }
 
+    /* Fill an empty field from a STORED minor value. Separate from format()
+       on purpose: format() reformats what the user typed, seed() converts
+       minor units to the currency's own display. Passing a minor value to
+       format() renders it as if typed — 100x on any 2-decimal currency. */
+    function seed(input, minorValue) {
+        if (!input) return;
+        input.value = window.FluxyMoney.seedMoneyInput(minorValue);
+        input.setAttribute('inputmode', window.FluxyMoney.moneyInputMode());
+    }
+
     function format(input) {
         if (!input) return;
         const caret = typeof input.selectionStart === 'number' ? input.selectionStart : input.value.length;
         const wanted = digitsBefore(input.value, caret);
-        const digits = input.value.replace(/\D/g, '');
-        const formatted = window.FluxyMoney.formatMoneyInput(input.value, window.FluxyMoney.baseCurrency());
+        const formatted = window.FluxyMoney.liveMoneyInput(input.value);
         if (formatted === input.value) return;
         input.value = formatted;
         // Walk forward until we have passed the same number of digits.
@@ -442,7 +451,8 @@ window.FluxyAmountInput = (function () {
         return Math.round(Math.abs(Number(String(input?.value || '').replace(/\D/g, '')) || 0));
     }
 
-    return { format, attach, value };
+    return {
+        seed: seed, format, attach, value };
 })();
 
 // ---------- Duplicate review dialog ----------
@@ -4684,7 +4694,7 @@ window.attachChartHover = function attachChartHover(container, options) {
         };
         return `<ul class="divide-y divide-gray-100">${logs.map(log => {
             const when = log.created_at?.toDate?.();
-            const whenText = when ? when.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+            const whenText = when ? when.toLocaleString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
             const label = map[log.action] || String(log.action || '').replace(/_/g, ' ');
             return `
                 <li class="px-4 py-3">

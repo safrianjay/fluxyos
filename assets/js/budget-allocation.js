@@ -58,7 +58,7 @@ function formatDate(value) {
     if (!value) return 'No date';
     const date = value instanceof Date ? value : new Date(value);
     if (Number.isNaN(date.getTime())) return 'No date';
-    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    return date.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function budgetDate(value) {

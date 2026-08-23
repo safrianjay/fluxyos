@@ -253,7 +253,7 @@
             if (!value) return 'Never';
             const date = typeof value?.toDate === 'function' ? value.toDate() : new Date(value);
             if (Number.isNaN(date.getTime())) return 'Never';
-            return date.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+            return date.toLocaleString(window.FluxyMoney.baseLocale(), { dateStyle: 'medium', timeStyle: 'short' });
         }
 
         function setLoadState(state, text) {

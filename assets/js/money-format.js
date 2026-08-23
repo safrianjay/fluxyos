@@ -282,6 +282,49 @@
     function isSupportedBase(currency) { return BASE_SUPPORTED.indexOf(currency) !== -1; }
     function currencyForCountry(code) { return COUNTRY_CURRENCY[String(code || '').toUpperCase()] || null; }
 
+
+    // ---- Input round-trip helpers -------------------------------------------
+    //
+    // Money inputs have TWO distinct jobs and conflating them corrupts amounts.
+    // Both bugs shipped and both were silent:
+    //
+    //   seedMoneyInput  — render a STORED minor value into an empty field.
+    //     Grouping the minor value directly is only right for a 0-decimal
+    //     currency; on PHP the field shrank 100x per keystroke.
+    //
+    //   liveMoneyInput  — reformat what the user has TYPED, as they type.
+    //     Must format the typed string, NOT a value re-derived from minor:
+    //     round-tripping through minor discards an in-progress decimal, so
+    //     "1250.75" collapsed to "125,075" — a 100x overstatement, accepted
+    //     without complaint.
+    //
+    // Anything editable uses these two. Nothing formats money for an input by hand.
+    function seedMoneyInput(minor) {
+        var b = baseCurrency();
+        return formatMoneyInput(String(fromMinor(Math.max(0, Number(minor) || 0), b)), b);
+    }
+    function liveMoneyInput(typed) {
+        return formatMoneyInput(typed, baseCurrency());
+    }
+    // A 2-decimal currency needs a keypad that has a decimal point at all.
+    function moneyInputMode() {
+        return isZeroDecimal(baseCurrency()) ? 'numeric' : 'decimal';
+    }
+
+    // ---- Locale-aware non-money formatting -----------------------------------
+    //
+    // Counts, quantities and timestamps were hardcoded to id-ID across the app,
+    // so a Manila workspace read "1.200 units" and "22 Agu" — Indonesian
+    // conventions on a Philippine company's books. These follow the base locale.
+    function baseNumber(value, opts) {
+        return (Number(value) || 0).toLocaleString(baseLocale(), opts || undefined);
+    }
+    function baseDateTime(date, opts) {
+        var d = (date instanceof Date) ? date : new Date(date);
+        if (!d || isNaN(d.getTime())) return '';
+        return d.toLocaleString(baseLocale(), opts || undefined);
+    }
+
     return {
         CURRENCIES: CURRENCIES,
         SUPPORTED: SUPPORTED,
@@ -315,6 +358,11 @@
         decimals: decimals,
         isSupported: isSupported,
         isSupportedBase: isSupportedBase,
-        currencyForCountry: currencyForCountry
+        currencyForCountry: currencyForCountry,
+        seedMoneyInput: seedMoneyInput,
+        liveMoneyInput: liveMoneyInput,
+        moneyInputMode: moneyInputMode,
+        baseNumber: baseNumber,
+        baseDateTime: baseDateTime
     };
 });

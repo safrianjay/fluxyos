@@ -499,7 +499,7 @@
                     </div>
                     <div class="cnt-row-fig cnt-row-expected">
                         <span class="cnt-fig-label">Expected</span>
-                        <span class="cnt-fig-value">${sys.quantity.toLocaleString('id-ID')}<span class="cnt-row-unit">${unit}</span></span>
+                        <span class="cnt-fig-value">${sys.quantity.toLocaleString(window.FluxyMoney.baseLocale())}<span class="cnt-row-unit">${unit}</span></span>
                     </div>
                     <div class="cnt-row-fig">
                         <label class="cnt-fig-label" for="cnt-${esc(item.id)}">Counted</label>
@@ -549,7 +549,7 @@
                     out.className = 'cnt-row-variance cnt-var-exact';
                 } else {
                     const short = line.varianceQty < 0;
-                    const mag = Math.abs(line.varianceQty).toLocaleString('id-ID');
+                    const mag = Math.abs(line.varianceQty).toLocaleString(window.FluxyMoney.baseLocale());
                     const money = line.amount ? ` · ${rp(Math.abs(line.amount))}` : '';
                     out.textContent = `${short ? 'Short' : 'Over'} ${mag} ${item.base_unit}${money}`;
                     out.className = 'cnt-row-variance ' + (short ? 'cnt-var-short' : 'cnt-var-over');
@@ -663,7 +663,7 @@
             const listed = reviewed.slice(0, 8).map((r) => {
                 const short = r.line.varianceQty < 0;
                 return `<li style="margin:2px 0;"><strong>${esc(r.item.name)}</strong> — ${short ? 'short' : 'over'} `
-                    + `${Math.abs(r.line.varianceQty).toLocaleString('id-ID')} ${esc(r.item.base_unit || '')}`
+                    + `${Math.abs(r.line.varianceQty).toLocaleString(window.FluxyMoney.baseLocale())} ${esc(r.item.base_unit || '')}`
                     + `${r.line.amount ? ` (${esc(rp(Math.abs(r.line.amount)))})` : ''}</li>`;
             }).join('');
 
@@ -751,7 +751,7 @@
             }
             const sys = systemFor(item.id);
             if (base > sys.quantity) {
-                return { error: `Only ${sys.quantity.toLocaleString('id-ID')} ${item.base_unit} is on hand at this outlet.` };
+                return { error: `Only ${sys.quantity.toLocaleString(window.FluxyMoney.baseLocale())} ${item.base_unit} is on hand at this outlet.` };
             }
             return { item, base, amount: Math.round(base * unitCostOf(sys.quantity, sys.value)) };
         }
@@ -763,7 +763,7 @@
             if (r.error) { out.textContent = r.error; out.style.color = '#EF4444'; btn.disabled = true; return; }
             if (r.pending) { out.textContent = ''; btn.disabled = true; return; }
             out.style.color = '';
-            out.textContent = `${r.base.toLocaleString('id-ID')} ${r.item.base_unit} · ${rp(r.amount)} written off to 5150`;
+            out.textContent = `${r.base.toLocaleString(window.FluxyMoney.baseLocale())} ${r.item.base_unit} · ${rp(r.amount)} written off to 5150`;
             btn.disabled = false;
         }
 

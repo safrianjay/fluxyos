@@ -1963,7 +1963,7 @@
         if (hours < 24) return `${hours}h ago`;
         const days = Math.floor(hours / 24);
         if (days < 14) return `${days}d ago`;
-        return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+        return date.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short' });
     }
 
     function prefersReducedMotion() {

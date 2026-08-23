@@ -31,7 +31,7 @@
     }
     function qtyDefault(v) {
         var n = Number(v) || 0;
-        return Number.isInteger(n) ? String(n) : n.toLocaleString('id-ID', { maximumFractionDigits: 2 });
+        return Number.isInteger(n) ? String(n) : n.toLocaleString(window.FluxyMoney.baseLocale(), { maximumFractionDigits: 2 });
     }
     function dateDefault(v) { return v ? String(v) : '—'; }
 

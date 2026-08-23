@@ -832,7 +832,7 @@
             ).length;
 
             const resultEl = document.getElementById('ledger-filter-result-count');
-            if (resultEl) resultEl.textContent = `Results: ${count.toLocaleString('id-ID')}`;
+            if (resultEl) resultEl.textContent = `Results: ${count.toLocaleString(window.FluxyMoney.baseLocale())}`;
 
             const applied = countAppliedFilters(p);
             const badge = document.getElementById('ledger-filter-applied-badge');
@@ -1817,19 +1817,19 @@
                     : 'rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-red-700');
             status.textContent = label;
             status.className = className;
-            setSummaryText('ledger-trust-subtitle', `${summary.issueCount.toLocaleString('id-ID')} issue${summary.issueCount === 1 ? '' : 's'} found`);
+            setSummaryText('ledger-trust-subtitle', `${summary.issueCount.toLocaleString(window.FluxyMoney.baseLocale())} issue${summary.issueCount === 1 ? '' : 's'} found`);
         }
 
         function renderLedgerSummaryCards(transactions) {
             const summary = getLedgerSummary(transactions);
             setSummaryText('ledger-trust-score', `${summary.trustScore}%`);
-            setSummaryText('ledger-total-count', summary.totalTransactions.toLocaleString('id-ID'));
-            setSummaryText('ledger-clean-count', summary.cleanRecords.toLocaleString('id-ID'));
+            setSummaryText('ledger-total-count', summary.totalTransactions.toLocaleString(window.FluxyMoney.baseLocale()));
+            setSummaryText('ledger-clean-count', summary.cleanRecords.toLocaleString(window.FluxyMoney.baseLocale()));
             setSummaryText('ledger-total-risk-amount', formatCurrencyIDR(summary.totalRiskAmount));
-            setSummaryText('ledger-unreconciled-count', summary.unreconciled.count.toLocaleString('id-ID'));
-            setSummaryText('ledger-missing-receipts-count', summary.missingReceipt.count.toLocaleString('id-ID'));
-            setSummaryText('ledger-pending-approval-count', summary.pendingApproval.count.toLocaleString('id-ID'));
-            setSummaryText('ledger-uncategorized-count', summary.uncategorized.count.toLocaleString('id-ID'));
+            setSummaryText('ledger-unreconciled-count', summary.unreconciled.count.toLocaleString(window.FluxyMoney.baseLocale()));
+            setSummaryText('ledger-missing-receipts-count', summary.missingReceipt.count.toLocaleString(window.FluxyMoney.baseLocale()));
+            setSummaryText('ledger-pending-approval-count', summary.pendingApproval.count.toLocaleString(window.FluxyMoney.baseLocale()));
+            setSummaryText('ledger-uncategorized-count', summary.uncategorized.count.toLocaleString(window.FluxyMoney.baseLocale()));
             setSummaryText('ledger-missing-receipts-risk', `${formatCurrencyIDR(summary.missingReceipt.amount)} at risk`);
             setSummaryText('ledger-uncategorized-risk', `${formatCurrencyIDR(summary.uncategorized.amount)} at risk`);
             setSummaryText('ledger-pending-approval-risk', `${formatCurrencyIDR(summary.pendingApproval.amount)} at risk`);
@@ -1858,7 +1858,7 @@
                 <button type="button" role="tab" aria-selected="${isActive ? 'true' : 'false'}" data-action="ledger-attention-tab" data-issue-tab="${tab}" class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[12px] font-medium transition-colors ${isActive ? activeClass : inactiveClass}">
                     <span class="h-1.5 w-1.5 rounded-full ${def.dotClass}" aria-hidden="true"></span>
                     ${def.label}
-                    <span class="rounded-full bg-white px-1.5 py-0.5 font-mono text-[10px] font-semibold text-gray-600 ring-1 ring-gray-200">${Number(count || 0).toLocaleString('id-ID')}</span>
+                    <span class="rounded-full bg-white px-1.5 py-0.5 font-mono text-[10px] font-semibold text-gray-600 ring-1 ring-gray-200">${Number(count || 0).toLocaleString(window.FluxyMoney.baseLocale())}</span>
                 </button>
             `;
         }
@@ -1997,8 +1997,8 @@
             }
             const activeItems = getLedgerAttentionTabItems(items, ledgerAttentionTab);
 
-            setSummaryText('ledger-attention-count', activeItems.length.toLocaleString('id-ID'));
-            setSummaryText('ledger-attention-period-note', `${summary.totalTransactions.toLocaleString('id-ID')} filtered record${summary.totalTransactions === 1 ? '' : 's'}`);
+            setSummaryText('ledger-attention-count', activeItems.length.toLocaleString(window.FluxyMoney.baseLocale()));
+            setSummaryText('ledger-attention-period-note', `${summary.totalTransactions.toLocaleString(window.FluxyMoney.baseLocale())} filtered record${summary.totalTransactions === 1 ? '' : 's'}`);
             if (chipRow) chipRow.innerHTML = ['all', ...LEDGER_ISSUE_ORDER].map(type => renderAttentionTab(type, items)).join('');
             if (!list) return;
 
@@ -2024,8 +2024,8 @@
                 footer?.classList.remove('hidden');
                 if (footerCopy) {
                     footerCopy.textContent = ledgerAttentionExpanded
-                        ? `Showing all ${activeItems.length.toLocaleString('id-ID')} issue record${activeItems.length === 1 ? '' : 's'}`
-                        : `Showing top ${LEDGER_ATTENTION_LIMIT} of ${activeItems.length.toLocaleString('id-ID')} issue record${activeItems.length === 1 ? '' : 's'}`;
+                        ? `Showing all ${activeItems.length.toLocaleString(window.FluxyMoney.baseLocale())} issue record${activeItems.length === 1 ? '' : 's'}`
+                        : `Showing top ${LEDGER_ATTENTION_LIMIT} of ${activeItems.length.toLocaleString(window.FluxyMoney.baseLocale())} issue record${activeItems.length === 1 ? '' : 's'}`;
                 }
                 if (toggle) toggle.textContent = ledgerAttentionExpanded ? 'Show less' : 'Show more';
             } else {
@@ -2861,7 +2861,7 @@
                         <h3 class="fluxy-drawer-section-title">Transaction Details</h3>
                         <div class="fluxy-drawer-field">
                             <label for="tx-edit-amount" class="fluxy-drawer-label">Amount <span id="tx-edit-amount-cur">(${window.FluxyMoney.baseSymbol()})</span></label>
-                            <input type="text" id="tx-edit-amount" required value="${escapeHtml(String(Number(row.amount || 0).toLocaleString('id-ID')))}" class="fluxy-drawer-input fluxy-drawer-input--mono">
+                            <input type="text" id="tx-edit-amount" required value="${escapeHtml(window.FluxyMoney.seedMoneyInput(row.amount))}" inputmode="${window.FluxyMoney.moneyInputMode()}" class="fluxy-drawer-input fluxy-drawer-input--mono">
                         </div>
                         <div class="fluxy-drawer-field">
                             <label for="tx-edit-type" class="fluxy-drawer-label">Type</label>
@@ -2915,10 +2915,10 @@
             `;
 
             const amountInput = document.getElementById('tx-edit-amount');
-            amountInput?.addEventListener('input', () => {
-                const digits = amountInput.value.replace(/[^\d]/g, '');
-                amountInput.value = digits ? Number(digits).toLocaleString('id-ID') : '';
-            });
+            // Caret-preserving, currency-aware. The hand-rolled version here
+            // stripped non-digits, so the decimal point could not be typed at
+            // all on a 2-decimal currency.
+            if (amountInput) window.FluxyAmountInput?.attach(amountInput);
 
             // Account picker (shared with the Add Transaction drawer and the scan
             // review). Without it a pinned account_code survives a recategorize —

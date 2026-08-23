@@ -303,6 +303,109 @@ if (missing.length) {
 }
 
 // --- report -----------------------------------------------------------------
+// ── input-round-trip ──────────────────────────────────────────────────────────
+//
+// The bug this exists to stop shipped three times in three shapes, and every one
+// of them was SILENT — the field accepted the entry and stored a wrong number:
+//
+//   1. seeding an input by grouping the stored MINOR value, so a prefilled
+//      PHP field shrank 100x on each keystroke;
+//   2. reformatting the typed text by round-tripping it through toMinor(),
+//      which eats an in-progress decimal, so "1250.75" became "125,075" —
+//      a 100x OVERSTATEMENT, silently accepted;
+//   3. stripping non-digits before formatting, so a decimal point could never
+//      be typed at all on a 2-decimal currency.
+//
+// Simulate real keystrokes against the seam for every supported base currency.
+(() => {
+    const typed = '1250.75';
+    for (const ccy of Money.BASE_SUPPORTED) {
+        Money.setBaseCurrency(ccy);
+        let field = '';
+        for (const ch of typed) field = Money.liveMoneyInput(field + ch);
+
+        const zero = Money.isZeroDecimal(ccy);
+        // On a 0-decimal currency the dot is not an input at all; on a
+        // 2-decimal one every typed digit must survive to the stored value.
+        const wantMinor = zero ? Money.toMinor('125075', ccy) : 125075;
+        const gotMinor = Money.toMinor(field, ccy);
+        if (gotMinor !== wantMinor) {
+            fail('input-round-trip',
+                `${ccy}: typing "${typed}" stored ${gotMinor}, expected ${wantMinor} ` +
+                `(field showed "${field}")`);
+        }
+        if (!zero && !field.includes('.')) {
+            fail('input-round-trip', `${ccy}: the decimal separator was swallowed mid-entry ("${field}")`);
+        }
+        // Seeding must be a fixed point: seed -> parse -> seed cannot drift.
+        const once = Money.seedMoneyInput(wantMinor);
+        const twice = Money.seedMoneyInput(Money.toMinor(once, ccy));
+        if (once !== twice) {
+            fail('input-round-trip', `${ccy}: seeding drifts — "${once}" then "${twice}"`);
+        }
+    }
+    Money.setBaseCurrency('IDR');
+})();
+if (!failures.some((f) => f.check === 'input-round-trip')) {
+    ok('input-round-trip', `typed decimals survive to storage in all ${Money.BASE_SUPPORTED.length} base currencies`);
+}
+
+// ── no-id-locale ──────────────────────────────────────────────────────────────
+//
+// Counts, quantities and timestamps were hardcoded to id-ID app-wide, so a
+// Manila workspace read "1.200 units" and "22 Agu" — Indonesian number and date
+// conventions on a Philippine company's books. Only surfaces that are
+// deliberately Indonesian may name the locale directly.
+const ID_LOCALE_ALLOWED = new Set([
+    'beila.html', 'investor.html', 'internal-dashboard.html', 'pricing.html', 'contact-sales.html',
+    'assets/js/billing-config.js', 'assets/js/checkout.js', 'assets/js/internal-dashboard.js',
+    'assets/js/investor.js', 'assets/js/money-format.js', 'assets/js/dashboard-i18n.js',
+]);
+const idLocaleHits = [];
+execSync('git ls-files "*.html" "assets/js/*.js"', { cwd: ROOT, encoding: 'utf8' })
+    .split('\n').map((f) => f.trim()).filter(Boolean)
+    .filter((rel) => !ID_LOCALE_ALLOWED.has(rel) && !rel.startsWith('id/') && !rel.startsWith('docs/'))
+    .forEach((rel) => {
+        fs.readFileSync(path.join(ROOT, rel), 'utf8').split('\n').forEach((line, i) => {
+            if (/toLocale(String|DateString|TimeString)\(\s*['"]id-ID['"]/.test(line)) {
+                idLocaleHits.push(`${rel}:${i + 1}`);
+            }
+        });
+    });
+if (idLocaleHits.length) {
+    fail('no-id-locale',
+        `${idLocaleHits.length} site(s) format numbers or dates as Indonesian regardless of\n` +
+        `      the workspace country:\n        ` + idLocaleHits.join('\n        ') +
+        `\n\n      Use window.FluxyMoney.baseLocale() (or baseNumber/baseDateTime).`);
+} else {
+    ok('no-id-locale', 'numbers and dates follow the workspace locale');
+}
+
+// ── money-input-seam ──────────────────────────────────────────────────────────
+//
+// Seeding an editable amount straight from toLocaleString skips the minor-unit
+// conversion entirely — the field shows 100x the money on a 2-decimal currency.
+const seedHits = [];
+execSync('git ls-files "*.html" "assets/js/*.js"', { cwd: ROOT, encoding: 'utf8' })
+    .split('\n').map((f) => f.trim()).filter(Boolean)
+    .filter((rel) => !ID_LOCALE_ALLOWED.has(rel) && !rel.startsWith('id/'))
+    .forEach((rel) => {
+        fs.readFileSync(path.join(ROOT, rel), 'utf8').split('\n').forEach((line, i) => {
+            if (/(Input|amountEl|balanceInput|\bamt)\w*\.value\s*=\s*[^;]*toLocaleString\(/.test(line)) {
+                seedHits.push(`${rel}:${i + 1}`);
+            }
+        });
+    });
+if (seedHits.length) {
+    fail('money-input-seam',
+        `${seedHits.length} amount field(s) seeded via toLocaleString, skipping minor-unit\n` +
+        `      conversion:\n        ` + seedHits.join('\n        ') +
+        `\n\n      Use FluxyAmountInput.seed(el, minorValue) to fill, .format(el) while typing.`);
+} else {
+    ok('money-input-seam', 'editable amounts are seeded and reformatted through the seam');
+}
+
+
 if (failures.length) {
     console.error('\nMONEY SEAM\n');
     for (const f of failures) console.error(`  ✗ ${f.check}: ${f.msg}\n`);

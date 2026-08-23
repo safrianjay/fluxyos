@@ -600,7 +600,7 @@ function openPaymentDrawer() {
     const amt = $('pos-pay-amount');
     amt.addEventListener('input', () => {
         const digits = amt.value.replace(/\D/g, '');
-        amt.value = digits ? window.FluxyMoney.formatMoneyInput(amt.value, window.FluxyMoney.baseCurrency()) : '';
+        amt.value = digits ? window.FluxyMoney.liveMoneyInput(amt.value) : '';
         changeNote();
     });
     settleNote(); changeNote();
@@ -725,7 +725,7 @@ function openReceipt(order) {
 </style></head><body>
   <h1>${esc((outlet && outlet.name) || 'FluxyOS')}</h1>
   <div class="c m">${esc(o.table_label ? `Meja ${o.table_label}` : 'Bawa pulang')} · ${esc(o.order_number || '')}</div>
-  <div class="c m">${when.toLocaleString('id-ID')}</div>
+  <div class="c m">${when.toLocaleString(window.FluxyMoney.baseLocale())}</div>
   <hr>
   <table>${(o.lines || []).map(line).join('')}</table>
   <hr>
@@ -909,7 +909,7 @@ function renderShift() {
     }
 
     const since = s.opened_at && typeof s.opened_at.toDate === 'function'
-        ? s.opened_at.toDate().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '';
+        ? s.opened_at.toDate().toLocaleTimeString(window.FluxyMoney.baseLocale(), { hour: '2-digit', minute: '2-digit' }) : '';
     const moves = (s.movements || []).length;
     bar.className = 'pos-shiftbar is-open';
     // Deliberately NOT showing expected cash here. The whole point of a blind

@@ -573,7 +573,7 @@
             const channels = groupByChannel(rows).slice(0, 8);
             container.innerHTML = channels.map(ch => {
                 const latestText = ch.latest
-                    ? ch.latest.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+                    ? ch.latest.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short' })
                     : '—';
                 const isUnknown = ch.name === 'Unknown channel';
                 return `
@@ -777,7 +777,7 @@
             }
 
             body.innerHTML = visible.map(row => {
-                const dateStr = getRowDate(row)?.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) || '—';
+                const dateStr = getRowDate(row)?.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short', year: 'numeric' }) || '—';
                 const status = getRowStatus(row);
                 const statusCls = status === 'Missing Receipt' ? 'fluxy-status-danger' : 'fluxy-status-success';
                 const flags = flagsById.get(row.id) || [];
@@ -857,7 +857,7 @@
             activeRevenueDetailRowId = String(row?.id || '');
             const date = getRowDate(row);
             const dateStr = date
-                ? date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                ? date.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'long', year: 'numeric' })
                 : 'Unknown date';
             const status = getRowStatus(row);
             const statusCls = status === 'Missing Receipt' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-50 text-emerald-700';
