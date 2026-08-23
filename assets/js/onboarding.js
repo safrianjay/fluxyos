@@ -120,9 +120,6 @@ let customSelectGlobalHandlersBound = false;
 const state = {
     user: null,
     stepIndex: 0,
-    // True once the user picks a base currency themselves, after which changing
-    // the country stops overwriting it. See bindCountryCurrencyDefault().
-    currencyTouched: false,
     // True once the profile actually carries country + base_currency, i.e. the
     // locale step has been completed at least once. Drives the resume pin below.
     localeConfirmed: false,
@@ -634,7 +631,6 @@ function bindLanguageSelect() {
             sessionStorage.setItem(LOCALE_STASH_KEY, JSON.stringify({
                 fields: state.fields,
                 stepIndex: state.stepIndex,
-                currencyTouched: state.currencyTouched
             }));
         } catch (_) {}
         // Translates in place for 'id'; reloads for 'en'. Either way the stash
@@ -653,7 +649,6 @@ function restoreLocaleStash() {
         const saved = JSON.parse(raw);
         if (saved && saved.fields) Object.assign(state.fields, saved.fields);
         if (typeof saved?.stepIndex === 'number') state.stepIndex = saved.stepIndex;
-        if (typeof saved?.currencyTouched === 'boolean') state.currencyTouched = saved.currencyTouched;
     } catch (_) {}
 }
 
@@ -671,13 +666,18 @@ function bindCountryCurrencyDefault() {
     };
 
     currency.addEventListener('change', () => {
-        state.currencyTouched = true;
         applyCurrency(currency.value);
     });
 
     country.addEventListener('change', () => {
         applyCountryDependentCopy();
-        if (state.currencyTouched) return;
+        // The country ALWAYS sets the currency. This used to stop once the user
+        // had touched the currency select, which I justified with IAS 21 — a
+        // Singapore entity may keep books in another currency. But USD is not a
+        // selectable base currency, so that case cannot be expressed here at all:
+        // the guard protected nothing and made the form feel broken, because
+        // picking PHP and then switching the country to Malaysia left the
+        // currency on pesos. It stays overridable — this only moves the default.
         const next = window.FluxyMoney && window.FluxyMoney.currencyForCountry(country.value);
         if (!next || next === currency.value) return;
         currency.value = next;
