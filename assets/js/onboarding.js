@@ -720,6 +720,10 @@ function revenueOptionLabels() {
  * literal text in onboarding.html, so nothing repaints them on its own.
  */
 function applyCountryDependentCopy() {
+    // Examples follow the picker live: during onboarding no workspace exists yet,
+    // so the country is whatever the form currently shows.
+    try { window.FluxyMoney.paintCountryExamples(document, state.fields.country); } catch (_) {}
+
     const hints = docHints();
     const idHint = document.getElementById('f-id-doc-hint');
     const bizHint = document.getElementById('f-biz-doc-hint');

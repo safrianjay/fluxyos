@@ -64,6 +64,57 @@
     var COUNTRY_CURRENCY = { ID: 'IDR', PH: 'PHP', SG: 'SGD', MY: 'MYR' };
     var COUNTRY_LABELS = { ID: 'Indonesia', PH: 'Philippines', SG: 'Singapore', MY: 'Malaysia' };
 
+    /*
+     * Country profile — the single source for country-shaped UX.
+     *
+     * Placeholders and examples are the quiet part of feeling local. A Manila
+     * owner reading "e.g. Jl. Sudirman No. 1, Jakarta 10210" learns, correctly,
+     * that this product was not built for them. Centralised here so a page never
+     * decides its own examples, and so a new market is one entry rather than a
+     * hunt through every form.
+     *
+     * These are ILLUSTRATIVE addresses and business names — recognisable streets,
+     * invented businesses. Never real customer data.
+     */
+    var COUNTRY_PROFILES = {
+        ID: { dial: '+62', city: 'Jakarta', postal: '10210',
+              address: 'Jl. Sudirman No. 1, Jakarta 10210',
+              business: 'Kopi Senja Digital', vendor: 'Toko Sinar Jaya' },
+        PH: { dial: '+63', city: 'Makati', postal: '1200',
+              address: '123 Ayala Avenue, Makati 1200',
+              business: 'Manila Coffee House', vendor: 'Santos Trading' },
+        SG: { dial: '+65', city: 'Singapore', postal: '238823',
+              address: '10 Orchard Road, Singapore 238823',
+              business: 'Orchard Coffee', vendor: 'Tan Supplies' },
+        MY: { dial: '+60', city: 'Kuala Lumpur', postal: '55100',
+              address: 'Jalan Bukit Bintang 10, Kuala Lumpur 55100',
+              business: 'Kuala Lumpur Coffee Co.', vendor: 'Lim Trading' }
+    };
+
+    /** Country profile for the active workspace. Unknown country = Indonesia. */
+    function countryProfile(code) {
+        var c = code || (typeof window !== 'undefined' && window.FluxyWorkspace && window.FluxyWorkspace.country) || 'ID';
+        return COUNTRY_PROFILES[c] || COUNTRY_PROFILES.ID;
+    }
+
+    /**
+     * Fill every element marked `data-country-example="<key>"` with the active
+     * country's example. Works on placeholders and on text. Idempotent, so it is
+     * safe to call after any DOM injection.
+     */
+    function paintCountryExamples(root, country) {
+        if (typeof document === 'undefined') return;
+        var prof = countryProfile(country);
+        var nodes = (root || document).querySelectorAll('[data-country-example]');
+        for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            var val = prof[el.getAttribute('data-country-example')];
+            if (!val) continue;
+            if ('placeholder' in el) el.placeholder = (el.getAttribute('data-country-prefix') || '') + val;
+            else el.textContent = val;
+        }
+    }
+
     var COMPACT_SUFFIXES = {
         id: { b: 'M',  m: 'jt', k: 'rb' },   // miliar / juta / ribu
         en: { b: 'B',  m: 'M',  k: 'K'  }
@@ -237,6 +288,9 @@
         BASE_SUPPORTED: BASE_SUPPORTED,
         COUNTRY_CURRENCY: COUNTRY_CURRENCY,
         COUNTRY_LABELS: COUNTRY_LABELS,
+        COUNTRY_PROFILES: COUNTRY_PROFILES,
+        countryProfile: countryProfile,
+        paintCountryExamples: paintCountryExamples,
         DEFAULT_BASE: DEFAULT_BASE,
 
         setBaseCurrency: setBaseCurrency,

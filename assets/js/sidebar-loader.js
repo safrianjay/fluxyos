@@ -646,6 +646,29 @@
                     // this business.
                     try {
                         const { canUseFeature } = await import('/assets/js/feature-access.js');
+                        // Tax Compliance is SHOWN but disabled for a market whose
+                        // tax module does not exist yet. Deliberately different from
+                        // Inventory/POS, which are absent: those simply do not apply
+                        // to some businesses, whereas local tax support IS planned —
+                        // so "Soon" is a true statement here rather than a tease.
+                        const revealOrSoon = async (navId, feature) => {
+                            const el = document.getElementById(navId);
+                            if (!el) return;
+                            el.classList.remove('hidden');
+                            if (await canUseFeature(app, user, feature)) return;
+                            el.classList.add('nav-item-disabled', 'text-gray-400');
+                            el.setAttribute('aria-disabled', 'true');
+                            el.removeAttribute('href');
+                            el.style.pointerEvents = 'none';
+                            if (!el.querySelector('[data-nav-soon]')) {
+                                const b = document.createElement('span');
+                                b.setAttribute('data-nav-soon', '');
+                                b.className = 'nav-soon-badge ml-auto rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-500';
+                                b.textContent = 'Soon';
+                                el.appendChild(b);
+                            }
+                        };
+
                         const reveal = async (navId, feature) => {
                             const el = document.getElementById(navId);
                             if (!el) return;
@@ -655,7 +678,7 @@
                             reveal('nav-inventory', 'inventory'),
                             reveal('nav-outlet-pnl', 'outlet_pnl'),
                             reveal('nav-pos', 'pos'),
-                            reveal('nav-tax-center', 'tax_center')
+                            revealOrSoon('nav-tax-center', 'tax_center')
                         ]);
                     } catch (_) { /* stays hidden — non-fatal */ }
 
