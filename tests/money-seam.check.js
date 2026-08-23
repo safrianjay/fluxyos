@@ -447,6 +447,60 @@ if (nameHits.length) {
 }
 
 
+// ── no-double-convert ─────────────────────────────────────────────────────────
+//
+// Money is parsed ONCE, at the input. A second toMinor() on a value that is
+// already minor units multiplies by minorPerUnit again: ₱10,000 was stored and
+// POSTED to the ledger as ₱1,000,000 on 2026-08-24.
+//
+// It is invisible in Indonesia — IDR minorPerUnit is 1, so the second
+// conversion is the identity — which is exactly why it shipped. The tempting
+// wrong fix is to "make the persistence layer currency-aware"; the right one is
+// to leave it a plain integer coercion.
+//
+// Flags persistence-layer normalisers that parse instead of coerce.
+const doubleConvert = [];
+execSync('git ls-files "assets/js/db-service.js" "netlify/functions/*.js" "functions/lib/*.js"',
+    { cwd: ROOT, encoding: 'utf8' })
+    .split('\n').map((f) => f.trim()).filter(Boolean)
+    .forEach((rel) => {
+        const lines = fs.readFileSync(path.join(ROOT, rel), 'utf8').split('\n');
+        lines.forEach((line, i) => {
+            if (/^\s*(\/\/|\*)/.test(line)) return;
+            // toMinor() applied to a field that a caller already stored as minor.
+            if (/toMinor\(\s*(item|data|payload|row|line|entry)\s*\.\s*\w*(unit_price|amount|price|total)/.test(line)) {
+                doubleConvert.push(`${rel}:${i + 1}`);
+            }
+        });
+    });
+if (doubleConvert.length) {
+    fail('no-double-convert',
+        `${doubleConvert.length} persistence site(s) re-parse an amount the caller already\n` +
+        `      converted to minor units:\n        ` + doubleConvert.join('\n        ') +
+        `\n\n      Parse at the input, once. Here, coerce: Math.round(Number(x) || 0).`);
+} else {
+    ok('no-double-convert', 'amounts are parsed once, at the input');
+}
+
+// Behavioural half: the invoice normaliser must be a pass-through for an
+// already-minor value in EVERY currency, not just the 0-decimal one.
+(() => {
+    const coerce = (unitPrice) => Math.round(Number(unitPrice) || 0);   // the contract
+    for (const ccy of Money.BASE_SUPPORTED) {
+        Money.setBaseCurrency(ccy);
+        // What the editor hands over after parsing "10000" typed by a user.
+        const fromEditor = Money.toMinor(Money.formatMoneyInput('10000', ccy), ccy);
+        if (coerce(fromEditor) !== fromEditor) {
+            fail('no-double-convert', `${ccy}: normalising an already-minor value changed it`);
+        }
+        if (Money.formatBase(coerce(fromEditor)) !== Money.formatBase(fromEditor)) {
+            fail('no-double-convert', `${ccy}: round trip did not preserve the amount`);
+        }
+    }
+    Money.setBaseCurrency('IDR');
+})();
+
+
 if (failures.length) {
     console.error('\nMONEY SEAM\n');
     for (const f of failures) console.error(`  ✗ ${f.check}: ${f.msg}\n`);

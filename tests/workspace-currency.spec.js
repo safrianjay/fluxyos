@@ -74,6 +74,37 @@ test.describe('a non-IDR workspace renders in its own currency', () => {
         }
     });
 
+    test('the invoice editor shows no Indonesian tax controls', async ({ page }) => {
+        // PPh 23 / 4(2) / 26 are Indonesian withholding articles, and PPN is
+        // Indonesian VAT. A Philippine customer withholds under BIR 2307 and a
+        // Singaporean under IRAS rules — different regimes, not different labels
+        // for the same one — so these controls are hidden outside Indonesia
+        // rather than relabelled.
+        //
+        // The bug this catches: the gate was applied, and then a later line
+        // re-showed the field on currency alone, overriding it. Both lines read
+        // correctly in isolation; only the ORDER was wrong, which no static
+        // check sees.
+        await page.goto('/invoices.html');
+        await page.waitForFunction(
+            () => !document.documentElement.classList.contains('fluxy-booting'),
+            null, { timeout: 15000 }
+        );
+        const country = await page.evaluate(() => window.FluxyWorkspace && window.FluxyWorkspace.country);
+        test.skip(country === 'ID', 'Indonesian workspace — these controls are correct here.');
+
+        await page.locator('#invoice-create-btn, [data-create-invoice]').first().click();
+        const wht = page.locator('#inv-wht-field');
+        await wht.waitFor({ state: 'attached', timeout: 10000 });
+        await expect(wht, `withholding (PPh) field is visible on a ${country} workspace`).toBeHidden();
+        await expect(page.locator('#inv-tax-field'),
+            `PPN tax field is visible on a ${country} workspace`).toBeHidden();
+        // And nothing anywhere in the editor names an Indonesian tax article.
+        const body = await page.locator('body').innerText();
+        expect(body, `invoice editor names Indonesian tax codes on a ${country} workspace`)
+            .not.toMatch(/PPh\s?(23|26|4\(2\))/);
+    });
+
     test('checkout quotes the plan in the billing currency, not the IDR default', async ({ page }) => {
         // The specific regression. Checkout renders once against the IDR default
         // before auth settles, then must re-render once the workspace lands. If

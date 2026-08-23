@@ -745,11 +745,14 @@ export function initInvoicesPage({ ds, user }) {
             if (!taxApplies) {
                 const r = el('inv-cust-wht-rate'); const t = el('inv-cust-wht-type');
                 if (r) r.value = ''; if (t) t.value = '';
-                editor.customer_withholding_rate = 0;
-                editor.customer_withholding_type = '';
+                // The EDITOR's names are custWht*; customer_withholding_* are the
+                // persisted Firestore names. Clearing the persisted names here did
+                // nothing to editor state, so a rate typed before the gate applied
+                // could still be saved.
+                editor.custWhtRate = null;
+                editor.custWhtType = '';
             }
         }
-        el('inv-wht-field').classList.toggle('hidden', foreign);
         if (foreign) {
             editor.taxRate = null;
             el('inv-tax-rate').value = '';

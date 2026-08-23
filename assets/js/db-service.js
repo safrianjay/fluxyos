@@ -2713,15 +2713,21 @@ class DataService {
     // it NEVER creates a ledger transaction in v1.
     // See docs/fluxyos_create_invoice_feature_plan.md.
 
-    _normalizeInvoiceItem(item = {}, index = 0, currency = undefined) {
+    // CONTRACT: `unit_price` arrives as INTEGER MINOR UNITS. The caller has
+    // already parsed the typed text (invoices.js does it with toMinor at the
+    // input). Converting again here multiplies by minorPerUnit a second time —
+    // ₱10,000 was stored and POSTED as ₱1,000,000.
+    //
+    // This was invisible in Indonesia: IDR minorPerUnit is 1, so a second
+    // conversion is the identity. It only ever showed up on a 2-decimal
+    // currency. Do not "fix" a formatting bug by adding a parse here — parse at
+    // the input, once.
+    _normalizeInvoiceItem(item = {}, index = 0) {
         const description = this._stringOrDefault(item.description, '', 240);
         if (!description) throw new Error('Item description is required.');
         const quantity = Math.round((Number(item.quantity) || 0) * 100) / 100;
         if (!(quantity > 0)) throw new Error('Item quantity must be greater than zero.');
-        // Digit-stripping assumed a 0-decimal currency: on a peso invoice "12"
-        // became 12 CENTAVOS (₱0.12) instead of ₱12. toMinor is currency-aware
-        // and byte-identical for IDR, whose 0-decimal path IS the old expression.
-        const unitPrice = window.FluxyMoney.toMinor(item.unit_price, currency || window.FluxyMoney.baseCurrency());
+        const unitPrice = Math.round(Number(item.unit_price) || 0);
         if (!(unitPrice > 0)) throw new Error('Item unit price must be greater than zero.');
         return {
             description,
@@ -2922,7 +2928,7 @@ class DataService {
     // full editor item list.
     async createInvoiceDraft(userId, invoiceData = {}) {
         const items = (Array.isArray(invoiceData.items) ? invoiceData.items : [])
-            .map((item, index) => this._normalizeInvoiceItem(item, index, invoiceData.currency));
+            .map((item, index) => this._normalizeInvoiceItem(item, index));
         const invoiceRef = doc(collection(this.db, `${this._scope(userId)}/invoices`));
         const invoiceNumber = invoiceData.invoice_number || await this.generateInvoiceNumber(userId);
         const payload = {
@@ -2971,7 +2977,7 @@ class DataService {
         const existingById = new Map(existingItems.map(item => [item.id, item]));
 
         const incoming = (Array.isArray(invoiceData.items) ? invoiceData.items : [])
-            .map((item, index) => ({ id: item.id || null, ...this._normalizeInvoiceItem(item, index, invoiceData.currency) }));
+            .map((item, index) => ({ id: item.id || null, ...this._normalizeInvoiceItem(item, index) }));
 
         const payload = this._normalizeInvoiceData(userId, invoiceData, incoming);
         const batch = writeBatch(this.db);
@@ -3031,17 +3037,11 @@ class DataService {
     }
 
     async addInvoiceItem(userId, invoiceId, itemData = {}) {
-        // Read the invoice's own currency: a line item is denominated in the
-        // INVOICE's face currency, which may differ from the workspace's books,
-        // and it decides whether "12" means 12 minor units or 1200.
-        let invoiceCurrency = itemData.currency || null;
-        if (!invoiceCurrency) {
-            try {
-                const invSnap = await getDoc(doc(this.db, `${this._scope(userId)}/invoices/${invoiceId}`));
-                invoiceCurrency = invSnap.exists() ? (invSnap.data() || {}).currency : null;
-            } catch (_) { /* fall back to the books' currency below */ }
-        }
-        const item = this._normalizeInvoiceItem(itemData, Number(itemData.position) || 0, invoiceCurrency);
+        // No currency read here any more. It existed to decide whether "12" meant
+        // 12 minor units or 1200 — a question this layer must not ask, because
+        // the caller already parsed the text. Asking it again was the second
+        // conversion. The read was also a wasted round trip on every line add.
+        const item = this._normalizeInvoiceItem(itemData, Number(itemData.position) || 0);
         const batch = writeBatch(this.db);
         batch.set(doc(collection(this.db, `${this._scope(userId)}/invoices/${invoiceId}/items`)), {
             ...item,
