@@ -95,3 +95,56 @@ If either account is ever deleted and re-created, every Playwright spec will
 fail at a full-screen "Your details are under review" overlay. Recover by
 approving that uid in the Internal Operations Console (KYC Review → Approve),
 or by setting `internal_users/{uid}.kyc_status = 'approved'` directly.
+
+---
+
+## Non-IDR QA accounts (per country)
+
+The original QA account is an **Indonesian** workspace. That makes a whole class
+of bug invisible: rupiah is both the correct answer and the fallback, so a page
+that fails to resolve the workspace looks identical to one that resolves it
+correctly. On 2026-08-23 a peso workspace was quoted the rupiah ladder, QRIS and
+PPN at checkout with every check green.
+
+`scripts/seed-qa-account.js` provisions an account for one market. It needs the
+Admin SDK because a QA account must clear three gates the app deliberately will
+not let a client-side script clear:
+
+| Gate | Why a script can't do it from the app |
+|---|---|
+| KYC review | Locks the app until a human approves in `/internal`. No auto-approve, by design. |
+| Onboarding | The gate holds every page until progress is complete. |
+| `base_currency` | **Set once**, enforced in `firestore.rules`. A wrong value is not fixable through the app — only the Admin SDK can repair it. |
+
+It refuses to write to any address that is not `qa+<cc>@fluxyos.com`, and it
+reads the workspace back from the server after writing to confirm the immutable
+currency actually landed.
+
+```bash
+# 1) Dry run — prints every planned write, writes nothing
+GOOGLE_APPLICATION_CREDENTIALS=./sa.json \
+  node scripts/seed-qa-account.js --country PH --dry-run
+
+# 2) Apply. Writes .qa/firebase-test-account-ph.md (gitignored)
+GOOGLE_APPLICATION_CREDENTIALS=./sa.json \
+  node scripts/seed-qa-account.js --country PH
+```
+
+That is the whole setup. Playwright picks it up automatically: the `auth-setup-ph`
+project derives the account from its own name, and `chromium-ph` runs
+`tests/workspace-currency.spec.js` against it.
+
+**Without the fixture everything skips**, so a clone with no credentials still
+runs green.
+
+### Why only one extra account, not four
+
+`workers: 1` and `fullyParallel: false`, so a second *full* sweep would add
+minutes to every push. The PH project runs **one small spec** (~20s) — what a
+second account uniquely buys is the currency assertion, not more page coverage.
+
+SG and MY have no price book yet (billing falls back to IDR) and no customers,
+so an account there would assert a state that has not been designed. When it is,
+adding them is one `--country SG` run plus two project blocks — the harness is
+already generic and the spec already reads the currency from the workspace
+rather than hardcoding PHP.

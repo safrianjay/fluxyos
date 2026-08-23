@@ -50,11 +50,42 @@ module.exports = defineConfig({
         },
         {
             name: 'chromium',
+            // The currency spec asserts a NON-IDR workspace; running it against
+            // the Indonesian account would fail on its own first assertion.
+            testIgnore: /workspace-currency\.spec\.js$/,
             use: {
                 ...devices['Desktop Chrome'],
                 storageState: 'tests/.auth/storageState.json',
             },
             dependencies: ['auth-setup'],
+        },
+
+        // ── Non-IDR workspace ────────────────────────────────────────────────
+        // The main suite runs against an Indonesian workspace, so a bug that
+        // only appears outside Indonesia passes every browser check — that is
+        // exactly how a peso workspace came to be quoted in rupiah at checkout
+        // with QA green.
+        //
+        // This project deliberately runs ONE small spec rather than the whole
+        // sweep: workers is 1 and fullyParallel is off, so a second full pass
+        // would add minutes to every push for very little extra coverage. What
+        // the second account uniquely buys is the currency assertion.
+        //
+        // Both projects skip themselves when their credentials file is absent,
+        // so a clone without the fixtures still runs green.
+        {
+            name: 'auth-setup-ph',
+            testMatch: /setup-auth\.spec\.js$/,
+            use: { ...devices['Desktop Chrome'] },
+        },
+        {
+            name: 'chromium-ph',
+            testMatch: /workspace-currency\.spec\.js$/,
+            use: {
+                ...devices['Desktop Chrome'],
+                storageState: 'tests/.auth/storageState.ph.json',
+            },
+            dependencies: ['auth-setup-ph'],
         },
     ],
 });

@@ -309,6 +309,20 @@ function laneFE(changed) {
     { env, timeout: 12 * 60_000 }
   )) && ok;
 
+  // Second pass on the NON-IDR workspace. A separate invocation because it needs
+  // its own auth-setup and storageState. It runs ONE small spec rather than the
+  // sweep, so the cost is ~20s instead of a second full pass — what the extra
+  // account uniquely buys is the currency assertion, not more page coverage.
+  // Skips itself when the fixture is absent, so this is a no-op for anyone
+  // without the account.
+  ok = record('fe', run(
+    'browser: non-IDR workspace currency',
+    'npx',
+    ['playwright', 'test', 'tests/workspace-currency.spec.js',
+      '--project=chromium-ph', '--reporter=line'],
+    { env, timeout: 6 * 60_000 }
+  )) && ok;
+
   return ok;
 }
 
