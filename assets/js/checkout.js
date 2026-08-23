@@ -1,7 +1,7 @@
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import DataService from "./db-service.js";
-import { BILLING_PLANS, calculateBilling, formatIDR, getCheckoutSelection, isSalesLedPlan } from "./billing-config.js";
+import { BILLING_PLANS, calculateBilling, formatIDR, getCheckoutSelection, isSalesLedPlan, isPpnChargeable } from "./billing-config.js";
 
 // Sales-led plans (Enterprise AI) have no self-serve checkout — bounce to the
 // Contact Sales flow if someone deep-links /checkout?plan=enterprise.
@@ -145,11 +145,16 @@ function updateCheckout() {
     $('summary-plan-name').textContent = plan.name;
     $('summary-plan-price').textContent = `${money(calculation.monthlyDisplayAmount)}/mo`;
     $('summary-plan-desc').textContent = plan.description;
-    $('summary-copy').textContent = `You will be billed ${selectedBilling === 'annually' ? 'annually' : 'monthly'} for FluxyOS ${plan.name}. Estimated PPN is shown before payment.`;
+    $('summary-copy').textContent = `You will be billed ${selectedBilling === 'annually' ? 'annually' : 'monthly'} for FluxyOS ${plan.name}.${isPpnChargeable() ? ' Estimated PPN is shown before payment.' : ''}`;
     $('summary-benefits').innerHTML = plan.benefits.map((benefit) => `<li><span class="summary-tick">&#10003;</span><span>${escapeHtml(benefit)}</span></li>`).join('');
     $('subtotal').textContent = money(calculation.subtotalAmount);
     $('discount').textContent = selectedBilling === 'annually' ? `Save ${annualSavingsPercent(plan)}%` : 'Not applied';
     $('tax').textContent = money(calculation.estimatedTaxAmount);
+    // PPN is Indonesian VAT on an Indonesian seller's invoice. When it is not
+    // charged, the row and its Indonesia-specific footnote come off the page —
+    // showing "Estimated PPN ₱0.00" to a Manila client explains nothing.
+    const ppn = isPpnChargeable();
+    document.querySelectorAll('[data-ppn-row]').forEach((el) => el.classList.toggle('hidden', !ppn));
     $('total-due').textContent = money(calculation.totalAmount);
     $('checkout-payable-total').textContent = money(calculation.totalAmount);
     $('monthly-label').textContent = `${money(plan.monthly)}/month`;
@@ -357,7 +362,9 @@ function renderSettlementNote(idrTotal) {
         el.innerHTML = '<span class="inline-block h-3 w-56 rounded bg-gray-200 animate-pulse"></span>';
         return;
     }
-    el.textContent = fxRate
-        ? `Transfer ${formatIDR(idrTotal)} — settled in IDR${fxDate ? ` · rate ${fxDate}` : ''}`
-        : 'Charged in IDR.';
+    // No rupiah on screen. The rate date stays, because a converted price with no
+    // date is an unfalsifiable claim — the client should be able to see how the
+    // figure was arrived at and when.
+    el.textContent = fxRate && fxDate ? `Converted at the rate of ${fxDate}.` : '';
+    el.classList.toggle('hidden', !(fxRate && fxDate));
 }

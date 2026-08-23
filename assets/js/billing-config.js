@@ -165,6 +165,22 @@ export function isSalesLedPlan(planId) {
     return BILLING_PLANS[planId]?.salesLed === true;
 }
 
+/**
+ * Is FluxyOS's Indonesian PPN chargeable on this subscription?
+ *
+ * PPN is Indonesian VAT on an Indonesian seller's invoice. Indonesian VAT rules
+ * treat exported digital services differently from domestic ones, so it is not
+ * automatically charged to a customer outside Indonesia — a business decision the
+ * seller makes, not a display preference. Keyed on the workspace's business
+ * country; absent country = Indonesia, so no existing customer changes.
+ *
+ * NOTE: this changes what is CHARGED, not just what is shown.
+ */
+export function isPpnChargeable() {
+    const country = (typeof window !== 'undefined' && window.FluxyWorkspace && window.FluxyWorkspace.country) || null;
+    return (country || 'ID') === 'ID';
+}
+
 export function calculateBilling(planId, billingFrequency, voucher = null) {
     const normalizedPlanId = normalizePlanId(planId);
     const normalizedBillingFrequency = normalizeBillingFrequency(billingFrequency);
@@ -193,7 +209,9 @@ export function calculateBilling(planId, billingFrequency, voucher = null) {
         : 0;
     // PPN applies to the discounted subtotal. (subtotal - discount) is always a
     // multiple of 100, so the 11% is exact — identical to the rules check.
-    const estimatedTaxAmount = ((subtotalAmount - voucherDiscountAmount) / 100) * 11;
+    const estimatedTaxAmount = isPpnChargeable()
+        ? ((subtotalAmount - voucherDiscountAmount) / 100) * 11
+        : 0;
 
     return {
         plan,
