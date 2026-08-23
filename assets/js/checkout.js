@@ -61,16 +61,19 @@ onAuthStateChanged(auth, async (user) => {
     // business's base currency, and without this it would always read IDR and
     // stay hidden for exactly the customers it exists for.
     if (user) {
+        // Resolving the workspace and re-rendering are SEPARATE concerns. They
+        // used to share one try/catch, and when the FX call in between was
+        // deleted the resulting ReferenceError was swallowed here — so
+        // updateCheckout() never ran and a peso workspace was quoted in rupiah,
+        // with nothing in the console to show for it. A failed resolve must not
+        // take the re-render down with it.
         try {
             const { resolveWorkspace } = await import('/assets/js/workspace-service.js');
             await resolveWorkspace(app, user);
-            // Rate first, THEN re-render: updateCheckout() already ran on page
-            // load against the IDR default, and painting converted prices before
-            // the rate is in hand would show IDR and swap to PHP a moment later —
-            // the flicker removed everywhere else in the app.
-            await ensureFxRate();
-            updateCheckout();
-        } catch (_) { /* price still renders in IDR, which is the real charge */ }
+        } catch (_) { /* seam falls back to IDR; never strand the page */ }
+        // Always re-render: the first paint ran against the IDR default before
+        // the workspace was known.
+        updateCheckout();
     }
     if (!user) return;
     clearTimeout(authTimeout);
@@ -290,25 +293,18 @@ $('submit-button').addEventListener('click', async () => {
 updateCheckout();
 
 /*
- * Indicative price in the workspace's currency — NEVER a replacement for the
- * charge.
+ * Prices come from the pinned per-currency price book — there is no conversion
+ * on this page. PLAN_PRICES holds a real peso ladder and firestore.rules
+ * enforces the same numbers, so what the customer reads is what is charged.
  *
- * FluxyOS bills in IDR through QRIS/VA, which are Indonesian rails, and applies
- * Indonesian PPN because FluxyOS is an Indonesian seller. Rendering "₱2,650" as
- * the price would claim a peso charge that no provider here can make. So the IDR
- * figure stays the price, and the converted amount sits beside it, labelled with
- * what is actually settled.
- *
- * Rate comes from the shared /.netlify/functions/fx-rate proxy — the same
- * centralised source the ledger uses. No page-local conversion constants.
- *
- * When market-region pricing arrives this is where it plugs in: the source price
- * stops being IDR and this line stops being a conversion.
+ * This listener exists only because the workspace currency can land after first
+ * paint: the page renders once against the IDR default, then again once the
+ * business country is known.
  */
 // Re-run when the workspace currency lands, wherever it lands from.
 if (typeof document !== 'undefined') {
     document.addEventListener('fluxy:workspace-ready', async () => {
-        try { await ensureFxRate(); updateCheckout(); } catch (_) { /* nothing to refresh yet */ }
+        updateCheckout();
     });
 }
 
