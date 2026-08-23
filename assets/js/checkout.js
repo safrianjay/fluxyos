@@ -1,16 +1,20 @@
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import DataService from "./db-service.js";
-import { BILLING_PLANS, calculateBilling, formatIDR, getCheckoutSelection, isSalesLedPlan, isPpnChargeable } from "./billing-config.js";
+import { BILLING_PLANS, calculateBilling, formatBilling, getCheckoutSelection, isSalesLedPlan, billingCurrency, planPrice, billingTaxFor, PAYMENT_INSTRUCTIONS, isPaymentInstructionReady } from "./billing-config.js";
 
 // Sales-led plans (Enterprise AI) have no self-serve checkout — bounce to the
 // Contact Sales flow if someone deep-links /checkout?plan=enterprise.
 function annualSavingsPercent(plan) {
-    if (!plan || typeof plan.monthly !== 'number' || !plan.annualMonthlyEquivalent) return 0;
+    // Prices live in the per-currency book, not on the plan. Read the billed
+    // currency's ladder — the saving is the same ratio in every currency, but
+    // reading plan.monthly (now absent) silently returned 0% for everyone.
+    const price = planPrice(plan && plan.id, billingCurrency());
+    if (!price || typeof price.monthly !== 'number' || !price.annualMonthlyEquivalent) return 0;
     // Capped at 20% so the displayed discount label stays consistent with the
     // "Save up to 20%" pricing banner (Starter's real saving is 23%; the actual
     // discounted price is unchanged — only the advertised label is capped).
-    return Math.min(20, Math.round((1 - plan.annualMonthlyEquivalent / plan.monthly) * 100));
+    return Math.min(20, Math.round((1 - price.annualMonthlyEquivalent / price.monthly) * 100));
 }
 
 const FIREBASE_CONFIG = {
@@ -32,7 +36,7 @@ if (isSalesLedPlan(initial.planId)) {
 }
 let selectedPlan = initial.planId;
 let selectedBilling = initial.billingFrequency;
-let selectedMethod = 'qris';
+let selectedMethod = PAYMENT_INSTRUCTIONS[billingCurrency()].method;
 let currentUser = null;
 let submitting = false;
 let appliedVoucher = null;
@@ -89,7 +93,7 @@ function renderPlanOptions() {
                     <div class="plan-option-name">${escapeHtml(plan.name)}${plan.id === 'growth' ? '<span class="popular-pill">Most popular</span>' : ''}</div>
                     <p class="plan-option-desc">${escapeHtml(plan.description)}</p>
                 </div>
-                <div class="plan-option-price">${money(selectedBilling === 'annually' ? plan.annualMonthlyEquivalent : plan.monthly)}/mo</div>
+                <div class="plan-option-price">${money(selectedBilling === 'annually' ? planPrice(plan.id, priceCurrency()).annualMonthlyEquivalent : plan.monthly)}/mo</div>
             </div>
         </button>
     `).join('');
@@ -137,28 +141,32 @@ function updateCheckout() {
             setVoucherMessage('error', `Voucher ${removedCode} was removed: ${(VOUCHER_ERROR_COPY[reason] || VOUCHER_ERROR_COPY.invalid).toLowerCase().replace('this voucher', 'it')}`);
         }
     }
-    const calculation = calculateBilling(selectedPlan, selectedBilling, appliedVoucher);
+    const calculation = calculateBilling(selectedPlan, selectedBilling, appliedVoucher, priceCurrency());
     const { plan } = calculation;
     document.querySelectorAll('[data-billing]').forEach((button) => button.classList.toggle('active', button.dataset.billing === selectedBilling));
     $('summary-total').textContent = money(calculation.totalAmount);
-    renderSettlementNote(calculation.totalAmount);
+    renderSettlementNote();
     $('summary-plan-name').textContent = plan.name;
     $('summary-plan-price').textContent = `${money(calculation.monthlyDisplayAmount)}/mo`;
     $('summary-plan-desc').textContent = plan.description;
-    $('summary-copy').textContent = `You will be billed ${selectedBilling === 'annually' ? 'annually' : 'monthly'} for FluxyOS ${plan.name}.${isPpnChargeable() ? ' Estimated PPN is shown before payment.' : ''}`;
+    const tax = billingTaxFor(priceCurrency());
+    $('summary-copy').textContent = `You will be billed ${selectedBilling === 'annually' ? 'annually' : 'monthly'} for FluxyOS ${plan.name}.${tax.rate > 0 ? ` Estimated ${tax.label} is shown before payment.` : ''}`;
     $('summary-benefits').innerHTML = plan.benefits.map((benefit) => `<li><span class="summary-tick">&#10003;</span><span>${escapeHtml(benefit)}</span></li>`).join('');
     $('subtotal').textContent = money(calculation.subtotalAmount);
     $('discount').textContent = selectedBilling === 'annually' ? `Save ${annualSavingsPercent(plan)}%` : 'Not applied';
     $('tax').textContent = money(calculation.estimatedTaxAmount);
     // PPN is Indonesian VAT on an Indonesian seller's invoice. When it is not
-    // charged, the row and its Indonesia-specific footnote come off the page —
-    // showing "Estimated PPN ₱0.00" to a Manila client explains nothing.
-    const ppn = isPpnChargeable();
-    document.querySelectorAll('[data-ppn-row]').forEach((el) => el.classList.toggle('hidden', !ppn));
+    // Every billing currency carries a tax: Indonesia PPN 11%, Philippines VAT
+    // 12% on digital services. The LABEL and rate follow the currency — a Manila
+    // client should never read the word PPN.
+    document.querySelectorAll('[data-tax-label]').forEach((el) => { el.textContent = `Estimated ${tax.label}`; });
+    document.querySelectorAll('[data-tax-note]').forEach((el) => {
+        el.textContent = `${tax.label} estimate uses an effective ${tax.rate}% calculation on digital services.`;
+    });
     $('total-due').textContent = money(calculation.totalAmount);
     $('checkout-payable-total').textContent = money(calculation.totalAmount);
-    $('monthly-label').textContent = `${money(plan.monthly)}/month`;
-    $('annual-label').textContent = `${money(plan.annualMonthlyEquivalent)}/month`;
+    $('monthly-label').textContent = `${money(planPrice(plan.id, priceCurrency()).monthly)}/month`;
+    $('annual-label').textContent = `${money(planPrice(plan.id, priceCurrency()).annualMonthlyEquivalent)}/month`;
     renderVoucherState(calculation);
     renderPlanOptions();
     updateUrl();
@@ -250,6 +258,7 @@ $('submit-button').addEventListener('click', async () => {
             plan_id: selectedPlan,
             billing_frequency: selectedBilling,
             payment_method: selectedMethod,
+            currency: priceCurrency(),
             voucher_code: appliedVoucher ? appliedVoucher.code : null
         });
         // QRIS shows the "pay this QR" screen first; other methods go straight to
@@ -320,51 +329,31 @@ if (typeof document !== 'undefined') {
  * When a gateway lands, this is the seam that changes: the price stops being a
  * conversion and the settlement note stops being needed.
  */
-let fxRate = null;          // base units per 1 IDR
-let fxDate = null;
-let fxTried = false;
+/* Prices are PINNED per currency in the billing price book — never converted at
+ * runtime. A price that moves with the daily FX fix cannot be put on an invoice
+ * or a bank-transfer instruction, and the customer cannot check it. So there is
+ * no FX call on this page any more: PLAN_PRICES holds a real peso ladder, and
+ * firestore.rules enforces the same numbers server-side. */
 
 function priceCurrency() {
-    const M = window.FluxyMoney;
-    return M ? M.baseCurrency() : 'IDR';
+    return billingCurrency();
 }
 
-/** Format an IDR-denominated plan amount in the business's currency. */
-function money(idrAmount) {
-    const M = window.FluxyMoney;
-    const base = priceCurrency();
-    if (!M || base === 'IDR' || !fxRate) return formatIDR(idrAmount);
-    const cfg = M.CURRENCIES[base];
-    const minor = Math.round(Number(idrAmount || 0) * fxRate * cfg.minorPerUnit);
-    return M.formatMoney(minor, base);
+/** Format a billing amount (minor units) in the currency being charged. */
+function money(minorAmount) {
+    return formatBilling(minorAmount, priceCurrency());
 }
 
-/** Fetch the rate once per page. Returns true when a conversion is available. */
-async function ensureFxRate() {
-    const base = priceCurrency();
-    if (base === 'IDR' || fxTried) return !!fxRate;
-    fxTried = true;
-    try {
-        const res = await fetch(`/.netlify/functions/fx-rate?from=IDR&to=${encodeURIComponent(base)}`);
-        const data = res.ok ? await res.json() : null;
-        if (data && Number(data.rate) > 0) { fxRate = Number(data.rate); fxDate = data.date || null; }
-    } catch (_) { /* prices stay in IDR, which is always correct */ }
-    return !!fxRate;
-}
-
-/** The settlement note under the total. Only for a non-IDR business. */
-function renderSettlementNote(idrTotal) {
+/** Payment instructions for the billed currency. QRIS is Indonesia-only. */
+function renderSettlementNote() {
     const el = $('summary-indicative');
     if (!el) return;
-    if (priceCurrency() === 'IDR') { el.classList.add('hidden'); return; }
+    const ccy = priceCurrency();
+    if (ccy === 'IDR') { el.classList.add('hidden'); return; }
+    // Until the transfer account is filled in, say so plainly rather than
+    // rendering an instruction with blank fields that nobody can act on.
+    el.textContent = isPaymentInstructionReady(ccy)
+        ? (PAYMENT_INSTRUCTIONS[ccy].note || '')
+        : 'Contact hello@fluxyos.com to complete payment for this plan.';
     el.classList.remove('hidden');
-    if (!fxTried) {
-        el.innerHTML = '<span class="inline-block h-3 w-56 rounded bg-gray-200 animate-pulse"></span>';
-        return;
-    }
-    // No rupiah on screen. The rate date stays, because a converted price with no
-    // date is an unfalsifiable claim — the client should be able to see how the
-    // figure was arrived at and when.
-    el.textContent = fxRate && fxDate ? `Converted at the rate of ${fxDate}.` : '';
-    el.classList.toggle('hidden', !(fxRate && fxDate));
 }

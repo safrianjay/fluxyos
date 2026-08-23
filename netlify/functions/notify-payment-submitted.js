@@ -52,7 +52,7 @@ exports.handler = async (event) => {
         const locale = await resolveUserLocale(db, uid);
         const r = await sendNotificationEmail({
             db, uid, to, eventKey, templateKey, locale,
-            data: { name: null, baseUrl: APP_BASE_URL, requestId, planName: d.plan_name || d.plan_id || null, amount: d.total_amount != null ? d.total_amount : null },
+            data: { name: null, baseUrl: APP_BASE_URL, requestId, planName: d.plan_name || d.plan_id || null, amount: d.total_amount != null ? d.total_amount : null, currency: d.currency || 'IDR' },
         });
         return { statusCode: 200, headers: cors, body: JSON.stringify({ result: r.sent ? 'sent' : (r.skipped || 'ok'), status }) };
     } catch (e) {

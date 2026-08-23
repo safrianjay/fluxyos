@@ -329,6 +329,40 @@ async function main() {
         return batch.commit();
     });
 
+    // ── Philippine billing ────────────────────────────────────────────────────
+    // FluxyOS bills PH customers in pesos. The danger these cases guard against
+    // is not a rejected payment — it is an ACCEPTED one at the wrong scale:
+    // 2.449.000 is a valid growth-monthly subtotal in BOTH currencies (rupiah vs
+    // centavos, ~8.5x apart in real value), so the rules must bind the amount to
+    // the currency rather than checking it in isolation.
+    console.log('\n— PH billing (growth monthly, PHP) —');
+    const phPayload = (overrides = {}) => paymentRequestPayload(null, {
+        currency: 'PHP',
+        payment_method: 'bank_transfer',
+        subtotal_amount: 2449000,          // ₱24,490.00 in centavos
+        estimated_tax_amount: 293880,      // 12% VAT
+        total_amount: 2742880,
+        voucher_id: null,
+        voucher_code: null,
+        voucher_discount_percent: null,
+        voucher_discount_amount: null,   // hasNoVoucherFields requires null, not 0
+        ...overrides
+    });
+    await expectOutcome('PHP checkout at book price allowed', true,
+        () => setDoc(doc(collection(db, `users/${auth.currentUser.uid}/billing_payment_requests`)), phPayload()));
+    await expectOutcome('PHP with 11% PPN rejected (PH charges 12% VAT)', false,
+        () => setDoc(doc(collection(db, `users/${auth.currentUser.uid}/billing_payment_requests`)),
+            phPayload({ estimated_tax_amount: 269390, total_amount: 2718390 })));
+    await expectOutcome('PHP amount under IDR currency rejected', false,
+        () => setDoc(doc(collection(db, `users/${auth.currentUser.uid}/billing_payment_requests`)),
+            phPayload({ currency: 'IDR', estimated_tax_amount: 269390, total_amount: 2718390 })));
+    await expectOutcome('IDR amount under PHP currency rejected', false,
+        () => setDoc(doc(collection(db, `users/${auth.currentUser.uid}/billing_payment_requests`)),
+            phPayload({ subtotal_amount: 6990000, estimated_tax_amount: 838800, total_amount: 7828800 })));
+    await expectOutcome('unsupported billing currency rejected', false,
+        () => setDoc(doc(collection(db, `users/${auth.currentUser.uid}/billing_payment_requests`)),
+            phPayload({ currency: 'SGD' })));
+
     console.log(`\nResult: ${passed} passed, ${failed} failed`);
     process.exit(failed ? 1 : 0);
 }

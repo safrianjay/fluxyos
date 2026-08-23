@@ -12,6 +12,7 @@
     "check:statements-workbook": "node tests/statements-workbook.check.js",
     "check:structure": "node tests/structure-drift.check.js",
     "check:money-seam": "node tests/money-seam.check.js",
+    "check:price-book": "node tests/billing-price-book.check.js",
     "check:deploy-stamp": "node tests/deploy-stamp.check.js",
     "deploy:stamp": "node scripts/stamp-deploy.js",
     "check:ai-statements": "node tests/ai-statement-routing.check.js",

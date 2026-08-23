@@ -17,18 +17,101 @@ export const QRIS_PAYMENT_INFO = {
     currency: 'IDR'
 };
 
-// Single source of truth for plan pricing. Self-serve plans carry `monthly` +
-// `annualMonthlyEquivalent` (raw integer Rupiah; annual subtotal is the
-// equivalent × 12). Enterprise AI is sales-led: it has NO public/self-serve
-// amount (`salesLed: true`), only a `startingFrom` display anchor and a
-// Contact Sales flow — never a checkout. firestore.rules `isValidBillingAmounts`
-// mirrors the self-serve amounts below and must change in lockstep.
+// Plan identity and copy. AMOUNTS live in PLAN_PRICES above, keyed by billing
+// currency — a plan has no single price. Enterprise AI is sales-led: it has NO
+// public/self-serve amount (`salesLed: true`), only a `startingFrom` display
+// anchor and a Contact Sales flow — never a checkout.
+
+// ---- Price book -------------------------------------------------------------
+//
+// FluxyOS bills in the customer's own currency. Prices are PINNED per currency,
+// never converted at runtime: a price that moves with the daily FX fix is not a
+// price, and it cannot be put on an invoice or a bank-transfer instruction.
+//
+// Amounts are integer MINOR units — IDR minorPerUnit 1 (rupiah ARE minor units),
+// PHP 100 (centavos). The PHP ladder was pinned near parity with the IDR list at
+// 286.39 IDR/PHP (2026-08-21) and rounded to local price points.
+//
+// firestore.rules billingSubtotal() mirrors the ANNUAL and MONTHLY subtotals
+// derived from this table and must change in lockstep. tests/billing-price-book
+// .check.js fails the build when they drift.
+export const BILLING_CURRENCIES = ['IDR', 'PHP'];
+
+export const PLAN_PRICES = {
+    IDR: {
+        starter: { monthly: 1290000, annualMonthlyEquivalent: 990000 },
+        core:    { monthly: 3490000, annualMonthlyEquivalent: 2790000 },
+        growth:  { monthly: 6990000, annualMonthlyEquivalent: 5590000 },
+        enterprise: { startingFrom: 15000000 }
+    },
+    PHP: {
+        starter: { monthly: 449000,  annualMonthlyEquivalent: 349000 },
+        core:    { monthly: 1219000, annualMonthlyEquivalent: 979000 },
+        growth:  { monthly: 2449000, annualMonthlyEquivalent: 1959000 },
+        enterprise: { startingFrom: 5200000 }
+    }
+};
+
+// Sales tax on FluxyOS's OWN subscription, by billing currency. This is not the
+// customer's ledger tax — it is what FluxyOS charges for the subscription.
+// Indonesia: PPN 11%. Philippines: 12% VAT on digital services (RA 11967).
+export const BILLING_TAX = {
+    IDR: { rate: 11, label: 'PPN' },
+    PHP: { rate: 12, label: 'VAT' }
+};
+
+// How a customer in each billing currency actually pays. QRIS is an Indonesian
+// rail — a Philippine customer cannot scan it — so the method list is per
+// currency, not global.
+export const PAYMENT_INSTRUCTIONS = {
+    IDR: { method: 'qris', methods: ['qris', 'va', 'card', 'invoice'] },
+    PHP: {
+        method: 'bank_transfer',
+        methods: ['bank_transfer', 'invoice'],
+        // TODO before PH launch — until bankName and accountNumber are filled,
+        // checkout renders a "contact us to complete payment" state instead of
+        // transfer instructions. See isPaymentInstructionReady().
+        bankName: '',
+        accountName: '',
+        accountNumber: '',
+        swift: '',
+        note: 'Transfer the total above and email the receipt to hello@fluxyos.com.'
+    }
+};
+
+export function isPaymentInstructionReady(currency) {
+    const info = PAYMENT_INSTRUCTIONS[normalizeBillingCurrency(currency)];
+    if (!info) return false;
+    if (info.method === 'qris') return true;
+    return !!(info.bankName && info.accountNumber);
+}
+
+export function normalizeBillingCurrency(value) {
+    const c = String(value || '').toUpperCase();
+    return BILLING_CURRENCIES.includes(c) ? c : 'IDR';
+}
+
+// The currency FluxyOS bills this workspace in, from the business country set at
+// onboarding. Markets without a pinned price book bill in IDR until one exists —
+// never a live conversion.
+export function billingCurrency() {
+    const country = (window.FluxyWorkspace && window.FluxyWorkspace.country) || null;
+    return normalizeBillingCurrency({ ID: 'IDR', PH: 'PHP' }[country || 'ID']);
+}
+
+export function planPrice(planId, currency) {
+    const book = PLAN_PRICES[normalizeBillingCurrency(currency)] || PLAN_PRICES.IDR;
+    return book[normalizePlanId(planId)] || {};
+}
+
+export function billingTaxFor(currency) {
+    return BILLING_TAX[normalizeBillingCurrency(currency)] || BILLING_TAX.IDR;
+}
+
 export const BILLING_PLANS = {
     starter: {
         id: 'starter',
         name: 'Starter',
-        monthly: 1290000,
-        annualMonthlyEquivalent: 990000,
         description: 'For founders, freelancers, and small teams running finance in one place.',
         benefits: [
             'Transactions, Bills & Budgeting',
@@ -41,8 +124,6 @@ export const BILLING_PLANS = {
     core: {
         id: 'core',
         name: 'Core Ops',
-        monthly: 3490000,
-        annualMonthlyEquivalent: 2790000,
         description: 'For growing operational teams with dedicated finance and admin.',
         benefits: [
             'Everything in Starter',
@@ -55,8 +136,6 @@ export const BILLING_PLANS = {
     growth: {
         id: 'growth',
         name: 'Growth Engine',
-        monthly: 6990000,
-        annualMonthlyEquivalent: 5590000,
         description: 'For scaling companies that need forecasting and AI financial analysis.',
         benefits: [
             'Everything in Core Ops',
@@ -70,7 +149,6 @@ export const BILLING_PLANS = {
         id: 'enterprise',
         name: 'Enterprise AI',
         salesLed: true,
-        startingFrom: 15000000,
         description: 'Unlimited AI and processing with SSO, dedicated support, and custom limits.',
         benefits: [
             'Unlimited AI usage & processing',
@@ -177,54 +255,72 @@ export function isSalesLedPlan(planId) {
  * NOTE: this changes what is CHARGED, not just what is shown.
  */
 export function isPpnChargeable() {
-    const country = (typeof window !== 'undefined' && window.FluxyWorkspace && window.FluxyWorkspace.country) || null;
-    return (country || 'ID') === 'ID';
+    // Retained name for callers that only ask "is there a tax row?". Every
+    // supported billing currency now carries one — Indonesia PPN 11%,
+    // Philippines VAT 12% — so this is true wherever we have a price book.
+    return billingTaxFor(billingCurrency()).rate > 0;
 }
 
-export function calculateBilling(planId, billingFrequency, voucher = null) {
+export function calculateBilling(planId, billingFrequency, voucher = null, currency = null) {
     const normalizedPlanId = normalizePlanId(planId);
     const normalizedBillingFrequency = normalizeBillingFrequency(billingFrequency);
+    const ccy = normalizeBillingCurrency(currency || billingCurrency());
     const plan = BILLING_PLANS[normalizedPlanId];
-    if (plan.salesLed || typeof plan.monthly !== 'number') {
+    const price = planPrice(normalizedPlanId, ccy);
+    if (plan.salesLed || typeof price.monthly !== 'number') {
         return {
             plan,
             planId: normalizedPlanId,
             billingFrequency: normalizedBillingFrequency,
+            currency: ccy,
             salesLed: true,
+            startingFrom: price.startingFrom ?? null,
             monthlyDisplayAmount: null,
             subtotalAmount: null,
             voucherDiscountAmount: 0,
+            taxLabel: billingTaxFor(ccy).label,
             estimatedTaxAmount: null,
             totalAmount: null
         };
     }
     const monthlyDisplayAmount = normalizedBillingFrequency === 'annually'
-        ? plan.annualMonthlyEquivalent
-        : plan.monthly;
+        ? price.annualMonthlyEquivalent
+        : price.monthly;
     const subtotalAmount = normalizedBillingFrequency === 'annually'
-        ? plan.annualMonthlyEquivalent * 12
-        : plan.monthly;
+        ? price.annualMonthlyEquivalent * 12
+        : price.monthly;
     const voucherDiscountAmount = voucher
         ? calculateVoucherDiscountAmount(subtotalAmount, voucher.discount_value)
         : 0;
-    // PPN applies to the discounted subtotal. (subtotal - discount) is always a
-    // multiple of 100, so the 11% is exact — identical to the rules check.
-    const estimatedTaxAmount = isPpnChargeable()
-        ? ((subtotalAmount - voucherDiscountAmount) / 100) * 11
-        : 0;
+    // Tax applies to the discounted subtotal. Every price in the book is a
+    // multiple of 1000 minor units and discounts are integer percents, so this
+    // integer math is exact — identical to the rules check, in both currencies.
+    const tax = billingTaxFor(ccy);
+    const estimatedTaxAmount = ((subtotalAmount - voucherDiscountAmount) / 100) * tax.rate;
 
     return {
         plan,
         planId: normalizedPlanId,
         billingFrequency: normalizedBillingFrequency,
+        currency: ccy,
         monthlyDisplayAmount,
         subtotalAmount,
         voucherDiscountAmount,
+        taxLabel: tax.label,
+        taxRate: tax.rate,
         estimatedTaxAmount,
         totalAmount: subtotalAmount - voucherDiscountAmount + estimatedTaxAmount
     };
 }
 
+// Billing money, in the currency it was billed in. Minor units in, display out.
+export function formatBilling(minor, currency) {
+    const ccy = normalizeBillingCurrency(currency);
+    return window.FluxyMoney.formatMoney(Math.round(Math.abs(Number(minor) || 0)), ccy);
+}
+
+// Legacy alias. Callers that never carried a currency get IDR, which is what
+// they were already assuming — but new billing code must pass the currency.
 export function formatIDR(value) {
-    return `Rp${Math.round(Math.abs(Number(value) || 0)).toLocaleString('id-ID')}`;
+    return formatBilling(value, 'IDR');
 }

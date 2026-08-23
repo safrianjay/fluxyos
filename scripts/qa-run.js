@@ -194,7 +194,11 @@ function laneBE(changed) {
   // file". It never throws — it renders a plausible wrong number (wrong symbol,
   // wrong decimals, wrong separators), which for a non-IDR workspace means
   // showing 100x the real money. Cheap: file reads plus one grep.
-  ok = record('be', run('check:money-seam (currency renders via the seam?)', 'node', ['tests/money-seam.check.js'])) && ok;
+  ok = record('be', run('check:money-seam (currency renders via the seam?)', 'node', ['tests/money-seam.check.js'])) && ok
+        // Unconditional: the price book lives in billing-config.js AND
+        // firestore.rules, and neither file needs to be in the diff for them
+        // to disagree — a rules deploy alone can do it.
+        ok = record('be', run('check:price-book (client prices == rules prices?)', 'node', ['tests/billing-price-book.check.js'])) && ok;
 
   const jsChanged = changed.filter((f) => /\.(js|mjs)$/.test(f) && fs.existsSync(path.join(REPO_ROOT, f)));
   if (jsChanged.length) {

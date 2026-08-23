@@ -1,7 +1,7 @@
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import DataService from "./db-service.js";
-import { formatIDR, QRIS_PAYMENT_INFO } from "./billing-config.js";
+import { formatBilling, PAYMENT_INSTRUCTIONS, QRIS_PAYMENT_INFO } from "./billing-config.js";
 
 const FIREBASE_CONFIG = {
     apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -143,7 +143,8 @@ function renderQris(request) {
     cancelDashboardRedirect();
     setSuccessMode(false);
     showView('qris');
-    const amount = formatIDR(request.total_amount);
+    // Render in the currency the customer was actually billed in.
+    const amount = formatBilling(request.total_amount, request.currency);
     $('qris-amount').textContent = amount;
     $('qris-plan-name').textContent = request.plan_name || 'FluxyOS plan';
     $('qris-plan-billing').textContent = billingLabel(request.billing_frequency);
@@ -455,7 +456,7 @@ function renderMeta(request) {
     meta.innerHTML = `
         <div class="meta-row"><dt>Package</dt><dd>${escapeHtml(request.plan_name || 'FluxyOS plan')}</dd></div>
         <div class="meta-row"><dt>Billing</dt><dd>${request.billing_frequency === 'annually' ? 'Annually' : 'Monthly'}</dd></div>
-        <div class="meta-row"><dt>Total</dt><dd>${formatIDR(request.total_amount)}</dd></div>
+        <div class="meta-row"><dt>Total</dt><dd>${formatBilling(request.total_amount, request.currency)}</dd></div>
         <div class="meta-row"><dt>Method</dt><dd>${labels[request.payment_method] || 'Manual verification'}</dd></div>
         <div class="meta-row"><dt>Submitted</dt><dd>${fmtDate(request.submitted_for_verification_at || request.submitted_at || request.created_at)}</dd></div>
     `;

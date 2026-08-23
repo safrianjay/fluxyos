@@ -280,23 +280,38 @@ service cloud.firestore {
         : 0;
     }
 
-    // Self-serve plan subtotals. Mirrors `BILLING_PLANS` in assets/js/billing-config.js
-    // (monthly = `monthly`; annually = `annualMonthlyEquivalent` × 12). Enterprise AI
-    // is sales-led — it has NO self-serve amount, so no enterprise branch exists here
-    // and a self-serve enterprise payment request is rejected.
+    // Subtotals for every (currency, plan, frequency) FluxyOS sells, mirroring
+    // PLAN_PRICES in assets/js/billing-config.js. Amounts are integer MINOR units
+    // — IDR minorPerUnit 1, PHP 100 (centavos).
+    //
+    // A map lookup rather than an OR-chain of equality clauses: adding the second
+    // currency would otherwise have doubled a 6-clause chain, and this ruleset is
+    // already near the expression-complexity ceiling (docs note, 2026-08-21).
+    // Unknown combinations return -1, which no valid subtotal can equal.
+    function billingSubtotal(data) {
+      return {
+        'IDR|starter|monthly': 1290000, 'IDR|starter|annually': 11880000,
+        'IDR|core|monthly':    3490000, 'IDR|core|annually':    33480000,
+        'IDR|growth|monthly':  6990000, 'IDR|growth|annually':  67080000,
+        'PHP|starter|monthly':  449000, 'PHP|starter|annually':  4188000,
+        'PHP|core|monthly':    1219000, 'PHP|core|annually':    11748000,
+        'PHP|growth|monthly':  2449000, 'PHP|growth|annually':  23508000
+      }.get(data.currency + '|' + data.plan_id + '|' + data.billing_frequency, -1);
+    }
+
+    // Sales tax on the subscription itself: Indonesia PPN 11%, Philippines VAT
+    // 12% on digital services. Mirrors BILLING_TAX in billing-config.js.
+    function billingTaxRate(currency) {
+      return {'IDR': 11, 'PHP': 12}.get(currency, -1);
+    }
+
     function isValidBillingAmounts(data) {
-      return (
-          (data.plan_id == 'starter' && data.billing_frequency == 'monthly' && data.subtotal_amount == 1290000)
-          || (data.plan_id == 'starter' && data.billing_frequency == 'annually' && data.subtotal_amount == 11880000)
-          || (data.plan_id == 'core' && data.billing_frequency == 'monthly' && data.subtotal_amount == 3490000)
-          || (data.plan_id == 'core' && data.billing_frequency == 'annually' && data.subtotal_amount == 33480000)
-          || (data.plan_id == 'growth' && data.billing_frequency == 'monthly' && data.subtotal_amount == 6990000)
-          || (data.plan_id == 'growth' && data.billing_frequency == 'annually' && data.subtotal_amount == 67080000)
-        )
-        // PPN applies to the voucher-discounted subtotal. Every plan subtotal is
-        // a multiple of 10.000 and discounts are integer percents, so the
-        // integer math here is exact (no truncation) and matches the client.
-        && data.estimated_tax_amount == (data.subtotal_amount - voucherDiscountOf(data)) * 11 / 100;
+      // Tax applies to the voucher-discounted subtotal. Every price in the book
+      // is a multiple of 1000 minor units and discounts are integer percents, so
+      // the integer math is exact (no truncation) and matches the client.
+      return data.subtotal_amount == billingSubtotal(data)
+        && data.estimated_tax_amount ==
+             (data.subtotal_amount - voucherDiscountOf(data)) * billingTaxRate(data.currency) / 100;
     }
 
     function isValidBillingFrequency(frequency) {
@@ -416,8 +431,9 @@ service cloud.firestore {
         && data.total_amount is number
         && data.total_amount == data.subtotal_amount - voucherDiscountOf(data) + data.estimated_tax_amount
         && isValidBillingAmounts(data)
-        && data.currency == 'IDR'
-        && data.payment_method in ['qris', 'va', 'card', 'invoice']
+        && data.currency in ['IDR', 'PHP']
+        // QRIS is an Indonesian rail; a PH customer pays by bank transfer.
+        && data.payment_method in ['qris', 'va', 'card', 'invoice', 'bank_transfer']
         // QRIS starts as awaiting_payment (pay the QR first); other methods submit
         // for verification immediately. verified/failed/expired stay server-owned.
         && data.payment_status in ['awaiting_payment', 'pending_verification']

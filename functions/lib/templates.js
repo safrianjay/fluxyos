@@ -1,6 +1,6 @@
 'use strict';
 
-const { formatRupiah, escapeHtml, formatMoney } = require('./format');
+const { escapeHtml, formatMoney } = require('./format');
 
 // Brand tokens (docs/DESIGN_SYSTEM.md). Orange is an ACCENT only — the primary
 // button mirrors the app's dark-navy primary, never an orange background.
@@ -327,7 +327,8 @@ const COPY = {
     payment_verified(locale, d) {
         const url = `${d.baseUrl}/dashboard`;
         const plan = d.planName ? String(d.planName) : null;
-        const amount = (d.amount != null && Number.isFinite(Number(d.amount))) ? formatRupiah(d.amount) : null;
+        const amount = (d.amount != null && Number.isFinite(Number(d.amount)))
+            ? formatMoney(d.amount, d.currency || 'IDR') : null;
         // Grammatical phrase for every plan/amount combination (or neither).
         const phrase = (planText) => {
             if (locale === 'id') {
@@ -473,7 +474,8 @@ const COPY = {
     // (1d before), 'overdue' (3d after the period ended without payment).
     billing_reminder(locale, d) {
         const plan = d.planName ? escapeHtml(String(d.planName)) : null;
-        const amount = (d.amount != null && Number.isFinite(Number(d.amount))) ? formatRupiah(d.amount) : null;
+        const amount = (d.amount != null && Number.isFinite(Number(d.amount)))
+            ? formatMoney(d.amount, d.currency || 'IDR') : null;
         const when = d.dueLabel ? escapeHtml(d.dueLabel) : null;
         const phase = d.phase || 'upcoming';
         const checkout = `${d.baseUrl}/checkout`;
@@ -532,7 +534,8 @@ const COPY = {
     // back to the QR screen via /payment-pending?requestId=.
     payment_pending_reminder(locale, d) {
         const plan = d.planName ? escapeHtml(String(d.planName)) : null;
-        const amount = (d.amount != null && Number.isFinite(Number(d.amount))) ? formatRupiah(d.amount) : null;
+        const amount = (d.amount != null && Number.isFinite(Number(d.amount)))
+            ? formatMoney(d.amount, d.currency || 'IDR') : null;
         const url = d.requestId ? `${d.baseUrl}/payment-pending?requestId=${encodeURIComponent(d.requestId)}` : `${d.baseUrl}/payment-pending`;
         if (locale === 'id') {
             const detail = (plan ? `paket ${plan}` : 'paket Anda') + (amount ? ` (${amount})` : '');
@@ -565,7 +568,8 @@ const COPY = {
     // Immediate acknowledgement when a payment is submitted (pending_verification).
     payment_under_review(locale, d) {
         const plan = d.planName ? escapeHtml(String(d.planName)) : null;
-        const amount = (d.amount != null && Number.isFinite(Number(d.amount))) ? formatRupiah(d.amount) : null;
+        const amount = (d.amount != null && Number.isFinite(Number(d.amount)))
+            ? formatMoney(d.amount, d.currency || 'IDR') : null;
         const url = d.requestId ? `${d.baseUrl}/payment-pending?requestId=${encodeURIComponent(d.requestId)}` : `${d.baseUrl}/settings-billing`;
         if (locale === 'id') {
             const detail = (plan ? ` untuk paket ${plan}` : '') + (amount ? ` (${amount})` : '');

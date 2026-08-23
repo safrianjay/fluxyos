@@ -200,7 +200,7 @@
         import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import DataService from './assets/js/db-service.js';
-        import { formatIDR, PLAN_DISPLAY_NAMES, BILLING_PLANS } from './assets/js/billing-config.js';
+        import { formatBilling, billingCurrency, planPrice, PLAN_DISPLAY_NAMES, BILLING_PLANS } from './assets/js/billing-config.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -526,7 +526,7 @@
             const hasPlan = o.has_plan;
             const priceLine = (hasPlan && Number.isFinite(o.price_amount) && o.price_amount > 0)
                 ? `<div class="flex items-baseline gap-1">
-                        <span class="bill-amount text-2xl font-bold text-gray-900">${escapeHtml(formatIDR(o.price_amount))}</span>
+                        <span class="bill-amount text-2xl font-bold text-gray-900">${escapeHtml(formatBilling(o.price_amount, o.currency || billingCurrency()))}</span>
                         <span class="text-[13px] text-gray-500">/ month${o.billing_cycle === 'annually' ? ' (billed yearly)' : ''}</span>
                    </div>`
                 : (o.sales_led
@@ -758,12 +758,12 @@
                 const st = STATUS[inv.status] || ['—', 'gray'];
                 const planName = PLAN_DISPLAY_NAMES[inv.plan_id] || BILLING_PLANS[inv.plan_id]?.name || (inv.plan_id ? capitalize(inv.plan_id) : '—');
                 const frequency = inv.billing_frequency === 'annually' ? 'Annual' : (inv.billing_frequency === 'monthly' ? 'Monthly' : null);
-                const amount = Number.isFinite(Number(inv.amount)) ? formatIDR(Number(inv.amount)) : '—';
+                const amount = Number.isFinite(Number(inv.amount)) ? formatBilling(Number(inv.amount), inv.currency) : '—';
                 // Monthly-equivalent line for annual invoices (canonical plan value, else total ÷ 12).
                 const monthlyEquivalent = inv.billing_frequency === 'annually'
                     ? (Number.isFinite(Number(inv.monthly_equivalent_amount))
                         ? Number(inv.monthly_equivalent_amount)
-                        : (BILLING_PLANS[inv.plan_id]?.annualMonthlyEquivalent
+                        : (planPrice(inv.plan_id, inv.currency || billingCurrency()).annualMonthlyEquivalent
                             ?? (Number.isFinite(Number(inv.amount)) ? Math.round(Number(inv.amount) / 12) : null)))
                     : null;
                 const number = inv.invoice_number || inv.id || '—';
@@ -778,7 +778,7 @@
                     <td class="px-5 py-3.5">${badge(st[0], st[1])}</td>
                     <td class="px-5 py-3.5 text-right">
                         <span class="bill-amount text-[13px] font-semibold text-gray-900">${escapeHtml(amount)}</span>
-                        ${monthlyEquivalent != null ? `<span class="block bill-amount text-[11px] text-gray-400">${escapeHtml(formatIDR(monthlyEquivalent))}/mo equiv.</span>` : ''}
+                        ${monthlyEquivalent != null ? `<span class="block bill-amount text-[11px] text-gray-400">${escapeHtml(formatBilling(monthlyEquivalent, inv.currency))}/mo equiv.</span>` : ''}
                     </td>
                     <td class="px-5 py-3.5 text-[13px] text-gray-600">${escapeHtml(planName)}${frequency ? `<span class="block text-[11px] text-gray-400">${escapeHtml(frequency)}</span>` : ''}</td>
                     <td class="px-5 py-3.5 text-right">${action}</td>
