@@ -152,7 +152,10 @@ async function generateWeeklyDigest(db, uid, prefs = {}, { now = new Date(), log
     // as the template chrome — never mixed within one email.
     const locale = await resolveUserLocale(db, uid);
 
-    let answer = finance.buildPlannedDeterministicAnswer({ plan, message: 'Weekly financial digest', pageContext: 'global', tools, language: locale });
+    // The narration quotes money as well as the cards do, so it needs the same
+    // currency — resolved here rather than after, which is where it used to sit.
+    const currency = await resolveBaseCurrency(db, uid);
+    let answer = finance.buildPlannedDeterministicAnswer({ currency, plan, message: 'Weekly financial digest', pageContext: 'global', tools, language: locale });
     if (process.env.OPENAI_API_KEY) {
         try {
             const ai = await finance.callOpenAIFinanceAnalyst({
@@ -177,11 +180,8 @@ async function generateWeeklyDigest(db, uid, prefs = {}, { now = new Date(), log
         answer: { direct_answer: answer.direct_answer, insights: answer.insights, recommended_actions: answer.recommended_actions },
         tools,
     };
-    // The digest is the business's own money, so it renders in the business's own
-    // currency. Resolved per user inside the sweep and passed explicitly — this
-    // function runs many workspaces per invocation, so a shared value would send
-    // one business's figures with another's symbol.
-    const currency = await resolveBaseCurrency(db, uid);
+    // Same currency the narration above used — one resolution per user, passed
+    // explicitly, because this function renders many workspaces per invocation.
     const prebuilt = buildWeeklyDigest({ locale, data: emailData, currency });
 
     if (dryRun) return { dryRun: true, prebuilt, summaryOnly: emailData.summaryOnly, coverage };

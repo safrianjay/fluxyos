@@ -2239,15 +2239,15 @@ function buildPlannedDeterministicAnswer({ currency, plan, message, pageContext,
     const __mIDR = (v) => formatIDR(v, currency);
     const __sIDR = (v) => formatSignedIDR(v, currency);
     if (plan.intent === 'unsupported' || !plan.is_supported) {
-        return buildDeterministicAnswer({ intent: 'unsupported', message, pageContext, period: plan.period, tools: {}, language });
+        return buildDeterministicAnswer({ currency, intent: 'unsupported', message, pageContext, period: plan.period, tools: {}, language });
     }
     if (plan.intent === 'ambiguous') {
-        return buildDeterministicAnswer({ intent: 'ambiguous', message, pageContext, period: plan.period, tools: {}, language });
+        return buildDeterministicAnswer({ currency, intent: 'ambiguous', message, pageContext, period: plan.period, tools: {}, language });
     }
     // Statement routing needs no tool result, so it short-circuits here rather
     // than falling through to the analysis branches below.
     if (plan.intent === 'statement_export') {
-        return buildDeterministicAnswer({ intent: 'statement_export', message, pageContext, period: plan.period, tools: {}, language });
+        return buildDeterministicAnswer({ currency, intent: 'statement_export', message, pageContext, period: plan.period, tools: {}, language });
     }
     if (plan.intent === 'comparison' && tools.comparison) {
         const answer = baseAnswer('comparison', 'comparison', plan.period);
@@ -2338,7 +2338,7 @@ function buildPlannedDeterministicAnswer({ currency, plan, message, pageContext,
         return answer;
     }
     const legacyIntent = legacyIntentFromPlan(plan.intent);
-    const answer = buildDeterministicAnswer({ intent: legacyIntent, message, pageContext, period: plan.period, tools, language });
+    const answer = buildDeterministicAnswer({ currency, intent: legacyIntent, message, pageContext, period: plan.period, tools, language });
     answer.intent = plan.intent;
     if (answer.answer_type === 'analysis' && plan.question_type === 'recommendation') answer.answer_type = 'recommendation';
     return answer;
