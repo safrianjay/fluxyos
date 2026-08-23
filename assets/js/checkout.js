@@ -60,10 +60,11 @@ onAuthStateChanged(auth, async (user) => {
         try {
             const { resolveWorkspace } = await import('/assets/js/workspace-service.js');
             await resolveWorkspace(app, user);
-            // updateCheckout() already ran — on page load and on every option
-            // change — long before this resolved, so the indicative line was
-            // computed against the IDR default and hid itself. Recompute now that
-            // the business currency is actually known.
+            // Rate first, THEN re-render: updateCheckout() already ran on page
+            // load against the IDR default, and painting converted prices before
+            // the rate is in hand would show IDR and swap to PHP a moment later —
+            // the flicker removed everywhere else in the app.
+            await ensureFxRate();
             updateCheckout();
         } catch (_) { /* price still renders in IDR, which is the real charge */ }
     }
@@ -88,7 +89,7 @@ function renderPlanOptions() {
                     <div class="plan-option-name">${escapeHtml(plan.name)}${plan.id === 'growth' ? '<span class="popular-pill">Most popular</span>' : ''}</div>
                     <p class="plan-option-desc">${escapeHtml(plan.description)}</p>
                 </div>
-                <div class="plan-option-price">${formatIDR(selectedBilling === 'annually' ? plan.annualMonthlyEquivalent : plan.monthly)}/mo</div>
+                <div class="plan-option-price">${money(selectedBilling === 'annually' ? plan.annualMonthlyEquivalent : plan.monthly)}/mo</div>
             </div>
         </button>
     `).join('');
@@ -117,9 +118,9 @@ function renderVoucherState(calculation) {
         return;
     }
     $('voucher-applied-code').textContent = appliedVoucher.code;
-    $('voucher-applied-detail').textContent = `${appliedVoucher.discount_value}% off · −${formatIDR(calculation.voucherDiscountAmount)}`;
+    $('voucher-applied-detail').textContent = `${appliedVoucher.discount_value}% off · −${money(calculation.voucherDiscountAmount)}`;
     $('voucher-row-label').textContent = `Voucher ${appliedVoucher.code}`;
-    $('voucher-row-amount').textContent = `−${formatIDR(calculation.voucherDiscountAmount)}`;
+    $('voucher-row-amount').textContent = `−${money(calculation.voucherDiscountAmount)}`;
 }
 
 function updateCheckout() {
@@ -139,20 +140,20 @@ function updateCheckout() {
     const calculation = calculateBilling(selectedPlan, selectedBilling, appliedVoucher);
     const { plan } = calculation;
     document.querySelectorAll('[data-billing]').forEach((button) => button.classList.toggle('active', button.dataset.billing === selectedBilling));
-    $('summary-total').textContent = formatIDR(calculation.totalAmount);
-    renderIndicativePrice(calculation.totalAmount);
+    $('summary-total').textContent = money(calculation.totalAmount);
+    renderSettlementNote(calculation.totalAmount);
     $('summary-plan-name').textContent = plan.name;
-    $('summary-plan-price').textContent = `${formatIDR(calculation.monthlyDisplayAmount)}/mo`;
+    $('summary-plan-price').textContent = `${money(calculation.monthlyDisplayAmount)}/mo`;
     $('summary-plan-desc').textContent = plan.description;
     $('summary-copy').textContent = `You will be billed ${selectedBilling === 'annually' ? 'annually' : 'monthly'} for FluxyOS ${plan.name}. Estimated PPN is shown before payment.`;
     $('summary-benefits').innerHTML = plan.benefits.map((benefit) => `<li><span class="summary-tick">&#10003;</span><span>${escapeHtml(benefit)}</span></li>`).join('');
-    $('subtotal').textContent = formatIDR(calculation.subtotalAmount);
+    $('subtotal').textContent = money(calculation.subtotalAmount);
     $('discount').textContent = selectedBilling === 'annually' ? `Save ${annualSavingsPercent(plan)}%` : 'Not applied';
-    $('tax').textContent = formatIDR(calculation.estimatedTaxAmount);
-    $('total-due').textContent = formatIDR(calculation.totalAmount);
-    $('checkout-payable-total').textContent = formatIDR(calculation.totalAmount);
-    $('monthly-label').textContent = `${formatIDR(plan.monthly)}/month`;
-    $('annual-label').textContent = `${formatIDR(plan.annualMonthlyEquivalent)}/month`;
+    $('tax').textContent = money(calculation.estimatedTaxAmount);
+    $('total-due').textContent = money(calculation.totalAmount);
+    $('checkout-payable-total').textContent = money(calculation.totalAmount);
+    $('monthly-label').textContent = `${money(plan.monthly)}/month`;
+    $('annual-label').textContent = `${money(plan.annualMonthlyEquivalent)}/month`;
     renderVoucherState(calculation);
     renderPlanOptions();
     updateUrl();
@@ -181,7 +182,7 @@ async function applyVoucher() {
             return;
         }
         appliedVoucher = result.voucher;
-        setVoucherMessage('success', `Voucher applied. You saved ${formatIDR(result.discountAmount)}.`);
+        setVoucherMessage('success', `Voucher applied. You saved ${money(result.discountAmount)}.`);
         updateCheckout();
     } catch (_) {
         setVoucherMessage('error', 'We could not check this voucher. Please try again.');
@@ -292,32 +293,71 @@ updateCheckout();
  */
 // Re-run when the workspace currency lands, wherever it lands from.
 if (typeof document !== 'undefined') {
-    document.addEventListener('fluxy:workspace-ready', () => {
-        try { updateCheckout(); } catch (_) { /* nothing to refresh yet */ }
+    document.addEventListener('fluxy:workspace-ready', async () => {
+        try { await ensureFxRate(); updateCheckout(); } catch (_) { /* nothing to refresh yet */ }
     });
 }
 
-async function renderIndicativePrice(idrTotal) {
-    const el = $('summary-indicative');
-    if (!el) return;
-    const M = window.FluxyMoney;
-    const base = M ? M.baseCurrency() : 'IDR';
-    if (!M || base === 'IDR' || !(idrTotal > 0)) { el.classList.add('hidden'); return; }
+/*
+ * Checkout pricing in the BUSINESS's currency.
+ *
+ * Plans are priced in IDR (FluxyOS is an Indonesian seller and its PPN is
+ * Indonesian). A Philippine client cannot judge "Rp74.458.800", so the price they
+ * read is their own currency, converted from the IDR source at the shared
+ * fx-rate proxy — the same central source the ledger uses, never a page-local
+ * constant.
+ *
+ * Payment is a MANUAL TRANSFER today, so the IDR figure is not decoration: it is
+ * the amount that actually has to arrive. It stays on screen beneath the total,
+ * with the rate and its date, because a converted headline without a settlement
+ * figure would leave the client guessing what to send.
+ *
+ * When a gateway lands, this is the seam that changes: the price stops being a
+ * conversion and the settlement note stops being needed.
+ */
+let fxRate = null;          // base units per 1 IDR
+let fxDate = null;
+let fxTried = false;
 
-    // Skeleton until the rate lands, so the line never shows a wrong number first.
-    el.classList.remove('hidden');
-    el.innerHTML = '<span class="inline-block h-3 w-40 rounded bg-gray-200 animate-pulse"></span>';
+function priceCurrency() {
+    const M = window.FluxyMoney;
+    return M ? M.baseCurrency() : 'IDR';
+}
+
+/** Format an IDR-denominated plan amount in the business's currency. */
+function money(idrAmount) {
+    const M = window.FluxyMoney;
+    const base = priceCurrency();
+    if (!M || base === 'IDR' || !fxRate) return formatIDR(idrAmount);
+    const cfg = M.CURRENCIES[base];
+    const minor = Math.round(Number(idrAmount || 0) * fxRate * cfg.minorPerUnit);
+    return M.formatMoney(minor, base);
+}
+
+/** Fetch the rate once per page. Returns true when a conversion is available. */
+async function ensureFxRate() {
+    const base = priceCurrency();
+    if (base === 'IDR' || fxTried) return !!fxRate;
+    fxTried = true;
     try {
         const res = await fetch(`/.netlify/functions/fx-rate?from=IDR&to=${encodeURIComponent(base)}`);
         const data = res.ok ? await res.json() : null;
-        const rate = data && Number(data.rate);
-        if (!(rate > 0)) throw new Error('no rate');
-        const cfg = M.CURRENCIES[base];
-        const converted = Math.round(idrTotal * rate * cfg.minorPerUnit);
-        const shown = `${cfg.symbol}${(converted / cfg.minorPerUnit).toLocaleString(cfg.locale, { minimumFractionDigits: cfg.decimals, maximumFractionDigits: cfg.decimals })}`;
-        el.textContent = `≈ ${shown} — indicative only. You are charged in IDR.`;
-    } catch (_) {
-        // No rate is not an error worth surfacing: the real price is already shown.
-        el.textContent = 'Charged in IDR.';
+        if (data && Number(data.rate) > 0) { fxRate = Number(data.rate); fxDate = data.date || null; }
+    } catch (_) { /* prices stay in IDR, which is always correct */ }
+    return !!fxRate;
+}
+
+/** The settlement note under the total. Only for a non-IDR business. */
+function renderSettlementNote(idrTotal) {
+    const el = $('summary-indicative');
+    if (!el) return;
+    if (priceCurrency() === 'IDR') { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    if (!fxTried) {
+        el.innerHTML = '<span class="inline-block h-3 w-56 rounded bg-gray-200 animate-pulse"></span>';
+        return;
     }
+    el.textContent = fxRate
+        ? `Transfer ${formatIDR(idrTotal)} — settled in IDR${fxDate ? ` · rate ${fxDate}` : ''}`
+        : 'Charged in IDR.';
 }
