@@ -735,6 +735,20 @@ export function initInvoicesPage({ ds, user }) {
         // outside Indonesia (PPN mechanics do not apply — see FEATURE_RULES).
         const taxApplies = window.FluxyFeatures?.canSync?.('transaction_tax') !== false;
         el('inv-tax-field').classList.toggle('hidden', foreign || !taxApplies);
+        // Customer withholding is PPh 23 / 4(2) / 26 — Indonesian withholding tax
+        // articles. A Philippine customer withholds under BIR 2307, Singapore and
+        // Malaysia under their own rules, so the field is hidden rather than
+        // relabelled and any value is cleared so a stale rate cannot be saved.
+        const whtField = el('inv-wht-field');
+        if (whtField) {
+            whtField.classList.toggle('hidden', foreign || !taxApplies);
+            if (!taxApplies) {
+                const r = el('inv-cust-wht-rate'); const t = el('inv-cust-wht-type');
+                if (r) r.value = ''; if (t) t.value = '';
+                editor.customer_withholding_rate = 0;
+                editor.customer_withholding_type = '';
+            }
+        }
         el('inv-wht-field').classList.toggle('hidden', foreign);
         if (foreign) {
             editor.taxRate = null;

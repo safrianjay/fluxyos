@@ -1245,12 +1245,12 @@ window.showAddTransactionModal = function(options = {}) {
                             </div>
                             <div class="fluxy-drawer-field-grid">
                                 <div class="fluxy-drawer-field">
-                                    <label for="tx-bill-wht-rate" class="fluxy-drawer-label">PPh withholding (%)</label>
-                                    <input id="tx-bill-wht-rate" type="text" inputmode="decimal" placeholder="e.g. 2" class="fluxy-drawer-input tabular-nums" />
+                                    <label data-tx-tax-field for="tx-bill-wht-rate" class="fluxy-drawer-label">PPh withholding (%)</label>
+                                    <input data-tx-tax-field id="tx-bill-wht-rate" type="text" inputmode="decimal" placeholder="e.g. 2" class="fluxy-drawer-input tabular-nums" />
                                 </div>
                                 <div class="fluxy-drawer-field">
-                                    <label for="tx-bill-wht-type" class="fluxy-drawer-label">Withholding type</label>
-                                    <select id="tx-bill-wht-type" class="fluxy-drawer-select">
+                                    <label data-tx-tax-field for="tx-bill-wht-type" class="fluxy-drawer-label">Withholding type</label>
+                                    <select data-tx-tax-field id="tx-bill-wht-type" class="fluxy-drawer-select">
                                         <option value="">None</option>
                                         <option value="PPh 23">PPh 23</option>
                                         <option value="PPh 4(2)">PPh 4(2)</option>
@@ -1258,7 +1258,7 @@ window.showAddTransactionModal = function(options = {}) {
                                     </select>
                                 </div>
                             </div>
-                            <p class="fluxy-drawer-hint">We withhold PPh from the vendor on the base; it posts to PPh Payable (2110) and reduces what you pay them.</p>
+                            <p data-tx-tax-field class="fluxy-drawer-hint">We withhold PPh from the vendor on the base; it posts to PPh Payable (2110) and reduces what you pay them.</p>
                         </section>
                         ` : ''}
 
@@ -1571,7 +1571,7 @@ window.showAddTransactionModal = function(options = {}) {
         const applies = window.FluxyFeatures?.canSync?.('transaction_tax') !== false;
         (root || document).querySelectorAll('[data-tx-tax-field]').forEach((el) => {
             el.classList.toggle('hidden', !applies);
-            if (!applies && el.tagName === 'INPUT') el.value = '';
+            if (!applies && (el.tagName === 'INPUT' || el.tagName === 'SELECT')) el.value = '';
         });
     }
 
