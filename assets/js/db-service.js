@@ -1171,7 +1171,7 @@ class DataService {
 
     async saveFinanceSettings(userId, data) {
         const payload = this._cleanDefined({
-            currency: 'IDR',
+            currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
             locale: 'id-ID',
             timezone: this._allowedValue(data.timezone, ['Asia/Jakarta', 'Asia/Makassar', 'Asia/Jayapura'], 'Asia/Jakarta'),
             date_format: this._allowedValue(data.date_format, ['DD MMM YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD'], 'DD MMM YYYY'),
@@ -4266,7 +4266,7 @@ class DataService {
             const dim = e.dimension_id || UNASSIGNED_DIMENSION;
             batch.set(doc(this.db, `${scope}/ledger_balances_by_dim/${e.period_key}__${e.account_code}__${dim}`), {
                 period_key: e.period_key, account_code: e.account_code, account_type: e.account_type,
-                dimension_id: dim, entity_id: entityId, currency: 'IDR',
+                dimension_id: dim, entity_id: entityId, currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
                 debit_total: increment(e.debit), credit_total: increment(e.credit),
                 updated_at: serverTimestamp()
             }, { merge: true });
@@ -4281,7 +4281,7 @@ class DataService {
         Object.values(rollup).forEach((e) => {
             batch.set(doc(this.db, `${scope}/ledger_balances/${e.period_key}__${e.account_code}`), {
                 period_key: e.period_key, account_code: e.account_code, account_type: e.account_type,
-                entity_id: entityId, currency: 'IDR',
+                entity_id: entityId, currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
                 debit_total: increment(e.debit), credit_total: increment(e.credit),
                 updated_at: serverTimestamp()
             }, { merge: true });
@@ -5068,7 +5068,7 @@ class DataService {
             seed_version: CHART_SEED_VERSION,
             normal_balance: (draft.type === 'asset' || draft.type === 'expense') ? 'debit' : 'credit',
             is_active: true,
-            currency: 'IDR',
+            currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
             entity_id: this._resolvedScopeId(userId),
             opening_balance: 0,
             created_at: serverTimestamp()
@@ -7962,7 +7962,7 @@ class DataService {
                 account_name: acct ? acct.name : (l.account_name || code),
                 debit,
                 credit,
-                currency: 'IDR',
+                currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
                 fx_rate: 1,
                 functional_amount: debit || credit,
                 memo: l.memo || ''
@@ -7993,7 +7993,7 @@ class DataService {
             total_debit: totalDebit,
             total_credit: totalCredit,
             is_balanced: totalDebit === totalCredit && totalDebit > 0,
-            currency: 'IDR',
+            currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
             entity_id: entityId,
             created_by: this.actorUid || null,
             generated_by: this.actorUid || null,
@@ -8092,7 +8092,7 @@ class DataService {
                 account_code: l.account_code,
                 account_type: l.account_type,
                 entity_id: entityId,
-                currency: 'IDR',
+                currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
                 debit_total: increment(Number(l.debit) || 0),
                 credit_total: increment(Number(l.credit) || 0),
                 updated_at: serverTimestamp()
@@ -8628,7 +8628,7 @@ class DataService {
         return {
             report_type: 'balance_sheet',
             report_label: 'Balance Sheet',
-            currency: 'IDR',
+            currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
             as_of_date: this._getDayKey(asOfDate),
             compare_as_of_date: compareAsOfDate ? this._getDayKey(compareAsOfDate) : null,
             cadence: ['monthly', 'quarterly', 'yearly'].includes(options.cadence) ? options.cadence : 'monthly',
@@ -10393,7 +10393,7 @@ class DataService {
             subtotal_amount: calculation.subtotalAmount,
             estimated_tax_amount: calculation.estimatedTaxAmount,
             total_amount: calculation.totalAmount,
-            currency: 'IDR',
+            currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
             payment_method: paymentMethod,
             payment_status: paymentStatus,
             provider: 'manual',
@@ -10448,7 +10448,7 @@ class DataService {
                 plan_id: planId,
                 billing_frequency: billingFrequency,
                 total_amount: calculation.totalAmount,
-                currency: 'IDR',
+                currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
                 payment_method: paymentMethod,
                 payment_status: paymentStatus
             },
@@ -10497,7 +10497,7 @@ class DataService {
                 subtotal_amount: calculation.subtotalAmount,
                 estimated_tax_amount: calculation.estimatedTaxAmount,
                 total_amount: calculation.totalAmount,
-                currency: 'IDR',
+                currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
                 payment_method: paymentMethod,
                 payment_status: paymentStatus,
                 provider: 'manual',
@@ -10550,7 +10550,7 @@ class DataService {
                     plan_id: planId,
                     billing_frequency: billingFrequency,
                     total_amount: calculation.totalAmount,
-                    currency: 'IDR',
+                    currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
                     payment_method: paymentMethod,
                     payment_status: paymentStatus,
                     voucher_code: voucherCode,
@@ -10571,7 +10571,7 @@ class DataService {
                 original_amount: calculation.subtotalAmount,
                 discount_amount: calculation.voucherDiscountAmount,
                 final_amount: calculation.totalAmount,
-                currency: 'IDR',
+                currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
                 status: 'reserved',
                 created_at: serverTimestamp(),
                 redeemed_at: null
@@ -11198,7 +11198,7 @@ class DataService {
             billing_cycle: billingFrequency,
             price_amount: priceAmount,
             sales_led: BILLING_PLANS[planId]?.salesLed === true,
-            currency: 'IDR',
+            currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
             seat_limit: catalog.seat_limit,
             storage_limit_gb: catalog.storage_limit_gb,
             storage_limit_bytes: catalog.storage_limit_bytes,
@@ -11627,7 +11627,7 @@ class DataService {
         const verRef = doc(this._paymentVerificationsCol(userId));
         batch.set(verRef, {
             amount,
-            currency: 'IDR',
+            currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
             plan_id: planId,
             billing_period: billingPeriod,
             payment_method: paymentMethod,
@@ -12276,7 +12276,7 @@ class DataService {
             account_name: this._stringOrDefault(data.account_name, 'Bank account', 120),
             bank_name: this._stringOrDefault(data.bank_name, 'Bank', 80),
             bank_code: this._nullableString(data.bank_code, 16),
-            currency: 'IDR',
+            currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
             last_four: this._nullableString(data.last_four, 4),
             source_type: 'manual',
             provider: null,
@@ -12296,7 +12296,7 @@ class DataService {
         await addDoc(collection(this.db, `${this._scope(userId)}/bank_balance_snapshots`), {
             bank_account_id: accountRef.id,
             balance,
-            currency: 'IDR',
+            currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
             source_type: 'manual',
             snapshot_at: balanceDate,
             confidence: 'user_entered',
@@ -12334,7 +12334,7 @@ class DataService {
             account_name: existingData.account_name,
             bank_name: existingData.bank_name,
             bank_code: existingData.bank_code ?? null,
-            currency: 'IDR',
+            currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
             last_four: existingData.last_four ?? null,
             source_type: existingData.source_type || 'manual',
             provider: existingData.provider ?? null,
@@ -12354,7 +12354,7 @@ class DataService {
         await addDoc(collection(this.db, `${this._scope(userId)}/bank_balance_snapshots`), {
             bank_account_id: accountId,
             balance,
-            currency: 'IDR',
+            currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
             source_type: existingData.source_type || 'manual',
             snapshot_at: snapshotDate,
             confidence: 'user_entered',
@@ -12385,7 +12385,7 @@ class DataService {
             account_name: existingData.account_name,
             bank_name: existingData.bank_name,
             bank_code: existingData.bank_code ?? null,
-            currency: 'IDR',
+            currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
             last_four: existingData.last_four ?? null,
             source_type: existingData.source_type || 'manual',
             provider: existingData.provider ?? null,
@@ -12461,7 +12461,7 @@ class DataService {
             bank_name: this._nullableString(data.bank_name, 80),
             account_holder: this._nullableString(data.account_holder, 160),
             account_number_masked: this._nullableString(data.account_number_masked, 32),
-            currency: 'IDR',
+            currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
 
             statement_start_date: data.statement_start_date ? this._coerceTimestampOrNow(data.statement_start_date) : null,
             statement_end_date: data.statement_end_date ? this._coerceTimestampOrNow(data.statement_end_date) : null,
@@ -12944,7 +12944,7 @@ class DataService {
         batch.set(doc(collection(this.db, `${this._scope(userId)}/bank_balance_snapshots`)), {
             bank_account_id: draft.bank_account_id,
             balance,
-            currency: 'IDR',
+            currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
             source_type: 'statement_upload',
             snapshot_at: asOf,
             confidence: 'extracted',
@@ -12982,7 +12982,7 @@ class DataService {
             period_type: data.period_type,
             period_start: data.period_start,
             period_end: data.period_end,
-            currency: 'IDR',
+            currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
             total_budget: Number(data.total_budget) || 0,
             status: 'archived',
             created_at: data.created_at,
@@ -13186,7 +13186,7 @@ class DataService {
                 || this._periodLabelFromDates(periodType, startDate, endDate),
             period_start: startDate,
             period_end: endDate,
-            currency: 'IDR',
+            currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
             total_budget: total,
             status: 'active',
             updated_at: serverTimestamp()
@@ -13651,7 +13651,7 @@ class DataService {
                 period_label: periodLabel,
                 period_start: startDate,
                 period_end: endDate,
-                currency: 'IDR',
+                currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
                 total_budget: totalBudget,
                 category_budgets: categoryBudgets,
                 notes: notes || null,
@@ -13672,7 +13672,7 @@ class DataService {
                 period_label: periodLabel,
                 period_start: startDate,
                 period_end: endDate,
-                currency: 'IDR',
+                currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
                 total_budget: totalBudget,
                 category_budgets: categoryBudgets,
                 notes: notes || null,
@@ -13748,7 +13748,7 @@ class DataService {
             period_label: periodLabel,
             period_start: startDate,
             period_end: endDate,
-            currency: 'IDR',
+            currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
             total_budget: totalBudget,
             status: 'active'
         };
@@ -14814,7 +14814,7 @@ class DataService {
                 entity_label: 'Consolidated'
             },
             finance: {
-                currency: 'IDR',
+                currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
                 locale: 'id-ID',
                 timezone: 'Asia/Jakarta',
                 date_format: 'DD MMM YYYY',

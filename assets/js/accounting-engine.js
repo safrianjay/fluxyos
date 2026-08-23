@@ -469,7 +469,7 @@ function line(accountCode, debit, credit, memo) {
         account_name: account ? account.name : accountCode,
         debit: toInt(debit),
         credit: toInt(credit),
-        currency: 'IDR',
+        currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
         fx_rate: 1,
         functional_amount: toInt(debit) || toInt(credit),
         memo: memo || '',
@@ -961,7 +961,7 @@ function finalize(lines, meta) {
         total_debit: totalDebit,
         total_credit: totalCredit,
         is_balanced: true,
-        currency: 'IDR'
+        currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR')
     };
 }
 
@@ -1139,7 +1139,7 @@ export function buildManualJournal({ lines = [], date, period_key, description, 
                 account_name: acct ? acct.name : code,
                 debit,
                 credit,
-                currency: 'IDR',
+                currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
                 fx_rate: 1,
                 functional_amount: debit || credit,
                 memo: l.memo || '',

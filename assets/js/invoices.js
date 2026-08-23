@@ -165,7 +165,7 @@ export function initInvoicesPage({ ds, user }) {
         customerName: '',
         customerEmail: '',
         customerAddress: '',
-        currency: 'IDR',
+        currency: window.FluxyMoney.baseCurrency(),
         items: [],
         dueTerms: 'due_in_30_days',
         customDueKey: null,
@@ -492,7 +492,7 @@ export function initInvoicesPage({ ds, user }) {
             editor.customerName = invoice.customer_name || '';
             editor.customerEmail = invoice.customer_email || '';
             editor.customerAddress = invoice.customer_address || '';
-            editor.currency = window.FluxyMoney.isSupported(invoice.currency) ? invoice.currency : 'IDR';
+            editor.currency = window.FluxyMoney.isSupported(invoice.currency) ? invoice.currency : window.FluxyMoney.baseCurrency();
             editor.items = items.map(item => ({
                 id: item.id,
                 description: item.description,
@@ -553,6 +553,11 @@ export function initInvoicesPage({ ds, user }) {
         el('inv-customer-name').value = editor.customerName;
         el('inv-customer-email').value = editor.customerEmail;
         el('inv-customer-address').value = editor.customerAddress;
+        // Re-seed a NEW invoice from the books' currency: the editor defaults are
+        // captured at module load, before the workspace has resolved.
+        if (!editor.id && !window.FluxyMoney.isForeignCurrency(editor.currency)) {
+            editor.currency = window.FluxyMoney.baseCurrency();
+        }
         el('inv-currency').value = editor.currency;
         syncTaxVisibility();
         el('inv-due-terms').value = editor.dueTerms;
@@ -597,7 +602,7 @@ export function initInvoicesPage({ ds, user }) {
     el('inv-customer-email').addEventListener('input', (event) => { editor.customerEmail = event.target.value; markDirty(); });
     el('inv-customer-address').addEventListener('input', (event) => { editor.customerAddress = event.target.value; markDirty(); });
     el('inv-currency').addEventListener('change', (event) => {
-        editor.currency = window.FluxyMoney.isSupported(event.target.value) ? event.target.value : 'IDR';
+        editor.currency = window.FluxyMoney.isSupported(event.target.value) ? event.target.value : window.FluxyMoney.baseCurrency();
         // Re-render amounts under the new currency (stored minor-unit values are
         // reinterpreted — set the currency before entering line items).
         syncItemPriceCurrency();

@@ -199,7 +199,7 @@ function journalLine(accountCode, accountType, accountName, debit, credit, memo)
         account_name: accountName || accountCode,
         debit: toInt(debit),
         credit: toInt(credit),
-        currency: 'IDR',
+        currency: (typeof window !== 'undefined' && window.FluxyMoney ? window.FluxyMoney.baseCurrency() : 'IDR'),
         fx_rate: 1,
         functional_amount: toInt(debit) || toInt(credit),
         memo: memo || ''

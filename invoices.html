@@ -251,7 +251,7 @@
                                     <div class="mt-4 grid gap-3 sm:grid-cols-2">
                                         <div>
                                             <label for="inv-customer-name" class="text-[12px] font-medium text-gray-700">Customer name <span class="text-red-500">*</span></label>
-                                            <input id="inv-customer-name" type="text" maxlength="160" placeholder="e.g. PT Maju Bersama" class="mt-1 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-[14px] text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-[#EA580C]">
+                                            <input id="inv-customer-name" type="text" maxlength="160" placeholder="e.g. PT Maju Bersama" data-country-example="vendor" data-country-prefix="e.g. " class="mt-1 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-[14px] text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-[#EA580C]">
                                         </div>
                                         <div>
                                             <label for="inv-customer-email" class="text-[12px] font-medium text-gray-700">Customer email</label>
@@ -274,7 +274,7 @@
                                         <option value="PHP">PHP — Philippine Peso</option>
                                         <option value="MYR">MYR — Malaysian Ringgit</option>
                                     </select>
-                                    <p class="mt-2 text-[12px] text-gray-500">Set the invoice currency before adding line items. Payments in a foreign currency are converted to Rupiah in your ledger at the payment-date rate.</p>
+                                    <p class="mt-2 text-[12px] text-gray-500">Set the invoice currency before adding line items. Payments in another currency are converted to your accounting currency at the payment-date rate.</p>
                                 </section>
 
                                 <!-- Items -->
