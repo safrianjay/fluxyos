@@ -289,6 +289,12 @@ Quick rules:
 
 ## Key Conventions
 
+- **Multi-market (currency, locale, tax, billing)**: `docs/MULTI_MARKET_ARCHITECTURE.md`
+  is required reading before touching money rendering/parsing, number or date
+  formatting, tax labels, or FluxyOS's own pricing. The recurring failure mode is
+  **silent**: a wrong amount is stored or displayed with no error, because IDR is
+  both the correct answer and the fallback. `npm run check:money-seam` (16 guards)
+  and `npm run check:price-book` enforce the mechanical parts.
 - **Workspace data scoping (MANDATORY)**: Finance/operational collections
   (`transactions`, `bills`, `subscriptions`, `budgets`, `budget_allocations`,
   `invoices`, `audit_logs`, `bank_accounts`, `bank_balance_snapshots`,

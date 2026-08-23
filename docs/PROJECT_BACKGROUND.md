@@ -447,6 +447,12 @@ FluxyOS design language.
 > `workspaces/{workspaceId}` carries `country` (ISO 3166-1 alpha-2) and
 > `base_currency` (`IDR`/`PHP`/`SGD`/`MYR`), chosen once at onboarding.
 >
+> **Everything built on top of this — the money seam's input rules, locale
+> de-assumption, per-market tax vocabulary, FluxyOS's own per-currency price
+> book, boot ordering, and the guard inventory — lives in
+> `docs/MULTI_MARKET_ARCHITECTURE.md`. Read it before touching money, locale,
+> tax labels, or billing.**
+>
 > 1. **It lives on the workspace doc, never in `settings`.** `settings` is
 >    user-scoped (rule 3 above), so storing it there would let two members of one
 >    workspace disagree about the currency the books are kept in — the money
