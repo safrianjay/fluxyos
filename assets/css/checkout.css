@@ -226,3 +226,54 @@ body {
     .due-amount { font-size: 30px; }
     .plan-option-header { flex-direction: column; gap: 10px; }
 }
+
+/* ── Amount shimmer while the billing currency is unknown ──────────────────
+   Checkout paints once at module load, before auth resolves and before the
+   workspace's country is known. Painting real money then means every non-IDR
+   customer watches the rupiah ladder for ~500ms and then sees it swap — the
+   figure is right by the time they act on it, but the page has already told
+   them a price we will not charge.
+
+   So money slots (and the tax label, which flashes PPN → VAT the same way)
+   shimmer until the currency is resolved. Structure, plan names, benefits and
+   layout paint immediately: only the amounts wait, so the page never looks
+   blank and nothing reflows when the numbers land.
+
+   Deliberately not the .fluxy-booting mask used on app pages. That hides the
+   whole page, and checkout is a purchase screen — masking it wholesale to
+   protect four numbers costs more than it saves. (checkout.html carries the
+   class but never loads shared-dashboard.css, so the mask was inert here
+   anyway.)
+
+   Visual language matches .entity-name-skeleton in shared-dashboard.css. */
+.amount-pending {
+    display: inline-block;
+    min-width: 5.5ch;
+    border-radius: 6px;
+    color: transparent;
+    background:
+        linear-gradient(90deg, #E5E7EB 0%, #F3F4F6 45%, #E5E7EB 100%);
+    background-size: 220% 100%;
+    animation: entitySkeletonShimmer 1.4s ease-in-out infinite;
+    vertical-align: middle;
+    user-select: none;
+}
+/* The hero total is large; give its skeleton the same optical weight so the
+   card does not resize when the real figure arrives. */
+.due-amount.amount-pending { min-width: 9ch; border-radius: 10px; }
+
+/* On the dark summary panel the light skeleton would glare. */
+.summary-panel .amount-pending {
+    background: linear-gradient(90deg,
+        rgba(255,255,255,.10) 0%, rgba(255,255,255,.20) 45%, rgba(255,255,255,.10) 100%);
+    background-size: 220% 100%;
+}
+
+@keyframes entitySkeletonShimmer {
+    0%   { background-position: 220% 0; }
+    100% { background-position: -220% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .amount-pending { animation: none; background: #E5E7EB; }
+    .summary-panel .amount-pending { background: rgba(255,255,255,.14); }
+}

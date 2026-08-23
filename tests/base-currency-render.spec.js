@@ -97,6 +97,47 @@ test.describe('base currency renders without a flash', () => {
         expect(foreign, `dashboard rendered money in ${foreign.join(', ')} alongside ${base}`).toEqual([]);
     });
 
+    test('checkout shimmers its amounts until the billing currency is known', async ({ page }) => {
+        // Catchable on ANY account, including the Indonesian one, because the
+        // fault is not "shows the wrong currency" — it is "shows a figure before
+        // it knows which currency to show". Holding auth open makes that window
+        // deterministic instead of a ~500ms race.
+        //
+        // Sampled at 800ms: checkout redirects to /login at 2500ms when auth
+        // never arrives, so the assertion has to land before that.
+        await page.route('**/identitytoolkit.googleapis.com/**', () => { /* never resolves */ });
+        await page.route('**/securetoken.googleapis.com/**', () => { /* never resolves */ });
+
+        await page.goto('/checkout.html?plan=growth&billing=annually');
+        await page.waitForSelector('#summary-total');
+        await page.waitForTimeout(800);
+
+        const pending = await page.evaluate(() => {
+            const el = document.getElementById('summary-total');
+            return el
+                ? { shimmering: el.classList.contains('amount-pending'), text: el.textContent.trim() }
+                : { shimmering: null, text: '(page navigated away)' };
+        });
+        expect(pending.shimmering,
+            `checkout painted "${pending.text}" before the workspace currency resolved`).toBe(true);
+        expect(pending.text, 'shimmer still carries a currency figure').not.toMatch(/\d/);
+    });
+
+    test('checkout does reveal its amounts — the shimmer is not permanent', async ({ page }) => {
+        // The other half. A skeleton that never lifts is worse than one showing
+        // the currency we already have, so this runs with auth working normally.
+        await page.goto('/checkout.html?plan=growth&billing=annually');
+        await page.waitForFunction(() => {
+            const el = document.getElementById('summary-total');
+            return el && !el.classList.contains('amount-pending');
+        }, null, { timeout: 15000 });
+        const revealed = (await page.locator('#summary-total').textContent() || '').trim();
+        expect(revealed, 'amounts revealed but painted nothing').toMatch(/\d/);
+        const base = await page.evaluate(() => window.FluxyMoney.baseCurrency());
+        const symbol = await page.evaluate((c) => window.FluxyMoney.CURRENCIES[c].symbol, base);
+        expect(revealed, `revealed total "${revealed}" is not in ${base}`).toContain(symbol);
+    });
+
     test('the attach-proof control is not a raw file input', async ({ page }) => {
         // sr-only is owned by shared-dashboard.css rather than the Tailwind CDN's
         // JIT, so a drawer injected on demand cannot lose the race and expose the

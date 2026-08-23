@@ -203,7 +203,18 @@ function laneBE(changed) {
   const jsChanged = changed.filter((f) => /\.(js|mjs)$/.test(f) && fs.existsSync(path.join(REPO_ROOT, f)));
   if (jsChanged.length) {
     for (const f of jsChanged) {
-      ok = record('be', run(`syntax: ${f}`, 'node', ['--check', f])) && ok;
+      // `node --check <file>` parses as a SCRIPT unless the extension says
+      // otherwise, so it accepts a stray `});` that closes nothing — valid in a
+      // script, a SyntaxError in a module. A broken checkout.js passed this
+      // check on 2026-08-24 and only failed in the browser.
+      //
+      // Anything with import/export must be parsed as a module to be checked at
+      // all. `--input-type=module` needs stdin, hence the shell redirect.
+      const src = fs.readFileSync(path.join(REPO_ROOT, f), 'utf8');
+      const isModule = f.endsWith('.mjs') || /^\s*(import|export)\s/m.test(src);
+      ok = record('be', isModule
+        ? run(`syntax (module): ${f}`, 'bash', ['-c', `node --input-type=module --check < ${JSON.stringify(f)}`])
+        : run(`syntax: ${f}`, 'node', ['--check', f])) && ok;
     }
   }
 

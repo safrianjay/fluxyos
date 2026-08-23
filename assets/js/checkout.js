@@ -71,11 +71,17 @@ onAuthStateChanged(auth, async (user) => {
             const { resolveWorkspace } = await import('/assets/js/workspace-service.js');
             await resolveWorkspace(app, user);
         } catch (_) { /* seam falls back to IDR; never strand the page */ }
-        // Always re-render: the first paint ran against the IDR default before
-        // the workspace was known.
+        // The currency is now as resolved as it is going to get — either the
+        // workspace answered, or it failed and IDR is genuinely what we have.
+        // Either way the amounts stop shimmering and paint for real.
+        revealAmounts();
+        // revealAmounts() re-renders only on the first call; a later auth event
+        // still needs a repaint.
         updateCheckout();
     }
-    if (!user) return;
+    // Signed out: the authTimeout above sends them to /login, but reveal anyway
+    // so a slow redirect does not leave a shimmering page behind it.
+    if (!user) { revealAmounts(); return; }
     clearTimeout(authTimeout);
     currentUser = user;
     try { await data.ensureBillingSubscription(user.uid); } catch (_) { /* checkout remains available */ }
@@ -96,7 +102,7 @@ function renderPlanOptions() {
                     <div class="plan-option-name">${escapeHtml(plan.name)}${plan.id === 'growth' ? '<span class="popular-pill">Most popular</span>' : ''}</div>
                     <p class="plan-option-desc">${escapeHtml(plan.description)}</p>
                 </div>
-                <div class="plan-option-price">${money(selectedBilling === 'annually' ? planPrice(plan.id, priceCurrency()).annualMonthlyEquivalent : plan.monthly)}/mo</div>
+                <div class="plan-option-price">${moneyHtml(money(selectedBilling === 'annually' ? planPrice(plan.id, priceCurrency()).annualMonthlyEquivalent : planPrice(plan.id, priceCurrency()).monthly))}/mo</div>
             </div>
         </button>
     `).join('');
@@ -125,9 +131,97 @@ function renderVoucherState(calculation) {
         return;
     }
     $('voucher-applied-code').textContent = appliedVoucher.code;
-    $('voucher-applied-detail').textContent = `${appliedVoucher.discount_value}% off · −${money(calculation.voucherDiscountAmount)}`;
+    paintMoney($('voucher-applied-detail'), `${appliedVoucher.discount_value}% off · −${money(calculation.voucherDiscountAmount)}`);
     $('voucher-row-label').textContent = `Voucher ${appliedVoucher.code}`;
-    $('voucher-row-amount').textContent = `−${money(calculation.voucherDiscountAmount)}`;
+    paintMoney($('voucher-row-amount'), `−${money(calculation.voucherDiscountAmount)}`);
+}
+
+// The billing currency is not known at module load: it comes from the
+// workspace, which needs auth first. Until then, money slots shimmer instead of
+// showing the IDR default — otherwise every non-IDR customer watches the rupiah
+// ladder for ~500ms before it swaps, and the page has quoted them a price we
+// will not charge.
+//
+// Structure paints immediately; only amounts wait. Set true once the workspace
+// resolves (or fails to, in which case IDR is genuinely the answer we have).
+let currencyReady = false;
+
+/** Paint a money slot, or shimmer it while the currency is still unknown. */
+function paintMoney(el, text) {
+    if (!el) return;
+    if (currencyReady) {
+        el.classList.remove('amount-pending');
+        el.textContent = text;
+        return;
+    }
+    el.classList.add('amount-pending');
+    // Keep a non-breaking space so the element keeps its line box and nothing
+    // reflows when the real figure lands.
+    el.textContent = '\u00a0';
+}
+
+/** Stop shimmering and paint real figures. Idempotent. */
+function revealAmounts() {
+    if (currencyReady) return;
+    currencyReady = true;
+    updateCheckout();
+}
+
+// Failsafe. resolveWorkspace() has its own 6s timeout, and a page that shimmers
+// for six seconds is worse than one showing the currency we already have — the
+// seam falls back to IDR, which is right for most workspaces and recoverable
+// for the rest, whereas a permanently skeletoned purchase screen is not.
+setTimeout(revealAmounts, 3500);
+
+/** Markup form, for slots rendered inside an innerHTML template. */
+function moneyHtml(text) {
+    return currencyReady
+        ? escapeHtml(text)
+        : '<span class="amount-pending">&nbsp;</span>';
+}
+
+
+// Payment rails are per currency — QRIS is Indonesian and a PH customer cannot
+// scan it. Rendered rather than static so the wrong rail is never selectable,
+// and shimmered until the currency is known so the Indonesian set never flashes.
+const METHOD_LABELS = {
+    qris: 'QRIS', va: 'Virtual Account', card: 'Card',
+    invoice: 'Invoice', bank_transfer: 'Bank Transfer'
+};
+
+function renderPaymentMethods() {
+    const host = $('payment-methods');
+    if (!host) return;
+    if (!currencyReady) {
+        host.innerHTML = '<span class="amount-pending" style="width:7rem;height:2.5rem">&nbsp;</span>';
+        // The markup ships with the QRIS panel visible. Leaving it up during the
+        // wait shows Indonesian payment copy to a peso customer — the same leak
+        // as the rupiah figures, just in prose.
+        document.querySelectorAll('[data-payment-panel]').forEach((p) => p.classList.add('hidden'));
+        return;
+    }
+    const methods = (PAYMENT_INSTRUCTIONS[priceCurrency()] || PAYMENT_INSTRUCTIONS.IDR).methods;
+    if (!methods.includes(selectedMethod)) selectedMethod = methods[0];
+    host.innerHTML = methods.map((m) => (
+        `<button class="method-button${m === selectedMethod ? ' active' : ''}" type="button" data-method="${m}">${escapeHtml(METHOD_LABELS[m] || m)}</button>`
+    )).join('');
+    host.querySelectorAll('[data-method]').forEach((button) => {
+        button.addEventListener('click', () => {
+            selectedMethod = button.dataset.method;
+            renderPaymentMethods();
+            syncPaymentPanels();
+        });
+    });
+    syncPaymentPanels();
+}
+
+// A panel only exists for the rails the markup ships; an unmatched method simply
+// shows none, which is correct for bank_transfer (its instructions live in the
+// settlement note under the total).
+function syncPaymentPanels() {
+    document.querySelectorAll('[data-payment-panel]').forEach((panel) => {
+        panel.classList.toggle('hidden', panel.dataset.paymentPanel !== selectedMethod);
+    });
 }
 
 function updateCheckout() {
@@ -147,31 +241,39 @@ function updateCheckout() {
     const calculation = calculateBilling(selectedPlan, selectedBilling, appliedVoucher, priceCurrency());
     const { plan } = calculation;
     document.querySelectorAll('[data-billing]').forEach((button) => button.classList.toggle('active', button.dataset.billing === selectedBilling));
-    $('summary-total').textContent = money(calculation.totalAmount);
+    paintMoney($('summary-total'), money(calculation.totalAmount));
     renderSettlementNote();
     $('summary-plan-name').textContent = plan.name;
-    $('summary-plan-price').textContent = `${money(calculation.monthlyDisplayAmount)}/mo`;
+    paintMoney($('summary-plan-price'), `${money(calculation.monthlyDisplayAmount)}/mo`);
     $('summary-plan-desc').textContent = plan.description;
     const tax = billingTaxFor(priceCurrency());
-    $('summary-copy').textContent = `You will be billed ${selectedBilling === 'annually' ? 'annually' : 'monthly'} for FluxyOS ${plan.name}.${tax.rate > 0 ? ` Estimated ${tax.label} is shown before payment.` : ''}`;
+    // The sentence itself is currency-independent; only the trailing tax clause
+    // is. Render the sentence immediately and append the clause once the
+    // currency lands, rather than shimmering a whole line of copy into a stub.
+    $('summary-copy').textContent = `You will be billed ${selectedBilling === 'annually' ? 'annually' : 'monthly'} for FluxyOS ${plan.name}.`
+        + (currencyReady && tax.rate > 0 ? ` Estimated ${tax.label} is shown before payment.` : '');
     $('summary-benefits').innerHTML = plan.benefits.map((benefit) => `<li><span class="summary-tick">&#10003;</span><span>${escapeHtml(benefit)}</span></li>`).join('');
-    $('subtotal').textContent = money(calculation.subtotalAmount);
+    paintMoney($('subtotal'), money(calculation.subtotalAmount));
     $('discount').textContent = selectedBilling === 'annually' ? `Save ${annualSavingsPercent(plan)}%` : 'Not applied';
-    $('tax').textContent = money(calculation.estimatedTaxAmount);
+    paintMoney($('tax'), money(calculation.estimatedTaxAmount));
     // PPN is Indonesian VAT on an Indonesian seller's invoice. When it is not
     // Every billing currency carries a tax: Indonesia PPN 11%, Philippines VAT
     // 12% on digital services. The LABEL and rate follow the currency — a Manila
     // client should never read the word PPN.
-    document.querySelectorAll('[data-tax-label]').forEach((el) => { el.textContent = `Estimated ${tax.label}`; });
-    document.querySelectorAll('[data-tax-note]').forEach((el) => {
-        el.textContent = `${tax.label} estimate uses an effective ${tax.rate}% calculation on digital services.`;
+    // The label flashes PPN -> VAT exactly like the figures do, so it waits too.
+    document.querySelectorAll('[data-tax-label]').forEach((el) => {
+        paintMoney(el, `Estimated ${tax.label}`);
     });
-    $('total-due').textContent = money(calculation.totalAmount);
-    $('checkout-payable-total').textContent = money(calculation.totalAmount);
-    $('monthly-label').textContent = `${money(planPrice(plan.id, priceCurrency()).monthly)}/month`;
-    $('annual-label').textContent = `${money(planPrice(plan.id, priceCurrency()).annualMonthlyEquivalent)}/month`;
+    document.querySelectorAll('[data-tax-note]').forEach((el) => {
+        paintMoney(el, `${tax.label} estimate uses an effective ${tax.rate}% calculation on digital services.`);
+    });
+    paintMoney($('total-due'), money(calculation.totalAmount));
+    paintMoney($('checkout-payable-total'), money(calculation.totalAmount));
+    paintMoney($('monthly-label'), `${money(planPrice(plan.id, priceCurrency()).monthly)}/month`);
+    paintMoney($('annual-label'), `${money(planPrice(plan.id, priceCurrency()).annualMonthlyEquivalent)}/month`);
     renderVoucherState(calculation);
     renderPlanOptions();
+    renderPaymentMethods();
     updateUrl();
 }
 
@@ -235,14 +337,6 @@ document.querySelectorAll('[data-billing]').forEach((button) => {
     });
 });
 
-document.querySelectorAll('[data-method]').forEach((button) => {
-    button.addEventListener('click', () => {
-        selectedMethod = button.dataset.method;
-        document.querySelectorAll('[data-method]').forEach((item) => item.classList.toggle('active', item === button));
-        document.querySelectorAll('[data-payment-panel]').forEach((panel) => panel.classList.toggle('hidden', panel.dataset.paymentPanel !== selectedMethod));
-    });
-});
-
 $('submit-button').addEventListener('click', async () => {
     if (submitting) return;
     const error = $('form-error');
@@ -303,28 +397,12 @@ updateCheckout();
  */
 // Re-run when the workspace currency lands, wherever it lands from.
 if (typeof document !== 'undefined') {
-    document.addEventListener('fluxy:workspace-ready', async () => {
+    document.addEventListener('fluxy:workspace-ready', () => {
+        revealAmounts();
         updateCheckout();
     });
 }
 
-/*
- * Checkout pricing in the BUSINESS's currency.
- *
- * Plans are priced in IDR (FluxyOS is an Indonesian seller and its PPN is
- * Indonesian). A Philippine client cannot judge "Rp74.458.800", so the price they
- * read is their own currency, converted from the IDR source at the shared
- * fx-rate proxy — the same central source the ledger uses, never a page-local
- * constant.
- *
- * Payment is a MANUAL TRANSFER today, so the IDR figure is not decoration: it is
- * the amount that actually has to arrive. It stays on screen beneath the total,
- * with the rate and its date, because a converted headline without a settlement
- * figure would leave the client guessing what to send.
- *
- * When a gateway lands, this is the seam that changes: the price stops being a
- * conversion and the settlement note stops being needed.
- */
 /* Prices are PINNED per currency in the billing price book — never converted at
  * runtime. A price that moves with the daily FX fix cannot be put on an invoice
  * or a bank-transfer instruction, and the customer cannot check it. So there is

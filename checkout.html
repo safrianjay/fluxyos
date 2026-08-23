@@ -86,12 +86,10 @@
                 </section>
                 <section class="section">
                     <h2 class="section-title">Payment method</h2>
-                    <div class="payment-methods">
-                        <button class="method-button active" type="button" data-method="qris">QRIS</button>
-                        <button class="method-button" type="button" data-method="va">Virtual Account</button>
-                        <button class="method-button" type="button" data-method="card">Card</button>
-                        <button class="method-button" type="button" data-method="invoice">Invoice</button>
-                    </div>
+                    <!-- Rendered from PAYMENT_INSTRUCTIONS for the billing currency:
+                         QRIS is an Indonesian rail a PH customer cannot scan, so the
+                         list is not static. Empty until the currency resolves. -->
+                    <div class="payment-methods" id="payment-methods"></div>
                 </section>
                 <section class="section">
                     <h2 class="section-title">Payment information</h2>
