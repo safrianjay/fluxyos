@@ -198,7 +198,12 @@ function laneBE(changed) {
         // Unconditional: the price book lives in billing-config.js AND
         // firestore.rules, and neither file needs to be in the diff for them
         // to disagree — a rules deploy alone can do it.
-        ok = record('be', run('check:price-book (client prices == rules prices?)', 'node', ['tests/billing-price-book.check.js'])) && ok;
+        ok = record('be', run('check:price-book (client prices == rules prices?)', 'node', ['tests/billing-price-book.check.js'])) && ok
+        // Unconditional: `node --check` returns 0 for a module-mode SyntaxError,
+        // and a module that cannot parse fails silently at runtime because every
+        // dynamic import of it sits inside a catch. kyc-gate.js reached main that
+        // way and the KYC gate stopped running with nothing going red.
+        ok = record('be', run('check:module-parse (every client module parses?)', 'node', ['tests/module-parse.check.js'])) && ok;
 
   const jsChanged = changed.filter((f) => /\.(js|mjs)$/.test(f) && fs.existsSync(path.join(REPO_ROOT, f)));
   if (jsChanged.length) {
