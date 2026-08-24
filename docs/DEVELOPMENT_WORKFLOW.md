@@ -72,6 +72,31 @@ the file that breaks is rarely the file that was edited.
 
 `npm run qa` prints this automatically at L4.
 
+### Every currency is QA'd, and the gaps are named
+
+Unit assertions run against **all four base currencies** (IDR, PHP, SGD, MYR) on
+every QA run — parsing, rendering, input round-trips, tax rates.
+
+Browser coverage needs a seeded workspace per market. `chromium-ph`,
+`chromium-sg` and `chromium-my` each run the same currency spec against their own
+account, so adding a market is a seed command plus a config line, never a second
+copy of the assertions:
+
+```
+node scripts/seed-qa-account.js --country PH
+```
+
+A market with no fixture **skips**, and a skip reads like a pass in a wall of
+green — which is how three peso bugs shipped while QA was passing. So
+`check:money-seam` reports the gap explicitly:
+
+```
+⚠ currency-coverage: browser coverage MISSING for PHP/PH, SGD/SG, MYR/MY
+```
+
+That warning stays until an account exists. It is the honest state of the suite,
+not a failure.
+
 ---
 
 ## 3. Local validation
@@ -112,6 +137,13 @@ non-partial; and any uncommitted tracked files.
 
 It does **not** push. It makes cost visible so the decision is made against
 numbers instead of impatience.
+
+**Small batches get pushed back on.** A 1–2 commit, L1/L2 publish costs the same
+build minutes as a twenty-commit one, so it wastes most of the spend. Both `ship`
+and the push gate say so at the moment of the decision. Neither blocks — a real
+hotfix must always go out — but the cheap choice is the default and the expensive
+one has to be deliberate. This was the only rule in the workflow that depended on
+memory, and it is the rule that burned the August budget.
 
 **Push when a piece of work is finished end to end** — feature complete, QA green,
 verified. Not per fix. Ten commits pushed together cost the same as one.

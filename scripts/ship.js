@@ -75,8 +75,25 @@ try {
 const dirty = sh('git status --porcelain').split('\n').filter((l) => l && !l.startsWith('??')).length;
 if (dirty) console.log(`  ! ${dirty} tracked file(s) modified but not committed`);
 
+// ---- batching economics --------------------------------------------------
+// The one rule in this workflow that used to depend on memory. Everything else
+// is enforced by a machine that refuses; batching worked only if you remembered,
+// and that is exactly the rule that burned the August budget.
+//
+// Friction proportional to waste: a small, low-risk batch costs the same build
+// minutes as a large one, so publishing one typo fix wastes most of the spend.
+// This does not block — a genuine hotfix must always go out — it makes the cheap
+// choice the default and the expensive one deliberate.
+const cost = builds * 0.85;
+const trivial = unpushed.length <= 2 && lvl.level <= 2;
+if (trivial) {
+    console.log(`\n  ! SMALL BATCH: ${unpushed.length} commit(s) at L${lvl.level} costs the same`);
+    console.log(`    ~${cost.toFixed(1)} min as a batch of twenty. Bundle it with the next piece of`);
+    console.log('    work unless this is urgent. If it is, say so and publish.');
+}
+
 console.log('\n  ' + (artifactOk && !dirty
-    ? `READY.   ${PUSH_CMD}   (~${(builds * 0.85).toFixed(1)} min)`
+    ? `READY.   ${PUSH_CMD}   (~${cost.toFixed(1)} min)`
     : 'NOT READY - resolve the above first.'));
 console.log('\n  Batching is the lever: 10 commits pushed together cost the same as 1.');
 console.log('  Push when a piece of work is finished end to end.\n');

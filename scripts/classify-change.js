@@ -69,9 +69,17 @@ const RULES = [
     { level: 3, label: 'Backend / Data',
       test: (f) => /^assets\/js\/(db-service|duplicate-guard|inventory-engine|report-builder|commerce)/.test(f)
         || /^(netlify\/functions|functions)\//.test(f)
-        || /^scripts\/(prepare-deploy|qa-run|netlify-should-build|classify-change)\.js$/.test(f)
+        || /^scripts\/.*\.js$/.test(f)
         || /^(netlify\.toml|deploy\/)/.test(f)
-        || /^docs\/data-model\//.test(f),
+        || /^docs\/data-model\//.test(f)
+        // Test and gate infrastructure does not reach production, so the
+        // financial risk is nil — but breaking it removes the thing that catches
+        // everything else, which is a systemic risk, not a cosmetic one. A
+        // silently disabled gate is worse than a visible bug.
+        || /^tests\//.test(f)
+        || /^\.claude\/hooks\//.test(f)
+        || /^(playwright\.config|package)\.json?$/.test(f)
+        || /^playwright\.config\.js$/.test(f),
       gates: ['check:module-parse', 'workspace-scoping invariant', 'check:structure',
               'browser sweep on affected pages'] },
 

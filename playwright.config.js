@@ -73,19 +73,24 @@ module.exports = defineConfig({
         //
         // Both projects skip themselves when their credentials file is absent,
         // so a clone without the fixtures still runs green.
-        {
-            name: 'auth-setup-ph',
-            testMatch: /setup-auth\.spec\.js$/,
-            use: { ...devices['Desktop Chrome'] },
-        },
-        {
-            name: 'chromium-ph',
-            testMatch: /workspace-currency\.spec\.js$/,
-            use: {
-                ...devices['Desktop Chrome'],
-                storageState: 'tests/.auth/storageState.ph.json',
+        // One pair per market. Each skips itself when its credentials file is
+        // absent, so a clone with no fixtures still runs green — and adding a
+        // country later is a seed command, not a code change.
+        ...['ph', 'sg', 'my'].flatMap((cc) => [
+            {
+                name: `auth-setup-${cc}`,
+                testMatch: /setup-auth\.spec\.js$/,
+                use: { ...devices['Desktop Chrome'] },
             },
-            dependencies: ['auth-setup-ph'],
-        },
+            {
+                name: `chromium-${cc}`,
+                testMatch: /workspace-currency\.spec\.js$/,
+                use: {
+                    ...devices['Desktop Chrome'],
+                    storageState: `tests/.auth/storageState.${cc}.json`,
+                },
+                dependencies: [`auth-setup-${cc}`],
+            },
+        ]),
     ],
 });

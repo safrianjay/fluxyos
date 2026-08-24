@@ -104,6 +104,15 @@ EOF
       ART_PARTIAL=$(jq -r '.partial // false' "$ART" 2>/dev/null)
       ART_WHEN=$(jq -r '.ran_at // "?"' "$ART" 2>/dev/null)
       CUR_HEAD=$(cd "$REPO_ROOT" && git rev-parse HEAD 2>/dev/null)
+      # Batching economics. One push builds BOTH Netlify sites, so a two-commit
+      # publish costs the same as a twenty-commit one. Advisory, never blocking:
+      # a real hotfix must always be able to go out.
+      N_COMMITS=$(cd "$REPO_ROOT" && git rev-list --count origin/main..HEAD 2>/dev/null || echo 0)
+      if [ "$N_COMMITS" -le 2 ] 2>/dev/null && [ "$N_COMMITS" -gt 0 ] 2>/dev/null; then
+        printf '\n  \342\232\240 SMALL BATCH: publishing %s commit(s) costs the same build\n' "$N_COMMITS" >&2
+        printf '    minutes as publishing twenty. Bundle unless this is urgent.\n' >&2
+        printf '    See docs/DEVELOPMENT_WORKFLOW.md \302\2470 and \302\2475.\n\n' >&2
+      fi
 
       if [ "$ART_PASSED" != "true" ]; then
         FAILED=$(jq -r '.results[]? | select(.ok == false) | "  ✗ [\(.lane)] \(.name)"' "$ART" 2>/dev/null)

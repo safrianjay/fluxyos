@@ -26,8 +26,19 @@ const path = require('path');
 // credentials runs green instead of red. Seed one with:
 //   GOOGLE_APPLICATION_CREDENTIALS=./sa.json \
 //     node scripts/seed-qa-account.js --country PH
-const FIXTURE = path.join(__dirname, '..', '.qa', 'firebase-test-account-ph.md');
-test.skip(!fs.existsSync(FIXTURE), 'No non-IDR QA account — see docs/QA_TEST_ACCOUNT.md.');
+// Which market this run targets comes from the PROJECT name (chromium-ph →
+// 'ph'), so ONE spec covers every country: adding a market is a seed command
+// plus a config entry, never a new copy of these assertions.
+//
+// Resolved per test rather than at module load, because the project name is only
+// available through testInfo.
+test.beforeEach(async ({}, testInfo) => {
+    const cc = (process.env.QA_ACCOUNT
+        || testInfo.project.name.replace(/^chromium-?/, '') || 'ph').toLowerCase();
+    const fixture = path.join(__dirname, '..', '.qa', `firebase-test-account-${cc}.md`);
+    test.skip(!fs.existsSync(fixture),
+        `No ${cc.toUpperCase()} QA account — seed one with scripts/seed-qa-account.js.`);
+});
 
 const PAGES = ['/dashboard.html', '/ledger.html', '/budget.html', '/settings-billing.html'];
 

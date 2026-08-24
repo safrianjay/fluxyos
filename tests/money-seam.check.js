@@ -501,6 +501,53 @@ if (doubleConvert.length) {
 })();
 
 
+// ── currency-coverage ─────────────────────────────────────────────────────────
+//
+// Every supported base currency must be exercised, and it must be VISIBLE which
+// ones are only covered by unit assertions. A Playwright project that skips for
+// a missing fixture reports "skipped", which reads like "fine" in a wall of
+// green — and that is how three peso bugs reached production while QA passed.
+//
+// Unit coverage (this file) runs for all of BASE_SUPPORTED and is not optional.
+// Browser coverage needs a seeded account per market; this reports the gap
+// rather than letting silence stand in for it.
+(() => {
+    const seeded = [];
+    const missing = [];
+    for (const ccy of Money.BASE_SUPPORTED) {
+        if (ccy === 'IDR') continue;                       // the default account
+        const cc = Object.entries({ ID: 'IDR', PH: 'PHP', SG: 'SGD', MY: 'MYR' })
+            .find(([, c]) => c === ccy);
+        if (!cc) { missing.push(`${ccy} (no country mapping)`); continue; }
+        const fixture = path.join(ROOT, '.qa', `firebase-test-account-${cc[0].toLowerCase()}.md`);
+        (fs.existsSync(fixture) ? seeded : missing).push(`${ccy}/${cc[0]}`);
+    }
+    // Unit-level: prove the seam is exercised for every base currency.
+    for (const ccy of Money.BASE_SUPPORTED) {
+        Money.setBaseCurrency(ccy);
+        if (Money.baseCurrency() !== ccy) {
+            fail('currency-coverage', `${ccy} is listed as supported but the seam will not adopt it`);
+        }
+        const round = Money.toMinor(Money.formatMoneyInput('1234', ccy), ccy);
+        if (!(round > 0)) fail('currency-coverage', `${ccy}: input round trip produced ${round}`);
+    }
+    Money.setBaseCurrency('IDR');
+
+    if (missing.length) {
+        notes.push(`  ⚠ currency-coverage: browser coverage MISSING for ${missing.join(', ')}\n` +
+            `      unit assertions cover all ${Money.BASE_SUPPORTED.length} base currencies, but no\n` +
+            `      seeded workspace exists for the above — a whole class of bug is\n` +
+            `      invisible until one does. Seed with:\n` +
+            `        node scripts/seed-qa-account.js --country ${missing[0].split('/')[1] || 'PH'}`);
+    } else {
+        ok('currency-coverage', `browser + unit coverage for ${seeded.join(', ') || 'IDR only'}`);
+    }
+})();
+if (!failures.some((f) => f.check === 'currency-coverage')) {
+    ok('currency-coverage-unit', `all ${Money.BASE_SUPPORTED.length} base currencies exercised in unit assertions`);
+}
+
+
 if (failures.length) {
     console.error('\nMONEY SEAM\n');
     for (const f of failures) console.error(`  ✗ ${f.check}: ${f.msg}\n`);
