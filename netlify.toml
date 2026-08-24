@@ -10,6 +10,15 @@
   # deploy previews, rollback). It must run AFTER build:css: the tailwind
   # content globs scan the marketing HTML, so pruning can't come first.
   command = "npm run build:css && node scripts/prepare-deploy.js"
+
+  # Skip the build when this site's served bytes cannot have changed. Exit 0
+  # skips, exit 1 builds; anything unrecognised BUILDS, because serving stale
+  # code is far worse than spending a minute.
+  #
+  # Honest expectation: this saves ~5% of builds, not 50%. Most commits touch
+  # assets/, which ships to both sites. The real saving is pushing in batches —
+  # commits are free, pushes are what cost minutes. See docs/WORKFLOW.md.
+  ignore = "node scripts/netlify-should-build.js"
   # Pin the build + functions runtime so pdfjs-dist (Node >=20, used by the bank
   # statement extractor) runs on a supported runtime.
   [build.environment]

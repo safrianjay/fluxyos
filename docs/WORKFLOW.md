@@ -76,3 +76,56 @@ The hook can't verify these — it trusts the prefix as a signed claim. Lying de
 - [../CLAUDE.md](../CLAUDE.md) — auto-loaded session rules pointing here
 - [QA_CHECKLIST.md](QA_CHECKLIST.md) — what to actually check during QA
 - [PROJECT_BACKGROUND.md](PROJECT_BACKGROUND.md) — schema and convention reference
+
+---
+
+## Build minutes: push in batches, not per commit
+
+Netlify Free gives **300 build minutes/month**, and **one push builds TWO sites**
+(fluxyos.com and dashboard.fluxyos.com, selected by `SITE_ROLE`). August 2026 hit
+**306 minutes** across ~30 commits in two days.
+
+**Commits are free. Pushes cost.** Thirty commits pushed one at a time is 60
+builds; the same thirty pushed once is 2. That is the entire lever — a 97%
+reduction, versus ~5% from the build-ignore hook below.
+
+So: commit as often as is useful, and push when a piece of work is **finished
+end to end** — feature done, QA green, verified. Not per fix.
+
+```
+git commit …              # as often as you like, costs nothing
+git commit …
+npm run qa                # once, on the commit you will push
+QA_PASS=1 git push origin main
+```
+
+The QA gate already enforces this shape: the artifact must be stamped with the
+**exact** commit being pushed, so a batch is QA'd once at its tip.
+
+### The build-ignore hook
+
+`scripts/netlify-should-build.js` (wired as `[build] ignore` in `netlify.toml`)
+skips a build when this site's served bytes cannot have changed:
+
+- **docs, tests, `.qa/`, `scripts/qa/`, any `*.md`** — ship nothing, skip both sites
+- **a root page belonging only to the other role** — skip this site
+
+It fails SAFE: anything unrecognised builds. `assets/` ships to both sites, so an
+asset change correctly rebuilds both — which is why the measured saving is ~5%
+and not more. It is worth having for documentation pushes; it is not a substitute
+for batching.
+
+### Checking usage
+
+```
+netlify api getAccountBuildStatus --data '{"account_id":"safrian"}'
+```
+
+Returns `minutes.current` against `minutes.included_minutes`, and the period
+window. Two independent switches decide what an overage does — `stop_builds` on
+the site blocks builds while the last deploy keeps serving, and `state:
+suspended` takes the site down. Check both:
+
+```
+netlify api listSites --data '{}'    # look at .state and .build_settings.stop_builds
+```
