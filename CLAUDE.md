@@ -1,5 +1,21 @@
 # FluxyOS — Claude Working Rules
 
+## Development Workflow (read first)
+
+**`docs/DEVELOPMENT_WORKFLOW.md` is the lifecycle every change follows.** Two
+facts drive it:
+
+1. **Commits are free; pushes cost.** One push builds TWO Netlify sites. August
+   2026 spent 306 of 300 build minutes on ~30 single-commit pushes. Commit
+   freely, then **push once per finished piece of work** — `npm run ship` reports
+   the batch, the build count, and the live quota before you decide.
+2. **The failure mode here is a plausible wrong number, not a crash.** Run
+   `npm run classify` (also printed in the QA banner) — the change level is
+   COMPUTED from the diff, never declared. **L3+ forces every QA lane.** At
+   **L4** (money, tax, billing, rules, auth) verify in a **non-IDR workspace**:
+   IDR is both the right answer and the fallback, so a currency bug is invisible
+   on an Indonesian account.
+
 ## QA Enforcement — Hook-Gated
 
 A PreToolUse hook at `.claude/hooks/qa-gate.sh` enforces the workflow at the

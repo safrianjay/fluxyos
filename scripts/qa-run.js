@@ -28,7 +28,7 @@
 
 'use strict';
 
-const { execFileSync, spawnSync } = require('child_process');
+const { execFileSync, spawnSync, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -36,7 +36,7 @@ const REPO_ROOT = path.resolve(__dirname, '..');
 const ARTIFACT = path.join(REPO_ROOT, '.qa', 'qa-run.json');
 
 const argv = process.argv.slice(2);
-const FORCE_ALL = argv.includes('--all');
+let FORCE_ALL = argv.includes('--all');
 const SKIP_BROWSER = argv.includes('--skip-browser');
 const ONLY_LANE = (argv.find((a) => a.startsWith('--lane=')) || '').split('=')[1] || null;
 
@@ -284,6 +284,19 @@ function affectedPages(changed) {
   return { pages: [...pages], sharedTouched };
 }
 
+// ── Change level ─────────────────────────────────────────────────────────────
+//
+// Computed from the diff (scripts/classify-change.js), never declared. L3+ forces
+// the full lane set rather than the diff-selected subset: the multi-currency work
+// was Level 4 and ran with Level 2 gates, which is how a 100x invoice amount and
+// a KYC gate that had stopped running both reached main.
+function changeLevel() {
+  try {
+    const out = execSync('node scripts/classify-change.js --json', { cwd: REPO_ROOT, encoding: 'utf8' });
+    return JSON.parse(out);
+  } catch (_) { return { level: 4, label: 'unknown (classifier failed — assuming L4)', gates: [] }; }
+}
+
 // ── Rotating sweep shard ─────────────────────────────────────────────────────
 //
 // The sweep only ever loaded CHANGED pages plus a fixed core set, so ~40 of the
@@ -526,7 +539,22 @@ function main() {
   console.log('FluxyOS QA');
   console.log(`  HEAD    ${sha.slice(0, 8)}${dirty ? '  (working tree dirty)' : ''}`);
   console.log(`  changed ${changed.length} file(s)`);
-  if (FORCE_ALL) console.log('  mode    --all (every lane forced)');
+
+  // Level drives the gate set. L3+ runs everything: at those levels the failure
+  // mode is a plausible-looking wrong value, not a crash, so lane selection from
+  // the diff is not enough — the file that breaks is often not the file edited.
+  const lvl = changeLevel();
+  console.log(`  level   L${lvl.level} — ${lvl.label}`);
+  if (lvl.level >= 4) {
+    console.log('          ⚠ financial/security surface — verify in a NON-IDR workspace;');
+    console.log('            IDR is both the right answer and the fallback.');
+  }
+  if (lvl.level >= 3 && !FORCE_ALL) {
+    FORCE_ALL = true;
+    console.log('  mode    every lane forced (L3+)');
+  } else if (FORCE_ALL) {
+    console.log('  mode    --all (every lane forced)');
+  }
 
   const lanes = ONLY_LANE ? [ONLY_LANE] : ['be', 'fe', 'product'];
   let ok = true;

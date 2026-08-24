@@ -14,6 +14,8 @@
     "check:money-seam": "node tests/money-seam.check.js",
     "check:price-book": "node tests/billing-price-book.check.js",
     "check:module-parse": "node tests/module-parse.check.js",
+    "classify": "node scripts/classify-change.js",
+    "ship": "node scripts/ship.js",
     "check:deploy-stamp": "node tests/deploy-stamp.check.js",
     "deploy:stamp": "node scripts/stamp-deploy.js",
     "check:ai-statements": "node tests/ai-statement-routing.check.js",
