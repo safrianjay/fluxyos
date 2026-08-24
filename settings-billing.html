@@ -435,7 +435,7 @@
             // Seats
             const seatLimit = Number.isFinite(o.seat_limit) ? o.seat_limit : null;
             const seatsValue = seatLimit ? `1 of ${seatLimit} used` : '—';
-            const seatsSub = seatLimit ? 'Team management coming soon' : 'Plan required';
+            const seatsSub = seatLimit ? 'Invite members in Settings → Team' : 'Plan required';
 
             // Storage
             let storageValue = '—', storageSub = 'Plan required';
@@ -660,7 +660,7 @@
 
             // 1. Team seats
             if (hasPlan && seatLimit) {
-                rows.push(usageRow('Team seats', `1 of ${seatLimit} seats used`, 'Team management coming soon.', pct(1, seatLimit)));
+                rows.push(usageRow('Team seats', `1 of ${seatLimit} seats used`, 'Invite members in Settings → Team.', pct(1, seatLimit)));
             } else {
                 rows.push(usageRow('Team seats', 'No plan', 'Choose a plan to see seat limits.', null));
             }

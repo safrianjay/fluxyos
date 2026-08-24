@@ -1226,7 +1226,6 @@
         "Refund sync unavailable — permission not granted": "Sinkronisasi refund tidak tersedia — izin belum diberikan",
         "Settlement sync unavailable — permission not granted": "Sinkronisasi pencairan dana tidak tersedia — izin belum diberikan",
         "Everything else keeps syncing. Enable this permission for the app in the marketplace partner console, then reconnect.": "Data lainnya tetap tersinkron. Aktifkan izin ini untuk aplikasi di konsol partner marketplace, lalu hubungkan ulang.",
-        "Integration connections are coming soon.": "Koneksi integrasi akan segera tersedia.",
         "Connection successful. Initial sync is running.": "Koneksi berhasil. Sinkronisasi awal sedang berjalan.",
         "Connection failed. Try again.": "Koneksi gagal. Coba lagi.",
         "Could not start the connection. Try again.": "Tidak dapat memulai koneksi. Coba lagi.",
@@ -1311,9 +1310,6 @@
         "Sessions are managed by Firebase Auth. You can sign out from the sidebar to end the current session.": "Sesi dikelola oleh Firebase Auth. Anda dapat keluar dari sidebar untuk mengakhiri sesi saat ini.",
         "Inviting teammates, role-based access, and shared workspaces are planned once the permission model is ready.": "Mengundang rekan tim, akses berbasis peran, dan ruang kerja bersama direncanakan setelah model izin siap.",
         "Sign in securely with biometrics, device PIN, or a hardware security key.": "Masuk dengan aman menggunakan biometrik, PIN perangkat, atau kunci keamanan perangkat keras.",
-        "Passkey enrollment is planned. Until then, sign in stays managed by your Firebase Auth provider.": "Pendaftaran passkey direncanakan. Sampai saat itu, proses masuk tetap dikelola oleh penyedia Firebase Auth Anda.",
-        "FluxyOS-managed two-step auth is planned. Use your Google account's 2FA in the meantime.": "Autentikasi dua langkah yang dikelola FluxyOS direncanakan. Sementara itu, gunakan 2FA akun Google Anda.",
-        "Phone verification is planned. Workspace contact data stays inside Business details.": "Verifikasi telepon direncanakan. Data kontak ruang kerja tetap berada di Detail bisnis.",
 
         // ── Settings: finance / import / AI / WhatsApp ───────────────────────
         "Default categories": "Kategori default",
@@ -1595,7 +1591,6 @@
         "Routed to AI Review for human classification.": "Diarahkan ke Tinjauan AI untuk klasifikasi manusia.",
         "Routing and confirmation rules apply to every upload.": "Aturan perutean dan konfirmasi berlaku untuk setiap unggahan.",
         "Drafts still require explicit review before save.": "Draf tetap memerlukan tinjauan eksplisit sebelum disimpan.",
-        "A full activity audit log is planned. Until then, every AI draft and import still requires explicit user confirmation before save.": "Log audit aktivitas lengkap direncanakan. Sampai saat itu, setiap draf AI dan impor tetap memerlukan konfirmasi pengguna eksplisit sebelum disimpan.",
         "Configuration and status only.": "Hanya konfigurasi dan status.",
 
         // KPI / chart tooltips (aria-label / title attributes)

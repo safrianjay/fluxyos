@@ -1622,7 +1622,6 @@ function renderWizardAllocationStep() {
                 <p class="mb-3 text-[13px] font-bold text-gray-600">Start from a template</p>
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     ${renderTemplateCard('functional', 'Functional split', 'Marketing, Infrastructure, Operations, and SaaS.')}
-                    ${renderTemplateCard('gl_based_disabled', 'GL-based', 'Coming soon once chart of accounts data exists.', true)}
                     ${renderTemplateCard('blank', 'Blank slate', 'Start with no allocations and add your own.')}
                 </div>
             </div>

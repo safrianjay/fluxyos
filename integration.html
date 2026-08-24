@@ -52,11 +52,6 @@
                     <!-- Category tabs -->
                     <div id="integration-tabs" class="inline-flex flex-wrap items-center gap-1 rounded-lg bg-gray-50 border border-gray-200 p-0.5" role="tablist">
                         <button type="button" data-category="commerce" role="tab" aria-selected="true" class="px-3 py-1.5 rounded-md text-[12px] font-bold bg-white text-gray-900 shadow-sm border border-gray-200">Commerce</button>
-                        <button type="button" data-category="payment" role="tab" aria-selected="false" class="px-3 py-1.5 rounded-md text-[12px] font-bold text-gray-500 hover:text-gray-700">Payment</button>
-                        <button type="button" data-category="accounting" role="tab" aria-selected="false" class="px-3 py-1.5 rounded-md text-[12px] font-bold text-gray-500 hover:text-gray-700">Accounting</button>
-                        <button type="button" data-category="bank" role="tab" aria-selected="false" class="px-3 py-1.5 rounded-md text-[12px] font-bold text-gray-500 hover:text-gray-700">Bank</button>
-                        <button type="button" data-category="marketing" role="tab" aria-selected="false" class="px-3 py-1.5 rounded-md text-[12px] font-bold text-gray-500 hover:text-gray-700">Marketing</button>
-                        <button type="button" data-category="communication" role="tab" aria-selected="false" class="px-3 py-1.5 rounded-md text-[12px] font-bold text-gray-500 hover:text-gray-700">Communication</button>
                     </div>
 
                     <!-- Commerce panel (live) -->
@@ -85,79 +80,6 @@
                         </div>
                     </section>
 
-                    <!-- Coming-soon panels (no dead buttons) -->
-                    <section class="hidden" data-category-panel="payment">
-                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                            <div class="flex items-center justify-between gap-3">
-                                <h3 class="text-[14px] font-semibold text-gray-900">Payment integrations</h3>
-                                <span class="text-[10px] font-bold uppercase tracking-[0.06em] text-gray-400 bg-gray-50 border border-gray-200 rounded-full px-2.5 py-1">Coming soon</span>
-                            </div>
-                            <p class="mt-1 text-[12px] text-gray-500">Reconcile payment gateway fees and payouts directly in your ledger.</p>
-                            <div class="mt-4 flex flex-wrap gap-2" data-provider-chips>
-                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">Midtrans</span>
-                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">Xendit</span>
-                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">Stripe</span>
-                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">PayPal</span>
-                            </div>
-                        </div>
-                    </section>
-                    <section class="hidden" data-category-panel="accounting">
-                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                            <div class="flex items-center justify-between gap-3">
-                                <h3 class="text-[14px] font-semibold text-gray-900">Accounting integrations</h3>
-                                <span class="text-[10px] font-bold uppercase tracking-[0.06em] text-gray-400 bg-gray-50 border border-gray-200 rounded-full px-2.5 py-1">Coming soon</span>
-                            </div>
-                            <p class="mt-1 text-[12px] text-gray-500">Push journals and balances to your accounting software.</p>
-                            <div class="mt-4 flex flex-wrap gap-2" data-provider-chips>
-                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">Jurnal</span>
-                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">Accurate</span>
-                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">Xero</span>
-                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">QuickBooks</span>
-                            </div>
-                        </div>
-                    </section>
-                    <section class="hidden" data-category-panel="bank">
-                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                            <div class="flex items-center justify-between gap-3">
-                                <h3 class="text-[14px] font-semibold text-gray-900">Bank integrations</h3>
-                                <span class="text-[10px] font-bold uppercase tracking-[0.06em] text-gray-400 bg-gray-50 border border-gray-200 rounded-full px-2.5 py-1">Coming soon</span>
-                            </div>
-                            <p class="mt-1 text-[12px] text-gray-500">Read-only sync via Open Finance providers.</p>
-                            <div class="mt-4 flex flex-wrap gap-2" data-provider-chips>
-                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">BCA</span>
-                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">Mandiri</span>
-                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">BRI</span>
-                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">BNI</span>
-                            </div>
-                        </div>
-                    </section>
-                    <section class="hidden" data-category-panel="marketing">
-                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                            <div class="flex items-center justify-between gap-3">
-                                <h3 class="text-[14px] font-semibold text-gray-900">Marketing integrations</h3>
-                                <span class="text-[10px] font-bold uppercase tracking-[0.06em] text-gray-400 bg-gray-50 border border-gray-200 rounded-full px-2.5 py-1">Coming soon</span>
-                            </div>
-                            <p class="mt-1 text-[12px] text-gray-500">Track ad spend as expenses automatically.</p>
-                            <div class="mt-4 flex flex-wrap gap-2" data-provider-chips>
-                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">Google Ads</span>
-                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">Meta Ads</span>
-                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">TikTok Ads</span>
-                            </div>
-                        </div>
-                    </section>
-                    <section class="hidden" data-category-panel="communication">
-                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                            <div class="flex items-center justify-between gap-3">
-                                <h3 class="text-[14px] font-semibold text-gray-900">Communication integrations</h3>
-                                <span class="text-[10px] font-bold uppercase tracking-[0.06em] text-gray-400 bg-gray-50 border border-gray-200 rounded-full px-2.5 py-1">Coming soon</span>
-                            </div>
-                            <p class="mt-1 text-[12px] text-gray-500">Capture receipts and reminders where you already work.</p>
-                            <div class="mt-4 flex flex-wrap gap-2" data-provider-chips>
-                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">WhatsApp</span>
-                                <span class="text-[12px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">Gmail</span>
-                            </div>
-                        </div>
-                    </section>
 
                 </div>
             </div>

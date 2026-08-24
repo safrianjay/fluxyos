@@ -80,26 +80,6 @@
                     </div>
                 </section>
 
-                <!-- PASSKEYS -->
-                <section class="space-y-3">
-                    <h2 class="text-[16px] font-bold text-gray-900">Passkeys</h2>
-                    <p class="text-[14px] text-gray-500">Sign in securely with biometrics, device PIN, or a hardware security key.</p>
-                    <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-5 py-4 flex items-center justify-between gap-4">
-                        <p class="text-[14px] text-gray-500">Passkey enrollment is planned. Until then, sign in stays managed by your Firebase Auth provider.</p>
-                        <span class="settings-planned-pill">Planned</span>
-                    </div>
-                </section>
-
-                <!-- 2FA -->
-                <section class="space-y-3">
-                    <h2 class="text-[16px] font-bold text-gray-900">Two-step authentication</h2>
-                    <p class="text-[14px] text-gray-500">Multiple authentication methods to verify your identity.</p>
-                    <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-5 py-4 flex items-center justify-between gap-4">
-                        <p class="text-[14px] text-gray-500">FluxyOS-managed two-step auth is planned. Use your Google account's 2FA in the meantime.</p>
-                        <span class="settings-planned-pill">Planned</span>
-                    </div>
-                </section>
-
                 <!-- ACTIVE SESSIONS -->
                 <section class="space-y-3">
                     <h2 class="text-[16px] font-bold text-gray-900">Active sessions</h2>
@@ -110,20 +90,6 @@
     </main>
 
     <style>
-        .settings-planned-pill {
-            display: inline-flex;
-            align-items: center;
-            padding: 2px 8px;
-            border-radius: 9999px;
-            border: 1px solid #fed7aa;
-            background: #fff7ed;
-            color: #c2410c;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            white-space: nowrap;
-        }
     </style>
 
     <script src="assets/js/money-format.js"></script>
@@ -152,7 +118,10 @@
 
         const authTimeout = setTimeout(() => window.location.replace('/login'), 2000);
 
-        onAuthStateChanged(auth, (user) => {
+        // async: the body awaits the workspace resolve below. Without it the
+        // whole module throws "Unexpected reserved word" at parse time, so the
+        // page never rendered its account details at all.
+        onAuthStateChanged(auth, async (user) => {
             if (!user) return;
             clearTimeout(authTimeout);
             // Money cannot render before the base currency is known. Both this
