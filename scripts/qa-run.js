@@ -279,6 +279,59 @@ function affectedPages(changed) {
   return { pages: [...pages], sharedTouched };
 }
 
+// ── Rotating sweep shard ─────────────────────────────────────────────────────
+//
+// The sweep only ever loaded CHANGED pages plus a fixed core set, so ~40 of the
+// 48 app pages were never opened in a browser unless someone edited them. A page
+// could therefore break and stay broken indefinitely: settings-personal.html
+// threw on every load and rendered no account details, and nothing noticed until
+// an unrelated commit happened to touch it.
+//
+// A full sweep is not the answer — 48 pages takes over ten minutes, which is not
+// payable on every push. Instead each run also opens a small rotating slice, so
+// the whole surface is covered every few runs at ~25s a time. The cursor lives
+// in .qa/ (gitignored) beside the run artifact.
+const SWEEP_SHARD = 4;
+
+function rotatingShard(alreadyCovered) {
+  let all = [];
+  try {
+    const src = fs.readFileSync(path.join(REPO_ROOT, 'scripts/prepare-deploy.js'), 'utf8');
+    const m = src.match(/const APP_PAGES = \[([\s\S]*?)\];/);
+    all = (m ? m[1].match(/'([^']+)'/g) || [] : []).map((q) => q.slice(1, -1));
+  } catch (_) { return []; }
+
+  // Pages that cannot be judged by a cold load. Each needs a reason — an
+  // exclusion nobody can justify is just a page nobody checks.
+  const UNSWEEPABLE = new Set([
+    'login.html',            // pre-auth; its expected 400 is already allowlisted
+    'payment-pending.html',  // needs a live requestId in the query string
+    'internal.html',         // role-gated to internal staff
+    'internal-dashboard.html',
+  ]);
+
+  const pool = all.filter((f) => !UNSWEEPABLE.has(f) && !alreadyCovered.includes(f)
+    && fs.existsSync(path.join(REPO_ROOT, f)));
+  if (!pool.length) return [];
+
+  const cursorFile = path.join(REPO_ROOT, '.qa', 'sweep-cursor.json');
+  let cursor = 0;
+  try { cursor = Number(JSON.parse(fs.readFileSync(cursorFile, 'utf8')).cursor) || 0; } catch (_) {}
+  const shard = [];
+  for (let i = 0; i < Math.min(SWEEP_SHARD, pool.length); i += 1) {
+    shard.push(pool[(cursor + i) % pool.length]);
+  }
+  try {
+    fs.mkdirSync(path.join(REPO_ROOT, '.qa'), { recursive: true });
+    fs.writeFileSync(cursorFile, JSON.stringify({
+      cursor: (cursor + shard.length) % pool.length,
+      pool: pool.length,
+      note: 'Rotating console-sweep position. Delete to restart the rotation.',
+    }, null, 2));
+  } catch (_) { /* a missing cursor just means the rotation restarts */ }
+  return shard;
+}
+
 function laneFE(changed) {
   console.log('\nFE');
   let ok = true;
@@ -290,14 +343,21 @@ function laneFE(changed) {
     console.log('  – console sweep skipped (--skip-browser)');
     return ok;
   }
-  if (!FORCE_ALL && !sharedTouched && pages.length === 0) {
-    console.log('  – console sweep skipped (no page or shared module changed)');
-    return ok;
-  }
+  // No early exit for "nothing changed" any more: the rotating slice is the
+  // whole point — it opens pages precisely when nobody has touched them.
 
   const env = {};
-  if (!FORCE_ALL && !sharedTouched && pages.length) env.QA_SWEEP_PAGES = pages.join(',');
-  const scopeNote = env.QA_SWEEP_PAGES || (sharedTouched ? 'core pages (shared module changed)' : 'core pages');
+  let scopeNote;
+  if (FORCE_ALL || sharedTouched) {
+    // Shared module or --all: the curated core set already covers the risk.
+    scopeNote = sharedTouched ? 'core pages (shared module changed)' : 'core pages';
+  } else {
+    const shard = rotatingShard(pages);
+    env.QA_SWEEP_PAGES = [...pages, ...shard].join(',');
+    scopeNote = pages.length
+      ? `${pages.join(',')}  + rotating: ${shard.join(',') || 'none left'}`
+      : `rotating: ${shard.join(',')}`;
+  }
   console.log(`    sweeping: ${scopeNote}`);
 
   // ONE Playwright invocation for both suites. Running them as two separate

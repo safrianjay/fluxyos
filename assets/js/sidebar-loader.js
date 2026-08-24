@@ -619,7 +619,13 @@
                     // legacy users fail the cutoff, so both resolve to "not locked".
                     import("/assets/js/kyc-gate.js")
                         .then(({ applyToPage }) => applyToPage(user))
-                        .catch((e) => console.warn('[sidebar] KYC gate skipped', e));
+                        .catch((e) => {
+                            // console.error, not warn: this catch is the reason a
+                            // syntax error in kyc-gate.js ran unnoticed on main —
+                            // the gate silently stopped running and the QA sweep,
+                            // which ignores warnings, stayed green.
+                            console.error('[sidebar] KYC gate failed to load', e);
+                        });
 
                     // Activity Log nav is Owner/Admin only (audit.read capability).
                     // The item ships hidden; reveal it only for permitted roles so

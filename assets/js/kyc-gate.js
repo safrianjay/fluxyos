@@ -163,7 +163,7 @@ export async function resolveKycState(authUser) {
         status: internal.kyc_status || 'submitted',
         note: internal.last_internal_note || null,
         userId: authUser.uid
-    };
+    });
 }
 
 // The post-onboarding coachmark used to be queued into sessionStorage at submit
