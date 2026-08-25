@@ -617,8 +617,18 @@
                     // so pages covered by both get exactly one. Runs for owners and
                     // members alike: invited members carry onboarding_exempt and
                     // legacy users fail the cutoff, so both resolve to "not locked".
+                    // Hold the boot mask until the gate decides. Without this the
+                    // dashboard paints on workspace-ready while the gate is still
+                    // reading, so a user pending review watches their dashboard
+                    // load and then get covered by a lock screen. The hold expires
+                    // on its own timer, so a gate that never settles cannot leave
+                    // the app masked.
+                    const releaseGateHold = (window.FluxyBoot && window.FluxyBoot.hold)
+                        ? window.FluxyBoot.hold('kyc-gate', 5000)
+                        : () => {};
                     import("/assets/js/kyc-gate.js")
                         .then(({ applyToPage }) => applyToPage(user))
+                        .finally(() => releaseGateHold())
                         .catch((e) => {
                             // console.error, not warn: this catch is the reason a
                             // syntax error in kyc-gate.js ran unnoticed on main —

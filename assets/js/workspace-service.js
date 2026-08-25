@@ -205,14 +205,47 @@ let readyResolve = null;
 const readyPromise = new Promise((res) => { readyResolve = res; });
 let isReady = false;
 
+// The app is revealed when the workspace has resolved AND every gate that can
+// take the page away has decided. Those used to race: the dashboard painted on
+// workspace-ready while the KYC gate was still reading, so a user pending review
+// watched their dashboard load and then get covered by a lock screen. It has to
+// be one or the other, never both.
+//
+// Holds are named so a stuck one can be identified, and each expires on its own
+// timer — a gate that never settles must not leave the app permanently masked.
+const bootHolds = new Set();
+
+function revealApp() {
+    if (!isReady || bootHolds.size) return;
+    try {
+        if (typeof document !== 'undefined') {
+            document.documentElement.classList.remove('fluxy-booting');
+        }
+    } catch (_) {}
+}
+
+function holdBoot(name, timeoutMs = 4000) {
+    if (typeof document === 'undefined') return () => {};
+    bootHolds.add(name);
+    let released = false;
+    const release = () => {
+        if (released) return;
+        released = true;
+        bootHolds.delete(name);
+        revealApp();
+    };
+    setTimeout(release, timeoutMs);   // failsafe: never mask the app forever
+    return release;
+}
+
 function markReady() {
     if (isReady) return;
     isReady = true;
     try { readyResolve(publish()); } catch (_) {}
     try {
         if (typeof document !== 'undefined') {
-            // Reveal the app: money surfaces are skeleton-masked until here.
-            document.documentElement.classList.remove('fluxy-booting');
+            // Reveal only if no gate is still deciding.
+            revealApp();
             document.dispatchEvent(new CustomEvent('fluxy:workspace-ready'));
         }
     } catch (_) {}
@@ -504,6 +537,7 @@ export { resolveWorkspace, getWorkspace, whenWorkspaceReady, workspaceReady };
 
 // Expose for classic-script consumers.
 if (typeof window !== 'undefined') {
+    window.FluxyBoot = { hold: holdBoot, reveal: revealApp };
     window.FluxyWorkspace = Object.assign(window.FluxyWorkspace || {}, {
         resolve: resolveWorkspace,
         get: getWorkspace,

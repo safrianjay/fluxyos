@@ -177,7 +177,12 @@ async function main() {
         workspaceIds: [workspaceId], default: workspaceId, updated_at: now
     }, { merge: true });
     batch.set(db.doc(`users/${uid}/onboarding/progress`), {
-        onboarding_completed: true, completed_at: now, updated_at: now
+        onboarding_completed: true,
+        // kyc-gate.js opens for anyone whose progress doc lacks this flag, so a
+        // seeded account without it can never exercise the review lock — the
+        // gate's own tests would pass while proving nothing.
+        kyc_enforced: true,
+        completed_at: now, updated_at: now
     }, { merge: true });
     batch.set(db.doc(`users/${uid}/onboarding/profile`), {
         business_name: PROFILE.business,
