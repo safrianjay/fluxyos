@@ -51,6 +51,7 @@ const MARKETING_PAGES = [
     'pricing.html',
     'contact-sales.html',
     'event.html',           // QR-scanned event signup (noindex)
+    'qr.html',              // printable/display QR pointing at /event (noindex)
     'aiagents.html',
     'budgetlanding.html',
     'revenuesync.html',

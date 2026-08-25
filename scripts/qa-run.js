@@ -225,6 +225,12 @@ function laneBE(changed) {
 
   const touched = (re) => changed.some((f) => re.test(f));
 
+  // The event QR is a printed artefact: if it stops decoding it fails silently,
+  // in front of people. Only runs when the symbol or its generator changes.
+  if (touched(/^assets\/images\/qr-event\.svg$|^scripts\/make-qr\.js$/)) {
+    ok = record('be', run('QR decodes (logo composited)', 'bash', ['scripts/qa/verify-qr.sh'])) && ok;
+  }
+
   if (FORCE_ALL || touched(/^scripts\/prepare-deploy\.js$|^deploy\/|^[^/]+\.html$/)) {
     ok = record('be', run('check:deploy (two-site split)', 'node', ['tests/prepare-deploy.check.js'])) && ok;
   }
