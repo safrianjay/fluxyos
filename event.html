@@ -13,7 +13,22 @@
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#0B0F19">
     <style>
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0B0F19; min-height: 100dvh;
+        }
+        .sky { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+        .sky canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+        /* Content above the sky. */
+        main { position: relative; z-index: 1; }
+        /* The card stays light: this is a form filled in on a phone, often in bad
+           venue lighting, and dark inputs cost legibility for nothing. */
+        .panel {
+            background: #fff; border-radius: 1.25rem;
+            box-shadow: 0 30px 70px -25px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.07);
+        }
+        .on-dark-title { color: #fff; }
+        .on-dark-sub { color: #94A3B8; }
         .num { font-variant-numeric: tabular-nums; }
         /* Inputs are 16px on mobile: anything smaller makes iOS Safari zoom on
            focus, which on a QR walk-up reads as the page breaking. */
@@ -32,10 +47,31 @@
             background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%236B7280' stroke-width='2'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
             background-repeat:no-repeat; background-position:right .875rem center; padding-right:2.5rem; }
         #confetti { position:fixed; inset:0; pointer-events:none; z-index:60; }
-        @media (prefers-reduced-motion: reduce) { #confetti { display:none; } }
+
+        /* Success mark */
+        .ok-disc  { transform-origin: 48px 48px; animation: okPop .45s cubic-bezier(.2,.8,.3,1.3) both; }
+        .ok-check { stroke-dasharray: 52; stroke-dashoffset: 52; animation: okDraw .4s .28s ease-out forwards; }
+        .ok-halo  { transform-origin: 48px 48px; animation: okRing 2.2s .5s ease-out infinite; }
+        .ok-halo2 { transform-origin: 48px 48px; animation: okRing 2.2s .9s ease-out infinite; }
+        @keyframes okPop  { from { transform: scale(.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes okDraw { to { stroke-dashoffset: 0; } }
+        @keyframes okRing { 0% { transform: scale(.85); opacity: .45; } 70%,100% { transform: scale(1.12); opacity: 0; } }
+        @media (prefers-reduced-motion: reduce) {
+            #confetti { display:none; }
+            /* Render the mark complete rather than mid-animation. */
+            .ok-disc, .ok-check, .ok-halo, .ok-halo2 { animation: none; }
+            .ok-check { stroke-dashoffset: 0; }
+            .ok-halo, .ok-halo2 { opacity: .25; }
+        }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-900 antialiased">
+<body class="text-gray-900 antialiased">
+
+<!-- Same starfield the footer uses (universe-canvas.js), full-bleed. Its parent
+     must be a positioned, viewport-filling element because initUniverseCanvas
+     sizes from canvas.parentElement. pointer-events:none so it can never sit
+     between a thumb and an input. -->
+<div class="sky" aria-hidden="true"><canvas class="footer-canvas"></canvas></div>
 
 <main class="mx-auto w-full max-w-[520px] px-5 py-8 sm:py-12">
 
@@ -43,13 +79,13 @@
     <section id="form-view">
         <header class="mb-7 text-center">
             <img src="assets/images/favicon.svg" alt="FluxyOS" class="mx-auto mb-4 h-11 w-11">
-            <h1 class="text-[26px] font-extrabold leading-tight tracking-tight sm:text-[30px]">Register your interest</h1>
-            <p class="mt-2 text-[15px] leading-relaxed text-gray-600">
+            <h1 class="on-dark-title text-[26px] font-extrabold leading-tight tracking-tight sm:text-[30px]">Register your interest</h1>
+            <p class="on-dark-sub mt-2 text-[15px] leading-relaxed">
                 Leave your details and we’ll be in touch. Takes under a minute.
             </p>
         </header>
 
-        <form id="event-form" novalidate class="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+        <form id="event-form" novalidate class="panel space-y-4 p-5 sm:p-6">
             <!-- Honeypot: bots fill it, humans never see it. -->
             <div class="hidden" aria-hidden="true">
                 <label>Leave this empty <input type="text" name="bot-field" tabindex="-1" autocomplete="off"></label>
@@ -122,7 +158,7 @@
                 Register
             </button>
 
-            <p class="pt-1 text-center text-[12px] leading-relaxed text-gray-500">
+            <p class="pt-1 text-center text-[12px] leading-relaxed text-gray-400">
                 We’ll only use your details to contact you about FluxyOS.
             </p>
         </form>
@@ -130,11 +166,24 @@
 
     <!-- ── Confirmation ─────────────────────────────────────────────────── -->
     <section id="done-view" class="hidden text-center">
-        <div class="rounded-2xl border border-gray-200 bg-white p-7 shadow-sm sm:p-9">
-            <div class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-green-50">
-                <svg viewBox="0 0 24 24" class="h-9 w-9" fill="none" stroke="#16A34A" stroke-width="2.5"
-                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M20 6L9 17l-5-5"/>
+        <div class="panel p-7 sm:p-9">
+            <!-- Concentric rings + a check that draws itself in. The tick alone read
+                 as a form validation state; registering at an event should feel like
+                 an arrival. Motion is decorative and disabled under
+                 prefers-reduced-motion, where it simply renders complete. -->
+            <div class="mx-auto mb-5 h-24 w-24" role="img" aria-label="Registered">
+                <svg viewBox="0 0 96 96" class="h-24 w-24" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="ok-g" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0%" stop-color="#22C55E"/>
+                            <stop offset="100%" stop-color="#16A34A"/>
+                        </linearGradient>
+                    </defs>
+                    <circle class="ok-halo" cx="48" cy="48" r="44" fill="none" stroke="#22C55E" stroke-width="1.5" opacity=".22"/>
+                    <circle class="ok-halo2" cx="48" cy="48" r="38" fill="none" stroke="#22C55E" stroke-width="1.5" opacity=".35"/>
+                    <circle class="ok-disc" cx="48" cy="48" r="31" fill="url(#ok-g)"/>
+                    <path class="ok-check" d="M33 49.5L43.5 60 64 38" fill="none" stroke="#fff"
+                          stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
             </div>
             <h2 class="text-[24px] font-extrabold leading-tight tracking-tight">You’re registered</h2>
@@ -151,6 +200,12 @@
 </main>
 
 <canvas id="confetti" aria-hidden="true"></canvas>
+<script src="assets/js/universe-canvas.js"></script>
+<script>
+    // Starts the starfield once the element exists. Wrapped because the canvas is
+    // pure decoration — if it fails, the form must still work.
+    try { initUniverseCanvas(document.querySelector('.sky canvas')); } catch (_) {}
+</script>
 <script src="assets/js/event-signup.js"></script>
 </body>
 </html>
