@@ -80,19 +80,23 @@
         ID: { dial: '+62', city: 'Jakarta', postal: '10210',
               address: 'Jl. Sudirman No. 1, Jakarta 10210',
               business: 'Kopi Senja Digital', vendor: 'Toko Sinar Jaya',
-              taxId: 'NPWP', taxIdSample: '00.000.000.0-000.000' },
+              taxId: 'NPWP', taxIdSample: '00.000.000.0-000.000',
+              name: 'Indonesia', timezone: 'Asia/Jakarta' },
         PH: { dial: '+63', city: 'Makati', postal: '1200',
               address: '123 Ayala Avenue, Makati 1200',
               business: 'Manila Coffee House', vendor: 'Santos Trading',
-              taxId: 'TIN', taxIdSample: '000-000-000-000' },
+              taxId: 'TIN', taxIdSample: '000-000-000-000',
+              name: 'Philippines', timezone: 'Asia/Manila' },
         SG: { dial: '+65', city: 'Singapore', postal: '238823',
               address: '10 Orchard Road, Singapore 238823',
               business: 'Orchard Coffee', vendor: 'Tan Supplies',
-              taxId: 'UEN', taxIdSample: '200912345A' },
+              taxId: 'UEN', taxIdSample: '200912345A',
+              name: 'Singapore', timezone: 'Asia/Singapore' },
         MY: { dial: '+60', city: 'Kuala Lumpur', postal: '55100',
               address: 'Jalan Bukit Bintang 10, Kuala Lumpur 55100',
               business: 'Kuala Lumpur Coffee Co.', vendor: 'Lim Trading',
-              taxId: 'Tax Identification No.', taxIdSample: 'C1234567890' }
+              taxId: 'Tax Identification No.', taxIdSample: 'C1234567890',
+              name: 'Malaysia', timezone: 'Asia/Kuala_Lumpur' }
     };
 
     /** Country profile for the active workspace. Unknown country = Indonesia. */

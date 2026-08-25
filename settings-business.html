@@ -95,10 +95,14 @@
                             </label>
                             <label class="block">
                                 <span class="text-[12px] font-bold text-gray-500">Country</span>
-                                <select id="company-country" name="country" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[14px] text-gray-900 outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
-                                    <option value="Indonesia">Indonesia</option>
-                                </select>
-                                <span class="mt-1 block text-[12px] text-gray-400">FluxyOS MVP supports Indonesia (IDR, id-ID).</span>
+                                <!-- Read-only: the business country is set once at onboarding and is
+                                     IMMUTABLE in firestore.rules, because it decides the workspace's
+                                     accounting currency. A <select> here implied it could be changed
+                                     and offered only Indonesia — so every Philippine workspace read
+                                     "Indonesia" on its own settings page. Painted from the workspace. -->
+                                <input id="company-country" name="country" type="text" readonly
+                                       class="mt-1 w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[14px] text-gray-700">
+                                <span class="mt-1 block text-[12px] text-gray-400">Set when your workspace was created — it determines your accounting currency.</span>
                             </label>
                         </div>
                         <div class="px-5 py-4 border-t border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -210,7 +214,12 @@
             setValue('company-business-name', company.business_name || 'Global HQ');
             setValue('company-entity-label', company.entity_label || 'Consolidated');
             setValue('company-business-type', company.business_type || '');
-            setValue('company-country', company.country || 'Indonesia');
+            // The workspace is canonical for country — settings/ is user-scoped and
+            // could disagree with the company's own books. Fall back to the stored
+            // value only if the workspace has not resolved.
+            const NAMES = { ID: 'Indonesia', PH: 'Philippines', SG: 'Singapore', MY: 'Malaysia' };
+            const wsCountry = (window.FluxyWorkspace && window.FluxyWorkspace.country) || null;
+            setValue('company-country', NAMES[wsCountry] || company.country || '—');
         }
 
         function wireForms() {
@@ -258,7 +267,7 @@
             const payload = {
                 business_name: getValue('company-business-name'),
                 business_type: currentCompany.business_type || '',
-                country: currentCompany.country || 'Indonesia',
+                country: currentCompany.country || null,
                 entity_label: getValue('company-entity-label')
             };
 
@@ -338,7 +347,9 @@
             const payload = {
                 business_name: currentCompany.business_name || 'Global HQ',
                 business_type: getValue('company-business-type'),
-                country: getValue('company-country'),
+                // Country is immutable and owned by the workspace; writing it back
+                // from a read-only field would create a second source of truth that
+                // silently drifts.
                 entity_label: currentCompany.entity_label || 'Consolidated'
             };
             const saved = await saveSection(event.currentTarget, 'company-details-status', () => ds.saveCompanySettings(auth.currentUser.uid, payload), 'Business details saved.');

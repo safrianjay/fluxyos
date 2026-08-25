@@ -75,26 +75,33 @@
                         -->
                         <label class="block">
                             <span class="text-[12px] font-bold text-gray-500">Accounting currency</span>
-                            <input id="finance-currency" type="text" value="IDR" disabled class="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[14px] font-bold text-gray-500">
+                            <input id="finance-currency" type="text" value="" disabled class="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[14px] font-bold text-gray-500">
                             <span class="mt-1 block text-[12px] text-gray-400">Set when this workspace was created. Changing it restates your accounting records, so it needs a guided migration.</span>
                             <a class="mt-1 block text-[12px] font-semibold text-[#EA580C] hover:underline" href="mailto:support@fluxyos.com?subject=Change%20base%20currency">Contact support to change it</a>
                         </label>
                         <label class="block">
                             <span class="text-[12px] font-bold text-gray-500">Business country</span>
-                            <input id="finance-country" type="text" value="Indonesia" disabled class="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[14px] font-bold text-gray-500">
+                            <input id="finance-country" type="text" value="" disabled class="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[14px] font-bold text-gray-500">
                             <span class="mt-1 block text-[12px] text-gray-400">Set with your accounting currency at setup.</span>
                         </label>
                         <label class="block">
                             <span class="text-[12px] font-bold text-gray-500">Number format</span>
-                            <input id="finance-locale" type="text" value="id-ID" disabled class="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[14px] font-bold text-gray-500">
+                            <input id="finance-locale" type="text" value="" disabled class="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[14px] font-bold text-gray-500">
                             <span class="mt-1 block text-[12px] text-gray-400">Follows your accounting currency.</span>
                         </label>
                         <label class="block">
                             <span class="text-[12px] font-bold text-gray-500">Timezone</span>
                             <select id="finance-timezone" name="timezone" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[14px] text-gray-900 outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
-                                <option value="Asia/Jakarta">Asia/Jakarta</option>
-                                <option value="Asia/Makassar">Asia/Makassar</option>
-                                <option value="Asia/Jayapura">Asia/Jayapura</option>
+                                <!-- Indonesia's three zones plus each supported market's.
+                                     The list was Indonesia-only, so a Manila business could
+                                     not select its own timezone at all — every posting date
+                                     would have been reckoned in WIB. -->
+                                <option value="Asia/Jakarta">Asia/Jakarta (WIB)</option>
+                                <option value="Asia/Makassar">Asia/Makassar (WITA)</option>
+                                <option value="Asia/Jayapura">Asia/Jayapura (WIT)</option>
+                                <option value="Asia/Manila">Asia/Manila (PHT)</option>
+                                <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
+                                <option value="Asia/Kuala_Lumpur">Asia/Kuala_Lumpur (MYT)</option>
                             </select>
                         </label>
                         <label class="block">
@@ -223,7 +230,17 @@
         }
 
         function renderFinance(finance) {
-            setValue('finance-timezone', finance.timezone || 'Asia/Jakarta');
+            // Currency, country, locale and timezone all follow the WORKSPACE.
+            // They shipped as static values that were only ever right in Indonesia,
+            // so a peso business read "IDR / Indonesia / id-ID / Asia/Jakarta" on
+            // the page that tells it how its books are configured.
+            const money = window.FluxyMoney;
+            const cc = (window.FluxyWorkspace && window.FluxyWorkspace.country) || 'ID';
+            const prof = money.countryProfile(cc);
+            setValue('finance-currency', money.baseCurrency());
+            setValue('finance-country', prof.name || '—');
+            setValue('finance-locale', money.baseLocale());
+            setValue('finance-timezone', finance.timezone || prof.timezone || 'Asia/Jakarta');
             setValue('finance-date-format', finance.date_format || 'DD MMM YYYY');
 
             // Read from the WORKSPACE, not from settings/. `settings` is user-scoped
