@@ -696,10 +696,17 @@ function renderLeadsTab() {
         const waDigits = (l.whatsapp || '').replace(/[^0-9]/g, '');
         const status = l.status || 'new';
         const isNew = status === 'new';
+        // Where the lead came from. Event walk-ups and Contact Sales enquiries
+        // need working differently — one is a warm inbound, the other a badge
+        // scan — and without this they are indistinguishable in the list.
+        const src = l.source || 'contact-sales';
+        const srcBadge = src === 'event-signup'
+            ? '<span class="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-amber-700 ring-1 ring-amber-200">Event</span>'
+            : '';
         const options = LEAD_STATUSES.map(([v, label]) => `<option value="${v}"${v === status ? ' selected' : ''}>${label}</option>`).join('');
         return `<tr class="hover:bg-gray-50/60 align-top">
             <td class="px-5 py-3.5 whitespace-nowrap text-[13px] text-gray-600">${isNew ? '<span class="inline-block w-1.5 h-1.5 rounded-full bg-[#EA580C] mr-1.5 align-middle"></span>' : ''}${escapeHtml(fmtDateTime(l.created_at))}</td>
-            <td class="px-5 py-3.5 text-[14px] font-medium text-gray-900">${escapeHtml(l.name || '—')}</td>
+            <td class="px-5 py-3.5 text-[14px] font-medium text-gray-900">${escapeHtml(l.name || '—')}${srcBadge}</td>
             <td class="px-5 py-3.5 text-[13px]">${email ? `<a href="mailto:${email}" class="text-[#EA580C] hover:underline">${email}</a>` : '—'}</td>
             <td class="px-5 py-3.5 text-[13px] whitespace-nowrap">${wa ? `<a href="https://wa.me/${waDigits}" target="_blank" rel="noopener noreferrer" class="text-[#EA580C] hover:underline">${wa}</a>` : '—'}</td>
             <td class="px-5 py-3.5 text-[13px] text-gray-700">${escapeHtml(l.company || '—')}</td>
