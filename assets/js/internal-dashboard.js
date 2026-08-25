@@ -363,6 +363,39 @@ function renderAll() {
     renderTabCounts();
 }
 
+// ----- Row chips (shared by Overview, Users, KYC and Payment tables) -----
+// Top-level on purpose: all four renderers call these.
+
+// Market chip — the country/currency a row belongs to.
+//
+// Reviewers were shown near-identical rows for one email ("Business PH",
+// "Business Ph", "PH business") with nothing to tell them apart, and an approval
+// landed on the wrong uid: the account under test stayed locked while its twin
+// was approved. Market is the fastest way to spot the right one.
+function marketChip(x) {
+    const parts = [x.country, x.base_currency].filter(Boolean);
+    if (!parts.length) return '';
+    return `<span class="ml-2 rounded px-1.5 py-0.5 text-[11px] font-semibold bg-slate-100 text-slate-600">${escapeHtml(parts.join(' · '))}</span>`;
+}
+
+// Rows sharing one email address. Stale test accounts accumulate under a single
+// address, and approving the wrong one is silent — the user simply stays locked.
+function duplicateEmailCounts(rows) {
+    const counts = new Map();
+    (rows || []).forEach((r) => {
+        const e = String(r.email || '').trim().toLowerCase();
+        if (e) counts.set(e, (counts.get(e) || 0) + 1);
+    });
+    return counts;
+}
+
+function duplicateChip(x, counts) {
+    const e = String(x.email || '').trim().toLowerCase();
+    const n = e ? (counts.get(e) || 0) : 0;
+    if (n < 2) return '';
+    return `<span class="ml-2 rounded px-1.5 py-0.5 text-[11px] font-semibold bg-amber-100 text-amber-800" title="${n} accounts share this email — check the uid before approving">${n} accounts</span>`;
+}
+
 // ----- Overview -----
 function renderOverview() {
     // Overview reflects active users only — archived accounts drop out of every
@@ -405,37 +438,7 @@ function renderOverview() {
         list.innerHTML = stateBlock('Nothing needs action', 'No KYC or payment items are currently waiting for review.');
         return;
     }
-    // Market chip — the country/currency a row belongs to.
-//
-// Reviewers were shown near-identical rows for one email ("Business PH",
-// "Business Ph", "PH business") with nothing to tell them apart, and an approval
-// landed on the wrong uid: the account under test stayed locked while its twin
-// was approved. Market is the fastest way to spot the right one.
-function marketChip(x) {
-    const parts = [x.country, x.base_currency].filter(Boolean);
-    if (!parts.length) return '';
-    return `<span class="ml-2 rounded px-1.5 py-0.5 text-[11px] font-semibold bg-slate-100 text-slate-600">${escapeHtml(parts.join(' · '))}</span>`;
-}
-
-// Rows sharing one email address. Stale test accounts accumulate under a single
-// address, and approving the wrong one is silent — the user simply stays locked.
-function duplicateEmailCounts(rows) {
-    const counts = new Map();
-    (rows || []).forEach((r) => {
-        const e = String(r.email || '').trim().toLowerCase();
-        if (e) counts.set(e, (counts.get(e) || 0) + 1);
-    });
-    return counts;
-}
-
-function duplicateChip(x, counts) {
-    const e = String(x.email || '').trim().toLowerCase();
-    const n = e ? (counts.get(e) || 0) : 0;
-    if (n < 2) return '';
-    return `<span class="ml-2 rounded px-1.5 py-0.5 text-[11px] font-semibold bg-amber-100 text-amber-800" title="${n} accounts share this email — check the uid before approving">${n} accounts</span>`;
-}
-
-const __dupCounts = duplicateEmailCounts(needing);
+    const __dupCounts = duplicateEmailCounts(needing);
     list.innerHTML = needing.map(x => {
         const uid = x.user_id || x.id;
         return `<div class="flex items-center justify-between gap-4 px-5 py-3">

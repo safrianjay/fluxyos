@@ -50,6 +50,7 @@ const MARKETING_PAGES = [
     'fluxyos.html',       // homepage (served at /)
     'pricing.html',
     'contact-sales.html',
+    'event.html',           // QR-scanned event signup (noindex)
     'aiagents.html',
     'budgetlanding.html',
     'revenuesync.html',

@@ -25,8 +25,12 @@ function changedFiles() {
         return execSync(`git diff --name-only ${RANGE}`, { encoding: 'utf8' })
             .split('\n').map((f) => f.trim()).filter(Boolean);
     }
-    // Uncommitted + staged, else the last commit.
-    let out = execSync('git diff --name-only HEAD', { encoding: 'utf8' }).trim();
+    // Modified + staged, PLUS untracked. `git diff` cannot see a new file, and a
+    // brand-new page or module is exactly the change that most needs a level —
+    // this classifier scored a new public lead-capture page as a 2-file edit.
+    const tracked = execSync('git diff --name-only HEAD', { encoding: 'utf8' }).trim();
+    const untracked = execSync('git ls-files --others --exclude-standard', { encoding: 'utf8' }).trim();
+    let out = [tracked, untracked].filter(Boolean).join('\n');
     if (!out) out = execSync('git diff --name-only HEAD~1 HEAD', { encoding: 'utf8' }).trim();
     return out.split('\n').map((f) => f.trim()).filter(Boolean);
 }

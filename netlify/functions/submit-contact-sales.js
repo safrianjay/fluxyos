@@ -61,6 +61,10 @@ const ALLOWED = [
     'http://localhost:8000', 'http://127.0.0.1:5500', 'http://127.0.0.1:8765',
 ];
 const TEAM_SIZES = ['1-10', '11-50', '51-200', '201-1000', '1000+'];
+// Lead source is ALLOWLISTED, never free text: it drives filtering in the
+// internal console, and an open field there is an injection surface on a public
+// endpoint. Unknown values fall back to the contact-sales default.
+const SOURCES = ['contact-sales', 'event-signup'];
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
@@ -94,6 +98,9 @@ exports.handler = async (event) => {
     const businessType = str(data.business_type, 60);
     const teamSize = TEAM_SIZES.includes(data.team_size) ? data.team_size : '';
     const message = str(data.message, 2000);
+    const source = SOURCES.includes(data.source) ? data.source : 'contact-sales';
+    // Event walk-ups are not enterprise leads by default; they self-select.
+    const planInterest = source === 'event-signup' ? 'event' : 'enterprise';
 
     const whatsappDigits = (whatsapp.match(/\d/g) || []).length;
     if (!name || !email || !isEmail(email) || !whatsapp || whatsappDigits < 6 || !company || !businessType) {
@@ -111,8 +118,8 @@ exports.handler = async (event) => {
             team_size: teamSize || null,
             message: message || null,
             status: 'new',
-            source: 'contact-sales',
-            plan_interest: 'enterprise',
+            source,
+            plan_interest: planInterest,
             user_agent: str(event.headers['user-agent'] || event.headers['User-Agent'], 400) || null,
             created_at: admin.firestore.FieldValue.serverTimestamp(),
         });

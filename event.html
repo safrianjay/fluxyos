@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Register — FluxyOS</title>
+    <link rel="stylesheet" href="/assets/css/tailwind.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <meta name="description" content="Register your interest in FluxyOS at the event. Takes under a minute.">
+    <!-- Event page: reached by QR at a specific event, not by search. Indexing it
+         would surface a dated, context-free form in results long after the event. -->
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#0B0F19">
+    <style>
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        .num { font-variant-numeric: tabular-nums; }
+        /* Inputs are 16px on mobile: anything smaller makes iOS Safari zoom on
+           focus, which on a QR walk-up reads as the page breaking. */
+        .fx-field {
+            width: 100%; height: 3rem; font-size: 16px;
+            border: 1px solid #E5E7EB; border-radius: 0.625rem;
+            padding: 0 0.875rem; background: #fff; color: #0B0F19;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        .fx-field:focus { outline: none; border-color: #EA580C; box-shadow: 0 0 0 3px rgba(234,88,12,.12); }
+        .fx-field[aria-invalid="true"] { border-color: #DC2626; }
+        .fx-label { display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:.375rem; }
+        .fx-hint  { font-size:12px; color:#6B7280; margin-top:.375rem; }
+        .fx-err   { font-size:12px; color:#DC2626; margin-top:.375rem; display:none; }
+        select.fx-field { appearance:none;
+            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%236B7280' stroke-width='2'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+            background-repeat:no-repeat; background-position:right .875rem center; padding-right:2.5rem; }
+        #confetti { position:fixed; inset:0; pointer-events:none; z-index:60; }
+        @media (prefers-reduced-motion: reduce) { #confetti { display:none; } }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased">
+
+<main class="mx-auto w-full max-w-[520px] px-5 py-8 sm:py-12">
+
+    <!-- ── Form ─────────────────────────────────────────────────────────── -->
+    <section id="form-view">
+        <header class="mb-7 text-center">
+            <img src="assets/images/favicon.svg" alt="FluxyOS" class="mx-auto mb-4 h-11 w-11">
+            <h1 class="text-[26px] font-extrabold leading-tight tracking-tight sm:text-[30px]">Register your interest</h1>
+            <p class="mt-2 text-[15px] leading-relaxed text-gray-600">
+                Leave your details and we’ll be in touch. Takes under a minute.
+            </p>
+        </header>
+
+        <form id="event-form" novalidate class="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+            <!-- Honeypot: bots fill it, humans never see it. -->
+            <div class="hidden" aria-hidden="true">
+                <label>Leave this empty <input type="text" name="bot-field" tabindex="-1" autocomplete="off"></label>
+            </div>
+
+            <div>
+                <label class="fx-label" for="ev-name">Full name</label>
+                <input id="ev-name" name="name" class="fx-field" type="text" maxlength="120"
+                       autocomplete="name" enterkeyhint="next" placeholder="Your name" required>
+                <p class="fx-err" data-err-for="ev-name">Please enter your name.</p>
+            </div>
+
+            <div>
+                <label class="fx-label" for="ev-whatsapp">Active WhatsApp number</label>
+                <input id="ev-whatsapp" name="whatsapp" class="fx-field num" type="tel" maxlength="40"
+                       inputmode="tel" autocomplete="tel" enterkeyhint="next" placeholder="+62 812 3456 7890" required>
+                <p class="fx-hint">We’ll contact you here — include your country code.</p>
+                <p class="fx-err" data-err-for="ev-whatsapp">Enter a reachable WhatsApp number.</p>
+            </div>
+
+            <div>
+                <label class="fx-label" for="ev-email">Email</label>
+                <input id="ev-email" name="email" class="fx-field" type="email" maxlength="200"
+                       inputmode="email" autocomplete="email" enterkeyhint="next" placeholder="you@company.com" required>
+                <p class="fx-err" data-err-for="ev-email">Enter a valid email address.</p>
+            </div>
+
+            <div>
+                <label class="fx-label" for="ev-company">Business name</label>
+                <input id="ev-company" name="company" class="fx-field" type="text" maxlength="160"
+                       autocomplete="organization" enterkeyhint="next" placeholder="Your business or university" required>
+                <p class="fx-hint">Students — put your university here.</p>
+                <p class="fx-err" data-err-for="ev-company">Tell us where you’re from.</p>
+            </div>
+
+            <div>
+                <label class="fx-label" for="ev-category">Business category</label>
+                <select id="ev-category" name="business_type" class="fx-field" required>
+                    <option value="">Select one…</option>
+                    <option value="F&B">F&amp;B</option>
+                    <option value="Manufacturing">Manufacturing</option>
+                    <option value="Tech startup">Tech startup</option>
+                    <option value="Retail">Retail</option>
+                    <option value="Student">Student</option>
+                    <option value="Others">Others</option>
+                </select>
+                <p class="fx-err" data-err-for="ev-category">Pick the closest match.</p>
+            </div>
+
+            <!-- Revealed only for "Others": an always-visible free-text field
+                 invites everyone to skip the dropdown, which is what makes the
+                 list useless for segmenting afterwards. -->
+            <div id="ev-other-wrap" class="hidden">
+                <label class="fx-label" for="ev-other">Tell us what you do</label>
+                <input id="ev-other" name="business_type_other" class="fx-field" type="text" maxlength="60"
+                       placeholder="e.g. Logistics, Agency, Clinic">
+                <p class="fx-err" data-err-for="ev-other">A few words is enough.</p>
+            </div>
+
+            <div>
+                <label class="fx-label" for="ev-message">Anything you’re hoping FluxyOS can help with? <span class="font-normal text-gray-400">(optional)</span></label>
+                <textarea id="ev-message" name="message" class="fx-field" rows="2" maxlength="2000"
+                          style="height:auto;padding:.75rem .875rem;" placeholder="Optional"></textarea>
+            </div>
+
+            <p id="ev-form-error" class="hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[13px] font-medium text-red-700"></p>
+
+            <button id="ev-submit" type="submit"
+                    class="mt-1 inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#EA580C] text-[15px] font-bold text-white transition hover:bg-[#c2410c] disabled:opacity-60">
+                Register
+            </button>
+
+            <p class="pt-1 text-center text-[12px] leading-relaxed text-gray-500">
+                We’ll only use your details to contact you about FluxyOS.
+            </p>
+        </form>
+    </section>
+
+    <!-- ── Confirmation ─────────────────────────────────────────────────── -->
+    <section id="done-view" class="hidden text-center">
+        <div class="rounded-2xl border border-gray-200 bg-white p-7 shadow-sm sm:p-9">
+            <div class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-green-50">
+                <svg viewBox="0 0 24 24" class="h-9 w-9" fill="none" stroke="#16A34A" stroke-width="2.5"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M20 6L9 17l-5-5"/>
+                </svg>
+            </div>
+            <h2 class="text-[24px] font-extrabold leading-tight tracking-tight">You’re registered</h2>
+            <p class="mx-auto mt-3 max-w-[380px] text-[15px] leading-relaxed text-gray-600">
+                Thank you — we’ve got your details. We’ll announce who qualifies later,
+                and we’ll reach you on WhatsApp.
+            </p>
+            <p class="mt-6 text-[13px] text-gray-500">You can close this page.</p>
+            <a href="/" class="mt-5 inline-flex h-11 items-center justify-center rounded-xl border border-gray-200 px-5 text-[14px] font-semibold text-gray-700 transition hover:bg-gray-50">
+                Explore FluxyOS
+            </a>
+        </div>
+    </section>
+</main>
+
+<canvas id="confetti" aria-hidden="true"></canvas>
+<script src="assets/js/event-signup.js"></script>
+</body>
+</html>
