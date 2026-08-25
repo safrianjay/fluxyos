@@ -9736,6 +9736,11 @@ class DataService {
         const orgValue = opts.organization != null
             ? opts.organization
             : (profile ? profile.business_name : undefined);
+        // Canonical market identity, read from the workspace the user belongs to.
+        const ws = (typeof window !== 'undefined' && window.FluxyWorkspace) || {};
+        const wsCountry = ws.country || null;
+        const wsCurrency = ws.base_currency || (window.FluxyMoney ? window.FluxyMoney.baseCurrency() : null);
+
         const profileFields = this._cleanDefined({
             email: this._nullableString(opts.email, 160),
             display_name: this._nullableString(opts.display_name, 160),
@@ -9745,8 +9750,16 @@ class DataService {
             // business names ("Business PH" / "Business Ph" / "PH business"), and
             // an approval landed on the wrong uid — the account under test stayed
             // locked while its twin was approved.
-            country: profile ? this._nullableString(profile.country, 4) : undefined,
-            base_currency: profile ? this._nullableString(profile.base_currency, 4) : undefined,
+            // Falls back to the WORKSPACE, which is canonical for both fields and
+            // immutable. Reading only the onboarding profile left country absent
+            // whenever that doc had not been written yet or its read failed —
+            // and the row is synced at KYC-submit time, which can be either. The
+            // result was a review queue where market filtering silently dropped
+            // rows a reviewer needed to see.
+            country: this._nullableString(
+                (profile && profile.country) || wsCountry, 4) || undefined,
+            base_currency: this._nullableString(
+                (profile && profile.base_currency) || wsCurrency, 4) || undefined,
             role: profile ? this._nullableString(profile.role, 80) : undefined,
             phone_number: profile ? this._nullableString(phoneParts || null, 40) : undefined,
             organization: orgValue !== undefined ? this._nullableString(orgValue, 160) : undefined,
