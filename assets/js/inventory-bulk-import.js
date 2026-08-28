@@ -1,30 +1,35 @@
-// FluxyOS — Inventory bulk import drawer
+// FluxyOS — Inventory bulk import panel
 //
-// Inventory → Bulk import → download template → upload → preview → map &
-// validate → review errors → confirm → items created.
+// Mounts INTO the New item drawer as its second tab, the way CSV bulk upload
+// mounts into the Add Transaction drawer. One drawer, a segmented control, one
+// shared footer button — the pattern documented in PROJECT_BACKGROUND.md §5 and
+// implemented in shared-dashboard.js. Inventory used to answer the same question
+// with a second toolbar button and a second drawer; two answers in one product
+// means whoever learned the Ledger never finds this.
+//
+// The visual language is deliberately the Ledger's, not its own: the dashed
+// dropzone, the preview card with its eyebrow / filename / summary / status
+// badge, the column-mapping chips, the 10px uppercase table head, and the amber
+// note. Where this panel needs something the Ledger has no equivalent for
+// (column remapping, the opening-balance statement) it is built out of the same
+// parts rather than inventing a third vocabulary.
 //
 // This file is the SURFACE only. Everything it decides is decided in two places
 // it does not own:
-//   • `inventory-import.js` — parse, map, validate. Pure, and separately tested.
+//   • `inventory-import.js` — parse, map, validate. Pure, separately tested.
 //   • `db-service.importInventoryItems` — the single atomic write.
-// Keeping the judgement out of the DOM is what lets the preview promise exactly
-// what the writer does.
 //
-// Three rules this drawer exists to keep:
+// Three rules it exists to keep:
 //
-//   1. NOTHING IS WRITTEN BEFORE CONFIRM. The file is read in the browser, never
-//      uploaded. Leaving at any point before the last button costs nothing.
-//   2. WHAT WE WILL NOT IMPORT IS SHOWN BEFORE, NOT AFTER. Unmapped columns,
+//   1. NOTHING IS WRITTEN BEFORE CONFIRM. The file is read in the browser and
+//      never uploaded. Leaving costs nothing.
+//   2. WHAT WE WILL NOT IMPORT IS SHOWN BEFORE, NOT AFTER — unmapped columns,
 //      unresolvable account codes, tracking types we do not enforce, rows that
-//      already exist — all of it is on screen while the user can still change
-//      their mind. Finding out afterwards means re-doing a migration.
-//   3. EVERY AMOUNT IS RENDERED THROUGH THE MONEY SEAM BEFORE IT IS CONFIRMED.
-//      `10.000` is ten thousand or ten depending on a convention the file does
-//      not state — 1000x, stored clean, with nothing raised. So the preview
-//      shows `formatBase` output: the number the user approves is literally the
-//      number that lands in the ledger.
-//      (IDR is not exempt. It is merely unambiguous — rupiah has no minor unit,
-//      so a decimal reading of a money cell is never valid there.)
+//      already exist. Finding out afterwards means re-doing a migration.
+//   3. EVERY AMOUNT RENDERS THROUGH THE MONEY SEAM. `10.000` is ten thousand or
+//      ten depending on a convention the file does not state — 1000x, stored
+//      clean, nothing raised. The preview shows `formatBase` output, so the
+//      figure approved is the figure stored.
 
 import {
     analyzeImport,
@@ -39,17 +44,7 @@ const XLSX_URL = '/assets/vendor/xlsx.mini.min.js';
 const SPREADSHEET_EXT = /\.(xlsx|xlsm|xlsb|xls)$/i;
 const CSV_EXT = /\.(csv|txt)$/i;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
-
-const ID = {
-    root: 'inv-import-root',
-    overlay: 'inv-import-overlay',
-    panel: 'inv-import-panel',
-    title: 'inv-import-title',
-    body: 'inv-import-body',
-    footer: 'inv-import-footer'
-};
-
-let mounted = null;
+const PREVIEW_ROWS = 5;
 
 function esc(value) {
     return String(value == null ? '' : value).replace(/[&<>"']/g, (c) => ({
@@ -62,14 +57,14 @@ function money(minor) {
     catch (_) { return String(minor); }
 }
 
-function currencyName() {
-    try { return window.FluxyMoney.baseCurrencyName(); }
-    catch (_) { return 'your workspace currency'; }
-}
-
 function count(n) {
     try { return window.FluxyMoney.baseNumber(Number(n) || 0); }
     catch (_) { return String(n); }
+}
+
+function currencyName() {
+    try { return window.FluxyMoney.baseCurrencyName(); }
+    catch (_) { return 'your workspace currency'; }
 }
 
 function todayKey(d = new Date()) {
@@ -94,6 +89,11 @@ function loadXlsx() {
     return xlsxPromise;
 }
 
+function pickSheet(wb) {
+    const named = wb.SheetNames.find((n) => /invent|import|produk|product|item|barang/i.test(n));
+    return named || wb.SheetNames[0];
+}
+
 /*
  * A picked file → rows of cells.
  *
@@ -102,10 +102,10 @@ function loadXlsx() {
  * they disagree on a comma inside a quoted product name.
  *
  * Excel goes through SheetJS with `raw: true`, so a cell arrives as the text the
- * author typed rather than a value the reader has already interpreted. That
- * matters for exactly one reason: Excel would otherwise hand us a Date for
- * `12/12/2024` using ITS locale's day/month order, and an opening balance booked
- * into the wrong month is not something anybody notices.
+ * author typed rather than a value the reader already interpreted. That matters
+ * for one reason: Excel would otherwise hand us a Date for `12/12/2024` using
+ * ITS locale's day/month order, and an opening balance booked into the wrong
+ * month is not something anybody notices.
  */
 async function readFile(file) {
     const name = String(file.name || '');
@@ -132,76 +132,13 @@ async function readFile(file) {
     throw new Error('Upload a .csv or .xlsx file. Other formats are not read.');
 }
 
-// A workbook may carry several tabs. Prefer the one whose name looks like the
-// reference template's; otherwise the first. Which sheet was used is always
-// reported, because silently reading tab 1 of a 5-tab workbook is how somebody
-// imports last year's list.
-function pickSheet(wb) {
-    const named = wb.SheetNames.find((n) => /invent|import|produk|product|item|barang/i.test(n));
-    return named || wb.SheetNames[0];
-}
-
-// ── Step 1: upload ───────────────────────────────────────────────────────────
-
-function uploadStepHTML() {
-    return `
-    <div class="fluxy-drawer-section">
-        <div class="fluxy-drawer-section-head">
-            <h3 class="fluxy-drawer-section-title">Start from the template</h3>
-        </div>
-        <p class="fluxy-drawer-section-desc">The template carries the ${TEMPLATE_COLUMNS.length} columns
-           this importer reads, each with what it is for and whether it is required. Fill it in,
-           or paste your existing list under its header row.</p>
-        <button type="button" id="inv-import-template" class="fluxy-drawer-btn fluxy-drawer-btn--secondary fluxy-drawer-btn--block" style="margin-top:12px;">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
-            Download the template (CSV)
-        </button>
-        <p class="fluxy-drawer-hint" style="margin-top:8px;">Opens in Excel, Google Sheets, or Numbers. Save it back as CSV or .xlsx — both upload.</p>
-    </div>
-
-    <div class="fluxy-drawer-field">
-        <label class="fluxy-drawer-label" for="inv-import-file">Your file</label>
-        <input id="inv-import-file" type="file" accept=".csv,.xlsx,.xls,.xlsm,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-               class="fluxy-drawer-input" style="padding:10px 12px;">
-        <p class="fluxy-drawer-hint">CSV or Excel, up to 5 MB and ${count(MAX_IMPORT_ROWS)} rows. The file is read here in your browser — it is never uploaded anywhere.</p>
-    </div>
-
-    <div id="inv-import-upload-error" class="fluxy-drawer-callout fluxy-drawer-callout--warning hidden"></div>
-
-    <div class="fluxy-drawer-section fluxy-drawer-section--muted">
-        <div class="fluxy-drawer-section-head">
-            <h3 class="fluxy-drawer-section-title">What happens next</h3>
-        </div>
-        <p class="fluxy-drawer-section-desc">You will see every row, what each one will create, and
-           anything we cannot read — before anything is saved. Nothing is written to your inventory
-           or your ledger until you press Import on the last step.</p>
-    </div>`;
-}
-
-// ── Step 2: review ───────────────────────────────────────────────────────────
-
-function tile(label, value, tone) {
-    const toneClass = tone ? ` inv-import-tile--${tone}` : '';
-    return `<div class="inv-import-tile${toneClass}">
-        <span class="inv-import-tile-value">${esc(value)}</span>
-        <span class="inv-import-tile-label">${esc(label)}</span>
-    </div>`;
-}
-
-function statusBadge(status) {
-    if (status === 'ready') return '<span class="fluxy-table-status fluxy-status-success">Will import</span>';
-    if (status === 'skipped') return '<span class="fluxy-table-status fluxy-status-neutral">Already exists</span>';
-    return '<span class="fluxy-table-status fluxy-status-danger">Cannot import</span>';
-}
-
 /*
  * Warnings are grouped by message, never listed one per row.
  *
  * A 300-row file with an unrecognised cost account produces 300 identical
- * sentences. Nobody reads the 300th, which means nobody reads the first either —
- * and the one warning that mattered is buried in the middle of them. Grouped,
- * the same file says "297 rows: cost account not in your chart" once, with the
- * rows named.
+ * sentences. Nobody reads the 300th, which means nobody reads the first either,
+ * and the one that mattered is buried in the middle. Grouped, the same file says
+ * "297 rows: cost account not in your chart" once, with the rows named.
  */
 function groupIssues(rows, field) {
     const groups = new Map();
@@ -210,321 +147,52 @@ function groupIssues(rows, field) {
             // The account code and the row's own values vary per row; the shape
             // of the complaint does not. Group on the shape.
             const key = issue.message.replace(/"[^"]*"/g, '"…"');
-            if (!groups.has(key)) groups.set(key, { message: issue.message, key, lines: [], column: issue.column });
+            if (!groups.has(key)) groups.set(key, { message: issue.message, lines: [], column: issue.column });
             groups.get(key).lines.push(r.line);
         });
     });
     return Array.from(groups.values()).sort((a, b) => b.lines.length - a.lines.length);
 }
 
-function issueListHTML(groups, tone) {
+// The Ledger's amber note, reused verbatim so the two importers raise concerns
+// in one voice.
+function noteHTML(groups, tone) {
     if (!groups.length) return '';
-    return `<ul class="inv-import-issues inv-import-issues--${tone}">` + groups.map((g) => {
+    const palette = tone === 'error'
+        ? 'border-red-200 bg-red-50 text-red-800'
+        : 'border-amber-200 bg-amber-50 text-amber-800';
+    return `<div class="mt-3 rounded-lg border ${palette} px-3 py-2 space-y-1.5">` + groups.map((g) => {
         const shown = g.lines.slice(0, 6).join(', ');
-        const more = g.lines.length > 6 ? ` +${g.lines.length - 6} more` : '';
+        const more = g.lines.length > 6 ? ` +${g.lines.length - 6}` : '';
         const col = g.column && templateColumn(g.column)
-            ? `<span class="inv-import-issue-col">${esc(templateColumn(g.column).header)}</span>` : '';
-        return `<li>
-            <span class="inv-import-issue-count">${g.lines.length === 1 ? 'Row' : `${g.lines.length} rows`}</span>
-            ${col}
-            <span class="inv-import-issue-text">${esc(g.message)}</span>
-            <span class="inv-import-issue-rows">Row ${esc(shown)}${esc(more)}</span>
-        </li>`;
-    }).join('') + '</ul>';
+            ? `<span class="font-bold">${esc(templateColumn(g.column).header.replace(/^#/, ''))}</span> · ` : '';
+        return `<p class="text-[11px] leading-relaxed">${col}<span>${esc(g.message)}</span> <span class="whitespace-nowrap opacity-70">(row ${esc(shown)}${esc(more)})</span></p>`;
+    }).join('') + '</div>';
 }
 
 /*
- * Map columns.
+ * A mapping chip.
  *
- * Auto-detection handles the template's headers and the spellings a real export
- * produces, in English and Bahasa. What it cannot handle is a column somebody
- * named themselves — and a file is not wrong for saying "Nama Bahan". This is
- * where the user says what detection could not infer.
- *
- * It renders for every column FluxyOS reads: the ones already matched (so a
- * wrong match can be corrected, not just an absent one) and the ones still
- * empty. Required fields come first and are marked, because a file missing one
- * of those cannot be previewed at all until it is answered.
+ * The Ledger renders these as `Label: HeaderInFile` because its labels and its
+ * CSV headers genuinely differ ("Description" ← `vendor_name`). Here they are
+ * usually the same word, and `Product Name: Product Name` is noise that pushed
+ * the real information — the one column we could NOT place — into the sixth row
+ * of a wrapping list. So the header is named only when it differs from what we
+ * call the field, which is exactly when knowing it is worth anything.
  */
-function mappingHTML(state) {
-    const { result } = state;
-    const headers = result.headerCells || [];
-    const used = result.columns.byKey;
-    const options = (selected) => headers.map((h, i) => {
-        const label = String(h || '').trim() || `Column ${i + 1}`;
-        return `<option value="${i}"${String(selected) === String(i) ? ' selected' : ''}>${esc(label)}</option>`;
-    }).join('');
-
-    const rows = TEMPLATE_COLUMNS.filter((c) => c.key !== 'custom_field').map((c) => {
-        const required = c.key === 'name' || c.key === 'unit';
-        const current = used[c.key];
-        const missing = required && current === undefined;
-        return `<div class="inv-import-map-row${missing ? ' inv-import-map-row--missing' : ''}">
-            <div class="inv-import-map-field">
-                <span class="inv-import-map-name">${esc(c.header)}${required ? ' <span class="inv-import-map-req">required</span>' : ''}</span>
-                <span class="inv-import-map-note">${esc(c.note)}</span>
-            </div>
-            <select class="fluxy-drawer-select inv-import-map-select" data-map-key="${esc(c.key)}" aria-label="Column for ${esc(c.header)}">
-                <option value="-1"${current === undefined ? ' selected' : ''}>Not in this file</option>
-                ${options(current)}
-            </select>
-        </div>`;
-    }).join('');
-
-    return `<div class="fluxy-drawer-section">
-        <div class="fluxy-drawer-section-head">
-            <h3 class="fluxy-drawer-section-title">Map columns</h3>
-        </div>
-        <p class="fluxy-drawer-section-desc">We matched what we recognised. Change anything we got wrong, and point us at the columns we could not place.</p>
-        <div class="inv-import-map">${rows}</div>
-    </div>`;
+function chip(label, value, ok) {
+    const tone = ok ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-gray-200 bg-gray-50 text-gray-500';
+    const same = ok && String(value).trim().toLowerCase() === String(label).trim().toLowerCase();
+    const text = ok
+        ? (same ? esc(label) : `${esc(label)}: ${esc(value)}`)
+        : `${esc(label)}: ${esc(value)}`;
+    return `<span class="rounded-full border ${tone} px-2.5 py-1 text-[11px] font-bold">${text}</span>`;
 }
 
-// The file is readable but we cannot tell which column is which. Everything the
-// review step would show depends on that answer, so this is the only thing on
-// screen until it is given.
-function mappingStepHTML(state) {
-    return `
-    <div class="inv-import-filename">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"></path></svg>
-        <span>${esc(state.fileName)}</span>
-        <button type="button" id="inv-import-change-file" class="inv-import-change">Choose a different file</button>
-    </div>
-    <div class="fluxy-drawer-callout fluxy-drawer-callout--warning">${esc(state.result.fatal.message)}</div>
-    ${mappingHTML(state)}`;
-}
-
-function reviewStepHTML(state) {
-    const { result, fileName, sheetName, sheetCount, amountMode, dimensions, openingDimensionId } = state;
-    const s = result.summary;
-    const unmapped = unmappedColumnReport(result.columns);
-    const errorGroups = groupIssues(result.rows.filter((r) => r.status === 'error'), 'errors');
-    const warningGroups = groupIssues(result.rows, 'warnings');
-
-    const notices = [];
-    if (sheetCount > 1) {
-        notices.push(`Read the <strong>${esc(sheetName)}</strong> sheet of ${sheetCount}. Rename the sheet you want first if that is the wrong one.`);
-    }
-    if (result.skippedMetaRows) {
-        notices.push(`Skipped ${result.skippedMetaRows} guidance ${result.skippedMetaRows === 1 ? 'row' : 'rows'} from the template (the requirement and instruction lines).`);
-    }
-
-    const openingBlock = s.withOpening ? `
-        <div class="fluxy-drawer-section">
-            <div class="fluxy-drawer-section-head">
-                <h3 class="fluxy-drawer-section-title">Opening stock posts to your ledger</h3>
-            </div>
-            <p class="fluxy-drawer-section-desc">${esc(
-                `${count(s.withOpening)} ${s.withOpening === 1 ? 'item carries' : 'items carry'} an opening balance worth ${money(s.openingValueMinor)}.`
-            )}</p>
-            <p class="fluxy-drawer-section-desc">FluxyOS records it as Inventory (1200) against Opening Balance Equity (3900) — stating what you already own, without inventing revenue for it. One journal per opening date.</p>
-            ${dimensions && dimensions.length ? `
-            <div class="fluxy-drawer-field" style="margin-top:12px;">
-                <label class="fluxy-drawer-label" for="inv-import-outlet">Where is this stock?</label>
-                <select id="inv-import-outlet" class="fluxy-drawer-select">
-                    <option value="">Not assigned to an outlet</option>
-                    ${dimensions.map((d) => `<option value="${esc(d.id)}"${d.id === openingDimensionId ? ' selected' : ''}>${esc(d.name)}</option>`).join('')}
-                </select>
-                <p class="fluxy-drawer-hint">The template has no outlet column, so the whole file lands in one place. Unassigned stock still counts toward the company total — it just shows as "Unassigned" on Outlet P&amp;L.</p>
-            </div>` : ''}
-        </div>` : '';
-
-    // The format control appears only when a real ambiguity was found. Offering
-    // it on every import would train people to click past it.
-    const formatBlock = s.ambiguousAmounts ? `
-        <div class="fluxy-drawer-callout fluxy-drawer-callout--warning">
-            <strong>${esc(`${count(s.ambiguousAmounts)} ${s.ambiguousAmounts === 1 ? 'row has an amount' : 'rows have amounts'} that could be read two ways.`)}</strong>
-            <span style="display:block;margin-top:4px;">In this workspace's currency, "1.500" is either one thousand five hundred, or one and a half. Tell us which convention the file uses and the figures below will update.</span>
-            <div class="fluxy-drawer-segment" style="margin-top:10px;" role="group" aria-label="Number format">
-                <button type="button" class="fluxy-drawer-segment-btn${amountMode === 'auto' ? ' is-active' : ''}" data-amount-mode="auto">Detect</button>
-                <button type="button" class="fluxy-drawer-segment-btn${amountMode === 'id' ? ' is-active' : ''}" data-amount-mode="id">1.234,56</button>
-                <button type="button" class="fluxy-drawer-segment-btn${amountMode === 'en' ? ' is-active' : ''}" data-amount-mode="en">1,234.56</button>
-            </div>
-        </div>` : '';
-
-    const unmappedBlock = unmapped.length ? `
-        <div class="fluxy-drawer-section fluxy-drawer-section--muted">
-            <div class="fluxy-drawer-section-head">
-                <h3 class="fluxy-drawer-section-title">Columns we will not import (${unmapped.length})</h3>
-            </div>
-            <ul class="inv-import-issues inv-import-issues--muted">
-                ${unmapped.map((u) => `<li><span class="inv-import-issue-col">${esc(u.header)}</span><span class="inv-import-issue-text">${esc(u.reason)}</span></li>`).join('')}
-            </ul>
-        </div>` : '';
-
-    const rowsHTML = result.rows.map((r) => {
-        const d = r.draft;
-        const opening = r.opening
-            ? `<span class="fluxy-table-cell-primary">${esc(count(r.opening.quantity))} ${esc(d.base_unit)}</span>
-               <span class="fluxy-table-cell-meta">${esc(money(r.opening.amount_minor))} · ${esc(r.opening.date_key)}</span>`
-            // Blank is not zero: an item with no opening balance says so, because
-            // an empty cell reads as "we looked and found none".
-            : '<span class="fluxy-table-cell-meta">No opening stock</span>';
-        const meta = [d.sku, d.base_unit, d.track_stock ? null : 'Untracked'].filter(Boolean).join(' · ');
-        // A POINTER, not the prose. The full sentence is already in the grouped
-        // "cannot be imported" section above with its row numbers; repeating it
-        // in the cell duplicates nearby content and — measured at 720px — grew
-        // the row to eleven lines and squeezed the item name into a ribbon,
-        // which costs the table the scanability it exists for.
-        // The reference sheet prefixes its opening-balance headers with `#`. That
-        // is fidelity in the template and noise in a one-line pointer, where it
-        // pushes "#Opening Balance Stock" onto three wrapped lines.
-        const badColumns = Array.from(new Set(r.errors
-            .map((e) => (e.column && templateColumn(e.column) ? templateColumn(e.column).header.replace(/^#/, '') : null))
-            .filter(Boolean)));
-        const why = badColumns.length
-            ? `<span class="inv-import-row-why">Check: ${esc(badColumns.join(' · '))}</span>` : '';
-        return `<tr class="fluxy-table-row${r.status === 'error' ? ' inv-import-row--error' : ''}">
-            <td class="fluxy-table-cell inv-import-line">${r.line}</td>
-            <td class="fluxy-table-cell">
-                <span class="fluxy-table-cell-primary">${esc(d.name || '—')}</span>
-                <span class="fluxy-table-cell-meta">${esc(meta)}</span>
-                ${why}
-            </td>
-            <td class="fluxy-table-cell fluxy-table-money">${d.sales_price == null ? '<span class="fluxy-table-cell-meta">Not sold</span>' : esc(money(d.sales_price))}</td>
-            <td class="fluxy-table-cell">${opening}</td>
-            <td class="fluxy-table-cell">${statusBadge(r.status)}</td>
-        </tr>`;
-    }).join('');
-
-    return `
-    <div class="inv-import-filename">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"></path></svg>
-        <span>${esc(fileName)}</span>
-        <button type="button" id="inv-import-change-file" class="inv-import-change">Choose a different file</button>
-    </div>
-
-    <div class="inv-import-tiles">
-        ${tile('Will import', count(s.ready), 'good')}
-        ${tile('Already in FluxyOS', count(s.skipped), s.skipped ? 'muted' : '')}
-        ${tile('Cannot import', count(s.errors), s.errors ? 'bad' : '')}
-        ${tile('Opening stock', s.withOpening ? money(s.openingValueMinor) : '—', s.withOpening ? 'info' : '')}
-    </div>
-
-    <p class="inv-import-currency-note">${esc(
-        `Every amount in this file is read as ${currencyName()} — the currency this workspace keeps its books in. The template has no currency column, so a price list in another currency has to be converted before it is uploaded.`
-    )}</p>
-
-    ${notices.length ? `<div class="fluxy-drawer-callout fluxy-drawer-callout--info">${notices.join('<br>')}</div>` : ''}
-    ${formatBlock}
-
-    ${s.errors ? `
-    <div class="fluxy-drawer-section">
-        <div class="fluxy-drawer-section-head">
-            <h3 class="fluxy-drawer-section-title">${count(s.errors)} ${s.errors === 1 ? 'row cannot' : 'rows cannot'} be imported</h3>
-        </div>
-        <p class="fluxy-drawer-section-desc">Fix these in your file and upload it again, or import the ${count(s.ready)} good ${s.ready === 1 ? 'row' : 'rows'} now and add the rest later. Nothing here is guessed at.</p>
-        ${issueListHTML(errorGroups, 'error')}
-    </div>` : ''}
-
-    ${warningGroups.length ? `
-    <div class="fluxy-drawer-section">
-        <div class="fluxy-drawer-section-head">
-            <h3 class="fluxy-drawer-section-title">Worth knowing before you import</h3>
-        </div>
-        <p class="fluxy-drawer-section-desc">These rows import fine. This is what FluxyOS will and will not do with them.</p>
-        ${issueListHTML(warningGroups, 'warn')}
-    </div>` : ''}
-
-    ${unmappedBlock}
-    ${mappingHTML(state)}
-    ${openingBlock}
-
-    <div class="fluxy-drawer-section">
-        <div class="fluxy-drawer-section-head">
-            <h3 class="fluxy-drawer-section-title">Every row</h3>
-        </div>
-        <div class="fluxy-table-scroll" style="margin-top:8px;">
-            <table class="fluxy-table inv-import-preview">
-                <thead>
-                    <tr class="fluxy-table-header">
-                        <th>Row</th>
-                        <th>Item</th>
-                        <th class="fluxy-table-money">Sell price</th>
-                        <th>Opening stock</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>${rowsHTML}</tbody>
-            </table>
-        </div>
-    </div>
-
-    <div id="inv-import-error" class="fluxy-drawer-callout fluxy-drawer-callout--warning hidden"></div>`;
-}
-
-// ── Step 3: done ─────────────────────────────────────────────────────────────
-
-function doneStepHTML(outcome) {
-    const t = outcome.totals;
-    const journals = outcome.journals || [];
-    return `
-    <div class="inv-import-done">
-        <span class="inv-import-done-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
-        </span>
-        <h3 class="inv-import-done-title">${count(t.items)} ${t.items === 1 ? 'item' : 'items'} added to your inventory</h3>
-        ${t.opening_items ? `<p class="inv-import-done-sub">${count(t.opening_items)} of them opened with stock worth ${esc(money(t.opening_amount))}.</p>` : ''}
-    </div>
-
-    ${journals.length ? `
-    <div class="fluxy-drawer-section">
-        <div class="fluxy-drawer-section-head">
-            <h3 class="fluxy-drawer-section-title">Posted to the ledger</h3>
-        </div>
-        <p class="fluxy-drawer-section-desc">Opening stock is real value on your balance sheet, so it is a numbered journal like any other — reviewable, and reversible from the Accounting Center.</p>
-        <ul class="inv-import-issues inv-import-issues--muted">
-            ${journals.map((j) => `<li>
-                <span class="inv-import-issue-col">${esc(j.journal_number)}</span>
-                <span class="inv-import-issue-text">Dr 1200 Inventory · Cr 3900 Opening Balance Equity — ${esc(money(j.amount))} across ${count(j.item_count)} ${j.item_count === 1 ? 'item' : 'items'}</span>
-                <span class="inv-import-issue-rows">${esc(j.date_key)}</span>
-            </li>`).join('')}
-        </ul>
-        <a href="/accounting?tab=journals" class="fluxy-drawer-btn fluxy-drawer-btn--secondary fluxy-drawer-btn--block" style="margin-top:12px;">Open the Accounting Center</a>
-    </div>` : ''}
-
-    ${outcome.skipped && outcome.skipped.length ? `
-    <div class="fluxy-drawer-section fluxy-drawer-section--muted">
-        <div class="fluxy-drawer-section-head">
-            <h3 class="fluxy-drawer-section-title">${count(outcome.skipped.length)} skipped</h3>
-        </div>
-        <p class="fluxy-drawer-section-desc">These already existed and were left exactly as they were — an import never overwrites an item you already keep.</p>
-        <ul class="inv-import-issues inv-import-issues--muted">
-            ${outcome.skipped.slice(0, 12).map((s) => `<li><span class="inv-import-issue-text">${esc(s.name)} — ${esc(s.reason)}</span></li>`).join('')}
-            ${outcome.skipped.length > 12 ? `<li><span class="inv-import-issue-text">…and ${outcome.skipped.length - 12} more.</span></li>` : ''}
-        </ul>
-    </div>` : ''}`;
-}
-
-// ── Controller ───────────────────────────────────────────────────────────────
-
-const STEPS = [
-    { key: 'upload', label: 'Upload' },
-    { key: 'review', label: 'Map & review' },
-    { key: 'done', label: 'Imported' }
-];
-
-function footerHTML(step, state) {
-    if (step === 'upload') {
-        return `<button type="button" id="inv-import-cancel" class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Cancel</button>
-                <button type="button" id="inv-import-next" class="fluxy-drawer-btn fluxy-drawer-btn--primary" disabled>Preview the file</button>`;
-    }
-    if (step === 'review') {
-        const ready = state.result && !state.result.needsMapping ? state.result.summary.ready : 0;
-        return `<button type="button" id="inv-import-back" class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Back</button>
-                <button type="button" id="inv-import-confirm" class="fluxy-drawer-btn fluxy-drawer-btn--primary"${ready ? '' : ' disabled'}>
-                    ${ready ? `Import ${count(ready)} ${ready === 1 ? 'item' : 'items'}` : 'Nothing to import'}
-                </button>`;
-    }
-    return `<button type="button" id="inv-import-done" class="fluxy-drawer-btn fluxy-drawer-btn--primary fluxy-drawer-btn--block">Done</button>`;
-}
-
-export function openInventoryImport({ ds, user, onImported } = {}) {
-    if (mounted) return mounted;
-    if (!ds || !user) throw new Error('openInventoryImport needs { ds, user }');
+export function mountInventoryImport(contentEl, { ds, user, onStateChange, onImported } = {}) {
+    if (!contentEl || !ds || !user) throw new Error('mountInventoryImport needs (contentEl, { ds, user })');
 
     const state = {
-        step: 'upload',
         fileName: '',
         rawRows: null,
         sheetName: null,
@@ -537,71 +205,254 @@ export function openInventoryImport({ ds, user, onImported } = {}) {
         closedPeriods: new Set(),
         dimensions: [],
         openingDimensionId: '',
-        busy: false
+        busy: false,
+        error: ''
     };
 
-    const host = document.createElement('div');
-    host.innerHTML = window.FluxyDrawer.build({
-        ids: ID,
-        title: 'Bulk import inventory',
-        description: 'Bring an existing item list into FluxyOS. You will see exactly what it creates before anything is saved.',
-        size: 'xl',
-        stepper: { steps: STEPS, current: 'upload' },
-        bodyHTML: uploadStepHTML(),
-        footerHTML: footerHTML('upload', state)
-    });
-    document.body.appendChild(host.firstElementChild);
+    contentEl.innerHTML = shellHTML();
 
-    const root = document.getElementById(ID.root);
-    const panel = document.getElementById(ID.panel);
-    const overlay = document.getElementById(ID.overlay);
-    const body = document.getElementById(ID.body);
-    const footer = document.getElementById(ID.footer);
-    let dispose = null;
+    const el = (id) => contentEl.querySelector(`#${id}`);
 
-    function close() {
-        if (state.busy) return;
-        panel.classList.add('translate-x-full');
-        overlay.classList.add('opacity-0');
-        document.body.style.overflow = '';
-        if (dispose) dispose();
-        window.setTimeout(() => { root.remove(); }, 300);
-        mounted = null;
+    function emit() {
+        if (typeof onStateChange !== 'function') return;
+        const ready = !!(state.result && state.result.ok && state.result.summary.ready > 0);
+        onStateChange({
+            ready,
+            busy: state.busy,
+            count: ready ? state.result.summary.ready : 0
+        });
     }
 
-    function render(step) {
-        state.step = step;
-        body.innerHTML = step === 'upload' ? uploadStepHTML()
-            : step === 'review' ? (state.result && state.result.needsMapping
-                ? mappingStepHTML(state) : reviewStepHTML(state))
-            : doneStepHTML(state.outcome);
-        footer.innerHTML = footerHTML(step, state);
-        window.FluxyDrawer.updateStepper(panel, step);
-        body.scrollTop = 0;
-        // Selects added after load are enhanced by the shared MutationObserver,
-        // but calling it directly avoids a frame of native <select>.
-        try { window.FluxySelect && window.FluxySelect.enhanceAll && window.FluxySelect.enhanceAll(body); } catch (_) { /* progressive */ }
-        wire();
+    // ── Shell ───────────────────────────────────────────────────────────────
+    // The dropzone is the Ledger's, down to the dashed 2xl wrapper and the 11px
+    // icon tile. The template download lives inside it because it answers the
+    // question the dropzone asks ("what am I supposed to drop?") and a separate
+    // card for one link is the sort of thing that makes a form feel long.
+    function shellHTML() {
+        return `
+        <div class="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5" id="inv-import-dropzone">
+            <label for="inv-import-file" class="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-7 text-center transition-all duration-200 hover:border-[#EA580C] hover:bg-gray-50">
+                <span class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 text-[#EA580C]">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
+                </span>
+                <span id="inv-import-file-label" class="max-w-full truncate text-[13px] font-bold text-gray-900">Choose or drop a CSV or Excel file</span>
+                <span class="mt-1 text-[12px] text-gray-500">Read in your browser. Nothing is saved until you confirm.</span>
+            </label>
+            <input type="file" id="inv-import-file" accept=".csv,.xlsx,.xls,.xlsm,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="sr-only">
+            <div class="mt-3 flex items-center justify-between gap-3">
+                <span class="text-[11px] text-gray-500">${esc(TEMPLATE_COLUMNS.length)} columns · up to ${esc(count(MAX_IMPORT_ROWS))} rows</span>
+                <button type="button" id="inv-import-template" class="text-[12px] font-bold text-[#EA580C] hover:underline">Download the template</button>
+            </div>
+            <div id="inv-import-feedback" class="hidden mt-3 text-[12px] font-medium"></div>
+        </div>
+
+        <div id="inv-import-preview" class="hidden"></div>`;
     }
 
-    function showUploadError(message) {
-        const el = document.getElementById('inv-import-upload-error');
-        if (!el) return;
-        el.textContent = message;
-        el.classList.toggle('hidden', !message);
+    // ── Preview ─────────────────────────────────────────────────────────────
+    function renderPreview() {
+        const host = el('inv-import-preview');
+        if (!state.result) { host.classList.add('hidden'); host.innerHTML = ''; return; }
+        host.classList.remove('hidden');
+
+        const r = state.result;
+        const needsMapping = !!r.needsMapping;
+        const s = r.summary || {};
+        const errorGroups = needsMapping ? [] : groupIssues(r.rows.filter((x) => x.status === 'error'), 'errors');
+        const warnGroups = needsMapping ? [] : groupIssues(r.rows, 'warnings');
+        const unmapped = unmappedColumnReport(r.columns);
+
+        // Badge mirrors the Ledger's: emerald when the file is clean, amber when
+        // something was set aside, and it names the count rather than a mood.
+        let badge = { text: 'Ready', tone: 'border-emerald-200 bg-emerald-50 text-emerald-700' };
+        if (needsMapping) badge = { text: 'Needs mapping', tone: 'border-amber-200 bg-amber-50 text-amber-700' };
+        else if (s.errors) badge = { text: `${s.errors} cannot import`, tone: 'border-amber-200 bg-amber-50 text-amber-700' };
+        else if (s.skipped) badge = { text: `${s.skipped} skipped`, tone: 'border-amber-200 bg-amber-50 text-amber-700' };
+
+        const summaryLine = needsMapping
+            ? r.fatal.message
+            : `${count(s.ready)} of ${count(s.total)} row${s.total === 1 ? '' : 's'} will be imported.`
+              + (s.total > PREVIEW_ROWS ? ` Showing first ${PREVIEW_ROWS}.` : '');
+
+        host.innerHTML = `
+        <div class="rounded-xl border border-gray-200 bg-white p-4">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400">Inventory import preview</p>
+                    <p class="mt-1 truncate text-[13px] font-bold text-gray-900">${esc(state.fileName)}</p>
+                    <p class="mt-1 text-[12px] text-gray-500">${esc(summaryLine)}</p>
+                </div>
+                <span class="shrink-0 rounded-full border ${badge.tone} px-2.5 py-1 text-[11px] font-bold">${esc(badge.text)}</span>
+            </div>
+
+            ${mappingChipsHTML(r)}
+            ${state.sheetCount > 1 ? `<p class="mt-2 text-[11px] text-gray-500">Read the <strong>${esc(state.sheetName)}</strong> sheet of ${state.sheetCount}.</p>` : ''}
+            ${r.skippedMetaRows ? `<p class="mt-2 text-[11px] text-gray-500">Skipped ${r.skippedMetaRows} guidance row${r.skippedMetaRows === 1 ? '' : 's'} from the template.</p>` : ''}
+
+            ${noteHTML(errorGroups, 'error')}
+            ${noteHTML(warnGroups, 'warn')}
+            ${unmapped.length ? `<div class="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                <p class="text-[11px] font-bold text-gray-600">Columns we will not import (${unmapped.length})</p>
+                ${unmapped.map((u) => `<p class="text-[11px] text-gray-500">${esc(u.header)} — ${esc(u.reason)}</p>`).join('')}
+            </div>` : ''}
+
+            ${needsMapping || s.total ? tableHTML(r, needsMapping) : ''}
+        </div>
+
+        ${mappingCardHTML(r)}
+        ${optionsCardHTML(r)}`;
     }
 
-    function showReviewError(message) {
-        const el = document.getElementById('inv-import-error');
-        if (!el) return;
-        el.textContent = message;
-        el.classList.toggle('hidden', !message);
-        if (message) el.scrollIntoView({ block: 'nearest' });
+    // Every column FluxyOS reads, and which header in the file it matched — the
+    // Ledger's mapping chips, which happen to be exactly the report this
+    // importer needs. Only the columns that carry meaning are chipped; chipping
+    // all 22 would bury the two that are required.
+    function mappingChipsHTML(r) {
+        const KEYS = [
+            ['name', 'Name'], ['sku', 'SKU'], ['unit', 'Unit'],
+            ['track_stock', 'Track'], ['sell_price', 'Sell price'], ['opening_qty', 'Opening stock']
+        ];
+        const headers = r.headerCells || [];
+        return '<div class="mt-3 flex flex-wrap gap-2">' + KEYS.map(([k, short]) => {
+            const idx = r.columns.byKey[k];
+            const found = idx !== undefined;
+            // The reference template prefixes its opening-balance headers with
+            // `#`. Left on, the chip compares "#Opening Balance Stock" against
+            // "Opening Balance Stock", decides they differ, and prints both.
+            const header = found ? (String(headers[idx] || '').trim().replace(/^#/, '') || `Column ${idx + 1}`) : 'Not in file';
+            // A template header matches its own short name closely enough that
+            // printing both twice is the redundancy the chip helper strips.
+            const templateHeader = templateColumn(k).header.replace(/^#/, '');
+            const value = (found && header.toLowerCase() === templateHeader.toLowerCase()) ? short : header;
+            return chip(short, value, found);
+        }).join('') + '</div>';
     }
 
-    // Re-runs the pure analyzer against the rows already in memory. Called on
-    // first parse and whenever the number-format choice changes — re-reading the
-    // file would be the same work plus an I/O round trip.
+    function tableHTML(r, needsMapping) {
+        if (needsMapping) return '';
+        // Rows that cannot import come first: they are the ones needing a
+        // decision, exactly as the Ledger floats its flagged duplicates.
+        const ordered = [...r.rows.filter((x) => x.status === 'error'), ...r.rows.filter((x) => x.status !== 'error')];
+        const rows = ordered.slice(0, PREVIEW_ROWS);
+        if (!rows.length) return '';
+        return `<div class="mt-3 overflow-x-auto rounded-lg border border-gray-200">
+            <table class="w-full min-w-[640px] text-left">
+                <thead class="bg-gray-50 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                    <tr><th class="px-3 py-2">Row</th><th class="px-3 py-2">Item</th><th class="px-3 py-2">Unit</th>
+                        <th class="px-3 py-2">Sell price</th>
+                        <th class="px-3 py-2">Opening stock</th><th class="px-3 py-2">Status</th></tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 text-[12px]">
+                ${rows.map((row) => {
+                    // Sell price belongs on screen for the same reason opening
+                    // stock does: it is money about to be stored, and the point
+                    // of a preview is that the figure approved is the figure
+                    // written. Dropping it to save a column made the money seam
+                    // unverifiable for every item that is sold.
+                    const bad = row.status === 'error';
+                    const opening = row.opening
+                        ? `${esc(count(row.opening.quantity))} ${esc(row.draft.base_unit)} · ${esc(money(row.opening.amount_minor))}`
+                        // Blank is not zero: an item with no opening balance says so.
+                        : '<span class="text-gray-400">No opening stock</span>';
+                    const sell = row.draft.sales_price == null
+                        ? '<span class="text-gray-400">Not sold</span>'
+                        : esc(money(row.draft.sales_price));
+                    return `<tr${bad ? ' class="bg-amber-50/40"' : ''}>
+                        <td class="px-3 py-2 tabular-nums text-gray-400">${row.line}</td>
+                        <td class="px-3 py-2 font-semibold text-gray-900">${esc(row.draft.name || '—')}
+                            ${row.draft.sku ? `<span class="block text-[11px] font-normal text-gray-500">${esc(row.draft.sku)}</span>` : ''}</td>
+                        <td class="px-3 py-2 text-gray-600">${esc(row.draft.base_unit || '—')}</td>
+                        <td class="px-3 py-2 tabular-nums text-gray-600">${sell}</td>
+                        <td class="px-3 py-2 text-gray-600">${opening}</td>
+                        <td class="px-3 py-2">${bad
+                            ? '<span class="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">Cannot import</span>'
+                            : row.status === 'skipped'
+                                ? '<span class="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] font-bold text-gray-500">Already exists</span>'
+                                : '<span class="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">Will import</span>'}</td>
+                    </tr>`;
+                }).join('')}
+                </tbody>
+            </table>
+        </div>`;
+    }
+
+    // Shown only when auto-detection could not place the required columns. A
+    // file kept under its owner's own headers — "Bahan", "Takaran" — is a good
+    // file; refusing it turns a thirty-second answer into a dead end.
+    function mappingCardHTML(r) {
+        if (!r.needsMapping) return '';
+        const headers = r.headerCells || [];
+        const options = (selected) => headers.map((h, i) => {
+            const label = String(h || '').trim() || `Column ${i + 1}`;
+            return `<option value="${i}"${String(selected) === String(i) ? ' selected' : ''}>${esc(label)}</option>`;
+        }).join('');
+        const fields = TEMPLATE_COLUMNS.filter((c) => c.key !== 'custom_field').map((c) => {
+            const required = c.key === 'name' || c.key === 'unit';
+            const current = r.columns.byKey[c.key];
+            return `<div class="flex items-center justify-between gap-3 py-1.5">
+                <span class="min-w-0 text-[12px] text-gray-700">${esc(c.header.replace(/^#/, ''))}${required ? '<span class="ml-1 text-[10px] font-bold uppercase tracking-wider text-red-600">required</span>' : ''}</span>
+                <select data-map-key="${esc(c.key)}" aria-label="Column for ${esc(c.header)}"
+                    class="w-[150px] shrink-0 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-[12px] outline-none">
+                    <option value="-1"${current === undefined ? ' selected' : ''}>Not in this file</option>
+                    ${options(current)}
+                </select>
+            </div>`;
+        }).join('');
+        return `<div class="mt-4 rounded-xl border border-gray-200 bg-white p-4">
+            <p class="text-[13px] font-bold text-gray-900">Map columns</p>
+            <p class="mt-0.5 text-[11px] text-gray-500">We matched what we recognised. Point us at the rest.</p>
+            <div class="mt-2 max-h-[260px] divide-y divide-gray-100 overflow-y-auto">${fields}</div>
+        </div>`;
+    }
+
+    // The Ledger's "Override row status" card, in shape: a white card holding the
+    // choices that change how the file is read. Each block appears only when the
+    // file actually raises the question.
+    function optionsCardHTML(r) {
+        if (r.needsMapping) return '';
+        const s = r.summary;
+        const blocks = [];
+
+        if (s.ambiguousAmounts) {
+            blocks.push(`
+            <div>
+                <p class="text-[13px] font-bold text-gray-900">Number format</p>
+                <p class="mt-0.5 text-[11px] text-gray-500">${esc(count(s.ambiguousAmounts))} row${s.ambiguousAmounts === 1 ? '' : 's'} could be read two ways — "1.500" is either one thousand five hundred, or one and a half.</p>
+                <div class="mt-2 grid grid-cols-3 gap-1 rounded-xl bg-gray-100 p-1">
+                    ${['auto', 'id', 'en'].map((m) => `<button type="button" data-amount-mode="${m}"
+                        class="rounded-lg px-2 py-1.5 text-[12px] font-bold ${state.amountMode === m ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}">${m === 'auto' ? 'Detect' : m === 'id' ? '1.234,56' : '1,234.56'}</button>`).join('')}
+                </div>
+            </div>`);
+        }
+
+        if (s.withOpening) {
+            blocks.push(`
+            <div>
+                <p class="text-[13px] font-bold text-gray-900">Opening stock posts to your ledger</p>
+                <p class="mt-0.5 text-[11px] text-gray-500">${esc(count(s.withOpening))} item${s.withOpening === 1 ? '' : 's'} worth ${esc(money(s.openingValueMinor))}. Recorded as Inventory (1200) against Opening Balance Equity (3900) — stating what you already own, without inventing revenue for it.</p>
+                ${state.dimensions.length ? `
+                <select id="inv-import-outlet" class="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] outline-none">
+                    <option value="">Not assigned to an outlet</option>
+                    ${state.dimensions.map((d) => `<option value="${esc(d.id)}"${d.id === state.openingDimensionId ? ' selected' : ''}>${esc(d.name)}</option>`).join('')}
+                </select>` : ''}
+            </div>`);
+        }
+
+        blocks.push(`<p class="text-[11px] text-gray-500">Every amount is read as ${esc(currencyName())} — the currency this workspace keeps its books in. The template has no currency column, so a price list in another currency has to be converted before it is uploaded.</p>`);
+
+        return `<div class="mt-4 rounded-xl border border-gray-200 bg-white p-4 space-y-3">${blocks.join('')}</div>`;
+    }
+
+    function setFeedback(message, tone) {
+        const fb = el('inv-import-feedback');
+        if (!fb) return;
+        fb.textContent = message || '';
+        fb.className = message
+            ? `mt-3 text-[12px] font-medium ${tone === 'error' ? 'text-red-600' : 'text-gray-500'}`
+            : 'hidden mt-3 text-[12px] font-medium';
+    }
+
+    // ── Data ────────────────────────────────────────────────────────────────
     function analyze() {
         state.result = analyzeImport(state.rawRows, {
             minorPerUnit: window.FluxyMoney.baseConfig().minorPerUnit || 1,
@@ -617,16 +468,15 @@ export function openInventoryImport({ ds, user, onImported } = {}) {
 
     async function loadWorkspaceContext() {
         // Everything the analyzer needs to judge a row against THIS workspace:
-        // what already exists, which account codes are real, and which periods
-        // are shut. Fetched once, when a file is picked, rather than on open —
-        // most opens are somebody looking at the template.
+        // what already exists, which account codes are real, which periods are
+        // shut. Fetched when a file is picked, not on mount — most opens of this
+        // tab are somebody looking at the template.
         const [items, chart, periods, dims] = await Promise.all([
             ds.getItems(user.uid, { includeArchived: true }).catch(() => []),
             // The PICKER chart, not getChartOfAccounts: it falls back to the
-            // canonical seed for a workspace that has never opened the Accounting
-            // Center. Without that fallback the chart reads empty and every single
-            // account code in the file is reported as unresolvable — a wall of
-            // warnings about a chart that is simply not seeded yet.
+            // canonical seed for a workspace that has never opened the
+            // Accounting Center. Without that fallback the chart reads empty and
+            // every account code in the file is reported as unresolvable.
             ds.getChartForPicker(user.uid).catch(() => []),
             ds.listPeriods(user.uid).catch(() => []),
             ds.getDimensions(user.uid).catch(() => [])
@@ -640,9 +490,9 @@ export function openInventoryImport({ ds, user, onImported } = {}) {
     }
 
     async function handleFile(file) {
-        showUploadError('');
-        const next = document.getElementById('inv-import-next');
-        if (next) { next.disabled = true; next.textContent = 'Reading…'; }
+        setFeedback('Reading…');
+        state.busy = true;
+        emit();
         try {
             const [read] = await Promise.all([readFile(file), loadWorkspaceContext()]);
             state.fileName = file.name;
@@ -651,24 +501,30 @@ export function openInventoryImport({ ds, user, onImported } = {}) {
             state.sheetCount = read.sheetCount;
             state.columnOverrides = {};
             const result = analyze();
-            // A file we cannot read AT ALL stops here, on the step that owns the
-            // file. A file whose columns we merely cannot place is a different
-            // thing and goes forward — that is what the mapping step is for.
+            el('inv-import-file-label').textContent = file.name;
+            // A file we cannot read AT ALL reports on the dropzone. A file whose
+            // columns we merely cannot place is a different thing and renders its
+            // preview, with the mapping card under it.
             if (!result.ok && !result.needsMapping) {
-                showUploadError(result.fatal.message);
+                setFeedback(result.fatal.message, 'error');
                 state.rawRows = null;
-                return;
+                state.result = null;
+            } else {
+                setFeedback('');
             }
-            render('review');
         } catch (err) {
-            showUploadError(err && err.message ? err.message : 'Could not read that file.');
+            setFeedback((err && err.message) || 'Could not read that file.', 'error');
+            state.rawRows = null;
+            state.result = null;
         } finally {
-            const btn = document.getElementById('inv-import-next');
-            if (btn) { btn.textContent = 'Preview the file'; btn.disabled = !state.rawRows; }
+            state.busy = false;
+            renderPreview();
+            emit();
         }
     }
 
-    async function confirmImport() {
+    async function confirm() {
+        if (!state.result || !state.result.ok) return;
         const rows = state.result.rows.filter((r) => r.status === 'ready');
         if (!rows.length) return;
         const s = state.result.summary;
@@ -678,7 +534,7 @@ export function openInventoryImport({ ds, user, onImported } = {}) {
         // items" — the two are different promises.
         if (s.withOpening) {
             const ok = await window.showConfirmDialog({
-                title: `Import ${count(s.ready)} items and post ${esc(money(s.openingValueMinor))} of opening stock?`,
+                title: `Import ${count(s.ready)} items and post ${money(s.openingValueMinor)} of opening stock?`,
                 body: esc(`This creates the items and posts ${money(s.openingValueMinor)} to 1200 Inventory against 3900 Opening Balance Equity, as a numbered journal you can review or reverse in the Accounting Center.`),
                 confirmLabel: 'Import and post',
                 cancelLabel: 'Not yet',
@@ -687,42 +543,47 @@ export function openInventoryImport({ ds, user, onImported } = {}) {
             if (!ok) return;
         }
 
-        const btn = document.getElementById('inv-import-confirm');
         state.busy = true;
-        if (btn) { btn.disabled = true; btn.textContent = 'Importing…'; }
-        showReviewError('');
+        emit();
+        setFeedback('');
         try {
             const outcome = await ds.importInventoryItems(user.uid, {
                 rows: rows.map((r) => ({ draft: r.draft, opening: r.opening })),
                 dimension_id: state.openingDimensionId || null
             });
-            state.outcome = outcome;
             state.busy = false;
-            render('done');
             window.showToast(`${outcome.totals.items} ${outcome.totals.items === 1 ? 'item' : 'items'} imported.`, 'success');
-            if (typeof onImported === 'function') { try { await onImported(outcome); } catch (_) { /* the page reload is best-effort */ } }
+            if (typeof onImported === 'function') await onImported(outcome);
         } catch (err) {
             state.busy = false;
-            if (btn) { btn.disabled = false; btn.textContent = `Import ${count(s.ready)} ${s.ready === 1 ? 'item' : 'items'}`; }
             // The DAL's period and duplicate errors already read as sentences; a
             // generic "import failed" would throw that away.
-            showReviewError(err && err.message ? err.message : 'The import could not be completed. Nothing was saved.');
+            setFeedback((err && err.message) || 'The import could not be completed. Nothing was saved.', 'error');
+            emit();
         }
     }
 
-    function wire() {
-        const on = (id, event, fn) => {
-            const el = document.getElementById(id);
-            if (el) el.addEventListener(event, fn);
-        };
+    // ── Events ──────────────────────────────────────────────────────────────
+    function onChange(e) {
+        const fileInput = e.target.closest('#inv-import-file');
+        if (fileInput) {
+            const file = fileInput.files && fileInput.files[0];
+            if (file) handleFile(file);
+            return;
+        }
+        const outlet = e.target.closest('#inv-import-outlet');
+        if (outlet) { state.openingDimensionId = outlet.value || ''; return; }
+        const map = e.target.closest('[data-map-key]');
+        if (map) {
+            state.columnOverrides[map.getAttribute('data-map-key')] = Number(map.value);
+            analyze();
+            renderPreview();
+            emit();
+        }
+    }
 
-        on('inv-import-cancel', 'click', close);
-        on('inv-import-done', 'click', close);
-        on('inv-import-back', 'click', () => { state.rawRows = null; render('upload'); });
-        on('inv-import-change-file', 'click', () => { state.rawRows = null; render('upload'); });
-        on('inv-import-confirm', 'click', confirmImport);
-
-        on('inv-import-template', 'click', () => {
+    function onClick(e) {
+        if (e.target.closest('#inv-import-template')) {
             const csv = buildTemplateCsv({ todayKey: todayKey() });
             const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
             const a = document.createElement('a');
@@ -731,59 +592,56 @@ export function openInventoryImport({ ds, user, onImported } = {}) {
             a.click();
             URL.revokeObjectURL(url);
             window.showToast('Template downloaded.', 'success');
-        });
-
-        on('inv-import-file', 'change', (e) => {
-            const file = e.target.files && e.target.files[0];
-            if (file) handleFile(file);
-        });
-
-        on('inv-import-next', 'click', () => {
-            const input = document.getElementById('inv-import-file');
-            const file = input && input.files && input.files[0];
-            if (file) handleFile(file);
-        });
-
-        on('inv-import-outlet', 'change', (e) => { state.openingDimensionId = e.target.value || ''; });
-
-        // Column mapping. Re-analyzes the rows already in memory, so the preview
-        // updates as the answer is given rather than after another upload.
-        Array.from(document.querySelectorAll('[data-map-key]')).forEach((sel) => {
-            sel.addEventListener('change', () => {
-                const key = sel.getAttribute('data-map-key');
-                state.columnOverrides[key] = Number(sel.value);
-                analyze();
-                render('review');
-            });
-        });
-
-        // Number format. Re-analyzes in place: same rows, different reading.
-        Array.from(document.querySelectorAll('[data-amount-mode]')).forEach((btn) => {
-            btn.addEventListener('click', () => {
-                state.amountMode = btn.getAttribute('data-amount-mode');
-                analyze();
-                render('review');
-            });
-        });
+            return;
+        }
+        const mode = e.target.closest('[data-amount-mode]');
+        if (mode) {
+            state.amountMode = mode.getAttribute('data-amount-mode');
+            analyze();
+            renderPreview();
+            emit();
+        }
     }
 
-    // Open.
-    document.body.style.overflow = 'hidden';
-    window.requestAnimationFrame(() => {
-        panel.classList.remove('translate-x-full');
-        overlay.classList.remove('opacity-0');
-    });
-    dispose = window.FluxyDrawer.mountBehavior(panel, {
-        overlayEl: overlay,
-        closeOnEscape: true,
-        closeOnOverlay: true,
-        onClose: close
-    });
-    Array.from(root.querySelectorAll('.fluxy-drawer-close')).forEach((b) => b.addEventListener('click', close));
-    wire();
+    // Drag-and-drop, matching the Ledger's dropzone affordance.
+    function onDragOver(e) { e.preventDefault(); el('inv-import-dropzone').classList.add('border-[#EA580C]'); }
+    function onDragLeave() { el('inv-import-dropzone').classList.remove('border-[#EA580C]'); }
+    function onDrop(e) {
+        e.preventDefault();
+        el('inv-import-dropzone').classList.remove('border-[#EA580C]');
+        const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (file) handleFile(file);
+    }
 
-    mounted = { close };
-    return mounted;
+    contentEl.addEventListener('change', onChange);
+    contentEl.addEventListener('click', onClick);
+    contentEl.addEventListener('dragover', onDragOver);
+    contentEl.addEventListener('dragleave', onDragLeave);
+    contentEl.addEventListener('drop', onDrop);
+    emit();
+
+    return {
+        confirm,
+        getSummary: () => (state.result ? state.result.summary : null),
+        reset() {
+            state.fileName = '';
+            state.rawRows = null;
+            state.result = null;
+            state.columnOverrides = {};
+            state.amountMode = 'auto';
+            state.openingDimensionId = '';
+            contentEl.innerHTML = shellHTML();
+            emit();
+        },
+        destroy() {
+            contentEl.removeEventListener('change', onChange);
+            contentEl.removeEventListener('click', onClick);
+            contentEl.removeEventListener('dragover', onDragOver);
+            contentEl.removeEventListener('dragleave', onDragLeave);
+            contentEl.removeEventListener('drop', onDrop);
+            contentEl.innerHTML = '';
+        }
+    };
 }
 
-export default { open: openInventoryImport };
+export default { mount: mountInventoryImport };

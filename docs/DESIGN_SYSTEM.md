@@ -599,8 +599,14 @@ transaction editor so the two stay identical.
 ---
 
 ## 📐 Layout & Spacing
-- **Dashboard/App Sidebar Width**: `220px` fixed. There is no collapsed
-  (mini-rail) state on desktop — do not add one.
+- **Dashboard/App Sidebar Width**: `248px` fixed. There is no collapsed
+  (mini-rail) state on desktop — do not add one. Widened from `220px`
+  (2026-08-28) because the longest real labels — "Accounting Center", "Reports &
+  Exports" — sat one character from truncating, and the group labels had no room
+  to be set apart from the items under them. The width is declared **once**, in
+  `#sidebar.app-sidebar-light` in `shared-dashboard.css`; every page's
+  `w-[220px]` utility on the `<aside>` is overridden by it, so do not chase the
+  literal through the HTML.
 - **Dashboard/App Sidebar below 640px**: the sidebar leaves the flow and becomes
   an **off-canvas drawer**, opened by the `md:hidden` hamburger every app topbar
   already renders. Wired centrally in `sidebar-loader.js`; styles are
@@ -614,11 +620,22 @@ transaction editor so the two stay identical.
   the start with nothing listening to it. Guard:
   `tests/inventory-ui.spec.js` → "below 640px the sidebar is a dismissable
   drawer, on every app page".
-- **Dashboard/App Sidebar Theme**: `bg-white`, `border-slate-200`, dark navy text `#1E2F4A`, active item text/icon `#EA580C` with no orange background.
+- **Dashboard/App Sidebar Theme**: `bg-white`, `border-slate-200`, dark navy text `#1E2F4A`, active item text/icon `#EA580C` with no orange background. The
+  active row also carries a neutral `#F1F5F9` fill and `600` weight: orange text
+  alone is a weak target to find at a glance and is precisely what a colour-blind
+  user cannot fall back on, so the active item needs a shape as well as a hue.
+  The fill is neutral — the project-wide ban on orange backgrounds stands.
 - **Dashboard/App Sidebar Header**: `64px` tall to align with the main app topbar divider. Logo mark is `36px`, logo text is `18px`, vertically centered.
 - **Dashboard/App Sidebar Menu Type**: Menu text is `14px` max, icon size is `16px` max, Lucide-style stroke icons only. Do not enlarge sidebar nav text or icons.
-- **Dashboard/App Sidebar Density**: Menu rows are compact: `32px` min-height, `6px 8px` item padding, and `2px` vertical gap between entries.
-- **Dashboard/App Sidebar Group Rhythm**: Group labels use `20px` top spacing and `8px` bottom spacing after the first group, so dense navigation still has readable section breaks.
+- **Dashboard/App Sidebar Density**: Menu rows are `36px` min-height, `8px 10px` item padding, and `2px` vertical gap between entries. Text stays at `14px` and icons at `16px` — a wider sidebar is not licence to enlarge either.
+- **Dashboard/App Sidebar Group Rhythm**: Group labels are `11px / 600`,
+  UPPERCASE, `0.08em` tracking, in slate `#94A3B8`, with `22px` top and `6px`
+  bottom spacing. They were previously `13px / 600` in the same `#1E2F4A` as the
+  nav items — two information levels rendered nearly identically, which is the
+  typography hard rule below, and which made the nav read as one long list
+  instead of five groups. The caps treatment is what this document's letter-
+  spacing table already specified for "eyebrow / sidebar caps"; the
+  implementation simply never matched it.
 - **Dashboard/App Page Background**: Authenticated app pages use `bg-gray-50` behind the white topbar, sidebar, and cards.
 - **App Page Topbar (Header Bar)**: Every authenticated app page has exactly one
   sticky `64px` (`h-16`) white topbar (`.dashboard-main-topbar`, `border-b

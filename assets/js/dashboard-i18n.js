@@ -4890,48 +4890,41 @@
         "Nothing to import.": "Tidak ada yang bisa diimpor.",
         "Every item in this file already exists in your inventory. Nothing was imported.": "Semua item di berkas ini sudah ada di persediaan Anda. Tidak ada yang diimpor.",
 
-        // ── Bulk import (assets/js/inventory-bulk-import.js) ──────────────
-        // The column HEADERS in the template are deliberately NOT translated:
-        // they are the Head of Finance's reference format and a client's file
-        // carries them in English. Translating the header a user is told to
-        // match would mean the template no longer matches the files it exists
-        // to accept. The drawer's own copy is translated; the contract is not.
-        "Bulk import": "Impor massal",
-        "Bulk import inventory": "Impor massal persediaan",
-        "Bring an existing item list into FluxyOS. You will see exactly what it creates before anything is saved.": "Bawa daftar item yang sudah Anda punya ke FluxyOS. Anda akan melihat persis apa yang dibuat sebelum ada yang disimpan.",
-        "Imported": "Terimpor",
-        "Start from the template": "Mulai dari template",
-        "Download the template (CSV)": "Unduh template (CSV)",
-        "Opens in Excel, Google Sheets, or Numbers. Save it back as CSV or .xlsx — both upload.": "Bisa dibuka di Excel, Google Sheets, atau Numbers. Simpan kembali sebagai CSV atau .xlsx — keduanya bisa diunggah.",
-        "You will see every row, what each one will create, and anything we cannot read — before anything is saved. Nothing is written to your inventory or your ledger until you press Import on the last step.": "Anda akan melihat setiap baris, apa yang akan dibuat masing-masing, dan apa saja yang tidak bisa kami baca — sebelum ada yang disimpan. Tidak ada yang ditulis ke persediaan atau buku besar Anda sampai Anda menekan Impor di langkah terakhir.",
-        "Preview the file": "Pratinjau berkas",
+        // ── Bulk import panel (assets/js/inventory-bulk-import.js) ────────
+        // Column HEADERS in the template are deliberately NOT translated: they
+        // are the Head of Finance's reference format and a client's file carries
+        // them in English. Translating a header the user is told to match would
+        // mean the template no longer matches the files it exists to accept.
+        // The panel's own copy is translated; the contract is not.
+        "Import a list": "Impor daftar",
+        "Single item": "Satu item",
+        "Bring in a list you already keep. You will see exactly what it creates before anything is saved.": "Bawa daftar yang sudah Anda punya. Anda akan melihat persis apa yang dibuat sebelum ada yang disimpan.",
+        "Choose or drop a CSV or Excel file": "Pilih atau jatuhkan berkas CSV atau Excel",
+        "Read in your browser. Nothing is saved until you confirm.": "Dibaca di browser Anda. Tidak ada yang disimpan sampai Anda konfirmasi.",
+        "Download the template": "Unduh template",
+        "Template downloaded.": "Template diunduh.",
+        "Inventory import preview": "Pratinjau impor persediaan",
         "Reading…": "Membaca…",
-        "Choose a different file": "Pilih berkas lain",
-        "Will import": "Akan diimpor",
-        "Already in FluxyOS": "Sudah ada di FluxyOS",
-        "Cannot import": "Tidak bisa diimpor",
-        "Opening stock": "Stok awal",
-        "Detect": "Deteksi",
-        "In this workspace's currency, \"1.500\" is either one thousand five hundred, or one and a half. Tell us which convention the file uses and the figures below will update.": "Dalam mata uang workspace ini, \"1.500\" bisa berarti seribu lima ratus, atau satu setengah. Beri tahu kami format mana yang dipakai berkas ini dan angka di bawah akan menyesuaikan.",
-        "Worth knowing before you import": "Perlu Anda tahu sebelum mengimpor",
-        "These rows import fine. This is what FluxyOS will and will not do with them.": "Baris-baris ini aman diimpor. Ini yang akan dan tidak akan FluxyOS lakukan dengan datanya.",
-        "Opening stock posts to your ledger": "Stok awal masuk ke buku besar Anda",
-        "FluxyOS records it as Inventory (1200) against Opening Balance Equity (3900) — stating what you already own, without inventing revenue for it. One journal per opening date.": "FluxyOS mencatatnya sebagai Persediaan (1200) berlawanan dengan Ekuitas Saldo Awal (3900) — menyatakan apa yang sudah Anda miliki, tanpa mengarang pendapatan untuknya. Satu jurnal per tanggal saldo awal.",
-        "Where is this stock?": "Di mana stok ini berada?",
-        "The template has no outlet column, so the whole file lands in one place. Unassigned stock still counts toward the company total — it just shows as \"Unassigned\" on Outlet P&L.": "Template ini tidak punya kolom outlet, jadi seluruh berkas masuk ke satu tempat. Stok tanpa outlet tetap dihitung ke total perusahaan — hanya tampil sebagai \"Tidak ditetapkan\" di Laba Rugi Outlet.",
-        "Every row": "Semua baris",
+        "Importing…": "Mengimpor…",
+        "Import items": "Impor item",
+        "Needs mapping": "Perlu pemetaan",
+        "Map columns": "Petakan kolom",
+        "We matched what we recognised. Point us at the rest.": "Kami mencocokkan yang kami kenali. Tunjukkan sisanya.",
+        "Not in this file": "Tidak ada di berkas ini",
         "Row": "Baris",
-        "Sell price": "Harga jual",
-        "Not sold": "Tidak dijual",
+        "Detect": "Deteksi",
+        "Opening stock posts to your ledger": "Stok awal masuk ke buku besar Anda",
+        "Not assigned to an outlet": "Tidak ditetapkan ke outlet",
+        "Will import": "Akan diimpor",
+        "Already exists": "Sudah ada",
+        "Cannot import": "Tidak bisa diimpor",
         "No opening stock": "Tanpa stok awal",
+        "Not sold": "Tidak dijual",
+        "Sell price": "Harga jual",
+        "Opening stock": "Stok awal",
+        "Track": "Lacak",
         "Import and post": "Impor dan catat",
         "Not yet": "Belum",
-        "Importing…": "Mengimpor…",
-        "Template downloaded.": "Template diunduh.",
-        "Posted to the ledger": "Tercatat di buku besar",
-        "Opening stock is real value on your balance sheet, so it is a numbered journal like any other — reviewable, and reversible from the Accounting Center.": "Stok awal adalah nilai riil di neraca Anda, jadi ia menjadi jurnal bernomor seperti yang lain — bisa ditinjau, dan bisa dibalik dari Accounting Center.",
-        "Open the Accounting Center": "Buka Accounting Center",
-        "These already existed and were left exactly as they were — an import never overwrites an item you already keep.": "Item-item ini sudah ada dan dibiarkan apa adanya — impor tidak pernah menimpa item yang sudah Anda simpan.",
         "Import from a spreadsheet": "Impor dari spreadsheet",
         "The import could not be completed. Nothing was saved.": "Impor tidak bisa diselesaikan. Tidak ada yang disimpan.",
         "Could not read that file.": "Berkas itu tidak bisa dibaca.",
@@ -4939,21 +4932,12 @@
         "That workbook has no readable sheet.": "Workbook itu tidak punya sheet yang bisa dibaca.",
         "Could not load the spreadsheet reader.": "Pembaca spreadsheet tidak bisa dimuat.",
 
-        // ── Item drawer: track toggle + Accounting section ────────────────
-        "I track this inventory": "Saya melacak stok item ini",
-        "What one of these is sold or measured in — jam, sesi, orang.": "Satuan penjualan atau pengukurannya — jam, sesi, orang.",
-        "Untick for a service or anything you never hold on a shelf. It keeps a price and a code, but no stock.": "Hilangkan centang untuk jasa atau apa pun yang tidak pernah Anda simpan di rak. Item tetap punya harga dan kode, tapi tanpa stok.",
-        "Revenue account": "Akun pendapatan",
-        "Cost account": "Akun biaya",
-        "Inventory account": "Akun persediaan",
-        "Where this item belongs in your chart of accounts. Recorded on the item today — postings still route through 1200 Inventory and your Account Mapping.": "Di mana item ini berada dalam bagan akun Anda. Saat ini dicatat di item — pencatatan jurnal tetap lewat 1200 Persediaan dan Account Mapping Anda.",
 
         // Receive stock
         "Receive stock": "Terima barang",
         "Add an item first — there is nothing to receive into yet.": "Tambahkan item dulu — belum ada tempat untuk menerima barangnya.",
         "Record what physically arrived. Stock goes up straight away, and the cost waits in Goods Received Not Invoiced until the supplier's bill turns up.": "Catat barang yang benar-benar datang. Stok langsung bertambah, dan biayanya menunggu di Goods Received Not Invoiced sampai tagihan supplier masuk.",
         "Where the stock landed. This is what makes a per-outlet P&L possible later.": "Di mana barangnya masuk. Ini yang nanti memungkinkan Laba Rugi per outlet.",
-        "Not assigned to an outlet": "Tidak ditetapkan ke outlet",
         "Add an outlet…": "Tambah outlet…",
         "Create": "Buat",
         "Outlet added.": "Outlet ditambahkan.",
@@ -5324,8 +5308,10 @@
               return ', jadi setiap outlet di bawah terlihat lebih untung daripada yang sebenarnya. Sewa, listrik, dan gaji biasanya masuk sebagai tagihan — tandai itu dan angka ini mengecil.';
           } },
         // ── Inventory bulk import ─────────────────────────────────────────
-        // Engine messages first — they carry the user's own values (a unit, an
-        // account code, a row number), which pass through untouched.
+        // Engine messages (assets/js/inventory-import.js) first — they carry the
+        // user's own values (a unit, an account code, a row number), which pass
+        // through untouched. These are what a person actually reads on the
+        // preview, so they matter more than the chrome around them.
         { re: /^"(.*)" is a number, not a unit\. Unit is what you count in — pcs, kg, g, liter\. The unit can never be changed after the item exists\.$/,
           id: function (m) { return '"' + m[1] + '" itu angka, bukan satuan. Satuan adalah cara Anda menghitung — pcs, kg, g, liter. Satuan tidak bisa diubah lagi setelah itemnya ada.'; } },
         { re: /^Product Name is (\d+) characters; FluxyOS allows 120\. Shorten it — truncating it here would change the name you meant\.$/,
@@ -5370,46 +5356,42 @@
           id: function (m) { return 'Berkas ini tidak punya kolom ' + m[1] + '. Setiap item minimal butuh nama dan satuan.'; } },
 
         // Numbers and money arrive already formatted through the money seam, so
-        // every pattern here passes them straight through — re-formatting a
-        // figure in the translation layer is how a peso amount comes back as
-        // rupiah.
+        // every pattern passes them straight through — re-formatting a figure in
+        // the translation layer is how a peso amount comes back as rupiah.
         { re: /^Import (.+?) (items?)$/,
           id: function (m) { return 'Impor ' + m[1] + ' item'; } },
-        { re: /^Nothing to import$/, id: function () { return 'Tidak ada yang bisa diimpor'; } },
-        { re: /^(.+?) (item|items) added to your inventory$/,
-          id: function (m) { return m[1] + ' item ditambahkan ke persediaan Anda'; } },
-        { re: /^(.+?) of them opened with stock worth (.+)\.$/,
-          id: function (m) { return m[1] + ' di antaranya dibuka dengan stok senilai ' + m[2] + '.'; } },
-        { re: /^(.+?) (item carries|items carry) an opening balance worth (.+)\.$/,
-          id: function (m) { return m[1] + ' item membawa saldo awal senilai ' + m[3] + '.'; } },
-        { re: /^(.+?) (row has an amount|rows have amounts) that could be read two ways\.$/,
+        { re: /^(.+?) of (.+?) rows? will be imported\.(?: Showing first (\d+)\.)?$/,
           id: function (m) {
-              return m[1] + (m[2] === 'row has an amount' ? ' baris punya nilai' : ' baris punya nilai')
-                  + ' yang bisa dibaca dua cara.';
+              return m[1] + ' dari ' + m[2] + ' baris akan diimpor.'
+                  + (m[3] ? ' Menampilkan ' + m[3] + ' pertama.' : '');
           } },
-        { re: /^(.+?) (row cannot|rows cannot) be imported$/,
-          id: function (m) { return m[1] + ' baris tidak bisa diimpor'; } },
-        { re: /^Fix these in your file and upload it again, or import the (.+?) good (rows?) now and add the rest later\. Nothing here is guessed at\.$/,
-          id: function (m) { return 'Perbaiki di berkas Anda lalu unggah ulang, atau impor ' + m[1] + ' baris yang sudah benar sekarang dan tambahkan sisanya nanti. Tidak ada yang ditebak di sini.'; } },
+        { re: /^(.+?) cannot import$/, id: function (m) { return m[1] + ' tidak bisa diimpor'; } },
+        { re: /^(.+?) skipped$/, id: function (m) { return m[1] + ' dilewati'; } },
         { re: /^Columns we will not import \((.+?)\)$/,
           id: function (m) { return 'Kolom yang tidak kami impor (' + m[1] + ')'; } },
-        { re: /^The template carries the (.+?) columns this importer reads, each with what it is for and whether it is required\. Fill it in, or paste your existing list under its header row\.$/,
-          id: function (m) { return 'Template ini memuat ' + m[1] + ' kolom yang dibaca pengimpor, lengkap dengan kegunaannya dan apakah wajib diisi. Isi templatenya, atau tempel daftar Anda di bawah baris judulnya.'; } },
-        { re: /^CSV or Excel, up to 5 MB and (.+?) rows\. The file is read here in your browser — it is never uploaded anywhere\.$/,
-          id: function (m) { return 'CSV atau Excel, maksimal 5 MB dan ' + m[1] + ' baris. Berkasnya dibaca di browser Anda — tidak pernah diunggah ke mana pun.'; } },
+        { re: /^(.+?) columns · up to (.+?) rows$/,
+          id: function (m) { return m[1] + ' kolom · maksimal ' + m[2] + ' baris'; } },
+        { re: /^Skipped (.+?) guidance rows? from the template\.$/,
+          id: function (m) { return 'Melewati ' + m[1] + ' baris panduan dari template.'; } },
+        { re: /^(.+?) rows? could be read two ways — "1\.500" is either one thousand five hundred, or one and a half\.$/,
+          id: function (m) { return m[1] + ' baris bisa dibaca dua cara — "1.500" bisa berarti seribu lima ratus, atau satu setengah.'; } },
+        { re: /^(.+?) items? worth (.+?)\. Recorded as Inventory \(1200\) against Opening Balance Equity \(3900\) — stating what you already own, without inventing revenue for it\.$/,
+          id: function (m) { return m[1] + ' item senilai ' + m[2] + '. Dicatat sebagai Persediaan (1200) berlawanan dengan Ekuitas Saldo Awal (3900) — menyatakan apa yang sudah Anda miliki, tanpa mengarang pendapatan untuknya.'; } },
+        { re: /^Every amount is read as (.+?) — the currency this workspace keeps its books in\. The template has no currency column, so a price list in another currency has to be converted before it is uploaded\.$/,
+          id: function (m) { return 'Semua nilai dibaca sebagai ' + m[1] + ' — mata uang yang dipakai pembukuan workspace ini. Template tidak punya kolom mata uang, jadi daftar harga dalam mata uang lain harus dikonversi dulu sebelum diunggah.'; } },
         { re: /^Import (.+?) items and post (.+?) of opening stock\?$/,
           id: function (m) { return 'Impor ' + m[1] + ' item dan catat ' + m[2] + ' stok awal?'; } },
         { re: /^This creates the items and posts (.+?) to 1200 Inventory against 3900 Opening Balance Equity, as a numbered journal you can review or reverse in the Accounting Center\.$/,
           id: function (m) { return 'Ini membuat item-itemnya dan mencatat ' + m[1] + ' ke 1200 Persediaan berlawanan dengan 3900 Ekuitas Saldo Awal, sebagai jurnal bernomor yang bisa Anda tinjau atau balik di Accounting Center.'; } },
         { re: /^(.+?) (item|items) imported\.$/,
           id: function (m) { return m[1] + ' item diimpor.'; } },
-        { re: /^Every amount in this file is read as (.+?) — the currency this workspace keeps its books in\. The template has no currency column, so a price list in another currency has to be converted before it is uploaded\.$/,
-          id: function (m) { return 'Semua nilai di berkas ini dibaca sebagai ' + m[1] + ' — mata uang yang dipakai pembukuan workspace ini. Template tidak punya kolom mata uang, jadi daftar harga dalam mata uang lain harus dikonversi dulu sebelum diunggah.'; } },
-        { re: /^Check: (.+)$/, id: function (m) { return 'Periksa: ' + m[1]; } },
-        { re: /^Row (.+)$/, id: function (m) { return 'Baris ' + m[1]; } },
-        { re: /^(.+?) skipped$/, id: function (m) { return m[1] + ' dilewati'; } },
-        { re: /^Skipped (.+?) guidance (row|rows) from the template \(the requirement and instruction lines\)\.$/,
-          id: function (m) { return 'Melewati ' + m[1] + ' baris panduan dari template (baris syarat dan instruksi).'; } },
+        { re: /^Read the (.+?) sheet of (\d+)\.$/,
+          id: function (m) { return 'Membaca sheet ' + m[1] + ' dari ' + m[2] + '.'; } },
+        { re: /^Column for (.+)$/, id: function (m) { return 'Kolom untuk ' + m[1]; } },
+        // Mapping chip: "Sell price: Not in file" is one text node, so the two
+        // halves cannot be looked up separately.
+        { re: /^(.+?): Not in file$/, id: function (m) { return m[1] + ': tidak ada di berkas'; } },
+
 
         // Item drawer: a quantity typed into the Stock unit field.
         { re: /^Stock unit needs a unit, not a number — pick one from the list\. \(If you buy in packs of (.+), that goes under Purchase unit\.\)$/,

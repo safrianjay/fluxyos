@@ -552,16 +552,6 @@
                             <!-- Counting acts on the stock in this table, so it
                                  belongs to the table rather than the page chrome —
                                  and the topbar already holds its one primary action. -->
-                            <!-- Importing acts on this table, and it is a setup /
-                                 migration job rather than a daily one - so it sits
-                                 with the table it fills, not in the page chrome.
-                                 The topbar already holds one primary action and one
-                                 secondary; a third button there would be the
-                                 equal-weight CTA cluster DESIGN_SYSTEM bans. -->
-                            <button id="bulk-import-btn" type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 inline-flex items-center gap-2 shadow-sm whitespace-nowrap">
-                                <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15V3m0 12 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path></svg>
-                                Bulk import
-                            </button>
                             <a id="count-stock-link" href="/inventory-count" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 inline-flex items-center gap-2 shadow-sm whitespace-nowrap">
                                 <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m-6 9 2 2 4-4"></path></svg>
                                 Count stock
@@ -687,6 +677,20 @@
         </div>
 
         <form id="item-form" class="fluxy-drawer-body inv-item-form" novalidate>
+            <!-- Same control, same classes, same aria as the Add Transaction
+                 drawer's "Single transaction / CSV bulk upload" (shared-dashboard.js).
+                 One drawer, one footer button — PROJECT_BACKGROUND §5. -->
+            <div class="fluxy-drawer-segment" role="tablist" aria-label="Item entry method">
+                <button type="button" id="item-tab-single" class="fluxy-drawer-segment-btn is-active" role="tab" aria-selected="true" aria-controls="item-single-panel">Single item</button>
+                <button type="button" id="item-tab-bulk" class="fluxy-drawer-segment-btn" role="tab" aria-selected="false" aria-controls="item-bulk-panel">Import a list</button>
+            </div>
+
+            <!-- The import panel is mounted lazily by inventory-bulk-import.js and
+                 owns everything inside it; this page only shows/hides it and
+                 drives the shared footer button. -->
+            <div id="item-bulk-panel" class="hidden fluxy-drawer-stack" role="tabpanel" aria-labelledby="item-tab-bulk"></div>
+
+            <div id="item-single-panel" class="inv-item-panel" role="tabpanel" aria-labelledby="item-tab-single">
             <div class="fluxy-drawer-field" id="item-type-field">
                 <label class="fluxy-drawer-label" for="item-type">What is this?</label>
                 <select id="item-type" class="fluxy-drawer-select">
@@ -855,6 +859,8 @@
                 <textarea id="item-notes" class="fluxy-drawer-textarea" maxlength="500" rows="2" placeholder="Supplier, grade, anything worth remembering."></textarea>
             </div>
 
+            </div><!-- /single panel -->
+
             <div id="item-form-error" class="fluxy-drawer-callout fluxy-drawer-callout--warning hidden"></div>
         </form>
 
@@ -954,7 +960,7 @@
         // Conversion lives in the engine, not here. A page that reimplements
         // "kg → g" is a second place for the arithmetic behind COGS to be wrong.
         import { itemUnits, toBase, INV, reorderPointOf, recipeCost, unitCostOf } from './assets/js/inventory-engine.js';
-        import { openInventoryImport } from './assets/js/inventory-bulk-import.js';
+        import { mountInventoryImport } from './assets/js/inventory-bulk-import.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -2217,6 +2223,12 @@
             applyItemType();
             validateForm();
 
+            // Always open on Single. The tabs are hidden entirely when editing:
+            // "import a list" is not something you do to one existing item, and
+            // a visible-but-meaningless tab is worse than none.
+            document.querySelector('.fluxy-drawer-segment').classList.toggle('hidden', isEdit);
+            setEntryMode('single');
+
             document.getElementById('item-drawer-backdrop').classList.remove('hidden');
             document.getElementById('item-drawer').classList.remove('translate-x-full');
             document.body.style.overflow = 'hidden';
@@ -2254,6 +2266,9 @@
         }
 
         function validateForm() {
+            // The footer button is shared with the Import tab, which derives its
+            // own state. Whoever is not the active tab must not touch it.
+            if (entryMode === 'bulk') return;
             const name = document.getElementById('item-name').value.trim();
             const base = document.getElementById('item-base-unit').value.trim();
             // A recipe with no ingredients is not a recipe — it would save as a
@@ -2369,6 +2384,10 @@
         };
 
         async function saveItem() {
+            // The footer button is shared with the Import tab (PROJECT_BACKGROUND
+            // §5: "reuses the same primary submit button"). Routing here rather
+            // than binding a second handler keeps one owner for the click.
+            if (entryMode === 'bulk') { if (importPanel) await importPanel.confirm(); return; }
             const btn = document.getElementById('item-save-btn');
             hideError();
             let draft;
@@ -2898,23 +2917,78 @@
             URL.revokeObjectURL(url);
         });
 
-        // ── Bulk import ─────────────────────────────────────────────────────
-        // The drawer owns the whole flow (template → upload → preview → confirm)
-        // and writes through DataService.importInventoryItems. All this page does
-        // is open it and reload once it reports success — the same contract the
-        // item and receipt drawers already have with loadInventory().
+        // ── Entry mode: single item vs import a list ────────────────────────
+        //
+        // The Add Transaction drawer's contract, applied here: one drawer, a
+        // segmented control, and ONE footer button whose label follows the active
+        // tab. The import panel is mounted lazily — most opens of this drawer are
+        // somebody adding one item, and mounting eagerly would cost four
+        // Firestore reads for a tab they never touch.
+        let entryMode = 'single';
+        let importPanel = null;
+        let importState = { ready: false, busy: false, count: 0 };
+
         function openBulkImport() {
-            openInventoryImport({
-                ds,
-                user: { uid: currentUid },
-                onImported: async () => {
-                    await loadInventory();
-                    setTab('items');
-                }
-            });
+            openDrawer(null);
+            setEntryMode('bulk');
         }
+
+        function setEntryMode(mode) {
+            entryMode = mode;
+            const bulk = mode === 'bulk';
+            const single = document.getElementById('item-tab-single');
+            const bulkTab = document.getElementById('item-tab-bulk');
+            single.classList.toggle('is-active', !bulk);
+            single.setAttribute('aria-selected', String(!bulk));
+            bulkTab.classList.toggle('is-active', bulk);
+            bulkTab.setAttribute('aria-selected', String(bulk));
+            document.getElementById('item-single-panel').classList.toggle('hidden', bulk);
+            document.getElementById('item-bulk-panel').classList.toggle('hidden', !bulk);
+            hideError();
+
+            if (bulk && !importPanel) {
+                importPanel = mountInventoryImport(document.getElementById('item-bulk-panel'), {
+                    ds,
+                    user: { uid: currentUid },
+                    onStateChange: (st) => { importState = st; syncFooter(); },
+                    onImported: async () => {
+                        closeDrawer();
+                        await loadInventory();
+                        setTab('items');
+                    }
+                });
+            }
+            // The drawer's description follows the tab, or it opens saying
+            // "goods you buy and hold" over a file picker.
+            if (!editingItem) {
+                document.getElementById('item-drawer-desc').textContent = bulk
+                    ? 'Bring in a list you already keep. You will see exactly what it creates before anything is saved.'
+                    : 'Ingredients and goods you buy and hold. Once an item exists you can receive stock against it and count it.';
+            }
+            syncFooter();
+        }
+
+        // One button, two jobs — so its label and its enabled state are derived
+        // in one place rather than set by whichever handler ran last.
+        function syncFooter() {
+            const btn = document.getElementById('item-save-btn');
+            if (!btn) return;
+            if (entryMode === 'bulk') {
+                btn.textContent = importState.busy
+                    ? 'Importing…'
+                    : (importState.count
+                        ? `Import ${window.FluxyMoney.baseNumber(importState.count)} ${importState.count === 1 ? 'item' : 'items'}`
+                        : 'Import items');
+                btn.disabled = !importState.ready || importState.busy;
+            } else {
+                btn.textContent = 'Save item';
+                validateForm();
+            }
+        }
+
+        document.getElementById('item-tab-single').addEventListener('click', () => setEntryMode('single'));
+        document.getElementById('item-tab-bulk').addEventListener('click', () => setEntryMode('bulk'));
         document.getElementById('item-track-stock').addEventListener('change', applyTrackStock);
-        document.getElementById('bulk-import-btn').addEventListener('click', openBulkImport);
 
         // Receive-stock drawer
         document.getElementById('receive-stock-btn').addEventListener('click', openReceiptDrawer);

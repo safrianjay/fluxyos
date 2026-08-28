@@ -225,10 +225,50 @@ grepping for `items` will hit both.
 
 ## 7. Bulk import — the reference template
 
-`inventory.html` → Items → **Bulk import**. Engine
+`inventory.html` → **New item** → the **Import a list** tab. Engine
 `assets/js/inventory-import.js` (pure), surface
-`assets/js/inventory-bulk-import.js`, writer
+`assets/js/inventory-bulk-import.js` (`mountInventoryImport`), writer
 `db-service.importInventoryItems`.
+
+### 7-0. It is a TAB, not a second button
+
+The importer shipped first as its own toolbar button opening its own 720px
+drawer with a three-step stepper. That was a second answer to a question the
+product had already answered: the Add Transaction drawer separates single entry
+from CSV bulk with a segmented control, one drawer, one shared footer button
+(`PROJECT_BACKGROUND.md` §5). Whoever learned the Ledger never found this.
+
+It now follows that contract exactly, which cost the stepper and 240px of width:
+
+- **One drawer at 480px.** A segmented control on top of a stepper is two levels
+  of navigation in a narrow panel.
+- **Flat.** File picker, preview and options in one scroll. Column mapping stops
+  being a step and becomes a section that appears only when auto-detection could
+  not place the required columns.
+- **One footer button.** `syncFooter()` in `inventory.html` derives its label and
+  disabled state from the active tab; `validateForm()` returns early in bulk mode
+  so the single-item form cannot fight it for the same button.
+- **The panel mounts lazily** — most opens of this drawer are somebody adding one
+  item, and mounting eagerly costs four Firestore reads for a tab never touched.
+- **The tabs are hidden entirely when editing.** "Import a list" is not something
+  you do to one existing item.
+
+The visual language is the Ledger's, deliberately: the dashed dropzone, the
+preview card (eyebrow / filename / summary / status badge), the mapping chips,
+the `10px` uppercase table head, and the amber note. The preview shows the
+**first five rows**, as the Ledger does — a 300-row table inside a drawer was
+never the thing that made the review readable; the counts and the grouped issues
+are.
+
+Two things the Ledger has no equivalent for are built from the same parts rather
+than inventing a third vocabulary: the column-remapping card and the
+opening-balance statement.
+
+**Mapping chips name a header only when it differs from our field name.** The
+Ledger prints `Label: HeaderInFile` because its labels and CSV headers genuinely
+differ (`Description` ← `vendor_name`). Here they are usually the same word, and
+`Product Name: Product Name` pushed the one column we could *not* place into the
+sixth row of a wrapping list.
 
 The column set is the Head of Finance's reference sheet ("Contoh Bulk import
 Inventory - from Jurnal.id"), reproduced column-for-column so a client exporting
