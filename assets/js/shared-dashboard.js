@@ -1300,22 +1300,41 @@ window.showAddTransactionModal = function(options = {}) {
                                 <input data-tx-tax-field id="tx-bill-tax-rate" type="text" inputmode="decimal" placeholder="e.g. 11" class="fluxy-drawer-input tabular-nums" />
                                 <p class="fluxy-drawer-hint">If set (PKP workspaces), PPN is extracted from the amount to input VAT (1130).</p>
                             </div>
-                            <div class="fluxy-drawer-field-grid">
+                            <!-- The object, not a number. Asking for "PPh withholding (%)"
+                                 assumed the person recording a vendor bill already knew
+                                 whether jasa konsultasi is 2% or 15% — and a mistyped rate
+                                 is invisible: it posts a smaller liability to 2110, the
+                                 bill still balances, and nothing says the withholding was
+                                 short. Choosing what the payment IS carries the rate with
+                                 it. Flat options with a group prefix rather than
+                                 optgroup, which fluxy-select.js ignores — and the rate
+                                 in the label is what lets someone confirm at a glance
+                                 that they picked the right thing. -->
+                            <div class="fluxy-drawer-field">
+                                <label data-tx-tax-field for="tx-bill-wht-object" class="fluxy-drawer-label">Potong PPh <span class="text-gray-400 font-medium">(opsional)</span></label>
+                                <select data-tx-tax-field id="tx-bill-wht-object" class="fluxy-drawer-select">
+                                    <option value="">Tidak memotong PPh</option>
+                                </select>
+                                <p id="tx-bill-wht-hint" data-tx-tax-field class="fluxy-drawer-hint"></p>
+                            </div>
+                            <div class="fluxy-drawer-field-grid" id="tx-bill-wht-detail" style="display:none;">
                                 <div class="fluxy-drawer-field">
-                                    <label data-tx-tax-field for="tx-bill-wht-rate" class="fluxy-drawer-label">PPh withholding (%)</label>
-                                    <input data-tx-tax-field id="tx-bill-wht-rate" type="text" inputmode="decimal" placeholder="e.g. 2" class="fluxy-drawer-input tabular-nums" />
+                                    <label data-tx-tax-field for="tx-bill-wht-rate" class="fluxy-drawer-label">Tarif (%)</label>
+                                    <input data-tx-tax-field id="tx-bill-wht-rate" type="text" inputmode="decimal" placeholder="2" class="fluxy-drawer-input tabular-nums" />
                                 </div>
                                 <div class="fluxy-drawer-field">
-                                    <label data-tx-tax-field for="tx-bill-wht-type" class="fluxy-drawer-label">Withholding type</label>
-                                    <select data-tx-tax-field id="tx-bill-wht-type" class="fluxy-drawer-select">
-                                        <option value="">None</option>
-                                        <option value="PPh 23">PPh 23</option>
-                                        <option value="PPh 4(2)">PPh 4(2)</option>
-                                        <option value="PPh 26">PPh 26</option>
-                                    </select>
+                                    <label data-tx-tax-field for="tx-bill-wht-bupot" class="fluxy-drawer-label">No. bukti potong <span class="text-gray-400 font-medium">(opsional)</span></label>
+                                    <input data-tx-tax-field id="tx-bill-wht-bupot" type="text" maxlength="40" placeholder="Isi saat bupot terbit" class="fluxy-drawer-input" />
                                 </div>
                             </div>
-                            <p data-tx-tax-field class="fluxy-drawer-hint">We withhold PPh from the vendor on the base; it posts to PPh Payable (2110) and reduces what you pay them.</p>
+                            <label id="tx-bill-wht-npwp-row" data-tx-tax-field class="inv-check" style="display:none;">
+                                <input id="tx-bill-wht-npwp" type="checkbox" class="inv-check-box" checked>
+                                <span class="inv-check-text">Vendor punya NPWP
+                                    <span class="inv-check-sub">Tanpa NPWP, tarif PPh 23 naik dua kali lipat. Ini kesalahan paling umum — selisihnya ditagih saat pemeriksaan.</span>
+                                </span>
+                            </label>
+                            <div id="tx-bill-wht-preview" data-tx-tax-field class="hidden rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[12px] text-gray-700"></div>
+                            <p data-tx-tax-field class="fluxy-drawer-hint">PPh dipotong dari vendor dan masuk ke Utang PPh (2110), jadi yang Anda bayar berkurang sebesar itu.</p>
                         </section>
                         ` : ''}
 
@@ -1632,6 +1651,121 @@ window.showAddTransactionModal = function(options = {}) {
         });
     }
 
+    /*
+     * Populate and drive the PPh picker.
+     *
+     * The whole point is that choosing WHAT the payment is fills in the rate, so
+     * nobody types 2 when the answer was 15. Three things follow from that and
+     * each is deliberate:
+     *
+     *   • The rate stays editable. Jasa konstruksi has four rates by
+     *     certification and PPh 21 bukan pegawai is progressive, so a locked
+     *     field would be wrong for both.
+     *   • The NPWP switch is offered only where the surcharge actually applies.
+     *     PPh 4(2) is final at a fixed rate regardless, and showing a toggle that
+     *     changes nothing teaches people to ignore it.
+     *   • The arithmetic is shown in words. "2%" is not the number a person is
+     *     about to act on — what they pay the vendor is.
+     */
+    // The rate table is an ES module and this file is a classic script, so it is
+    // pulled in with a dynamic import rather than a script tag on all 37 pages
+    // that load shared-dashboard.js. Loaded only when a BILL drawer mounts —
+    // every other context never touches it — and cached after the first open.
+    let pphModulePromise = null;
+    function loadPphModule() {
+        if (window.FluxyPph) return Promise.resolve(window.FluxyPph);
+        if (!pphModulePromise) {
+            // ABSOLUTE path. This file is a classic script, so a dynamic
+            // import() specifier resolves against the DOCUMENT url, not this
+            // script — './pph-objects.js' asks for /pph-objects.js on /bill and
+            // 404s, leaving the picker silently empty.
+            pphModulePromise = import('/assets/js/pph-objects.js')
+                .then((m) => { window.FluxyPph = m; return m; })
+                .catch((e) => {
+                    pphModulePromise = null;
+                    console.warn('PPh rate table failed to load', e);
+                    return null;
+                });
+        }
+        return pphModulePromise;
+    }
+
+    async function mountPphPicker() {
+        const select = document.getElementById('tx-bill-wht-object');
+        if (!select || select.dataset.pphMounted === '1') return;
+        select.dataset.pphMounted = '1';
+        await loadPphModule();
+        if (!window.FluxyPph) { select.dataset.pphMounted = ''; return; }
+        const rateEl = document.getElementById('tx-bill-wht-rate');
+        const detail = document.getElementById('tx-bill-wht-detail');
+        const npwpRow = document.getElementById('tx-bill-wht-npwp-row');
+        const npwpEl = document.getElementById('tx-bill-wht-npwp');
+        const hintEl = document.getElementById('tx-bill-wht-hint');
+        const preview = document.getElementById('tx-bill-wht-preview');
+
+        // Flat options with a group prefix and the rate inline. The enhancer
+        // ignores optgroup, and the rate in the label is what lets someone
+        // confirm they picked the right thing without opening a hint.
+        select.innerHTML = '<option value="">Tidak memotong PPh</option>'
+            + window.FluxyPph.pphObjectsByGroup().map((g) => g.objects.map((o) =>
+                `<option value="${o.id}">${g.label} · ${o.label_id} (${String(o.rate).replace('.', ',')}%)</option>`
+            ).join('')).join('');
+
+        const refresh = ({ fromObject = false } = {}) => {
+            const obj = window.FluxyPph.pphObject(select.value);
+            detail.style.display = obj ? '' : 'none';
+            npwpRow.style.display = obj && obj.npwp_surcharge ? '' : 'none';
+            hintEl.textContent = obj ? obj.hint : '';
+            if (!obj) {
+                rateEl.value = '';
+                preview.classList.add('hidden');
+                return;
+            }
+            const hasNpwp = npwpEl.checked !== false;
+            const eff = window.FluxyPph.effectiveRate(obj.id, { hasNpwp });
+            // Only overwrite what the user typed when the OBJECT changed. A rate
+            // they deliberately adjusted must survive ticking the NPWP box.
+            if (fromObject) rateEl.value = String(eff.rate).replace('.', ',');
+
+            const typed = parseFloat(String(rateEl.value || '').replace(',', '.'));
+            const rate = Number.isFinite(typed) && typed > 0 ? typed : eff.rate;
+            const gross = Number(String(document.getElementById('tx-amount')?.value || '').replace(/\D/g, '')) || 0;
+            if (!gross) {
+                preview.classList.add('hidden');
+                return;
+            }
+            // The base is the amount net of PPN when a PPN rate is set — the
+            // same split buildTaxAppendix performs, so the preview cannot
+            // disagree with the journal it is previewing.
+            const ppn = parseFloat(String(document.getElementById('tx-bill-tax-rate')?.value || '').replace(',', '.'));
+            const base = Number.isFinite(ppn) && ppn > 0 ? Math.round(gross / (1 + ppn / 100)) : gross;
+            const pph = Math.round(base * rate / 100);
+            const fmt = (n) => window.FluxyMoney.formatBase(n);
+            preview.classList.remove('hidden');
+            preview.innerHTML =
+                `<div>Dasar pengenaan <strong>${fmt(base)}</strong>${base !== gross ? ' (setelah PPN)' : ''}</div>`
+                + `<div>PPh dipotong ${String(rate).replace('.', ',')}% = <strong>${fmt(pph)}</strong> ke Utang PPh (2110)</div>`
+                + `<div style="margin-top:4px;">Dibayar ke vendor <strong>${fmt(gross - pph)}</strong></div>`
+                + (eff.surcharged
+                    ? `<div style="margin-top:4px;color:#B45309;">Tarif dinaikkan dari ${String(eff.base).replace('.', ',')}% karena vendor tanpa NPWP.</div>`
+                    : '');
+        };
+
+        // fluxy-select.js enhances on mutation, but re-enhancing after we rewrite
+        // the options keeps the custom trigger's label in step — same call the
+        // inventory unit picker makes for the same reason.
+        if (window.FluxySelect && window.FluxySelect.enhance) {
+            try { window.FluxySelect.enhance(select); } catch (_) { /* already enhanced */ }
+        }
+
+        select.addEventListener('change', () => refresh({ fromObject: true }));
+        npwpEl.addEventListener('change', () => refresh({ fromObject: true }));
+        rateEl.addEventListener('input', () => refresh());
+        document.getElementById('tx-amount')?.addEventListener('input', () => refresh());
+        document.getElementById('tx-bill-tax-rate')?.addEventListener('input', () => refresh());
+        refresh();
+    }
+
     function applyBillCurrency(cur) {
         if (!currencySelect) return;
         const c = window.FluxyMoney.isSupported(cur) ? cur : window.FluxyMoney.baseCurrency();
@@ -1644,10 +1778,18 @@ window.showAddTransactionModal = function(options = {}) {
         currencySelect.addEventListener('change', () => {
             currencyUserTouched = true;
             applyBillCurrency(billCurrency());
-        applyTransactionTaxVisibility();
+            applyTransactionTaxVisibility();
             amountInput.value = ''; // amount convention changed — start fresh
             updateSingleSubmitState();
         });
+    }
+    // The PPh picker only exists in the bill context. Mounted here, on open,
+    // rather than from applyTransactionTaxVisibility — that function is wired
+    // ONLY to the currency-change handler and never runs when the drawer opens,
+    // so the picker sat empty until somebody changed currency.
+    if (context === 'bill') {
+        applyTransactionTaxVisibility();
+        mountPphPicker();
     }
 
     // Vendor master → Add Bill: when a known vendor is entered, prefill the bill's
@@ -3321,14 +3463,26 @@ window.showAddTransactionModal = function(options = {}) {
                     data.tax_amount = total - base;
                 }
                 // Optional PPh withholding (we withhold from the vendor on the base).
+                // The RATE is still the value of record — buildTaxAppendix reads
+                // `withholding_rate` and nothing else — but it now comes from the
+                // chosen object rather than from memory, and the user may still
+                // override it (jasa konstruksi has four rates; PPh 21 bukan
+                // pegawai is progressive).
+                const objectId = document.getElementById('tx-bill-wht-object')?.value || '';
                 const rawWht = document.getElementById('tx-bill-wht-rate')?.value;
                 const wht = parseFloat(String(rawWht || '').replace(',', '.'));
-                const whtType = document.getElementById('tx-bill-wht-type')?.value || '';
-                if (Number.isFinite(wht) && wht > 0) {
-                    const wr = Math.min(Math.max(wht, 0), 100);
-                    data.withholding_rate = wr;
-                    data.withholding_type = whtType || 'PPh 23';
-                    data.withholding_code = ({ 'PPh 23': 'PPH23', 'PPh 4(2)': 'PPH4_2', 'PPh 26': 'PPH26' })[whtType] || 'PPH_WHT';
+                if (objectId && Number.isFinite(wht) && wht > 0) {
+                    const hasNpwp = document.getElementById('tx-bill-wht-npwp')?.checked !== false;
+                    const fields = window.FluxyPph?.withholdingFieldsFor(objectId, { hasNpwp }) || null;
+                    // The typed rate wins over the object's default — that is the
+                    // point of leaving it editable.
+                    data.withholding_rate = Math.min(Math.max(wht, 0), 100);
+                    data.withholding_type = fields ? fields.withholding_type : 'PPh 23';
+                    data.withholding_code = fields ? fields.withholding_code : 'PPH_WHT';
+                    data.withholding_object_id = objectId;
+                    data.withholding_npwp = hasNpwp;
+                    const bupot = document.getElementById('tx-bill-wht-bupot')?.value.trim();
+                    if (bupot) data.withholding_bupot_no = bupot.slice(0, 40);
                 }
             } else {
                 data.timestamp = buildTransactionTimestamp(selectedEntryDate, Timestamp);

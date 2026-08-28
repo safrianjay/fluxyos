@@ -51,3 +51,62 @@ the tax collection): `tax_profile.update`, `tax_mapping.create/update/archive`,
 `tax_transaction.post/reverse`, `tax_period.compute/close`,
 `tax_filing.submit/accept/reject`. Rules deploy separately
 (`firebase deploy --only firestore:rules`).
+
+## PPh withholding on bills — the object picker
+
+`assets/js/pph-objects.js` is a dated rate table of the things a business
+actually withholds on. The Add Bill drawer asks **what the payment is**, and the
+rate follows.
+
+**It replaced a bare "PPh withholding (%)" number field.** That asked the person
+recording a vendor bill to already know whether jasa konsultasi is 2% or 15% —
+and a mistyped rate is invisible: it posts a smaller liability to `2110`, the
+bill still balances, and nothing anywhere reports that the withholding was short.
+
+**Nothing about the posting changed.** `buildTaxAppendix` already grafted the
+2110 line onto `BILL-ACCRUE` from `withholding_rate`, with bukti potong
+compliance checks and the Bukti Potong CSV export downstream. The picker writes
+the same three fields it always read — `withholding_rate`, `withholding_type`,
+`withholding_code` — plus `withholding_object_id` and `withholding_npwp` for
+provenance. Renaming any of the first three silently detaches the picker from
+the posting; `tests/pph-withholding.spec.js` pins them.
+
+### Rates, and where they come from
+
+| Object | Rate | Source |
+|---|---:|---|
+| PPh 23 — jasa lainnya, sewa (non tanah/bangunan) | 2% | [Klikpajak, PPh 23](https://klikpajak.id/blog/pajak-pph-23-tarif-pajak-penghasilan-pasal-23/) |
+| PPh 23 — dividen, bunga, royalti, hadiah | 15% | same |
+| PPh 4(2) — sewa tanah & bangunan | 10% | [Klikpajak, PPh 4(2)](https://klikpajak.id/blog/pph-pasal-4-ayat-2/) |
+| PPh 4(2) — konstruksi (kecil / menengah-besar / tanpa sertifikat / perancang) | 1,75% / 2,65% / 4% / 6% | [Klikpajak, jasa konstruksi](https://klikpajak.id/blog/pajak-final-pasal-4-ayat-2/) |
+| PPh 21 — bukan pegawai | DPP 50% × Pasal 17 | PMK 168/2023 |
+| PPh 26 — penerima luar negeri | 20% | UU PPh Pasal 26 |
+
+Every figure is transcribed, never computed, and carries `effective_from` so a
+future change can coexist with history — the same discipline `TAX_RATES` follows.
+
+### Three decisions worth keeping
+
+**The rate stays editable.** Jasa konstruksi is four rates by certification, and
+PPh 21 bukan pegawai is progressive — 2,5% is DPP 50% × the 5% first bracket
+only, and rises above it. A locked field would be confidently wrong for both, so
+the object's rate is a starting point and the hint says so.
+
+**The no-NPWP surcharge is per object, not global.** A vendor without an NPWP is
+withheld at **double** for PPh 23 — the most common silent error in Indonesian
+withholding, and the company owes the difference at audit. But it does not apply
+everywhere: PPh 4(2) is final at a fixed rate, and PPh 21's surcharge is 20%
+higher, not 100%. The switch is hidden where it would change nothing, because a
+toggle that does nothing teaches people to ignore the one that matters.
+
+**The preview states the arithmetic, in Bahasa.** "2%" is not the number anybody
+is about to act on — what the vendor receives is. The box shows dasar pengenaan →
+PPh dipotong → dibayar ke vendor, and names the surcharge when it fired. It nets
+PPN out of the base the same way `buildTaxAppendix` does, so the preview cannot
+disagree with the journal it is previewing.
+
+### Not built
+
+The sheet's construction-services **SK attachment** is noted as nice-to-have and
+is not built. Bills already carry document attachments
+(`FluxyDocumentAttachment`), so it is a field, not a mechanism.
