@@ -4911,6 +4911,18 @@
         "Map columns": "Petakan kolom",
         "We matched what we recognised. Point us at the rest.": "Kami mencocokkan yang kami kenali. Tunjukkan sisanya.",
         "Not in this file": "Tidak ada di berkas ini",
+        // ── Chart of Accounts import (assets/js/accounting.js) ────────────
+        "Import accounts": "Impor akun",
+        "The account code is the identity. A code you already have is updated; a new one is created.": "Kode akun adalah identitasnya. Kode yang sudah Anda punya akan diperbarui; kode baru akan dibuat.",
+        "Download your chart": "Unduh bagan akun Anda",
+        "Chart downloaded.": "Bagan akun diunduh.",
+        "Chart import preview": "Pratinjau impor bagan akun",
+        "What happens": "Yang akan terjadi",
+        "Create": "Buat",
+        "Update": "Perbarui",
+        "System — skipped": "Akun sistem — dilewati",
+        "Nothing to import": "Tidak ada yang bisa diimpor",
+        "The import could not be completed.": "Impor tidak bisa diselesaikan.",
         // ── Receive stock: defining a purchase unit inline ────────────────
         "New unit name": "Nama satuan baru",
         "Row": "Baris",
@@ -4954,7 +4966,6 @@
         "Record what physically arrived. Stock goes up straight away, and the cost waits in Goods Received Not Invoiced until the supplier's bill turns up.": "Catat barang yang benar-benar datang. Stok langsung bertambah, dan biayanya menunggu di Goods Received Not Invoiced sampai tagihan supplier masuk.",
         "Where the stock landed. This is what makes a per-outlet P&L possible later.": "Di mana barangnya masuk. Ini yang nanti memungkinkan Laba Rugi per outlet.",
         "Add an outlet…": "Tambah outlet…",
-        "Create": "Buat",
         "Outlet added.": "Outlet ditambahkan.",
         "Could not add that outlet.": "Outlet itu tidak bisa ditambahkan.",
         "Supplier": "Supplier",
@@ -5403,6 +5414,20 @@
         { re: /^Read the (.+?) sheet of (\d+)\.$/,
           id: function (m) { return 'Membaca sheet ' + m[1] + ' dari ' + m[2] + '.'; } },
         { re: /^Column for (.+)$/, id: function (m) { return 'Kolom untuk ' + m[1]; } },
+        // Chart of Accounts import.
+        { re: /^Import (.+?) accounts?$/, id: function (m) { return 'Impor ' + m[1] + ' akun'; } },
+        { re: /^(.+?) columns · code is the key$/, id: function (m) { return m[1] + ' kolom · kode adalah kuncinya'; } },
+        { re: /^(.+?) to create · (.+?) to update · (.+?) unchanged(?: · (.+?) system)?$/,
+          id: function (m) {
+              return m[1] + ' dibuat · ' + m[2] + ' diperbarui · ' + m[3] + ' tidak berubah'
+                  + (m[4] ? ' · ' + m[4] + ' akun sistem' : '');
+          } },
+        { re: /^(.+?) (.+?) is a system account and cannot be changed by an import\.$/,
+          id: function (m) { return m[1] + ' ' + m[2] + ' adalah akun sistem dan tidak bisa diubah lewat impor.'; } },
+        { re: /^Code (\d+) is in the (\d+) block, which is (.+?)\. Change the code or the type so they agree\.$/,
+          id: function (m) { return 'Kode ' + m[1] + ' ada di blok ' + m[2] + ', yang berjenis ' + m[3] + '. Ubah kodenya atau jenisnya agar cocok.'; } },
+        { re: /^Showing 6 of (.+?)\.$/, id: function (m) { return 'Menampilkan 6 dari ' + m[1] + '.'; } },
+        { re: /^(.+?) created, (.+?) updated\.$/, id: function (m) { return m[1] + ' dibuat, ' + m[2] + ' diperbarui.'; } },
         // Receive stock: a purchase unit being defined on the line.
         { re: /^Saved on (.+?), so you only enter it once\.$/,
           id: function (m) { return 'Disimpan di ' + m[1] + ', jadi Anda cukup mengisinya sekali.'; } },

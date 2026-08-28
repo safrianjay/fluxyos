@@ -230,3 +230,58 @@ Seeded accounts now carry the workspace's `base_currency` rather than a hardcode
 ⚠️ **This is naming, not tax compliance.** The Tax Center remains Indonesian
 PPN/PPh — a PH/SG/MY workspace gets correct bookkeeping with locally-named
 accounts, not BIR/IRAS/LHDN filing. See `PROJECT_BACKGROUND.md` §4.
+
+## 8. CSV import (`coa-import.js`)
+
+Accounting Center → Chart of Accounts → **Import**. Engine
+`assets/js/coa-import.js` (pure), surface the drawer in `accounting.js`, writer
+`db-service.importChartOfAccounts`.
+
+**The code is the upsert key**, which falls out of §1 rather than being a new
+decision: the document id IS the code. An existing code updates that account; a
+new one creates it. Xero works the same way, and that matters because Xero is
+what people migrate *from* — a file exported there behaves the same here.
+
+Two of Xero's documented traps do not exist for us, and the reasons are worth
+keeping:
+
+- Excel strips leading zeros from account codes. Ours are four digits in
+  1000–9999, so there are none to strip.
+- Changing a code *and* a name in one Xero file archives the account and creates
+  a new one. Our code is immutable, so a code is either the same account or a
+  different one — never a rename in disguise.
+
+### What an import may not do
+
+**System accounts are skipped, never updated.** The posting and tax engines
+address `is_system` accounts by code, so renaming or re-typing one silently
+re-points a journal. They are reported in the preview and left alone.
+
+**Structural fields stay locked once an account has posted activity.** The
+importer does not re-implement that — every write goes through `saveAccount`,
+which already owns create-vs-update, the system guard, the in-use lock,
+`validateAccountDraft` and the audit log. A second writer would have to
+re-implement five rules and would eventually disagree with the drawer about what
+a legal account is.
+
+**It is not a Firestore batch, deliberately.** `saveAccount` reads the stored doc
+to decide create vs update and to enforce the locks, and a batch cannot read.
+Sequential writes also mean a parent is committed before the child that names it,
+which is why rows are ordered parents-first. A failing row does not stop the
+rest — refusing 99 good accounts because one names a dead category helps nobody.
+
+### The template is the workspace's own chart
+
+`buildCoaTemplateCsv` seeds from the live chart, not from a blank sheet. A blank
+template makes somebody invent codes; their own chart makes the file a diff they
+can edit, which is what importing an existing chart actually is. Its second row
+is per-column guidance, and `analyzeCoaImport` skips it explicitly — leaving it
+to the code check reported it as a bad code, so exporting the chart and importing
+it straight back raised an error. An import that cannot round-trip its own
+template is not one anybody will trust.
+
+Guard: `tests/coa-import.spec.js`, including a test that pins the module's
+block→type map to `accountTypeForCode` in `accounting-engine.js`. The two are
+separate copies so this module stays loadable on its own; the test is what stops
+them drifting. Note `9xxx` has no assigned type in either — a stricter copy here
+would reject rows the real validator accepts.

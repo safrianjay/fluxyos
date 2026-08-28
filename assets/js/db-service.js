@@ -5090,6 +5090,76 @@ class DataService {
     // Archive / reactivate. Archived accounts keep their history (trial balance
     // reads ledger_balances) and simply drop out of pickers. System accounts
     // can never be archived — posting fallbacks may still target them.
+    /*
+     * Bulk chart-of-accounts import.
+     *
+     * `rows` is the CONFIRMED subset of what `coa-import.js` analyzed. Every
+     * write goes through `saveAccount`, which already owns create-vs-update
+     * branching, the system-account guard, the in-use lock on category/parent,
+     * `validateAccountDraft`, and the audit log. A bespoke batch writer here
+     * would have to re-implement all five and would eventually disagree with the
+     * drawer about what a legal account is.
+     *
+     * NOT a Firestore batch, deliberately. `saveAccount` reads the existing doc
+     * to decide create vs update and to enforce the locks, and a batch cannot
+     * read. Sequential writes also mean a parent is committed before the child
+     * that names it — which is why the rows are ordered parents-first below
+     * rather than left in file order.
+     *
+     * A row that fails does not stop the rest: a chart is long, and refusing 99
+     * good accounts because one names a category that no longer exists helps
+     * nobody. Failures come back named.
+     */
+    async importChartOfAccounts(userId, { rows = [] } = {}) {
+        if (!userId) throw new Error('userId required');
+        const list = (Array.isArray(rows) ? rows : []).filter((r) => r && r.draft && r.draft.code);
+        if (!list.length) throw new Error('Nothing to import.');
+
+        // Parents first. A child whose parent arrives later in the file would be
+        // rejected by validateAccountDraft for a parent that does not exist yet.
+        const ordered = [...list].sort((a, b) => {
+            const ap = a.draft.parent_code ? 1 : 0;
+            const bp = b.draft.parent_code ? 1 : 0;
+            if (ap !== bp) return ap - bp;
+            return String(a.draft.code).localeCompare(String(b.draft.code));
+        });
+
+        const created = [];
+        const updated = [];
+        const failed = [];
+
+        for (const row of ordered) {
+            const draft = row.draft;
+            try {
+                // `create: false` lets saveAccount decide from the stored doc,
+                // which is the same decision the preview showed the user.
+                const saved = await this.saveAccount(userId, {
+                    code: draft.code,
+                    name: draft.name,
+                    name_id: draft.name_id || null,
+                    type: draft.type,
+                    sak_category: draft.sak_category || null,
+                    parent_code: draft.parent_code || null
+                }, { create: false });
+                (row.status === 'update' ? updated : created).push({ code: draft.code, name: saved.name });
+            } catch (err) {
+                failed.push({ code: draft.code, name: draft.name, reason: (err && err.message) || 'Could not be saved.' });
+            }
+        }
+
+        // One summary entry for the run, on top of the per-account entries
+        // saveAccount already wrote — so the log answers both "what changed" and
+        // "was this one import or forty edits".
+        await this._auditCreateBestEffort(userId, 'chart_of_accounts.bulk_imported', 'chart_of_accounts', 'import', {
+            created_count: created.length,
+            updated_count: updated.length,
+            failed_count: failed.length,
+            failed_codes: failed.map((f) => f.code).slice(0, 20)
+        });
+
+        return { created, updated, failed, totals: { created: created.length, updated: updated.length, failed: failed.length } };
+    }
+
     async archiveAccount(userId, code) {
         return this._setAccountActive(userId, code, false);
     }

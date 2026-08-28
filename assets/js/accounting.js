@@ -1,4 +1,5 @@
 import { CHART_OF_ACCOUNTS_SEED, SAK_CATEGORIES, validateAccountDraft } from './accounting-engine.js';
+import { analyzeCoaImport, buildCoaTemplateCsv, unmappedColumnReport, coaColumn, COA_TEMPLATE_COLUMNS } from './coa-import.js';
 
 // Accounting Center page controller — Phase 1.
 // Primary surface is the Income Statement Preview (a deterministic P&L built from
@@ -256,6 +257,7 @@ function wireStaticControls() {
     el('journals-new-manual')?.addEventListener('click', () => { window.location.href = 'accounting-journal-new.html'; });
     el('journals-post-pending')?.addEventListener('click', () => onPostPending());
     el('coa-new-account')?.addEventListener('click', () => openCreateAccountDrawer());
+    el('coa-import')?.addEventListener('click', () => openCoaImportDrawer());
     el('balance-sheet-export')?.addEventListener('click', () => exportBalanceSheet());
     el('acct-export-package')?.addEventListener('click', () => runAccountingExport('csv'));
     el('acct-export-workbook')?.addEventListener('click', () => runAccountingExport('xlsx'));
@@ -2493,6 +2495,7 @@ function renderChartOfAccounts() {
     }
     const canManage = !!window.FluxyWorkspace?.can?.('accounting.post');
     el('coa-new-account')?.classList.toggle('hidden', !canManage);
+    el('coa-import')?.classList.toggle('hidden', !canManage);
     const body = coa.map(a => {
         const child = !!a.parent_code;
         const active = a.is_active !== false;
@@ -2905,6 +2908,225 @@ function refreshCaTax(type) {
     const keep = sel.value;
     sel.innerHTML = taxOptionsHtml(keep, type);
     if (!Array.from(sel.options).some(o => o.value === keep)) sel.value = '';
+}
+
+/*
+ * Chart-of-Accounts import.
+ *
+ * Same shape as the Ledger's CSV bulk upload and the inventory importer: a
+ * dashed dropzone, a preview card with an eyebrow / filename / summary / status
+ * badge, and nothing written until the footer button. Judgement lives in
+ * `coa-import.js` (pure) and the write in `db-service.importChartOfAccounts`.
+ *
+ * The template is seeded from the workspace's OWN chart, the way Xero does it.
+ * A blank template makes somebody invent codes; their own chart makes the file a
+ * diff they can edit, which is what importing an existing chart actually is.
+ */
+function openCoaImportDrawer() {
+    if (window.FluxyWorkspace && typeof window.FluxyWorkspace.can === 'function'
+        && !window.FluxyWorkspace.can('accounting.post')) {
+        window.showToast?.('You do not have permission to manage accounts.', 'error');
+        return;
+    }
+    document.getElementById('coa-import-root')?.remove();
+
+    let result = null;
+    let fileName = '';
+
+    const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
+
+    const html = `
+    <div id="coa-import-root" class="fluxy-drawer-root">
+        <div id="coa-import-overlay" class="fluxy-drawer-overlay opacity-0 transition-opacity duration-300 ease-out"></div>
+        <div id="coa-import-panel" role="dialog" aria-modal="true" aria-labelledby="coa-import-title" class="fluxy-drawer-panel fluxy-drawer-panel--md translate-x-full">
+            <div class="fluxy-drawer-header">
+                <div>
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Chart of Accounts</p>
+                    <h2 id="coa-import-title" class="fluxy-drawer-title">Import accounts</h2>
+                    <p class="fluxy-drawer-desc">The account code is the identity. A code you already have is updated; a new one is created.</p>
+                </div>
+                <button type="button" class="fluxy-drawer-close" aria-label="Close" data-coa-close>
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="fluxy-drawer-body" id="coa-import-body">
+                <div class="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5">
+                    <label for="coa-import-file" class="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-7 text-center transition-all duration-200 hover:border-[#EA580C] hover:bg-gray-50">
+                        <span class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 text-[#EA580C]">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"></path></svg>
+                        </span>
+                        <span id="coa-import-label" class="max-w-full truncate text-[13px] font-bold text-gray-900">Choose or drop a CSV file</span>
+                        <span class="mt-1 text-[12px] text-gray-500">Read in your browser. Nothing is saved until you confirm.</span>
+                    </label>
+                    <input type="file" id="coa-import-file" accept=".csv,text/csv" class="sr-only">
+                    <div class="mt-3 flex items-center justify-between gap-3">
+                        <span class="text-[11px] text-gray-500">${COA_TEMPLATE_COLUMNS.length} columns · code is the key</span>
+                        <button type="button" id="coa-import-template" class="text-[12px] font-bold text-[#EA580C] hover:underline">Download your chart</button>
+                    </div>
+                    <div id="coa-import-feedback" class="hidden mt-3 text-[12px] font-medium"></div>
+                </div>
+                <div id="coa-import-preview" class="hidden"></div>
+            </div>
+            <div class="fluxy-drawer-footer">
+                <button type="button" class="fluxy-drawer-btn fluxy-drawer-btn--secondary" data-coa-close>Cancel</button>
+                <button type="button" id="coa-import-confirm" class="fluxy-drawer-btn fluxy-drawer-btn--primary" disabled>Import accounts</button>
+            </div>
+        </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', html);
+    const root = document.getElementById('coa-import-root');
+    const panel = document.getElementById('coa-import-panel');
+    const overlay = document.getElementById('coa-import-overlay');
+    const confirmBtn = document.getElementById('coa-import-confirm');
+
+    const close = () => {
+        panel.classList.add('translate-x-full');
+        overlay.classList.add('opacity-0');
+        document.body.style.overflow = '';
+        setTimeout(() => root.remove(), 300);
+    };
+    root.querySelectorAll('[data-coa-close]').forEach((b) => b.addEventListener('click', close));
+    overlay.addEventListener('click', close);
+
+    const feedback = (msg, tone) => {
+        const el = document.getElementById('coa-import-feedback');
+        el.textContent = msg || '';
+        el.className = msg
+            ? `mt-3 text-[12px] font-medium ${tone === 'error' ? 'text-red-600' : 'text-gray-500'}`
+            : 'hidden mt-3 text-[12px] font-medium';
+    };
+
+    function renderPreview() {
+        const host = document.getElementById('coa-import-preview');
+        if (!result) { host.classList.add('hidden'); host.innerHTML = ''; return; }
+        host.classList.remove('hidden');
+        const s = result.summary;
+        const unmapped = unmappedColumnReport(result.columns);
+        const groups = new Map();
+        result.rows.forEach((r) => {
+            [...r.errors, ...r.warnings].forEach((i) => {
+                const key = i.message.replace(/"[^"]*"/g, '"…"').replace(/\b\d{4}\b/g, '####');
+                if (!groups.has(key)) groups.set(key, { message: i.message, lines: [], column: i.column, isError: r.errors.includes(i) });
+                groups.get(key).lines.push(r.line);
+            });
+        });
+        const notes = Array.from(groups.values()).sort((a, b) => b.lines.length - a.lines.length).slice(0, 8);
+
+        // Rows that cannot be applied come first — they are the ones needing a
+        // decision, exactly as the Ledger floats its flagged duplicates.
+        const order = { error: 0, update: 1, create: 2, skipped: 3, unchanged: 4 };
+        const preview = [...result.rows].sort((a, b) => order[a.status] - order[b.status]).slice(0, 6);
+        const pill = { create: ['Create', 'emerald'], update: ['Update', 'blue'], unchanged: ['No change', 'gray'], skipped: ['System — skipped', 'gray'], error: ['Cannot import', 'amber'] };
+        const tone = { emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700', blue: 'border-blue-200 bg-blue-50 text-blue-700', gray: 'border-gray-200 bg-gray-50 text-gray-500', amber: 'border-amber-200 bg-amber-50 text-amber-700' };
+
+        host.innerHTML = `
+        <div class="rounded-xl border border-gray-200 bg-white p-4">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-[12px] font-bold uppercase tracking-wider text-gray-400">Chart import preview</p>
+                    <p class="mt-1 truncate text-[13px] font-bold text-gray-900">${esc(fileName)}</p>
+                    <p class="mt-1 text-[12px] text-gray-500">${s.create} to create · ${s.update} to update · ${s.unchanged} unchanged${s.skipped ? ` · ${s.skipped} system` : ''}</p>
+                </div>
+                <span class="shrink-0 rounded-full border ${s.errors ? tone.amber : tone.emerald} px-2.5 py-1 text-[11px] font-bold">${s.errors ? `${s.errors} cannot import` : 'Ready'}</span>
+            </div>
+            ${result.skippedNoteRows ? `<p class="mt-2 text-[11px] text-gray-500">Skipped the template's guidance row.</p>` : ''}
+            ${notes.length ? `<div class="mt-3 space-y-1.5">${notes.map((n) => `
+                <div class="rounded-lg border ${n.isError ? 'border-red-200 bg-red-50 text-red-800' : 'border-amber-200 bg-amber-50 text-amber-800'} px-3 py-2">
+                    <p class="text-[11px] leading-relaxed">${n.column && coaColumn(n.column) ? `<span class="font-bold">${esc(coaColumn(n.column).header)}</span> · ` : ''}<span>${esc(n.message)}</span>
+                    <span class="whitespace-nowrap opacity-70">(row ${esc(n.lines.slice(0, 5).join(', '))}${n.lines.length > 5 ? ` +${n.lines.length - 5}` : ''})</span></p>
+                </div>`).join('')}</div>` : ''}
+            ${unmapped.length ? `<div class="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                <p class="text-[11px] font-bold text-gray-600">Columns we will not import (${unmapped.length})</p>
+                ${unmapped.map((u) => `<p class="text-[11px] text-gray-500">${esc(u.header)}</p>`).join('')}</div>` : ''}
+            <div class="mt-3 overflow-x-auto rounded-lg border border-gray-200">
+                <table class="w-full min-w-[460px] text-left">
+                    <thead class="bg-gray-50 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                        <tr><th class="px-3 py-2">Code</th><th class="px-3 py-2">Name</th><th class="px-3 py-2">Type</th><th class="px-3 py-2">What happens</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 text-[12px]">
+                    ${preview.map((r) => `<tr${r.status === 'error' ? ' class="bg-amber-50/40"' : ''}>
+                        <td class="px-3 py-2 tabular-nums font-semibold text-gray-900">${esc(r.code || '—')}</td>
+                        <td class="px-3 py-2 text-gray-700">${esc(r.draft.name || '—')}</td>
+                        <td class="px-3 py-2 text-gray-500">${esc(r.draft.type || '—')}</td>
+                        <td class="px-3 py-2"><span class="rounded-full border ${tone[pill[r.status][1]]} px-2 py-0.5 text-[11px] font-bold">${pill[r.status][0]}</span></td>
+                    </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>
+            ${result.rows.length > 6 ? `<p class="mt-2 text-[11px] text-gray-500">Showing 6 of ${result.rows.length}.</p>` : ''}
+        </div>`;
+
+        const applying = s.create + s.update;
+        confirmBtn.disabled = applying === 0;
+        confirmBtn.textContent = applying
+            ? `Import ${applying} account${applying === 1 ? '' : 's'}`
+            : 'Nothing to import';
+    }
+
+    document.getElementById('coa-import-template').addEventListener('click', () => {
+        const csv = buildCoaTemplateCsv(state.kernel.coa || []);
+        const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'fluxyos-chart-of-accounts.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+        window.showToast?.('Chart downloaded.', 'success');
+    });
+
+    document.getElementById('coa-import-file').addEventListener('change', async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        feedback('Reading…');
+        try {
+            const text = await file.text();
+            fileName = file.name;
+            document.getElementById('coa-import-label').textContent = file.name;
+            // The SAME parser the Ledger and the inventory importer use.
+            result = analyzeCoaImport(window.FluxyCsv.parse(text), { existingAccounts: state.kernel.coa || [] });
+            if (!result.ok && !result.needsMapping) {
+                feedback(result.fatal.message, 'error');
+                result = null;
+            } else {
+                feedback('');
+            }
+        } catch (err) {
+            feedback((err && err.message) || 'Could not read that file.', 'error');
+            result = null;
+        }
+        renderPreview();
+    });
+
+    confirmBtn.addEventListener('click', async () => {
+        if (!result) return;
+        const rows = result.rows.filter((r) => r.status === 'create' || r.status === 'update');
+        if (!rows.length) return;
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Importing…';
+        try {
+            const out = await state.ds.importChartOfAccounts(state.user.uid, { rows });
+            const { created, updated, failed } = out.totals;
+            window.showToast?.(
+                `${created} created, ${updated} updated${failed ? `, ${failed} failed` : ''}.`,
+                failed ? 'info' : 'success');
+            close();
+            // The kernel caches the chart per period; a forced reload is what
+            // makes the new accounts visible without a page refresh.
+            await loadKernel(true);
+        } catch (err) {
+            feedback((err && err.message) || 'The import could not be completed.', 'error');
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Import accounts';
+        }
+    });
+
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(() => {
+        panel.classList.remove('translate-x-full');
+        overlay.classList.remove('opacity-0');
+    });
 }
 
 function openCreateAccountDrawer() { openAccountDrawer(null, false); }
