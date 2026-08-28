@@ -4911,6 +4911,8 @@
         "Map columns": "Petakan kolom",
         "We matched what we recognised. Point us at the rest.": "Kami mencocokkan yang kami kenali. Tunjukkan sisanya.",
         "Not in this file": "Tidak ada di berkas ini",
+        // ── Receive stock: defining a purchase unit inline ────────────────
+        "New unit name": "Nama satuan baru",
         "Row": "Baris",
         "Detect": "Deteksi",
         "Opening stock posts to your ledger": "Stok awal masuk ke buku besar Anda",
@@ -5401,6 +5403,13 @@
         { re: /^Read the (.+?) sheet of (\d+)\.$/,
           id: function (m) { return 'Membaca sheet ' + m[1] + ' dari ' + m[2] + '.'; } },
         { re: /^Column for (.+)$/, id: function (m) { return 'Kolom untuk ' + m[1]; } },
+        // Receive stock: a purchase unit being defined on the line.
+        { re: /^Saved on (.+?), so you only enter it once\.$/,
+          id: function (m) { return 'Disimpan di ' + m[1] + ', jadi Anda cukup mengisinya sekali.'; } },
+        { re: /^How many (.+?) are in one (.+?)\? Whole numbers only — a fractional factor would put rounding error into your ledger\.$/,
+          id: function (m) { return 'Berapa ' + m[1] + ' dalam satu ' + m[2] + '? Bilangan bulat saja — faktor pecahan akan memasukkan galat pembulatan ke buku besar Anda.'; } },
+        { re: /^(.+?) is already this item's stock unit\. Pick it from the list instead\.$/,
+          id: function (m) { return m[1] + ' sudah menjadi satuan stok item ini. Pilih dari daftar saja.'; } },
         // Mapping chip: "Sell price: Not in file" is one text node, so the two
         // halves cannot be looked up separately.
         { re: /^(.+?): Not in file$/, id: function (m) { return m[1] + ': tidak ada di berkas'; } },

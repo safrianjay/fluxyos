@@ -57,11 +57,10 @@ test('an item can be created from the page and shows up in the table', async ({ 
     await setUnit(page, 'base', 'g');
     await expect(page.locator('#item-save-btn')).toBeEnabled();
 
-    await setUnit(page, 'purchase', 'kg');
-    await page.fill('#item-purchase-factor', '1000');
-    // The conversion is echoed back in the user's own words before they commit,
-    // so a wrong factor is caught here rather than inside a stock quantity later.
-    await expect(page.locator('#item-purchase-preview')).toHaveText('1 kg = 1.000 g');
+    // The purchase unit is no longer asked for here — it is defined on the
+    // receipt line, where the delivery note is in hand.
+    // Guard: tests/inventory-purchase-unit.spec.js.
+    expect(await page.locator('#item-purchase-section').count()).toBe(0);
 
     await page.fill('#item-shelf', 'Dry store — shelf A');
     await page.click('#item-save-btn');
@@ -87,7 +86,6 @@ test('an item can be created from the page and shows up in the table', async ({ 
     await row.click();
     await expect(page.locator('#item-drawer-title')).toHaveText('Edit item');
     await expect(page.locator('#item-name')).toHaveValue(`${TAG} Tepung`);
-    expect(await unitValue(page, 'purchase')).toBe('kg');
     // base_unit is immutable: every recorded quantity is an integer count of it.
     await expect(page.locator('#item-base-unit-pick')).toBeDisabled();
     await page.click('#item-cancel-btn');
@@ -203,8 +201,6 @@ test('stock can be received through the page, in the unit it was bought in', asy
     await page.click('#new-item-btn');
     await page.fill('#item-name', `${TAG} Gula`);
     await setUnit(page, 'base', 'g');
-    await setUnit(page, 'purchase', 'kg');
-    await page.fill('#item-purchase-factor', '1000');
     await page.click('#item-save-btn');
     await expect(page.locator('#item-drawer')).toHaveClass(/translate-x-full/, { timeout: 20000 });
 
@@ -219,7 +215,13 @@ test('stock can be received through the page, in the unit it was bought in', asy
     // engine's, not the page's.
     const line = page.locator('#receipt-lines .inv-line').first();
     await line.locator('[data-field="item"]').selectOption({ label: `${TAG} Gula` });
-    await line.locator('[data-field="unit"]').selectOption('kg');
+    // Picking an item RE-RENDERS the line, so wait for the new select.
+    await expect(line.locator('[data-field="unit"] option[value="__newunit__"]')).toHaveCount(1);
+    // The item has no kg yet — it is defined here, with the delivery note in
+    // hand, and saved back onto the item on commit.
+    await line.locator('[data-field="unit"]').selectOption('__newunit__');
+    await page.fill('[data-field="newunit"]', 'kg');
+    await page.fill('[data-field="newfactor"]', '1000');
     await line.locator('[data-field="qty"]').fill('25');
     await line.locator('[data-field="amount"]').fill('300000');
 

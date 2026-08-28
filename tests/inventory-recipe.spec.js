@@ -32,15 +32,18 @@ async function seedIngredient(page, name) {
     await page.click('#new-item-btn');
     await page.fill('#item-name', name);
     await setUnit(page, 'base', 'g');
-    await setUnit(page, 'purchase', 'kg');
-    await page.fill('#item-purchase-factor', '1000');
     await page.click('#item-save-btn');
     await expect(page.locator('#item-drawer')).toHaveClass(/translate-x-full/, { timeout: 30000 });
 
     await page.click('#receive-stock-btn');
     const line = page.locator('#receipt-lines .inv-line').first();
     await line.locator('[data-field="item"]').selectOption({ label: name });
-    await line.locator('[data-field="unit"]').selectOption('kg');
+    // Picking an item RE-RENDERS the line (the unit list belongs to the item),
+    // so the select below is a different node from the one just resolved.
+    await expect(line.locator('[data-field="unit"] option[value="__newunit__"]')).toHaveCount(1);
+    await line.locator('[data-field="unit"]').selectOption('__newunit__');
+    await page.fill('[data-field="newunit"]', 'kg');
+    await page.fill('[data-field="newfactor"]', '1000');
     await line.locator('[data-field="qty"]').fill('10');
     await line.locator('[data-field="amount"]').fill('140000');
     await page.click('#receipt-save-btn');
@@ -66,8 +69,10 @@ test('a recipe can be created, costed, and reopened', async ({ page }) => {
     await page.click('#new-item-btn');
     await page.click('#item-tab-recipe');
     await expect(page.locator('#item-recipe-section')).not.toHaveClass(/hidden/);
-    // A recipe is never purchased and never held, so neither question applies.
-    await expect(page.locator('#item-purchase-section')).toHaveClass(/hidden/);
+    // A recipe is never held as stock, so the track switch does not apply to it.
+    // (The purchase unit is no longer asked here at all — see
+    // tests/inventory-purchase-unit.spec.js.)
+    await expect(page.locator('#item-track-field')).toBeHidden();
     await expect(page.locator('#item-reorder-field')).toHaveClass(/hidden/);
 
     await page.fill('#item-name', `${TAG} Nasi Goreng`);

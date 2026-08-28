@@ -51,18 +51,18 @@ test('untracked hides every field that only exists for something on a shelf', as
     await page.click('#new-item-btn');
     await page.waitForTimeout(400);
 
-    const stockOnly = ['item-purchase-section', 'item-shelf-field', 'item-reorder-field', 'item-inventory-account-field'];
+    const stockOnly = ['item-shelf-field', 'item-reorder-field', 'item-inventory-account-field'];
     const hiddenState = () => page.evaluate((ids) => ids.map((id) =>
         document.getElementById(id).classList.contains('hidden')), stockOnly);
 
     // Tracked by default — a new item is normally something you hold.
-    expect(await hiddenState()).toEqual([false, false, false, false]);
+    expect(await hiddenState()).toEqual([false, false, false]);
 
     await page.uncheck('#item-track-stock');
     await page.waitForTimeout(200);
     // Hidden, not disabled: a greyed-out Reorder point still reads as something
     // this item could have, and a service cannot.
-    expect(await hiddenState()).toEqual([true, true, true, true]);
+    expect(await hiddenState()).toEqual([true, true, true]);
 
     // The unit label stops calling itself Stock unit, because there is no stock.
     const label = await page.textContent('label[for="item-base-unit"]');
@@ -70,7 +70,7 @@ test('untracked hides every field that only exists for something on a shelf', as
 
     await page.check('#item-track-stock');
     await page.waitForTimeout(200);
-    expect(await hiddenState()).toEqual([false, false, false, false]);
+    expect(await hiddenState()).toEqual([false, false, false]);
     expect((await page.textContent('label[for="item-base-unit"]')).trim()).toBe('Stock unit');
 });
 
@@ -93,8 +93,7 @@ test('"What is this?" is answered by the tab, not by a field above the name', as
     await page.waitForTimeout(300);
     await expect(page.locator('#item-type')).toHaveValue('composite');
     await expect(page.locator('#item-recipe-section')).toBeVisible();
-    // A recipe is made, not bought, and is not "tracked inventory" you shelve.
-    await expect(page.locator('#item-purchase-section')).toBeHidden();
+    // A recipe is not "tracked inventory" you shelve.
     await expect(page.locator('#item-track-field')).toBeHidden();
 
     await page.click('#item-tab-single');

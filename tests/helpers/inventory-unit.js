@@ -12,15 +12,17 @@
 // `Other…` is the escape hatch for a unit not on the list, and is exercised by
 // passing something the list does not carry.
 
+// The purchase-unit picker was removed from this drawer on 2026-08-29 — a
+// purchase unit is now defined on the receipt line, where the delivery note is
+// in hand. Only the stock unit is set here.
 const PICKER = {
     base: { select: '#item-base-unit-pick', input: '#item-base-unit' },
-    purchase: { select: '#item-purchase-unit-pick', input: '#item-purchase-unit' },
 };
 const OTHER = '__other__';
 
 /**
  * @param {import('@playwright/test').Page} page
- * @param {'base'|'purchase'} field
+ * @param {'base'} field
  * @param {string} value  a unit code, e.g. 'g'. Anything not on the list routes
  *                        through `Other…` automatically.
  */

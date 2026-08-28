@@ -55,7 +55,7 @@
 
         /* The `Other…` free-text box sits under its dropdown, so it needs the
            gap the drawer's field rhythm would otherwise supply. */
-        #item-base-unit:not(.hidden), #item-purchase-unit:not(.hidden) { margin-top: 8px; }
+        #item-base-unit:not(.hidden) { margin-top: 8px; }
 
         /* Tinted card headers, as in the reference. `slate-50` is one of the two
            header backgrounds DESIGN_SYSTEM permits, so this is a sanctioned
@@ -753,24 +753,6 @@
                 </span>
             </label>
 
-            <div class="fluxy-drawer-section" id="item-purchase-section">
-                <div class="fluxy-drawer-section-head">
-                    <h3 class="fluxy-drawer-section-title">Purchase unit</h3>
-                </div>
-                <p class="fluxy-drawer-section-desc">Only if you buy in a bigger unit than you count in — a sack of flour, counted in grams.</p>
-                <div class="fluxy-drawer-field-grid">
-                    <div class="fluxy-drawer-field">
-                        <label class="fluxy-drawer-label" for="item-purchase-unit">Unit</label>
-                        <select id="item-purchase-unit-pick" aria-label="Purchase unit"></select>
-                        <input id="item-purchase-unit" type="text" class="fluxy-drawer-input hidden" maxlength="16" placeholder="Type the unit — e.g. karton, lusin" autocomplete="off">
-                    </div>
-                    <div class="fluxy-drawer-field">
-                        <label class="fluxy-drawer-label" for="item-purchase-factor">How many stock units</label>
-                        <input id="item-purchase-factor" type="text" inputmode="numeric" class="fluxy-drawer-input" placeholder="1000" autocomplete="off">
-                    </div>
-                </div>
-                <p id="item-purchase-preview" class="fluxy-drawer-hint"></p>
-            </div>
 
             <!-- RECIPE — shown only for a composite item. `components` say what ONE
                  BATCH consumes; `batch_size` says how much that batch produces, in
@@ -2114,7 +2096,6 @@
             // A recipe is made, never bought, so it has no purchase unit.
             // Anything untracked has no shelf, no threshold and no stock account,
             // because it is never on a shelf to begin with.
-            show('item-purchase-section', tracked && !isRecipe);
             show('item-shelf-field', tracked);
             show('item-reorder-field', tracked && !isRecipe);
             show('item-inventory-account-field', tracked);
@@ -2199,16 +2180,6 @@
                 ? 'Fixed once the item exists — every quantity already recorded is counted in it.'
                 : 'The smallest unit you count in. Fixed once the item exists.';
 
-            // One alternate unit, the one you buy in. A recipe has none — it is
-            // never purchased, only made.
-            const purchase = (isEdit && Array.isArray(item.units))
-                ? item.units.find((u) => u.role === 'purchase') || item.units[0] || null
-                : null;
-            document.getElementById('item-purchase-unit').value = purchase ? (purchase.code || '') : '';
-            fillUnitSelect('item-purchase-unit-pick', 'item-purchase-unit',
-                ['kg', 'l', 'sak', 'dus', 'pack', 'karton', 'lusin', 'ikat']);
-            document.getElementById('item-purchase-factor').value = purchase ? String(purchase.factor || '') : '';
-
             // Absent reads as tracked: every item created before this field
             // existed is one somebody keeps on a shelf.
             document.getElementById('item-track-stock').checked = isEdit ? item.track_stock !== false : true;
@@ -2220,7 +2191,6 @@
             applyTrackStock();
 
             hideError();
-            updatePurchasePreview();
             // Shows or hides the recipe half of the form, and renders its rows.
             // Must run after the prefill above, since it reads the type and the
             // base unit it just set.
@@ -2257,20 +2227,6 @@
             document.getElementById('item-form-error').classList.add('hidden');
         }
 
-        // Shows the conversion in the user's own words before they save, so a
-        // wrong factor is caught here rather than in a stock quantity later.
-        function updatePurchasePreview() {
-            const base = document.getElementById('item-base-unit').value.trim();
-            const code = document.getElementById('item-purchase-unit').value.trim();
-            const factor = document.getElementById('item-purchase-factor').value.trim();
-            const el = document.getElementById('item-purchase-preview');
-            if (code && factor && base && /^\d+$/.test(factor) && Number(factor) > 0) {
-                el.textContent = `1 ${code} = ${Number(factor).toLocaleString(window.FluxyMoney.baseLocale())} ${base}`;
-            } else {
-                el.textContent = '';
-            }
-        }
-
         function validateForm() {
             // The footer button is shared with the Import tab, which derives its
             // own state. Whoever is not the active tab must not touch it.
@@ -2297,16 +2253,13 @@
             if (reorderRaw !== '' && (!/^\d+$/.test(reorderRaw))) {
                 throw new Error('The reorder point must be a whole number of base units, or blank.');
             }
-            const code = document.getElementById('item-purchase-unit').value.trim();
-            const factorRaw = document.getElementById('item-purchase-factor').value.trim();
-            const units = [];
-            if (code || factorRaw) {
-                if (!code) throw new Error('Give the purchase unit a name, or clear the quantity beside it.');
-                if (!/^\d+$/.test(factorRaw) || Number(factorRaw) < 1) {
-                    throw new Error('How many stock units are in one purchase unit? Whole numbers only — a fractional factor would put rounding error into your ledger.');
-                }
-                units.push({ code, factor: Number(factorRaw), role: 'purchase' });
-            }
+            // Alternate units are no longer asked for here — they are defined at
+            // Receive stock, where the delivery note is actually in hand. An
+            // EXISTING item's units must therefore be carried through untouched:
+            // sending `[]` from a form that no longer shows the field would wipe
+            // the conversion on every save, silently, for a value nobody was
+            // shown. New items simply start with none.
+            const units = (editingItem && Array.isArray(editingItem.units)) ? editingItem.units : [];
             // A typed reorder point is checked rather than quietly normalized —
             // storing null for what someone entered is the same silent
             // substitution that produced 51 items carrying a threshold of 0.
@@ -2425,6 +2378,8 @@
 
         // ── Receive stock ────────────────────────────────────────────────────
         const ADD_OUTLET = '__add__';
+        // Sentinel for "Other unit…" in a receipt line's unit picker.
+        const NEW_UNIT = '__newunit__';
 
         function dayKey(d = new Date()) {
             return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'),
@@ -2525,8 +2480,27 @@
             if (!raw) return { pending: true };
             const n = Number(raw);
             if (!Number.isFinite(n) || n <= 0) return { error: 'Quantity must be more than zero.' };
+            // A unit being defined on this very line does not exist on the item
+            // yet, so `toBase` would throw INV_001. Resolving against the item
+            // AS IT WOULD BE keeps the arithmetic in the engine rather than
+            // growing a second, divergent conversion here.
+            let resolveAgainst = item;
+            let unitCode = line.unitCode || item.base_unit;
+            if (line.unitCode === NEW_UNIT) {
+                const code = String(line.newUnitCode || '').trim();
+                const factor = String(line.newUnitFactor || '').trim();
+                if (!code) return { pending: true };
+                if (code === item.base_unit) {
+                    return { error: `${code} is already this item's stock unit. Pick it from the list instead.` };
+                }
+                if (!/^\d+$/.test(factor) || Number(factor) < 1) {
+                    return { error: `How many ${item.base_unit} are in one ${code}? Whole numbers only — a fractional factor would put rounding error into your ledger.` };
+                }
+                resolveAgainst = { ...item, units: [...(item.units || []), { code, factor: Number(factor), role: 'purchase' }] };
+                unitCode = code;
+            }
             try {
-                return { base: toBase(item, n, line.unitCode || item.base_unit), item };
+                return { base: toBase(resolveAgainst, n, unitCode), item };
             } catch (err) {
                 if (err.code === INV.NON_INTEGER_QUANTITY) {
                     return { error: `${n} ${line.unitCode} is not a whole number of ${item.base_unit}. Use a rounder quantity, or give the item a finer stock unit.` };
@@ -2542,8 +2516,14 @@
                 const units = item ? itemUnits(item) : [];
                 const itemOptions = stockItems.map((i) =>
                     `<option value="${esc(i.id)}"${i.id === line.itemId ? ' selected' : ''}>${esc(i.name)}</option>`).join('');
+                // "Other unit…" is where a purchase unit gets defined now. It used
+                // to be asked for in the item drawer — before anyone had bought
+                // the thing, so the answer had to be guessed. Here the delivery
+                // note is in the user's hand.
+                const isNew = line.unitCode === NEW_UNIT;
                 const unitOptions = units.map((u) =>
-                    `<option value="${esc(u.code)}"${u.code === line.unitCode ? ' selected' : ''}>${esc(u.code)}</option>`).join('');
+                    `<option value="${esc(u.code)}"${u.code === line.unitCode ? ' selected' : ''}>${esc(u.code)}</option>`).join('')
+                    + `<option value="${NEW_UNIT}"${isNew ? ' selected' : ''}>Other…</option>`;
                 return `
                     <div class="inv-line" data-line="${line.uid}">
                         <select class="fluxy-drawer-select" data-field="item" aria-label="Item">${itemOptions}</select>
@@ -2554,6 +2534,16 @@
                             <input type="text" inputmode="numeric" class="fluxy-drawer-input inv-line-cost" data-field="amount"
                                    value="${line.amount ? formatAmountInput(line.amount) : ''}" placeholder="Cost, e.g. 300.000" aria-label="Cost">
                         </div>
+                        ${isNew ? `
+                        <div class="inv-line-newunit">
+                            <input type="text" class="fluxy-drawer-input" data-field="newunit" maxlength="16"
+                                   value="${esc(line.newUnitCode || '')}" placeholder="karton, sak, lusin" aria-label="New unit name">
+                            <span class="inv-line-eq">=</span>
+                            <input type="text" inputmode="numeric" class="fluxy-drawer-input" data-field="newfactor"
+                                   value="${esc(line.newUnitFactor || '')}" placeholder="1000" aria-label="How many stock units">
+                            <span class="inv-line-eq">${esc(item ? item.base_unit : '')}</span>
+                        </div>
+                        <p class="fluxy-drawer-hint">Saved on ${esc(item ? item.name : 'this item')}, so you only enter it once.</p>` : ''}
                         <div class="inv-line-foot">
                             <span class="inv-line-derived" data-field="derived"></span>
                             <button type="button" class="inv-line-remove" data-field="remove"${receiptLines.length === 1 ? ' disabled' : ''}>Remove</button>
@@ -2692,6 +2682,34 @@
             btn.disabled = true;
             btn.textContent = 'Receiving…';
             try {
+                // Persist any unit defined on a line BEFORE the receipt posts, so
+                // the conversion is remembered next time. It goes through
+                // `saveItem` rather than a bespoke write: that is where INV_002
+                // (non-integer factor) and INV_004 (duplicate or contradicted
+                // base unit) are enforced, and a second writer would have to
+                // re-implement both and would eventually disagree.
+                //
+                // Deliberately before the receipt, not after: a failure here must
+                // stop the posting. A receipt that succeeded while its unit was
+                // rejected would have converted through a factor the item does
+                // not carry, and nothing afterwards could explain the quantity.
+                for (const line of receiptLines) {
+                    if (line.unitCode !== NEW_UNIT) continue;
+                    const item = itemById(line.itemId);
+                    const code = String(line.newUnitCode || '').trim();
+                    const factor = Number(line.newUnitFactor);
+                    if (!item || !code || !Number.isInteger(factor) || factor < 1) continue;
+                    if ((item.units || []).some((u) => u.code === code)) continue;
+                    await ds.saveItem(currentUid, {
+                        ...item,
+                        units: [...(item.units || []), { code, factor, role: 'purchase' }]
+                    }, { create: false, itemId: item.id });
+                    // Keep the in-memory copy in step, or a second line for the
+                    // same item this session would try to add the unit again.
+                    item.units = [...(item.units || []), { code, factor, role: 'purchase' }];
+                    line.unitCode = code;
+                }
+
                 await ds.createGoodsReceipt(currentUid, {
                     dimension_id: outletValue === ADD_OUTLET ? null : (outletValue || null),
                     vendor_name: document.getElementById('receipt-vendor').value.trim(),
@@ -2725,8 +2743,7 @@
             if (!document.getElementById('item-drawer-backdrop').classList.contains('hidden')) closeDrawer();
             else if (!document.getElementById('receipt-drawer-backdrop').classList.contains('hidden')) closeReceiptDrawer();
         });
-        [['item-base-unit-pick', 'item-base-unit'],
-         ['item-purchase-unit-pick', 'item-purchase-unit']].forEach(([selectId, inputId]) => {
+        [['item-base-unit-pick', 'item-base-unit']].forEach(([selectId, inputId]) => {
             const sel = document.getElementById(selectId);
             const input = document.getElementById(inputId);
             if (!sel || !input) return;
@@ -2739,10 +2756,6 @@
         ['item-name', 'item-base-unit'].forEach((id) => {
             document.getElementById(id).addEventListener('input', validateForm);
         });
-        ['item-base-unit', 'item-purchase-unit', 'item-purchase-factor'].forEach((id) => {
-            document.getElementById(id).addEventListener('input', updatePurchasePreview);
-        });
-
         // ── Recipe editor wiring ─────────────────────────────────────────────
         document.getElementById('item-type').addEventListener('change', applyItemType);
         // The batch unit is the item's own base unit, so it follows that field.
@@ -3035,6 +3048,8 @@
             if (!line) return;
             const field = e.target.dataset.field;
             if (field === 'qty') line.qty = e.target.value;
+            if (field === 'newunit') line.newUnitCode = e.target.value;
+            if (field === 'newfactor') line.newUnitFactor = e.target.value.replace(/\D/g, '');
             if (field === 'amount') {
                 line.amount = parseAmountInput(e.target.value);
                 const formatted = formatAmountInput(e.target.value);
@@ -3057,7 +3072,11 @@
                 return;
             }
             if (e.target.dataset.field === 'unit') {
+                const wasNew = line.unitCode === NEW_UNIT;
                 line.unitCode = e.target.value;
+                // The name/factor inputs only exist in the "Other unit…" state,
+                // so entering or leaving it is a re-render, not a refresh.
+                if (wasNew !== (line.unitCode === NEW_UNIT)) { renderLines(); return; }
                 refreshDerived();
             }
         });

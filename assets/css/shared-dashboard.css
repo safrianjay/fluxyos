@@ -3031,3 +3031,20 @@ main > header {
    is better answered by which tab you are on than by an abstract question
    above the name field. */
 .fluxy-drawer-segment--3 { grid-template-columns: repeat(3, 1fr); }
+
+/* Defining a purchase unit inline on a receipt line. It used to be asked for in
+   the item drawer — before anyone had bought the thing, so the answer had to be
+   guessed. Here the delivery note is in the user's hand. */
+.inv-line-newunit {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+.inv-line-eq {
+    font-size: 13px;
+    font-weight: 600;
+    color: #6B7280;
+    white-space: nowrap;
+}

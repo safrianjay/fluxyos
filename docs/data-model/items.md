@@ -438,6 +438,42 @@ Guards: `tests/inventory-item-accounting.spec.js` → "What is this? is answered
 the tab", and `tests/inventory-recipe.spec.js`, which now creates its recipe
 through the tab.
 
+## 7i. The purchase unit is defined at Receive stock
+
+The Head of Finance's review called the item drawer's Purchase unit field
+redundant. It was not redundant — it is the `units[]` conversion seam, and
+deleting it would have meant every goods receipt had to be keyed in base units
+(25000 g, not 25 kg). What was wrong was **where it was asked**: in the item
+drawer, before anyone had bought the thing, so the answer had to be guessed.
+
+It is now asked on the **receipt line**, with the delivery note in hand. The
+unit picker carries an `Other…` option (`NEW_UNIT`); choosing it reveals a name
+and a factor, and on commit the unit is written back onto the item so it is only
+ever entered once.
+
+Three things worth knowing before touching it:
+
+1. **`lineBase` resolves against a CANDIDATE item.** A unit being defined on
+   this line does not exist on the item yet, so `toBase` would throw `INV_001`.
+   The line builds `{ ...item, units: [...item.units, newUnit] }` and converts
+   against that — the arithmetic stays in the engine instead of growing a second
+   conversion in the page that would eventually disagree with it.
+2. **The unit is persisted BEFORE the receipt posts**, through `saveItem`, not a
+   bespoke write. `saveItem` is where `INV_002` (non-integer factor) and
+   `INV_004` (duplicate or contradicted base unit) are enforced. Order matters:
+   a receipt that succeeded while its unit was rejected would have converted
+   through a factor the item does not carry, and nothing afterwards could
+   explain the quantity.
+3. **`collectDraft` preserves `editingItem.units` verbatim.** The drawer no
+   longer shows the field, so sending `[]` from it would wipe the conversion on
+   every save — silently, for a value the user was never shown. This is the one
+   change here that could have destroyed data, and it is why the array is
+   carried through rather than rebuilt.
+
+Guard: `tests/inventory-purchase-unit.spec.js`, plus the receive tests in
+`inventory-ui.spec.js` and `inventory-recipe.spec.js`, which now define their
+`kg` inline.
+
 ## 8. Composites are not importable
 
 The template has no recipe concept, so every imported item is `type: 'stock'`.
