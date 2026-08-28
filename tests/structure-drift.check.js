@@ -333,6 +333,38 @@ if (rulesCollections && qaRun) {
         fail('chart-variants', `could not verify market charts: ${e.message}`);
     }
 
+    // --- 6. SIDEBAR ICON PARITY --------------------------------------------
+    // sidebar-loader.js holds the nav TWICE: inline <svg> in the markup, and a
+    // `dashboardLucideIcons` map that replaces them at runtime. Every nav item
+    // must be in the map, because the map is what actually renders.
+    //
+    // Inventory, Point of Sale and Outlet P&L were never migrated into it, so
+    // for as long as they existed they rendered from the inline fallback: 20px
+    // instead of 16, stroke-width 2 instead of 1.85, and Heroicons geometry in a
+    // sidebar that is otherwise entirely Lucide. Nothing failed — they just
+    // looked wrong, which is the only symptom this class of drift ever has.
+    try {
+        const src = fs.readFileSync(path.join(ROOT, 'assets', 'js', 'sidebar-loader.js'), 'utf8');
+        const mapped = new Set(
+            [...src.matchAll(/'(nav-[a-z0-9-]+)':\s*'<svg class="sidebar-icon"/g)].map((m) => m[1])
+        );
+        const rendered = new Set(
+            [...src.matchAll(/id="(nav-[a-z0-9-]+)"/g)].map((m) => m[1])
+        );
+        // The scroll container is not a nav item.
+        rendered.delete('nav-container');
+        const missing = [...rendered].filter((id) => !mapped.has(id));
+        if (missing.length) {
+            fail('sidebar-icons',
+                `nav item(s) with no entry in dashboardLucideIcons, so they render the inline `
+                + `fallback at the wrong size, weight and icon family: ${missing.join(', ')}`);
+        } else {
+            ok('sidebar-icons', `${rendered.size} nav items all resolve to a Lucide icon`);
+        }
+    } catch (e) {
+        fail('sidebar-icons', `could not verify sidebar icons: ${e.message}`);
+    }
+
     // --- report ------------------------------------------------------------
     if (failures.length) {
         console.error('\nSTRUCTURAL DRIFT\n');

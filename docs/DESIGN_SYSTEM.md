@@ -627,6 +627,22 @@ transaction editor so the two stay identical.
   The fill is neutral — the project-wide ban on orange backgrounds stands.
 - **Dashboard/App Sidebar Header**: `64px` tall to align with the main app topbar divider. Logo mark is `36px`, logo text is `18px`, vertically centered.
 - **Dashboard/App Sidebar Menu Type**: Menu text is `14px` max, icon size is `16px` max, Lucide-style stroke icons only. Do not enlarge sidebar nav text or icons.
+- **Dashboard/App Sidebar Icons — one source, and it is the map.**
+  `sidebar-loader.js` holds the nav **twice**: inline `<svg>` in the markup, and
+  a `dashboardLucideIcons` map that replaces them at runtime. **The map is what
+  renders.** A nav item missing from it silently falls back to the inline SVG at
+  `20px` / stroke-width `2` in whatever icon family that markup happened to use —
+  which is exactly how Inventory, Point of Sale and Outlet P&L ended up as
+  20px Heroicons in an otherwise 16px / 1.85 Lucide sidebar (fixed 2026-08-29).
+  Nothing failed; they just looked wrong, which is the only symptom this has.
+  Add every new nav item to the map, keep the inline fallback in step, and note
+  that `npm run check:structure` now fails on any nav id that is not in it.
+- **Sidebar icons must be distinct from each other, not merely correct.** Outlet
+  P&L used `M3 3v18h18` plus bars — the same L-axis that opens Reports & Exports,
+  two rows below it in the same group. Two items in one group sharing a stroke
+  read as noise however apt each is alone. Where a label carries the meaning
+  ("Outlet P&L"), let the icon carry the *distinguishing* word — a shopfront for
+  the outlet, with the label supplying the P&L.
 - **Dashboard/App Sidebar Density**: Menu rows are `36px` min-height, `8px 10px` item padding, and `2px` vertical gap between entries. Text stays at `14px` and icons at `16px` — a wider sidebar is not licence to enlarge either.
 - **Dashboard/App Sidebar Group Rhythm**: Group labels are `11px / 600`,
   UPPERCASE, `0.08em` tracking, in slate `#94A3B8`, with `22px` top and `6px`
