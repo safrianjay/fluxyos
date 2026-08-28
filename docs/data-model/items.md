@@ -40,6 +40,18 @@ creates `stock` items and preserves — but does not edit — a `composite`'s
 | `notes` | string ≤500 \| null | |
 | `status` | enum | `active` \| `archived`. Soft archive only |
 | `created_at` / `updated_at` | Timestamp | Server-set |
+| `barcode` | string ≤32 \| null | From the import template. Stored for lookup and round-trip; **nothing scans it yet** |
+| `categories` | string[] ≤8 | Product categories, semicolon-separated in the file. The first also seeds `pos_category` |
+| `track_stock` | boolean | `false` = a service. Never held as stock: `createGoodsReceipt` refuses it, and the importer refuses an opening balance on one. Absent reads as `true` |
+| `tracking_type` | enum \| null | `qty` \| `batch` \| `serial`. **Only `qty` is enforced** — see §7 |
+| `is_sold` / `is_purchased` | boolean | The template's "I Sell / I Buy This Item". `is_sold` also sets `pos_visible` on import |
+| `purchase_price` | integer minor units \| null | Reference buy price. **Not the cost the ledger uses** — that stays the weighted average derived from `stock_movements`, so this can never reach a journal |
+| `default_inventory_account_code` | string ≤12 \| null | **Recorded, not acted on** (§7) |
+| `default_sales_account_code` | string ≤12 \| null | **Recorded, not acted on** (§7) |
+| `default_sales_tax_name` / `default_purchase_tax_name` | string ≤40 \| null | **Recorded, not acted on** (§7) |
+| `source_account_codes` | map \| null | The client's own codes, kept **only** where we could not resolve them against this chart |
+| `custom_fields` | map ≤20 \| null | `custom_field_*` columns. Flat strings, values ≤200 chars |
+| `import_batch_id` | string \| null | Set by a bulk import. Ties the items, their movements and their opening journal to one event |
 
 ## 2a. `reorder_point`: absence is not zero
 
@@ -210,3 +222,129 @@ coverage: `tests/items-live-smoke.spec.js`.
 They are disambiguated by path and by nesting depth in `firestore.rules`, and the
 structure-drift rules-coverage check only counts top-level matches — but a reader
 grepping for `items` will hit both.
+
+## 7. Bulk import — the reference template
+
+`inventory.html` → Items → **Bulk import**. Engine
+`assets/js/inventory-import.js` (pure), surface
+`assets/js/inventory-bulk-import.js`, writer
+`db-service.importInventoryItems`.
+
+The column set is the Head of Finance's reference sheet ("Contoh Bulk import
+Inventory - from Jurnal.id"), reproduced column-for-column so a client exporting
+from Jurnal.id can drop that file in unchanged. **It is an input contract, not a
+storage schema** — `TEMPLATE_COLUMNS` in the engine holds each column's header,
+its requirement label, its original instruction text, and `maps`: where it lands
+here.
+
+### 7a. Four columns are recorded but NOT acted on
+
+| Column | Stored as | What actually happens |
+|---|---|---|
+| Default Inventory Account Code | `default_inventory_account_code` | Stock always posts to **1200 Inventory**, which is closed to direct posting (`chart-of-accounts.md` §4b) and ties to `stock_movements`. A per-item inventory account cannot be honoured without giving up that control-account contract |
+| Default Sell Account Code | `default_sales_account_code` | Revenue routes through Accounting → Account Mapping |
+| Default Sell / Buy Tax Name | `default_sales_tax_name` / `default_purchase_tax_name` | Tax is applied in the Tax Center, per transaction, not per item |
+| Tracking Type `Batch` / `Serial Number` | `tracking_type` | FluxyOS tracks **quantity**. No batch or serial is held |
+
+Keeping them is what makes a migration reversible and a wrong code diagnosable —
+the alternative is destroying what the client knew about their own stock. But
+storing a value the engine never reads is only defensible while everyone can see
+that is what is happening, so it is stated in three places that cannot drift
+apart quietly: this table, the `_buildItemFields` comment in `db-service.js`, and
+**the import preview itself**, which reports every one of them as a warning
+before the user confirms.
+
+If any of these ever becomes real, the field is already populated — and this
+section is the thing to delete.
+
+### 7b. Account codes are matched exactly or not at all
+
+Jurnal writes `1-10200`; FluxyOS writes `1200`. No arithmetic turns one into the
+other. `resolveAccountCode` matches the live chart exactly or returns nothing,
+keeping the original under `source_account_codes` — the same refusal
+`matchCashAccounts` makes for bank accounts on a statement import, for the same
+reason: an unmatched code is recoverable, a confidently wrong one is not.
+
+The chart it matches against is `getChartForPicker`, not `getChartOfAccounts`.
+The latter returns `[]` for a workspace that has never opened the Accounting
+Center, which would report *every* code in the file as unresolvable.
+
+### 7c. Amounts: the ambiguity is surfaced, never guessed
+
+`10.000` is ten thousand under Indonesian grouping and ten under Anglo decimals.
+It is a **1000x error that stores cleanly and raises nothing** in any currency.
+
+What differs is whether the cell is ambiguous at all. **IDR has no minor unit**,
+so a decimal reading of a money cell is never valid and grouping is the only
+reading; PHP, SGD and MYR have cents, so the separator genuinely carries meaning
+and the cell has two defensible readings. The `ambiguous` flag is raised only for
+the second case — *not* because rupiah is safer arithmetic. An earlier draft of
+this section claimed both readings "round to the same rupiah" in IDR. They do
+not: `10.000` is 10.000 or 10. `parseAmountCell` resolves what it can from evidence (two
+separators → the last is the decimal; three trailing digits → grouping, since no
+currency here has three decimal places), and flags the rest as `ambiguous`. The
+drawer then offers an explicit format choice and re-reads the rows in memory.
+
+Above all, **the preview renders every amount through `FluxyMoney.formatBase`**,
+so the number the user approves is the number that gets written.
+
+The importer is **currency-generic**: it reads `minorPerUnit` from the money seam,
+so all four base currencies (IDR, PHP, SGD, MYR) parse and render through the
+same path, and currency symbols (`Rp`, `₱`, `S$`, `RM`, and the ISO codes) are
+stripped as decoration.
+
+**What it does NOT have is a currency column.** The reference template has none,
+so every amount in a file is read as the workspace's base currency. A price list
+kept in another currency imports cleanly and wrongly. The review step therefore
+names the currency it is reading in, next to the figures, because that
+assumption is otherwise invisible. Adding a per-file currency would mean an FX
+rate and a conversion date, which is `fx-rate.js`'s job and a separate change —
+invoices carry a face currency for exactly that reason; the item master does
+not, because it is the books' own currency by definition.
+
+### 7d. A bad row costs its row, not the file
+
+`analyzeImport` never throws for a bad row. This is a deliberate departure from
+`analyzeBulkCsv` (the transaction importer), which aborts the whole file on the
+first bad line — right for six columns, where a bad one usually means the wrong
+file; wrong for an inventory master, which is long, hand-maintained, and arrives
+with a handful of bad cells in a file that is otherwise entirely good.
+
+Duplicates split by kind: a **name** that already exists is skipped and reported
+(re-running an import is not an error), while a **SKU** that already exists is a
+hard row error — a duplicate SKU makes the marketplace join ambiguous and would
+relieve the wrong item's cost on a sale (§1).
+
+### 7e. Divergence from the item drawer, recorded on purpose
+
+A `Buffer Quantity` of `0` is **refused** in the item drawer (§2a) and
+**normalized to `null` with a per-row warning** on import. The principle §2a
+protects is that a substitution must never be silent — not that it must never
+happen. One `0` in a 300-row migration must not cost the row, and the warning is
+counted, grouped and shown before the confirm.
+
+### 7f. Unrecognized headers ask, they do not refuse
+
+Auto-detection covers the template's headers plus the spellings a real export
+produces, in English and Bahasa (`HEADER_ALIASES`). When it cannot place the
+required columns — or cannot recognise a single header — `analyzeImport` returns
+`needsMapping: true` with the file's own header row, and the drawer renders a
+**Map columns** step instead of an error.
+
+Refusing was the obvious first behaviour and it was wrong. A shop keeping its
+list under *Bahan / Takaran / Harga* has a perfectly good file; telling them it
+is unreadable when the only missing piece is which column is which turns a
+thirty-second answer into a dead end. A genuinely wrong file still fails — it
+just fails with its columns on screen, which is the more useful way to find out.
+
+`columnOverrides` ({ templateKey: columnIndex }) always beats detection, and
+`SUPPRESS_COLUMN` (`-1`) removes a mapping. Both directions are needed:
+detection can match the *wrong* column, and a control that could only ever add a
+mapping would leave the user stuck with it.
+
+## 8. Composites are not importable
+
+The template has no recipe concept, so every imported item is `type: 'stock'`.
+Recipes are authored in the item drawer, where the component picker can validate
+against the graph. `importInventoryItems` forces the type rather than trusting
+the caller, so there is no candidate graph to validate and no cycle to find.

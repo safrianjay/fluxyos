@@ -552,6 +552,16 @@
                             <!-- Counting acts on the stock in this table, so it
                                  belongs to the table rather than the page chrome —
                                  and the topbar already holds its one primary action. -->
+                            <!-- Importing acts on this table, and it is a setup /
+                                 migration job rather than a daily one - so it sits
+                                 with the table it fills, not in the page chrome.
+                                 The topbar already holds one primary action and one
+                                 secondary; a third button there would be the
+                                 equal-weight CTA cluster DESIGN_SYSTEM bans. -->
+                            <button id="bulk-import-btn" type="button" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 inline-flex items-center gap-2 shadow-sm whitespace-nowrap">
+                                <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15V3m0 12 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path></svg>
+                                Bulk import
+                            </button>
                             <a id="count-stock-link" href="/inventory-count" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[14px] font-bold text-gray-700 hover:bg-gray-50 transition-all duration-200 inline-flex items-center gap-2 shadow-sm whitespace-nowrap">
                                 <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m-6 9 2 2 4-4"></path></svg>
                                 Count stock
@@ -890,6 +900,7 @@
         // Conversion lives in the engine, not here. A page that reimplements
         // "kg → g" is a second place for the arithmetic behind COGS to be wrong.
         import { itemUnits, toBase, INV, reorderPointOf, recipeCost, unitCostOf } from './assets/js/inventory-engine.js';
+        import { openInventoryImport } from './assets/js/inventory-bulk-import.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -1495,7 +1506,12 @@
                         description: 'Add the ingredients and goods you buy. Once an item exists you can receive stock against it, count it, and watch its cost land in your P&L.',
                         buttonText: 'New item',
                         buttonIcon: 'plus',
-                        onAction: () => openDrawer(null)
+                        onAction: () => openDrawer(null),
+                        // A business moving to FluxyOS already keeps this list
+                        // somewhere. Typing 200 items in one at a time is not the
+                        // job — but it is the only one the primary button offers.
+                        secondaryText: 'Import from a spreadsheet',
+                        onSecondary: openBulkImport
                     });
                 }
                 return;
@@ -2716,6 +2732,23 @@
             a.click();
             URL.revokeObjectURL(url);
         });
+
+        // ── Bulk import ─────────────────────────────────────────────────────
+        // The drawer owns the whole flow (template → upload → preview → confirm)
+        // and writes through DataService.importInventoryItems. All this page does
+        // is open it and reload once it reports success — the same contract the
+        // item and receipt drawers already have with loadInventory().
+        function openBulkImport() {
+            openInventoryImport({
+                ds,
+                user: { uid: currentUid },
+                onImported: async () => {
+                    await loadInventory();
+                    setTab('items');
+                }
+            });
+        }
+        document.getElementById('bulk-import-btn').addEventListener('click', openBulkImport);
 
         // Receive-stock drawer
         document.getElementById('receive-stock-btn').addEventListener('click', openReceiptDrawer);

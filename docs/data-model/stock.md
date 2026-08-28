@@ -217,6 +217,52 @@ Postings with no dimension are surfaced as **"Unassigned"**, never hidden — th
 are real money, and dropping them would make the outlets fail to sum to the
 company.
 
+## 4d. Opening balances — `importInventoryItems`
+
+```
+opening stock   Dr 1200 Inventory / Cr 3900 Opening Balance Equity    OPENING
+```
+
+Where a business that already has stock states what it owns, on the way in. The
+inventory bulk import (`docs/data-model/items.md` §7) posts it, and it is the
+**first caller of `buildOpeningJournal`** — which shipped with the chart and had
+sat unused since.
+
+**Why 3900 and not 2050 GRNI.** A goods receipt credits GRNI because a supplier
+is owed for goods they have not invoiced yet. Nobody is owed for stock a business
+already had. Crediting GRNI would overstate the liability and sit in that account
+forever, which is the exact signal `2050` exists to raise (§1). 3900 exists for
+precisely this: recording an opening position without inventing revenue for it.
+
+**One journal per opening DATE, not per file.** A journal carries a single
+`period_key`, and a migration routinely carries balances struck on different
+days. `_assignJournalNumbers` restarts its cursor per call, so all of an import's
+journals are numbered in **one** call — numbering them individually hands every
+journal the same number, silently, because nothing downstream asserts uniqueness.
+
+**Movements are `adjustment`, not `receipt`.** Nothing was received. `receipt` is
+reserved for goods that physically arrived against a vendor, and the Restock tab
+reads that distinction. Their `source` is `{ collection: 'journals', id }`: the
+opening journal *is* the source document, and inventing a collection to hold an
+empty one would cost a `firestore.rules` block for nothing.
+
+**Closed periods refuse, they never re-date.** Every distinct opening date is
+checked with `_assertOpenPostingPeriod` **before** the batch is staged, so the
+failure names the period instead of arriving as a rules rejection two hundred
+writes in. The preview checks the same thing against `listPeriods` and marks the
+row, so it is normally caught before the user ever presses Confirm.
+
+**No rules change was needed**, which is worth knowing given the ruleset sits at
+~97% of its expression-complexity ceiling: `adjustment` is already an allowed
+`movement_type`, `items` and `stock_movements` are already in the audit-log
+allowlist, the `journals` create rule accepts any balanced numbered system
+journal, and the `items` validator uses explicit field checks with no `hasOnly`
+(§5 of `items.md`) so new fields pass. Nothing here needs
+`firebase deploy --only firestore:rules`.
+
+**An untracked item cannot carry one.** `track_stock: false` is a service; the
+importer errors the row, and `createGoodsReceipt` refuses it too.
+
 ## 5. Stock on hand
 
 `getStockOnHand(userId, { byDimension })` sums the movements. **Deliberately not

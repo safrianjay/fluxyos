@@ -5466,6 +5466,13 @@ class DataService {
                 // consuming its ingredients — the components are what arrived.
                 throw new Error(`"${item.name}" is a composite item; receive its components instead.`);
             }
+            // Untrack (from the import template) means "we do not hold this as
+            // stock" — a service, or something bought and consumed immediately.
+            // Receiving one would create a stock balance for something that has
+            // no shelf, and 1200 Inventory would carry it forever.
+            if (item.track_stock === false) {
+                throw new Error(`"${item.name}" is set to Untrack, so it is never held as stock. Switch it to tracked before receiving against it.`);
+            }
             const quantity = Number(l.quantity);
             if (!Number.isInteger(quantity) || quantity <= 0) {
                 throw new Error(`Quantity for "${item.name}" must be a positive whole number of ${item.base_unit}.`);
@@ -6976,11 +6983,22 @@ class DataService {
         } catch (_) { return []; }
     }
 
-    async saveItem(userId, data = {}, { create = false, itemId = null } = {}) {
-        if (!userId) throw new Error('userId required');
-        // Throws INV_* on bad input; the caller renders err.code, never the prose.
+    /*
+     * The single definition of what an `items` document contains.
+     *
+     * Extracted from `saveItem` so the bulk importer writes byte-identical
+     * records. It previously lived inline, and a second writer that rebuilt the
+     * payload by hand is exactly how two creation paths drift: the drawer would
+     * keep normalizing `reorder_point` through `normalizeReorderPoint` while an
+     * importer stored a raw 0, and nothing would report the difference until a
+     * low-stock count disagreed with itself on two tabs.
+     *
+     * Throws INV_* from the engine. Returns the pieces both callers need; the
+     * recipe graph is validated by the caller, which is the only one that knows
+     * the candidate id.
+     */
+    _buildItemFields(data = {}, { create = false } = {}) {
         const draft = validateItemDraft(data);
-        const scope = this._scope(userId);
         const nameKey = normalizeVendorKey(draft.name);
         const sku = this._nullableString(data.sku, 60);
         const cogsCode = this._nullableString(data.default_cogs_account_code, 12);
@@ -7026,6 +7044,74 @@ class DataService {
             pos_category: this._nullableString(data.pos_category, 40),
             pos_sort: Number.isInteger(Number(data.pos_sort)) ? Number(data.pos_sort) : 0
         };
+
+        // ── Bulk-import template fields ──────────────────────────────────────
+        //
+        // The Head of Finance's reference import template carries product
+        // attributes the item drawer never asks for. They are written ONLY when
+        // the caller actually supplies the key: `collectDraft()` in
+        // inventory.html knows nothing about them, so merging a default here
+        // would blank an imported item's barcode, categories and account codes
+        // the first time somebody opened it to fix a typo. An absent key on
+        // update means "leave what is stored", not "set it to nothing".
+        //
+        // Four of these are RECORDED BUT NOT ACTED ON, and that is deliberate
+        // rather than unfinished — see docs/data-model/items.md §7. Stock always
+        // posts to 1200 Inventory (closed to direct posting), revenue routes
+        // through Accounting → Account Mapping, and tax is applied in the Tax
+        // Center. Keeping the client's own codes beside ours is what makes a
+        // migration reversible and a wrong code diagnosable; pretending the
+        // posting engine reads them would be the silent-wrong-number failure
+        // this codebase keeps paying for.
+        const extra = {};
+        const put = (key, value) => { if (key in data) extra[key] = value; };
+        put('barcode', this._nullableString(data.barcode, 32));
+        put('categories', Array.isArray(data.categories)
+            ? data.categories.map((c) => String(c || '').trim().slice(0, 40)).filter(Boolean).slice(0, 8)
+            : []);
+        // Untrack is a service: never held as stock, so it can never be received,
+        // counted, or carry an opening balance. Enforced at the movement-creating
+        // callers, not here — this is the master record, and the guard belongs
+        // where stock actually moves.
+        put('track_stock', data.track_stock !== false);
+        put('tracking_type', ['qty', 'batch', 'serial'].indexOf(data.tracking_type) !== -1
+            ? data.tracking_type
+            : (data.track_stock === false ? null : 'qty'));
+        put('is_sold', data.is_sold === true);
+        put('is_purchased', data.is_purchased === true);
+        // A reference buy price. NOT the cost the ledger uses: that stays the
+        // weighted average derived from stock_movements, so this can never drift
+        // into a journal.
+        put('purchase_price', Number.isInteger(Number(data.purchase_price)) && Number(data.purchase_price) > 0
+            ? Number(data.purchase_price) : null);
+        put('default_inventory_account_code', this._nullableString(data.default_inventory_account_code, 12));
+        put('default_sales_account_code', this._nullableString(data.default_sales_account_code, 12));
+        put('default_sales_tax_name', this._nullableString(data.default_sales_tax_name, 40));
+        put('default_purchase_tax_name', this._nullableString(data.default_purchase_tax_name, 40));
+        // What the client's own system called these accounts, kept only when we
+        // could NOT resolve the code against this workspace's chart.
+        put('source_account_codes', this._flatStringMap(data.source_account_codes, 8, 24));
+        put('custom_fields', this._flatStringMap(data.custom_fields, 20, 200));
+        // A create must not leave the two behavioural flags undefined — every
+        // reader treats a missing `track_stock` as tracked, and writing it makes
+        // that explicit rather than inferred.
+        const extraOnCreate = create ? { track_stock: true, tracking_type: 'qty', ...extra } : extra;
+
+        return {
+            draft,
+            recipe,
+            nameKey,
+            sku,
+            fields: { ...fields, ...extraOnCreate }
+        };
+    }
+
+
+    async saveItem(userId, data = {}, { create = false, itemId = null } = {}) {
+        if (!userId) throw new Error('userId required');
+        // Throws INV_* on bad input; the caller renders err.code, never the prose.
+        const { draft, recipe, nameKey, sku, fields } = this._buildItemFields(data, { create });
+        const scope = this._scope(userId);
 
         // Every component must exist, and the resulting graph must be acyclic.
         // Checked against the CANDIDATE graph — the item as it would be after this
@@ -7086,6 +7172,249 @@ class DataService {
             after: { name: draft.name, type: draft.type, sku: sku || null }, source: 'dashboard'
         });
         return { id: itemId, ...prev, ...fields };
+    }
+
+    /*
+     * Bulk import of the inventory master, from the reference spreadsheet.
+     *
+     * `rows` is the CONFIRMED subset of what `inventory-import.js` analyzed —
+     * `[{ draft, opening }]` — and nothing here re-parses a spreadsheet. Parsing,
+     * mapping and per-row validation happened in the pure engine, in front of the
+     * user, and the user pressed Confirm on the result. This method's only jobs
+     * are to re-check what could have changed since (duplicates), to post the
+     * opening balances, and to make the whole thing one atomic write.
+     *
+     * ── Why opening stock posts, and where ───────────────────────────────────
+     *
+     *     opening stock   Dr 1200 Inventory / Cr 3900 Opening Balance Equity
+     *
+     * This is the first caller of `buildOpeningJournal`, which shipped with the
+     * chart and has sat unused: 3900 exists precisely so an existing business can
+     * state what it already owns without inventing revenue for it. Crediting
+     * anything else would be wrong in a specific way — 2050 GRNI (what a goods
+     * receipt credits) would mean a supplier is owed for stock they never
+     * invoiced, and it would sit in GRNI forever, which is the exact signal that
+     * account exists to raise.
+     *
+     * One journal PER OPENING DATE, not one per file: a journal carries a single
+     * `period_key`, and a migration routinely carries balances struck on
+     * different days. Movements are written in the SAME batch as the journal
+     * that moved 1200, so the control account can never land without its
+     * subledger — the invariant in docs/data-model/stock.md §3.
+     *
+     * Movements are `adjustment`, not `receipt`: nothing was received. `receipt`
+     * is reserved for goods that physically arrived against a vendor, and the
+     * Restock tab reads that distinction.
+     */
+    async importInventoryItems(userId, { rows = [], dimension_id = null } = {}) {
+        if (!userId) throw new Error('userId required');
+        const list = (Array.isArray(rows) ? rows : []).filter((r) => r && r.draft);
+        if (!list.length) throw new Error('Nothing to import.');
+
+        const scope = this._scope(userId);
+        const entityId = this._resolvedScopeId(userId);
+        const dimensionId = this._nullableString(dimension_id, 60);
+
+        // Opening balances are grouped by date FIRST, because every pre-flight
+        // check below is per-period and a closed period must stop the import
+        // before a single document is staged.
+        const openingByDate = new Map();
+        list.forEach((r) => {
+            if (!r.opening || !r.opening.quantity) return;
+            const key = r.opening.date_key;
+            if (!openingByDate.has(key)) openingByDate.set(key, []);
+            openingByDate.get(key).push(r);
+        });
+
+        // A closed period is a refusal, never a silent re-date. Checked here, in
+        // front of the batch, so the failure names the period instead of arriving
+        // as a permission error from `firestore.rules` two hundred writes in.
+        for (const dateKey of openingByDate.keys()) {
+            await this._assertOpenPostingPeriod(userId, this._dateFromDayKey(dateKey));
+        }
+
+        // Writes: one per item, one per opening movement, and per opening DATE a
+        // journal plus its two ledger_balances rows (1200 and 3900). Firestore
+        // caps a batch at 500 operations and rejects the whole thing at 501, so
+        // this is checked rather than hoped for.
+        const groups = openingByDate.size;
+        const movements = list.filter((r) => r.opening && r.opening.quantity).length;
+        const writes = list.length + movements + groups * 3;
+        if (writes > 480) {
+            throw new Error(`This import needs ${writes} writes and one batch holds 500. Split the file and import it in parts.`);
+        }
+
+        // Re-read the master. The preview flagged duplicates against the catalogue
+        // as it was when the file was opened; a teammate may have added an item
+        // since. A duplicate found HERE is a race, not a bad file, so it is
+        // skipped and reported rather than failing the import.
+        const existing = await this.getItems(userId, { includeArchived: true });
+        const takenNames = new Set(existing.map((i) => i.name_key || normalizeVendorKey(i.name)));
+        const takenSkus = new Set(existing.filter((i) => i.sku).map((i) => String(i.sku).toLowerCase()));
+
+        const importBatchId = this._newImportBatchId();
+        const batch = writeBatch(this.db);
+        const created = [];
+        const skipped = [];
+        const staged = [];
+
+        for (const row of list) {
+            // The same builder the item drawer writes through. An importer that
+            // assembled its own payload is how two creation paths drift.
+            // Composites are not importable (the template has no recipe concept),
+            // so there is no candidate graph to validate.
+            const built = this._buildItemFields({ ...row.draft, type: 'stock' }, { create: true });
+            if (takenNames.has(built.nameKey)) {
+                skipped.push({ name: row.draft.name, reason: 'An item with this name already exists.' });
+                continue;
+            }
+            if (built.sku && takenSkus.has(built.sku.toLowerCase())) {
+                skipped.push({ name: row.draft.name, reason: `SKU "${built.sku}" is already used by another item.` });
+                continue;
+            }
+            takenNames.add(built.nameKey);
+            if (built.sku) takenSkus.add(built.sku.toLowerCase());
+
+            const ref = doc(collection(this.db, `${scope}/items`));
+            batch.set(ref, {
+                ...built.fields,
+                name_key: built.nameKey,
+                status: 'active',
+                // Stamped so a migration is traceable as one event: which items
+                // arrived together, and which journal states their value.
+                import_batch_id: importBatchId,
+                created_at: serverTimestamp(),
+                updated_at: serverTimestamp()
+            });
+            created.push({ id: ref.id, name: built.draft.name });
+            staged.push({ ref, row, name: built.draft.name, baseUnit: built.draft.base_unit });
+        }
+
+        if (!created.length) {
+            throw new Error('Every item in this file already exists in your inventory. Nothing was imported.');
+        }
+
+        // ── Opening balances ────────────────────────────────────────────────
+        const stagedById = new Map(staged.map((s) => [s.row, s]));
+        const yearCounts = {};
+        const postable = [];
+        openingByDate.forEach((rowsForDate, dateKey) => {
+            const lines = rowsForDate.filter((r) => stagedById.has(r));  // a skipped item has no stock
+            if (!lines.length) return;
+            const total = lines.reduce((sum, r) => sum + r.opening.amount_minor, 0);
+            if (total <= 0) return;                                     // a zero journal posts nothing and means nothing
+            const year = String(dateKey).slice(0, 4);
+            yearCounts[year] = (yearCounts[year] || 0) + 1;
+            postable.push({ dateKey, lines, total });
+        });
+
+        const bases = Object.keys(yearCounts).length
+            ? await this._reserveJournalNumbers(userId, yearCounts)
+            : {};
+
+        // One accumulator across every journal in this batch. Two opening dates in
+        // the same month both touch 1200 and 3900 for the same period_key, and
+        // writing that balance document twice in one batch is rejected outright.
+        const balanceAcc = {};
+        const journals = [];
+
+        // Numbers are assigned in ONE call across every journal in this import.
+        // `_assignJournalNumbers` restarts its cursor per invocation, so calling
+        // it once per journal hands the same `JE-2026-000123` to all of them —
+        // silently, because nothing downstream asserts uniqueness.
+        const drafts = postable.map((group) => {
+            const when = this._dateFromDayKey(group.dateKey);
+            const journal = buildOpeningJournal({
+                entries: [{ account_code: '1200', debit: group.total, credit: 0 }],
+                date: when
+            });
+            journal.memo = 'Opening inventory balance';
+            journal.description = 'Opening inventory balance';
+            journal.import_batch_id = importBatchId;
+            return { group, when, journal };
+        });
+        this._assignJournalNumbers(drafts.map((d) => d.journal), bases);
+
+        drafts.forEach(({ group, when, journal }) => {
+            const journalRef = this._attachJournalToBatch(batch, scope, journal, { entityId, balanceAcc });
+            const pk = acctPeriodKey(when);
+            group.lines.forEach((row) => {
+                const s = stagedById.get(row);
+                const mref = doc(collection(this.db, `${scope}/stock_movements`));
+                batch.set(mref, {
+                    item_id: s.ref.id,
+                    item_name: s.name,
+                    dimension_id: dimensionId,
+                    // Signed, and always positive here: an opening balance is
+                    // stock arriving on the books, never leaving them.
+                    quantity: row.opening.quantity,
+                    base_unit: s.baseUnit,
+                    amount: row.opening.amount_minor,
+                    movement_type: 'adjustment',
+                    // The opening journal IS the source document. There is no
+                    // separate receipt or count sheet behind an opening balance,
+                    // and inventing a collection to hold one would add a rules
+                    // block for a document with nothing in it.
+                    source: { collection: 'journals', id: journalRef.id },
+                    journal_ref: journalRef.id,
+                    period_key: pk,
+                    entity_id: entityId,
+                    import_batch_id: importBatchId,
+                    created_by: this.actorUid || userId,
+                    created_at: serverTimestamp()
+                });
+            });
+            journals.push({
+                id: journalRef.id,
+                journal_number: journal.journal_number,
+                period_key: pk,
+                date_key: group.dateKey,
+                amount: group.total,
+                item_count: group.lines.length
+            });
+        });
+        this._flushBalanceAcc(batch, scope, entityId, balanceAcc);
+
+        await batch.commit();
+
+        const openingTotal = journals.reduce((s, j) => s + j.amount, 0);
+        await this._auditCreateBestEffort(userId, 'item.bulk_imported', 'items', importBatchId, {
+            item_count: created.length,
+            skipped_count: skipped.length,
+            opening_balance_count: journals.reduce((s, j) => s + j.item_count, 0),
+            opening_balance_amount: openingTotal,
+            journal_numbers: journals.map((j) => j.journal_number),
+            dimension_id: dimensionId
+        });
+
+        return {
+            import_batch_id: importBatchId,
+            created,
+            skipped,
+            journals,
+            totals: {
+                items: created.length,
+                skipped: skipped.length,
+                opening_items: journals.reduce((s, j) => s + j.item_count, 0),
+                opening_amount: openingTotal
+            }
+        };
+    }
+
+    // Noon local, matching `parseLocalDateKey` in shared-dashboard.js: a day key
+    // carries no time, and midnight is the value that flips to the previous day
+    // in a negative-offset timezone.
+    _dateFromDayKey(dayKey) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dayKey || ''));
+        if (!m) return new Date();
+        return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0, 0);
+    }
+
+    _newImportBatchId() {
+        try {
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) return `imp_${crypto.randomUUID()}`;
+        } catch (_) { /* fall through */ }
+        return `imp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
     }
 
     // Resolve a composite to the stock items it consumes, and cost it.
@@ -14894,6 +15223,26 @@ class DataService {
     _nullableString(value, maxLength = 120) {
         const clean = String(value ?? '').trim().slice(0, maxLength);
         return clean || null;
+    }
+
+    // A caller-supplied object → a flat map of trimmed strings, or null.
+    //
+    // Bounded on both axes because these come from a spreadsheet a stranger
+    // wrote: an unbounded map of unbounded strings is an unbounded document, and
+    // Firestore's 1 MiB limit would fail the whole import batch on one pasted
+    // essay rather than the row that carried it. Non-string values are stringified
+    // rather than dropped — a custom field holding `2024` is still data.
+    _flatStringMap(value, maxKeys = 20, maxValueLength = 200) {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+        const out = {};
+        Object.keys(value).slice(0, maxKeys).forEach((k) => {
+            const key = String(k || '').trim().slice(0, 40);
+            if (!key) return;
+            const v = value[k];
+            if (v == null || v === '') return;
+            out[key] = String(v).trim().slice(0, maxValueLength);
+        });
+        return Object.keys(out).length ? out : null;
     }
 
     _allowedValue(value, allowed, fallback) {

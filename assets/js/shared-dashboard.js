@@ -1082,6 +1082,53 @@ window.FluxyDrawer = (function () {
     return { build, stepper, updateStepper, mountBehavior };
 })();
 
+/* RFC-4180 CSV → rows of trimmed cells. Handles quoted fields, doubled quotes,
+   embedded newlines, and CRLF; drops rows that are entirely empty.
+
+   Hoisted out of showAddTransactionModal (where it was redefined on every
+   modal open) so a second importer reuses THIS parser rather than shipping a
+   near-copy. Two CSV parsers in one app disagree eventually, and they disagree
+   on the row that has a comma inside a quoted product name — which is a
+   Tuesday, not an edge case.
+
+   Callers: the bulk-transaction CSV importer below, and
+   assets/js/inventory-bulk-import.js via window.FluxyCsv. */
+function parseCsv(text) {
+    const rows = [];
+    let current = '';
+    let row = [];
+    let inQuotes = false;
+
+    for (let index = 0; index < text.length; index++) {
+        const char = text[index];
+        const next = text[index + 1];
+
+        if (char === '"' && inQuotes && next === '"') {
+            current += '"';
+            index++;
+        } else if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            row.push(current.trim());
+            current = '';
+        } else if ((char === '\n' || char === '\r') && !inQuotes) {
+            if (char === '\r' && next === '\n') index++;
+            row.push(current.trim());
+            if (row.some(value => value !== '')) rows.push(row);
+            row = [];
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+
+    row.push(current.trim());
+    if (row.some(value => value !== '')) rows.push(row);
+    return rows;
+}
+
+window.FluxyCsv = { parse: parseCsv };
+
 window.showAddTransactionModal = function(options = {}) {
     // Trial/payment access guard: block record creation once the trial has expired
     // or while payment is pending verification. Fails open if state isn't loaded.
@@ -1823,39 +1870,6 @@ window.showAddTransactionModal = function(options = {}) {
         setDateWarning(isPastDateKey(selectedEntryDate) ? 'This record will be saved to a previous day, not today.' : '');
     }
 
-    function parseCsv(text) {
-        const rows = [];
-        let current = '';
-        let row = [];
-        let inQuotes = false;
-
-        for (let index = 0; index < text.length; index++) {
-            const char = text[index];
-            const next = text[index + 1];
-
-            if (char === '"' && inQuotes && next === '"') {
-                current += '"';
-                index++;
-            } else if (char === '"') {
-                inQuotes = !inQuotes;
-            } else if (char === ',' && !inQuotes) {
-                row.push(current.trim());
-                current = '';
-            } else if ((char === '\n' || char === '\r') && !inQuotes) {
-                if (char === '\r' && next === '\n') index++;
-                row.push(current.trim());
-                if (row.some(value => value !== '')) rows.push(row);
-                row = [];
-                current = '';
-            } else {
-                current += char;
-            }
-        }
-
-        row.push(current.trim());
-        if (row.some(value => value !== '')) rows.push(row);
-        return rows;
-    }
 
     function normalizeHeader(header) {
         return header.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -3748,6 +3762,14 @@ window.renderEmptyState = function(containerId, config) {
     // Center it appeared under copy that already said to go to Bills. A control
     // must do what its label says — see DESIGN_SYSTEM.md 3c.
     const hasAction = typeof c.onAction === 'function' && !!c.buttonText;
+    // A SECOND way in, when one genuinely exists — "add your first item" and
+    // "import the list you already keep" are different jobs, not two spellings
+    // of one. Opt-in on the same terms as the primary (name the label AND the
+    // action), and rendered as a text link rather than a second filled button:
+    // two adjacent controls of equal weight is the CTA cluster DESIGN_SYSTEM
+    // bans, and it would also make the primary choice unclear at the exact
+    // moment the user has no idea which they want.
+    const hasSecondary = typeof c.onSecondary === 'function' && !!c.secondaryText;
     // The plus glyph is opt-in for the same reason: "Go to Inventory" behind a
     // "+" describes an action the button does not perform.
     const plusIcon = c.buttonIcon === 'plus'
@@ -3764,10 +3786,14 @@ window.renderEmptyState = function(containerId, config) {
             ${hasAction ? `<button id="empty-state-action" type="button" class="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white font-bold text-[13px] px-6 py-3 rounded-xl transition-all shadow-md hover:shadow-lg">
                 ${plusIcon}${c.buttonText}
             </button>` : ''}
+            ${hasSecondary ? `<button id="empty-state-secondary" type="button" class="mt-4 text-[13px] font-bold text-[#EA580C] hover:underline">
+                ${c.secondaryText}
+            </button>` : ''}
         </div>
     `;
 
     if (hasAction) document.getElementById('empty-state-action').onclick = c.onAction;
+    if (hasSecondary) document.getElementById('empty-state-secondary').onclick = c.onSecondary;
 };
 
 // Global toggle for Fluxy AI (Drawer)
