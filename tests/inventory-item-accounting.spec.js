@@ -74,6 +74,35 @@ test('untracked hides every field that only exists for something on a shelf', as
     expect((await page.textContent('label[for="item-base-unit"]')).trim()).toBe('Stock unit');
 });
 
+test('"What is this?" is answered by the tab, not by a field above the name', async ({ page }) => {
+    await gotoItems(page);
+    await page.click('#new-item-btn');
+    await page.waitForTimeout(400);
+
+    // The Head of Finance's note was "What is this? — ga perlu". The question is
+    // gone; the tab row answers it. The select survives only as the hidden value
+    // the rest of the form reads.
+    expect(await page.locator('#item-type-field').count()).toBe(0);
+    await expect(page.locator('#item-type')).toBeHidden();
+    await expect(page.locator('#item-type')).toHaveValue('stock');
+
+    // Recipes are still reachable — removing the field without this would have
+    // deleted the only way to create a composite, which POS menu items explode
+    // through for their COGS.
+    await page.click('#item-tab-recipe');
+    await page.waitForTimeout(300);
+    await expect(page.locator('#item-type')).toHaveValue('composite');
+    await expect(page.locator('#item-recipe-section')).toBeVisible();
+    // A recipe is made, not bought, and is not "tracked inventory" you shelve.
+    await expect(page.locator('#item-purchase-section')).toBeHidden();
+    await expect(page.locator('#item-track-field')).toBeHidden();
+
+    await page.click('#item-tab-single');
+    await page.waitForTimeout(300);
+    await expect(page.locator('#item-type')).toHaveValue('stock');
+    await expect(page.locator('#item-recipe-section')).toBeHidden();
+});
+
 test('the accounting codes save and come back when the item is reopened', async ({ page }) => {
     const consoleErrors = [];
     page.on('pageerror', (e) => consoleErrors.push(e.message));

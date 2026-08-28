@@ -3025,3 +3025,9 @@ main > header {
    otherwise fourteen fields collapse to zero spacing the moment they gain a
    parent. */
 .inv-item-panel { display: flex; flex-direction: column; gap: 20px; }
+
+/* Three-way segmented control. The two-column default is the Ledger's
+   single-vs-bulk split; the item drawer adds Recipe, because "what is this?"
+   is better answered by which tab you are on than by an abstract question
+   above the name field. */
+.fluxy-drawer-segment--3 { grid-template-columns: repeat(3, 1fr); }

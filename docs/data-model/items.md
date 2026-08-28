@@ -410,6 +410,34 @@ Reorder point back. Add new conditional fields there, not in a second place.
 
 Guard: `tests/inventory-item-accounting.spec.js`.
 
+## 7h. "What is this?" is answered by the tab
+
+The Head of Finance's review said of the item-type selector: *"What is this? Ga
+perlu."* It is gone. What replaced it is a **third tab** — Single item / Recipe /
+Import a list — so nobody is asked an abstract question before they can type a
+name, and the answer comes from the thing they already clicked.
+
+Deleting the control outright was not an option and this is worth recording,
+because the next person to read that feedback will reach for the same delete:
+**`#item-type` in this drawer is the only way to create a `composite`**, and
+composites are what POS menu items explode through for their COGS
+(`docs/data-model/pos.md`). Removing the field without replacing the path would
+have quietly removed recipes from the product.
+
+The `<select>` survives as a **hidden value of record**. `applyItemType`,
+`collectDraft`, `applyTrackStock` and `validateForm` all read it; replacing the
+storage as well as the control would have turned a copy change into a rewrite of
+four functions for no gain. `setEntryMode` sets it and lets `applyItemType`
+react, so there is still one owner for everything that follows from the type.
+
+On an **edit** the tab row is hidden entirely rather than shown disabled — `type`
+is immutable once the item exists, and a visible tab you cannot use says the
+choice is still open when it is not. The mode follows the record instead.
+
+Guards: `tests/inventory-item-accounting.spec.js` → "What is this? is answered by
+the tab", and `tests/inventory-recipe.spec.js`, which now creates its recipe
+through the tab.
+
 ## 8. Composites are not importable
 
 The template has no recipe concept, so every imported item is `type: 'stock'`.

@@ -4933,6 +4933,19 @@
         "Could not load the spreadsheet reader.": "Pembaca spreadsheet tidak bisa dimuat.",
 
 
+        // ── Item drawer: entry tabs, track toggle, Accounting section ─────
+        // Wiped once by a careless block replacement in this file; the audit is
+        // what caught it. If you rewrite a block here, diff the gap report
+        // before and after rather than trusting the boundaries you chose.
+        "What to add": "Apa yang ditambahkan",
+        "I track this inventory": "Saya melacak stok item ini",
+        "Untick for a service or anything you never hold on a shelf. It keeps a price and a code, but no stock.": "Hilangkan centang untuk jasa atau apa pun yang tidak pernah Anda simpan di rak. Item tetap punya harga dan kode, tapi tanpa stok.",
+        "What one of these is sold or measured in — jam, sesi, orang.": "Satuan penjualan atau pengukurannya — jam, sesi, orang.",
+        "Revenue account": "Akun pendapatan",
+        "Cost account": "Akun biaya",
+        "Inventory account": "Akun persediaan",
+        "Where this item belongs in your chart of accounts. Recorded on the item today — postings still route through 1200 Inventory and your Account Mapping.": "Di mana item ini berada dalam bagan akun Anda. Saat ini dicatat di item — pencatatan jurnal tetap lewat 1200 Persediaan dan Account Mapping Anda.",
+
         // Receive stock
         "Receive stock": "Terima barang",
         "Add an item first — there is nothing to receive into yet.": "Tambahkan item dulu — belum ada tempat untuk menerima barangnya.",

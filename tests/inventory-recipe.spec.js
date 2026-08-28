@@ -64,7 +64,7 @@ test('a recipe can be created, costed, and reopened', async ({ page }) => {
 
     // ── The form changes shape with the answer ───────────────────────────────
     await page.click('#new-item-btn');
-    await page.selectOption('#item-type', 'composite');
+    await page.click('#item-tab-recipe');
     await expect(page.locator('#item-recipe-section')).not.toHaveClass(/hidden/);
     // A recipe is never purchased and never held, so neither question applies.
     await expect(page.locator('#item-purchase-section')).toHaveClass(/hidden/);
@@ -110,7 +110,10 @@ test('a recipe can be created, costed, and reopened', async ({ page }) => {
     await expect(page.locator('#item-type')).toHaveValue('composite');
     // What an item IS cannot change: a recipe is relieved as its ingredients and
     // a stock item carries movements, so flipping it would reinterpret history.
-    await expect(page.locator('#item-type')).toBeDisabled();
+    // `type` is immutable once the item exists. The tab row is HIDDEN on an
+    // edit rather than shown disabled — a visible tab you cannot use says the
+    // choice is still open when it is not.
+    await expect(page.locator('.fluxy-drawer-segment')).toBeHidden();
     await expect(page.locator('#item-batch-size')).toHaveValue('10');
     await expect(page.locator('#recipe-lines .inv-line').first().locator('[data-field="qty"]'))
         .toHaveValue('2000');
@@ -131,7 +134,7 @@ test('an ingredient listed twice is refused with the ingredient named', async ({
     await seedIngredient(page, `${TAG} Gula`);
 
     await page.click('#new-item-btn');
-    await page.selectOption('#item-type', 'composite');
+    await page.click('#item-tab-recipe');
     await page.fill('#item-name', `${TAG} Teh Manis`);
     await setUnit(page, 'base', 'gelas');
     await page.fill('#item-batch-size', '4');

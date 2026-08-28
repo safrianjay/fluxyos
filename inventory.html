@@ -680,8 +680,9 @@
             <!-- Same control, same classes, same aria as the Add Transaction
                  drawer's "Single transaction / CSV bulk upload" (shared-dashboard.js).
                  One drawer, one footer button — PROJECT_BACKGROUND §5. -->
-            <div class="fluxy-drawer-segment" role="tablist" aria-label="Item entry method">
+            <div class="fluxy-drawer-segment fluxy-drawer-segment--3" role="tablist" aria-label="What to add">
                 <button type="button" id="item-tab-single" class="fluxy-drawer-segment-btn is-active" role="tab" aria-selected="true" aria-controls="item-single-panel">Single item</button>
+                <button type="button" id="item-tab-recipe" class="fluxy-drawer-segment-btn" role="tab" aria-selected="false" aria-controls="item-single-panel">Recipe</button>
                 <button type="button" id="item-tab-bulk" class="fluxy-drawer-segment-btn" role="tab" aria-selected="false" aria-controls="item-bulk-panel">Import a list</button>
             </div>
 
@@ -691,14 +692,18 @@
             <div id="item-bulk-panel" class="hidden fluxy-drawer-stack" role="tabpanel" aria-labelledby="item-tab-bulk"></div>
 
             <div id="item-single-panel" class="inv-item-panel" role="tabpanel" aria-labelledby="item-tab-single">
-            <div class="fluxy-drawer-field" id="item-type-field">
-                <label class="fluxy-drawer-label" for="item-type">What is this?</label>
-                <select id="item-type" class="fluxy-drawer-select">
-                    <option value="stock">Something you buy and hold</option>
-                    <option value="composite">A recipe made from other items</option>
-                </select>
-                <p id="item-type-hint" class="fluxy-drawer-hint">A recipe is not held as stock. Its cost follows the ingredients it consumes.</p>
-            </div>
+            <!-- "What is this?" is gone: the tab row above answers it, so nobody
+                 is asked an abstract question before they can type a name. The
+                 select survives as the hidden value of record — applyItemType,
+                 collectDraft, applyTrackStock and validateForm all read it, and
+                 replacing the storage as well as the control would turn a copy
+                 change into a rewrite of four functions. `data-no-fluxy-select`
+                 keeps the enhancer off a control nobody can see. -->
+            <select id="item-type" class="hidden" data-no-fluxy-select aria-hidden="true" tabindex="-1">
+                <option value="stock">stock</option>
+                <option value="composite">composite</option>
+            </select>
+            <p id="item-type-hint" class="fluxy-drawer-hint hidden"></p>
 
             <!-- Name and SKU are one identity question, so they are answered
                  together. SKU used to sit nine fields lower, between Reorder
@@ -2159,7 +2164,6 @@
             // flipping it would reinterpret history rather than change a setting.
             const typeEl = document.getElementById('item-type');
             typeEl.value = isEdit ? (item.type || 'stock') : 'stock';
-            typeEl.disabled = isEdit;
             document.getElementById('item-type-hint').textContent = isEdit
                 ? (item.type === 'composite'
                     ? 'A recipe. Its ingredients can change; what it is cannot.'
@@ -2227,7 +2231,9 @@
             // "import a list" is not something you do to one existing item, and
             // a visible-but-meaningless tab is worse than none.
             document.querySelector('.fluxy-drawer-segment').classList.toggle('hidden', isEdit);
-            setEntryMode('single');
+            // `type` is immutable once the item exists, so on edit the tab row is
+            // hidden and the mode simply follows the record.
+            setEntryMode(isEdit ? (item.type === 'composite' ? 'recipe' : 'single') : 'single');
 
             document.getElementById('item-drawer-backdrop').classList.remove('hidden');
             document.getElementById('item-drawer').classList.remove('translate-x-full');
@@ -2936,15 +2942,24 @@
         function setEntryMode(mode) {
             entryMode = mode;
             const bulk = mode === 'bulk';
-            const single = document.getElementById('item-tab-single');
-            const bulkTab = document.getElementById('item-tab-bulk');
-            single.classList.toggle('is-active', !bulk);
-            single.setAttribute('aria-selected', String(!bulk));
-            bulkTab.classList.toggle('is-active', bulk);
-            bulkTab.setAttribute('aria-selected', String(bulk));
+            [['item-tab-single', 'single'], ['item-tab-recipe', 'recipe'], ['item-tab-bulk', 'bulk']]
+                .forEach(([id, key]) => {
+                    const el = document.getElementById(id);
+                    el.classList.toggle('is-active', mode === key);
+                    el.setAttribute('aria-selected', String(mode === key));
+                });
             document.getElementById('item-single-panel').classList.toggle('hidden', bulk);
             document.getElementById('item-bulk-panel').classList.toggle('hidden', !bulk);
             hideError();
+
+            // Single and Recipe are the same panel with a different type. Setting
+            // the hidden select and letting applyItemType react keeps ONE owner
+            // for everything that follows from the type — the recipe editor, the
+            // unit list, the purchase section, the drawer's own description.
+            if (!bulk && !editingItem) {
+                document.getElementById('item-type').value = mode === 'recipe' ? 'composite' : 'stock';
+                applyItemType();
+            }
 
             if (bulk && !importPanel) {
                 importPanel = mountInventoryImport(document.getElementById('item-bulk-panel'), {
@@ -2960,10 +2975,9 @@
             }
             // The drawer's description follows the tab, or it opens saying
             // "goods you buy and hold" over a file picker.
-            if (!editingItem) {
-                document.getElementById('item-drawer-desc').textContent = bulk
-                    ? 'Bring in a list you already keep. You will see exactly what it creates before anything is saved.'
-                    : 'Ingredients and goods you buy and hold. Once an item exists you can receive stock against it and count it.';
+            if (!editingItem && bulk) {
+                document.getElementById('item-drawer-desc').textContent =
+                    'Bring in a list you already keep. You will see exactly what it creates before anything is saved.';
             }
             syncFooter();
         }
@@ -2987,6 +3001,7 @@
         }
 
         document.getElementById('item-tab-single').addEventListener('click', () => setEntryMode('single'));
+        document.getElementById('item-tab-recipe').addEventListener('click', () => setEntryMode('recipe'));
         document.getElementById('item-tab-bulk').addEventListener('click', () => setEntryMode('bulk'));
         document.getElementById('item-track-stock').addEventListener('change', applyTrackStock);
 
