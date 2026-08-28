@@ -3160,3 +3160,54 @@ main > header {
     line-height: 1.45;
     color: #6B7280;
 }
+
+/* ── Item drawer density (inventory.html) ────────────────────────────────────
+   The shared `.fluxy-drawer-body` rhythm (32px padding / 24px gap) is right for
+   a drawer of four or five fields. This form has fourteen controls plus a
+   recipe editor, and at the shared rhythm it ran to 1.9 screens for what is one
+   task — so the gap tightens here rather than everywhere. Still on the 4px
+   scale, and the padding is untouched so the drawer's edges match every other
+   one in the app. */
+.inv-item-form { gap: 20px; }
+
+/* A checkbox row that reads as a decision, not as a stray control. Matches the
+   "Show on the till" pattern already in this drawer so the two look like
+   siblings — which they are: both are switches that change what the item IS. */
+.inv-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    background: #F9FAFB;
+    cursor: pointer;
+}
+.inv-check:hover { background: #F3F4F6; }
+.inv-check-box {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+    accent-color: #111827;
+    cursor: pointer;
+}
+.inv-check-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: #334155;
+    line-height: 1.35;
+}
+.inv-check-sub {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    font-weight: 400;
+    color: #6B7280;
+    line-height: 1.4;
+}
+
+/* The purchase-unit preview is empty until a conversion factor is entered, but
+   an empty <p> is still a flex child and still takes the container's 16px gap —
+   so the card carried a band of dead space in its default state. */
+#item-purchase-preview:empty { display: none; }

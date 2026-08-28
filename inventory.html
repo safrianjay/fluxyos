@@ -686,19 +686,30 @@
             </button>
         </div>
 
-        <form id="item-form" class="fluxy-drawer-body" novalidate>
+        <form id="item-form" class="fluxy-drawer-body inv-item-form" novalidate>
             <div class="fluxy-drawer-field" id="item-type-field">
                 <label class="fluxy-drawer-label" for="item-type">What is this?</label>
                 <select id="item-type" class="fluxy-drawer-select">
                     <option value="stock">Something you buy and hold</option>
                     <option value="composite">A recipe made from other items</option>
                 </select>
-                <p id="item-type-hint" class="fluxy-drawer-hint">A recipe is not held as stock. When one is sold, FluxyOS relieves the ingredients it consumes — so its cost follows its ingredients instead of being typed in.</p>
+                <p id="item-type-hint" class="fluxy-drawer-hint">A recipe is not held as stock. Its cost follows the ingredients it consumes.</p>
             </div>
 
-            <div class="fluxy-drawer-field">
-                <label class="fluxy-drawer-label" for="item-name">Name</label>
-                <input id="item-name" type="text" class="fluxy-drawer-input" maxlength="120" placeholder="Tepung Terigu" autocomplete="off" required>
+            <!-- Name and SKU are one identity question, so they are answered
+                 together. SKU used to sit nine fields lower, between Reorder
+                 point and Selling price, which put the code a person reads off
+                 the packet in front of them nowhere near the name they just
+                 typed off the same packet. -->
+            <div class="fluxy-drawer-field-grid">
+                <div class="fluxy-drawer-field">
+                    <label class="fluxy-drawer-label" for="item-name">Name</label>
+                    <input id="item-name" type="text" class="fluxy-drawer-input" maxlength="120" placeholder="Tepung Terigu" autocomplete="off" required>
+                </div>
+                <div class="fluxy-drawer-field">
+                    <label class="fluxy-drawer-label" for="item-sku">SKU <span class="inv-muted">(optional)</span></label>
+                    <input id="item-sku" type="text" class="fluxy-drawer-input" maxlength="60" placeholder="FLR-001" autocomplete="off">
+                </div>
             </div>
 
             <div class="fluxy-drawer-field">
@@ -719,11 +730,25 @@
                 <p id="item-base-unit-hint" class="fluxy-drawer-hint">The smallest unit you count in. Fixed once the item exists.</p>
             </div>
 
+            <!-- The Head of Finance's "I track this inventory". It is a
+                 BEHAVIOURAL switch, not accounting configuration: untick it and
+                 the item is a service that can never be received, counted, or
+                 given an opening balance. So it sits with the stock fields it
+                 governs rather than in the Accounting section below — every
+                 field it hides is directly beneath it, which a toggle buried
+                 lower down could not manage. -->
+            <label class="inv-check" id="item-track-field">
+                <input id="item-track-stock" type="checkbox" class="inv-check-box" checked>
+                <span class="inv-check-text">I track this inventory
+                    <span class="inv-check-sub">Untick for a service or anything you never hold on a shelf. It keeps a price and a code, but no stock.</span>
+                </span>
+            </label>
+
             <div class="fluxy-drawer-section" id="item-purchase-section">
                 <div class="fluxy-drawer-section-head">
                     <h3 class="fluxy-drawer-section-title">Purchase unit</h3>
                 </div>
-                <p class="fluxy-drawer-section-desc">Only if you buy in a larger unit than you count in — flour bought by the sack, counted in grams.</p>
+                <p class="fluxy-drawer-section-desc">Only if you buy in a bigger unit than you count in — a sack of flour, counted in grams.</p>
                 <div class="fluxy-drawer-field-grid">
                     <div class="fluxy-drawer-field">
                         <label class="fluxy-drawer-label" for="item-purchase-unit">Unit</label>
@@ -745,7 +770,7 @@
                 <div class="fluxy-drawer-section-head">
                     <h3 class="fluxy-drawer-section-title">What one batch uses</h3>
                 </div>
-                <p class="fluxy-drawer-section-desc">List the ingredients and how much of each a single batch consumes. Quantities are what actually leaves the shelf, before any trimming loss.</p>
+                <p class="fluxy-drawer-section-desc">How much of each ingredient one batch consumes — what actually leaves the shelf, before trimming loss.</p>
 
                 <div class="fluxy-drawer-field">
                     <label class="fluxy-drawer-label" for="item-batch-size">One batch makes</label>
@@ -762,21 +787,16 @@
                 <div id="recipe-error" class="fluxy-drawer-callout fluxy-drawer-callout--warning hidden"></div>
             </div>
 
-            <div class="fluxy-drawer-field">
+            <div class="fluxy-drawer-field" id="item-shelf-field">
                 <label class="fluxy-drawer-label" for="item-shelf">Shelf or storage area <span class="inv-muted">(optional)</span></label>
                 <input id="item-shelf" type="text" class="fluxy-drawer-input" maxlength="60" placeholder="Dry store — shelf A" autocomplete="off">
-                <p class="fluxy-drawer-hint">Counts are ordered by this, so the sheet follows the walk through your stockroom instead of the alphabet.</p>
+                <p class="fluxy-drawer-hint">Count sheets follow this order, so counting walks the shelf, not the alphabet.</p>
             </div>
 
             <div class="fluxy-drawer-field" id="item-reorder-field">
                 <label class="fluxy-drawer-label" for="item-reorder">Reorder point <span class="inv-muted">(optional)</span></label>
                 <input id="item-reorder" type="text" inputmode="numeric" class="fluxy-drawer-input" placeholder="5000" autocomplete="off">
-                <p id="item-reorder-hint" class="fluxy-drawer-hint">Warn me when stock drops to this. Left blank, the item is never counted as low — a threshold guessed from a few days of history would be noise dressed as advice.</p>
-            </div>
-
-            <div class="fluxy-drawer-field">
-                <label class="fluxy-drawer-label" for="item-sku">SKU <span class="inv-muted">(optional)</span></label>
-                <input id="item-sku" type="text" class="fluxy-drawer-input" maxlength="60" placeholder="FLR-001" autocomplete="off">
+                <p id="item-reorder-hint" class="fluxy-drawer-hint">Warn me when stock drops to this. Blank means never — a threshold guessed from a few days of history is noise, not advice.</p>
             </div>
 
             <!-- ── Menu. The menu IS this collection: an item with a price and
@@ -786,18 +806,48 @@
             <div class="fluxy-drawer-field">
                 <label class="fluxy-drawer-label" for="item-price">Selling price <span class="inv-muted">(optional)</span></label>
                 <input id="item-price" type="text" inputmode="numeric" class="fluxy-drawer-input" placeholder="45.000" autocomplete="off">
-                <p class="fluxy-drawer-hint">What a customer pays for one. Leave blank for an ingredient — flour has a cost, not a menu price.</p>
+                <p class="fluxy-drawer-hint">What a customer pays for one. Blank for an ingredient — flour has a cost, not a price.</p>
             </div>
 
             <div class="fluxy-drawer-field" id="item-pos-field">
                 <label class="fluxy-drawer-label" for="item-pos-category">Menu group <span class="inv-muted">(optional)</span></label>
                 <input id="item-pos-category" type="text" class="fluxy-drawer-input" maxlength="40" placeholder="Makanan, Minuman" autocomplete="off">
-                <label class="flex items-start gap-2 mt-3 cursor-pointer">
-                    <input id="item-pos-visible" type="checkbox" class="mt-0.5 w-4 h-4 accent-gray-900">
-                    <span class="text-[13px] text-slate-700 leading-snug">Show on the till
-                        <span class="block text-[12px] text-slate-500">Needs a selling price. Without a recipe it will sell at 100% margin, which overstates gross profit.</span>
+                <label class="inv-check" style="margin-top:4px;">
+                    <input id="item-pos-visible" type="checkbox" class="inv-check-box">
+                    <span class="inv-check-text">Show on the till
+                        <span class="inv-check-sub">Needs a selling price. Without a recipe it sells at 100% margin, overstating gross profit.</span>
                     </span>
                 </label>
+            </div>
+
+            <!-- ── Accounting ──────────────────────────────────────────────
+                 Requested by the Head of Finance alongside "I track this
+                 inventory". Read docs/data-model/items.md §7a before wiring
+                 anything to these: they are RECORDED, and the posting engine
+                 does not read them yet. The hint says so in as many words —
+                 a picker implying it routes a journal when it does not is the
+                 silent-wrong-number failure this module keeps guarding against.
+                 1200 is stated rather than offered because it is a control
+                 account that must tie to stock_movements; making it per-item
+                 would break that contract, not configure it. -->
+            <div class="fluxy-drawer-section" id="item-accounting-section">
+                <div class="fluxy-drawer-section-head">
+                    <h3 class="fluxy-drawer-section-title">Accounting</h3>
+                </div>
+                <p class="fluxy-drawer-section-desc">Where this item belongs in your chart of accounts. Recorded on the item today — postings still route through 1200 Inventory and your Account Mapping.</p>
+
+                <div class="fluxy-drawer-field">
+                    <label class="fluxy-drawer-label" for="item-sell-account">Revenue account <span class="inv-muted">(optional)</span></label>
+                    <div id="item-sell-account-mount"></div>
+                </div>
+                <div class="fluxy-drawer-field">
+                    <label class="fluxy-drawer-label" for="item-cogs-account">Cost account <span class="inv-muted">(optional)</span></label>
+                    <div id="item-cogs-account-mount"></div>
+                </div>
+                <div class="fluxy-drawer-field" id="item-inventory-account-field">
+                    <label class="fluxy-drawer-label" for="item-inventory-account">Inventory account <span class="inv-muted">(optional)</span></label>
+                    <div id="item-inventory-account-mount"></div>
+                </div>
             </div>
 
             <div class="fluxy-drawer-field">
@@ -890,6 +940,10 @@
     <script src="assets/js/shared-dashboard.js"></script>
     <script src="assets/js/dashboard-i18n.js"></script>
     <script src="assets/js/fluxy-select.js"></script>
+    <!-- Searchable, grouped Chart-of-Accounts combobox for the item drawer's
+         Accounting section. FluxySelect has no search and ignores optgroup;
+         a chart runs to dozens of accounts. -->
+    <script src="assets/js/fluxy-account-picker.js"></script>
     <script src="assets/js/date-range-picker.js"></script>
 
     <script type="module">
@@ -1949,8 +2003,10 @@
         function applyItemType() {
             const isRecipe = document.getElementById('item-type').value === 'composite';
             document.getElementById('item-recipe-section').classList.toggle('hidden', !isRecipe);
-            document.getElementById('item-purchase-section').classList.toggle('hidden', isRecipe);
-            document.getElementById('item-reorder-field').classList.toggle('hidden', isRecipe);
+            // Purchase unit and Reorder point are NOT toggled here. Their
+            // visibility depends on type AND on "I track this inventory", and two
+            // functions toggling one element means whichever ran last wins.
+            // applyTrackStock() below is the single owner.
             // The drawer's own description has to follow the choice too — it
             // opened saying "goods you buy and hold", which stops being true the
             // moment someone picks a recipe.
@@ -1978,7 +2034,96 @@
             document.getElementById('item-batch-unit').textContent =
                 document.getElementById('item-base-unit').value.trim() || 'portion';
             if (isRecipe) renderRecipeLines();
+            // Both this and the track switch own the purchase section's
+            // visibility. Routing type through the combined rule means they
+            // cannot disagree depending on which fired last.
+            applyTrackStock();
             validateForm();
+        }
+
+        // ── Accounting section ───────────────────────────────────────────────
+        //
+        // Three Chart-of-Accounts pickers, mounted ONCE and reused: the chart is
+        // dozens of accounts and re-mounting per drawer open would refetch it
+        // and drop the user's scroll position in the menu.
+        //
+        // ⚠️ These values are RECORDED, not acted on — docs/data-model/items.md
+        // §7a. Stock posts to 1200 (a control account that must tie to
+        // stock_movements) and revenue routes through Account Mapping. The
+        // section's own hint says so; do not quietly start reading them here
+        // without changing that sentence and the posting rule together.
+        const acctPickers = { sell: null, cogs: null, inventory: null };
+        let acctChart = null;
+
+        async function mountAccountPickers() {
+            if (!window.FluxyAccountPicker || acctPickers.sell) return;
+            try {
+                acctChart = acctChart || await ds.getChartForPicker(currentUid);
+            } catch (_) { return; }
+            const mount = (key, mountId, direction) => {
+                const host = document.getElementById(mountId);
+                if (!host) return null;
+                return window.FluxyAccountPicker.mount(host, {
+                    name: mountId,
+                    accounts: acctChart,
+                    direction,
+                    placeholder: 'Select an account',
+                    onCreateAccount: () => { window.open('/accounting', '_blank'); }
+                });
+            };
+            // `in` offers credit-side accounts (revenue), `out` debit-side
+            // (expense/asset) — the same filter the entry drawer uses, so a
+            // revenue account can never land in the cost field by accident.
+            acctPickers.sell = mount('sell', 'item-sell-account-mount', 'in');
+            acctPickers.cogs = mount('cogs', 'item-cogs-account-mount', 'out');
+            acctPickers.inventory = mount('inventory', 'item-inventory-account-mount', 'out');
+        }
+
+        function setAcctPicker(key, code) {
+            const p = acctPickers[key];
+            if (p && typeof p.setValue === 'function') { try { p.setValue(code || ''); } catch (_) {} }
+        }
+        function acctValue(key) {
+            const p = acctPickers[key];
+            if (!p || typeof p.getValue !== 'function') return null;
+            try { return p.getValue() || null; } catch (_) { return null; }
+        }
+
+        // Untracked means "never held on a shelf", so every field that only makes
+        // sense for something on a shelf goes away with it. Hiding rather than
+        // disabling: a disabled Reorder point still reads as a thing this item
+        // could have, and it cannot.
+        function applyTrackStock() {
+            const tracked = document.getElementById('item-track-stock').checked;
+            const isRecipe = document.getElementById('item-type').value === 'composite';
+            const show = (id, visible) => {
+                const el = document.getElementById(id);
+                if (el) el.classList.toggle('hidden', !visible);
+            };
+            // A recipe is made, never bought, so it has no purchase unit.
+            // Anything untracked has no shelf, no threshold and no stock account,
+            // because it is never on a shelf to begin with.
+            show('item-purchase-section', tracked && !isRecipe);
+            show('item-shelf-field', tracked);
+            show('item-reorder-field', tracked && !isRecipe);
+            show('item-inventory-account-field', tracked);
+            // A recipe IS held as stock once made, so the switch is meaningless
+            // for one — and turning it off would strand the recipe's own output.
+            show('item-track-field', !isRecipe);
+
+            // `base_unit` is required for every item (INV_003), including a
+            // service — an hour, a session. But "Stock unit" is the wrong words
+            // on something that is never stock, and a label that describes a
+            // thing the item does not have is the same defect as a button that
+            // does not do what it says.
+            const unitLabel = document.querySelector('label[for="item-base-unit"]');
+            if (unitLabel && !isRecipe) unitLabel.textContent = tracked ? 'Stock unit' : 'Unit';
+            const unitHint = document.getElementById('item-base-unit-hint');
+            if (unitHint && !editingItem && !isRecipe) {
+                unitHint.textContent = tracked
+                    ? 'The smallest unit you count in. Fixed once the item exists.'
+                    : 'What one of these is sold or measured in — jam, sesi, orang.';
+            }
         }
 
         // ── Drawer ───────────────────────────────────────────────────────────
@@ -2013,7 +2158,7 @@
                 ? (item.type === 'composite'
                     ? 'A recipe. Its ingredients can change; what it is cannot.'
                     : 'Something you buy and hold. Its stock history depends on that, so it cannot become a recipe.')
-                : 'A recipe is not held as stock. When one is sold, FluxyOS relieves the ingredients it consumes — so its cost follows its ingredients instead of being typed in.';
+                : 'A recipe is not held as stock. Its cost follows the ingredients it consumes.';
 
             document.getElementById('item-batch-size').value = isEdit && item.batch_size
                 ? String(item.batch_size) : '1';
@@ -2053,6 +2198,16 @@
             fillUnitSelect('item-purchase-unit-pick', 'item-purchase-unit',
                 ['kg', 'l', 'sak', 'dus', 'pack', 'karton', 'lusin', 'ikat']);
             document.getElementById('item-purchase-factor').value = purchase ? String(purchase.factor || '') : '';
+
+            // Absent reads as tracked: every item created before this field
+            // existed is one somebody keeps on a shelf.
+            document.getElementById('item-track-stock').checked = isEdit ? item.track_stock !== false : true;
+            mountAccountPickers().then(() => {
+                setAcctPicker('sell', isEdit ? item.default_sales_account_code : '');
+                setAcctPicker('cogs', isEdit ? item.default_cogs_account_code : '');
+                setAcctPicker('inventory', isEdit ? item.default_inventory_account_code : '');
+            });
+            applyTrackStock();
 
             hideError();
             updatePurchasePreview();
@@ -2168,6 +2323,16 @@
                 units,
                 storage_location: document.getElementById('item-shelf').value.trim() || null,
                 sku: document.getElementById('item-sku').value.trim() || null,
+                track_stock: isRecipe ? true : document.getElementById('item-track-stock').checked,
+                // Untracked has nothing to track BY, so the mode goes with it.
+                tracking_type: (isRecipe || document.getElementById('item-track-stock').checked) ? 'qty' : null,
+                // Recorded, not acted on (items.md §7a). Sent on every save so the
+                // drawer and the bulk importer write the same shape.
+                default_sales_account_code: acctValue('sell'),
+                default_inventory_account_code: acctValue('inventory'),
+                // Was never sent before this section existed, so a drawer save
+                // silently reset it to the 5100 default every time.
+                default_cogs_account_code: acctValue('cogs'),
                 // Blank stays null — "no threshold" is not "a threshold of zero".
                 reorder_point: reorderRaw === '' ? null : Number(reorderRaw),
                 notes: document.getElementById('item-notes').value.trim() || null,
@@ -2748,6 +2913,7 @@
                 }
             });
         }
+        document.getElementById('item-track-stock').addEventListener('change', applyTrackStock);
         document.getElementById('bulk-import-btn').addEventListener('click', openBulkImport);
 
         // Receive-stock drawer

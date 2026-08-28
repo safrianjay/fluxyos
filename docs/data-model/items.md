@@ -342,6 +342,34 @@ just fails with its columns on screen, which is the more useful way to find out.
 detection can match the *wrong* column, and a control that could only ever add a
 mapping would leave the user stuck with it.
 
+## 7g. The drawer's Accounting section
+
+Requested in the Head of Finance's review (Inventory tab of the revision sheet:
+*"kalau jadi add tab Accounting, harus bikin 'I track this inventory' dan kasih
+options untuk pilih COA"*). Shipped as:
+
+- **"I track this inventory"** → `track_stock`. It sits with the STOCK fields,
+  not in the Accounting section, because it is behavioural rather than
+  configuration: unticking it hides Purchase unit, Shelf, Reorder point and the
+  inventory account, and every field it hides is directly below it. A toggle
+  that hides controls above itself is the version that reads as a glitch.
+- **Revenue / Cost / Inventory account** → `default_sales_account_code`,
+  `default_cogs_account_code`, `default_inventory_account_code`, through the
+  shared `FluxyAccountPicker` (searchable and grouped; `FluxySelect` has neither
+  and a chart runs to dozens of accounts).
+
+⚠️ **They are still recorded, not acted on** — §7a. The section's own hint says
+so on screen. `default_cogs_account_code` in particular has existed since the
+collection shipped and is read by nothing; before this section it was not even
+sent by the drawer, so every manual save reset it to the `5100` default.
+
+`applyTrackStock()` is the **single owner** of field visibility. `applyItemType`
+used to toggle Purchase unit and Reorder point by type while the track switch
+toggled them by behaviour, so whichever ran last won — a tracked recipe got its
+Reorder point back. Add new conditional fields there, not in a second place.
+
+Guard: `tests/inventory-item-accounting.spec.js`.
+
 ## 8. Composites are not importable
 
 The template has no recipe concept, so every imported item is `type: 'stock'`.

@@ -4712,11 +4712,11 @@
         "Could not relieve those orders": "Gagal mencatat biaya pesanan tersebut",
         "Fixed once the item exists — every quantity already recorded is counted in it.": "Terkunci setelah item dibuat — semua kuantitas yang sudah tercatat dihitung dalam satuan ini.",
         "Purchase unit": "Satuan beli",
-        "Only if you buy in a larger unit than you count in — flour bought by the sack, counted in grams.": "Hanya jika Anda membeli dalam satuan lebih besar daripada satuan hitung — tepung dibeli per sak, dihitung per gram.",
+        "Only if you buy in a bigger unit than you count in — a sack of flour, counted in grams.": "Hanya jika Anda membeli dalam satuan lebih besar dari satuan hitung — sak tepung, dihitung per gram.",
         "Unit": "Satuan",
         "How many stock units": "Berapa satuan stok",
         "Shelf or storage area": "Rak atau area simpan",
-        "Counts are ordered by this, so the sheet follows the walk through your stockroom instead of the alphabet.": "Urutan stock opname mengikuti ini, jadi lembar hitungnya menyusuri gudang Anda, bukan urutan abjad.",
+        "Count sheets follow this order, so counting walks the shelf, not the alphabet.": "Lembar stock opname mengikuti urutan ini, jadi menghitungnya menyusuri rak, bukan abjad.",
         "Dry store — shelf A": "Gudang kering — rak A",
         // ── Inventory Overview (inventory.html, Overview tab) ────────────────
         "Needs attention": "Perlu perhatian",
@@ -4816,12 +4816,12 @@
         "What is this?": "Ini apa?",
         "Something you buy and hold": "Sesuatu yang Anda beli dan simpan",
         "A recipe made from other items": "Resep yang dibuat dari item lain",
-        "A recipe is not held as stock. When one is sold, FluxyOS relieves the ingredients it consumes — so its cost follows its ingredients instead of being typed in.": "Resep tidak disimpan sebagai stok. Saat satu porsi terjual, FluxyOS mengurangi bahan yang dipakainya — jadi biayanya mengikuti bahannya, bukan diketik manual.",
+        "A recipe is not held as stock. Its cost follows the ingredients it consumes.": "Resep tidak disimpan sebagai stok. Biayanya mengikuti bahan yang dipakainya.",
         "A dish or preparation made from items you already stock. Its cost comes from its ingredients, and selling one relieves them.": "Hidangan atau olahan dari item yang sudah Anda stok. Biayanya berasal dari bahannya, dan setiap penjualan mengurangi bahan itu.",
         "A recipe. Its ingredients can change; what it is cannot.": "Sebuah resep. Bahannya bisa diubah; jenis itemnya tidak.",
         "Something you buy and hold. Its stock history depends on that, so it cannot become a recipe.": "Sesuatu yang Anda beli dan simpan. Riwayat stoknya bergantung pada itu, jadi tidak bisa diubah menjadi resep.",
         "What one batch uses": "Yang dipakai satu batch",
-        "List the ingredients and how much of each a single batch consumes. Quantities are what actually leaves the shelf, before any trimming loss.": "Daftarkan bahan dan berapa banyak yang dipakai satu batch. Kuantitasnya adalah yang benar-benar keluar dari rak, sebelum susut potong.",
+        "How much of each ingredient one batch consumes — what actually leaves the shelf, before trimming loss.": "Berapa banyak tiap bahan yang dipakai satu batch — yang benar-benar keluar dari rak, sebelum susut potong.",
         "One batch makes": "Satu batch menghasilkan",
         "A pot of soup that fills 10 bowls is 10, and the quantities below are for the whole pot.": "Sepanci sup yang mengisi 10 mangkuk berarti 10, dan kuantitas di bawah adalah untuk satu panci penuh.",
         "What one serving is called — portion, pcs, gelas. A recipe is measured in this, and its ingredients keep their own units.": "Sebutan untuk satu sajian — porsi, pcs, gelas. Resep diukur dengan satuan ini, dan bahannya tetap memakai satuannya sendiri.",
@@ -4857,7 +4857,7 @@
         "Clear filter": "Hapus filter",
         "Nothing matches that filter any more": "Tidak ada lagi yang cocok dengan filter itu",
         "These items were flagged when the page loaded. Clear the filter to see everything.": "Item ini ditandai saat halaman dimuat. Hapus filternya untuk melihat semuanya.",
-        "Warn me when stock drops to this. Left blank, the item is never counted as low — a threshold guessed from a few days of history would be noise dressed as advice.": "Ingatkan saya saat stok turun ke angka ini. Jika dikosongkan, item ini tidak pernah dihitung menipis — ambang yang ditebak dari riwayat beberapa hari hanyalah tebakan yang menyamar sebagai saran.",
+        "Warn me when stock drops to this. Blank means never — a threshold guessed from a few days of history is noise, not advice.": "Ingatkan saya saat stok turun ke angka ini. Kosong berarti tidak pernah — ambang yang ditebak dari riwayat beberapa hari itu noise, bukan saran.",
         "The reorder point must be a whole number of base units, or blank.": "Titik pemesanan ulang harus bilangan bulat dalam satuan stok, atau dikosongkan.",
 
         "Supplier, grade, anything worth remembering.": "Supplier, kualitas, apa pun yang perlu diingat.",
@@ -4938,6 +4938,15 @@
         "Upload a .csv or .xlsx file. Other formats are not read.": "Unggah berkas .csv atau .xlsx. Format lain tidak dibaca.",
         "That workbook has no readable sheet.": "Workbook itu tidak punya sheet yang bisa dibaca.",
         "Could not load the spreadsheet reader.": "Pembaca spreadsheet tidak bisa dimuat.",
+
+        // ── Item drawer: track toggle + Accounting section ────────────────
+        "I track this inventory": "Saya melacak stok item ini",
+        "What one of these is sold or measured in — jam, sesi, orang.": "Satuan penjualan atau pengukurannya — jam, sesi, orang.",
+        "Untick for a service or anything you never hold on a shelf. It keeps a price and a code, but no stock.": "Hilangkan centang untuk jasa atau apa pun yang tidak pernah Anda simpan di rak. Item tetap punya harga dan kode, tapi tanpa stok.",
+        "Revenue account": "Akun pendapatan",
+        "Cost account": "Akun biaya",
+        "Inventory account": "Akun persediaan",
+        "Where this item belongs in your chart of accounts. Recorded on the item today — postings still route through 1200 Inventory and your Account Mapping.": "Di mana item ini berada dalam bagan akun Anda. Saat ini dicatat di item — pencatatan jurnal tetap lewat 1200 Persediaan dan Account Mapping Anda.",
 
         // Receive stock
         "Receive stock": "Terima barang",
@@ -5185,11 +5194,11 @@
 
         // Item drawer — the menu fields
         "Selling price": "Harga jual",
-        "What a customer pays for one. Leave blank for an ingredient — flour has a cost, not a menu price.": "Yang dibayar pelanggan untuk satu porsi. Kosongkan untuk bahan baku — tepung punya harga pokok, bukan harga menu.",
+        "What a customer pays for one. Blank for an ingredient — flour has a cost, not a price.": "Yang dibayar pelanggan untuk satu porsi. Kosongkan untuk bahan baku — tepung punya harga pokok, bukan harga jual.",
         "Menu group": "Grup menu",
         "Makanan, Minuman": "Makanan, Minuman",
         "Show on the till": "Tampilkan di kasir",
-        "Needs a selling price. Without a recipe it will sell at 100% margin, which overstates gross profit.": "Butuh harga jual. Tanpa resep, item ini terjual dengan margin 100%, yang melebih-lebihkan laba kotor.",
+        "Needs a selling price. Without a recipe it sells at 100% margin, overstating gross profit.": "Butuh harga jual. Tanpa resep, item ini terjual dengan margin 100% dan melebih-lebihkan laba kotor.",
         "Give the item a selling price first — the till needs something to charge.": "Beri harga jual dulu — kasir butuh sesuatu untuk ditagihkan.",
 
         // Refund
