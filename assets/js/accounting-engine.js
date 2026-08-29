@@ -81,6 +81,26 @@ export const CHART_OF_ACCOUNTS_SEED = [
     // WIRED 2026-08-16: GR-RECEIPT debits this on goods receipt. The subledger
     // that must tie to it is `stock_movements` (docs/data-model/stock.md).
     { code: '1200', name: 'Inventory', name_id: 'Persediaan', type: 'asset', sak_category: 'inventory', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
+    // Fixed assets. `fixed_asset`, `accumulated_depreciation`, `other_asset` and
+    // `long_term_liability` were ALLOWED sak_categories with no seeded account
+    // behind any of them, so a general Indonesian UMKM had nowhere to record the
+    // motorbike, the oven or the bank loan, and the balance sheet's non-current
+    // sections were structurally unreachable. statements-engine already
+    // classified all four (NON_CURRENT_ASSET_CATEGORIES /
+    // NON_CURRENT_LIABILITY_CATEGORIES) — the plumbing was there, the accounts
+    // were not. Added 2026-08-29.
+    //
+    // NOT is_system: a business renames and archives these freely, unlike the
+    // control accounts above, which the posting engine addresses by code.
+    { code: '1500', name: 'Equipment & Machinery', name_id: 'Peralatan & Mesin', type: 'asset', sak_category: 'fixed_asset' },
+    { code: '1510', name: 'Vehicles', name_id: 'Kendaraan', type: 'asset', sak_category: 'fixed_asset' },
+    { code: '1520', name: 'Buildings', name_id: 'Bangunan', type: 'asset', sak_category: 'fixed_asset' },
+    // Contra-asset: it sits in the asset block and reduces it, so its normal
+    // balance is a CREDIT — the same treatment 3200 and 4900 get. Depreciation
+    // credits this rather than the asset, so cost and wear stay separately
+    // visible, which is what a fixed-asset register will need when it exists.
+    { code: '1590', name: 'Accumulated Depreciation', name_id: 'Akumulasi Penyusutan', type: 'asset', sak_category: 'accumulated_depreciation', normal_balance: 'credit' },
+    { code: '1800', name: 'Intangible & Other Assets', name_id: 'Aset Tidak Berwujud & Lainnya', type: 'asset', sak_category: 'other_asset' },
     // --- Liabilities
     // Goods Received Not Invoiced: stock physically received whose supplier bill
     // has not arrived. Without it, receiving stock has to either wait for the
@@ -92,6 +112,7 @@ export const CHART_OF_ACCOUNTS_SEED = [
     { code: '2050', name: 'Goods Received Not Invoiced', name_id: 'Barang Diterima Belum Ditagih', type: 'liability', sak_category: 'other_current_liability', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
     { code: '2000', name: 'Accounts Payable', name_id: 'Utang Usaha', type: 'liability', sak_category: 'accounts_payable', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
     { code: '2500', name: 'Deferred Revenue', name_id: 'Pendapatan Diterima di Muka', type: 'liability', sak_category: 'other_current_liability' },
+    { code: '2700', name: 'Long-term Bank Loan', name_id: 'Utang Bank Jangka Panjang', type: 'liability', sak_category: 'long_term_liability' },
     // Suspense — where money that arrived but cannot yet be identified parks,
     // instead of guessing an account. A LIABILITY on purpose: 6999 Other Expense
     // is the fallback for "an expense we couldn't classify further", which is a
@@ -136,6 +157,7 @@ export const CHART_OF_ACCOUNTS_SEED = [
     { code: '6440', name: 'Office Supplies', name_id: 'Perlengkapan Kantor', type: 'expense', sak_category: 'operating_expense', parent_code: '6400' },
     { code: '6450', name: 'Travel & Entertainment', name_id: 'Perjalanan & Entertain', type: 'expense', sak_category: 'operating_expense', parent_code: '6400' },
     { code: '6460', name: 'Professional Services', name_id: 'Jasa Profesional', type: 'expense', sak_category: 'operating_expense', parent_code: '6400' },
+    { code: '6470', name: 'Depreciation & Amortisation', name_id: 'Beban Penyusutan & Amortisasi', type: 'expense', sak_category: 'operating_expense', parent_code: '6400' },
     { code: '6500', name: 'Tax Expense', name_id: 'Beban Pajak', type: 'expense', sak_category: 'operating_expense', is_system: true },
     // Cash Over & Short. The drawer never counts to the penny, and the gap is a
     // real operating cost the moment it is systematic. A SINGLE account that

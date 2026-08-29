@@ -16,7 +16,7 @@ is denied by default.
 ## 1. `chart_of_accounts/{code}` (doc id = account code)
 
 Single source of truth for the seed: `CHART_OF_ACCOUNTS_SEED` in
-`assets/js/accounting-engine.js` (**38 accounts**; this line read "32" and
+`assets/js/accounting-engine.js` (**45 accounts**; this line read "32" and
 `accounting.md` read "33" while the seed held 34 — count it, don't quote it).
 The db-service mapping catalog
 (`ACCOUNTING_ACCOUNT_CATALOG`) and the Accounting Center mapping select
@@ -285,3 +285,44 @@ block→type map to `accountTypeForCode` in `accounting-engine.js`. The two are
 separate copies so this module stays loadable on its own; the test is what stops
 them drifting. Note `9xxx` has no assigned type in either — a stricter copy here
 would reject rows the real validator accepts.
+
+## 9. The non-current sections were unreachable until 2026-08-29
+
+`fixed_asset`, `accumulated_depreciation`, `other_asset` and
+`long_term_liability` were valid `sak_category` values with **no seeded account
+behind any of them**. `statements-engine.js` already classified all four
+(`NON_CURRENT_ASSET_CATEGORIES` / `NON_CURRENT_LIABILITY_CATEGORIES`), so the
+plumbing was complete and the accounts simply did not exist — a general
+Indonesian UMKM had nowhere to put the motorbike, the oven or the bank loan, and
+the balance sheet's non-current sections could never populate.
+
+Seven accounts close it:
+
+| Code | Name | Category |
+|---|---|---|
+| 1500 | Peralatan & Mesin | `fixed_asset` |
+| 1510 | Kendaraan | `fixed_asset` |
+| 1520 | Bangunan | `fixed_asset` |
+| 1590 | Akumulasi Penyusutan | `accumulated_depreciation` |
+| 1800 | Aset Tidak Berwujud & Lainnya | `other_asset` |
+| 2700 | Utang Bank Jangka Panjang | `long_term_liability` |
+| 6470 | Beban Penyusutan & Amortisasi | `operating_expense` |
+
+**1590 is a contra-asset** and carries `normal_balance: 'credit'`, the same
+treatment 3200 and 4900 get. Depreciation credits it rather than the asset, so
+cost and accumulated wear stay separately visible — which is what a fixed-asset
+register needs when one exists. **6470 is the other half of that entry**: without
+it the credit had no matching debit account.
+
+None are `is_system`. A business renames and archives these freely, unlike the
+control accounts (1000, 1100, 1200, 2000, 2050) that the posting engine
+addresses by code.
+
+**This unblocks, but does not deliver, one-click depreciation.** That still needs
+a fixed-asset register to run over — the accounts are the prerequisite, not the
+feature. See the Flow tab's row 6.
+
+⚠️ **Existing workspaces keep their old chart.** `seedChartOfAccounts` is
+idempotent per code, so it adds missing accounts on its next run; a workspace
+that has already seeded gets them only when that runs again. New workspaces get
+all 45.
