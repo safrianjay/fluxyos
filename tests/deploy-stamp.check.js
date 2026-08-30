@@ -72,18 +72,36 @@ function main() {
     const RULES_CEILING = 218_000; // conservative: below the observed break
     const rulesPath = path.join(REPO_ROOT, 'firestore.rules');
     if (fs.existsSync(rulesPath)) {
-        const size = fs.statSync(rulesPath).size;
+        // Measure what actually DEPLOYS, not what is committed. `npm run
+        // rules:deploy` strips comments (22.7% of the file) before upload, so
+        // judging the committed size would report a ceiling problem that does not
+        // exist — and would push someone toward deleting the comments that record
+        // why each validator is shaped the way it is.
+        //
+        // Computed here rather than read from .rules-build/, so this check never
+        // depends on a build having run and can never report a stale number. The
+        // transform is one line and is mirrored in scripts/build-rules.js, which
+        // asserts a strict line-by-line invariant before it writes.
+        const src = fs.readFileSync(rulesPath, 'utf8');
+        const size = Buffer.byteLength(src.split('\n')
+            .map((line) => (line.trim().startsWith('//') ? '' : line))
+            .join('\n'));
+        const committed = Buffer.byteLength(src);
         const pct = Math.round((size / RULES_CEILING) * 100);
         if (size > RULES_CEILING) {
             problems.push(
-                `firestore.rules is ${size} bytes — past the ~${RULES_CEILING} the release\n` +
-                `      endpoint accepts on this project. It will FAIL TO DEPLOY with an opaque\n` +
-                `      400 while --dry-run still reports success.\n` +
-                `      Shrink it before adding collections. The 2026-08-16 precedent: the dead\n` +
-                `      user-scoped finance blocks (migrated to workspaces/) were worth ~26 KB.`
+                `firestore.rules is ${size} bytes AFTER comment-stripping — past the\n` +
+                `      ~${RULES_CEILING} the release endpoint accepts on this project. It will FAIL\n` +
+                `      TO DEPLOY with an opaque 400 while --dry-run still reports success.\n` +
+                `      Comments are already excluded from this figure, so the RULES are the\n` +
+                `      problem now: collapse create/update validator pairs. The 2026-08-16\n` +
+                `      precedent: the dead user-scoped finance blocks were worth ~26 KB.`
             );
         } else if (pct >= 90) {
-            console.log(`  ⚠ firestore.rules at ${pct}% of the usable ceiling (${size} bytes) — plan a trim`);
+            console.log(`  ⚠ firestore.rules at ${pct}% of ceiling (${size} bytes deployed) — plan a trim`);
+        } else {
+            console.log(`  · firestore.rules ${pct}% of ceiling `
+                + `(${size.toLocaleString()} deployed / ${committed.toLocaleString()} committed)`);
         }
     }
 

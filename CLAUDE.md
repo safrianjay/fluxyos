@@ -44,7 +44,7 @@ QA_PASS=1 git push origin main
 
 | Lane | Checks |
 |---|---|
-| **BE** | `node --check` on changed JS; workspace-scoping invariant; **`check:structure` (structural drift) and `check:deploy-stamp` (Firebase deploy preconditions) — both always run**; `check:deploy` / `check:ai-scope` / `check:bank-scope` / `check:ledger-assert` when their inputs change; Firestore rules emulator tests when `*.rules` change |
+| **BE** | `node --check` on changed JS; workspace-scoping invariant; **`check:structure` (structural drift), `check:deploy-stamp` (Firebase deploy preconditions, measuring the comment-stripped size that actually deploys) and `check:feature-category` — all always run**; `check:deploy` / `check:ai-scope` / `check:bank-scope` / `check:ledger-assert` when their inputs change; Firestore rules emulator tests when `*.rules` change |
 | **FE** | `scripts/qa/lint-design.js` (design-system rules, **changed lines only**); `tests/zz-console-sweep.spec.js` — loads affected pages in a real browser and fails on CSP/CORS/permission-denied/uncaught errors and same-origin 404s |
 | **PRODUCT** | i18n EN↔ID pairing where an `/id/` mirror exists; SEO essentials on changed landing pages; `seo:check-org` (Organization entity in sync — catches running the two SEO generators in the wrong order); `i18n-audit.js` (advisory) |
 
@@ -74,13 +74,26 @@ nearly shipped on 2026-08-16 with full QA green.
 The workflow when you touch one of those three files:
 
 ```
-firebase deploy --only firestore:rules   # 1. deploy
+npm run rules:deploy                     # 1. deploy (strips comments, then deploys)
                                          # 2. VERIFY — run a spec that exercises
                                          #    the new path; "published" in the
                                          #    console is not the same claim
 npm run deploy:stamp                     # 3. record what is now live
 git add deploy/deployed-stamps.json      # 4. commit the stamp with the change
 ```
+
+**Use `npm run rules:deploy`, not a bare `firebase deploy --only firestore:rules`.**
+`firestore.rules` is uploaded as source text and the release endpoint refuses it
+somewhere near 218,000 bytes — **22.7% of the file is comments**, which are
+load-bearing here (they record the production incidents behind each validator).
+So they are stripped at deploy time and the repo keeps the commented file:
+211,631 → 164,340 bytes, 97% → 75% of ceiling, with **line numbers preserved
+exactly** so a rules error at L2749 still points at line 2749 of the file you
+read. `scripts/build-rules.js` asserts a line-by-line invariant before writing,
+and parity was proven by running all 19 emulator specs (442 assertions) against
+the built file with byte-identical verdicts. `npm run rules:test` re-runs that
+proof. A bare `firebase deploy` still works today, it just wastes the headroom —
+and will start failing once the commented file passes the ceiling.
 
 Lane selection otherwise comes from the git diff, so an accounting-only change
 does not pay for a landing-page SEO scan. Commits made *after* a QA run make the

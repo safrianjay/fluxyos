@@ -900,6 +900,21 @@ they cannot run it without tables.
 Token rotation and revocation. **Rate limiting (§18.10) is a Phase 2 blocker, not a
 follow-up.**
 
+> **The rules-budget premise changed on 2026-08-30.** Every phase below that was
+> gated on "collapse create/update validator pairs — real work with real risk"
+> should be re-read. The ceiling constraint was measured against the COMMITTED
+> file, and 22.7% of that file is comments. `npm run rules:deploy` now strips
+> them at upload time (`scripts/build-rules.js`), taking the deployed size from
+> 211,631 to 164,340 bytes — **97% → 75% of ceiling, ~53 KB of headroom** —
+> with line numbers preserved and no semantic change (all 19 emulator specs,
+> 442 assertions, byte-identical verdicts).
+>
+> The validator-collapse work is therefore **not currently required**. The
+> `manager` and `kitchen` roles, per-outlet scoping and a registers collection
+> now fit. Revisit the collapse only when `check:deploy-stamp` warns again — it
+> measures the stripped size, so its next warning means the RULES have grown,
+> not the prose.
+
 ### Phase 3 — Depth
 
 Per-outlet rules scoping (after a rules-budget check). Split bills. Order transfer
