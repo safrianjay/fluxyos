@@ -127,10 +127,16 @@ test.describe('base currency renders without a flash', () => {
         // The other half. A skeleton that never lifts is worse than one showing
         // the currency we already have, so this runs with auth working normally.
         await page.goto('/checkout.html?plan=growth&billing=annually');
+        // 30s, not 15s. The shimmer lifts on a live Firestore round trip, and
+        // under `npm run qa` this races the emulator, a second browser project
+        // and the console sweep on one machine. It failed once at 15s while
+        // passing 8/8 three times standalone at the same commit — contention,
+        // not a regression. A generous ceiling costs nothing when passing and
+        // stops a random push blocker that looks like a currency bug.
         await page.waitForFunction(() => {
             const el = document.getElementById('summary-total');
             return el && !el.classList.contains('amount-pending');
-        }, null, { timeout: 15000 });
+        }, null, { timeout: 30000 });
         const revealed = (await page.locator('#summary-total').textContent() || '').trim();
         expect(revealed, 'amounts revealed but painted nothing').toMatch(/\d/);
         const base = await page.evaluate(() => window.FluxyMoney.baseCurrency());
