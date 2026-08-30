@@ -322,6 +322,33 @@
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { redirectIfRequired } from "./assets/js/onboarding-gate.js";
 
+        // Where a successful sign-in lands.
+        //
+        // This used to be an unconditional `/dashboard`, which broke the moment
+        // login.html started being served from pos.fluxyos.com too: on the till
+        // origin `/dashboard` 301s to dashboard.fluxyos.com, so signing in on
+        // the till threw you off it immediately and the cashier surface was
+        // reachable only by typing /pos while already authenticated.
+        //
+        // Two independent reasons to land on the till, and either is sufficient:
+        //   1. the till ORIGIN serves nothing else — /dashboard is not there;
+        //   2. a POS-ONLY ROLE has nothing else to see on any origin.
+        const IS_TILL_ORIGIN = window.location.hostname === 'pos.fluxyos.com';
+
+        async function isPosOnlySession(user) {
+            try {
+                const { resolveWorkspace } = await import('./assets/js/workspace-service.js');
+                const { isPosOnlyRole } = await import('./assets/js/perms-service.js');
+                const ws = await resolveWorkspace(app, user);
+                return !!(ws && isPosOnlyRole(ws.role));
+            } catch (_) {
+                // Fail toward the dashboard: a finance user stranded on the till
+                // is a worse outcome than a cashier taking one extra redirect,
+                // which onboarding-gate.js corrects on arrival anyway.
+                return false;
+            }
+        }
+
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
             authDomain: "fluxyos.com",
@@ -541,9 +568,20 @@
 
             const goToApp = async (user) => {
                 await acceptPendingInvite(user);
-                const redirected = await redirectIfRequired(user);
-                if (redirected) return;
-                window.location.href = '/dashboard';
+                const posOnly = await isPosOnlySession(user);
+
+                // Onboarding and KYC are the workspace OWNER's obligations, and a
+                // cashier can action neither — sending them to /onboarding strands
+                // them on a lock screen they cannot clear. onboarding-gate.js
+                // already routes POS-only roles ahead of both gates for exactly
+                // this reason (applyToPage); this is the same ordering at the one
+                // entry point that runs before any page does.
+                if (!posOnly) {
+                    const redirected = await redirectIfRequired(user);
+                    if (redirected) return;
+                }
+
+                window.location.href = (posOnly || IS_TILL_ORIGIN) ? '/pos' : '/dashboard';
             };
 
             const sendVerification = async (user) => {
