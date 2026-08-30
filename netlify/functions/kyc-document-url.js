@@ -1,5 +1,7 @@
 'use strict';
 
+const { ALLOWED_ORIGINS } = require('./lib/allowed-origins');
+
 // Short-lived signed URLs for a user's KYC documents, for the Internal
 // Operations Console (internal.html → KYC Review → Review KYC → Documents).
 //
@@ -19,11 +21,7 @@
 // admin session with the rest of the console.
 const admin = require('firebase-admin');
 
-const ALLOWED = [
-    'https://fluxyos.com', 'https://dashboard.fluxyos.com', 'https://www.fluxyos.com',
-    'http://localhost:8000', 'http://127.0.0.1:5500', 'http://127.0.0.1:8765',
-];
-
+const ALLOWED = ALLOWED_ORIGINS;
 // Deliberately short: long enough for a reviewer to open the document, short
 // enough that a leaked URL in a log or chat is dead within the hour.
 const URL_TTL_MS = 10 * 60 * 1000;

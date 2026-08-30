@@ -1,5 +1,7 @@
 'use strict';
 
+const { ALLOWED_ORIGINS } = require('./lib/allowed-origins');
+
 // =============================================================================
 // Commerce Integration Platform — API function (/api/v1/commerce/*)
 //
@@ -28,18 +30,10 @@ const store = require('./lib/commerce/store');
 const { enqueueJob, hasActiveJob, jobsCol } = require('./lib/commerce/jobs');
 const { ENV, flagEnabled, accountId: makeAccountId, AUDIT_ACTIONS, AUTH_TYPES } = require('./lib/commerce/constants');
 
-const ALLOWED_ORIGINS = [
-    'https://fluxyos.com',
-    'https://dashboard.fluxyos.com',
-    'https://www.fluxyos.com',
-    'http://localhost:8000',
-    'http://localhost:8888',
-    'http://127.0.0.1:8765',
-];
-
+const ORIGINS = ALLOWED_ORIGINS;
 function corsHeaders(origin) {
     return {
-        'Access-Control-Allow-Origin': ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
+        'Access-Control-Allow-Origin': ORIGINS.includes(origin) ? origin : ORIGINS[0],
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Content-Type': 'application/json',

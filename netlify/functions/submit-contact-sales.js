@@ -1,5 +1,7 @@
 'use strict';
 
+const { ALLOWED_ORIGINS } = require('./lib/allowed-origins');
+
 // Public "Contact Sales" lead intake. The marketing /contact-sales form POSTs
 // here; we honeypot-filter + validate, then write a sales_leads/{id} doc via
 // the Admin SDK so the lead appears in the Internal Operations Console
@@ -56,10 +58,7 @@ async function notifyNewLead(lead) {
     }
 }
 
-const ALLOWED = [
-    'https://fluxyos.com', 'https://dashboard.fluxyos.com', 'https://www.fluxyos.com',
-    'http://localhost:8000', 'http://127.0.0.1:5500', 'http://127.0.0.1:8765',
-];
+const ALLOWED = ALLOWED_ORIGINS;
 const TEAM_SIZES = ['1-10', '11-50', '51-200', '201-1000', '1000+'];
 // Lead source is ALLOWLISTED, never free text: it drives filtering in the
 // internal console, and an open field there is an injection surface on a public

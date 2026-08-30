@@ -1,11 +1,5 @@
-const ALLOWED_ORIGINS = [
-    'https://fluxyos.com',
-    'https://dashboard.fluxyos.com',
-    'https://www.fluxyos.com',
-    'http://localhost:8000',
-    'http://127.0.0.1:5500',
-];
-
+const { ALLOWED_ORIGINS } = require('./lib/allowed-origins');
+const ORIGINS = ALLOWED_ORIGINS;
 const MAX_MESSAGE_LENGTH = 500;
 const FIRESTORE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'fluxyos';
 const FINANCE_SCOPE = 'project_finance';
@@ -97,7 +91,7 @@ const SUPPORTED_INTENTS = [
 ];
 
 function getCorsHeaders(requestOrigin) {
-    const origin = ALLOWED_ORIGINS.includes(requestOrigin) ? requestOrigin : ALLOWED_ORIGINS[0];
+    const origin = ORIGINS.includes(requestOrigin) ? requestOrigin : ORIGINS[0];
     return {
         'Access-Control-Allow-Origin': origin,
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',

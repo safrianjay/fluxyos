@@ -1,5 +1,7 @@
 'use strict';
 
+const { ALLOWED_ORIGINS } = require('./lib/allowed-origins');
+
 // Accounting package → single .xlsx workbook, one tab per statement.
 //
 // This function is a FORMATTER, not a reporting engine. It computes no balances,
@@ -23,15 +25,7 @@
 
 const XLSX = require('xlsx');
 
-const ALLOWED_ORIGINS = [
-    'https://fluxyos.com',
-    'https://dashboard.fluxyos.com',
-    'https://www.fluxyos.com',
-    'http://localhost:8000',
-    'http://127.0.0.1:5500',
-    'http://127.0.0.1:8765',
-];
-
+const ORIGINS = ALLOWED_ORIGINS;
 // Bounds. The payload is user-influenced (a busy period's General Ledger can be
 // large), and Netlify caps a function request at 6MB regardless — failing with a
 // clear error beats being killed mid-write.
@@ -42,7 +36,7 @@ const MAX_CELL_CHARS = 2000;
 
 function corsHeaders(origin) {
     return {
-        'Access-Control-Allow-Origin': ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[1],
+        'Access-Control-Allow-Origin': ORIGINS.includes(origin) ? origin : ORIGINS[1],
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         'Vary': 'Origin',

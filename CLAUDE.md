@@ -243,15 +243,35 @@ FE lane, which is the thing the push gate actually checks.
 - Shared JS: `sidebar-loader.js`, `footer-loader.js`, `shared-dashboard.js`, `universe-canvas.js`
 - Shared CSS: `shared-dashboard.css`, `footer.css`
 
-## Two-Site Deploy Model (Stripe split)
+## Three-Site Deploy Model (Stripe split)
 
-Two Netlify sites build from this one repo, selected by a per-site `SITE_ROLE`
+Three Netlify sites build from this one repo, selected by a per-site `SITE_ROLE`
 env var (Production context only; unset = full monolith — local dev, Playwright,
 deploy previews, and rollback all rely on that no-op):
 
 - **fluxyos.com** (`SITE_ROLE=marketing`) — landing pages only.
 - **dashboard.fluxyos.com** (`SITE_ROLE=app`) — the logged-in app **including
   `/login`**. Never indexed (disallow-all robots + `X-Robots-Tag: noindex`).
+- **pos.fluxyos.com** (`SITE_ROLE=till`) — the cashier surface: `pos.html` plus
+  its own `/login`, and nothing else. Never indexed. **Scheduled functions are
+  pruned** — three sites deploying the same functions directory would register
+  every cron three times, and a triple nightly digest is invisible until it has
+  already mailed customers.
+
+**Pages are classified in `PAGE_ROLES`** (`scripts/prepare-deploy.js`) — a map of
+page → the roles that serve it, replacing the old two exclusive lists. The FIRST
+role listed is the page's **canonical origin**; every other site 301s the path
+there, generated from the same map so a redirect can never disagree with a page
+list. A page may be served by several roles: `pos.html` and `login.html` are
+`['app', 'till']` during the migration, which is what makes the cutover a
+one-line reversible edit (drop `'app'` and the dashboard starts 301ing `/pos`).
+
+**Function CORS comes from one list** —
+`netlify/functions/lib/allowed-origins.js`. Ten functions used to carry their own
+hardcoded array and had already drifted. `npm run check:origins` fails the build
+on any function that declares its own, and pins the two mirrors that cannot
+share code: `cors.json` (enforced by Google, deploys via `gsutil cors set`) and
+the CSP in `netlify.toml` (enforced by the browser).
 
 Mechanics (all in `scripts/prepare-deploy.js`, run as the last build step):
 - The script prunes the other role's pages and installs the role's `_redirects`
@@ -260,9 +280,9 @@ Mechanics (all in `scripts/prepare-deploy.js`, run as the last build step):
 - Cross-side links stay **relative** (`/login`, `/pricing`, …) — each site 301s
   the other role's paths to the right origin. Don't hardcode the other origin in
   hrefs.
-- **Every new root `*.html` MUST be classified** in `MARKETING_PAGES` or
-  `APP_PAGES` in `scripts/prepare-deploy.js` — both site builds fail on an
-  unclassified page (intentional guard).
+- **Every new root `*.html` MUST be classified** in `PAGE_ROLES` in
+  `scripts/prepare-deploy.js` — all three site builds fail on an unclassified
+  page, on an empty role list, and on an unknown role (intentional guards).
 - Firebase `authDomain` stays `"fluxyos.com"`; the `/__/auth/*` proxy on the
   apex serves the dashboard origin's login popup iframe (that's why the CSP
   `frame-src` includes `https://fluxyos.com`). Function CORS allowlists and
@@ -270,8 +290,9 @@ Mechanics (all in `scripts/prepare-deploy.js`, run as the last build step):
 - Scheduled notification functions are pruned from the marketing deploy;
   `NOTIFY_ENABLED`/`DIGEST_ENABLED` etc. may only ever be enabled on the app
   site. Email links use env `APP_BASE_URL=https://dashboard.fluxyos.com`.
-- After touching the split (page lists, `deploy/_redirects.*`,
-  `prepare-deploy.js`), run `node tests/prepare-deploy.check.js`.
+- After touching the split (`PAGE_ROLES`, `deploy/_redirects.*`,
+  `prepare-deploy.js`), run `node tests/prepare-deploy.check.js` — it dry-runs
+  all three roles plus the no-op, and asserts the dual-serve invariant.
 
 ## SEO & AI Overview Optimization
 

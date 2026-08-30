@@ -136,6 +136,60 @@ console.log('SITE_ROLE=app (dashboard.fluxyos.com):');
     fs.rmSync(dir, { recursive: true, force: true });
 }
 
+// --- till role ----------------------------------------------------------------
+console.log('SITE_ROLE=till (pos.fluxyos.com):');
+{
+    const dir = makeFixture('till');
+    run(dir, 'till');
+
+    // Serves the till and its own front door, and nothing else.
+    assert(exists(dir, 'pos.html'), 'pos.html kept');
+    assert(exists(dir, 'login.html'), 'login.html kept — Firebase auth is per-origin, so the till signs in on its own host');
+    assert(!exists(dir, 'dashboard.html') && !exists(dir, 'ledger.html') && !exists(dir, 'accounting.html'),
+        'dashboard pages pruned — a cashier device never downloads them');
+    assert(!exists(dir, 'settings-billing.html') && !exists(dir, 'internal.html'), 'billing + internal console pruned');
+    assert(!exists(dir, 'fluxyos.html') && !exists(dir, 'pricing.html') && !exists(dir, 'use-cases') && !exists(dir, 'id'),
+        'marketing pages pruned');
+    assert(exists(dir, 'assets'), 'shared assets kept');
+
+    // The till must never be indexed, and must never register a cron. The cron
+    // prune is the one that would fail silently: a third site keeping the
+    // scheduled functions sends every digest a THIRD time.
+    assert(read(dir, 'robots.txt').trim() === 'User-agent: *\nDisallow: /', 'disallow-all robots');
+    assert(read(dir, '_headers').includes('X-Robots-Tag: noindex, nofollow'), 'noindex _headers written');
+    assert(!exists(dir, 'netlify/functions/notify-sweep.js') && !exists(dir, 'netlify/functions/weekly-digest.js'),
+        'scheduled functions pruned — a third cron host would triple every send');
+    assert(exists(dir, 'netlify/functions/api.js'), 'request-driven functions kept');
+    assert(!exists(dir, 'sitemap.xml') && !exists(dir, 'llms.txt'), 'sitemap/llms pruned');
+    assert(!exists(dir, 'deploy'), 'deploy/ templates removed');
+    assertSourceTreePruned(dir, 'till');
+
+    const r = read(dir, '_redirects');
+    assert(!r.includes('{{'), 'marker fully expanded');
+    assert(r.includes('/dashboard       https://dashboard.fluxyos.com/dashboard  301!'), 'app-path 301 to the dashboard origin');
+    assert(r.includes('/pricing       https://fluxyos.com/pricing  301!'), 'marketing-path 301 to the apex');
+    assert(r.includes('/__/auth/*   https://fluxyos.firebaseapp.com'), 'auth proxy present — without it the popup 404s and nobody can sign in');
+    assert(r.includes('/   /login   302!'), 'root 302s to /login');
+    // The two dual-served pages must NOT be redirected away from this site.
+    assert(!/^\/pos\s/m.test(r) || !r.includes('/pos       https://'), 'pos is served here, not 301d away');
+    assert(!r.includes('/login       https://'), 'login is served here, not 301d away');
+    fs.rmSync(dir, { recursive: true, force: true });
+}
+
+// --- dual-serve invariant -----------------------------------------------------
+// pos.html is served by BOTH app and till during the migration. The app site
+// must therefore keep serving it rather than 301ing to a till that has not
+// soaked yet — that is what makes the cutover a one-line, reversible edit.
+console.log('dual-serve (pos.html on app AND till):');
+{
+    const dir = makeFixture('dual');
+    run(dir, 'app');
+    assert(exists(dir, 'pos.html'), 'app still serves pos.html during the migration');
+    const r = read(dir, '_redirects');
+    assert(!r.includes('/pos       https://pos.fluxyos.com/pos'), 'app does NOT yet 301 /pos to the till origin');
+    fs.rmSync(dir, { recursive: true, force: true });
+}
+
 if (failures) {
     console.error(`\n${failures} assertion(s) FAILED`);
     process.exit(1);

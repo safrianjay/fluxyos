@@ -79,20 +79,22 @@ if (deployable.some(SHARED)) BUILD();    // shared code affects both roles
 // Root pages are split by role. Ask prepare-deploy.js rather than duplicating
 // the lists — one source of truth, and an unclassified page is a hard error
 // there, so it can never silently land on the wrong side.
-let MARKETING = [], APP = [];
+// IMPORTED, not scraped — see the note in lint-design.js. A failure here still
+// BUILDS rather than skipping: refusing to build because a classification could
+// not be read would silently stop deploys, which is far worse than one wasted
+// build.
+let PAGES_BY_ROLE = null;
 try {
-    const src = require('fs').readFileSync('scripts/prepare-deploy.js', 'utf8');
-    const grab = (name) => {
-        const m = src.match(new RegExp(`const ${name} = \\[([\\s\\S]*?)\\];`));
-        return m ? (m[1].match(/'([^']+)'/g) || []).map((q) => q.slice(1, -1)) : null;
-    };
-    MARKETING = grab('MARKETING_PAGES');
-    APP = grab('APP_PAGES');
-    if (!MARKETING || !APP) BUILD();
+    const { pagesFor, ROLES } = require('./prepare-deploy.js');
+    if (!ROLES.includes(ROLE)) BUILD();
+    PAGES_BY_ROLE = { mine: pagesFor(ROLE), theirs: ROLES.filter((r) => r !== ROLE).flatMap((r) => pagesFor(r)) };
 } catch (_) { BUILD(); }
 
-const mine = ROLE === 'marketing' ? MARKETING : APP;
-const theirs = ROLE === 'marketing' ? APP : MARKETING;
+const mine = PAGES_BY_ROLE.mine;
+// A page served by BOTH roles is "mine" first — it must never count as foreign,
+// or a shared page like pos.html would look unclassified and force a build on
+// every site every time it changes.
+const theirs = PAGES_BY_ROLE.theirs.filter((f) => !mine.includes(f));
 
 // Build when anything of MINE changed, or anything I cannot classify.
 const touchesMine = deployable.some((f) => mine.includes(f));

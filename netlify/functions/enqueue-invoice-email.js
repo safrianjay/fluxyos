@@ -1,5 +1,7 @@
 'use strict';
 
+const { ALLOWED_ORIGINS } = require('./lib/allowed-origins');
+
 // Enqueue an invoice auto-email (request-driven). Called by invoices.js when
 // the user clicks "Finalize and send" (type 'auto') and by the Resend button in
 // the invoice detail view (type 'manual'). Auth/authorize/soft-fail shape copied
@@ -15,7 +17,7 @@ const { initAdmin } = require('./lib/notify-core');
 const jobs = require('./lib/invoice-email/jobs');
 const { delegateToBackground } = require('./lib/invoice-email/delegate');
 
-const ALLOWED = ['https://fluxyos.com', 'https://dashboard.fluxyos.com', 'https://www.fluxyos.com', 'http://localhost:8000', 'http://127.0.0.1:5500', 'http://127.0.0.1:8765'];
+const ALLOWED = ALLOWED_ORIGINS;
 const SEND_ROLES = ['owner', 'admin', 'finance', 'accountant'];
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);

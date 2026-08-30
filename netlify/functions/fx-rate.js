@@ -1,5 +1,7 @@
 'use strict';
 
+const { ALLOWED_ORIGINS } = require('./lib/allowed-origins');
+
 // FX rate lookup for invoice/bill payments — returns the BASE-currency-per-1-unit
 // rate for a given transaction currency on a given date. Proxies the free, no-key
 // Frankfurter API (ECB reference rates; historical dates supported). Called
@@ -12,7 +14,7 @@
 // assets/js/money-format.js); `from` is any transaction currency.
 // Coverage verified against the provider on 2026-08-22 for PHP/MYR/SGD/IDR.
 
-const ALLOWED = ['https://fluxyos.com', 'https://dashboard.fluxyos.com', 'https://www.fluxyos.com', 'http://localhost:8000', 'http://127.0.0.1:5500', 'http://127.0.0.1:8765'];
+const ALLOWED = ALLOWED_ORIGINS;
 // Transaction currencies a document may be denominated in.
 const SOURCES = ['USD', 'SGD', 'IDR', 'PHP', 'MYR'];
 // Workspace accounting currencies a rate may convert INTO.

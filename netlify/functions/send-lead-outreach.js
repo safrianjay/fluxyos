@@ -1,5 +1,7 @@
 'use strict';
 
+const { ALLOWED_ORIGINS } = require('./lib/allowed-origins');
+
 // Lead-outreach send, triggered from the Internal Operations Console
 // (internal.html → Sales Leads → Outreach subpage). Renders the bilingual
 // meeting-reminder email (functions/lib/templates → lead_outreach) and sends it
@@ -18,8 +20,7 @@ const { buildEmail } = require('../../functions/lib/templates');
 const EMAIL_FROM = 'FluxyOS <hello@fluxyos.com>';
 const REPLY_TO = 'hello@fluxyos.com';
 const APP_BASE_URL = process.env.APP_BASE_URL || 'https://fluxyos.com';
-const ALLOWED = ['https://fluxyos.com', 'https://dashboard.fluxyos.com', 'https://www.fluxyos.com', 'http://localhost:8000', 'http://127.0.0.1:5500', 'http://127.0.0.1:8765'];
-
+const ALLOWED = ALLOWED_ORIGINS;
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 

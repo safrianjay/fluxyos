@@ -215,6 +215,11 @@ function laneBE(changed) {
   // also breached by DELETING a method from db-service.js that the POS still
   // calls — and that edit lands in a file the POS author never opened.
   ok = record('be', run('check:pos-boundary (POS DAL edge into DataService)', 'node', ['tests/pos-service-boundary.check.js'])) && ok;
+  // Unconditional: the origin list is mirrored into cors.json and netlify.toml,
+  // which are enforced by Google and the browser rather than by our code. Either
+  // can fall out of sync without a function file being in the diff, and the
+  // symptom is an opaque CORS error from ONE origin.
+  ok = record('be', run('check:origins (one CORS allowlist, mirrors agree)', 'node', ['tests/allowed-origins.check.js'])) && ok;
 
   const jsChanged = changed.filter((f) => /\.(js|mjs)$/.test(f) && fs.existsSync(path.join(REPO_ROOT, f)));
   if (jsChanged.length) {

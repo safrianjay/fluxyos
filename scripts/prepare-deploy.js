@@ -41,80 +41,104 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const MARKETING_ORIGIN = 'https://fluxyos.com';
 const APP_ORIGIN = 'https://dashboard.fluxyos.com';
+const TILL_ORIGIN = 'https://pos.fluxyos.com';
+const ORIGIN = { marketing: MARKETING_ORIGIN, app: APP_ORIGIN, till: TILL_ORIGIN };
 
 // ---------------------------------------------------------------------------
 // Page classification — single source of truth for the split.
 // ---------------------------------------------------------------------------
 
-const MARKETING_PAGES = [
-    'fluxyos.html',       // homepage (served at /)
-    'pricing.html',
-    'contact-sales.html',
-    'event.html',           // QR-scanned event signup (noindex)
-    'aiagents.html',
-    'budgetlanding.html',
-    'revenuesync.html',
-    'receiptcapture.html',
-    'vendorspend.html',
-    'privacy.html',
-    'terms.html',
-    'investor.html',
-    'beila.html',         // private investor deck, password-gated + noindex
-    'index.html',         // redirect stub -> /fluxyos
-    'payment.html',       // redirect stub -> /pricing
-];
+// Page → the roles that SERVE it. The FIRST role listed is the page's
+// canonical origin: every other site 301s the path there, generated from this
+// same map so a redirect can never disagree with a page list.
+//
+// A page may be served by more than one role. That is what makes the POS
+// migration reversible: `pos.html` is ['app', 'till'] while both work, and
+// dropping 'app' later turns /pos on the dashboard into a 301 to the till
+// origin automatically — one edit, no new redirect to write.
+const PAGE_ROLES = {
+    // ── marketing (fluxyos.com) ──────────────────────────────────────────
+    'fluxyos.html': ['marketing'],   // homepage (served at /)
+    'pricing.html': ['marketing'],
+    'contact-sales.html': ['marketing'],
+    'event.html': ['marketing'],   // QR-scanned event signup (noindex)
+    'aiagents.html': ['marketing'],
+    'budgetlanding.html': ['marketing'],
+    'revenuesync.html': ['marketing'],
+    'receiptcapture.html': ['marketing'],
+    'vendorspend.html': ['marketing'],
+    'privacy.html': ['marketing'],
+    'terms.html': ['marketing'],
+    'investor.html': ['marketing'],
+    'beila.html': ['marketing'],   // private investor deck, password-gated + noindex
+    'index.html': ['marketing'],   // redirect stub -> /fluxyos
+    'payment.html': ['marketing'],   // redirect stub -> /pricing
 
-const APP_PAGES = [
-    'accounting.html',
-    'accounting-account.html',
-    'accounting-journal.html',
-    'accounting-journal-new.html',
-    'accounting-records.html',
-    'activity-log.html',
-    'ai.html',
-    'bill.html',
-    'budget.html',
-    'budget-allocation.html',
-    'budget-period.html',
-    'cash-position.html',
-    'cash-pressure.html',
-    'checkout.html',
-    'dashboard.html',
-    'integration.html',
-    'internal.html',
-    'inventory-activity.html',
-    'inventory-count.html',
-    'inventory.html',
-    'invoices.html',
-    'ledger.html',
-    'login.html',
-    'net-profit.html',
-    'onboarding.html',
-    'opex-budget.html',
-    'outlet-pnl.html',
-    'payment-pending.html',
-    'pos.html',
-    'report-preview.html',
-    'reports.html',
-    'revenue-overview.html',
-    'revenue-sync.html',
-    'settings.html',
-    'settings-ai.html',
-    'settings-billing.html',
-    'settings-budget.html',
-    'settings-business.html',
-    'settings-cash.html',
-    'settings-finance.html',
-    'settings-import-rules.html',
-    'settings-language.html',
-    'settings-notifications.html',
-    'settings-personal.html',
-    'settings-security.html',
-    'settings-team.html',
-    'settings-whatsapp.html',
-    'subscription.html',
-    'tax-center.html',
-];
+    // ── app (dashboard.fluxyos.com) ─────────────────────────────────────
+    'accounting.html': ['app'],
+    'accounting-account.html': ['app'],
+    'accounting-journal.html': ['app'],
+    'accounting-journal-new.html': ['app'],
+    'accounting-records.html': ['app'],
+    'activity-log.html': ['app'],
+    'ai.html': ['app'],
+    'bill.html': ['app'],
+    'budget.html': ['app'],
+    'budget-allocation.html': ['app'],
+    'budget-period.html': ['app'],
+    'cash-position.html': ['app'],
+    'cash-pressure.html': ['app'],
+    'checkout.html': ['app'],
+    'dashboard.html': ['app'],
+    'integration.html': ['app'],
+    'internal.html': ['app'],
+    'inventory-activity.html': ['app'],
+    'inventory-count.html': ['app'],
+    'inventory.html': ['app'],
+    'invoices.html': ['app'],
+    'ledger.html': ['app'],
+    // The till origin needs its own front door: Firebase auth is keyed by
+    // origin, so a cashier signs in ON pos.fluxyos.com. Served by both.
+    'login.html': ['app', 'till'],
+    'net-profit.html': ['app'],
+    'onboarding.html': ['app'],
+    'opex-budget.html': ['app'],
+    'outlet-pnl.html': ['app'],
+    'payment-pending.html': ['app'],
+    // Dual-served during the migration. Canonical stays 'app' until the
+    // till origin has soaked a week of real service (plan §7 step 6).
+    'pos.html': ['app', 'till'],
+    'report-preview.html': ['app'],
+    'reports.html': ['app'],
+    'revenue-overview.html': ['app'],
+    'revenue-sync.html': ['app'],
+    'settings.html': ['app'],
+    'settings-ai.html': ['app'],
+    'settings-billing.html': ['app'],
+    'settings-budget.html': ['app'],
+    'settings-business.html': ['app'],
+    'settings-cash.html': ['app'],
+    'settings-finance.html': ['app'],
+    'settings-import-rules.html': ['app'],
+    'settings-language.html': ['app'],
+    'settings-notifications.html': ['app'],
+    'settings-personal.html': ['app'],
+    'settings-security.html': ['app'],
+    'settings-team.html': ['app'],
+    'settings-whatsapp.html': ['app'],
+    'subscription.html': ['app'],
+    'tax-center.html': ['app'],
+};
+
+// Derived views. Nothing below re-lists a page, so the map is the only place a
+// page is classified.
+const ROLES = ['marketing', 'app', 'till'];
+const pagesFor = (role) => Object.keys(PAGE_ROLES).filter((f) => PAGE_ROLES[f].includes(role));
+const canonicalRole = (file) => PAGE_ROLES[file][0];
+
+const MARKETING_PAGES = pagesFor('marketing');
+const APP_PAGES = pagesFor('app');
+const TILL_PAGES = pagesFor('till');
 
 // Marketing-only directories, pruned from app deploys. includes/ and assets/
 // stay on both sites (footer partials are only fetched by marketing pages;
@@ -182,24 +206,31 @@ function rm(rel) {
 // Every root *.html must be classified in exactly one list.
 function assertClassification() {
     const rootHtml = fs.readdirSync(ROOT).filter((f) => f.endsWith('.html'));
-    const marketing = new Set(MARKETING_PAGES);
-    const app = new Set(APP_PAGES);
+    const classified = Object.keys(PAGE_ROLES);
 
-    const both = MARKETING_PAGES.filter((f) => app.has(f));
-    if (both.length) fail(`pages classified as BOTH marketing and app: ${both.join(', ')}`);
-
-    const unclassified = rootHtml.filter((f) => !marketing.has(f) && !app.has(f));
+    const unclassified = rootHtml.filter((f) => !classified.includes(f));
     if (unclassified.length) {
         fail(
             `unclassified root page(s): ${unclassified.join(', ')}\n` +
-            'Add each one to MARKETING_PAGES or APP_PAGES in scripts/prepare-deploy.js.'
+            'Add each one to PAGE_ROLES in scripts/prepare-deploy.js, mapped to the\n' +
+            `role(s) that serve it: ${ROLES.join(' | ')}. The FIRST role listed is the\n` +
+            'page\'s canonical origin — every other site 301s the path there.'
         );
     }
 
-    const missing = [...MARKETING_PAGES, ...APP_PAGES].filter(
-        (f) => !rootHtml.includes(f)
-    );
+    const missing = classified.filter((f) => !rootHtml.includes(f));
     if (missing.length) fail(`classified page(s) missing from repo root: ${missing.join(', ')}`);
+
+    // A page served by no role is unreachable everywhere, which is almost
+    // certainly a typo rather than an intent — the old two-list model could not
+    // express it, so it was impossible; now it is, and it fails loudly.
+    const orphans = classified.filter((f) => !PAGE_ROLES[f].length);
+    if (orphans.length) fail(`page(s) with an empty role list, served nowhere: ${orphans.join(', ')}`);
+
+    const badRole = classified.filter((f) => PAGE_ROLES[f].some((r) => !ROLES.includes(r)));
+    if (badRole.length) {
+        fail(`page(s) mapped to an unknown role: ${badRole.map((f) => `${f} → ${PAGE_ROLES[f].join(',')}`).join('; ')}`);
+    }
 
     assertScheduledFunctionsClassified();
 }
@@ -244,6 +275,21 @@ function pageRedirects(pages, origin) {
     return lines.join('\n');
 }
 
+// Every page THIS role does not serve, 301'd to its canonical origin. Generated
+// from PAGE_ROLES, so a page served by two roles is never redirected away from
+// either of them — which is what lets pos.html live on both sites at once.
+function foreignPageRedirects(role) {
+    const byOrigin = {};
+    for (const file of Object.keys(PAGE_ROLES)) {
+        if (PAGE_ROLES[file].includes(role)) continue;      // served here
+        const target = ORIGIN[canonicalRole(file)];
+        (byOrigin[target] = byOrigin[target] || []).push(file);
+    }
+    return Object.keys(byOrigin)
+        .map((origin) => pageRedirects(byOrigin[origin], origin))
+        .join('\n');
+}
+
 function installRedirects(role, marker, generated) {
     const src = path.join(ROOT, 'deploy', `_redirects.${role}`);
     if (!fs.existsSync(src)) fail(`missing template deploy/_redirects.${role}`);
@@ -253,14 +299,52 @@ function installRedirects(role, marker, generated) {
     console.log(`[prepare-deploy]   installed _redirects (${role})`);
 }
 
+// Pages this role does not serve. Derived, so adding a role to a page in
+// PAGE_ROLES is the only edit needed to start serving it.
+function pruneForeignPages(role) {
+    Object.keys(PAGE_ROLES)
+        .filter((f) => !PAGE_ROLES[f].includes(role))
+        .forEach(rm);
+}
+
 function prepareMarketing() {
-    APP_PAGES.forEach(rm);
+    pruneForeignPages('marketing');
     SCHEDULED_FUNCTIONS.forEach((f) => rm(path.join('netlify', 'functions', f)));
-    installRedirects('marketing', '# {{APP_PAGE_REDIRECTS}}', pageRedirects(APP_PAGES, APP_ORIGIN));
+    installRedirects('marketing', '# {{APP_PAGE_REDIRECTS}}', foreignPageRedirects('marketing'));
+}
+
+// The till: a cashier surface, never indexed, and never a cron host.
+//
+// The scheduled-function prune is the load-bearing line here. Each site deploys
+// the same functions directory, so a third site that keeps them registers every
+// cron a THIRD time — a triple nightly digest, invisible until it has already
+// mailed customers. The marketing role has pruned them since the split shipped
+// for exactly this reason; the till inherits the same guard rather than relying
+// on an env flag being unset.
+function prepareTill() {
+    pruneForeignPages('till');
+    MARKETING_DIRS.forEach(rm);
+    rm('sitemap.xml');
+    rm('llms.txt');
+    SCHEDULED_FUNCTIONS.forEach((f) => rm(path.join('netlify', 'functions', f)));
+
+    fs.writeFileSync(path.join(ROOT, 'robots.txt'), 'User-agent: *\nDisallow: /\n');
+    console.log('[prepare-deploy]   wrote disallow-all robots.txt');
+    // Only the noindex header is set here. The CSP in netlify.toml still applies
+    // (Netlify merges _headers over the toml by header NAME), and the till needs
+    // essentially all of it: Firebase SDK from gstatic, the auth popup framed
+    // from the apex, Firestore over googleapis. Writing a "tighter" CSP without
+    // measuring what the page actually loads is how a till stops taking payment
+    // at 7pm. Tightening it is a real follow-up — serve the page with a
+    // report-only policy and collect violations first.
+    fs.writeFileSync(path.join(ROOT, '_headers'), '/*\n  X-Robots-Tag: noindex, nofollow\n');
+    console.log('[prepare-deploy]   wrote _headers (X-Robots-Tag: noindex)');
+
+    installRedirects('till', '# {{FOREIGN_PAGE_REDIRECTS}}', foreignPageRedirects('till'));
 }
 
 function prepareApp() {
-    MARKETING_PAGES.forEach(rm);
+    pruneForeignPages('app');
     MARKETING_DIRS.forEach(rm);
     rm('sitemap.xml');
     rm('llms.txt');
@@ -271,7 +355,7 @@ function prepareApp() {
     fs.writeFileSync(path.join(ROOT, '_headers'), '/*\n  X-Robots-Tag: noindex, nofollow\n');
     console.log('[prepare-deploy]   wrote _headers (X-Robots-Tag: noindex)');
 
-    installRedirects('app', '# {{MARKETING_PAGE_REDIRECTS}}', pageRedirects(MARKETING_PAGES, MARKETING_ORIGIN));
+    installRedirects('app', '# {{MARKETING_PAGE_REDIRECTS}}', foreignPageRedirects('app'));
 }
 
 // Strip the source tree from the published output. Runs for BOTH roles, and
@@ -294,14 +378,15 @@ function main() {
         console.log('[prepare-deploy] SITE_ROLE not set — monolith deploy, nothing to do.');
         return;
     }
-    if (role !== 'marketing' && role !== 'app') {
-        fail(`unknown SITE_ROLE "${role}" (expected "marketing" or "app")`);
+    if (!ROLES.includes(role)) {
+        fail(`unknown SITE_ROLE "${role}" (expected ${ROLES.map((r) => `"${r}"`).join(' | ')})`);
     }
 
     assertClassification();
     console.log(`[prepare-deploy] shaping deploy for SITE_ROLE=${role}`);
 
     if (role === 'marketing') prepareMarketing();
+    else if (role === 'till') prepareTill();
     else prepareApp();
 
     // Templates must not ship as public files (publish dir is the repo root).
@@ -310,4 +395,23 @@ function main() {
     console.log(`[prepare-deploy] done (${role}).`);
 }
 
-main();
+// Only shape the deploy when RUN. Requiring this module must never prune the
+// repo — `lint-design.js` and `netlify-should-build.js` both import it for the
+// page classification, and before this guard existed they regex-scraped the
+// source instead. That scrape broke the moment the lists became derived rather
+// than literal, which is how it was found: the linter crashed on
+// "could not parse APP_PAGES" rather than silently linting nothing.
+if (require.main === module) main();
+
+// The classification, for the two consumers that need it. Exporting the map and
+// the derived views means a role can be added here and nothing downstream has to
+// learn a new shape.
+module.exports = {
+    PAGE_ROLES,
+    ROLES,
+    pagesFor,
+    canonicalRole,
+    MARKETING_PAGES,
+    APP_PAGES,
+    TILL_PAGES,
+};

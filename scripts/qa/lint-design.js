@@ -36,16 +36,14 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..');
 // root *.html MUST be classified"). Re-deriving it here with a regex drifts —
 // the first version of this linter guessed, and misfiled all six KPI
 // drill-down pages plus login.html as marketing.
+// IMPORTED, not scraped. This used to regex the source for `const APP_PAGES =
+// [...]`, which broke the moment the lists became derived from PAGE_ROLES —
+// loudly, which is the only reason it was caught. prepare-deploy.js now exports
+// them and guards its own main() behind require.main, so importing it here
+// classifies pages without shaping a deploy.
 function loadPageLists() {
-  const src = fs.readFileSync(path.join(REPO_ROOT, 'scripts', 'prepare-deploy.js'), 'utf8');
-  const grab = (name) => {
-    const m = src.match(new RegExp(`const ${name} = \\[([\\s\\S]*?)\\];`));
-    if (!m) throw new Error(`prepare-deploy.js: could not parse ${name}`);
-    return new Set(
-      m[1].split('\n').map((l) => (l.match(/'([^']+\.html)'/) || [])[1]).filter(Boolean)
-    );
-  };
-  return { app: grab('APP_PAGES'), marketing: grab('MARKETING_PAGES') };
+  const { APP_PAGES, MARKETING_PAGES } = require(path.join(REPO_ROOT, 'scripts', 'prepare-deploy.js'));
+  return { app: new Set(APP_PAGES), marketing: new Set(MARKETING_PAGES) };
 }
 
 const PAGES = loadPageLists();

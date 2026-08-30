@@ -1,5 +1,7 @@
 'use strict';
 
+const { ALLOWED_ORIGINS } = require('./lib/allowed-origins');
+
 // Trial extension, triggered from the Internal Operations Console
 // (internal.html → Users → row "Extend Trial" menu). Extends a single user's
 // trial by 1 week / 2 weeks / 1 month and records an internal audit entry.
@@ -18,8 +20,7 @@
 const admin = require('firebase-admin');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const ALLOWED = ['https://fluxyos.com', 'https://dashboard.fluxyos.com', 'https://www.fluxyos.com', 'http://localhost:8000', 'http://127.0.0.1:5500', 'http://127.0.0.1:8765'];
-
+const ALLOWED = ALLOWED_ORIGINS;
 // Extension durations offered by the console dropdown.
 const DURATIONS = {
     '1w': { label: '1 week', apply: (d) => new Date(d.getTime() + 7 * DAY_MS) },

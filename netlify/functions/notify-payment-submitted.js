@@ -1,5 +1,7 @@
 'use strict';
 
+const { ALLOWED_ORIGINS } = require('./lib/allowed-origins');
+
 // Instant "Payment received — under review" email, fired by the client the
 // moment a payment is submitted (payment-pending.js). Authenticated: it verifies
 // the caller's Firebase ID token and only emails THAT user, for THEIR own
@@ -11,8 +13,7 @@ const { sendNotificationEmail } = require('../../functions/lib/email');
 const { resolveUserLocale } = require('../../functions/lib/locale');
 
 const APP_BASE_URL = process.env.APP_BASE_URL || 'https://fluxyos.com';
-const ALLOWED = ['https://fluxyos.com', 'https://dashboard.fluxyos.com', 'https://www.fluxyos.com', 'http://localhost:8000', 'http://127.0.0.1:5500'];
-
+const ALLOWED = ALLOWED_ORIGINS;
 exports.handler = async (event) => {
     const origin = (event.headers && (event.headers.origin || event.headers.Origin)) || '';
     const cors = {

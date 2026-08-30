@@ -1,0 +1,37 @@
+# GENERATED SOURCE — installed as _redirects by scripts/prepare-deploy.js when
+# SITE_ROLE=till (the pos.fluxyos.com site). Never ships as-is.
+#
+# _redirects rules are processed by Netlify BEFORE netlify.toml [[redirects]],
+# so the rules below shadow the monolith rules that would misbehave here
+# (most importantly netlify.toml's forced "/" -> /fluxyos.html rewrite).
+#
+# This site serves the cashier surface and its own front door, and nothing else.
+# Every other page 301s to its canonical origin, generated from PAGE_ROLES so a
+# redirect here can never disagree with what the other sites actually serve.
+
+# --- Host canonicalization: never serve the raw netlify.app subdomain ---
+# NOTE: update the hostname below to the actual Netlify site name chosen when
+# the till site is created (plan assumes fluxyos-pos).
+https://fluxyos-pos.netlify.app/*   https://pos.fluxyos.com/:splat   301!
+
+# --- API function routes ---
+# The same shared functions directory is deployed to every site, routed by path.
+# The till needs the generic API (workspace resolution, fx rates, invites) but
+# not the bank-statement extractor or the commerce webhooks — those are reached
+# from the dashboard and from marketplaces respectively, never from a till.
+/api/v1/*                         /.netlify/functions/api/:splat                200
+
+# --- Firebase auth helper pages ---
+# authDomain stays fluxyos.com, so the signInWithPopup handler is framed from
+# the apex. This proxy must exist on every origin that signs a user in, or the
+# popup 404s and the cashier simply cannot log in.
+/__/auth/*   https://fluxyos.firebaseapp.com/__/auth/:splat   200
+
+# --- Everything this site does not serve ---
+# {{FOREIGN_PAGE_REDIRECTS}}
+
+# --- Root: the till's front door is login ---
+# login.html bounces an already-signed-in user onward itself, and a POS-only
+# role is routed to /pos by onboarding-gate.js before any finance read.
+# 302 (not 301) so the front-door behavior isn't cached forever.
+/   /login   302!
