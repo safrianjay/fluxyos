@@ -35,7 +35,8 @@
     "cbm:sync": "node scripts/cbm-extract-inline.js && codebase-memory-mcp cli index_repository --repo-path . --mode moderate",
     "check:kyc-alerts": "node tests/kyc-alert-backfill.check.js",
     "check:pos-boundary": "node tests/pos-service-boundary.check.js",
-    "check:origins": "node tests/allowed-origins.check.js"
+    "check:origins": "node tests/allowed-origins.check.js",
+    "verify:till": "playwright test tests/till-origin-live.spec.js --project=chromium"
   },
   "dependencies": {
     "@netlify/functions": "^2.8.2",
