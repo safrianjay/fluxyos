@@ -55,7 +55,12 @@ const state = {
     overview: null,
     shift: null,
     unwatch: null,
-    busy: false
+    busy: false,
+    // Catalogue filters. Client-side on purpose: the menu is already fully
+    // loaded (getPosMenu), so filtering is a paint, not a query — a till must
+    // not wait on the network to narrow a list the cashier can already see.
+    menuQuery: '',
+    menuCategory: null
 };
 
 // ── Formatting ───────────────────────────────────────────────────────────────
@@ -198,11 +203,17 @@ function renderBanners() {
     }));
 }
 
+// The floor plan. It used to be the page's primary surface; the reference makes
+// the CATALOGUE primary, so the grid moved behind the header's "Table Order"
+// button. Same markup, same handlers, same startOrder/selectOrder calls — only
+// where it is painted changed, which is why no order flow moved with it.
 function renderTables() {
     const o = state.overview;
     if (!o) return;
     const host = $('pos-tables');
     const empty = $('pos-tables-empty');
+    // Only rendered while the sheet is open.
+    if (!host || !empty) return;
 
     if (!o.tables.length) {
         host.classList.add('hidden');
@@ -248,6 +259,83 @@ function renderTables() {
     mountTableArchive(host);
 }
 
+// The floor plan, in the shared drawer. Reference parity for "Table Order".
+function openTableSheet() {
+    const el = drawer({
+        title: 'Tables',
+        subtitle: 'Tap a table to open or continue its order.',
+        submitLabel: null,   // a view, not a form — no footer button
+        body: `<div id="pos-tables" class="pos-tablesheet"></div>
+               <div id="pos-tables-empty" class="hidden"></div>
+               <div style="margin-top:14px;display:flex;justify-content:flex-end">
+                   <button type="button" id="pos-manage-tables" class="pos-shift-btn">Manage tables</button>
+               </div>`,
+        onSubmit: null
+    });
+    renderTables();
+    el.querySelector('#pos-manage-tables')?.addEventListener('click', openTableDrawer);
+    // Tapping a table starts or opens an order — the sheet has done its job.
+    el.querySelectorAll('[data-table]').forEach((b) => b.addEventListener('click', () => {
+        setTimeout(() => el.remove(), 0);
+    }));
+    return el;
+}
+
+// Reference parity: dining type + table, and a search over open orders. All
+// three drive the EXISTING flows (startOrder / selectOrder) rather than new
+// ones — the panel is a different way in, not a different behaviour.
+function renderOrderControls() {
+    const o = state.overview;
+    const sel = $('pos-table-select');
+    const dining = $('pos-dining');
+    if (!sel || !o) return;
+
+    const byTable = {};
+    (o.activeOrders || []).forEach((ord) => { if (ord.table_id) byTable[ord.table_id] = ord; });
+    const current = state.order && state.order.table_id;
+
+    sel.innerHTML = ['<option value="">Select table</option>'].concat(
+        (o.tables || []).map((t) => {
+            const busy = byTable[t.id] && (!state.order || byTable[t.id].id !== state.orderId);
+            return `<option value="${esc(t.id)}"${current === t.id ? ' selected' : ''}>`
+                + `${esc(t.label)}${busy ? ' · in use' : ''}</option>`;
+        })
+    ).join('');
+
+    if (dining) {
+        const takeaway = !!state.order && !state.order.table_id;
+        dining.value = takeaway ? 'takeaway' : 'dine_in';
+        // A table cannot be chosen for a takeaway order, and an order already
+        // open cannot change its table — moving a live order between tables is
+        // Phase 3 of the POS plan and has no DAL support yet, so the control is
+        // disabled rather than present and failing.
+        sel.disabled = dining.value === 'takeaway' || !!state.order;
+    }
+}
+
+function renderOrderSearch() {
+    const box = $('pos-order-results');
+    const input = $('pos-order-search');
+    if (!box || !input) return;
+    const q = input.value.trim().toLowerCase();
+    const open = (state.overview && state.overview.activeOrders) || [];
+    if (!q) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+    const hits = open.filter((ord) =>
+        String(ord.order_number || '').toLowerCase().includes(q)
+        || String(ord.table_label || '').toLowerCase().includes(q));
+    box.classList.remove('hidden');
+    box.innerHTML = hits.length ? hits.map((ord) => `
+        <button type="button" class="pos-order-result" data-open="${esc(ord.id)}">
+            <span>${esc(ord.table_label ? `Table ${ord.table_label}` : 'Takeaway')} · ${esc(ord.order_number || '')}</span>
+            <span>${rp(ord.total_amount)}</span>
+        </button>`).join('')
+        : '<div style="padding:10px 12px;font-size:13px;color:#94A3B8">No open order matches that.</div>';
+    box.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => {
+        selectOrder(b.dataset.open);
+        input.value = ''; box.classList.add('hidden'); box.innerHTML = '';
+    }));
+}
+
 function renderPaidToday() {
     const host = $('pos-paid-today');
     const rows = (state.overview && state.overview.paidToday) || [];
@@ -272,12 +360,61 @@ function renderPaidToday() {
     });
 }
 
+// The catalogue. Reference layout: search, category chips, a product grid of
+// image-topped cards. `items` carries no image field yet, so the media slot is
+// reserved and filled with the item's initials — the brief is explicit that
+// placeholder imagery must not be invented, and a reserved slot means an <img>
+// drops in later without the card reflowing around it.
+function menuCategories() {
+    const seen = [];
+    state.menu.forEach((m) => {
+        const c = m.pos_category || null;
+        if (c && !seen.includes(c)) seen.push(c);
+    });
+    return seen.sort((a, b) => a.localeCompare(b));
+}
+
+function visibleMenu() {
+    const q = state.menuQuery.trim().toLowerCase();
+    return state.menu.filter((m) => {
+        if (state.menuCategory && (m.pos_category || null) !== state.menuCategory) return false;
+        if (!q) return true;
+        return String(m.name || '').toLowerCase().includes(q);
+    });
+}
+
+function renderChips() {
+    const host = $('pos-cat-chips');
+    if (!host) return;
+    const cats = menuCategories();
+    // One category is not a filter — it is a label, and a lone chip beside
+    // "Show All" implies a choice that does not exist.
+    if (cats.length < 2) { host.classList.add('hidden'); return; }
+    host.classList.remove('hidden');
+    const chip = (label, value) => {
+        const active = (state.menuCategory || null) === value;
+        return `<button type="button" role="tab" aria-selected="${active}"
+                    class="pos-chip${active ? ' is-active' : ''}" data-cat="${value === null ? '' : esc(value)}">
+                    ${esc(label)}</button>`;
+    };
+    host.innerHTML = [chip('Show All', null)].concat(cats.map((c) => chip(c, c))).join('');
+    host.querySelectorAll('[data-cat]').forEach((b) => {
+        b.addEventListener('click', () => {
+            state.menuCategory = b.dataset.cat || null;
+            renderChips(); renderMenu();
+        });
+    });
+}
+
 function renderMenu() {
     const host = $('pos-menu');
     const empty = $('pos-menu-empty');
+    const count = $('pos-menu-count');
+
     if (!state.menu.length) {
         host.classList.add('hidden');
         empty.classList.remove('hidden');
+        if (count) count.textContent = '';
         window.renderEmptyState('pos-menu-empty', {
             title: 'Nothing on the menu yet',
             description: 'An item appears here once it has a selling price and is marked visible on the till. Set both in Inventory.',
@@ -286,30 +423,46 @@ function renderMenu() {
         });
         return;
     }
+
+    const rows = visibleMenu();
+    const live = !!state.order && !['paid', 'void'].includes(state.order.status);
+
+    if (count) {
+        count.textContent = rows.length === state.menu.length
+            ? `${state.menu.length} item${state.menu.length === 1 ? '' : 's'}`
+            : `${rows.length} of ${state.menu.length}`;
+    }
+
+    // A filter that matches nothing is not the same as an empty menu, and must
+    // not offer "Open Inventory" as though the menu were unbuilt.
+    if (!rows.length) {
+        host.classList.add('hidden');
+        empty.classList.remove('hidden');
+        empty.innerHTML = `<div class="fluxy-table-empty">
+            <p class="fluxy-table-empty-title">No item matches that</p>
+            <p class="fluxy-table-empty-description">Try a different word, or clear the category filter.</p>
+        </div>`;
+        return;
+    }
+
     empty.classList.add('hidden');
+    empty.innerHTML = '';
     host.classList.remove('hidden');
 
-    const groups = {};
-    state.menu.forEach((m) => {
-        const k = m.pos_category || 'Menu';
-        (groups[k] || (groups[k] = [])).push(m);
-    });
+    const initials = (name) => String(name || '?').trim().split(/\s+/).slice(0, 2)
+        .map((w) => w[0] || '').join('') || '?';
 
-    const live = !!state.order && !['paid', 'void'].includes(state.order.status);
-    $('pos-menu-sub').textContent = live
-        ? 'Tap an item to add it to the open order.'
-        : 'Open a table first, then tap items to add them.';
-
-    host.innerHTML = Object.keys(groups).sort().map((cat) => `
-        <p class="pos-cat">${esc(cat)}</p>
-        <div class="pos-menu-grid">
-            ${groups[cat].map((m) => `
-                <button type="button" class="pos-menu-item" data-item="${esc(m.id)}"
-                        data-price="${m.sales_price}" data-name="${esc(m.name)}" ${live ? '' : 'disabled'}>
-                    <span class="pos-menu-name">${esc(m.name)}</span>
-                    <span class="pos-menu-price">${rp(m.sales_price)}</span>
-                </button>`).join('')}
-        </div>`).join('');
+    host.innerHTML = rows.map((m) => `
+        <button type="button" class="pos-card" data-item="${esc(m.id)}"
+                data-price="${m.sales_price}" data-name="${esc(m.name)}" ${live ? '' : 'disabled'}
+                title="${live ? '' : 'Open a table or start a takeaway order first'}">
+            <span class="pos-card-media">
+                <span class="pos-card-initial">${esc(initials(m.name))}</span>
+            </span>
+            <span class="pos-card-name">${esc(m.name)}</span>
+            <span class="pos-card-price">${rp(m.sales_price)}</span>
+            <span class="pos-card-add" aria-hidden="true">+</span>
+        </button>`).join('');
 
     host.querySelectorAll('[data-item]').forEach((btn) => {
         btn.addEventListener('click', () => once(async () => {
@@ -362,29 +515,59 @@ function renderOrder() {
     badge.classList.remove('hidden');
 
     const rows = o.lines || [];
+    const editableNow = !!(st.next || o.status === 'awaiting_payment');
+    // Reference line shape: the name, the arithmetic spelled out
+    // (`Rp10.000 × 2 = Rp20.000`), a stepper, notes, and a remove control.
+    // Spelling out the multiplication is the reference's one genuinely better
+    // idea — a cashier reading back a bill checks the sum, not the unit price.
     lines.innerHTML = rows.length ? rows.map((l) => {
-        const net = (Number(l.gross_amount) || 0) - (Number(l.discount_amount) || 0);
-        const discounted = Number(l.discount_amount) > 0;
+        const qty = Number(l.quantity) || 0;
+        const gross = Number(l.gross_amount) || 0;
+        const disc = Number(l.discount_amount) || 0;
+        const net = gross - disc;
         return `<div class="pos-line">
             <div>
-                <div class="pos-line-name">${esc(l.item_name)}</div>
-                <div class="pos-line-meta"><span>${rp(l.unit_price)} each</span>${l.note ? ` · <span>${esc(l.note)}</span>` : ''}</div>
-                ${discounted ? `<div class="pos-line-meta" style="color:#C2410C">${esc(l.discount_reason || 'Discount')} −${rp(l.discount_amount)}</div>` : ''}
-                ${st.next || o.status === 'awaiting_payment' ? `
-                <div class="pos-qty">
-                    <button type="button" data-dec="${esc(l.line_id)}" aria-label="One fewer ${esc(l.item_name)}">−</button>
-                    <span>${Number(l.quantity)}</span>
-                    <button type="button" data-inc="${esc(l.line_id)}" aria-label="One more ${esc(l.item_name)}">+</button>
-                    <button type="button" data-note="${esc(l.line_id)}" class="pos-qty-alt" aria-label="Note for ${esc(l.item_name)}" title="Note">✎</button>
-                    <button type="button" data-disc="${esc(l.line_id)}" class="pos-qty-alt" aria-label="Discount ${esc(l.item_name)}" title="Discount">%</button>
+                <div class="pos-line-head">
+                    <div class="pos-line-name">${esc(l.item_name)}</div>
+                    ${editableNow ? `<button type="button" class="pos-line-remove" data-remove="${esc(l.line_id)}"
+                        aria-label="Remove ${esc(l.item_name)}" title="Remove">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+                    </button>` : ''}
+                </div>
+                <div class="pos-line-calc">${rp(l.unit_price)} × ${qty} = ${rp(gross)}</div>
+                ${disc > 0 ? `<div class="pos-line-meta" style="color:#C2410C">${esc(l.discount_reason || 'Discount')} −${rp(disc)} · now ${rp(net)}</div>` : ''}
+                ${l.note ? `<div class="pos-line-meta">${esc(l.note)}</div>` : ''}
+                ${editableNow ? `
+                <div class="pos-line-controls">
+                    <div class="pos-qty">
+                        <button type="button" data-dec="${esc(l.line_id)}" aria-label="One fewer ${esc(l.item_name)}">−</button>
+                        <span>${qty}</span>
+                        <button type="button" data-inc="${esc(l.line_id)}" aria-label="One more ${esc(l.item_name)}">+</button>
+                    </div>
+                    <button type="button" class="pos-line-note-btn" data-note="${esc(l.line_id)}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h4L20 8l-4-4L4 16z"/></svg>
+                        ${l.note ? 'Edit note' : 'Add notes'}
+                    </button>
+                    <button type="button" class="pos-line-note-btn" data-disc="${esc(l.line_id)}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 5 5 19M6.5 8a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg>
+                        Discount
+                    </button>
                 </div>` : ''}
             </div>
-            <div class="pos-line-amt">
-                ${discounted ? `<span class="pos-line-strike">${rp(l.gross_amount)}</span>` : ''}
-                ${rp(net)}
-            </div>
+            <div class="pos-line-amt">${rp(net)}</div>
         </div>`;
     }).join('') : '<div style="padding:24px 16px;text-align:center;color:#94A3B8;font-size:13px">Nothing added yet.</div>';
+
+    // Remove = quantity 0. The DAL already drops a zero-quantity line, so this
+    // reuses the same path the stepper does rather than adding a delete method.
+    lines.querySelectorAll('[data-remove]').forEach((btn) => {
+        btn.addEventListener('click', () => once(async () => {
+            try {
+                state.order = await ds.setPosOrderLineQuantity(state.uid, state.orderId, btn.dataset.remove, 0);
+                renderOrder();
+            } catch (err) { fail(err, 'Could not remove that line.'); }
+        }));
+    });
 
     lines.querySelectorAll('[data-disc]').forEach((btn) => {
         btn.addEventListener('click', () => openDiscountDrawer(btn.dataset.disc));
@@ -405,16 +588,30 @@ function renderOrder() {
         }));
     });
 
-    const bits = [`<div class="pos-total-row"><span>Subtotal</span><span>${rp(o.subtotal)}</span></div>`];
-    if (Number(o.discount_total) > 0) {
-        bits.push(`<div class="pos-total-row is-discount"><span>Discount</span><span>−${rp(o.discount_total)}</span></div>`);
+    // Reference totals stack. It separates PRODUCT discount (the sum of the line
+    // discounts) from EXTRA discount (the order-level one) — a split FluxyOS
+    // already stores but never showed, so this is the reference surfacing real
+    // data rather than new arithmetic. `discount_total` is the sum of both.
+    // The reference's "Coupon discount" row has no equivalent and is not built.
+    const extraDisc = Number(o.discount_amount) || 0;
+    const productDisc = Math.max(0, (Number(o.discount_total) || 0) - extraDisc);
+    const pencil = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h4L20 8l-4-4L4 16z"/></svg>';
+    const canEdit = !['paid', 'void'].includes(o.status);
+
+    const bits = [`<div class="pos-total-row"><span>Sub total</span><span>${rp(o.subtotal)}</span></div>`];
+    if (productDisc > 0) {
+        bits.push(`<div class="pos-total-row is-discount"><span>Product discount</span><span>−${rp(productDisc)}</span></div>`);
     }
+    bits.push(`<div class="pos-total-row${extraDisc > 0 ? ' is-discount' : ''}">
+        <span>Extra discount${canEdit ? `<button type="button" class="pos-total-edit" id="pos-edit-extra" aria-label="Edit extra discount" title="Edit">${pencil}</button>` : ''}</span>
+        <span>${extraDisc > 0 ? `−${rp(extraDisc)}` : rp(0)}</span></div>`);
     bits.push(`<div class="pos-total-row is-grand"><span>Total</span><span>${rp(o.total_amount)}</span></div>`);
     if (Number(o.paid_amount) > 0 && o.status !== 'paid') {
         bits.push(`<div class="pos-total-row"><span>Paid so far</span><span>${rp(o.paid_amount)}</span></div>`);
         bits.push(`<div class="pos-total-row is-grand"><span>Balance</span><span>${rp(Number(o.total_amount) - Number(o.paid_amount))}</span></div>`);
     }
     totals.innerHTML = bits.join('');
+    document.getElementById('pos-edit-extra')?.addEventListener('click', () => openDiscountDrawer(null));
 
     const empty = !rows.length;
     primary.disabled = empty && o.status !== 'paid';
@@ -453,7 +650,15 @@ async function startOrder(tableId) {
         state.orderId = order.id;
         state.order = order;
         renderOrder();
-        renderMenu();
+        // renderMenu() used to run HERE, before the refresh below. That enabled
+        // every product card while `once()` was still holding state.busy — and
+        // once() DROPS a call while busy, silently. So a cashier could tap a
+        // table, tap a dish immediately, and lose the tap with no feedback at
+        // all. The cards must not claim to be ready before the till is.
+        //
+        // refresh() paints the menu itself, and everything it does after the
+        // reads is synchronous, so the cards now become tappable within the same
+        // task that clears the guard.
         await refresh({ keepOrder: true });
     } catch (err) { fail(err, 'Could not open that order.'); }
 }
@@ -507,22 +712,29 @@ function drawer({ title, subtitle, body, submitLabel, onSubmit, danger = false }
                 </button>
             </div>
             <form id="pos-drawer-form" class="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">${body}</form>
-            <div class="px-5 py-4 border-t border-gray-200">
+            ${submitLabel ? `<div class="px-5 py-4 border-t border-gray-200">
                 <button type="submit" form="pos-drawer-form" class="w-full min-h-[48px] rounded-lg ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-900 hover:bg-gray-800'} text-white text-[15px] font-semibold">${esc(submitLabel)}</button>
-            </div>
+            </div>` : ''}
         </div>`;
     document.body.appendChild(el);
     const close = () => el.remove();
     el.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', close));
     el.querySelector('#pos-drawer-form').addEventListener('submit', async (e) => {
         e.preventDefault();
+        // A drawer with no submit label is a VIEW (the floor plan), not a form.
+        // Its content still lives in the form element for layout, so the submit
+        // path has to tolerate having nothing to do.
+        if (typeof onSubmit !== 'function') return;
         await once(async () => {
             try { await onSubmit(new FormData(e.target)); close(); }
             catch (err) { fail(err, 'That did not work.'); }
         });
     });
     setTimeout(() => el.querySelector('input,select')?.focus(), 50);
-    return { close };
+    // The element, with close attached. Callers that only need `.close()` keep
+    // working; callers that need to bind inside the drawer can query it.
+    el.close = close;
+    return el;
 }
 
 function openPaymentDrawer() {
@@ -1111,11 +1323,23 @@ async function refresh({ keepOrder = false } = {}) {
     renderShift();
     renderMetrics();
     renderBanners();
-    renderTables();
+    renderTables();        // no-op unless the floor-plan sheet is open
     renderPaidToday();
+    renderChips();
     renderMenu();
+    renderOrderControls();
     renderOrder();
     $('pos-new-order').disabled = !state.outletId;
+
+    // Free-table count on the "Table Order" button — the floor plan is behind a
+    // click now, so its one at-a-glance number comes forward to the button.
+    const badge = $('pos-tables-count');
+    if (badge) {
+        const c = overview.counts || {};
+        const has = Number(c.tablesTotal) > 0;
+        badge.classList.toggle('hidden', !has);
+        if (has) badge.textContent = `${c.tablesFree}/${c.tablesTotal}`;
+    }
 }
 
 function watch() {
@@ -1143,8 +1367,34 @@ function wire() {
     $('pos-void-btn').addEventListener('click', openVoidDrawer);
     $('pos-refund-btn').addEventListener('click', openRefundDrawer);
     $('pos-reprint-btn').addEventListener('click', () => openReceipt(state.order));
-    $('pos-manage-tables').addEventListener('click', openTableDrawer);
     $('pos-new-order').addEventListener('click', () => once(() => startOrder(null)));
+    $('pos-tables-btn').addEventListener('click', openTableSheet);
+
+    // Catalogue filters. Client-side against an already-loaded menu, so this is
+    // a repaint per keystroke and never a query.
+    $('pos-menu-search').addEventListener('input', (e) => {
+        state.menuQuery = e.target.value || '';
+        renderMenu();
+    });
+
+    // Open-order search + the dining/table selectors.
+    $('pos-order-search').addEventListener('input', renderOrderSearch);
+    $('pos-dining').addEventListener('change', (e) => {
+        // Only meaningful before an order exists: it chooses HOW the next order
+        // starts. Once one is open its table is fixed (moving a live order
+        // between tables is Phase 3 of the POS plan and has no DAL support).
+        if (state.order) { renderOrderControls(); return; }
+        if (e.target.value === 'takeaway') once(() => startOrder(null));
+        else renderOrderControls();
+    });
+    $('pos-table-select').addEventListener('change', (e) => {
+        const id = e.target.value;
+        if (!id || state.order) return;
+        const ord = ((state.overview && state.overview.activeOrders) || [])
+            .find((o) => o.table_id === id);
+        if (ord) return selectOrder(ord.id);
+        return once(() => startOrder(id));
+    });
 
     // Offline is v1's honest limitation: the till is online-only, so it says so
     // loudly rather than silently failing a save mid-service.

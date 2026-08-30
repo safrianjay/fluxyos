@@ -184,12 +184,21 @@ test.describe('Point of Sale', () => {
         // can still move — so it is resolved before it is ever saved.
         await page.goto('/pos');
         await page.waitForSelector('#pos-metrics .pos-metric', { timeout: 20000 });
-        const free = page.locator('.pos-table.is-free');
+
+        // The floor plan moved behind the header's "Table Order" button when the
+        // catalogue became the primary surface (2026-08-31). Opening the sheet is
+        // now part of starting a dine-in order — and note this spec SKIPS itself
+        // when it finds no table, so a selector left pointing at the old location
+        // would have silently dropped the entire discount flow from coverage
+        // rather than going red.
+        await page.click('#pos-tables-btn');
+        await page.waitForSelector('#pos-drawer .pos-table', { timeout: 15000 });
+        const free = page.locator('#pos-drawer .pos-table.is-free');
         test.skip(await free.count() === 0, 'no free table in the QA workspace');
 
         await free.first().click();
-        await page.waitForSelector('.pos-menu-item:not([disabled])', { timeout: 15000 });
-        await page.locator('.pos-menu-item:not([disabled])').first().click();
+        await page.waitForSelector('.pos-card:not([disabled])', { timeout: 15000 });
+        await page.locator('.pos-card:not([disabled])').first().click();
         await page.waitForSelector('.pos-line', { timeout: 15000 });
 
         await page.click('#pos-discount-btn');
@@ -202,7 +211,16 @@ test.describe('Point of Sale', () => {
 
         // Leave without saving: an unfinished discount must not stick.
         await page.locator('#pos-drawer [data-close]').first().click();
-        await expect(page.locator('#pos-order-totals')).not.toContainText(/discount|diskon/i);
+        // Asserted on the VALUE, not the absence of the word. The totals stack
+        // now always carries an "Extra discount" row (reference parity — it is
+        // the row the pencil edits, and hiding it hides the affordance), so
+        // "no text matching /discount/" would only be testing the label. What
+        // must not have happened is a discount being APPLIED: the extra row
+        // stays at zero and no product-discount row appears at all.
+        const totals = page.locator('#pos-order-totals');
+        await expect(totals).toContainText(/Rp0/);
+        await expect(totals).not.toContainText(/Product discount|Diskon produk/i);
+        await expect(totals).not.toContainText(/−Rp|-Rp/);
 
         // Clean up — this spec opened a real order.
         await page.click('#pos-void-btn');

@@ -20,7 +20,25 @@
            colours already in shared-dashboard.css. No new visual language. */
 
         .pos-shell { display: grid; gap: 16px; grid-template-columns: 1fr; }
-        @media (min-width: 1024px) { .pos-shell { grid-template-columns: minmax(0,1fr) 380px; align-items: start; } }
+        /* Side-by-side is decided by the space actually AVAILABLE, not by the
+           viewport — because the 220px sidebar is what really governs it.
+           Measuring the viewport, a 10" tablet in portrait (834pt) looks wide
+           enough and is not: 834 − 220 sidebar − 48 padding − 320 panel leaves
+           the catalogue 202px, about 90px per card. A container query asks the
+           canvas instead, so the sidebar is counted automatically.
+           It also means this starts working on a portrait tablet the moment the
+           cashier shell drops the sidebar (Phase 3) — no breakpoint to revisit. */
+        .fluxy-page-canvas { container-type: inline-size; }
+        @container (min-width: 720px) {
+            .pos-shell { grid-template-columns: minmax(0,1fr) 320px; align-items: start; }
+        }
+        @container (min-width: 1040px) {
+            .pos-shell { grid-template-columns: minmax(0,1fr) 380px; }
+        }
+        /* Viewport fallback for engines without container queries. */
+        @supports not (container-type: inline-size) {
+            @media (min-width: 1024px) { .pos-shell { grid-template-columns: minmax(0,1fr) 380px; align-items: start; } }
+        }
 
         /* ── Outlet bar ─────────────────────────────────────────────────── */
         .pos-outletbar {
@@ -76,6 +94,14 @@
         .pos-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: #E2E8F0; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; }
         @media (min-width: 640px) { .pos-metrics { grid-template-columns: repeat(4, 1fr); } }
         .pos-metric { background: #fff; padding: 14px 16px; }
+        /* On a phone the four metrics push the catalogue most of a screen down.
+           They stay (they carry the unposted + no-cost-basis honesty signals)
+           but give up ~50px of chrome for it. */
+        @media (max-width: 640px) {
+            .pos-metric { padding: 10px 12px; }
+            .pos-metric-value { font-size: 17px; }
+            .pos-metric-label { margin-top: 5px; }
+        }
         .pos-metric-value {
             font-size: 20px; font-weight: 600; line-height: 1; letter-spacing: -0.02em;
             font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; color: #0B0F19;
@@ -219,6 +245,171 @@
             .pos-tables { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); }
             .pos-menu-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
         }
+
+        /* ══ Reference-aligned catalogue (RestroBit layout, FluxyOS tokens) ══
+           Same information architecture as the reference — search, category
+           chips, a 4-up product grid, and a right-hand order panel — built from
+           the shared scale and the semantic colours already in
+           shared-dashboard.css. No new visual language, and no orange fills:
+           orange is an accent here as it is everywhere else in the product. */
+
+        .pos-catalog-toolbar {
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+            padding: 14px 16px; border-bottom: 1px solid #E2E8F0;
+        }
+        .pos-catalog-count {
+            margin-left: auto; font-size: 12px; color: #64748B;
+            font-variant-numeric: tabular-nums; white-space: nowrap;
+        }
+
+        /* Search: one shape, two sizes. The reference uses a leading magnifier
+           on both the product search and the order search. */
+        .pos-search { position: relative; flex: 1 1 240px; min-width: 180px; }
+        .pos-search svg {
+            position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+            width: 16px; height: 16px; color: #94A3B8; pointer-events: none;
+        }
+        .pos-search input {
+            width: 100%; min-height: 40px; padding: 0 12px 0 34px;
+            border: 1px solid #E2E8F0; border-radius: 10px; background: #fff;
+            font-size: 14px; color: #0F172A; outline: none;
+        }
+        .pos-search input::placeholder { color: #94A3B8; }
+        .pos-search input:focus { border-color: #CBD5E1; box-shadow: 0 0 0 3px rgba(15,23,42,.05); }
+        .pos-search-sm { flex: 1 1 auto; }
+        .pos-search-sm input { min-height: 36px; font-size: 13px; }
+
+        /* Category chips. The reference fills the active chip orange; orange
+           backgrounds are prohibited project-wide (CLAUDE.md), so the active
+           state is the same dark navy every primary control uses. */
+        .pos-chips {
+            display: flex; gap: 8px; padding: 12px 16px; overflow-x: auto;
+            border-bottom: 1px solid #E2E8F0; scrollbar-width: thin;
+        }
+        .pos-chip {
+            flex: 0 0 auto; min-height: 34px; padding: 0 14px; border-radius: 999px;
+            border: 1px solid #E2E8F0; background: #fff; color: #475569;
+            font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap;
+            transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+        }
+        .pos-chip:hover { background: #F8FAFC; border-color: #CBD5E1; }
+        .pos-chip:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
+        .pos-chip.is-active { background: #0F172A; border-color: #0F172A; color: #fff; }
+
+        .pos-catalog-body { padding: 16px; }
+
+        /* Product grid. 4-up on desktop like the reference, stepping down to 2
+           on a phone — the till is used one-handed and a 3rd column at 375px
+           puts the price below the fold of the card. */
+        .pos-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+        @media (min-width: 640px)  { .pos-grid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+        @media (min-width: 1280px) { .pos-grid { grid-template-columns: repeat(4, minmax(0,1fr)); } }
+
+        .pos-card {
+            position: relative; display: flex; flex-direction: column; text-align: left;
+            background: #fff; border: 1px solid #E2E8F0; border-radius: 12px;
+            padding: 10px; cursor: pointer; min-height: 44px;
+            transition: border-color 120ms ease, box-shadow 120ms ease;
+        }
+        .pos-card:hover:not(:disabled) { border-color: #CBD5E1; box-shadow: 0 1px 3px rgba(15,23,42,.08); }
+        .pos-card:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
+        .pos-card:disabled { opacity: .55; cursor: not-allowed; }
+
+        /* THE IMAGE SLOT. `items` has no image field yet (docs/data-model/items.md),
+           and the brief is explicit: do not invent placeholder imagery. So the
+           slot is real and reserved, filled for now by the item's own initials on
+           a neutral tile. When items gain an image, an <img> drops in here and
+           nothing around it moves. */
+        .pos-card-media {
+            aspect-ratio: 4 / 3; border-radius: 8px; background: #F1F5F9;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden; margin-bottom: 10px; flex-shrink: 0;
+        }
+        .pos-card-media img { width: 100%; height: 100%; object-fit: cover; }
+        .pos-card-initial {
+            font-size: 20px; font-weight: 600; color: #94A3B8; letter-spacing: -0.02em;
+            text-transform: uppercase;
+        }
+        .pos-card-name {
+            font-size: 14px; font-weight: 500; color: #0F172A; line-height: 1.35;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .pos-card-price {
+            margin-top: 6px; font-size: 14px; font-weight: 600; color: #C2410C;
+            font-variant-numeric: tabular-nums;
+        }
+        .pos-card-add {
+            position: absolute; right: 10px; bottom: 10px; width: 28px; height: 28px;
+            border-radius: 999px; border: 0; background: #0F172A; color: #fff;
+            display: none; align-items: center; justify-content: center;
+            font-size: 16px; line-height: 1; cursor: pointer;
+        }
+        .pos-card:hover .pos-card-add,
+        .pos-card:focus-within .pos-card-add { display: flex; }
+        /* Touch has no hover: on a tablet the affordance must always be visible. */
+        @media (hover: none) { .pos-card-add { display: flex; } }
+        .pos-card-warn { font-size: 11px; color: #A16207; margin-top: 4px; }
+
+        /* ── Order panel, reference shape ───────────────────────────────── */
+        .pos-order-selects { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .pos-order-selects select {
+            width: 100%; min-height: 36px; padding: 0 10px; font-size: 13px;
+            border: 1px solid #E2E8F0; border-radius: 10px; background: #fff; color: #0F172A;
+        }
+        .pos-order-id { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+        .pos-order-id-icon { width: 22px; height: 22px; color: #0F172A; flex-shrink: 0; }
+        .pos-order-id-icon svg { width: 100%; height: 100%; }
+        .pos-order-id h2 { font-size: 16px; font-weight: 600; color: #0B0F19; letter-spacing: -0.01em; }
+        .pos-order-sub { font-size: 12px; color: #64748B; margin-top: 4px; }
+
+        .pos-order-results {
+            margin-top: 8px; border: 1px solid #E2E8F0; border-radius: 10px;
+            overflow: hidden; max-height: 190px; overflow-y: auto;
+        }
+        .pos-order-result {
+            display: flex; justify-content: space-between; gap: 8px; width: 100%;
+            padding: 9px 12px; background: #fff; border: 0; border-bottom: 1px solid #F1F5F9;
+            font-size: 13px; color: #0F172A; cursor: pointer; text-align: left;
+        }
+        .pos-order-result:last-child { border-bottom: 0; }
+        .pos-order-result:hover { background: #F8FAFC; }
+        .pos-order-result span:last-child { color: #64748B; font-variant-numeric: tabular-nums; }
+
+        /* A line row, matching the reference: name, `price × qty = total`, a
+           stepper, a remove control, and a notes affordance. */
+        .pos-line-calc { font-size: 12px; color: #C2410C; font-variant-numeric: tabular-nums; margin-top: 2px; }
+        .pos-line-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+        .pos-line-remove {
+            width: 26px; height: 26px; border-radius: 7px; border: 1px solid #F1D5D7;
+            background: #FEF2F2; color: #B91C1C; cursor: pointer; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .pos-line-remove:hover { background: #FEE2E2; }
+        .pos-line-remove svg { width: 13px; height: 13px; }
+        .pos-line-note-btn {
+            display: inline-flex; align-items: center; gap: 5px; min-height: 28px;
+            padding: 0 9px; border-radius: 7px; border: 1px solid #E2E8F0;
+            background: #fff; color: #475569; font-size: 12px; cursor: pointer;
+        }
+        .pos-line-note-btn:hover { background: #F8FAFC; }
+        .pos-line-note-btn svg { width: 12px; height: 12px; }
+        .pos-line-controls { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+
+        /* Totals stack. The reference's editable rows carry a pencil; here it
+           opens the discount drawer that already exists. */
+        .pos-total-edit {
+            border: 0; background: none; color: #64748B; cursor: pointer;
+            padding: 0 0 0 6px; line-height: 1;
+        }
+        .pos-total-edit:hover { color: #C2410C; }
+        .pos-total-edit svg { width: 12px; height: 12px; }
+
+        .pos-order-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+        .pos-order-actions .pos-secondary { flex: 1 1 auto; }
+
+        /* Floor plan, now behind the "Table Order" button. */
+        .pos-tablesheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
@@ -239,6 +430,18 @@
                 </div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
+                <!-- Reference parity: "Table Order" opens the floor plan. The grid
+                     did not disappear — it moved behind this button so the product
+                     catalogue can be the primary surface, which is the reference's
+                     core IA change. QR Menu Orders and Draft List are deliberately
+                     absent: QR ordering is not built and FluxyOS has no draft
+                     order state, and a button that does nothing is worse than one
+                     that is missing. -->
+                <button id="pos-tables-btn" type="button" class="px-3 sm:px-4 py-2 min-h-[44px] bg-white border border-gray-200 text-gray-700 rounded-lg text-[14px] font-semibold hover:bg-gray-50 transition-all flex items-center gap-2 whitespace-nowrap">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="4" width="18" height="7" rx="2"/><path d="M7 11v9M17 11v9"/></svg>
+                    <span class="hidden sm:inline">Table Order</span>
+                    <span id="pos-tables-count" class="fluxy-status fluxy-status-neutral hidden"></span>
+                </button>
                 <button id="pos-new-order" type="button" aria-label="Start a takeaway order" title="Takeaway" class="px-3 sm:px-4 py-2 min-h-[44px] bg-gray-900 text-white rounded-lg text-[14px] font-bold hover:bg-gray-800 transition-all flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"></path></svg>
                     <span class="hidden sm:inline">Takeaway</span>
@@ -275,20 +478,28 @@
                 <div id="pos-metrics" class="pos-metrics"></div>
 
                 <div class="pos-shell">
+                    <!-- ── LEFT: the product catalogue ───────────────────────
+                         The reference's central IA move: the menu is the primary
+                         surface, not a section under the floor plan. Tables moved
+                         behind the "Table Order" button in the header. -->
                     <div class="fluxy-section-stack" style="gap:16px;min-width:0;">
-                        <section class="fluxy-table-card">
-                            <div class="fluxy-table-card-header">
-                                <div>
-                                    <h2 class="fluxy-table-title">Tables</h2>
-                                    <p class="fluxy-table-subtitle">Tap a table to open or continue its order.</p>
+                        <section class="fluxy-table-card" id="pos-menu-card">
+                            <div class="pos-catalog-toolbar">
+                                <div class="pos-search">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                                    <input id="pos-menu-search" type="search" autocomplete="off"
+                                           placeholder="Search in products" aria-label="Search in products">
                                 </div>
-                                <div class="fluxy-table-actions">
-                                    <button id="pos-manage-tables" type="button" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[12px] font-semibold text-gray-700 hover:bg-gray-50">Manage tables</button>
-                                </div>
+                                <!-- The reference also carries "All Category" and
+                                     "Select Brand" dropdowns. The first duplicates
+                                     the chips below; the second has no equivalent —
+                                     FluxyOS items have no brand. Neither is built. -->
+                                <span id="pos-menu-count" class="pos-catalog-count"></span>
                             </div>
-                            <div style="padding:16px;">
-                                <div id="pos-tables" class="pos-tables"></div>
-                                <div id="pos-tables-empty" class="hidden"></div>
+                            <div id="pos-cat-chips" class="pos-chips" role="tablist" aria-label="Menu categories"></div>
+                            <div class="pos-catalog-body">
+                                <div id="pos-menu" class="pos-grid"></div>
+                                <div id="pos-menu-empty" class="hidden"></div>
                             </div>
                         </section>
 
@@ -303,36 +514,43 @@
                                 <div id="pos-paid-today"></div>
                             </div>
                         </section>
-
-                        <section class="fluxy-table-card" id="pos-menu-card">
-                            <div class="fluxy-table-card-header">
-                                <div>
-                                    <h2 class="fluxy-table-title">Menu</h2>
-                                    <p class="fluxy-table-subtitle" id="pos-menu-sub">Tap an item to add it to the open order.</p>
-                                </div>
-                            </div>
-                            <div style="padding:16px;">
-                                <div id="pos-menu"></div>
-                                <div id="pos-menu-empty" class="hidden"></div>
-                            </div>
-                        </section>
                     </div>
 
+                    <!-- ── RIGHT: the order panel ────────────────────────────
+                         Reference parity: existing-order search, dining + table
+                         selectors, order number, line rows with qty stepper and
+                         per-line notes, then the totals stack. -->
                     <aside class="pos-order" id="pos-order-panel" aria-live="polite">
                         <div class="pos-order-head">
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="min-w-0">
-                                    <h2 id="pos-order-title" class="text-[16px] font-semibold text-slate-950 leading-tight">No order open</h2>
-                                    <p id="pos-order-sub" class="text-[12px] text-slate-500 mt-0.5">Pick a table to start.</p>
-                                </div>
+                            <div class="pos-search pos-search-sm">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                                <input id="pos-order-search" type="search" autocomplete="off"
+                                       placeholder="Search in existing" aria-label="Search open orders">
+                            </div>
+                            <div id="pos-order-results" class="pos-order-results hidden"></div>
+                            <div class="pos-order-selects">
+                                <select id="pos-dining" aria-label="Dining type">
+                                    <option value="dine_in">Dine in</option>
+                                    <option value="takeaway">Takeaway</option>
+                                </select>
+                                <select id="pos-table-select" aria-label="Table"></select>
+                            </div>
+                            <div class="pos-order-id">
+                                <span class="pos-order-id-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 2h12l2 6H4z"/><path d="M5 8v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
+                                </span>
+                                <h2 id="pos-order-title">No order open</h2>
                                 <span id="pos-order-status" class="fluxy-status hidden"></span>
                             </div>
+                            <p id="pos-order-sub" class="pos-order-sub">Pick a table to start.</p>
                         </div>
+
                         <div id="pos-order-lines" class="pos-order-lines"></div>
+
                         <div class="pos-order-foot">
                             <div id="pos-order-totals"></div>
                             <button id="pos-primary" type="button" class="pos-primary" disabled>Pick a table</button>
-                            <div class="flex items-center justify-between">
+                            <div class="pos-order-actions">
                                 <button id="pos-discount-btn" type="button" class="pos-secondary hidden">Add discount</button>
                                 <button id="pos-void-btn" type="button" class="pos-secondary hidden">Void order</button>
                                 <button id="pos-refund-btn" type="button" class="pos-secondary hidden">Refund order</button>
