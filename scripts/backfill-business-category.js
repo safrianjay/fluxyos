@@ -155,11 +155,17 @@ async function applyCsv() {
 
     const rows = fs.readFileSync(abs, 'utf8')
         .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter((l) => l && !l.startsWith('#'))
+        // Strip TRAILING comments as well as whole-line ones. The natural way to
+        // build this file is to annotate the `report` output with why each row
+        // was decided, and a trailing `# Beila` would otherwise be parsed as part
+        // of the category and rejected. It failed loudly rather than silently
+        // mis-parsing, which is the only reason that was a nuisance and not a bug.
+        .map((l) => l.split('#')[0].trim())
+        .filter(Boolean)
         .map((l) => l.split(',').map((c) => c.trim()))
+        .filter((c) => c.length >= 2 && c[0] && c[1])
         // Tolerate the header line emitted by `report`.
-        .filter((c) => c[0] && c[0] !== 'workspace_id');
+        .filter((c) => c[0] !== 'workspace_id');
 
     if (!rows.length) fail('no usable rows in the file');
     console.log(`\n${rows.length} row(s)${DRY_RUN ? ' — DRY RUN, nothing will be written' : ''}\n`);

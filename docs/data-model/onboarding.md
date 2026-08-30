@@ -193,11 +193,25 @@ security boundary).
 
 **Absent means no match**, not a default. There is no sensible default line of
 business and guessing one would hand a till to an agency. Workspaces predating
-the field therefore qualify only through the legacy email allowlist —
-`feature-access.js` OR's the two signals — until
-`scripts/backfill-business-category.js` stamps them. Removing the allowlist
-before that completes would silently drop a live module from every unstamped
-workspace.
+the field qualify only through the legacy email allowlist — `feature-access.js`
+OR's the two signals.
+
+**Backfill completed 2026-08-30**: 21 of 22 production workspaces stamped
+(`scripts/backfill-business-category.js`). One is skipped deliberately — no
+name, no owner email, no data.
+
+> ⚠️ **The email allowlist still cannot be removed, and the backfill is no
+> longer the reason.** `allowCategories: ['fnb']` turns out to be NARROWER than
+> the allowlist it was meant to replace: **TB Bangun Utama is a building-supplies
+> retailer (`retail`) that is actively using the till** — 2 `pos_orders`, 1 paid,
+> 1 table. Dropping the allowlist today would take POS away from a live user.
+>
+> Three ways forward, and it is a product decision rather than an engineering
+> one: keep the allowlist (status quo, safe); widen to
+> `['fnb', 'retail']`; or keep F&B-only and tell that customer. The categories
+> were decided from real data — Beila's items are Es Kopi Susu Gula Aren and
+> Kopi Arabika Gayo, so it is `fnb` despite its owner having typed "Retail" into
+> the free-text `business_type` box, whose placeholder never offered F&B.
 
 The vocabulary is written out in four places (`assets/js/business-category.js`,
 `db-service.js`, `firestore.rules`, `onboarding.html`), each for a stated reason;

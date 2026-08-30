@@ -100,6 +100,14 @@ export const FEATURE_RULES = {
         // F&B is the initial segment. Retail and other categories run tills too;
         // they are deliberately NOT listed until someone decides to serve them,
         // because the till's F&B assumptions (tables, covers) are visible in the UI.
+        //
+        // ⚠️ DO NOT REMOVE allowEmails ABOVE. The 2026-08-30 backfill finished, so
+        // the old reason ("workspaces are unstamped") is gone — but it uncovered a
+        // better one: this list is NARROWER than the allowlist it was meant to
+        // replace. TB Bangun Utama is a building-supplies RETAILER already running
+        // the till (2 pos_orders, 1 paid, 1 table). Dropping allowEmails today
+        // removes POS from a live user. Widening to ['fnb', 'retail'] is a product
+        // decision, not a cleanup. See docs/data-model/onboarding.md.
         allowCategories: ['fnb']
     }
 };
