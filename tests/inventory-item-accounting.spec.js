@@ -102,6 +102,44 @@ test('"What is this?" is answered by the tab, not by a field above the name', as
     await expect(page.locator('#item-recipe-section')).toBeHidden();
 });
 
+test('each account picker offers only its own type', async ({ page }) => {
+    // "Revenue account" was offering 3200 Owner Drawings and 2800 Suspense,
+    // because the picker filtered by money DIRECTION — and money in really can
+    // credit a liability or equity, which is right for the Add Transaction
+    // Account field and wrong for a field that names a type. A control must do
+    // what its label says (DESIGN_SYSTEM 3c).
+    //
+    // Filtered by TYPE, never by sak_category: 'revenue' has to keep 7100
+    // Interest Income findable, which a sak_category filter would have hidden.
+    const cases = [
+        ['item-sell-account-mount', 'Revenue'],
+        ['item-cogs-account-mount', 'Expense'],
+        ['item-inventory-account-mount', 'Asset']
+    ];
+
+    for (const [mountId, expectedBadge] of cases) {
+        await gotoItems(page);
+        await page.click('#new-item-btn');
+        await page.waitForTimeout(1200);
+        await page.evaluate((id) => document.getElementById(id).scrollIntoView({ block: 'center' }), mountId);
+        await page.waitForTimeout(300);
+        await page.click(`#${mountId} .fluxy-acct-trigger`);
+        await page.waitForSelector('.fluxy-acct-menu', { timeout: 10000 });
+        await page.waitForTimeout(300);
+
+        const badges = await page.evaluate(() => Array.from(
+            document.querySelectorAll('.fluxy-acct-menu [data-code]')
+        ).map((r) => (r.innerText || '').split('\n').pop().trim()));
+
+        expect(badges.length).toBeGreaterThan(0);
+        // Every row in the menu is the type the label promises — no exceptions.
+        expect([...new Set(badges)]).toEqual([expectedBadge]);
+
+        // No teardown: each pass starts with gotoItems(), which reloads the page.
+        // Closing the drawer here fought the portaled menu for the click.
+    }
+});
+
 test('the accounting codes save and come back when the item is reopened', async ({ page }) => {
     const consoleErrors = [];
     page.on('pageerror', (e) => consoleErrors.push(e.message));

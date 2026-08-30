@@ -396,7 +396,22 @@ options untuk pilih COA"*). Shipped as:
 - **Revenue / Cost / Inventory account** → `default_sales_account_code`,
   `default_cogs_account_code`, `default_inventory_account_code`, through the
   shared `FluxyAccountPicker` (searchable and grouped; `FluxySelect` has neither
-  and a chart runs to dozens of accounts).
+  and a chart runs to dozens of accounts), each narrowed to **one account type**
+  via the picker's `types` option.
+
+  They first shipped filtered by money `direction` — the entry drawer's filter,
+  where `in` means revenue **plus liability and equity**, because money in really
+  can credit a customer deposit or an owner injection. That breadth is correct
+  there and wrong here: a field labelled *Revenue account* was offering `3200
+  Owner Drawings` and `2800 Suspense`, which is a control that permits a nonsense
+  answer (DESIGN_SYSTEM 3c). Fixed 2026-08-30.
+
+  The allow-list is by **type**, never by `sak_category`. Narrowing Revenue to
+  `sak_category: 'revenue'` would hide `7100 Interest Income`, which is a
+  perfectly good revenue account — type keeps every user-created account in the
+  right family findable while removing the ones that could never be the answer.
+  Guard: `tests/inventory-item-accounting.spec.js` → "each account picker offers
+  only its own type".
 
 ⚠️ **They are still recorded, not acted on** — §7a. The section's own hint says
 so on screen. `default_cogs_account_code` in particular has existed since the

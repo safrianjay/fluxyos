@@ -39,6 +39,21 @@
     // is findable, so a custom account is never hidden. `null` direction = all.
     const DIRECTION_TYPES = { in: ['revenue', 'liability', 'equity'], out: ['expense', 'asset', 'liability', 'equity'] };
 
+    // `types` — an EXPLICIT allow-list, which takes precedence over `direction`.
+    //
+    // Direction is the right filter for a field that just asks "which account
+    // does this affect", because money in really can credit a liability or
+    // equity. It is the wrong filter for a field that NAMES a type: the item
+    // drawer's "Revenue account" was offering 3200 Owner Drawings and 2800
+    // Suspense, which is a control that permits a nonsense answer
+    // (DESIGN_SYSTEM 3c).
+    //
+    // The allow-list is by TYPE, never by sak_category, on purpose: narrowing
+    // "Revenue account" to sak_category 'revenue' would hide 7100 Interest
+    // Income, which is a perfectly good revenue account. Type keeps every
+    // user-created account in the right family findable while removing the ones
+    // that could never be the answer.
+
     let openInstance = null;
 
     function esc(s) {
@@ -74,6 +89,8 @@
         const o = opts || {};
         let accounts = Array.isArray(o.accounts) ? o.accounts.slice() : [];
         let direction = o.direction || null;              // 'in' | 'out' | null
+        // Explicit type allow-list; beats `direction` when given.
+        let types = Array.isArray(o.types) && o.types.length ? o.types.slice() : null;
         let value = o.value || '';
         const onChange = typeof o.onChange === 'function' ? o.onChange : null;
         const onCreate = typeof o.onCreateAccount === 'function' ? o.onCreateAccount : null;
@@ -107,7 +124,7 @@
         container.appendChild(hidden);
         container.appendChild(trigger);
 
-        const instance = { container, trigger, menu, close, positionMenu, refresh: renderTrigger, setDirection, setAccounts, setValue, getValue, getAccount, destroy };
+        const instance = { container, trigger, menu, close, positionMenu, refresh: renderTrigger, setDirection, setTypes, setAccounts, setValue, getValue, getAccount, destroy };
 
         function accountByCode(code) { return accounts.find((a) => String(a.code) === String(code)) || null; }
 
@@ -130,7 +147,9 @@
 
         // The visible, direction-filtered, sorted account set.
         function visibleAccounts() {
-            const allowed = direction && DIRECTION_TYPES[direction] ? DIRECTION_TYPES[direction] : null;
+            const allowed = (types && types.length)
+                ? types
+                : (direction && DIRECTION_TYPES[direction] ? DIRECTION_TYPES[direction] : null);
             return accounts
                 .filter(isSelectable)
                 .filter((a) => !allowed || allowed.indexOf(a.type) !== -1)
@@ -286,6 +305,7 @@
 
         // --- public controller methods ---
         function setDirection(dir) { direction = dir || null; if (menu.classList.contains('is-open')) { renderMenu(''); positionMenu(); } }
+        function setTypes(next) { types = Array.isArray(next) && next.length ? next.slice() : null; if (menu.classList.contains('is-open')) { renderMenu(''); positionMenu(); } }
         function setAccounts(list) { accounts = Array.isArray(list) ? list.slice() : []; renderTrigger(); if (menu.classList.contains('is-open')) renderMenu(''); }
         function setValue(code) { value = code == null ? '' : String(code); hidden.value = value; renderTrigger(); }
         function getValue() { return value; }

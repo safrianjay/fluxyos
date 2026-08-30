@@ -2053,23 +2053,30 @@
             try {
                 acctChart = acctChart || await ds.getChartForPicker(currentUid);
             } catch (_) { return; }
-            const mount = (key, mountId, direction) => {
+            const mount = (key, mountId, direction, types) => {
                 const host = document.getElementById(mountId);
                 if (!host) return null;
                 return window.FluxyAccountPicker.mount(host, {
                     name: mountId,
                     accounts: acctChart,
                     direction,
+                    types,
                     placeholder: 'Select an account',
                     onCreateAccount: () => { window.open('/accounting', '_blank'); }
                 });
             };
-            // `in` offers credit-side accounts (revenue), `out` debit-side
-            // (expense/asset) — the same filter the entry drawer uses, so a
-            // revenue account can never land in the cost field by accident.
-            acctPickers.sell = mount('sell', 'item-sell-account-mount', 'in');
-            acctPickers.cogs = mount('cogs', 'item-cogs-account-mount', 'out');
-            acctPickers.inventory = mount('inventory', 'item-inventory-account-mount', 'out');
+            // EXACT types, not a money direction. The entry drawer's `in`/`out`
+            // filter is deliberately broad — money in really can credit a
+            // liability or equity — but these three fields NAME a type, and
+            // "Revenue account" was offering 3200 Owner Drawings and 2800
+            // Suspense. A control must do what its label says.
+            //
+            // By type, never by sak_category: 'revenue' keeps 7100 Interest
+            // Income findable, which is a legitimate revenue account that a
+            // sak_category filter would have hidden.
+            acctPickers.sell = mount('sell', 'item-sell-account-mount', null, ['revenue']);
+            acctPickers.cogs = mount('cogs', 'item-cogs-account-mount', null, ['expense']);
+            acctPickers.inventory = mount('inventory', 'item-inventory-account-mount', null, ['asset']);
         }
 
         function setAcctPicker(key, code) {
