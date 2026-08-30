@@ -211,6 +211,10 @@ function laneBE(changed) {
   // workspace keeping its module through the email allowlist — returns the same
   // boolean as the category branch, so nothing else can see it break.
   ok = record('be', run('check:feature-category (category vs allowlist precedence)', 'node', ['tests/feature-access-category.check.js'])) && ok;
+  // Unconditional: the boundary is breached by editing pos-service.js, but it is
+  // also breached by DELETING a method from db-service.js that the POS still
+  // calls — and that edit lands in a file the POS author never opened.
+  ok = record('be', run('check:pos-boundary (POS DAL edge into DataService)', 'node', ['tests/pos-service-boundary.check.js'])) && ok;
 
   const jsChanged = changed.filter((f) => /\.(js|mjs)$/.test(f) && fs.existsSync(path.join(REPO_ROOT, f)));
   if (jsChanged.length) {

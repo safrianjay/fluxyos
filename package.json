@@ -33,7 +33,8 @@
     "cbm:extract": "node scripts/cbm-extract-inline.js",
     "cbm:check": "node scripts/cbm-extract-inline.js --check",
     "cbm:sync": "node scripts/cbm-extract-inline.js && codebase-memory-mcp cli index_repository --repo-path . --mode moderate",
-    "check:kyc-alerts": "node tests/kyc-alert-backfill.check.js"
+    "check:kyc-alerts": "node tests/kyc-alert-backfill.check.js",
+    "check:pos-boundary": "node tests/pos-service-boundary.check.js"
   },
   "dependencies": {
     "@netlify/functions": "^2.8.2",
