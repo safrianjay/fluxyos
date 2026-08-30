@@ -204,6 +204,13 @@ function laneBE(changed) {
         // dynamic import of it sits inside a catch. kyc-gate.js reached main that
         // way and the KYC gate stopped running with nothing going red.
         ok = record('be', run('check:module-parse (every client module parses?)', 'node', ['tests/module-parse.check.js'])) && ok;
+  // Unconditional, for the same reason as the price book: the two eligibility
+  // signals live in feature-access.js while the DATA they read is stamped by
+  // onboarding and by a backfill script, so neither file needs to be in the diff
+  // for the pair to stop agreeing. The branch that matters — an unstamped
+  // workspace keeping its module through the email allowlist — returns the same
+  // boolean as the category branch, so nothing else can see it break.
+  ok = record('be', run('check:feature-category (category vs allowlist precedence)', 'node', ['tests/feature-access-category.check.js'])) && ok;
 
   const jsChanged = changed.filter((f) => /\.(js|mjs)$/.test(f) && fs.existsSync(path.join(REPO_ROOT, f)));
   if (jsChanged.length) {

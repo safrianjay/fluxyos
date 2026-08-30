@@ -207,6 +207,13 @@ export async function canUseFeature(app, user, feature) {
 // Reset point for tests, which stub FEATURE_RULES to prove the negative case.
 export function _resetFeatureAccessCache() { ownerEmailPromise = null; }
 
+// Exported for `tests/feature-access-category.check.js`, which asserts the
+// category/allowlist precedence directly. Worth exporting: the branch that
+// matters most is the one where an UNSTAMPED workspace keeps its module through
+// the email allowlist, and that is invisible from the outside — both paths
+// return true, so a browser test cannot tell which one granted it.
+export const _matchesForTest = matches;
+
 // sidebar-loader.js is a classic script that runs before page modules, so it
 // cannot import this. Same reason FluxyAIContext is published this way.
 if (typeof window !== 'undefined') {
