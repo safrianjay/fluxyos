@@ -1628,6 +1628,13 @@ class DataService {
         const payload = this._cleanDefined({
             business_name: Object.prototype.hasOwnProperty.call(data, 'business_name')
                 ? this._stringOrDefault(data.business_name, '', 120) : undefined,
+            // Mirror of the canonical workspaces/{id}.business_category, carried
+            // here so the KYC reviewer can check the declared line of business
+            // against the registration documents. Same allowlist as
+            // ensureWorkspace and firestore.rules — see business-category.js.
+            business_category: Object.prototype.hasOwnProperty.call(data, 'business_category')
+                ? this._allowedValue(data.business_category,
+                    ['fnb', 'startup', 'technology', 'manufacturing', 'retail', 'services', 'other'], '') : undefined,
             // Mirrors of the immutable workspace config + the UI language, carried
             // here so the KYC reviewer sees them beside the documents. This is an
             // explicit whitelist: a field missing from it is silently DROPPED, which
@@ -2408,16 +2415,32 @@ class DataService {
         // and in money-format.js BASE_SUPPORTED / COUNTRY_CURRENCY.
         const ccy = ['IDR', 'PHP', 'SGD', 'MYR'].includes(opts.baseCurrency) ? opts.baseCurrency : null;
         const country = ['ID', 'PH', 'SG', 'MY'].includes(opts.country) ? opts.country : null;
+        // Business category lives here for the same reason country does: it is a
+        // property of the BUSINESS, and `feature-access.js` resolves module
+        // eligibility from the workspace for every member. Local allowlist, not
+        // an import from business-category.js — if that module ever failed to
+        // load, deferring to it would silently drop the category and quietly
+        // remove a module the business is entitled to. Mirrored in
+        // firestore.rules (isValidWorkspaceProfile) and business-category.js;
+        // tests/structure-drift.check.js fails the build if they disagree.
+        //
+        // NOT set-once, unlike country/base_currency: those decide how stored
+        // integers are READ, so changing them re-prices history. A category
+        // decides nothing retroactively — a retail shop that opens a cafe has
+        // genuinely changed category, and refusing that forever would be wrong.
+        const category = ['fnb', 'startup', 'technology', 'manufacturing', 'retail', 'services', 'other']
+            .includes(opts.businessCategory) ? opts.businessCategory : null;
         if (!wsExists) {
             await setDoc(wsRef, {
                 owner_uid: uid,
                 name: opts.name || null,
                 ...(country ? { country } : {}),
                 ...(ccy ? { base_currency: ccy } : {}),
+                ...(category ? { business_category: category } : {}),
                 created_at: serverTimestamp(),
                 updated_at: serverTimestamp()
             });
-        } else if (ccy || country) {
+        } else if (ccy || country || category) {
             // Stamp an existing workspace that predates this field. Rules enforce
             // set-once, so a second attempt with a DIFFERENT value is rejected —
             // only write when the field is genuinely absent, so an ordinary
@@ -2426,6 +2449,11 @@ class DataService {
             const patch = {};
             if (ccy && !cur.base_currency) patch.base_currency = ccy;
             if (country && !cur.country) patch.country = country;
+            // Only when absent, matching the two above — an onboarding resubmit
+            // must not silently overwrite a category the owner has since
+            // corrected in Settings. Deliberate edits go through
+            // saveWorkspaceBusinessCategory.
+            if (category && !cur.business_category) patch.business_category = category;
             if (Object.keys(patch).length) {
                 patch.updated_at = serverTimestamp();
                 try { await setDoc(wsRef, patch, { merge: true }); }
@@ -2460,6 +2488,37 @@ class DataService {
     async getWorkspaceProfile(workspaceId) {
         const snap = await getDoc(doc(this.db, `workspaces/${workspaceId}`));
         return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    }
+
+    // Change the declared line of business. OWNER-ONLY in practice: the workspace
+    // `allow update` rule restricts admins to ['name', 'updated_at'], so an admin
+    // attempting this gets permission-denied rather than a silent no-op — which
+    // is why Settings → Business hides the control for non-owners instead of
+    // letting them submit it.
+    //
+    // Deliberately editable, unlike country/base_currency. Those are set-once
+    // because they decide how stored integers are READ; a category re-prices
+    // nothing. Changing it may add or remove a MODULE from the sidebar
+    // (feature-access.js), never a record — an ineligible workspace keeps every
+    // row it has and every posting rule keeps working.
+    async saveWorkspaceBusinessCategory(userId, category) {
+        const allowed = ['fnb', 'startup', 'technology', 'manufacturing', 'retail', 'services', 'other'];
+        const value = allowed.includes(String(category || '').trim().toLowerCase())
+            ? String(category).trim().toLowerCase() : null;
+        if (!value) throw new Error('Pick a business category.');
+        // The workspace doc id, not the uid — they differ for every invited member,
+        // and writing workspaces/{memberUid} would create an orphan doc rather
+        // than fail, which is the silent shape of the 0-data scope bug.
+        const wsId = this._resolvedScopeId(userId);
+        await setDoc(doc(this.db, `workspaces/${wsId}`), {
+            business_category: value,
+            updated_at: serverTimestamp()
+        }, { merge: true });
+        // 'workspace' (singular) is the value firestore.rules allowlists for
+        // target_collection; 'workspaces' would be refused and the audit lost.
+        await this._auditCreateBestEffort(userId, 'workspace.business_category_changed',
+            'workspace', wsId, { business_category: value });
+        return value;
     }
 
     // Denormalize the OWNER's subscription summary onto the workspace doc so every

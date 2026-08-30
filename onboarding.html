@@ -119,6 +119,31 @@
                             <span class="onboarding-error" id="f-business-name-error" aria-live="polite"></span>
                         </label>
 
+                        <!-- Business category decides which operational modules this
+                             workspace is offered (assets/js/feature-access.js) — a
+                             GTM agency has nothing to ring up on a till. Stored on
+                             the WORKSPACE doc beside country and base_currency, not
+                             in user-scoped settings. Vocabulary is mirrored in
+                             assets/js/business-category.js, db-service.js and
+                             firestore.rules; tests/structure-drift.check.js fails the
+                             build if the four copies disagree. -->
+                        <label class="onboarding-field">
+                            <span class="onboarding-label">Business category</span>
+                            <select name="business_category" id="f-business-category" class="onboarding-native-select" required aria-describedby="f-business-category-error">
+                                <option value="" disabled selected>Select your business category</option>
+                                <option value="fnb">Food &amp; Beverage</option>
+                                <option value="startup">Startup</option>
+                                <option value="technology">Technology</option>
+                                <option value="manufacturing">Manufacturing</option>
+                                <option value="retail">Retail</option>
+                                <option value="services">Services</option>
+                                <option value="other">Other</option>
+                            </select>
+                            <span id="f-business-category-custom" class="onboarding-custom-select" data-source-select="f-business-category" data-aria-label="Business category"></span>
+                            <span class="onboarding-helper">This sets up the right modules for how you operate. You can change it later in Settings.</span>
+                            <span class="onboarding-error" id="f-business-category-error" aria-live="polite"></span>
+                        </label>
+
                         <label class="onboarding-field">
                             <span class="onboarding-label">Your role</span>
                             <select name="role" id="f-role" class="onboarding-native-select" required aria-describedby="f-role-error">

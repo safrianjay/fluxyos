@@ -32,6 +32,12 @@ const state = {
     plan: null,      // denormalized { id, name, status, frequency } — shared by all members
     baseCurrency: null, // immutable accounting currency; null = not yet read (treat as IDR)
     country: null,      // ISO 3166-1 alpha-2 business country, set with the currency
+    // Declared line of business (assets/js/business-category.js). Decides which
+    // operational modules this workspace is offered — feature-access.js reads it
+    // from here. Deliberately NOT cached like the currency: an absent category
+    // fails closed (a module is hidden, nothing is mis-rendered) and self-corrects
+    // on the next resolve, whereas a stale currency renders wrong money.
+    businessCategory: null,
 };
 
 /**
@@ -105,6 +111,7 @@ function publish() {
         plan: state.plan,
         baseCurrency: state.baseCurrency,
         country: state.country,
+        businessCategory: state.businessCategory,
         isOwner: state.role === 'owner',
         can: (capability) => (state.status === 'active' ? permCan(state.role, capability) : false),
     };
@@ -295,7 +302,7 @@ async function resolveWorkspace(app, user) {
 async function _resolveWorkspace(app, user) {
     if (!user || !user.uid) {
         try { sessionStorage.removeItem('fluxy_ws'); } catch (_) {}
-        Object.assign(state, { id: null, role: null, status: null, uid: null, ready: false, name: null, plan: null, baseCurrency: null, country: null });
+        Object.assign(state, { id: null, role: null, status: null, uid: null, ready: false, name: null, plan: null, baseCurrency: null, country: null, businessCategory: null });
         applyBaseCurrency(null);
         return publish();
     }
@@ -478,6 +485,11 @@ async function _resolveWorkspace(app, user) {
                 // missing field can never show the wrong symbol.
                 state.baseCurrency = d.base_currency || null;
                 state.country = d.country || null;
+                // Rides the SAME forced-server read as the currency, and for the
+                // same reason: this decides what a user may SEE, and a stale
+                // cached copy could hide a module the business is entitled to
+                // with nothing able to invalidate it while the channel is blocked.
+                state.businessCategory = d.business_category || null;
                 applyBaseCurrency(state.baseCurrency);
                 writeCachedCurrency(user.uid, state.baseCurrency, state.country);
                 state.plan = (d.plan_id || d.plan_name || d.subscription_status) ? {

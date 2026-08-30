@@ -3561,6 +3561,25 @@
         "Start with the few details FluxyOS needs to create the workspace and understand the business size.": "Mulai dari beberapa detail yang FluxyOS butuhkan untuk membuat ruang kerja dan memahami skala bisnis Anda.",
         "Business name": "Nama bisnis",
         "e.g. Kopi Senja Digital": "cth. Kopi Senja Digital",
+
+        // Business category. The CATEGORY NAMES are translated (they describe an
+        // industry, not a product), unlike brand and product names which stay
+        // English per LOCALIZATION_PLAN.md §2. Reference copies live beside the ids
+        // in assets/js/business-category.js.
+        "Business category": "Kategori bisnis",
+        "Select your business category": "Pilih kategori bisnis Anda",
+        "This sets up the right modules for how you operate. You can change it later in Settings.": "Ini menyiapkan modul yang sesuai dengan cara Anda beroperasi. Anda bisa mengubahnya nanti di Pengaturan.",
+        "Decides which modules are set up for you. Changing it never affects your records.": "Menentukan modul mana yang disiapkan untuk Anda. Mengubahnya tidak pernah memengaruhi catatan Anda.",
+        "Business details saved. Reload to see any modules this adds or removes.": "Detail bisnis tersimpan. Muat ulang untuk melihat modul yang ditambah atau dihapus.",
+        "Food & Beverage": "Makanan & Minuman",
+        "Startup": "Startup",
+        "Technology": "Teknologi",
+        "Manufacturing": "Manufaktur",
+        "Retail": "Ritel",
+        "Services": "Jasa",
+        // "Other" is already in this dictionary (the POS payment-method block) —
+        // one entry, same translation, not repeated here.
+
         "Your role": "Peran Anda",
         "Select your role": "Pilih peran Anda",
         "Accountant": "Akuntan",

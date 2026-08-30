@@ -6,6 +6,7 @@ import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/
 import DataService from "./db-service.js";
 import { getOnboardingProgress } from "./onboarding-gate.js";
 import { isKycEnforcedUser, resolveKycState, renderKycScreenInto } from "./kyc-gate.js";
+import { businessCategoryLabel } from "./business-category.js";
 
 const FIREBASE_CONFIG = {
     apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -126,6 +127,11 @@ const state = {
     completedSteps: [],
     fields: {
         business_name: '',
+        // Declared line of business. Canonical home is the WORKSPACE doc (it
+        // decides module eligibility for every member); mirrored to the profile
+        // like country/base_currency so the KYC reviewer sees the claim beside
+        // the registration documents. assets/js/business-category.js.
+        business_category: '',
         // Device/UI language. Mirrored to the profile so the KYC reviewer knows
         // which language this business operates in; the live switch itself is
         // localStorage via FluxyI18n. Empty by default ON PURPOSE — bindLanguageSelect
@@ -227,6 +233,7 @@ async function hydrateSavedState(userId, progress) {
         if (profile) {
             Object.entries({
                 business_name: profile.business_name,
+                business_category: profile.business_category,
                 language: profile.language,
                 country: profile.country,
                 base_currency: profile.base_currency,
@@ -292,6 +299,7 @@ function initUI() {
 
     // Live-bind form fields
     bindInput('#f-business-name', 'business_name');
+    bindInput('#f-business-category', 'business_category');
     bindLanguageSelect();
     bindInput('#f-country', 'country');
     bindInput('#f-base-currency', 'base_currency');
@@ -306,6 +314,7 @@ function initUI() {
         '#f-language-custom',
         '#f-country-custom',
         '#f-base-currency-custom',
+        '#f-business-category-custom',
         '#f-role-custom',
         '#f-main-goal-custom',
         '#f-revenue-custom',
@@ -410,6 +419,7 @@ function docsPayload() {
 function syncFormFromState() {
     const legal = document.querySelector('#f-legal-name');
     if (legal) legal.value = state.fields.legal_full_name || '';
+    syncCustomSelectFromState('#f-business-category', '#f-business-category-custom', state.fields.business_category);
     syncCustomSelectFromState('#f-role', '#f-role-custom', state.fields.role);
     syncCustomSelectFromState('#f-main-goal', '#f-main-goal-custom', state.fields.main_goal);
     syncCustomSelectFromState('#f-revenue', '#f-revenue-custom', state.fields.monthly_revenue_range);
@@ -954,6 +964,7 @@ function validateStep() {
     if (step === 'business_setup') {
         const required = [
             ['#f-business-name', state.fields.business_name?.trim(), 'f-business-name-error'],
+            ['#f-business-category', state.fields.business_category, 'f-business-category-error'],
             ['#f-role', state.fields.role, 'f-role-error'],
             ['#f-main-goal', state.fields.main_goal, 'f-main-goal-error'],
             ['#f-revenue', state.fields.monthly_revenue_range, 'f-revenue-error'],
@@ -1065,6 +1076,7 @@ async function onContinue() {
         if (stepKey === 'business_setup') {
             await data.saveOnboardingProfile(state.user.uid, {
                 business_name: state.fields.business_name,
+                business_category: state.fields.business_category,
                 country: state.fields.country,
                 base_currency: state.fields.base_currency,
                 role: state.fields.role,
@@ -1156,6 +1168,7 @@ async function onSubmit() {
         updateLearningTourState();
         await data.saveOnboardingProfile(state.user.uid, {
             business_name: state.fields.business_name,
+            business_category: state.fields.business_category,
             language: state.fields.language,
             country: state.fields.country,
             base_currency: state.fields.base_currency,
@@ -1183,7 +1196,11 @@ async function onSubmit() {
             displayName: state.user.displayName || null,
             name: state.fields.business_name || null,
             country: state.fields.country,
-            baseCurrency: state.fields.base_currency
+            baseCurrency: state.fields.base_currency,
+            // Stamped on the workspace, not only mirrored to the profile: module
+            // eligibility resolves from the workspace for EVERY member, and a
+            // member cannot read the owner's user-scoped docs.
+            businessCategory: state.fields.business_category
         });
 
         // Mirror the business name into the canonical settings/company doc so
@@ -1342,6 +1359,7 @@ function renderReview() {
     ].map((label) => `<span class="onboarding-chip">${escapeHtml(label)}</span>`).join('');
     const rows = [
         ['Business details', `${f.business_name || '—'} · ${tt(f.role)}`, false],
+        ['Business category', tt(businessCategoryLabel(f.business_category)) || '—', false],
         // Surfaced explicitly because it is the one choice on this form the user
         // cannot undo afterwards — it should be read before submit, not discovered
         // in Settings later.

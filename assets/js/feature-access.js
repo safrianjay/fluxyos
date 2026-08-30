@@ -89,13 +89,18 @@ export const FEATURE_RULES = {
     // all. Same for the page guard: `pos.html` passes no `feature`.
     pos: {
         label: 'Point of Sale',
+        // Kept alongside allowCategories on purpose, and removable only once every
+        // workspace on it carries a category. See matches() — the two are OR'd.
         allowEmails: [
             'renatakurniawan1501@gmail.com',
             'randikaisraj07@gmail.com',
             'safrianjayadi77@gmail.com'
         ],
         allowEmailPatterns: [/^fluxyos\.qa\+.*@example\.com$/i],
-        allowCategories: null
+        // F&B is the initial segment. Retail and other categories run tills too;
+        // they are deliberately NOT listed until someone decides to serve them,
+        // because the till's F&B assumptions (tables, covers) are visible in the UI.
+        allowCategories: ['fnb']
     }
 };
 
@@ -111,6 +116,20 @@ function matches(rule, email) {
         // Absent country = the Indonesian baseline, matching every other default
         // in the currency work: an unstamped legacy workspace is Indonesian.
         return rule.allowCountries.includes(country || 'ID');
+    }
+    // Business category, the intended long-term signal. ADDITIVE to the email
+    // allowlist rather than replacing it: a workspace stamped `fnb` qualifies on
+    // category, and an existing allowlisted workspace that has not been stamped
+    // yet keeps its access. Flipping to category-only in one step would silently
+    // remove a live module from every workspace that predates the field — the
+    // exact regression the backfill exists to prevent.
+    //
+    // Absent category = NO match. Unlike country, there is no sensible default
+    // line of business, and guessing one would hand a till to an agency.
+    if (rule.allowCategories) {
+        const category = (typeof window !== 'undefined' && window.FluxyWorkspace
+            && window.FluxyWorkspace.businessCategory) || null;
+        if (category && rule.allowCategories.includes(category)) return true;
     }
     if (!email) return false;
     if ((rule.allowEmails || []).some((e) => norm(e) === email)) return true;

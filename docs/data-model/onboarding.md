@@ -21,7 +21,7 @@ redirected.
 | Document | Fields |
 |----------|--------|
 | `progress` | `onboarding_completed` (bool), `onboarding_exempt` (bool), `eligible_for_onboarding_gate` (bool), `kyc_enforced` (bool — see KYC review gate below), `current_step` (`workspace_locale`/`business_setup`/`account_owner`/`finance_setup`/`review`/`complete`), `completed_steps` (string[]), `selected_first_action` (first selected setup preference, backward-compatible), `selected_first_actions` (string[]), `selected_learning_tours` (string[]), `primary_learning_tour` (string \| null), `skipped` (bool — **legacy**; the skip affordance was removed 2026-08-22, KYC must be completed. `DataService.skipOnboarding` is retained for old records only and has no caller), `source` (`onboarding_v2`/`legacy_exemption`), `created_at`, `updated_at`, `completed_at`, `skipped_at` |
-| `profile` | `business_name`, `language` (`id`/`en` — mirror of the UI language so the reviewer knows which language the business operates in; the live setting is localStorage `fluxyos-lang`), `country` (ISO 3166-1 alpha-2: `ID`/`PH`/`SG`/`MY`), `base_currency` (`IDR`/`PHP`/`SGD`/`MYR`) — **mirrors** of the canonical workspace fields, carried here so the KYC reviewer sees them alongside the documents, `role` (one of: `Owner / Founder`, `Finance admin`, `Accountant`, `Operations manager`, `Staff`), `main_goal`, `monthly_revenue_range`, `employee_count_range`, `legal_full_name`, `phone_country_code`, `phone_number` (normalized E.164-like string), `created_at`, `updated_at` |
+| `profile` | `business_name`, `business_category` (`fnb`/`startup`/`technology`/`manufacturing`/`retail`/`services`/`other` — **mirror** of the canonical `workspaces/{id}.business_category`, carried here so the KYC reviewer can check the declared line of business against the registration documents), `language` (`id`/`en` — mirror of the UI language so the reviewer knows which language the business operates in; the live setting is localStorage `fluxyos-lang`), `country` (ISO 3166-1 alpha-2: `ID`/`PH`/`SG`/`MY`), `base_currency` (`IDR`/`PHP`/`SGD`/`MYR`) — **mirrors** of the canonical workspace fields, carried here so the KYC reviewer sees them alongside the documents, `role` (one of: `Owner / Founder`, `Finance admin`, `Accountant`, `Operations manager`, `Staff`), `main_goal`, `monthly_revenue_range`, `employee_count_range`, `legal_full_name`, `phone_country_code`, `phone_number` (normalized E.164-like string), `created_at`, `updated_at` |
 | `documents` | `identity_document_status` (`not_uploaded`/`uploaded`), `identity_document_storage_path`, `identity_document_file_name`, `business_document_status`, `business_document_storage_path`, `business_document_file_name`, `created_at`, `updated_at` |
 
 **Detection logic** lives in `assets/js/onboarding-gate.js`. Imported as an ES
@@ -164,6 +164,44 @@ both exist (`state.localeConfirmed`).
 **Skip removed.** "Save and finish later" is gone: KYC must be completed. The
 `skipped` field and `DataService.skipOnboarding` survive for existing records but
 have no caller.
+
+### Business category (mandatory, at signup)
+
+Captured on the `business_setup` step and written to **two** places, exactly as
+country and base currency are:
+
+- `workspaces/{workspaceId}.business_category` — **canonical**. Written by
+  `DataService.ensureWorkspace`. This is what `workspace-service.js` publishes as
+  `FluxyWorkspace.businessCategory` and what `feature-access.js` reads to decide
+  which operational modules the workspace is offered.
+- `users/{uid}/onboarding/profile.business_category` — a mirror for the reviewer.
+
+**It lives on the workspace doc, not in `settings`.** `settings` is user-scoped
+(§4 rule 3), so two members of one company could disagree about what the business
+is — and eligibility resolves from the OWNER, whose user-scoped docs a member
+cannot read. `settings/company.business_type` still exists, is free text, and is
+**descriptive only**; it is never read for gating and must not be.
+
+**Not set-once, unlike country and base currency.** Those decide how every stored
+integer is *read*, so changing them re-prices history. A category decides nothing
+retroactively — a retail shop that opens a cafe has genuinely changed category.
+Rules therefore allow the change; the `allow update` clause restricts admins to
+`name`/`updated_at`, so it is owner-only in effect. Changing it may add or remove
+a **module**, never a record: an ineligible workspace keeps every row it has and
+every posting rule keeps working (`feature-access.js` is a UI guard, not a
+security boundary).
+
+**Absent means no match**, not a default. There is no sensible default line of
+business and guessing one would hand a till to an agency. Workspaces predating
+the field therefore qualify only through the legacy email allowlist —
+`feature-access.js` OR's the two signals — until
+`scripts/backfill-business-category.js` stamps them. Removing the allowlist
+before that completes would silently drop a live module from every unstamped
+workspace.
+
+The vocabulary is written out in four places (`assets/js/business-category.js`,
+`db-service.js`, `firestore.rules`, `onboarding.html`), each for a stated reason;
+`npm run check:structure` fails the build if the copies disagree.
 
 ### Business country & base currency (set once, at signup)
 

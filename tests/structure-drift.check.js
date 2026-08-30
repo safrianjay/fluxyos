@@ -365,6 +365,59 @@ if (rulesCollections && qaRun) {
         fail('sidebar-icons', `could not verify sidebar icons: ${e.message}`);
     }
 
+    // --- business category vocabulary --------------------------------------
+    //
+    // The category decides which operational modules a workspace is offered, and
+    // its vocabulary is written out in FOUR places: the client module, the DAL's
+    // deliberately-local allowlist, firestore.rules, and the onboarding <option>
+    // list. Each copy exists for a stated reason (see business-category.js), so
+    // the answer to drift is a guard rather than a fifth abstraction.
+    //
+    // Drift here is SILENT both ways: a category rules accept but the picker
+    // never offers is dead, and one the picker offers but rules reject fails the
+    // whole workspace write with permission-denied at the end of onboarding.
+    try {
+        const listFrom = (src, re, label) => {
+            const m = src.match(re);
+            if (!m) throw new Error(`could not find the ${label} list`);
+            return [...m[1].matchAll(/'([a-z_]+)'/g)].map((x) => x[1]).sort();
+        };
+
+        // { id: 'fnb', ... } — take only the ids, which are the first quoted
+        // token on each entry.
+        const canonIds = [...read('assets/js/business-category.js')
+            .matchAll(/\{\s*id:\s*'([a-z_]+)'/g)].map((m) => m[1]).sort();
+
+        const dal = listFrom(
+            read('assets/js/db-service.js'),
+            /const category = \[([^\]]+)\]\s*\n?\s*\.includes\(opts\.businessCategory\)/,
+            'db-service ensureWorkspace'
+        );
+        const rules = listFrom(
+            read('firestore.rules'),
+            /data\.business_category in \[([^\]]+)\]/,
+            'firestore.rules'
+        );
+        const html = [...read('onboarding.html')
+            .matchAll(/<option value="([a-z_]+)">/g)]
+            .map((m) => m[1]);
+        const onboarding = [...new Set(html.filter((v) => canonIds.includes(v)))].sort();
+
+        const eq = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+        const problems = [];
+        if (!eq(canonIds, dal)) problems.push(`db-service [${dal}] vs canonical [${canonIds}]`);
+        if (!eq(canonIds, rules)) problems.push(`firestore.rules [${rules}] vs canonical [${canonIds}]`);
+        if (!eq(canonIds, onboarding)) problems.push(`onboarding.html [${onboarding}] vs canonical [${canonIds}]`);
+
+        if (problems.length) {
+            fail('business-category', `the category vocabulary has drifted: ${problems.join('; ')}`);
+        } else {
+            ok('business-category', `${canonIds.length} categories agree across business-category.js, db-service.js, firestore.rules and onboarding.html`);
+        }
+    } catch (e) {
+        fail('business-category', `could not verify the category vocabulary: ${e.message}`);
+    }
+
     // --- report ------------------------------------------------------------
     if (failures.length) {
         console.error('\nSTRUCTURAL DRIFT\n');

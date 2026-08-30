@@ -502,6 +502,29 @@ FluxyOS design language.
 > translate for a non-IDR workspace. Deferred deliberately — rewriting them risks
 > breaking Indonesian for today's customers, and it is its own change.
 >
+> ### 🏭 BUSINESS CATEGORY — what the workspace does
+>
+> `workspaces/{workspaceId}.business_category` — one of `fnb`, `startup`,
+> `technology`, `manufacturing`, `retail`, `services`, `other`. Mandatory at
+> onboarding (`business_setup` step). Full rules in
+> `docs/data-model/onboarding.md`.
+>
+> 1. **Workspace doc, never `settings`.** Same reason as `base_currency`:
+>    `settings` is user-scoped, so two members could disagree about what the
+>    business is — and eligibility resolves from the OWNER, whose user-scoped
+>    docs a member cannot read. `settings/company.business_type` is free text,
+>    descriptive only, and **must never be read for gating**.
+> 2. **It decides module eligibility**, not access. `feature-access.js` reads it
+>    to show or hide Point of Sale (`allowCategories: ['fnb']`). An ineligible
+>    workspace keeps every record and every posting rule — this is a UI guard,
+>    not a security boundary.
+> 3. **Absent matches nothing.** Unlike country, there is no defensible default,
+>    so unstamped workspaces qualify only through the legacy email allowlist. The
+>    two signals are OR'd until `scripts/backfill-business-category.js` finishes.
+> 4. **Not set-once.** It re-prices nothing, so an owner may change it.
+> 5. **The vocabulary exists in four files** and `npm run check:structure` fails
+>    the build if they disagree.
+>
 > ### ⚠️ GATING AND CONFIG READS MUST COME FROM THE SERVER
 >
 > The Firestore web SDK serves `getDoc()` from its IndexedDB cache whenever the

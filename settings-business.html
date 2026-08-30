@@ -89,6 +89,28 @@
                 <section id="tab-business-details" class="settings-tab-panel hidden">
                     <form id="company-details-form" class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-section="company-details">
                         <div class="p-5 space-y-4">
+                            <!-- Business category is the CONTROLLED field: it decides which
+                                 operational modules this workspace is offered
+                                 (assets/js/feature-access.js) and lives on the workspace doc.
+                                 "Business type" below is free text and descriptive only — it
+                                 is never read for gating. Two fields on purpose; collapsing
+                                 them would either lose the prose or break the vocabulary.
+                                 Owner-only: firestore.rules restricts admins to name/updated_at
+                                 on the workspace doc, so a non-owner would get
+                                 permission-denied. Hidden rather than shown-and-failing. -->
+                            <label class="block hidden" id="company-category-field">
+                                <span class="text-[12px] font-bold text-gray-500">Business category</span>
+                                <select id="company-business-category" name="business_category" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[14px] text-gray-900 outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
+                                    <option value="fnb">Food &amp; Beverage</option>
+                                    <option value="startup">Startup</option>
+                                    <option value="technology">Technology</option>
+                                    <option value="manufacturing">Manufacturing</option>
+                                    <option value="retail">Retail</option>
+                                    <option value="services">Services</option>
+                                    <option value="other">Other</option>
+                                </select>
+                                <span class="mt-1 block text-[12px] text-gray-400">Decides which modules are set up for you. Changing it never affects your records.</span>
+                            </label>
                             <label class="block">
                                 <span class="text-[12px] font-bold text-gray-500">Business type</span>
                                 <input id="company-business-type" name="business_type" type="text" maxlength="80" placeholder="Agency, retail, services" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-[14px] text-gray-900 outline-none focus:border-[#EA580C] focus:ring-2 focus:ring-orange-100">
@@ -214,6 +236,16 @@
             setValue('company-business-name', company.business_name || 'Global HQ');
             setValue('company-entity-label', company.entity_label || 'Consolidated');
             setValue('company-business-type', company.business_type || '');
+            // Workspace-canonical, like country. Shown only to the owner, because
+            // only the owner can write it.
+            const ws = (window.FluxyWorkspace || {});
+            const catField = document.getElementById('company-category-field');
+            const catSelect = document.getElementById('company-business-category');
+            if (catField && catSelect && ws.isOwner) {
+                catSelect.value = ws.businessCategory || 'other';
+                catField.classList.remove('hidden');
+                window.FluxySelect?.enhance?.(catSelect);
+            }
             // The workspace is canonical for country — settings/ is user-scoped and
             // could disagree with the company's own books. Fall back to the stored
             // value only if the workspace has not resolved.
@@ -352,7 +384,19 @@
                 // silently drifts.
                 entity_label: currentCompany.entity_label || 'Consolidated'
             };
-            const saved = await saveSection(event.currentTarget, 'company-details-status', () => ds.saveCompanySettings(auth.currentUser.uid, payload), 'Business details saved.');
+            // Two destinations, deliberately: the category is workspace-scoped and
+            // shared by every member, the rest is the user-scoped company doc.
+            const category = document.getElementById('company-business-category')?.value || null;
+            const changedCategory = category && category !== (window.FluxyWorkspace || {}).businessCategory;
+            const saved = await saveSection(event.currentTarget, 'company-details-status', async () => {
+                await ds.saveCompanySettings(auth.currentUser.uid, payload);
+                if (changedCategory) {
+                    await ds.saveWorkspaceBusinessCategory(auth.currentUser.uid, category);
+                    if (window.FluxyWorkspace) window.FluxyWorkspace.businessCategory = category;
+                }
+            }, changedCategory
+                ? 'Business details saved. Reload to see any modules this adds or removes.'
+                : 'Business details saved.');
             if (saved) currentCompany = { ...currentCompany, ...payload };
         }
 
