@@ -48,6 +48,20 @@ async function workspaceCurrency(page) {
         () => !document.documentElement.classList.contains('fluxy-booting'),
         null, { timeout: 15000 }
     );
+    // The boot class clearing does NOT mean the workspace has resolved — the
+    // profile read can still be in flight, and `country` is published by that
+    // read. Without this wait the assertion races it and fails only under load,
+    // which is exactly when the whole QA suite runs: a flake that blocks pushes
+    // at random and looks like a currency regression every time.
+    //
+    // The rejection is swallowed on purpose. If `country` genuinely never
+    // arrives that is a real regression, and it should surface as the explicit
+    // "QA fixture has no business country" assertion below rather than as an
+    // opaque wait timeout.
+    await page.waitForFunction(
+        () => !!(window.FluxyWorkspace && window.FluxyWorkspace.country),
+        null, { timeout: 15000 }
+    ).catch(() => {});
     return page.evaluate(() => ({
         base: window.FluxyMoney.baseCurrency(),
         country: (window.FluxyWorkspace && window.FluxyWorkspace.country) || null,
