@@ -321,10 +321,19 @@
            a neutral tile. When items gain an image, an <img> drops in here and
            nothing around it moves. */
         .pos-card-media {
-            aspect-ratio: 4 / 3; border-radius: 8px; background: #F1F5F9;
+            height: 64px; border-radius: 8px; background: #F1F5F9;
             display: flex; align-items: center; justify-content: center;
-            overflow: hidden; margin-bottom: 10px; flex-shrink: 0;
+            overflow: hidden; margin-bottom: 8px; flex-shrink: 0;
         }
+        /* 64px, not the reference's 4:3, WHILE THERE IS NO IMAGE. The reference's
+           cards are image-led and its photos carry meaning; an empty 4:3 tile
+           carries none and cost two thirds of the card, cutting the catalogue to
+           four items above the fold. The slot stays — the brief requires the page
+           to be ready for item images — it is just not reserving a photo's worth
+           of space for an initial.
+           When items gain an image field, `.pos-card.has-image .pos-card-media`
+           takes the aspect ratio back and nothing else moves. */
+        .pos-card.has-image .pos-card-media { height: auto; aspect-ratio: 4 / 3; }
         .pos-card-media img { width: 100%; height: 100%; object-fit: cover; }
         .pos-card-initial {
             font-size: 20px; font-weight: 600; color: #94A3B8; letter-spacing: -0.02em;
