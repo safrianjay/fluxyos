@@ -628,6 +628,45 @@ function posSettlementAccount(doc) {
     return String(doc && doc.pos_settlement || '').trim().toLowerCase() === 'clearing' ? CLEARING : CASH;
 }
 
+// How a till sale's money splits between 1000 Cash and 1030 Clearing.
+//
+// A split bill is the normal case, not an edge case: half cash, half QRIS is
+// what an Indonesian F&B customer actually does. Until 2026-08-30 the whole sale
+// was routed to whichever method was LARGEST, so a Rp200.000 bill paid
+// Rp120.000 cash + Rp80.000 QRIS booked all Rp200.000 to cash. The bank
+// reconciliation was then wrong by the minority tender and 1030 — whose balance
+// is supposed to BE the unsettled float — was wrong by the same amount. Silent
+// in both directions, which is the failure mode this project cares about most.
+//
+// The apportionment rule: NON-CASH TENDER IS EXACT, CASH ABSORBS THE REMAINDER.
+// Nobody overpays a QRIS or a card, and change is only ever given in cash — so
+// scaling both sides proportionally would mis-split any sale where the customer
+// tendered more than the bill. Clearing takes its exact total (capped at the
+// amount), cash takes what is left, and the two therefore always sum to the
+// amount with no rounding drift and no possibility of an unbalanced journal.
+//
+// LEGACY ROWS HAVE NO SPLIT. Every transaction posted before this shipped
+// carries only `pos_settlement`, and `postPendingJournals` may still re-post one.
+// Those fall back to the old single-account behaviour, so historical journals
+// stay reproducible — a re-post must never produce a different journal than the
+// one already on the books.
+function posSettlementSplit(doc, amount) {
+    const total = toInt(amount);
+    const d = doc || {};
+    if (d.pos_cash_amount != null || d.pos_clearing_amount != null) {
+        const cash = Math.max(0, toInt(d.pos_cash_amount));
+        const clearing = Math.max(0, toInt(d.pos_clearing_amount));
+        // Only trust the split when it is internally consistent. The DAL
+        // guarantees this (cash is DERIVED as total − clearing), so the fallback
+        // below is unreachable in practice — but an unbalanced journal is not a
+        // thing worth risking on that assurance.
+        if (cash + clearing === total) return { cash, clearing };
+    }
+    return posSettlementAccount(d) === CLEARING
+        ? { cash: 0, clearing: total }
+        : { cash: total, clearing: 0 };
+}
+
 export function selectRule(collection, document) {
     const doc = document || {};
     if (collection === 'transactions') {
@@ -791,9 +830,13 @@ const RULES = {
     'POS-SALE': (doc) => {
         const net = requireAmount(doc.amount, 'POS sale');
         const discount = Math.max(0, toInt(doc.pos_discount_amount));
-        const settle = posSettlementAccount(doc);
         const acct = explicitAccount(doc, 'revenue') || REVENUE;
-        const lines = [line(settle, net, 0, settle === CLEARING ? 'Awaiting payout' : 'Cash received')];
+        // One debit line per settlement destination. A single-tender sale still
+        // produces exactly one, so nothing about the common case changes shape.
+        const { cash, clearing } = posSettlementSplit(doc, net);
+        const lines = [];
+        if (cash > 0) lines.push(line(CASH, cash, 0, 'Cash received'));
+        if (clearing > 0) lines.push(line(CLEARING, clearing, 0, 'Awaiting payout'));
         if (discount > 0) lines.push(line(SALES_RETURNS, discount, 0, doc.pos_discount_reason || 'Discount given'));
         lines.push(line(acct, 0, net + discount, doc.category || 'Sales'));
         return lines;
@@ -815,13 +858,18 @@ const RULES = {
             ? [line(CASH_VARIANCE, amt, 0, memo), line(CASH, 0, amt, 'Cash short in drawer')]
             : [line(CASH, amt, 0, 'Cash over in drawer'), line(CASH_VARIANCE, 0, amt, memo)];
     },
+    // Money goes back the way it came in. Refunding a QRIS sale out of 1000 Cash
+    // credits money that was never in the drawer and strands the float in 1030
+    // permanently — which is what happened for every non-cash refund until
+    // 2026-08-30, because refundPosOrder hardcoded `pos_settlement: 'cash'`.
+    // Unconditional, not just on split bills.
     'POS-REFUND': (doc) => {
         const amt = requireAmount(doc.amount, 'POS refund');
-        const settle = posSettlementAccount(doc);
-        return [
-            line(SALES_RETURNS, amt, 0, doc.pos_refund_reason || 'Sale refunded'),
-            line(settle, 0, amt, settle === CLEARING ? 'Deducted from payout' : 'Cash refunded')
-        ];
+        const { cash, clearing } = posSettlementSplit(doc, amt);
+        const lines = [line(SALES_RETURNS, amt, 0, doc.pos_refund_reason || 'Sale refunded')];
+        if (cash > 0) lines.push(line(CASH, 0, cash, 'Cash refunded'));
+        if (clearing > 0) lines.push(line(CLEARING, 0, clearing, 'Deducted from payout'));
+        return lines;
     },
     'TXN-ACCRUE-AR': (doc) => {
         const amt = requireAmount(doc.amount, 'pending receivable');

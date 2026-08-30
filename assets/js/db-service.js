@@ -6161,7 +6161,17 @@ class DataService {
 
     // ── Orders ──────────────────────────────────────────────────────────────
 
+    // The trading day belongs to the BUSINESS, not the device. This used to read
+    // the tablet's local calendar, so a till whose clock was set to another zone
+    // restarted the per-outlet order numbers mid-service and filed the sales
+    // under the wrong day. Resolves from the workspace country via the money
+    // seam — see FluxyMoney.businessDayKey.
     _posDayKey(d = new Date()) {
+        const m = (typeof window !== 'undefined' && window.FluxyMoney) || null;
+        if (m && typeof m.businessDayKey === 'function') return m.businessDayKey(d);
+        // The seam is loaded by every page that can reach the till, so this is a
+        // last resort rather than a supported path — matching the device is still
+        // better than refusing to open an order.
         const p = (n) => String(n).padStart(2, '0');
         return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
     }
@@ -6372,6 +6382,41 @@ class DataService {
     _posSettlementFor(method) {
         const m = DataService.POS_PAYMENT_METHODS.find((x) => x.id === method);
         return m ? m.settlement : 'cash';
+    }
+
+    // Split an order's settled payments into the two accounts they land in.
+    //
+    // NON-CASH TENDER IS EXACT; CASH ABSORBS THE REMAINDER. Nobody overpays a
+    // QRIS or a card, and change is only ever given in cash — so a customer who
+    // hands over Rp170.000 cash plus Rp80.000 QRIS against a Rp200.000 bill has
+    // settled exactly Rp80.000 to clearing and Rp120.000 to cash, with Rp50.000
+    // change. Apportioning both sides proportionally would put Rp64.000 in
+    // clearing and quietly corrupt the payout reconciliation.
+    //
+    // `cash` is DERIVED as amount − clearing rather than summed independently,
+    // so the two always total the amount exactly. That is what lets the posting
+    // rule trust the split without a rounding-tolerance check, and it is why an
+    // unbalanced POS journal is not reachable from here.
+    // The single largest tender's settlement class. Display and back-compat only
+    // — `pos_settlement` stopped deciding the journal when the split shipped, and
+    // is kept so rows written before that still read back sensibly and so the
+    // receipt can say how the bill was mostly paid.
+    _posRefundDominant(order) {
+        const byMethod = {};
+        (order.payments || [])
+            .filter((p) => p.status === 'settled')
+            .forEach((p) => { byMethod[p.method] = (byMethod[p.method] || 0) + (Number(p.amount) || 0); });
+        const dominant = Object.keys(byMethod).sort((a, b) => byMethod[b] - byMethod[a])[0] || 'cash';
+        return this._posSettlementFor(dominant);
+    }
+
+    _posSettlementAmounts(order, amount) {
+        const total = Math.round(Number(amount) || 0);
+        const clearingPaid = (order.payments || [])
+            .filter((p) => p.status === 'settled' && this._posSettlementFor(p.method) === 'clearing')
+            .reduce((sum, p) => sum + Math.round(Number(p.amount) || 0), 0);
+        const clearing = Math.max(0, Math.min(total, clearingPaid));
+        return { cash: total - clearing, clearing };
     }
 
     // Record money received. An order becomes `paid` only when what has been
@@ -6657,10 +6702,9 @@ class DataService {
         // Settlement follows the LARGEST payment: a split bill settling mostly by
         // QRIS belongs in clearing. Mixed-tender splitting across two journals is
         // deferred — it needs a per-payment posting model, not a bigger rule.
-        const payments = (order.payments || []).filter((p) => p.status === 'settled');
-        const byMethod = {};
-        payments.forEach((p) => { byMethod[p.method] = (byMethod[p.method] || 0) + (Number(p.amount) || 0); });
-        const dominant = Object.keys(byMethod).sort((a, b) => byMethod[b] - byMethod[a])[0] || 'cash';
+        // `pos_settlement` is retained as the DOMINANT method for display and for
+        // reading back rows posted before the split existed. It no longer decides
+        // the journal — pos_cash_amount / pos_clearing_amount do.
 
         // `amount` is NET revenue (gross − discount) because every existing
         // revenue surface sums transaction amounts — the dashboard KPI, the
@@ -6691,7 +6735,10 @@ class DataService {
             pos_order_id: order.id,
             pos_discount_amount: Math.round(Number(order.discount_total) || 0),
             pos_discount_reason: this._nullableString(order.discount_reason, 80),
-            pos_settlement: this._posSettlementFor(dominant),
+            pos_settlement: this._posRefundDominant(order),
+            // How the money ACTUALLY split. A half-cash/half-QRIS bill used to
+            // post entirely to whichever side was larger.
+            ...this._posSettlementAmounts(order, net),
             pos_refund_reason: null
         };
 
@@ -6828,7 +6875,14 @@ class DataService {
             dimension_id: order.dimension_id || null,
             pos_order_id: order.id,
             pos_discount_amount: 0, pos_discount_reason: null,
-            pos_settlement: 'cash', pos_refund_reason: why
+            // Money goes back the way it came in. This was hardcoded to 'cash',
+            // so every refund of a QRIS or card sale credited 1000 Cash — money
+            // that was never in the drawer — and left the float stranded in 1030
+            // forever. Derived from the ORDER's own payments, so a refund mirrors
+            // the tender that paid for it.
+            pos_settlement: this._posRefundDominant(order),
+            ...this._posSettlementAmounts(order, net),
+            pos_refund_reason: why
         };
 
         const batch = writeBatch(this.db);
@@ -6939,7 +6993,12 @@ class DataService {
     // PRODUCT_STRATEGY §6 forbids. `unposted` is what reconciles them, and it is
     // surfaced rather than hidden.
     async getPosOverview(userId, { dimensionId = null } = {}) {
-        const start = new Date(); start.setHours(0, 0, 0, 0);
+        // "Today" on the till bar and in `salesToday` must be the same day the
+        // order numbers are keyed to, or the figure and the sequence disagree.
+        const m = (typeof window !== 'undefined' && window.FluxyMoney) || null;
+        const start = (m && typeof m.startOfBusinessDay === 'function')
+            ? m.startOfBusinessDay()
+            : (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
         const [orders, tables, menu, movements] = await Promise.all([
             this.getPosOrders(userId, { dimensionId, limitCount: 300 }),
             this.getPosTables(userId, { dimensionId }),

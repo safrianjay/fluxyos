@@ -135,9 +135,29 @@ discount analytics, and the discount-anomaly detection the plan promises becomes
 unbuildable.
 
 **Cash settles to `1000`; QRIS / card settle to `1030`**, so the bank rec stays
-tieable and `1030`'s balance is the unsettled float. Settlement follows the
-largest payment on a split bill; per-payment splitting across two journals is
-deferred.
+tieable and `1030`'s balance is the unsettled float.
+
+**A split bill settles to both, in the same journal** (fixed 2026-08-30). The
+transaction carries `pos_cash_amount` and `pos_clearing_amount`, and `POS-SALE`
+emits one debit line per non-zero side. Until then the whole sale followed the
+*largest* payment, so a Rp200.000 bill paid Rp120.000 cash + Rp80.000 QRIS booked
+all Rp200.000 to cash — the bank rec wrong by the minority tender and `1030`,
+whose balance is supposed to BE the float, wrong by the same amount. Both silent.
+
+The apportionment rule: **non-cash tender is exact, cash absorbs the remainder.**
+Nobody overpays a QRIS and change is only ever given in cash, so a proportional
+split would mis-file any sale where the customer tendered more than the bill.
+`cash` is derived as `amount − clearing`, so the two always total the amount and
+an unbalanced POS journal is unreachable.
+
+**Refunds go back the way the money came in.** `refundPosOrder` hardcoded
+`pos_settlement: 'cash'`, so every refund of a non-cash sale credited `1000` —
+money that had never been in the drawer — and stranded the float in `1030`
+permanently. Unconditional, not just on split bills. Fixed in the same change.
+
+**Rows written before the split carry neither field** and fall back to the old
+single-account behaviour, so `postPendingJournals` re-posting an old pending row
+reproduces the journal already on the books rather than a different one.
 
 **`CM-ORDER-COGS` is shared with marketplace orders on purpose** — it is the same
 journal caused by the same event. Its description was renamed from "Marketplace
@@ -173,6 +193,22 @@ the journal inline would fail the whole write and lose the sale. So a cashier's
 sale lands `accounting_status: 'pending'` and the existing `postPendingJournals`
 sweep posts it in the next finance session. Exactly the bulk-import and commerce
 precedent (`finance-map.js`: "Never post here").
+
+### The trading day is the business's, not the device's
+
+`_posDayKey` (which keys the per-outlet order-number counter) and
+`getPosOverview`'s "sales today" both read `new Date()` in the **device's**
+timezone until 2026-08-30. A till set to UTC while trading in Jakarta rolls over
+at 07:00 local — mid-service — restarting the order numbers with the room full
+and splitting one day's sales across two.
+
+Both now resolve through `FluxyMoney.businessDayKey` /
+`startOfBusinessDay`, derived from the workspace **country** (ID → Asia/Jakarta,
+PH → Asia/Manila, SG → Asia/Singapore, MY → Asia/Kuala_Lumpur). No new field and
+no rules change: the country is already immutable workspace config shared by every
+member, so it cannot disagree with itself. Indonesia's three zones collapse to
+Asia/Jakarta — a per-outlet refinement belongs on the outlet if an eastern one
+ever ships, and `settings/company.timezone` already accepts those values.
 
 ## 5. `pos_table_directory/{token}` — top-level, deny-all
 

@@ -253,6 +253,25 @@ async function main() {
         setDoc(doc(db, `workspaces/${WS}/transactions/pos-tx-1`), posTx()));
     await expectOutcome('cashier relieves stock for the sale', true, () =>
         setDoc(doc(db, `workspaces/${WS}/stock_adjustments/pos-sa-1`), saleAdjustment()));
+    // Split tender (2026-08-30). The settlement split is what the posting rule
+    // reads to decide how much lands in 1000 vs 1030, so a validator that does
+    // not list these keys refuses the whole write — `hasOnly` rejects an unlisted
+    // key outright rather than dropping it — and the sale is lost at the till.
+    await expectOutcome('cashier appends a SPLIT-tender revenue row', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/transactions/pos-tx-split`),
+            posTx({ pos_cash_amount: 50000, pos_clearing_amount: 30000 })));
+
+    // hasRole() is true for an owner, so `||` short-circuits into the
+    // wsValidTxCreate clause and the lean cashier validator is never reached.
+    // Both must therefore accept an IDENTICAL payload — this is exactly how a
+    // missing `icon` once refused the write for everyone. Adding a key to one
+    // validator and not the other reproduces it, and only this case sees it.
+    console.log('  · the same payload, written by an OWNER');
+    await setMemberRole(uid, 'owner');
+    await expectOutcome('OWNER writes the same split-tender row', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/transactions/owner-tx-split`),
+            posTx({ pos_cash_amount: 50000, pos_clearing_amount: 30000, icon: '💰' })));
+    await setMemberRole(uid, 'cashier');
 
     console.log('  · what a cashier must NEVER do');
     // If any of these start passing, someone added 'cashier' to a finance role

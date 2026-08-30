@@ -17,7 +17,7 @@
     "check:feature-category": "node tests/feature-access-category.check.js",
     "rules:build": "node scripts/build-rules.js",
     "rules:deploy": "node scripts/build-rules.js && firebase deploy --only firestore:rules --config .rules-build/firebase.json",
-    "rules:test": "node scripts/build-rules.js && firebase emulators:exec --config .rules-build/firebase.json --only firestore,auth \"for s in tests/*-rules-emulator-test.mjs; do echo \\\"--- $s\\\"; node \\\"$s\\\" || exit 1; done\"",
+    "rules:test": "node scripts/build-rules.js && firebase emulators:exec --config .rules-build/firebase.json --only firestore,auth 'sh scripts/rules-emulator-test.sh'",
     "classify": "node scripts/classify-change.js",
     "ship": "node scripts/ship.js",
     "check:deploy-stamp": "node tests/deploy-stamp.check.js",

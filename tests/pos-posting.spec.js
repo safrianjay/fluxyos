@@ -132,6 +132,278 @@ test('POS posting rules keep gross revenue, discount, and settlement separate', 
     expect(r.plainIncomeUnaffected).toBe('TXN-INC-CASH');
 });
 
+// Split tender: the bug that made this test necessary.
+//
+// Until 2026-08-30 `_emitPosSale` routed the WHOLE sale to whichever payment
+// method was largest, so a Rp200.000 bill paid Rp120.000 cash + Rp80.000 QRIS
+// booked all Rp200.000 to 1000 Cash. The bank rec was then wrong by the minority
+// tender, and 1030 — whose balance is supposed to BE the unsettled float — was
+// wrong by the same amount. Both silent.
+//
+// A refund was worse and unconditional: refundPosOrder hardcoded
+// `pos_settlement: 'cash'`, so refunding a QRIS sale credited cash that had
+// never been in the drawer and stranded the float in 1030 permanently.
+test('split tender settles to both accounts, and legacy rows still post the old way', async ({ page }) => {
+    await page.goto('/pricing');
+    const r = await page.evaluate(async () => {
+        const e = await import('/assets/js/accounting-engine.js');
+        const at = new Date('2026-08-30T05:00:00Z');
+        const pos = (doc) => e.buildJournal({
+            collection: 'transactions', id: doc._id || 'x', date: at,
+            document: { source: 'pos', timestamp: at, ...doc }
+        });
+        const netOf = (j) => {
+            const n = {};
+            (j ? j.lines : []).forEach((l) => { n[l.account_code] = (n[l.account_code] || 0) + l.debit - l.credit; });
+            return n;
+        };
+
+        // Rp200.000 bill: Rp120.000 cash + Rp80.000 QRIS. `pos_settlement` still
+        // says 'cash' (the dominant tender) — the split must win over it, or the
+        // fix is cosmetic.
+        const split = pos({ _id: 's1', type: 'income', amount: 200000, category: 'Sales',
+            pos_settlement: 'cash', pos_cash_amount: 120000, pos_clearing_amount: 80000 });
+
+        // Split PLUS a discount: revenue still credited gross, both cash lines intact.
+        const splitDisc = pos({ _id: 's2', type: 'income', amount: 180000, category: 'Sales',
+            pos_discount_amount: 20000, pos_settlement: 'clearing',
+            pos_cash_amount: 100000, pos_clearing_amount: 80000 });
+
+        // A refund of a QRIS sale must credit 1030, not 1000.
+        const qrisRefund = pos({ _id: 's3', type: 'refund', amount: 90000,
+            pos_settlement: 'clearing', pos_cash_amount: 0, pos_clearing_amount: 90000,
+            pos_refund_reason: 'Pesanan dibatalkan' });
+
+        // A refund of a SPLIT sale goes back the way it came in.
+        const splitRefund = pos({ _id: 's4', type: 'refund', amount: 200000,
+            pos_settlement: 'cash', pos_cash_amount: 120000, pos_clearing_amount: 80000,
+            pos_refund_reason: 'Complain' });
+
+        // LEGACY: a row written before the split existed carries no amounts at
+        // all. postPendingJournals may still re-post one, and it must produce the
+        // SAME journal it would have produced then — a re-post that differs from
+        // what is already on the books is its own defect.
+        const legacyCash = pos({ _id: 's5', type: 'income', amount: 75000, pos_settlement: 'cash' });
+        const legacyQris = pos({ _id: 's6', type: 'income', amount: 75000, pos_settlement: 'clearing' });
+        const legacyRefund = pos({ _id: 's7', type: 'refund', amount: 75000, pos_settlement: 'clearing',
+            pos_refund_reason: 'Legacy' });
+
+        // A split that does NOT sum to the amount must never produce an
+        // unbalanced journal. The DAL cannot emit this (cash is derived), so the
+        // rule falls back to the legacy single-account behaviour.
+        const inconsistent = pos({ _id: 's8', type: 'income', amount: 100000,
+            pos_settlement: 'clearing', pos_cash_amount: 10000, pos_clearing_amount: 20000 });
+
+        // An all-cash sale that DOES carry a split must still be two lines, not
+        // three with a zero — a zero line is noise on every statement that reads it.
+        const allCash = pos({ _id: 's9', type: 'income', amount: 60000,
+            pos_settlement: 'cash', pos_cash_amount: 60000, pos_clearing_amount: 0 });
+
+        const all = [split, splitDisc, qrisRefund, splitRefund, legacyCash, legacyQris,
+            legacyRefund, inconsistent, allCash];
+        return {
+            balanced: all.every((j) => j.is_balanced),
+            split: netOf(split),
+            splitDisc: netOf(splitDisc),
+            qrisRefund: netOf(qrisRefund),
+            splitRefund: netOf(splitRefund),
+            legacyCash: netOf(legacyCash),
+            legacyQris: netOf(legacyQris),
+            legacyRefund: netOf(legacyRefund),
+            inconsistent: netOf(inconsistent),
+            allCashLines: allCash.lines.length,
+            allCash: netOf(allCash),
+            dimensions: pos({ _id: 's10', type: 'income', amount: 50000, dimension_id: 'outlet_kemang',
+                pos_cash_amount: 30000, pos_clearing_amount: 20000 }).lines.map((l) => l.dimension_id)
+        };
+    });
+
+    expect(r.balanced, 'every split-tender journal must balance').toBe(true);
+
+    // ── The fix itself. Both destinations receive their real share.
+    expect(r.split['1000'], 'cash gets exactly the cash tender').toBe(120000);
+    expect(r.split['1030'], 'clearing gets exactly the non-cash tender').toBe(80000);
+    expect(-r.split['4000'], 'revenue is unchanged by how it was paid').toBe(200000);
+
+    // ── Split plus discount: revenue still gross, discount still contra.
+    expect(r.splitDisc['1000']).toBe(100000);
+    expect(r.splitDisc['1030']).toBe(80000);
+    expect(r.splitDisc['4900']).toBe(20000);
+    expect(-r.splitDisc['4000'], 'gross = net + discount').toBe(200000);
+
+    // ── Refunds go back the way the money came in.
+    expect(r.qrisRefund['1030'], 'a QRIS refund reduces the float').toBe(-90000);
+    expect(r.qrisRefund['1000'] || 0, 'a QRIS refund must not touch the drawer').toBe(0);
+    expect(r.qrisRefund['4900']).toBe(90000);
+    expect(r.splitRefund['1000']).toBe(-120000);
+    expect(r.splitRefund['1030']).toBe(-80000);
+
+    // ── Legacy rows reproduce their original journal exactly.
+    expect(r.legacyCash['1000']).toBe(75000);
+    expect(r.legacyCash['1030'], 'a legacy cash row must not gain a clearing line').toBeUndefined();
+    expect(r.legacyQris['1030']).toBe(75000);
+    expect(r.legacyQris['1000']).toBeUndefined();
+    expect(r.legacyRefund['1030']).toBe(-75000);
+
+    // ── An inconsistent split falls back rather than unbalancing the books.
+    expect(r.inconsistent['1030']).toBe(100000);
+    expect(r.inconsistent['1000']).toBeUndefined();
+
+    // ── A zero side produces no line at all.
+    expect(r.allCashLines, 'a zero clearing side must not emit a line').toBe(2);
+    expect(r.allCash['1000']).toBe(60000);
+
+    // ── Both settlement lines carry the outlet, or /outlet-pnl loses half the sale.
+    expect(r.dimensions).toEqual(['outlet_kemang', 'outlet_kemang', 'outlet_kemang']);
+});
+
+// The apportionment itself, one layer below the posting rule.
+//
+// The posting rule is handed a split and trusts it. THIS is where the split is
+// decided, and the subtle case is change: a customer who hands over Rp170.000
+// cash plus Rp80.000 QRIS against a Rp200.000 bill has settled exactly Rp80.000
+// to clearing — not the Rp64.000 a proportional apportionment would compute.
+// Non-cash tender is exact; cash absorbs change and the remainder.
+//
+// Called on the prototype with a minimal `this`, so no Firebase app or auth is
+// needed — the method touches nothing but its own arguments.
+test('settlement apportionment: non-cash is exact, cash absorbs the change', async ({ page }) => {
+    await page.goto('/pricing');
+    const r = await page.evaluate(async () => {
+        const DataService = (await import('/assets/js/db-service.js')).default;
+        const ctx = { _posSettlementFor: DataService.prototype._posSettlementFor };
+        const split = (payments, amount) =>
+            DataService.prototype._posSettlementAmounts.call(ctx, { payments }, amount);
+        const p = (method, amount) => ({ method, amount, status: 'settled' });
+
+        return {
+            allCash:      split([p('cash', 200000)], 200000),
+            allQris:      split([p('qris', 200000)], 200000),
+            exactSplit:   split([p('cash', 120000), p('qris', 80000)], 200000),
+            // Rp170.000 tendered in cash + Rp80.000 QRIS on a Rp200.000 bill:
+            // Rp50.000 change. Clearing is exactly 80.000, cash is the remainder.
+            withChange:   split([p('cash', 170000), p('qris', 80000)], 200000),
+            // Card and QRIS both clear; transfer and 'other' settle as cash.
+            cardAndQris:  split([p('card', 50000), p('qris', 30000), p('cash', 120000)], 200000),
+            transferIsCash: split([p('transfer', 200000)], 200000),
+            // An unsettled payment must not count — the money has not arrived.
+            unsettled:    split([{ method: 'qris', amount: 80000, status: 'pending' },
+                                 p('cash', 120000)], 120000),
+            // Defensive: clearing can never exceed the amount being settled.
+            overClearing: split([p('qris', 500000)], 200000),
+            noPayments:   split([], 200000)
+        };
+    });
+
+    expect(r.allCash).toEqual({ cash: 200000, clearing: 0 });
+    expect(r.allQris).toEqual({ cash: 0, clearing: 200000 });
+    expect(r.exactSplit).toEqual({ cash: 120000, clearing: 80000 });
+
+    // The case a proportional split would get wrong (it would say 64.000).
+    expect(r.withChange, 'non-cash tender is exact; change comes out of cash')
+        .toEqual({ cash: 120000, clearing: 80000 });
+
+    expect(r.cardAndQris).toEqual({ cash: 120000, clearing: 80000 });
+    expect(r.transferIsCash, 'a bank transfer is already in the account, not with an acquirer')
+        .toEqual({ cash: 200000, clearing: 0 });
+    expect(r.unsettled, 'an unsettled payment has not arrived and must not split')
+        .toEqual({ cash: 120000, clearing: 0 });
+    expect(r.overClearing).toEqual({ cash: 0, clearing: 200000 });
+    expect(r.noPayments).toEqual({ cash: 200000, clearing: 0 });
+
+    // The invariant the posting rule depends on: the two sides always sum to the
+    // amount exactly, so an unbalanced POS journal is not reachable from here.
+    for (const [name, v] of Object.entries(r)) {
+        expect(v.cash + v.clearing, `${name} must sum to the amount`).toBe(200000 - (name === 'unsettled' ? 80000 : 0));
+    }
+});
+
+// The trading day belongs to the business, not the device.
+//
+// `_posDayKey` fed the per-outlet order-number counter and `getPosOverview`
+// computed "sales today", both from `new Date()` in the DEVICE's timezone. A
+// till set to UTC while trading in Jakarta rolls the day at 07:00 local — mid
+// service — restarting the order numbers with the room full and splitting one
+// day's sales across two. Invisible on a correctly-set tablet, which is why it
+// survived: every QA machine was already on the business's zone.
+test('the trading day follows the workspace country, not the device clock', async ({ page }) => {
+    await page.goto('/pricing');
+    const r = await page.evaluate(async () => {
+        await import('/assets/js/money-format.js');
+        const M = window.FluxyMoney;
+        const withCountry = (code, fn) => {
+            const prev = window.FluxyWorkspace;
+            window.FluxyWorkspace = Object.assign({}, prev, { country: code });
+            try { return fn(); } finally { window.FluxyWorkspace = prev; }
+        };
+
+        // 2026-08-30 22:30 UTC. Already the 31st in Jakarta (+07) and Manila
+        // (+08); still the 30th in UTC. A device on UTC would file these sales
+        // under the wrong day and reuse yesterday's order numbers.
+        const evening = new Date('2026-08-30T22:30:00Z');
+        // 2026-08-30 01:00 UTC — still the 29th in no supported zone, but a
+        // device set WEST of the business would disagree.
+        const earlyUtc = new Date('2026-08-30T01:00:00Z');
+
+        return {
+            zones: {
+                ID: withCountry('ID', () => M.baseTimeZone()),
+                PH: withCountry('PH', () => M.baseTimeZone()),
+                SG: withCountry('SG', () => M.baseTimeZone()),
+                MY: withCountry('MY', () => M.baseTimeZone())
+            },
+            eveningKeys: {
+                ID: withCountry('ID', () => M.businessDayKey(evening)),
+                PH: withCountry('PH', () => M.businessDayKey(evening))
+            },
+            earlyKeys: {
+                ID: withCountry('ID', () => M.businessDayKey(earlyUtc))
+            },
+            // Start-of-day must be a real instant, and re-deriving the key from
+            // it must land on the same day — the two are used together (the bar
+            // filters on the instant, the counter keys on the string).
+            roundTrip: withCountry('ID', () => {
+                const start = M.startOfBusinessDay(evening);
+                return {
+                    iso: start.toISOString(),
+                    keyOfStart: M.businessDayKey(start),
+                    keyOfNow: M.businessDayKey(evening),
+                    beforeNow: start.getTime() <= evening.getTime()
+                };
+            }),
+            phRoundTrip: withCountry('PH', () => {
+                const start = M.startOfBusinessDay(evening);
+                return { iso: start.toISOString(), keyOfStart: M.businessDayKey(start) };
+            }),
+            // An unstamped legacy workspace has no country and must behave as
+            // Indonesia, matching every other default in the currency work.
+            absentCountry: withCountry(undefined, () => M.baseTimeZone())
+        };
+    });
+
+    expect(r.zones).toEqual({
+        ID: 'Asia/Jakarta', PH: 'Asia/Manila', SG: 'Asia/Singapore', MY: 'Asia/Kuala_Lumpur'
+    });
+
+    // ── The bug itself. 22:30 UTC is already tomorrow for the business.
+    expect(r.eveningKeys.ID, 'Jakarta is +07, so 22:30Z is the 31st').toBe('20260831');
+    expect(r.eveningKeys.PH, 'Manila is +08, so 22:30Z is the 31st').toBe('20260831');
+    expect(r.earlyKeys.ID, '01:00Z is 08:00 in Jakarta, still the 30th').toBe('20260830');
+
+    // ── Start-of-day is a real instant that agrees with the key.
+    expect(r.roundTrip.keyOfStart, 'start-of-day must fall on the same trading day')
+        .toBe(r.roundTrip.keyOfNow);
+    expect(r.roundTrip.beforeNow, 'the day cannot start after now').toBe(true);
+    // Jakarta midnight on the 31st is 17:00Z on the 30th.
+    expect(r.roundTrip.iso).toBe('2026-08-30T17:00:00.000Z');
+    // Manila midnight on the 31st is 16:00Z on the 30th.
+    expect(r.phRoundTrip.iso).toBe('2026-08-30T16:00:00.000Z');
+    expect(r.phRoundTrip.keyOfStart).toBe('20260831');
+
+    // ── Absent country = the Indonesian baseline, as everywhere else.
+    expect(r.absentCountry).toBe('Asia/Jakarta');
+});
+
 test('a POS sale and a marketplace sale produce the same gross margin arithmetic', async ({ page }) => {
     await page.goto('/pricing');
     const r = await page.evaluate(async () => {

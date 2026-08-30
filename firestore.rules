@@ -2585,7 +2585,8 @@ service cloud.firestore {
       return data.keys().hasOnly([
           'amount', 'vendor_name', 'category', 'type', 'status', 'icon', 'timestamp', 'created_at',
           'source', 'accounting_status', 'dimension_id',
-          'pos_order_id', 'pos_discount_amount', 'pos_discount_reason', 'pos_settlement', 'pos_refund_reason'
+          'pos_order_id', 'pos_discount_amount', 'pos_discount_reason', 'pos_settlement', 'pos_refund_reason',
+          'pos_cash_amount', 'pos_clearing_amount'
         ])
         && data.source == 'pos'
         && data.accounting_status == 'pending'
@@ -2905,6 +2906,7 @@ service cloud.firestore {
           // POS. pos_discount_amount lets POS-SALE credit revenue GROSS and debit
           // the discount to 4900; folded into the price it is lost forever.
           'pos_order_id', 'pos_discount_amount', 'pos_discount_reason', 'pos_settlement', 'pos_refund_reason',
+          'pos_cash_amount', 'pos_clearing_amount',
           'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number',
           'withholding_rate', 'withholding_type', 'withholding_code', 'bukti_potong_no',
           'customer_npwp', 'customer_withholding_amount', 'customer_withholding_rate',
@@ -2946,6 +2948,7 @@ service cloud.firestore {
           // POS. pos_discount_amount lets POS-SALE credit revenue GROSS and debit
           // the discount to 4900; folded into the price it is lost forever.
           'pos_order_id', 'pos_discount_amount', 'pos_discount_reason', 'pos_settlement', 'pos_refund_reason',
+          'pos_cash_amount', 'pos_clearing_amount',
           'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number',
           'withholding_rate', 'withholding_type', 'withholding_code', 'bukti_potong_no',
           'customer_npwp', 'customer_withholding_amount', 'customer_withholding_rate',

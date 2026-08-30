@@ -151,6 +151,66 @@
     function baseSymbol() { return cfg(BASE).symbol; }
     function baseDecimals() { return cfg(BASE).decimals; }
     function baseLocale() { return cfg(BASE).locale; }
+
+    // ── Business time ────────────────────────────────────────────────────────
+    //
+    // A trading day belongs to the BUSINESS, not to the device. Until 2026-08-30
+    // the POS computed "today" as `new Date().setHours(0,0,0,0)` and built its
+    // per-outlet order-number key the same way, so the day boundary followed
+    // whatever timezone the tablet happened to be set to. A till set to UTC in
+    // Jakarta rolls over at 07:00 local — mid-service — splitting one day's sales
+    // across two and restarting the order numbers while the room is full.
+    //
+    // Derived from the workspace COUNTRY rather than stored separately: the
+    // country is already immutable workspace config that every member shares, so
+    // this needs no new field, no rules change, and cannot disagree with itself.
+    // Indonesia's three zones (WIB/WITA/WIT) collapse to Asia/Jakarta here — the
+    // refinement belongs on a per-outlet field if an eastern outlet ever ships,
+    // and `settings/company.timezone` already allows those values for when it does.
+    function baseTimeZone() { return countryProfile().timezone; }
+
+    // Offset of `zone` from UTC at a given instant, in ms. Written generically
+    // rather than hardcoding +7/+8: none of the four supported zones observes DST
+    // today, and a table of fixed offsets would be a trap the moment one does.
+    function zoneOffsetMs(zone, at) {
+        try {
+            var dtf = new Intl.DateTimeFormat('en-US', {
+                timeZone: zone, hour12: false,
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+            var p = {};
+            dtf.formatToParts(at).forEach(function (x) { p[x.type] = x.value; });
+            var asIfUtc = Date.UTC(+p.year, +p.month - 1, +p.day, (+p.hour) % 24, +p.minute, +p.second);
+            return asIfUtc - at.getTime();
+        } catch (e) {
+            return 0; // unknown zone: behave as UTC rather than throwing mid-sale
+        }
+    }
+
+    /** Calendar date in the business's zone, as YYYYMMDD. */
+    function businessDayKey(at) {
+        var d = at || new Date();
+        try {
+            // en-CA formats as YYYY-MM-DD, which is the whole reason it is used here.
+            return new Intl.DateTimeFormat('en-CA', {
+                timeZone: baseTimeZone(), year: 'numeric', month: '2-digit', day: '2-digit'
+            }).format(d).replace(/-/g, '');
+        } catch (e) {
+            var p = function (n) { return String(n).padStart(2, '0'); };
+            return '' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate());
+        }
+    }
+
+    /** The instant the business's current trading day began. */
+    function startOfBusinessDay(at) {
+        var d = at || new Date();
+        var key = businessDayKey(d);
+        var midnightUtc = new Date(
+            key.slice(0, 4) + '-' + key.slice(4, 6) + '-' + key.slice(6, 8) + 'T00:00:00Z'
+        );
+        return new Date(midnightUtc.getTime() - zoneOffsetMs(baseTimeZone(), midnightUtc));
+    }
     function baseCompact() { return COMPACT_SUFFIXES[cfg(BASE).compact] || COMPACT_SUFFIXES.en; }
 
     /**
@@ -370,6 +430,9 @@
         baseSymbol: baseSymbol,
         baseDecimals: baseDecimals,
         baseLocale: baseLocale,
+        baseTimeZone: baseTimeZone,
+        businessDayKey: businessDayKey,
+        startOfBusinessDay: startOfBusinessDay,
         baseCompact: baseCompact,
         paintSymbols: paintSymbols,
         toBaseUnits: toBaseUnits,
