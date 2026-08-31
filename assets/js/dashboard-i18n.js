@@ -5143,6 +5143,7 @@
         "Creating…": "Membuat…",
         "Allergies, seating, anything the kitchen should know":
             "Alergi, tempat duduk, apa pun yang perlu diketahui dapur",
+        "Allergies, or anything the kitchen should know": "Alergi, atau apa pun yang perlu diketahui dapur",
         "Create an order": "Buat pesanan",
         "Where is this order going?": "Pesanan ini untuk di mana?",
         "Take Away": "Bawa Pulang",
@@ -5289,9 +5290,17 @@
 
         // Order panel
         "No order open": "Belum ada pesanan terbuka",
-        "Pick a table to start.": "Pilih meja untuk mulai.",
-        "Add a table, or start a takeaway order.": "Tambah meja, atau buat pesanan bawa pulang.",
-        "Pick a table": "Pilih meja",
+        "Press Create Order above to start one.": "Tekan Create Order di atas untuk memulai.",
+        "Press Create Order above, or tap a free table.": "Tekan Create Order di atas, atau ketuk meja yang kosong.",
+        "Add a table first, or press Create Order for a take away.": "Tambah meja dulu, atau tekan Create Order untuk pesanan bawa pulang.",
+        // Was "Pick a table", which named an action the panel could no longer
+        // perform — the table pickers moved into the Create Order dialog.
+        "Create Table": "Buat Meja",
+        // Create Order dialog. The name is required for both order types now;
+        // "Customer name" itself is already translated with the invoice fields.
+        "Give this table a name so staff can address it.": "Beri nama meja ini agar staf bisa menyapa tamunya.",
+        "Give this order a name so it can be called out.": "Beri nama pesanan ini agar bisa dipanggil saat siap.",
+        "Name or GoFood / GrabFood order…": "Nama atau pesanan GoFood / GrabFood…",
         "Nothing added yet.": "Belum ada yang ditambahkan.",
         "Subtotal": "Subtotal",
         "Discount": "Diskon",

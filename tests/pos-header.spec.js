@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { workspaceReady, setCategory, captureBaseline } = require('./helpers/business-category');
 
 // =============================================================================
 // The page header, and the order-type choice that now starts every F&B order.
@@ -20,36 +21,6 @@ const { test, expect } = require('@playwright/test');
 
 test.describe.configure({ timeout: 240_000 });
 
-let baseline;
-async function captureBaseline(page) {
-    const seen = await page.evaluate(() => (window.FluxyWorkspace && window.FluxyWorkspace.businessCategory) || null);
-    if (baseline === undefined) baseline = (seen === 'retail' ? null : seen);
-    return baseline;
-}
-
-async function workspaceReady(page) {
-    await page.waitForFunction(() => window.FluxyWorkspace && window.FluxyWorkspace.ready,
-        null, { timeout: 30000 });
-}
-
-async function setCategory(page, category) {
-    const err = await page.evaluate(async (cat) => {
-        try {
-            const [{ getFirestore, doc, updateDoc, deleteField, serverTimestamp }, { getApp }] = await Promise.all([
-                import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js'),
-                import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js')
-            ]);
-            const ws = window.FluxyWorkspace && window.FluxyWorkspace.id;
-            if (!ws) return 'no workspace resolved';
-            await updateDoc(doc(getFirestore(getApp()), `workspaces/${ws}`), {
-                business_category: cat === null ? deleteField() : cat,
-                updated_at: serverTimestamp()
-            });
-            return null;
-        } catch (e) { return String(e && e.message); }
-    }, category);
-    expect(err, `could not set business_category=${category}`).toBeNull();
-}
 
 async function openTill(page) {
     await page.setViewportSize({ width: 1440, height: 1000 });
@@ -156,6 +127,10 @@ test('Create Order asks dine in or take away before it creates anything', async 
     // repair that — so it is the one thing the dialog refuses.
     await page.click('#pos-new-order');
     await expect(modal).toBeVisible({ timeout: 10000 });
+    // Name filled, so the ONLY thing missing is the table. Without this the
+    // dialog would refuse for the empty name and the assertion below would pass
+    // while testing nothing about tables.
+    await modal.locator('#pos-create-name').fill('Pak Budi');
     await page.click('#pos-create-submit');
     await expect(modal, 'a tableless dine-in was created anyway').toBeVisible();
     await expect(modal.locator('#pos-create-error')).toBeVisible();

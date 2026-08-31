@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { startTakeawayOrder } = require('./helpers/pos-order');
+const { workspaceReady, setCategory, captureBaseline } = require('./helpers/business-category');
 
 // =============================================================================
 // The retail till: pay-first, and no room to draw.
@@ -34,10 +35,6 @@ test.describe.configure({ timeout: 240_000 });
  * skipped, leaving the QA workspace mis-stamped. `ready` is the flag that means
  * the profile read is done.
  */
-async function workspaceReady(page) {
-    await page.waitForFunction(() => window.FluxyWorkspace && window.FluxyWorkspace.ready,
-        null, { timeout: 30000 });
-}
 
 /** Read the category the workspace currently carries. Call after workspaceReady. */
 async function readCategory(page) {
@@ -53,38 +50,7 @@ async function readCategory(page) {
  * so a literal null would be refused — and "absent" is a state a workspace can
  * genuinely be in, which is exactly what a restore has to be able to reach.
  */
-// The baseline category, captured ONCE for the whole file.
-//
-// Each test used to capture its own "original", which meant the second one
-// captured `retail` left behind by the first and faithfully restored THAT — a
-// leak that perpetuates itself and then fails the F&B control for a reason that
-// looks nothing like the cause. `retail` can never be a real baseline here:
-// these specs are the only thing in the suite that sets it.
-let baseline;
-async function captureBaseline(page) {
-    const seen = await page.evaluate(() => (window.FluxyWorkspace && window.FluxyWorkspace.businessCategory) || null);
-    if (baseline === undefined) baseline = (seen === 'retail' ? null : seen);
-    return baseline;
-}
 
-async function setCategory(page, category) {
-    const err = await page.evaluate(async (cat) => {
-        try {
-            const [{ getFirestore, doc, updateDoc, deleteField, serverTimestamp }, { getApp }] = await Promise.all([
-                import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js'),
-                import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js')
-            ]);
-            const ws = window.FluxyWorkspace && window.FluxyWorkspace.id;
-            if (!ws) return 'no workspace resolved';
-            await updateDoc(doc(getFirestore(getApp()), `workspaces/${ws}`), {
-                business_category: cat === null ? deleteField() : cat,
-                updated_at: serverTimestamp()
-            });
-            return null;
-        } catch (e) { return String(e && e.message); }
-    }, category);
-    expect(err, `could not set business_category=${category}`).toBeNull();
-}
 
 async function openTill(page) {
     await page.goto('/pos');

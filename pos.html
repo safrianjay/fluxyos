@@ -322,6 +322,14 @@
            topbar, so the first thing under the bar is the shift strip or the
            board itself rather than 90px of the view repeating its own name. */
         .fluxy-page-canvas > :first-child { margin-top: 0; }
+        /* The shared shell pads 32px at desktop. That is right for a report you
+           read and wrong for a till you work: it put a third of a screen of
+           nothing between the header and the first thing a cashier touches. */
+        .fluxy-page-shell { padding: 14px 16px 20px; }
+        @media (min-width: 1024px) { .fluxy-page-shell { padding: 16px 20px 24px; } }
+        /* Sections sit closer together too — this is an operational surface, not
+           an editorial one. */
+        .fluxy-section-stack > * + * { margin-top: 14px; }
 
         /* The shared column: views switch here, the order panel stays put. */
         .pos-col { min-width: 0; container-type: inline-size; container-name: posboard; }
@@ -396,18 +404,31 @@
         .pos-card:focus-within .pos-card-add { display: flex; }
         /* Touch has no hover: on a tablet the affordance must always be visible. */
         @media (hover: none) { .pos-card-add { display: flex; } }
+
+        /* ON THE ORDER. An orange ring in the brand accent, never an orange
+           FILL — orange backgrounds are banned project-wide (CLAUDE.md) and a
+           filled card would shout louder than the product name it is meant to
+           be marking. The ring is drawn with box-shadow rather than a border so
+           the card does not shift by 1px the moment it is added. */
+        .pos-card.is-in-order {
+            border-color: #EA580C;
+            box-shadow: 0 0 0 1px #EA580C;
+        }
+        .pos-card.is-in-order:hover:not(:disabled) { border-color: #EA580C; box-shadow: 0 0 0 1px #EA580C, 0 1px 3px rgba(15,23,42,.08); }
+        /* The count replaces the "+" affordance: how many are on the bill is the
+           more useful thing to say once the answer is not zero. */
+        .pos-card-qty {
+            position: absolute; right: 10px; bottom: 10px; min-width: 28px; height: 28px;
+            /* Navy, not orange. The RING is the orange accent; a filled orange
+               chip beside it is an orange background, which is banned
+               project-wide — and the design lint caught it here. */
+            padding: 0 7px; border-radius: 999px; background: #0F172A; color: #fff;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
+        }
         .pos-card-warn { font-size: 12px; color: #A16207; margin-top: 4px; }
 
         /* ── Order panel, reference shape ───────────────────────────────── */
-        .pos-order-selects { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-        /* Beats the grid above regardless of stylesheet order — a bare `.hidden`
-           ties on specificity with `.pos-order-selects` and the winner would
-           depend on where the Tailwind CDN happened to inject itself. */
-        .pos-order-selects.hidden { display: none; }
-        .pos-order-selects select {
-            width: 100%; min-height: 36px; padding: 0 10px; font-size: 13px;
-            border: 1px solid #E2E8F0; border-radius: 10px; background: #fff; color: #0F172A;
-        }
         /* The order header. `flex-wrap` because the status label is a pill now
            and "Awaiting payment" beside a long table name will not fit on one
            line at 380px — wrapping is better than either truncating the table
@@ -471,14 +492,49 @@
            thing that brings one into existence, and it asks for details before
            anything exists to attach them to. Centre-screen says "answer this
            first" in a way a panel sliding in beside the work does not. */
-        .pos-modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 90; }
-        .pos-modal {
-            position: fixed; z-index: 91; left: 50%; top: 50%;
-            transform: translate(-50%, -50%);
-            width: min(460px, calc(100vw - 32px)); max-height: 92vh; overflow-y: auto;
-            background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(15,23,42,.24);
+        /* The SAME overlay the dashboard uses — `.fluxy-dialog*` in
+           shared-dashboard.css: the blurred navy scrim, the 16px card, the rise
+           animation. The till had its own flat scrim and no blur, so a dialog
+           here and a dialog on the dashboard were visibly different products. */
+        /* The LAYER centres the dialog with flexbox, exactly as `.fluxy-dialog`
+           does on the dashboard.
+           ⚠️ It must not be centred with `transform: translate(-50%,-50%)`
+           instead. `fluxyDialogRise` animates `transform` and runs with
+           `fill-mode: both`, so its final `translateY(0) scale(1)` REPLACES the
+           centring translate for good — the dialog then hangs from the middle of
+           the screen with its footer off the bottom edge, and the Create Order
+           button cannot be pressed at 1280x720 or on a 10" tablet. Measured
+           2026-09-01: modal top 360px, submit button at 858–900px in a 720px
+           viewport. The dashboard survives the same animation only because it
+           centres with flex. */
+        .pos-modal-layer {
+            position: fixed; inset: 0; z-index: 90;
+            display: flex; align-items: center; justify-content: center;
+            padding: 24px;
         }
-        .pos-modal-head {
+        .pos-modal-backdrop {
+            position: absolute; inset: 0;
+            background: rgba(11, 15, 25, 0.5);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            animation: fluxyDialogFade 180ms ease-out both;
+        }
+        .pos-modal {
+            position: relative; z-index: 91;
+            width: min(460px, 100%); max-height: 100%;
+            /* A column, so the head and the actions stay put and only the FIELDS
+               scroll. The submit button is then reachable at any height without
+               hunting for it — on a till the action must never be the thing that
+               scrolled away. */
+            display: flex; flex-direction: column; min-height: 0;
+            background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 16px;
+            box-shadow: 0 24px 48px rgba(11, 15, 25, 0.18);
+            animation: fluxyDialogRise 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .pos-modal, .pos-modal-backdrop { animation: none; }
+        }
+        .pos-modal-head { flex: none;
             padding: 18px 20px 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
         }
         .pos-modal-title { font-size: 16px; font-weight: 600; color: #0B0F19; }
@@ -488,8 +544,11 @@
         }
         .pos-modal-close:hover { color: #0F172A; }
         .pos-modal-close svg { width: 20px; height: 20px; }
-        .pos-modal-body { padding: 16px 20px; display: grid; gap: 14px; }
-        .pos-modal-foot {
+        /* `min-height: 0` is load-bearing: without it a flex child refuses to
+           shrink below its content and scrolls the whole dialog off-screen
+           instead of scrolling itself. */
+        .pos-modal-body { padding: 16px 20px; display: grid; gap: 14px; overflow-y: auto; min-height: 0; }
+        .pos-modal-foot { flex: none;
             padding: 14px 20px 18px; display: flex; gap: 8px; border-top: 1px solid #F1F5F9;
         }
         .pos-modal-foot .pos-btn-primary, .pos-modal-foot .pos-btn-ghost { flex: 1 1 auto; justify-content: center; }
@@ -516,6 +575,10 @@
             outline: 2px solid #EA580C; outline-offset: 1px; border-color: #CBD5E1;
         }
         .pos-field-row { display: grid; grid-template-columns: 1fr 110px; gap: 10px; }
+        /* Take away hides Guests, and the name was left in ONE column of a
+           two-column grid — visibly narrower than the Phone field directly
+           under it, for no reason a person could see. */
+        .pos-field-row.is-single { grid-template-columns: 1fr; }
         @media (max-width: 420px) { .pos-field-row { grid-template-columns: 1fr; } }
 
         /* ── Order type chooser (legacy drawer styles, still used nowhere else) */
@@ -1081,8 +1144,10 @@
                 <div class="pos-shell" id="pos-shell">
                   <div class="pos-col">
                 <section class="pos-view" data-view="till">
-                <div id="pos-shiftbar" class="pos-shiftbar"></div>
-
+                <!-- No shift bar here. Opening and closing a drawer is a
+                     twice-a-day job and it was occupying the top of the screen a
+                     cashier looks at a hundred times a shift. It lives on the
+                     Shift view, which is one tap away in the nav. -->
                 <div id="pos-metrics" class="pos-metrics"></div>
 
                     <div class="pos-shell-left">
@@ -1114,9 +1179,11 @@
                     </div>
 
                     <!-- ── RIGHT: the order panel ────────────────────────────
-                         Reference parity: existing-order search, dining + table
-                         selectors, order number, line rows with qty stepper and
-                         per-line notes, then the totals stack. -->
+                         Existing-order search, order number, line rows with a
+                         typable qty, per-line notes, then the totals stack. The
+                         dining/table selectors are gone: the Create Order dialog
+                         asks both before an order exists, which is the only
+                         moment either answer is still free. -->
 
                 </div>
                 </section>
@@ -1209,13 +1276,6 @@
                                 <span>Parked</span><span id="pos-parked-count" class="pos-parked-count">0</span>
                             </button>
                             <div id="pos-order-results" class="pos-order-results hidden"></div>
-                            <div class="pos-order-selects">
-                                <select id="pos-dining" aria-label="Dining type">
-                                    <option value="dine_in">Dine in</option>
-                                    <option value="takeaway">Takeaway</option>
-                                </select>
-                                <select id="pos-table-select" aria-label="Table"></select>
-                            </div>
                             <div class="pos-order-id">
                                 <span class="pos-order-id-icon" aria-hidden="true">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 2h12l2 6H4z"/><path d="M5 8v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
@@ -1223,7 +1283,7 @@
                                 <h2 id="pos-order-title">No order open</h2>
                                 <span id="pos-order-status" class="fluxy-status hidden"></span>
                             </div>
-                            <p id="pos-order-sub" class="pos-order-sub">Pick a table to start.</p>
+                            <p id="pos-order-sub" class="pos-order-sub">Press Create Order above to start one.</p>
                         </div>
 
                         <div id="pos-order-lines" class="pos-order-lines"></div>

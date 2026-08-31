@@ -220,6 +220,11 @@ function laneBE(changed) {
   // can fall out of sync without a function file being in the diff, and the
   // symptom is an opaque CORS error from ONE origin.
   ok = record('be', run('check:origins (one CORS allowlist, mirrors agree)', 'node', ['tests/allowed-origins.check.js'])) && ok;
+  // Unconditional. The offending call can live in ANY module — the first
+  // Firestore touch on a page decides the transport for all of it — so the file
+  // that breaks this is rarely the file being edited. Same reasoning as
+  // structure-drift.
+  ok = record('be', run('check:firestore-transport (one long-polling initializer)', 'node', ['tests/firestore-transport.check.js'])) && ok;
 
   const jsChanged = changed.filter((f) => /\.(js|mjs)$/.test(f) && fs.existsSync(path.join(REPO_ROOT, f)));
   if (jsChanged.length) {

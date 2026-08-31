@@ -18,8 +18,11 @@ async function startTakeawayOrder(page) {
     await takeaway.waitFor({ state: 'visible', timeout: 4000 }).catch(() => {});
     if (!(await takeaway.count())) return;          // a counter creates directly
     await takeaway.click();
-    // Take away asks for nothing it cannot have — no table, no covers — so the
-    // form is already complete.
+    // Take away asks for nothing it cannot have — no table, no covers — but the
+    // customer NAME is required for both types: a bag with no name on it cannot
+    // be called out. Filling it here rather than in fifteen specs is the whole
+    // point of this helper.
+    await page.fill('#pos-create-name', 'QA Takeaway');
     await page.click('#pos-create-submit');
     await page.locator('#pos-create-modal').waitFor({ state: 'detached', timeout: 20000 });
 }

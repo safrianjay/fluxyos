@@ -363,6 +363,9 @@ test.describe('Point of Sale', () => {
             // customer details can only be taken at creation.
             await free.first().click();
             await page.locator('#pos-create-modal .pos-modal').waitFor({ state: 'visible', timeout: 10000 });
+            // The name is required for both order types — a table nobody can be
+            // addressed at is the thing this dialog exists to prevent.
+            await page.fill('#pos-create-name', 'QA Dine In');
             await page.click('#pos-create-submit');
             await page.locator('#pos-create-modal').waitFor({ state: 'detached', timeout: 20000 });
         } else {
@@ -436,6 +439,7 @@ test.describe('Point of Sale', () => {
         // one with a window to observe.
         await newOrder.click();
         await page.locator('#pos-create-modal [data-type="takeaway"]').click();
+        await page.fill('#pos-create-name', 'QA Takeaway');
         await page.locator('#pos-create-submit').click();
 
         // Mid-write: the attribute is set and the control refuses the pointer.

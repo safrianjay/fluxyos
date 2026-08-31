@@ -162,8 +162,19 @@ async function resolveOwnerEmail(app, user) {
     if (!wsId) return ownEmail;
     if (wsId === ownUid) return ownEmail;   // owner: no read needed
 
-    const { getFirestore, doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-    const snap = await getDoc(doc(getFirestore(app), `workspaces/${wsId}/members/${wsId}`));
+    // Route through the shared long-polling initializer, NOT a bare
+    // getFirestore(). `initializeFirestore` can only run once per app and the
+    // FIRST Firestore touch on a page decides the transport for everything
+    // after it — so this one read, on a member's page, was enough to put the
+    // whole app back on the streaming WebChannel that ad blockers, Brave
+    // Shields and corporate proxies break. The symptom is a 400 on
+    // `/Listen/channel`, a stream that retries forever, and writes that take
+    // seconds. Same reason onboarding-gate.js routes through it.
+    const [{ doc, getDoc }, { resolveDb }] = await Promise.all([
+        import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js'),
+        import('./firestore-db.js')
+    ]);
+    const snap = await getDoc(doc(resolveDb(app), `workspaces/${wsId}/members/${wsId}`));
     // Fall back to the member's own address rather than treating an unreadable
     // owner doc as "no owner" — that would hide the module from a whole team on
     // a single failed read.

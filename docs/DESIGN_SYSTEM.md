@@ -280,6 +280,40 @@ Regression precedent: `/pos`, 2026-08-31. Wrapping the page's sections in
 `.pos-view` for view-switching removed the stack, and the shift bar, metric strip
 and catalogue butted straight into each other.
 
+### Unnecessary white space (MANDATORY)
+
+The rule above is about gaps that are too **small**. This one is about gaps that
+are too **large**, which is the more common defect and the one nothing
+mechanical catches — no linter can tell generous from wasteful, and a page with
+too much air throws no error and looks, at a glance, merely calm.
+
+Empty space is not neutral. It says "nothing here", it pushes the real work
+below the fold, and on a screen operated standing up it costs a scroll on every
+single transaction.
+
+**Six places it collects.** Check all six on every page you change:
+
+| Where | What "wrong" looks like |
+|---|---|
+| Header → content | The canvas opens with air under the topbar instead of the work. |
+| Section → section | A gap larger than the rhythm the rest of the page keeps. |
+| Card padding | Content floating in the middle of a box far bigger than it needs. |
+| Popup spacing | A dialog at a fixed size with slack below its last field. |
+| Form field alignment | Fields in a row off a shared baseline, or a lone field sitting at half width beside nothing instead of spanning its row. |
+| Button spacing | Actions drifting apart until they stop reading as a group. |
+
+The test is not "does this look tidy". It is **"could the person using this work
+faster if it were tighter"**. If yes, tighten it.
+
+**`pos.html` is the strictest case.** It is operated standing up, at speed, on a
+10" screen, by someone with a queue in front of them. It should feel compact and
+operational — closer to a cash register than to a marketing page.
+
+Regression precedent: `/pos`, 2026-08-31 — the page title and subtext were
+rendered inside the canvas, so all four views spent their first ~90px
+re-introducing themselves before showing anything usable. They moved to the
+topbar, where a page header belongs.
+
 ### Status Badges
 
 Use `.fluxy-table-status` plus one semantic class:

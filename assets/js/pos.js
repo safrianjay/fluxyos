@@ -96,6 +96,11 @@ const state = {
 // `wsValidPosOrderUpdate` imposes no ordering, so `open → paid` was always legal
 // at the data layer — which is why pay-first needs no schema change and no rules
 // deploy. See docs/POS_BUSINESS_TYPE_STRATEGY.md.
+// Translate a string built at runtime. The i18n MutationObserver only watches
+// childList, so anything written into an existing node's ATTRIBUTE has to ask
+// for itself. Falls back to English when the dictionary has not loaded.
+const tr = (s) => (window.FluxyI18n && window.FluxyI18n.t ? window.FluxyI18n.t(s) : s);
+
 const POS_PROFILES = {
     fnb: {
         ladder: { open: 'sent', submitted: 'sent', sent: 'served', served: 'awaiting_payment' },
@@ -106,7 +111,10 @@ const POS_PROFILES = {
         startLabel: 'Create Order',
         closeLabel: 'Close',
         emptyTitle: 'No order open',
-        emptyAction: 'Pick a table'
+        // Not "Pick a table": picking one is no longer something this panel can
+        // do, and a button that names an action it cannot perform is worse than
+        // no button. What a floor with no tables actually needs is a table.
+        emptyAction: 'Create Table'
     },
     retail: {
         // Empty on purpose: there is no step between opening a sale and charging
@@ -1026,37 +1034,17 @@ async function renderShiftHistory() {
     }
 }
 
-// Reference parity: dining type + table, and a search over open orders. All
-// three drive the EXISTING flows (startOrder / selectOrder) rather than new
-// ones — the panel is a different way in, not a different behaviour.
-function renderOrderControls() {
-    const o = state.overview;
-    const sel = $('pos-table-select');
-    const dining = $('pos-dining');
-    if (!sel || !o) return;
-
-    const byTable = {};
-    (o.activeOrders || []).forEach((ord) => { if (ord.table_id) byTable[ord.table_id] = ord; });
-    const current = state.order && state.order.table_id;
-
-    sel.innerHTML = ['<option value="">Select table</option>'].concat(
-        (o.tables || []).map((t) => {
-            const busy = byTable[t.id] && (!state.order || byTable[t.id].id !== state.orderId);
-            return `<option value="${esc(t.id)}"${current === t.id ? ' selected' : ''}>`
-                + `${esc(t.label)}${busy ? ' · in use' : ''}</option>`;
-        })
-    ).join('');
-
-    if (dining) {
-        const takeaway = !!state.order && !state.order.table_id;
-        dining.value = takeaway ? 'takeaway' : 'dine_in';
-        // A table cannot be chosen for a takeaway order, and an order already
-        // open cannot change its table — moving a live order between tables is
-        // Phase 3 of the POS plan and has no DAL support yet, so the control is
-        // disabled rather than present and failing.
-        sel.disabled = dining.value === 'takeaway' || !!state.order;
-    }
-}
+// The dining type and table pickers are GONE from the panel.
+//
+// They were a second entry point that asked none of the questions the Create
+// Order dialog asks, so an order started here could never carry a customer — and
+// two ways in that behave differently is the kind of thing that gets reported as
+// "the details are missing" rather than as a duplicate flow. Create Order is the
+// only way an order begins now.
+//
+// Kept as a function because everything that used to change these controls still
+// calls it; it simply has nothing left to do.
+function renderOrderControls() { /* the panel has no controls of its own now */ }
 
 // Every unpaid sale that is not the one on screen. In a pay-first profile that
 // is exactly "parked": there are no tables, so a cart the cashier put down has
@@ -1324,8 +1312,16 @@ function renderMenu() {
     const initials = (name) => String(name || '?').trim().split(/\s+/).slice(0, 2)
         .map((w) => w[0] || '').join('') || '?';
 
+    // What is already on this order, and how many. A cashier ringing up six
+    // things needs to see at a glance which are on the bill — checking by reading
+    // the panel is a context switch per item.
+    const onOrder = {};
+    ((state.order && state.order.lines) || []).forEach((l) => {
+        onOrder[l.item_id] = (onOrder[l.item_id] || 0) + (Number(l.quantity) || 0);
+    });
+
     host.innerHTML = rows.map((m) => `
-        <button type="button" class="pos-card" data-item="${esc(m.id)}"
+        <button type="button" class="pos-card${onOrder[m.id] ? ' is-in-order' : ''}" data-item="${esc(m.id)}"
                 data-price="${m.sales_price}" data-name="${esc(m.name)}" ${live ? '' : 'disabled'}
                 title="${live ? '' : 'Open a table or start a takeaway order first'}">
             <span class="pos-card-media">
@@ -1334,7 +1330,9 @@ function renderMenu() {
             <span class="pos-card-name">${esc(m.name)}</span>
             <span class="pos-card-price">${rp(m.sales_price)}</span>
             ${cardStockTag(m)}
-            <span class="pos-card-add" aria-hidden="true">+</span>
+            ${onOrder[m.id]
+                ? `<span class="pos-card-qty" aria-label="${onOrder[m.id]} on this order">${onOrder[m.id]}</span>`
+                : '<span class="pos-card-add" aria-hidden="true">+</span>'}
         </button>`).join('');
 
     host.querySelectorAll('[data-item]').forEach((btn) => {
@@ -1587,13 +1585,23 @@ function renderOrder() {
         $('pos-order-title').textContent = prof.emptyTitle;
         $('pos-order-sub').textContent = prof.payFirst
             ? 'Scan or tap a product to start.'
+            // Both of these used to name controls this panel no longer has —
+            // "Pick a table" beside a button reading "Create Table" told the
+            // cashier to do something neither the panel nor the button does.
+            // They point at the two things that actually start an order now.
             : (state.overview && state.overview.tables.length
-                ? 'Pick a table to start.' : 'Add a table, or start a takeaway order.');
+                ? 'Press Create Order above, or tap a free table.'
+                : 'Add a table first, or press Create Order for a take away.');
         badge.classList.add('hidden');
         lines.innerHTML = '';
         totals.innerHTML = '';
-        primary.disabled = true;
-        primary.textContent = posProfile().emptyAction;
+        // Enabled, and it does something: a floor with no tables cannot take a
+        // dine-in order at all, and this is the one control on screen when
+        // nothing is open. On a counter it stays the "New sale" it always was.
+        const prof2 = posProfile();
+        primary.disabled = false;
+        primary.textContent = prof2.emptyAction;
+        primary.dataset.emptyAction = prof2.payFirst ? 'new-sale' : 'create-table';
         discountBtn.classList.add('hidden');
         voidBtn.classList.add('hidden');
         refundBtn.classList.add('hidden');
@@ -1818,17 +1826,26 @@ async function startOrder(tableId, details = {}) {
         });
         state.orderId = order.id;
         state.order = order;
+        // Paint the order AND the menu from what we already have. The order
+        // exists; everything needed to start ringing it up is in hand.
         renderOrder();
-        // renderMenu() used to run HERE, before the refresh below. That enabled
-        // every product card while `once()` was still holding state.busy — and
-        // once() DROPS a call while busy, silently. So a cashier could tap a
-        // table, tap a dish immediately, and lose the tap with no feedback at
-        // all. The cards must not claim to be ready before the till is.
+        renderMenu();
+
+        // The refresh is NOT awaited.
         //
-        // refresh() paints the menu itself, and everything it does after the
-        // reads is synchronous, so the cards now become tappable within the same
-        // task that clears the guard.
-        await refresh({ keepOrder: true });
+        // It re-reads the whole operational picture — 300 orders, the tables,
+        // the menu and 1,000 stock movements — and the cashier was made to watch
+        // "Creating…" for the entire round trip on a busy outlet, for data that
+        // changes nothing about the order they just made. Reported as "creating
+        // an order takes a long time", and it did.
+        //
+        // The await used to be load-bearing: renderMenu() before it enabled the
+        // product cards while `once()` still held `state.busy`, and once() drops
+        // a call while busy IN SILENCE — so a tap on a dish went nowhere. That is
+        // no longer how the guard works: `body[data-pos-busy]` takes the pointer
+        // off those cards, so an early tap cannot be swallowed, it simply cannot
+        // be made. The reason for the wait is gone; the wait should go with it.
+        refresh({ keepOrder: true }).catch(() => {});
     } catch (err) { fail(err, 'Could not open that order.'); }
 }
 
@@ -2210,6 +2227,8 @@ function openCreateOrderDialog({ tableId = null } = {}) {
     document.getElementById('pos-create-modal')?.remove();
     const el = document.createElement('div');
     el.id = 'pos-create-modal';
+    // The centring layer — see `.pos-modal-layer` in pos.html.
+    el.className = 'pos-modal-layer';
     el.innerHTML = `
         <div class="pos-modal-backdrop" data-close></div>
         <div class="pos-modal" role="dialog" aria-modal="true" aria-labelledby="pos-create-title">
@@ -2243,7 +2262,7 @@ function openCreateOrderDialog({ tableId = null } = {}) {
 
                 <div class="pos-field-row">
                     <div class="pos-field">
-                        <label for="pos-create-name">Customer name <span class="opt">(optional)</span></label>
+                        <label for="pos-create-name">Customer name</label>
                         <input id="pos-create-name" name="name" maxlength="80" autocomplete="off" placeholder="Pak Budi">
                     </div>
                     <div class="pos-field" data-only="dine_in">
@@ -2287,6 +2306,26 @@ function openCreateOrderDialog({ tableId = null } = {}) {
         // A takeaway is not asked for a table it will never have, nor for a
         // cover count that means nothing without one.
         el.querySelectorAll('[data-only="dine_in"]').forEach((f) => { f.hidden = type !== 'dine_in'; });
+        // With Guests hidden, the name was left sitting in one column of a
+        // two-column grid — noticeably narrower than the Phone field under it,
+        // for no reason a person could see. It takes the whole row instead.
+        el.querySelector('.pos-field-row').classList.toggle('is-single', type !== 'dine_in');
+        // A takeaway is often not a person at all. "Pak Budi" is the wrong
+        // prompt for a GoFood ticket, and a cashier who cannot see how to answer
+        // leaves the field blank.
+        //
+        // Translated HERE rather than left to the i18n observer: that watches
+        // `childList` only, and setting `.placeholder` is an attribute
+        // mutation. It is caught on first paint (the dialog is a new node) but
+        // NOT when the cashier toggles the type afterwards — which on a
+        // Bahasa-first till would flip the field into English mid-form.
+        el.querySelector('#pos-create-name').placeholder = tr(type === 'dine_in'
+            ? 'Pak Budi'
+            : 'Name or GoFood / GrabFood order…');
+        // Same reason: "seating" is not a note anyone writes on a takeaway.
+        el.querySelector('#pos-create-note').placeholder = tr(type === 'dine_in'
+            ? 'Allergies, seating, anything the kitchen should know'
+            : 'Allergies, or anything the kitchen should know');
     };
     el.querySelectorAll('[data-type]').forEach((b) => b.addEventListener('click', () => {
         type = b.dataset.type; applyType();
@@ -2311,6 +2350,18 @@ function openCreateOrderDialog({ tableId = null } = {}) {
             err.textContent = 'Pick the table this order is for.';
             err.hidden = false;
             el.querySelector('#pos-create-table').focus();
+            return;
+        }
+        // Required for BOTH types now. A dine-in without a name is a table you
+        // cannot address; a takeaway without one is a bag nobody can be called
+        // for. It is the only field on this form that is always answerable.
+        const nameEl = el.querySelector('#pos-create-name');
+        if (!nameEl.value.trim()) {
+            err.textContent = type === 'dine_in'
+                ? 'Give this table a name so staff can address it.'
+                : 'Give this order a name so it can be called out.';
+            err.hidden = false;
+            nameEl.focus();
             return;
         }
         err.hidden = true;
@@ -2837,9 +2888,6 @@ function applyPosProfileChrome() {
     if (startText) startText.textContent = p.startLabel;
     // Matches what the button now does: a counter creates, an F&B till asks.
     if (start) start.setAttribute('aria-label', p.payFirst ? 'Start a new sale' : 'Create an order');
-
-    // Dine-in / table pickers: meaningless at a counter.
-    document.querySelector('.pos-order-selects')?.classList.toggle('hidden', !p.views.includes('tables'));
 }
 
 function watch() {
@@ -2873,7 +2921,17 @@ function bindOutlet() {
 }
 
 function wire() {
-    $('pos-primary').addEventListener('click', () => once(advance));
+    $('pos-primary').addEventListener('click', () => {
+        // With no order open this button is not "advance" — there is nothing to
+        // advance. It is whatever the empty panel needs: a table to exist, or a
+        // sale to start.
+        if (!state.order) {
+            const what = $('pos-primary').dataset.emptyAction;
+            if (what === 'create-table') return openTableDrawer();
+            return once(() => startOrder(null));
+        }
+        return once(advance);
+    });
     $('pos-discount-btn').addEventListener('click', openDiscountDrawer);
     $('pos-void-btn').addEventListener('click', openVoidDrawer);
     $('pos-refund-btn').addEventListener('click', openRefundDrawer);
@@ -3008,28 +3066,9 @@ function wire() {
         }
     });
 
-    // Open-order search + the dining/table selectors.
+    // Open-order search. The dining/table selects that used to sit beside it are
+    // gone — Create Order is the only entry point now.
     $('pos-order-search').addEventListener('input', renderOrderSearch);
-    $('pos-dining').addEventListener('change', (e) => {
-        // Only meaningful before an order exists: it chooses HOW the next order
-        // starts. Once one is open its table is fixed (moving a live order
-        // between tables is Phase 3 of the POS plan and has no DAL support).
-        if (state.order) { renderOrderControls(); return; }
-        if (e.target.value === 'takeaway') once(() => startOrder(null));
-        else renderOrderControls();
-    });
-    $('pos-table-select').addEventListener('change', (e) => {
-        const id = e.target.value;
-        if (!id || state.order) return;
-        const ord = ((state.overview && state.overview.activeOrders) || [])
-            .find((o) => o.table_id === id);
-        if (ord) return selectOrder(ord.id);
-        // Same dialog as the floor plan and the button. Three ways to start an
-        // order is already one too many; three ways that ask DIFFERENT questions
-        // would be a bug waiting to be reported as "the details are missing".
-        e.target.value = '';
-        return openCreateOrderDialog({ tableId: id });
-    });
 
     // Offline is v1's honest limitation: the till is online-only, so it says so
     // loudly rather than silently failing a save mid-service.

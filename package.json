@@ -36,6 +36,7 @@
     "check:kyc-alerts": "node tests/kyc-alert-backfill.check.js",
     "check:pos-boundary": "node tests/pos-service-boundary.check.js",
     "check:origins": "node tests/allowed-origins.check.js",
+    "check:firestore-transport": "node tests/firestore-transport.check.js",
     "verify:till": "playwright test tests/till-origin-live.spec.js --project=chromium"
   },
   "dependencies": {
