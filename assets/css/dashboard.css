@@ -1982,6 +1982,18 @@
     box-shadow: 0 4px 10px rgba(15,23,42,0.06);
 }
 
+/* One queue row is a BUTTON, not a link — the unposted-till-sales row repairs
+   the problem in place rather than navigating to it. A button carries the UA's
+   own font, alignment and text-align, none of which a link needs, so they are
+   reset to match the anchor exactly. */
+button.queue-row {
+    width: 100%;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+button.queue-row:disabled { opacity: .6; cursor: progress; }
+
 .queue-icon {
     width: 36px;
     height: 36px;

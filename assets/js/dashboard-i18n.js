@@ -5115,6 +5115,15 @@
         "Each close records what was counted against what was expected.": "Setiap penutupan mencatat jumlah hitungan dibanding jumlah yang seharusnya.",
         "No shift has been closed at this outlet yet.": "Belum ada shift yang ditutup di outlet ini.",
         "Could not load shift history.": "Tidak bisa memuat riwayat shift.",
+        // Unposted till sales on the Overview attention queue (2026-08-31).
+        "Post to the ledger": "Posting ke buku besar",
+        "Posting to the ledger…": "Memposting ke buku besar…",
+        // "Could not post those sales." is NOT repeated here — it already maps
+        // in this dictionary, and a duplicate key in one object literal is the
+        // LAST one to win.
+        "Those sales could not be posted. The details are in the console.":
+            "Transaksi itu tidak bisa diposting. Detailnya ada di konsol.",
+
         "Hold sale": "Tahan transaksi",
         "Hold this sale": "Tahan transaksi ini",
         "Parked": "Ditahan",

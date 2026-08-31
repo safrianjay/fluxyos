@@ -128,6 +128,13 @@ window.loadDashboard = async () => {
         renderCashFlowChart();
         buildAttentionCache(overview);
         renderAttentionQueue();
+        // Deliberately NOT awaited, and deliberately not inside
+        // getDashboardOverview. It is a scan of pos_orders, and putting it on the
+        // Overview's critical path made the whole attention queue wait on it —
+        // which rendered EMPTY, silently, with no error anywhere. The owner's
+        // home page must not block on a POS read; the row arrives a moment later
+        // or not at all.
+        checkUnpostedPosSales();
         renderAiBusinessSummaryIdle(overview);
         renderPayablesByCategory(overview);
         renderUpcomingObligations(overview);
@@ -886,6 +893,45 @@ function renderCashFlowChart() {
     }
 }
 
+// Till sales that were taken but never reached the books.
+//
+// Surfaced on the owner's HOME page, not only on the till, because the person
+// who can fix it is the owner and the person looking at the till is usually the
+// cashier — who is not allowed to write journals. A backlog visible only to
+// someone who cannot clear it is a backlog nobody clears.
+//
+// Prepended: it is the one row about money the business has ALREADY received,
+// and the only one that can be repaired from this page rather than navigated to.
+async function checkUnpostedPosSales() {
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+        const { orders } = await ds.findUnpostedPosSales(user.uid, { maxScan: 300, pageSize: 300 });
+        if (!orders.length) return;
+        const n = orders.length;
+        const amount = orders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+        const row = {
+            kind: 'unposted_pos',
+            iconKind: 'warning',
+            title: `${n} till sale${n === 1 ? '' : 's'} ${n === 1 ? 'has' : 'have'} not reached your books`,
+            description: amount > 0
+                ? `${formatIDR(amount)} was taken at the till and is missing from revenue until it posts.`
+                : 'Money taken at the till is missing from revenue until it posts.',
+            action: 'Post to the ledger',
+            actionId: 'post-unposted-pos'
+        };
+        attentionItemsCache.all = [row, ...attentionItemsCache.all.filter((i) => i.kind !== 'unposted_pos')];
+        attentionItemsCache.needs_review = [row, ...attentionItemsCache.needs_review.filter((i) => i.kind !== 'unposted_pos')];
+        updateKPI('attention-total-count', String(attentionItemsCache.all.length));
+        updateKPI('attention-needs-review-count', String(attentionItemsCache.needs_review.length));
+        renderAttentionQueue();
+    } catch (err) {
+        // The Overview must never depend on this. A POS read that fails is a
+        // missing row, not a broken dashboard.
+        console.warn('[dashboard] could not check for unposted till sales:', err && err.message);
+    }
+}
+
 function buildAttentionCache(overview) {
     const items = buildAttentionItems(overview);
     const needsReview = items.filter(item => ['overdue', 'missing_receipt', 'future_dated'].includes(item.kind));
@@ -904,7 +950,8 @@ const ATTENTION_ICONS = {
     opex_spike: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 13.5 7 9l3 3 5-5.5"/><path d="M11.5 6.5h4v4"/></svg>',
     bill_due_soon: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.75" y="4" width="14.5" height="13" rx="2"/><path d="M2.75 8h14.5"/><path d="M6.5 2.5v3"/><path d="M13.5 2.5v3"/><path d="M10 11v2l1.5 1"/></svg>',
     renewal: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10a6.5 6.5 0 0 1 11.1-4.6l1.9 1.9"/><path d="M16.5 3.5v4h-4"/><path d="M16.5 10a6.5 6.5 0 0 1-11.1 4.6L3.5 12.7"/><path d="M3.5 16.5v-4h4"/></svg>',
-    future_dated: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.75" y="4" width="14.5" height="13" rx="2"/><path d="M2.75 8h14.5"/><path d="M6.5 2.5v3"/><path d="M13.5 2.5v3"/><path d="M10 10.5v2.25"/><path d="M10 15.25h.01"/></svg>'
+    future_dated: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.75" y="4" width="14.5" height="13" rx="2"/><path d="M2.75 8h14.5"/><path d="M6.5 2.5v3"/><path d="M13.5 2.5v3"/><path d="M10 10.5v2.25"/><path d="M10 15.25h.01"/></svg>',
+    unposted_pos: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.75" y="5.5" width="14.5" height="10" rx="2"/><path d="M2.75 9h14.5"/><path d="M6 12.5h3"/></svg>'
 };
 
 // Every attention row deep-links to the records behind it, never to the bare
@@ -1023,18 +1070,61 @@ function renderAttentionQueue() {
     }
     setHtml('needs-attention-content', `
         <div class="queue-list">
-            ${items.slice(0, 5).map(item => `
-                <a class="queue-row" href="${item.href}">
+            ${items.slice(0, 5).map(item => {
+                const body = `
                     <div class="queue-icon queue-icon-${item.iconKind}">${ATTENTION_ICONS[item.kind] || ''}</div>
                     <div class="queue-row-body">
                         <div class="queue-row-title">${escapeHtml(item.title)}</div>
                         <div class="queue-row-meta">${escapeHtml(item.description)}</div>
                     </div>
-                    <span class="queue-row-arrow" aria-hidden="true">&rarr;</span>
-                </a>
-            `).join('')}
+                    <span class="queue-row-arrow" aria-hidden="true">&rarr;</span>`;
+                // Most rows point AT the problem. One of them can fix it here —
+                // sending an owner elsewhere to press a button this page could
+                // have pressed is how a queue item gets ignored.
+                return item.actionId
+                    ? `<button type="button" class="queue-row" data-queue-action="${item.actionId}">${body}</button>`
+                    : `<a class="queue-row" href="${item.href}">${body}</a>`;
+            }).join('')}
         </div>
     `);
+    wireAttentionActions();
+}
+
+// The one attention row that repairs rather than reports.
+//
+// Everything it calls already exists: the same sweep the till runs on load, and
+// the same pending-journal poster every finance session runs. Nothing new posts
+// to the ledger from here — this is a button on top of the existing path, put
+// where the person with permission to press it actually looks.
+function wireAttentionActions() {
+    document.querySelectorAll('[data-queue-action="post-unposted-pos"]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+            const user = auth.currentUser;
+            if (!user || btn.disabled) return;
+            const original = btn.querySelector('.queue-row-title').textContent;
+            btn.disabled = true;
+            btn.querySelector('.queue-row-title').textContent = 'Posting to the ledger…';
+            try {
+                const r = await ds.emitUnpostedPosSales(user.uid);
+                await ds.postPendingJournals(user.uid).catch(() => {});
+                if (r.emitted) {
+                    window.showToast(`${r.emitted} till ${r.emitted === 1 ? 'sale' : 'sales'} posted to the ledger.`, 'success');
+                } else {
+                    // Loud rather than silent: a sweep that finds a backlog and
+                    // posts none of it is the exact shape of the bug that caused
+                    // this row to exist in the first place.
+                    window.showToast('Those sales could not be posted. The details are in the console.', 'error');
+                    if (r.failed && r.failed.length) console.error('[dashboard] unposted POS sweep failed:', r.failed.slice(0, 3));
+                }
+                await window.loadDashboard();
+            } catch (err) {
+                console.error('[dashboard] could not post till sales:', err);
+                window.showToast('Could not post those sales.', 'error');
+                btn.disabled = false;
+                btn.querySelector('.queue-row-title').textContent = original;
+            }
+        });
+    });
 }
 
 function renderAiBusinessSummaryIdle(overview) {
