@@ -94,6 +94,10 @@ function setView(name) {
     if (name === 'tables') renderTables();
     if (name === 'orders') renderOrderLists();
     if (name === 'shift')  { renderShift(); renderShiftHistory(); }
+    // The order panel is only meaningful where an order can be worked on.
+    // Orders and Shift take the full width instead of leaving 380px of empty
+    // panel beside them.
+    document.getElementById('pos-shell')?.classList.toggle('is-wide', name === 'orders' || name === 'shift');
     closeSideNav();
 }
 
@@ -443,17 +447,32 @@ function renderTables() {
         const cls = !ord ? 'is-free' : (ord.status === 'awaiting_payment' ? 'is-bill' : 'is-busy');
         const money = ord ? rp(ord.total_amount) : '';
         const since = ord ? elapsedSince(ord.opened_at) : '';
-        return `<button type="button" class="pos-table ${cls}" data-table="${esc(t.id)}"
-                    data-order="${esc(ord ? ord.id : '')}"
-                    aria-label="Table ${esc(t.label)} — ${ord ? 'in use' : 'free'}">
-            <span class="pos-table-top">
-                <span class="pos-table-label">${esc(t.label)}</span>
-                ${t.zone && !state.zone ? `<span class="pos-table-zone">${esc(t.zone)}</span>` : ''}
+
+        // Chairs, so the floor reads as a floor rather than a list of boxes.
+        // Drawn from `seats` where it is set and defaulting to 4 — a visual
+        // convention, not a claim about the furniture, which is why the count is
+        // never written as text. A four-seater draws 2 per side; larger tables
+        // grow the top and bottom rows and the shape stretches with them.
+        const seats = Math.min(12, Math.max(2, Number(t.seats) || 4));
+        const perSide = Math.ceil(seats / 2);
+        const chairRow = (n) => `<span class="pos-chairs">${'<i></i>'.repeat(n)}</span>`;
+        const wide = seats > 6;
+
+        return `<button type="button" class="pos-table ${cls}${wide ? ' is-wide' : ''}"
+                    data-table="${esc(t.id)}" data-order="${esc(ord ? ord.id : '')}"
+                    aria-label="Table ${esc(t.label)}, ${seats} seats — ${ord ? 'in use' : 'free'}">
+            ${chairRow(perSide)}
+            <span class="pos-table-body">
+                <span class="pos-table-top">
+                    <span class="pos-table-label">${esc(t.label)}</span>
+                    ${t.zone && !state.zone ? `<span class="pos-table-zone">${esc(t.zone)}</span>` : ''}
+                </span>
+                ${ord ? `<span class="pos-table-meta">
+                    <span class="pos-table-chip">${money}</span>
+                    ${since ? `<span class="pos-table-chip">${esc(since)}</span>` : ''}
+                </span>` : '<span class="pos-table-free">Free</span>'}
             </span>
-            ${ord ? `<span class="pos-table-meta">
-                <span class="pos-table-chip">${money}</span>
-                ${since ? `<span class="pos-table-chip">${esc(since)}</span>` : ''}
-            </span>` : '<span class="pos-table-free">Free</span>'}
+            ${chairRow(seats - perSide)}
         </button>`;
     }).join('');
 
@@ -467,12 +486,16 @@ function renderTables() {
     host.querySelectorAll('[data-table]').forEach((btn) => {
         btn.addEventListener('click', async () => {
             const orderId = btn.dataset.order;
-            // Back to the till either way: the catalogue is where the next action
-            // is, and leaving a cashier on the floor plan after they picked a
-            // table is a step they would undo every single time.
-            if (orderId) { selectOrder(orderId); setView('till'); return; }
-            await once(() => startOrder(btn.dataset.table));
-            setView('till');
+            // The order opens in the SHARED right-hand panel, beside the floor
+            // plan — the same interaction as picking a table from the order
+            // flow. It used to jump to the till view, which is a context switch
+            // for something already on screen, and it lost the cashier's place
+            // on the floor.
+            if (orderId) selectOrder(orderId);
+            else await once(() => startOrder(btn.dataset.table));
+            renderOrderControls();
+            document.getElementById('pos-order-panel')
+                ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         });
     });
     mountTableArchive(host);

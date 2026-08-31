@@ -50,7 +50,7 @@ git-ignored `.qa/firebase-test-account.md` file (and the generated
 
 ## 1. Smoke Tests — Run After Every Single Change
 
-These 8 checks catch the most common regressions. Run them first, every time.
+These checks catch the most common regressions. Run them first, every time.
 
 | # | Check | How to Verify |
 |---|-------|---------------|
@@ -64,6 +64,7 @@ These 8 checks catch the most common regressions. Run them first, every time.
 | 8 | **Mobile nav works** | Resize browser to 375px on `fluxyos.html` — hamburger icon visible, click opens menu, Escape closes it |
 | 9 | **New nav entry points work** | For any new page/use case, verify the production entry point from BOTH desktop mega-menu and mobile menu. The visible label must be inside an `<a>` whose `href` is the real route, never `#`; click it and confirm the target page loads. |
 | 10 | **Control icon sizing** | On pages changed, form-control and compact button SVG icons stay within 16–20px and use generated classes such as `h-4 w-4` / `h-5 w-5`; no oversized raw SVGs or unsupported classes like `h-4.5 w-4.5` |
+| 11 | **White space between cards and sections** | On every page you changed, look at the gaps between stacked cards, sections and components. They must be **consistent** (one value per region) and never absent — two cards touching read as one card with a seam. Watch especially after adding any WRAPPER: `.fluxy-section-stack > * + *` spaces only DIRECT children, so a new container silently drops every gap to zero. Automated in `tests/zz-console-sweep.spec.js` (fails under 8px), but look as well — the linter cannot tell 16px from 21px, and the eye can. See `DESIGN_SYSTEM.md` → "Vertical rhythm between cards and sections". |
 
 ---
 

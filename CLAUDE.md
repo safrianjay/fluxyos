@@ -101,6 +101,14 @@ artifact stale and the gate blocks — re-run QA on the commit you are pushing.
 
 ### What is still manual
 
+**Vertical rhythm is a standing UI rule and a QA item.** Stacked cards and
+sections must never touch, and gaps must be consistent within a region — the
+usual cause of a page feeling "off" with nothing visibly broken. Adding any
+wrapper around a page's sections silently zeroes their spacing, because
+`.fluxy-section-stack > * + *` only reaches direct children. Checked
+mechanically by the FE lane's console sweep (fails under 8px) AND by eye on
+every QA pass; a linter cannot tell 16px from 21px.
+
 The runner covers the mechanically checkable rules. It does **not** judge the
 subjective anti-slop standards in `docs/DESIGN_SYSTEM.md` (one primary action
 per zone, sections earning their space, hierarchy at 375px/1280px) or whether a

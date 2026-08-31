@@ -298,15 +298,27 @@
 
         .pos-catalog-body { padding: 18px; }
 
-        /* Room to breathe. The page stacked shift bar → two banners → an info
-           note → metrics → catalogue at one gap, so nothing grouped and the
-           first product sat most of a screen down. The banners are in the bell
-           now; what is left gets a larger, more deliberate rhythm. */
-        .pos-view > .fluxy-section-stack,
-        .pos-view.fluxy-section-stack { gap: 20px; }
-        .pos-pagehead { margin-bottom: 4px; }
-        .pos-shell { gap: 20px; }
-        .pos-metrics { margin-top: 2px; }
+        /* ══ VERTICAL RHYTHM — the bug this fixes ═════════════════════════
+           `.fluxy-section-stack > * + *` only spaces DIRECT children. Wrapping
+           the page's sections in `.pos-view` therefore moved them one level
+           down and they lost their 24px entirely, so the shift bar, the metric
+           strip and the catalogue butted straight into each other. It read as
+           "tight, odd spacing" and was actually zero.
+           The stack is re-established at the level the sections now live at,
+           and every gap on the page is one of these three values. */
+        .pos-view > * + *   { margin-top: 20px; }
+        .pos-col > * + *    { margin-top: 20px; }
+        .pos-shell          { gap: 20px; }
+        .pos-view section + section { margin-top: 20px; }
+        .pos-pagehead       { margin-bottom: 2px; }
+
+        /* The shared column: views switch here, the order panel stays put. */
+        .pos-col { min-width: 0; }
+        .pos-shell-left { min-width: 0; }
+        /* Orders and Shift have no order to show, so they take the full width
+           rather than leaving a 380px column of empty panel beside them. */
+        .pos-shell.is-wide { grid-template-columns: minmax(0, 1fr); }
+        .pos-shell.is-wide .pos-order { display: none; }
 
         /* Product grid. 4-up on desktop like the reference, stepping down to 2
            on a phone — the till is used one-handed and a 3rd column at 375px
@@ -454,19 +466,36 @@
         .pos-dot.is-busy { border-color: #3B82F6; background: #EFF6FF; }
         .pos-dot.is-bill { border-color: #EA580C; background: #FFF7ED; }
 
-        .pos-floor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+        .pos-floor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 20px; }
+        .pos-floor-grid .pos-table.is-wide { grid-column: span 2; }
+
+        /* A table, drawn as a table: a top and its chairs. The chairs are what
+           make a floor plan scannable — a grid of rounded rectangles is a list
+           with extra steps, and the cashier is matching what they see on screen
+           to what they see in the room. */
         .pos-table {
-            position: relative; display: flex; flex-direction: column; justify-content: space-between;
-            gap: 12px; min-height: 108px; padding: 12px; border-radius: 14px;
-            border: 2px solid #E2E8F0; background: #F8FAFC; cursor: pointer; text-align: left;
+            display: flex; flex-direction: column; align-items: stretch; gap: 4px;
+            background: none; border: 0; padding: 0; cursor: pointer; text-align: left;
+        }
+        .pos-table-body {
+            display: flex; flex-direction: column; justify-content: space-between;
+            gap: 10px; min-height: 92px; padding: 12px; border-radius: 12px;
+            border: 2px solid #E2E8F0; background: #F1F5F9;
             transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
         }
-        .pos-table:hover { box-shadow: 0 2px 8px rgba(15,23,42,.10); }
-        .pos-table:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
-        /* State is carried by the label AND the colour, never colour alone — a
-           colour-blind cashier reads the same floor. */
-        .pos-table.is-busy { background: #EFF6FF; border-color: #3B82F6; }
-        .pos-table.is-bill { background: #FFF7ED; border-color: #EA580C; }
+        .pos-table:hover .pos-table-body { box-shadow: 0 3px 10px rgba(15,23,42,.10); }
+        .pos-table:focus-visible { outline: 2px solid #EA580C; outline-offset: 3px; border-radius: 14px; }
+
+        /* Chairs sit outside the top, one row each side. */
+        .pos-chairs { display: flex; justify-content: center; gap: 6px; padding: 0 14px; }
+        .pos-chairs i { flex: 1 1 0; max-width: 34px; height: 9px; border-radius: 5px; background: #E2E8F0; }
+
+        /* State is carried by the LABEL and the colour together, never colour
+           alone — a colour-blind cashier reads the same floor. */
+        .pos-table.is-busy .pos-table-body { background: #EFF6FF; border-color: #3B82F6; }
+        .pos-table.is-busy .pos-chairs i   { background: #BFDBFE; }
+        .pos-table.is-bill .pos-table-body { background: #FFF7ED; border-color: #EA580C; }
+        .pos-table.is-bill .pos-chairs i   { background: #FED7AA; }
         .pos-table-top { display: flex; align-items: baseline; gap: 8px; }
         .pos-table-label { font-size: 16px; font-weight: 600; color: #0B0F19; }
         .pos-table-zone { font-size: 10px; color: #94A3B8; }
@@ -663,12 +692,21 @@
                 </div>
 
                 <!-- ── VIEW: Point of Sale ───────────────────────────── -->
+                <!-- ── The shell ─────────────────────────────────────────
+                     The order panel is SHARED, not owned by the till view.
+                     Selecting a table on the floor plan opens the order right
+                     there — the same interaction as picking one from the order
+                     flow. It used to sit inside the till view, so a table tap
+                     had to jump views to show an order the cashier was already
+                     looking at. -->
+                <div class="pos-shell" id="pos-shell">
+                  <div class="pos-col">
                 <section class="pos-view" data-view="till">
                 <div id="pos-shiftbar" class="pos-shiftbar"></div>
 
                 <div id="pos-metrics" class="pos-metrics"></div>
 
-                <div class="pos-shell">
+                    <div class="pos-shell-left">
                     <!-- ── LEFT: the product catalogue ───────────────────────
                          The reference's central IA move: the menu is the primary
                          surface, not a section under the floor plan. Tables moved
@@ -700,44 +738,7 @@
                          Reference parity: existing-order search, dining + table
                          selectors, order number, line rows with qty stepper and
                          per-line notes, then the totals stack. -->
-                    <aside class="pos-order" id="pos-order-panel" aria-live="polite">
-                        <div class="pos-order-head">
-                            <div class="pos-search pos-search-sm">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-                                <input id="pos-order-search" type="search" autocomplete="off"
-                                       placeholder="Search in existing" aria-label="Search open orders">
-                            </div>
-                            <div id="pos-order-results" class="pos-order-results hidden"></div>
-                            <div class="pos-order-selects">
-                                <select id="pos-dining" aria-label="Dining type">
-                                    <option value="dine_in">Dine in</option>
-                                    <option value="takeaway">Takeaway</option>
-                                </select>
-                                <select id="pos-table-select" aria-label="Table"></select>
-                            </div>
-                            <div class="pos-order-id">
-                                <span class="pos-order-id-icon" aria-hidden="true">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 2h12l2 6H4z"/><path d="M5 8v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
-                                </span>
-                                <h2 id="pos-order-title">No order open</h2>
-                                <span id="pos-order-status" class="fluxy-status hidden"></span>
-                            </div>
-                            <p id="pos-order-sub" class="pos-order-sub">Pick a table to start.</p>
-                        </div>
 
-                        <div id="pos-order-lines" class="pos-order-lines"></div>
-
-                        <div class="pos-order-foot">
-                            <div id="pos-order-totals"></div>
-                            <button id="pos-primary" type="button" class="pos-primary" disabled>Pick a table</button>
-                            <div class="pos-order-actions">
-                                <button id="pos-discount-btn" type="button" class="pos-secondary hidden">Add discount</button>
-                                <button id="pos-void-btn" type="button" class="pos-secondary hidden">Void order</button>
-                                <button id="pos-refund-btn" type="button" class="pos-secondary hidden">Refund order</button>
-                                <button id="pos-reprint-btn" type="button" class="pos-secondary hidden">Reprint receipt</button>
-                            </div>
-                        </div>
-                    </aside>
                 </div>
                 </section>
 
@@ -801,6 +802,47 @@
                         </div>
                     </section>
                 </section>
+                  </div>
+
+                    <aside class="pos-order" id="pos-order-panel" aria-live="polite">
+                        <div class="pos-order-head">
+                            <div class="pos-search pos-search-sm">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                                <input id="pos-order-search" type="search" autocomplete="off"
+                                       placeholder="Search in existing" aria-label="Search open orders">
+                            </div>
+                            <div id="pos-order-results" class="pos-order-results hidden"></div>
+                            <div class="pos-order-selects">
+                                <select id="pos-dining" aria-label="Dining type">
+                                    <option value="dine_in">Dine in</option>
+                                    <option value="takeaway">Takeaway</option>
+                                </select>
+                                <select id="pos-table-select" aria-label="Table"></select>
+                            </div>
+                            <div class="pos-order-id">
+                                <span class="pos-order-id-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 2h12l2 6H4z"/><path d="M5 8v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
+                                </span>
+                                <h2 id="pos-order-title">No order open</h2>
+                                <span id="pos-order-status" class="fluxy-status hidden"></span>
+                            </div>
+                            <p id="pos-order-sub" class="pos-order-sub">Pick a table to start.</p>
+                        </div>
+
+                        <div id="pos-order-lines" class="pos-order-lines"></div>
+
+                        <div class="pos-order-foot">
+                            <div id="pos-order-totals"></div>
+                            <button id="pos-primary" type="button" class="pos-primary" disabled>Pick a table</button>
+                            <div class="pos-order-actions">
+                                <button id="pos-discount-btn" type="button" class="pos-secondary hidden">Add discount</button>
+                                <button id="pos-void-btn" type="button" class="pos-secondary hidden">Void order</button>
+                                <button id="pos-refund-btn" type="button" class="pos-secondary hidden">Refund order</button>
+                                <button id="pos-reprint-btn" type="button" class="pos-secondary hidden">Reprint receipt</button>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
             </div>
         </div>
     </main>

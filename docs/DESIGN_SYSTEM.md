@@ -252,6 +252,34 @@ authenticated app page:
 Do not reintroduce a monospace face for amounts and do not add a space after
 `Rp` anywhere (helpers, templates, or static HTML).
 
+### Vertical rhythm between cards and sections (MANDATORY)
+
+**Stacked cards and sections never touch, and every gap on a page is one of a
+small set of values.** Inconsistent or absent spacing is the single most common
+way an app page comes to feel "off" without anything looking obviously broken.
+
+- Sections stacked in a page canvas use `.fluxy-section-stack`, which applies
+  `margin-top: 24px` to `> * + *`.
+- **It only spaces DIRECT children.** Wrapping a page's sections in any new
+  container — a view wrapper, a column, a grid cell — moves them one level down
+  and silently drops every gap to **zero**. The page then renders as one dense
+  slab and reads as "tight, odd spacing" rather than as the missing rule it is.
+  When you add a wrapper, re-establish the stack at the level the sections now
+  live at.
+- Pick one gap value per page region and keep to it. Two adjacent regions at
+  16px and 21px look like a mistake, because they are.
+- Minimum between two stacked cards: **8px**. Below that they read as one card
+  with a seam.
+
+**This is checked, not just documented.** `tests/zz-console-sweep.spec.js` walks
+every swept page and fails on same-parent, both-visible, card-like siblings with
+less than 8px between them. It is deliberately narrow — table rows, list items
+and chip strips are legitimately flush and are not flagged.
+
+Regression precedent: `/pos`, 2026-08-31. Wrapping the page's sections in
+`.pos-view` for view-switching removed the stack, and the shift bar, metric strip
+and catalogue butted straight into each other.
+
 ### Status Badges
 
 Use `.fluxy-table-status` plus one semantic class:
