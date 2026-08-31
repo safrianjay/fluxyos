@@ -62,7 +62,9 @@ const state = {
     menuQuery: '',
     menuCategory: null,
     view: 'till',
-    zone: null
+    zone: null,
+    orderTab: 'all',
+    orderQuery: ''
 };
 
 // The till's own views. No new routes — the brief requires the existing ones
@@ -94,10 +96,10 @@ function setView(name) {
     if (name === 'tables') renderTables();
     if (name === 'orders') renderOrderLists();
     if (name === 'shift')  { renderShift(); renderShiftHistory(); }
-    // The order panel is only meaningful where an order can be worked on.
-    // Orders and Shift take the full width instead of leaving 380px of empty
-    // panel beside them.
-    document.getElementById('pos-shell')?.classList.toggle('is-wide', name === 'orders' || name === 'shift');
+    // Orders KEEPS the panel: clicking a card opens the order there and the
+    // board stays visible behind it, which is the whole interaction. Only Shift
+    // goes full width — it has no order to work on.
+    document.getElementById('pos-shell')?.classList.toggle('is-wide', name === 'shift');
     closeSideNav();
 }
 
@@ -508,40 +510,167 @@ function renderTables() {
 function openTableSheet() { setView('tables'); }
 
 // ── Orders view ─────────────────────────────────────────────────────────────
-function orderRow(ord, kind) {
-    const when = ord.paid_at && typeof ord.paid_at.toDate === 'function'
-        ? ord.paid_at.toDate().toLocaleTimeString(window.FluxyMoney.baseLocale(), { hour: '2-digit', minute: '2-digit' })
-        : '';
-    const st = STATUS[ord.status] || STATUS.open;
-    return `<button type="button" class="pos-order-result" data-open="${esc(ord.id)}">
-        <span>${esc(ord.table_label ? `Table ${ord.table_label}` : 'Takeaway')}
-            · ${esc(ord.order_number || '')}
-            ${kind === 'paid' && when ? ` · ${esc(when)}` : ` · ${esc(st.label)}`}</span>
-        <span>${rp(ord.total_amount)}</span>
-    </button>`;
+//
+// Built to the supplied reference: status tabs, search, and a card grid where
+// each card carries table → status → order meta → items → total → actions.
+//
+// The statuses are FluxyOS's real ones, not the reference's vocabulary. The
+// reference lists "Ready", "In Kitchen", "Waiting for Payment"; this ledger's
+// order states are open → sent → served → awaiting_payment → paid, and inventing
+// a display state that no order can ever be in is how a board stops meaning
+// anything. The two tabs map onto the real states rather than the labels.
+const ORDER_TABS = {
+    all:     () => true,
+    process: (o) => ['open', 'submitted', 'sent', 'served', 'awaiting_payment'].includes(o.status),
+    done:    (o) => o.status === 'paid'
+};
+
+function visibleOrders() {
+    const ov = state.overview || {};
+    const all = (ov.activeOrders || []).concat(ov.paidToday || []);
+    const pass = ORDER_TABS[state.orderTab] || ORDER_TABS.all;
+    const q = (state.orderQuery || '').trim().toLowerCase();
+    return all.filter((o) => {
+        if (!pass(o)) return false;
+        if (!q) return true;
+        // Name, order, table — plus the item names, because "who ordered the
+        // waffles" is how a cashier actually finds a bill.
+        return String(o.order_number || '').toLowerCase().includes(q)
+            || String(o.table_label || '').toLowerCase().includes(q)
+            || (o.table_label ? false : 'takeaway'.includes(q))
+            || (o.lines || []).some((l) => String(l.item_name || '').toLowerCase().includes(q));
+    }).sort((a, b) => {
+        const ta = a.opened_at?.toDate ? a.opened_at.toDate().getTime() : 0;
+        const tb = b.opened_at?.toDate ? b.opened_at.toDate().getTime() : 0;
+        return tb - ta;
+    });
+}
+
+// The identifier a cashier scans for. "TA" for takeaway, matching the reference.
+function orderTag(o) {
+    return o.table_label ? String(o.table_label) : 'TA';
+}
+
+// `20260831-018` is the full order number and it is unreadable on a card: it
+// wrapped across three lines and collided with the status badge. The date is
+// already shown beneath, so the card carries only the per-day sequence, which is
+// the half a cashier actually calls out.
+function orderShort(o) {
+    const n = String(o.order_number || '');
+    const seq = n.includes('-') ? n.split('-').pop() : n;
+    return seq ? `#${seq}` : 'Order';
 }
 
 function renderOrderLists() {
-    const o = state.overview;
-    if (!o) return;
-    const openHost = $('pos-open-orders');
-    const paidHost = $('pos-paid-today-list');
-    if (!openHost || !paidHost) return;
+    const grid = $('pos-orders-grid');
+    const empty = $('pos-orders-empty');
+    const dateEl = $('pos-orders-date');
+    if (!grid || !empty) return;
 
-    const active = o.activeOrders || [];
-    const paid = o.paidToday || [];
-    const none = (what) => `<div style="padding:18px 4px;text-align:center;color:#94A3B8;font-size:13px">${what}</div>`;
+    if (dateEl) {
+        dateEl.textContent = new Date().toLocaleDateString(window.FluxyMoney.baseLocale(),
+            { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+    }
 
-    openHost.innerHTML = active.length
-        ? `<div class="pos-order-results" style="max-height:none;margin-top:0">${active.map((x) => orderRow(x, 'open')).join('')}</div>`
-        : none('Nothing on the floor right now.');
-    paidHost.innerHTML = paid.length
-        ? `<div class="pos-order-results" style="max-height:none;margin-top:0">${paid.map((x) => orderRow(x, 'paid')).join('')}</div>`
-        : none('No sale has been settled today yet.');
+    const rows = visibleOrders();
+    if (!rows.length) {
+        grid.classList.add('hidden');
+        empty.classList.remove('hidden');
+        empty.innerHTML = `<div class="fluxy-table-empty">
+            <p class="fluxy-table-empty-title">${state.orderQuery ? 'No order matches that' : 'Nothing here yet'}</p>
+            <p class="fluxy-table-empty-description">${state.orderQuery
+                ? 'Try a table, an order number, or an item name.'
+                : 'Orders appear as they are opened on the floor.'}</p>
+        </div>`;
+        return;
+    }
+    empty.classList.add('hidden');
+    grid.classList.remove('hidden');
 
-    [openHost, paidHost].forEach((host) => host.querySelectorAll('[data-open]').forEach((b) => {
-        b.addEventListener('click', () => { selectOrder(b.dataset.open); setView('till'); });
-    }));
+    // Three or four lines, then a count. A card whose height is set by its
+    // longest order breaks the grid rhythm and buries the total and the actions
+    // below the fold of the card.
+    const MAX_LINES = 3;
+
+    grid.innerHTML = rows.map((o) => {
+        const st = STATUS[o.status] || STATUS.open;
+        const when = o.opened_at?.toDate ? o.opened_at.toDate() : null;
+        const lines = o.lines || [];
+        const shown = lines.slice(0, MAX_LINES);
+        const more = lines.length - shown.length;
+        const payable = ['served', 'awaiting_payment'].includes(o.status)
+            || (o.status !== 'paid' && o.status !== 'void' && Number(o.total_amount) > 0);
+
+        return `<article class="pos-ocard${state.orderId === o.id ? ' is-open' : ''}" data-order-card="${esc(o.id)}" data-status="${esc(o.status || '')}" tabindex="0" role="button"
+                    aria-label="Order ${esc(o.order_number || '')}, ${esc(orderTag(o))}">
+            <div class="pos-ocard-head">
+                <span class="pos-otag">${esc(orderTag(o))}</span>
+                <div class="pos-ocard-id">
+                    <!-- The service type is its OWN element on purpose. The DOM
+                         translator matches whole text nodes, so "#018 · Takeaway"
+                         as one node left the English word sitting in a fully
+                         Bahasa card. -->
+                    <p class="pos-ocard-meta">${esc(orderShort(o))} · <span>${o.table_label ? 'Dine In' : 'Takeaway'}</span></p>
+                    <div class="pos-ocard-sub">
+                        <p class="pos-ocard-when">${when
+                            ? esc(when.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short' })
+                                + ' · ' + when.toLocaleTimeString(window.FluxyMoney.baseLocale(), { hour: '2-digit', minute: '2-digit' }))
+                            : ''}</p>
+                        <span class="fluxy-table-status ${st.cls} pos-ocard-status">${esc(st.label)}</span>
+                    </div>
+                </div>
+            </div>
+
+            <table class="pos-ocard-items">
+                <thead><tr><th>Items</th><th>Qty</th><th>Price</th></tr></thead>
+                <tbody>
+                    ${shown.map((l) => `<tr>
+                        <td>${esc(l.item_name)}</td>
+                        <td>${Number(l.quantity) || 0}</td>
+                        <td>${rp((Number(l.gross_amount) || 0) - (Number(l.discount_amount) || 0))}</td>
+                    </tr>`).join('')}
+                    ${more > 0 ? `<tr class="pos-ocard-more"><td colspan="3">+${more} more</td></tr>` : ''}
+                    ${!lines.length ? '<tr class="pos-ocard-more"><td colspan="3">Nothing added yet</td></tr>' : ''}
+                </tbody>
+            </table>
+
+            <div class="pos-ocard-total"><span>Total</span><span>${rp(o.total_amount)}</span></div>
+
+            <div class="pos-ocard-actions">
+                <button type="button" class="pos-ocard-btn" data-see="${esc(o.id)}">See Details</button>
+                ${payable
+                    ? `<button type="button" class="pos-ocard-btn is-primary" data-pay="${esc(o.id)}">Pay Bills</button>`
+                    : (o.status === 'paid'
+                        ? `<button type="button" class="pos-ocard-btn is-primary" data-print="${esc(o.id)}">Receipt</button>`
+                        : '')}
+            </div>
+        </article>`;
+    }).join('');
+
+    // Clicking the card — anywhere but a button — opens it in the SHARED panel.
+    // The list stays put behind it: navigating away from a board a cashier is
+    // working through is the thing this view exists to avoid.
+    const open = (id) => { selectOrder(id); renderOrderLists(); };
+    grid.querySelectorAll('[data-order-card]').forEach((card) => {
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('button')) return;
+            open(card.dataset.orderCard);
+        });
+        card.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            open(card.dataset.orderCard);
+        });
+    });
+    grid.querySelectorAll('[data-see]').forEach((b) =>
+        b.addEventListener('click', () => open(b.dataset.see)));
+    grid.querySelectorAll('[data-pay]').forEach((b) =>
+        b.addEventListener('click', () => { selectOrder(b.dataset.pay); openPaymentDrawer(); }));
+    grid.querySelectorAll('[data-print]').forEach((b) =>
+        b.addEventListener('click', () => {
+            const o = visibleOrders().find((x) => x.id === b.dataset.print);
+            if (o) openReceipt(o);
+        }));
 }
 
 // ── Shift view ──────────────────────────────────────────────────────────────
@@ -1696,6 +1825,39 @@ function wire() {
 
     // Catalogue filters. Client-side against an already-loaded menu, so this is
     // a repaint per keystroke and never a query.
+    // Orders board: tabs + search. Both filter an already-loaded list, so this
+    // is a repaint, never a query — a cashier scanning a board must not wait.
+    document.querySelectorAll('[data-otab]').forEach((b) => {
+        b.addEventListener('click', () => {
+            state.orderTab = b.dataset.otab;
+            document.querySelectorAll('[data-otab]').forEach((x) => {
+                const on = x === b;
+                x.classList.toggle('is-active', on);
+                x.setAttribute('aria-selected', String(on));
+            });
+            renderOrderLists();
+        });
+    });
+    $('pos-orders-search').addEventListener('input', (e) => {
+        state.orderQuery = e.target.value || '';
+        renderOrderLists();
+    });
+    // The reference's filter button. It scopes to THIS outlet's open orders —
+    // the one filter the board does not already offer as a tab — rather than
+    // opening a panel of controls that duplicate the tabs beside it.
+    $('pos-orders-filter').addEventListener('click', (e) => {
+        const on = state.orderTab !== 'process';
+        state.orderTab = on ? 'process' : 'all';
+        e.currentTarget.setAttribute('aria-expanded', String(on));
+        e.currentTarget.classList.toggle('is-on', on);
+        document.querySelectorAll('[data-otab]').forEach((x) => {
+            const active = x.dataset.otab === state.orderTab;
+            x.classList.toggle('is-active', active);
+            x.setAttribute('aria-selected', String(active));
+        });
+        renderOrderLists();
+    });
+
     // Notifications. Everything that used to stack above the catalogue lives
     // here, the way the dashboard gathers what needs attention instead of
     // pushing the actual work further down the page.

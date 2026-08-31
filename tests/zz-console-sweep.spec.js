@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { auditSpacing, MIN_GAP } = require('./helpers/spacing-audit');
 const { installTrialPaywallBypass } = require('./qa-helpers');
 
 /**
@@ -126,49 +127,12 @@ for (const target of TARGETS) {
         expect(bad, `${target} console/network issues:\n  ${bad.join('\n  ')}`).toEqual([]);
 
         // ── VERTICAL RHYTHM ────────────────────────────────────────────────
-        //
-        // Adjacent sections must not touch. This is a real failure mode, not a
-        // taste rule: `.fluxy-section-stack > * + *` only spaces DIRECT
-        // children, so wrapping a page's sections in any new container silently
-        // drops every gap to ZERO and the page renders as one dense slab. That
-        // happened on /pos on 2026-08-31 and read as "weird, tight spacing"
-        // rather than as the missing rule it was.
-        //
-        // Deliberately narrow: only same-parent, both-visible, card-like
-        // siblings inside a known page container. Table rows, list items and
-        // chip strips are legitimately flush and must not be flagged.
-        const spacing = await page.evaluate(() => {
-            const CONTAINERS = ['.fluxy-page-canvas', '.fluxy-section-stack', '.pos-view', '.pos-col'];
-            const out = [];
-            const cardish = (el) => {
-                const cs = getComputedStyle(el);
-                const r = el.getBoundingClientRect();
-                if (r.height < 48 || r.width < 120) return false;
-                if (cs.display === 'none' || cs.visibility === 'hidden') return false;
-                // A "card" is something with its own surface — a border or a
-                // background distinct from the page. Bare layout divs are not.
-                const bordered = parseFloat(cs.borderTopWidth) > 0 || cs.borderRadius !== '0px';
-                const filled = cs.backgroundColor && cs.backgroundColor !== 'rgba(0, 0, 0, 0)';
-                return bordered || filled;
-            };
-            document.querySelectorAll(CONTAINERS.join(',')).forEach((box) => {
-                const kids = [...box.children].filter(cardish);
-                for (let i = 1; i < kids.length; i += 1) {
-                    const a = kids[i - 1].getBoundingClientRect();
-                    const b = kids[i].getBoundingClientRect();
-                    // Only vertically stacked pairs; side-by-side is a grid.
-                    if (b.top < a.bottom - 1) continue;
-                    const gap = Math.round(b.top - a.bottom);
-                    if (gap < 8) {
-                        out.push(`${kids[i - 1].id || kids[i - 1].className.toString().split(' ')[0]}`
-                            + ` → ${kids[i].id || kids[i].className.toString().split(' ')[0]}: ${gap}px`);
-                    }
-                }
-            });
-            return out.slice(0, 8);
-        });
+        // Extracted to tests/helpers/spacing-audit.js — the rule and its history
+        // live there, and pos-ui.spec.js runs the same audit once per in-page
+        // view, which a single page load cannot reach.
+        const spacing = await auditSpacing(page);
         expect(spacing,
-            `${target} has sections touching (min 8px between stacked cards):\n  ${spacing.join('\n  ')}`
+            `${target} has sections touching (min ${MIN_GAP}px between stacked cards):\n  ${spacing.join('\n  ')}`
         ).toEqual([]);
     });
 }

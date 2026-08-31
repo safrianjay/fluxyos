@@ -5115,6 +5115,20 @@
         "Each close records what was counted against what was expected.": "Setiap penutupan mencatat jumlah hitungan dibanding jumlah yang seharusnya.",
         "No shift has been closed at this outlet yet.": "Belum ada shift yang ditutup di outlet ini.",
         "Could not load shift history.": "Tidak bisa memuat riwayat shift.",
+        // Orders board (reference-aligned, 2026-08-31). "Completed", "Pay Bills",
+        // "Items", "Qty", "Takeaway" and "Receipt" are already in this
+        // dictionary — a second entry for any of them would silently override
+        // the first everywhere, since a duplicate key in one object literal is
+        // the LAST one to win.
+        "In Process": "Diproses",
+        "Filter orders": "Filter pesanan",
+        "Search orders": "Cari pesanan",
+        "Search by name, order, table...": "Cari nama, pesanan, meja...",
+        "See Details": "Lihat Detail",
+        "Price": "Harga",
+        "Nothing added yet": "Belum ada item",
+        "Dine In": "Makan di tempat",   // matches the existing "Dine in" entry
+
         "Back to Dashboard": "Kembali ke Dasbor",
         "Point of sale": "Kasir",
         "Notifications": "Notifikasi",

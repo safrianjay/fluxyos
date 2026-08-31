@@ -28,11 +28,16 @@
            canvas instead, so the sidebar is counted automatically.
            It also means this starts working on a portrait tablet the moment the
            cashier shell drops the sidebar (Phase 3) — no breakpoint to revisit. */
-        .fluxy-page-canvas { container-type: inline-size; }
-        @container (min-width: 720px) {
+        /* Both containers are NAMED. Unnamed, the orders grid below resolved
+           against the canvas — which is ~1160px wide while the board column it
+           actually lives in is ~727px, because the order panel takes the rest.
+           The board drew three columns into two columns' worth of space and every
+           card header truncated. */
+        .fluxy-page-canvas { container-type: inline-size; container-name: poscanvas; }
+        @container poscanvas (min-width: 720px) {
             .pos-shell { grid-template-columns: minmax(0,1fr) 320px; align-items: start; }
         }
-        @container (min-width: 1040px) {
+        @container poscanvas (min-width: 1040px) {
             .pos-shell { grid-template-columns: minmax(0,1fr) 380px; }
         }
         /* Viewport fallback for engines without container queries. */
@@ -313,7 +318,7 @@
         .pos-pagehead       { margin-bottom: 2px; }
 
         /* The shared column: views switch here, the order panel stays put. */
-        .pos-col { min-width: 0; }
+        .pos-col { min-width: 0; container-type: inline-size; container-name: posboard; }
         .pos-shell-left { min-width: 0; }
         /* Orders and Shift have no order to show, so they take the full width
            rather than leaving a 380px column of empty panel beside them. */
@@ -438,6 +443,123 @@
 
         .pos-order-actions { display: flex; flex-wrap: wrap; gap: 8px; }
         .pos-order-actions .pos-secondary { flex: 1 1 auto; }
+
+        /* ══ ORDERS BOARD ═════════════════════════════════════════════════
+           Dense on purpose. This is a surface a cashier scans under pressure,
+           so the spacing here is tighter than the rest of the app — every gap
+           is 8/10/12/14, never the 20/24 the reading surfaces use. */
+        .pos-orders-date { font-size: 12px; color: #64748B; white-space: nowrap; }
+        .pos-orders-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 12px; flex-wrap: wrap;
+        }
+        .pos-orders-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .pos-tabs { display: inline-flex; gap: 4px; background: #F1F5F9; padding: 3px; border-radius: 10px; }
+        .pos-tab {
+            min-height: 32px; padding: 0 14px; border: 0; border-radius: 8px;
+            background: none; color: #475569; font-size: 13px; font-weight: 500; cursor: pointer;
+        }
+        .pos-tab:hover { color: #0F172A; }
+        .pos-tab:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
+        .pos-tab.is-active { background: #fff; color: #0B0F19; font-weight: 600; box-shadow: 0 1px 2px rgba(15,23,42,.10); }
+        .pos-orders-controls { display: flex; align-items: center; gap: 8px; flex: 1 1 260px; justify-content: flex-end; }
+        .pos-orders-controls .pos-search { flex: 0 1 300px; }
+        .pos-filter-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 36px; height: 36px; flex-shrink: 0; border-radius: 9px;
+            border: 1px solid #E2E8F0; background: #fff; color: #475569; cursor: pointer;
+        }
+        .pos-filter-btn:hover { background: #F8FAFC; }
+        .pos-filter-btn.is-on { border-color: #0F172A; color: #0F172A; background: #F1F5F9; }
+        .pos-filter-btn svg { width: 16px; height: 16px; }
+
+        .pos-orders-grid { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 14px; }
+        /* posboard = .pos-col, the board's own column. Three columns need real
+           width: a card carries a tag, an order number, a status pill, a
+           three-column item table and two buttons, and below ~300px each the
+           header starts eating itself. */
+        @container posboard (min-width: 620px)  { .pos-orders-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+        @container posboard (min-width: 1000px) { .pos-orders-grid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+        @supports not (container-type: inline-size) {
+            @media (min-width: 1024px) { .pos-orders-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+            @media (min-width: 1440px) { .pos-orders-grid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+        }
+
+        /* Cards size to their own content. Stretching them to the tallest card
+           in the row put 60px of nothing between a two-line order's items and
+           its total — dead space inside a bordered box reads as a bug, and the
+           item cap below keeps the ragging small. */
+        .pos-orders-grid { align-items: start; }
+        .pos-ocard {
+            display: flex; flex-direction: column; gap: 10px;
+            background: #fff; border: 1px solid #E2E8F0; border-radius: 12px;
+            padding: 12px; cursor: pointer;
+            transition: border-color 120ms ease, box-shadow 120ms ease;
+        }
+        .pos-ocard:hover { border-color: #CBD5E1; box-shadow: 0 2px 8px rgba(15,23,42,.07); }
+        .pos-ocard:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
+        .pos-ocard.is-open { border-color: #0F172A; box-shadow: 0 0 0 1px #0F172A inset; }
+
+        /* The header was the broken part: a long order number and a long status
+           label fought for the same row, so "Order 20260831-017" wrapped into
+           the badge. The middle column is now the only flexible one and it
+           truncates; the badge never shrinks. */
+        .pos-ocard-head { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+        /* The identifier a cashier scans for. Loudest thing on the card, and the
+           status badge is deliberately quieter so it cannot compete with it. */
+        .pos-otag {
+            flex-shrink: 0; min-width: 40px; height: 40px; padding: 0 8px;
+            border-radius: 10px; background: #0F172A; color: #fff;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 16px; font-weight: 700; letter-spacing: -0.01em;
+        }
+        .pos-ocard-id { min-width: 0; flex: 1 1 auto; overflow: hidden; }
+        .pos-ocard-meta {
+            font-size: 12px; font-weight: 600; color: #0F172A;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        /* Date and status share the second line. Putting the badge on the first
+           line alongside the order number squeezed both — the number truncated
+           to "#018 · ..." and the badge ran into it. The number now owns a whole
+           line and the badge sits beside the one thing short enough to share. */
+        .pos-ocard-sub {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 8px; margin-top: 3px; min-width: 0;
+        }
+        .pos-ocard-when {
+            font-size: 12px; color: #94A3B8; flex: 0 1 auto; min-width: 0;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        /* .fluxy-status alone has no base rule — it is only the colour half of
+           the pair, so the badge rendered as bare coloured text. The pill is
+           .fluxy-table-status; this only makes it card-sized. */
+        .pos-ocard-status { flex: 0 0 auto; font-size: 12px; padding: 3px 7px; }
+
+        .pos-ocard-items { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+        .pos-ocard-items th {
+            font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+            color: #94A3B8; text-align: left; padding: 0 0 5px; border-bottom: 1px solid #F1F5F9;
+        }
+        .pos-ocard-items th:nth-child(2), .pos-ocard-items td:nth-child(2) { text-align: center; width: 40px; }
+        .pos-ocard-items th:last-child, .pos-ocard-items td:last-child { text-align: right; white-space: nowrap; }
+        .pos-ocard-items td { font-size: 12px; color: #334155; padding: 5px 0; }
+        .pos-ocard-items td:first-child { padding-right: 8px; }
+        .pos-ocard-more td { color: #94A3B8; font-size: 12px; }
+
+        .pos-ocard-total {
+            display: flex; justify-content: space-between; align-items: baseline;
+            border-top: 1px solid #E2E8F0; padding-top: 8px;
+            font-size: 14px; font-weight: 700; color: #0B0F19; font-variant-numeric: tabular-nums;
+        }
+        .pos-ocard-actions { display: flex; gap: 8px; }
+        .pos-ocard-btn {
+            flex: 1; min-height: 34px; border-radius: 8px; cursor: pointer;
+            border: 1px solid #E2E8F0; background: #fff; color: #334155;
+            font-size: 13px; font-weight: 600;
+        }
+        .pos-ocard-btn:hover { background: #F8FAFC; }
+        .pos-ocard-btn.is-primary { background: #0F172A; border-color: #0F172A; color: #fff; }
+        .pos-ocard-btn.is-primary:hover { background: #1E293B; }
 
         /* ── Floor plan ─────────────────────────────────────────────────
            Following the supplied reference: zone tabs, a legend, and table
@@ -762,29 +884,37 @@
                 </section>
 
                 <!-- ── VIEW: Orders ──────────────────────────────────────── -->
+                <!-- Operational, not a marketing dashboard: a compact header,
+                     tabs and controls on one line, then the grid. Spacing here
+                     is deliberately tighter than the rest of the app — this is a
+                     surface a cashier SCANS, and density is the feature. -->
                 <section class="pos-view hidden" data-view="orders">
-                    <section class="fluxy-table-card">
-                        <div class="fluxy-table-card-header">
-                            <div>
-                                <h2 class="fluxy-table-title">Open orders</h2>
-                                <p class="fluxy-table-subtitle">Everything still on the floor.</p>
+                    <!-- No second "Orders" heading here: the page head above
+                         already says it, and a repeated title costs a whole row
+                         of a surface that is scanned. The date rides with the
+                         tabs instead. -->
+                    <div class="pos-orders-bar">
+                        <div class="pos-orders-left">
+                            <div class="pos-tabs" role="tablist" aria-label="Order status">
+                                <button type="button" role="tab" aria-selected="true" class="pos-tab is-active" data-otab="all">All</button>
+                                <button type="button" role="tab" aria-selected="false" class="pos-tab" data-otab="process">In Process</button>
+                                <button type="button" role="tab" aria-selected="false" class="pos-tab" data-otab="done">Completed</button>
+                            </div>
+                            <span class="pos-orders-date" id="pos-orders-date"></span>
+                        </div>
+                        <div class="pos-orders-controls">
+                            <button type="button" class="pos-filter-btn" id="pos-orders-filter" aria-label="Filter orders" aria-expanded="false">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M7 12h10M11 18h2"/></svg>
+                            </button>
+                            <div class="pos-search pos-search-sm">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                                <input id="pos-orders-search" type="search" autocomplete="off"
+                                       placeholder="Search by name, order, table..." aria-label="Search orders">
                             </div>
                         </div>
-                        <div style="padding:12px 16px;">
-                            <div id="pos-open-orders"></div>
-                        </div>
-                    </section>
-                    <section class="fluxy-table-card" style="margin-top:16px;">
-                        <div class="fluxy-table-card-header">
-                            <div>
-                                <h2 class="fluxy-table-title">Paid today</h2>
-                                <p class="fluxy-table-subtitle">Open one to reprint its receipt or refund it.</p>
-                            </div>
-                        </div>
-                        <div style="padding:12px 16px;">
-                            <div id="pos-paid-today-list"></div>
-                        </div>
-                    </section>
+                    </div>
+                    <div id="pos-orders-grid" class="pos-orders-grid"></div>
+                    <div id="pos-orders-empty" class="hidden"></div>
                 </section>
 
                 <!-- ── VIEW: Shift ───────────────────────────────────────── -->

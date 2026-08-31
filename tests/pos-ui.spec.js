@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { auditSpacing, MIN_GAP } = require('./helpers/spacing-audit');
 
 // Browser coverage for the till.
 //
@@ -197,14 +198,35 @@ test.describe('Point of Sale', () => {
         // paid. The button existed and could never be pressed. A cashier who
         // rings up the wrong dish and takes payment had no exit — void refuses
         // (correctly, the revenue posted), so the order was simply stuck.
+        //
+        // The surface moved on 2026-08-31: the standalone "paid today" card is
+        // gone and paid orders now live behind the Orders board's Completed tab.
+        // The old selectors (#pos-paid-card, [data-paid]) still MATCHED NOTHING
+        // rather than failing, so this spec skipped itself and the whole refund
+        // path silently left coverage. Anchored on the board now, and the tab
+        // itself is asserted before the skip so a renamed tab goes red.
         await page.goto('/pos');
-        await page.waitForSelector('#pos-metrics .pos-metric', { timeout: 20000 });
+        await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
+        await page.click('#nav-container [data-view="orders"]');
 
-        const rows = page.locator('[data-paid]');
+        // Wait for the board to have RENDERED before filtering it. Clicking the
+        // tab while the first render is still in flight left the unfiltered list
+        // on screen, and the spec then opened whatever order happened to be
+        // first — passing in isolation and failing in a full run.
+        await page.waitForSelector('#pos-orders-grid .pos-ocard, #pos-orders-empty:not(.hidden)', { timeout: 20000 });
+
+        const done = page.locator('.pos-tab[data-otab="done"]');
+        await expect(done, 'the Completed tab is where paid orders live now').toBeVisible();
+        await done.click();
+        await expect(done).toHaveAttribute('aria-selected', 'true');
+
+        // Matched on the status the card carries, not on position in the grid —
+        // a filter that silently failed to apply can no longer feed this spec a
+        // non-paid order.
+        const rows = page.locator('#pos-orders-grid .pos-ocard[data-status="paid"]');
         const n = await rows.count();
         test.skip(n === 0, 'no paid orders in the QA workspace today');
 
-        await expect(page.locator('#pos-paid-card')).toBeVisible();
         await rows.first().click();
 
         // A paid order opens read-only: no void (the revenue is posted), but a
@@ -235,17 +257,25 @@ test.describe('Point of Sale', () => {
         await page.waitForSelector('#pos-metrics .pos-metric', { timeout: 20000 });
 
         // The floor plan moved behind the header's "Table Order" button when the
-        // catalogue became the primary surface (2026-08-31). Opening the sheet is
-        // now part of starting a dine-in order — and note this spec SKIPS itself
-        // when it finds no table, so a selector left pointing at the old location
-        // would have silently dropped the entire discount flow from coverage
-        // rather than going red.
+        // catalogue became the primary surface (2026-08-31).
+        //
+        // This USED to skip when no table was free, which meant one stale open
+        // order left on the QA workspace's only table dropped the entire
+        // discount flow from coverage indefinitely — and quietly. A discount
+        // does not need a table, so the spec now falls back to takeaway instead
+        // of skipping. There is no configuration of the workspace in which it
+        // does not run.
         await page.click('#pos-tables-btn');
         await page.waitForSelector('.pos-view[data-view="tables"] .pos-table', { timeout: 15000 });
         const free = page.locator('.pos-view[data-view="tables"] .pos-table.is-free');
-        test.skip(await free.count() === 0, 'no free table in the QA workspace');
 
-        await free.first().click();
+        if (await free.count() > 0) {
+            await free.first().click();
+        } else {
+            // Back to the till, then open a takeaway order.
+            await page.click('#nav-container [data-view="till"]');
+            await page.locator('#pos-new-order').click();
+        }
         // Selecting a table returns to the till — the catalogue is where the
         // next action is, and leaving the cashier on the floor plan after they
         // have chosen a table is a step they would have to undo every time.
@@ -280,6 +310,32 @@ test.describe('Point of Sale', () => {
         await page.fill('#pos-void-why', 'Spec cleanup');
         await page.locator('#pos-drawer-form button[type="submit"], button[form="pos-drawer-form"]').first().click();
         await expect(page.locator('#pos-order-title')).toHaveText(/no order open|belum ada pesanan/i, { timeout: 20000 });
+    });
+
+    test('every till view holds its vertical rhythm', async ({ page }) => {
+        // The console sweep audits a page in ONE state. The till has four views
+        // behind `.hidden`, where every rect is zero and nothing is measurable —
+        // so three quarters of this surface was never checked. Each is switched
+        // to and audited here.
+        //
+        // The rule exists because `.fluxy-section-stack > * + *` spaces DIRECT
+        // children only: wrapping the views in `.pos-view` dropped every gap to
+        // zero at once, and the page read as "weird, tight spacing" rather than
+        // as the missing rule it was.
+        await page.goto('/pos');
+        await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
+
+        for (const view of ['till', 'tables', 'orders', 'shift']) {
+            await page.click(`#nav-container [data-view="${view}"]`);
+            await expect(page.locator(`.pos-view[data-view="${view}"]`)).toBeVisible();
+            await page.waitForTimeout(500);   // let the view's async render land
+
+            const offenders = await auditSpacing(page);
+            expect(offenders,
+                `the "${view}" view has sections touching (min ${MIN_GAP}px between stacked cards):\n  `
+                + offenders.join('\n  ')
+            ).toEqual([]);
+        }
     });
 
     test('the menu fields reached the item drawer', async ({ page }) => {
