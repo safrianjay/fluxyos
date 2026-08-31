@@ -38,6 +38,8 @@
 //   --invoices         also delete test invoices + INV-PAY txns + journals + items.
 //   --accounts         prune QA chart-of-accounts rows: DELETE the ones that never
 //                      posted, ARCHIVE (never delete) any that carry journal lines.
+//   --pos              VOID stray till orders left open by interrupted specs, and
+//                      take QA fixture items off the till menu. Deletes nothing.
 //   --commit           actually delete (default is dry-run — nothing is written).
 // =============================================================================
 
@@ -51,6 +53,7 @@ const COMMIT = args.includes('--commit');
 const WITH_BILLS = args.includes('--bills');
 const WITH_INVOICES = args.includes('--invoices');
 const WITH_ACCOUNTS = args.includes('--accounts');
+const WITH_POS = args.includes('--pos');
 
 if (!WS) { console.error('Required: --workspace <workspaceId or owner uid>'); process.exit(1); }
 if (SCOPE !== 'workspaces' && SCOPE !== 'users') { console.error("--scope must be 'workspaces' or 'users'"); process.exit(1); }
@@ -71,6 +74,9 @@ const isTestInvoiceCustomer = (n) => typeof n === 'string' && /^QA /.test(n);
 const isTestAccount = (a) => typeof a.name === 'string'
     && /^QA (Custom Expense|Locked|Editable|Renamed)/i.test(a.name)
     && a.is_system !== true;
+// Till fixtures are stamped with a prefix + a timestamp by the POS specs.
+const isTestItem = (i) => typeof i.name === 'string' && /^(QA-[A-Z]+-\d|RULECHECK-)/.test(i.name);
+
 const isTestMapping = (m) =>
     (m.source_type === 'vendor' && /^qa /i.test(String(m.source_value || '')))
     || (m.source_type === 'keyword' && /^(scan|kw)\d/i.test(String(m.source_value || '')));
@@ -172,7 +178,49 @@ async function main() {
         }
     }
 
-    console.log(`\n${COMMIT ? 'Done.' : 'Dry-run only — re-run with --commit to delete (add --bills / --invoices / --accounts to include them).'}\n`);
+    // ── Till residue ────────────────────────────────────────────────────────
+    // Nothing here is DELETED. An order is voided, which is the product's own
+    // way of retiring one and leaves the reason behind; an item is taken off the
+    // menu, because items are never deleted at all (their stock movements and
+    // journal lines are immutable history).
+    //
+    // `awaiting_payment` and `paid` are deliberately NOT voidable. Both have had
+    // money applied — a void would strand a real payment, and for `paid` it would
+    // leave posted revenue with no order behind it. Those are a refund's job.
+    // Measured on the QA workspace 2026-09-01: 369 orders, of which 63 open,
+    // 2 served and 2 sent were interrupted-spec residue, all from a single day.
+    if (WITH_POS) {
+        const VOIDABLE = ['open', 'served', 'sent'];
+        const orders = (await db.collection(`${base}/pos_orders`).get()).docs;
+        const stray = orders.filter((d) => VOIDABLE.includes(d.data().status));
+        const held = orders.filter((d) => d.data().status === 'awaiting_payment');
+        console.log(`POS orders: ${orders.length} total → ${stray.length} stray to void`
+            + preview(stray, (d) => `${d.id.slice(0, 6)}:${d.data().status}`));
+        if (held.length) {
+            console.log(`  ⚠ ${held.length} awaiting_payment left alone — money has partially landed;`
+                + ' voiding would strand it. Refund or settle these by hand.');
+        }
+        if (COMMIT) {
+            for (const d of stray) {
+                await d.ref.set({
+                    status: 'void',
+                    void_reason: 'QA workspace cleanup',
+                    voided_at: new Date(),
+                    updated_at: new Date()
+                }, { merge: true });
+            }
+        }
+
+        const items = (await db.collection(`${base}/items`).get()).docs;
+        const onMenu = items.filter((d) => d.data().pos_visible && isTestItem(d.data()));
+        console.log(`POS menu: ${items.length} items → ${onMenu.length} QA fixtures to un-publish`
+            + preview(onMenu, (d) => d.data().name));
+        if (COMMIT) {
+            for (const d of onMenu) await d.ref.set({ pos_visible: false, updated_at: new Date() }, { merge: true });
+        }
+    }
+
+    console.log(`\n${COMMIT ? 'Done.' : 'Dry-run only — re-run with --commit to apply (add --bills / --invoices / --accounts / --pos to include them).'}\n`);
     process.exit(0);
 }
 
