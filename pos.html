@@ -118,28 +118,6 @@
         /* Semantic only — a hue with no meaning is the one thing worth leaving out. */
         .pos-metric-value.is-warn { color: #EA580C; }
 
-        /* ── Table grid ─────────────────────────────────────────────────── */
-        .pos-tables { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
-        .pos-table {
-            position: relative; min-height: 88px; padding: 12px 10px;
-            background: #fff; border: 1px solid #E2E8F0; border-radius: 12px;
-            display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between;
-            cursor: pointer; text-align: left; transition: border-color 120ms ease, box-shadow 120ms ease;
-        }
-        .pos-table:hover { border-color: #CBD5E1; box-shadow: 0 1px 3px rgba(15,23,42,.08); }
-        .pos-table:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
-        .pos-table-label { font-size: 16px; font-weight: 600; color: #0B0F19; line-height: 1.2; }
-        .pos-table-zone { font-size: 10px; color: #94A3B8; margin-top: 2px; }
-        .pos-table-foot { font-size: 12px; font-weight: 500; margin-top: 10px; font-variant-numeric: tabular-nums; }
-        /* Status is carried by TEXT and a left rule, never by colour alone —
-           a colour-blind cashier reads the same grid. */
-        .pos-table.is-free { border-left: 3px solid #CBD5E1; }
-        .pos-table.is-busy { border-left: 3px solid #3B82F6; }
-        .pos-table.is-bill { border-left: 3px solid #EA580C; }
-        .pos-table.is-free .pos-table-foot { color: #94A3B8; }
-        .pos-table.is-busy .pos-table-foot { color: #1D4ED8; }
-        .pos-table.is-bill .pos-table-foot { color: #C2410C; font-weight: 600; }
-
         /* ── Order panel ────────────────────────────────────────────────── */
         .pos-order { background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; display: flex; flex-direction: column; }
         @media (min-width: 1024px) { .pos-order { position: sticky; top: 16px; max-height: calc(100vh - 140px); } }
@@ -588,48 +566,105 @@
         .pos-dot.is-busy { border-color: #3B82F6; background: #EFF6FF; }
         .pos-dot.is-bill { border-color: #EA580C; background: #FFF7ED; }
 
-        .pos-floor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 20px; }
-        .pos-floor-grid .pos-table.is-wide { grid-column: span 2; }
+        /* ── The floor ──────────────────────────────────────────────────
+           A plan of a ROOM, not a grid of cards. Tables sit where the manager
+           put them: `layout_x`/`layout_y` are the table centre as a percentage
+           of this canvas, so one saved arrangement reads correctly on a 1440px
+           laptop and on the 10" tablet at the host stand.
+
+           An auto-fill grid was the old answer and it could not be right — a
+           grid says every table is equidistant from every other, which is the
+           one fact about a dining room that is never true. Matching what is on
+           screen to what is in the room was left entirely to the cashier. */
+        .pos-floor-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 12px; flex-wrap: wrap;
+        }
+        .pos-floor-actions { display: flex; align-items: center; gap: 8px; }
+        .pos-floor-actions svg { width: 16px; height: 16px; }
+
+        .pos-floor {
+            position: relative; overflow: hidden;
+            border: 1px solid #E2E8F0; border-radius: 14px; background: #fff;
+            /* Rooms are wider than they are deep, and a fixed ratio is what makes
+               a percentage coordinate stable — without it the same layout
+               stretches vertically every time the panel opens. */
+            aspect-ratio: 16 / 9; min-height: 360px;
+            background-image:
+                linear-gradient(to right, #F1F5F9 1px, transparent 1px),
+                linear-gradient(to bottom, #F1F5F9 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        @media (max-width: 700px) { .pos-floor { aspect-ratio: 3 / 4; } }
+        .pos-floor.is-arranging {
+            border-color: #0F172A; background-color: #F8FAFC;
+            background-image:
+                linear-gradient(to right, #E2E8F0 1px, transparent 1px),
+                linear-gradient(to bottom, #E2E8F0 1px, transparent 1px);
+        }
 
         /* A table, drawn as a table: a top and its chairs. The chairs are what
            make a floor plan scannable — a grid of rounded rectangles is a list
            with extra steps, and the cashier is matching what they see on screen
-           to what they see in the room. */
+           to what they see in the room.
+
+           Positioned by its CENTRE (translate -50%), because that is what a
+           person means when they drag a table to a spot. */
         .pos-table {
-            display: flex; flex-direction: column; align-items: stretch; gap: 4px;
+            position: absolute; transform: translate(-50%, -50%);
+            display: flex; flex-direction: column; align-items: stretch; gap: 5px;
             background: none; border: 0; padding: 0; cursor: pointer; text-align: left;
+            width: var(--pos-table-w, 128px);
         }
         .pos-table-body {
-            display: flex; flex-direction: column; justify-content: space-between;
-            gap: 10px; min-height: 92px; padding: 12px; border-radius: 12px;
-            border: 2px solid #E2E8F0; background: #F1F5F9;
+            display: flex; flex-direction: column; justify-content: center; gap: 5px;
+            min-height: var(--pos-table-h, 78px); padding: 8px 10px; border-radius: 10px;
+            border: 2px solid #CBD5E1; background: #F8FAFC;
             transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
         }
-        .pos-table:hover .pos-table-body { box-shadow: 0 3px 10px rgba(15,23,42,.10); }
+        .pos-table:hover .pos-table-body { box-shadow: 0 4px 14px rgba(15,23,42,.12); }
         .pos-table:focus-visible { outline: 2px solid #EA580C; outline-offset: 3px; border-radius: 14px; }
 
-        /* Chairs sit outside the top, one row each side. */
-        .pos-chairs { display: flex; justify-content: center; gap: 6px; padding: 0 14px; }
-        .pos-chairs i { flex: 1 1 0; max-width: 34px; height: 9px; border-radius: 5px; background: #E2E8F0; }
+        /* Chairs sit outside the top, one row each side. Small and discrete:
+           full-width pale bars read as loading shimmer, which is exactly how
+           the first cut of this was reported. */
+        .pos-chairs { display: flex; justify-content: center; gap: 7px; height: 7px; }
+        .pos-chairs i { width: 17px; height: 7px; border-radius: 4px; background: #CBD5E1; }
 
         /* State is carried by the LABEL and the colour together, never colour
            alone — a colour-blind cashier reads the same floor. */
         .pos-table.is-busy .pos-table-body { background: #EFF6FF; border-color: #3B82F6; }
-        .pos-table.is-busy .pos-chairs i   { background: #BFDBFE; }
+        .pos-table.is-busy .pos-chairs i   { background: #93C5FD; }
         .pos-table.is-bill .pos-table-body { background: #FFF7ED; border-color: #EA580C; }
-        .pos-table.is-bill .pos-chairs i   { background: #FED7AA; }
-        .pos-table-top { display: flex; align-items: baseline; gap: 8px; }
-        .pos-table-label { font-size: 16px; font-weight: 600; color: #0B0F19; }
-        .pos-table-zone { font-size: 10px; color: #94A3B8; }
+        .pos-table.is-bill .pos-chairs i   { background: #FDBA74; }
+        .pos-table-top { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+        .pos-table-label { font-size: 16px; font-weight: 700; color: #0B0F19; line-height: 1; }
+        .pos-table-zone { font-size: 12px; color: #94A3B8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .pos-table-free { font-size: 12px; color: #94A3B8; }
-        .pos-table-meta { display: flex; flex-wrap: wrap; gap: 6px; }
-        .pos-table-chip {
-            display: inline-flex; align-items: center; gap: 4px;
-            background: rgba(255,255,255,.85); border: 1px solid rgba(15,23,42,.08);
-            border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 500;
-            color: #1E293B; font-variant-numeric: tabular-nums;
+        .pos-table-meta { display: flex; align-items: baseline; gap: 8px; font-size: 12px; }
+        .pos-table-money { font-weight: 600; color: #1E293B; font-variant-numeric: tabular-nums; }
+        .pos-table-since { color: #64748B; font-variant-numeric: tabular-nums; }
+
+        /* Arrange mode. The tables stop being buttons and become furniture. */
+        .pos-floor.is-arranging .pos-table { cursor: grab; touch-action: none; }
+        .pos-floor.is-arranging .pos-table:active,
+        .pos-floor.is-arranging .pos-table.is-dragging { cursor: grabbing; }
+        .pos-floor.is-arranging .pos-table.is-dragging { z-index: 5; }
+        .pos-floor.is-arranging .pos-table.is-dragging .pos-table-body {
+            border-color: #0F172A; box-shadow: 0 10px 24px rgba(15,23,42,.18);
         }
-        .pos-tablesheet { display: block; }
+        .pos-arrange-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 12px; flex-wrap: wrap;
+            border: 1px solid #0F172A; border-radius: 12px; background: #F8FAFC; padding: 10px 14px;
+        }
+        .pos-arrange-hint { font-size: 12px; color: #475569; }
+        .pos-arrange-actions { display: flex; gap: 8px; }
+
+        .pos-floor-empty {
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            font-size: 14px; color: #94A3B8;
+        }
 
         /* Until the till's nav replaces it, the shared FINANCE nav must not
            paint. sidebar-loader.js renders Bills, Invoices, Tax Centre and the
@@ -727,6 +762,10 @@
         }
         .pos-btn-ghost { background: #fff; border: 1px solid #E2E8F0; color: #334155; }
         .pos-btn-ghost:hover { background: #F8FAFC; }
+        /* The arrange toggle stays visibly ON while the floor is editable —
+           a mode you cannot see you are in is how a drag gets mistaken for a
+           tap that should have opened an order. */
+        .pos-btn-ghost.is-on { background: #0F172A; border-color: #0F172A; color: #fff; }
         .pos-btn-primary { background: #0F172A; border: 1px solid #0F172A; color: #fff; }
         .pos-btn-primary:hover:not(:disabled) { background: #1E293B; }
         .pos-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
@@ -865,22 +904,28 @@
                 </section>
 
                 <!-- ── VIEW: Tables ──────────────────────────────────────── -->
+                <!-- No card around the floor. A plan of a room read through a
+                     panel header, a subtitle and 16px of card padding had about
+                     half the width left for the room itself, and the tables were
+                     squeezed into a single cramped row. The canvas IS the
+                     surface here; the controls sit above it. -->
                 <section class="pos-view hidden" data-view="tables">
-                    <section class="fluxy-table-card">
-                        <div class="fluxy-table-card-header">
-                            <div>
-                                <h2 class="fluxy-table-title">Tables</h2>
-                                <p class="fluxy-table-subtitle">Tap a table to open or continue its order.</p>
-                            </div>
-                            <div class="fluxy-table-actions">
-                                <button type="button" id="pos-manage-tables" class="pos-btn-ghost">Manage tables</button>
-                            </div>
+                    <div class="pos-floor-bar">
+                        <div class="pos-legend">
+                            <span><i class="pos-dot is-free"></i>Free</span>
+                            <span><i class="pos-dot is-busy"></i>In use</span>
+                            <span><i class="pos-dot is-bill"></i>Awaiting payment</span>
                         </div>
-                        <div style="padding:16px;">
-                            <div id="pos-tables" class="pos-tablesheet"></div>
-                            <div id="pos-tables-empty" class="hidden"></div>
+                        <div class="pos-floor-actions">
+                            <button type="button" id="pos-arrange-btn" class="pos-btn-ghost hidden">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 9 2 12l3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>
+                                <span>Arrange layout</span>
+                            </button>
+                            <button type="button" id="pos-manage-tables" class="pos-btn-ghost">Manage tables</button>
                         </div>
-                    </section>
+                    </div>
+                    <div id="pos-tables"></div>
+                    <div id="pos-tables-empty" class="hidden"></div>
                 </section>
 
                 <!-- ── VIEW: Orders ──────────────────────────────────────── -->

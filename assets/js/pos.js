@@ -64,7 +64,13 @@ const state = {
     view: 'till',
     zone: null,
     orderTab: 'all',
-    orderQuery: ''
+    orderQuery: '',
+    // Floor-plan arrange mode. Drags are STAGED here and unsaved until Save, so
+    // one mis-drag is not a trip to the database and Cancel has something to
+    // undo. Keyed by table id → { x, y } in canvas percent.
+    arranging: false,
+    floorMoves: {},
+    floorReset: false
 };
 
 // The till's own views. No new routes — the brief requires the existing ones
@@ -379,6 +385,94 @@ function renderBanners() {
 // the CATALOGUE primary, so the grid moved behind the header's "Table Order"
 // button. Same markup, same handlers, same startOrder/selectOrder calls — only
 // where it is painted changed, which is why no order flow moved with it.
+// The floor plan, drawn as a plan of a room.
+//
+// Tables sit where the manager put them. `layout_x` / `layout_y` on the table
+// doc are its centre as a percentage of the canvas, so one arrangement reads
+// correctly at every width — the floor keeps a fixed aspect ratio precisely so
+// those percentages mean something stable.
+//
+// It was an auto-fill CSS grid until 2026-08-31, and a grid could never be
+// right: it asserts that every table is equidistant from every other, which is
+// the one thing about a dining room that is never true. Matching the screen to
+// the room was left entirely to the person holding the tray.
+//
+// Two things in the reference are still NOT built, because FluxyOS has no data
+// behind them and a floor plan that lies is worse than one that is plain:
+//   · "Reserved" — there is no reservation concept. A third legend colour that
+//     nothing can ever enter is decoration.
+//   · exact seat counts per side — `seats` is display-only and often null, so
+//     the chairs are a convention (and never written as a number).
+
+// Where the tables nobody has placed yet go.
+//
+// Packed into rows against the MEASURED canvas and the MEASURED footprints,
+// after paint — not from a proportional formula. The formula was the first cut
+// and it could not work: it divided the canvas into equal cells and ignored how
+// wide a table actually is, so at the width the floor really gets (~728px, the
+// order panel takes the rest) six tables already overlapped and twelve
+// overlapped twelve times. That is precisely the collision this view was
+// reported for.
+//
+// Deterministic — same tables, same order, same result — because an unplaced
+// floor that reshuffles on every reload gives "did my drag save?" no answer.
+//
+// The canvas grows when a room genuinely needs more than its 16:9 gives it.
+// Overflowing furniture that cannot be reached is worse than a taller page.
+function layoutUnplacedTables(floor) {
+    // `refresh()` repaints the floor even when the Tables view is hidden, where
+    // every rect is zero and nothing can be measured — pack on the next paint
+    // that can actually see the canvas instead of dividing by nothing.
+    if (!floor) return;
+    const rect = floor.getBoundingClientRect();
+    if (!rect.width) return;
+    const els = [...floor.querySelectorAll('.pos-table[data-auto="1"]')];
+    if (!els.length) return;
+
+    const PAD = 18, GAP_X = 20, GAP_Y = 18;
+    const avail = Math.max(80, rect.width - PAD * 2);
+
+    const rows = [];
+    let row = [], rowW = 0;
+    els.forEach((el) => {
+        const w = el.offsetWidth;
+        if (row.length && rowW + GAP_X + w > avail) { rows.push({ items: row, w: rowW }); row = []; rowW = 0; }
+        rowW += (row.length ? GAP_X : 0) + w;
+        row.push(el);
+    });
+    if (row.length) rows.push({ items: row, w: rowW });
+
+    const rowH = rows.map((r) => Math.max(...r.items.map((e) => e.offsetHeight)));
+    const blockH = rowH.reduce((a, b) => a + b, 0) + GAP_Y * Math.max(0, rows.length - 1);
+    const needed = blockH + PAD * 2;
+    if (needed > rect.height) floor.style.minHeight = `${Math.ceil(needed)}px`;
+    const H = Math.max(rect.height, needed);
+
+    // Centred, not top-aligned. Four tables pinned to the ceiling of a 16:9
+    // room with two thirds of the floor empty below reads as a layout that
+    // failed rather than a small restaurant.
+    let y = Math.max(PAD, (H - blockH) / 2);
+    rows.forEach((r, ri) => {
+        let x = PAD + (avail - r.w) / 2;
+        r.items.forEach((el) => {
+            const w = el.offsetWidth;
+            el.style.left = `${((x + w / 2) / rect.width) * 100}%`;
+            el.style.top = `${((y + rowH[ri] / 2) / H) * 100}%`;
+            x += w + GAP_X;
+        });
+        y += rowH[ri] + GAP_Y;
+    });
+}
+
+// Seats decide the FOOTPRINT, not a number on the screen. A two-top and an
+// eight-top drawn the same size is the floor plan failing at its only job.
+function tableFootprint(seats) {
+    if (seats <= 2) return { w: 104, h: 66, perSide: 1 };
+    if (seats <= 4) return { w: 128, h: 78, perSide: 2 };
+    if (seats <= 6) return { w: 158, h: 82, perSide: 3 };
+    return { w: 196, h: 92, perSide: Math.ceil(seats / 2) };
+}
+
 function elapsedSince(ts) {
     const t = ts && typeof ts.toDate === 'function' ? ts.toDate() : null;
     if (!t) return '';
@@ -387,24 +481,17 @@ function elapsedSince(ts) {
     return `${String(h).padStart(2, '0')}.${String(mins % 60).padStart(2, '0')}h`;
 }
 
-// The floor plan, following the supplied reference: zone tabs, a legend, and
-// table shapes that carry their own state — label, running total, time seated.
-//
-// Two things in the reference are NOT built, because FluxyOS has no data behind
-// them and a floor plan that lies is worse than one that is plain:
-//   · "Reserved" — there is no reservation concept. A third legend colour that
-//     nothing can ever enter is decoration.
-//   · seat-count chair rendering per side — `seats` exists but is display-only
-//     and frequently null, so chairs would be invented furniture.
 function renderTables() {
     const o = state.overview;
     if (!o) return;
     const host = $('pos-tables');
     const empty = $('pos-tables-empty');
+    const bar = document.querySelector('.pos-floor-bar');
     if (!host || !empty) return;
 
     if (!o.tables.length) {
         host.classList.add('hidden');
+        bar?.classList.add('hidden');
         empty.classList.remove('hidden');
         window.renderEmptyState('pos-tables-empty', {
             title: 'No tables at this outlet yet',
@@ -416,12 +503,21 @@ function renderTables() {
     }
     empty.classList.add('hidden');
     host.classList.remove('hidden');
+    bar?.classList.remove('hidden');
+
+    // Arranging is `pos.manage` — the same capability that creates and archives
+    // tables. A cashier reads the floor; they do not redraw the room.
+    const ws = (typeof window !== 'undefined' && window.FluxyWorkspace) || null;
+    const mayArrange = !!(ws && typeof ws.can === 'function' && ws.can('pos.manage'));
+    $('pos-arrange-btn')?.classList.toggle('hidden', !mayArrange);
 
     const byTable = {};
     (o.activeOrders || []).forEach((ord) => { if (ord.table_id) byTable[ord.table_id] = ord; });
 
     // Zone tabs, from `pos_tables.zone`. One zone is not a choice, so the strip
-    // only appears when there is more than one floor to choose between.
+    // only appears when there is more than one floor to choose between — and
+    // each floor is its own plan, which is why positions are per table rather
+    // than per zone.
     const zones = [];
     o.tables.forEach((t) => { const z = t.zone || null; if (z && !zones.includes(z)) zones.push(z); });
     zones.sort((a, b) => a.localeCompare(b));
@@ -437,53 +533,66 @@ function renderTables() {
 
     const shown = o.tables.filter((t) => !state.zone || (t.zone || null) === state.zone);
 
-    const legend = `
-        <div class="pos-legend">
-            <span><i class="pos-dot is-free"></i>Free</span>
-            <span><i class="pos-dot is-busy"></i>In use</span>
-            <span><i class="pos-dot is-bill"></i>Awaiting payment</span>
-        </div>`;
-
-    const cards = shown.map((t) => {
+    const tables = shown.map((t, i) => {
         const ord = byTable[t.id];
         const cls = !ord ? 'is-free' : (ord.status === 'awaiting_payment' ? 'is-bill' : 'is-busy');
-        const money = ord ? rp(ord.total_amount) : '';
-        const since = ord ? elapsedSince(ord.opened_at) : '';
-
-        // Chairs, so the floor reads as a floor rather than a list of boxes.
-        // Drawn from `seats` where it is set and defaulting to 4 — a visual
-        // convention, not a claim about the furniture, which is why the count is
-        // never written as text. A four-seater draws 2 per side; larger tables
-        // grow the top and bottom rows and the shape stretches with them.
         const seats = Math.min(12, Math.max(2, Number(t.seats) || 4));
-        const perSide = Math.ceil(seats / 2);
-        const chairRow = (n) => `<span class="pos-chairs">${'<i></i>'.repeat(n)}</span>`;
-        const wide = seats > 6;
+        const fp = tableFootprint(seats);
+        // The pending position wins while a drag is unsaved, so a re-render
+        // (an order lands, the clock ticks) does not snap the table back to
+        // where it was before the manager moved it.
+        const pending = state.floorMoves && state.floorMoves[t.id];
+        const placed = !state.floorReset
+            && Number.isFinite(Number(t.layout_x)) && Number.isFinite(Number(t.layout_y));
+        const spot = pending || (placed ? { x: Number(t.layout_x), y: Number(t.layout_y) } : null);
+        const chairRow = (n) => `<span class="pos-chairs">${'<i></i>'.repeat(Math.max(0, n))}</span>`;
 
-        return `<button type="button" class="pos-table ${cls}${wide ? ' is-wide' : ''}"
+        return `<button type="button" class="pos-table ${cls}"
                     data-table="${esc(t.id)}" data-order="${esc(ord ? ord.id : '')}"
+                    ${spot ? '' : 'data-auto="1"'}
+                    style="${spot ? `left:${spot.x}%; top:${spot.y}%;` : ''} --pos-table-w:${fp.w}px; --pos-table-h:${fp.h}px;"
                     aria-label="Table ${esc(t.label)}, ${seats} seats — ${ord ? 'in use' : 'free'}">
-            ${chairRow(perSide)}
+            ${chairRow(fp.perSide)}
             <span class="pos-table-body">
                 <span class="pos-table-top">
                     <span class="pos-table-label">${esc(t.label)}</span>
                     ${t.zone && !state.zone ? `<span class="pos-table-zone">${esc(t.zone)}</span>` : ''}
                 </span>
                 ${ord ? `<span class="pos-table-meta">
-                    <span class="pos-table-chip">${money}</span>
-                    ${since ? `<span class="pos-table-chip">${esc(since)}</span>` : ''}
+                    <span class="pos-table-money">${rp(ord.total_amount)}</span>
+                    ${elapsedSince(ord.opened_at) ? `<span class="pos-table-since">${esc(elapsedSince(ord.opened_at))}</span>` : ''}
                 </span>` : '<span class="pos-table-free">Free</span>'}
             </span>
-            ${chairRow(seats - perSide)}
+            ${chairRow(seats - fp.perSide)}
         </button>`;
     }).join('');
 
-    host.innerHTML = `${tabs}${legend}<div class="pos-floor-grid">${cards}</div>`;
+    const arranging = !!state.arranging;
+    const arrangeBar = arranging ? `
+        <div class="pos-arrange-bar">
+            <p class="pos-arrange-hint">Drag each table to where it stands in the room.</p>
+            <div class="pos-arrange-actions">
+                <button type="button" class="pos-btn-ghost" data-arrange="reset">Reset to grid</button>
+                <button type="button" class="pos-btn-ghost" data-arrange="cancel">Cancel</button>
+                <button type="button" class="pos-btn-primary" data-arrange="save">Save layout</button>
+            </div>
+        </div>` : '';
+
+    host.innerHTML = `${tabs}
+        <div class="pos-floor${arranging ? ' is-arranging' : ''}" id="pos-floor">
+            ${tables || '<p class="pos-floor-empty">No tables on this floor.</p>'}
+        </div>
+        ${arrangeBar}`;
+
+    // Pack the unplaced ones now that they have real widths on the page.
+    layoutUnplacedTables(host.querySelector('#pos-floor'));
 
     host.querySelectorAll('[data-zone]').forEach((b) => b.addEventListener('click', () => {
         state.zone = b.dataset.zone || null;
         renderTables();
     }));
+
+    if (arranging) { wireFloorDrag(host); wireArrangeBar(host); return; }
 
     host.querySelectorAll('[data-table]').forEach((btn) => {
         btn.addEventListener('click', async () => {
@@ -501,6 +610,118 @@ function renderTables() {
         });
     });
     mountTableArchive(host);
+}
+
+// Dragging, on pointer events so a finger on the tablet at the host stand works
+// exactly like a mouse. Positions are held in `state.floorMoves` until Save —
+// a layout that writes on every drop turns one mis-drag into a trip to the
+// database, and gives Cancel nothing to undo.
+function wireFloorDrag(host) {
+    const floor = host.querySelector('#pos-floor');
+    if (!floor) return;
+    state.floorMoves = state.floorMoves || {};
+
+    floor.querySelectorAll('[data-table]').forEach((el) => {
+        el.addEventListener('click', (e) => e.preventDefault());   // arrange mode does not open orders
+        el.addEventListener('pointerdown', (e) => {
+            if (e.button != null && e.button !== 0) return;
+            e.preventDefault();
+            const rect = floor.getBoundingClientRect();
+            const box = el.getBoundingClientRect();
+            // Grab OFFSET, so the table does not jump its centre to the cursor
+            // the moment it is touched.
+            const dx = e.clientX - (box.left + box.width / 2);
+            const dy = e.clientY - (box.top + box.height / 2);
+            // Half the table, as a percentage — the clamp that keeps furniture
+            // inside the walls instead of half-way through them.
+            const padX = (box.width / 2 / rect.width) * 100;
+            const padY = (box.height / 2 / rect.height) * 100;
+
+            el.classList.add('is-dragging');
+            el.setPointerCapture(e.pointerId);
+
+            const move = (ev) => {
+                const x = ((ev.clientX - dx - rect.left) / rect.width) * 100;
+                const y = ((ev.clientY - dy - rect.top) / rect.height) * 100;
+                // Snapped to a half-percent so a row of tables lines up by hand.
+                const snap = (n, lo, hi) => Math.min(hi, Math.max(lo, Math.round(n * 2) / 2));
+                const nx = snap(x, padX, 100 - padX);
+                const ny = snap(y, padY, 100 - padY);
+                el.style.left = `${nx}%`;
+                el.style.top = `${ny}%`;
+                state.floorMoves[el.dataset.table] = { x: nx, y: ny };
+            };
+            const up = () => {
+                el.classList.remove('is-dragging');
+                el.removeEventListener('pointermove', move);
+                el.removeEventListener('pointerup', up);
+                el.removeEventListener('pointercancel', up);
+            };
+            el.addEventListener('pointermove', move);
+            el.addEventListener('pointerup', up);
+            el.addEventListener('pointercancel', up);
+        });
+    });
+}
+
+function wireArrangeBar(host) {
+    host.querySelectorAll('[data-arrange]').forEach((btn) => btn.addEventListener('click', async () => {
+        const what = btn.dataset.arrange;
+
+        if (what === 'cancel') {
+            state.floorMoves = {};
+            state.floorReset = false;
+            state.arranging = false;
+            setArrangeButton();
+            renderTables();
+            return;
+        }
+
+        if (what === 'reset') {
+            // Ignore what is saved and re-pack from scratch. Staged like any
+            // other change — nothing is written until Save, so Cancel still
+            // puts the room back.
+            state.floorMoves = {};
+            state.floorReset = true;
+            renderTables();
+            return;
+        }
+
+        // Save what is ON THE FLOOR, not only what was dragged. "Save layout"
+        // that persisted three nudged tables and silently dropped the tidy
+        // arrangement of the other nine would be answering a different question
+        // than the button asks.
+        const moves = [...host.querySelectorAll('#pos-floor .pos-table')]
+            .map((el) => ({ id: el.dataset.table, x: parseFloat(el.style.left), y: parseFloat(el.style.top) }))
+            .filter((m) => m.id && Number.isFinite(m.x) && Number.isFinite(m.y));
+        if (!moves.length) {
+            state.arranging = false;
+            state.floorReset = false;
+            setArrangeButton();
+            renderTables();
+            return;
+        }
+        await once(async () => {
+            try {
+                await ds.savePosTableLayout(state.uid, moves);
+                toast(`Layout saved — ${moves.length} ${moves.length === 1 ? 'table' : 'tables'}.`);
+                state.floorMoves = {};
+                state.floorReset = false;
+                state.arranging = false;
+                setArrangeButton();
+                await refresh();
+                renderTables();
+            } catch (err) { fail(err, 'Could not save the layout.'); }
+        });
+    }));
+}
+
+function setArrangeButton() {
+    const btn = $('pos-arrange-btn');
+    if (!btn) return;
+    const label = btn.querySelector('span');
+    if (label) label.textContent = state.arranging ? 'Done arranging' : 'Arrange layout';
+    btn.classList.toggle('is-on', !!state.arranging);
 }
 
 // "Table Order" is now a VIEW, not a drawer. A drawer over the catalogue was
@@ -1820,6 +2041,14 @@ function wire() {
     $('pos-new-order').addEventListener('click', () => once(() => startOrder(null)));
     $('pos-tables-btn').addEventListener('click', openTableSheet);
     $('pos-manage-tables')?.addEventListener('click', openTableDrawer);
+    $('pos-arrange-btn')?.addEventListener('click', () => {
+        state.arranging = !state.arranging;
+        // Leaving by the toggle discards, exactly like Cancel — there is no
+        // third outcome where half an arrangement survives.
+        if (!state.arranging) { state.floorMoves = {}; state.floorReset = false; }
+        setArrangeButton();
+        renderTables();
+    });
 
     // sidebar-loader.js renders asynchronously (it awaits auth), so the nav may
     // not exist yet. Observe rather than poll on a timer: a fixed delay is a

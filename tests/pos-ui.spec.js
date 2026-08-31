@@ -256,12 +256,16 @@ test.describe('Point of Sale', () => {
             }
             throw new Error(`the till never advanced past "${before}"`);
         };
-        for (let i = 0; i < 4; i += 1) {
-            const label = (await primary.textContent() || '').trim();
+        // open → sent → served → awaiting_payment is three presses; the extra
+        // headroom is for the states a QR order can start in, not for retries —
+        // `advance` already handles a swallowed press itself.
+        let label = '';
+        for (let i = 0; i < 6; i += 1) {
+            label = (await primary.textContent() || '').trim();
             if (/take payment|terima pembayaran/i.test(label)) break;
             await advance();
         }
-        await expect(primary, 'the order never reached awaiting_payment')
+        await expect(primary, `the order never reached awaiting_payment (stopped at "${label}")`)
             .toHaveText(/take payment|terima pembayaran/i);
 
         // The receipt opens in a popup that prints itself. Caught and closed, or
@@ -388,6 +392,74 @@ test.describe('Point of Sale', () => {
         await page.fill('#pos-void-why', 'Spec cleanup');
         await page.locator('#pos-drawer-form button[type="submit"], button[form="pos-drawer-form"]').first().click();
         await expect(page.locator('#pos-order-title')).toHaveText(/no order open|belum ada pesanan/i, { timeout: 20000 });
+    });
+
+    test('the floor plan is a room, and management can rearrange it', async ({ page }) => {
+        // The floor was an auto-fill CSS grid until 2026-08-31 and it could not
+        // work: equal cells that ignore how wide a table actually is, at the
+        // ~728px the canvas really gets once the order panel takes its share.
+        // Six tables already overlapped. Both facts this asserts — no overlap,
+        // nothing through the walls — were false on the shipped page.
+        //
+        // Writes nothing: it drags and CANCELS. Save is the one path that
+        // touches Firestore and it is deliberately not exercised here.
+        await page.goto('/pos');
+        await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
+        await page.click('#nav-container [data-view="tables"]');
+        await page.waitForSelector('#pos-floor .pos-table', { timeout: 20000 });
+        await page.waitForTimeout(600);
+
+        const geometry = await page.evaluate(() => {
+            const floor = document.getElementById('pos-floor');
+            const fr = floor.getBoundingClientRect();
+            const boxes = [...floor.querySelectorAll('.pos-table')].map((el) => {
+                const r = el.getBoundingClientRect();
+                return { x: r.left - fr.left, y: r.top - fr.top, w: r.width, h: r.height };
+            });
+            let overlap = 0, outside = 0;
+            for (let i = 0; i < boxes.length; i += 1) {
+                const a = boxes[i];
+                if (a.x < -1 || a.y < -1 || a.x + a.w > fr.width + 1 || a.y + a.h > fr.height + 1) outside += 1;
+                for (let j = i + 1; j < boxes.length; j += 1) {
+                    const b = boxes[j];
+                    if (a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h) overlap += 1;
+                }
+            }
+            return { count: boxes.length, overlap, outside };
+        });
+        expect(geometry.count, 'the QA outlet has no tables to draw').toBeGreaterThan(0);
+        expect(geometry.overlap, 'tables are drawn on top of each other').toBe(0);
+        expect(geometry.outside, 'a table is drawn through the wall of the room').toBe(0);
+
+        // Arranging is `pos.manage`. The QA account is the owner, so the toggle
+        // is there; a cashier reads the floor and does not redraw the room.
+        const toggle = page.locator('#pos-arrange-btn');
+        await expect(toggle).toBeVisible();
+        await toggle.click();
+        await expect(page.locator('.pos-arrange-bar')).toBeVisible();
+        await expect(toggle, 'a mode you cannot see you are in').toHaveClass(/is-on/);
+
+        const table = page.locator('#pos-floor .pos-table').first();
+        const before = await table.evaluate((el) => `${el.style.left},${el.style.top}`);
+        const box = await table.boundingBox();
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(box.x + box.width / 2 + 160, box.y + box.height / 2 + 80, { steps: 10 });
+        await page.mouse.up();
+        await page.waitForTimeout(250);
+
+        const after = await table.evaluate((el) => `${el.style.left},${el.style.top}`);
+        expect(after, 'dragging did not move the table').not.toBe(before);
+        // A drag is not a tap. Opening an order because a manager nudged a table
+        // is the failure this guards.
+        await expect(page.locator('#pos-order-title')).toHaveText(/no order open|belum ada pesanan/i);
+
+        await page.click('[data-arrange="cancel"]');
+        await page.waitForTimeout(500);
+        const reverted = await page.locator('#pos-floor .pos-table').first()
+            .evaluate((el) => `${el.style.left},${el.style.top}`);
+        expect(reverted, 'Cancel left the drag applied').toBe(before);
+        await expect(page.locator('.pos-arrange-bar')).toHaveCount(0);
     });
 
     test('every till view holds its vertical rhythm', async ({ page }) => {

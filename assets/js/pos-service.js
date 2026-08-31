@@ -159,6 +159,41 @@ export const POS_METHODS = {
         return { id: tableId, ...payload };
     },
 
+    // Where each table SITS in the room.
+    //
+    // `layout_x` / `layout_y` are the table's centre as a percentage of the floor
+    // canvas (0–100), not pixels: the canvas is responsive and a pixel grid saved
+    // on a 1440px laptop would be wrong on the 10" tablet at the host stand.
+    //
+    // Written as ONE batch. Dragging one table usually nudges none of the others,
+    // but "reset to grid" moves every table at once, and twenty sequential
+    // updateDoc calls is twenty chances to half-apply a layout.
+    //
+    // pos_tables has no `hasOnly` in firestore.rules — it validates label,
+    // dimension_id and status and permits everything else — so these two fields
+    // need no rules change. The bounds are therefore enforced HERE and nowhere
+    // else, which is why the clamp is not optional.
+    async savePosTableLayout(userId, positions = []) {
+        if (!userId) throw new Error('userId required');
+        const clamp = (n) => Math.min(100, Math.max(0, Math.round((Number(n) || 0) * 10) / 10));
+        const rows = (positions || [])
+            .filter((p) => p && p.id)
+            .slice(0, 300);
+        if (!rows.length) return 0;
+
+        const scope = this._scope(userId);
+        const batch = writeBatch(this.db);
+        rows.forEach((p) => {
+            batch.update(doc(this.db, `${scope}/pos_tables/${p.id}`), {
+                layout_x: clamp(p.x), layout_y: clamp(p.y), updated_at: serverTimestamp()
+            });
+        });
+        await batch.commit();
+        await this._auditCreateBestEffort(userId, 'pos_table.layout_saved', 'pos_tables', null,
+            { count: rows.length });
+        return rows.length;
+    },
+
     async archivePosTable(userId, tableId, { restore = false } = {}) {
         if (!userId || !tableId) throw new Error('userId and tableId required');
         await updateDoc(doc(this.db, `${this._scope(userId)}/pos_tables/${tableId}`), {

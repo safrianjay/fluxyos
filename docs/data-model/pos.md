@@ -1,7 +1,7 @@
 ---
 status: current
 owns: [pos_tables, pos_orders, pos_table_directory]
-updated: 2026-08-21
+updated: 2026-08-31
 source: docs/POS_IMPLEMENTATION_PLAN.md
 ---
 
@@ -49,8 +49,30 @@ would drift, and the direction they drift in is a flattering gross margin.
 | `zone` | string ≤40 \| null | "Lantai 2", "Teras" — groups the grid |
 | `qr_token` | string 43 | 256 bits of CSPRNG output, base64url. Never derived from the table id, a sequence, or a timestamp |
 | `status` | enum | `active` \| `archived`. Soft archive only |
-| `sort` | integer | Grid order |
+| `sort` | integer | List order in "Manage tables" |
+| `layout_x` / `layout_y` | number 0–100 \| absent | Where the table sits on the floor plan: its **centre**, as a percentage of the canvas. Absent = never placed, and the floor packs it into a row automatically |
 | `created_at` / `updated_at` | Timestamp | Server-set |
+
+### The floor plan (2026-08-31)
+
+Percentages, not pixels. The canvas is responsive and keeps a fixed aspect
+ratio precisely so a percentage means something stable — a pixel grid saved on a
+1440px laptop would be wrong on the 10" tablet at the host stand.
+
+`pos_tables` has **no `hasOnly`** in `firestore.rules` — it validates `label`,
+`dimension_id` and `status` and permits everything else — so these two fields
+needed no rules change. That also means **the bounds are enforced in
+`savePosTableLayout` and nowhere else**; the clamp there is not optional.
+
+A table with no position is not broken. `layoutUnplacedTables` packs every
+unplaced table into rows against the measured canvas and the measured
+footprints, after paint. The first cut computed positions from a proportional
+formula that ignored how wide a table actually is, and at the width the floor
+really gets (~728px — the order panel takes the rest) six tables already
+overlapped and twelve overlapped twelve times.
+
+Arranging is the `pos.manage` capability, the same one that creates and archives
+tables. A cashier reads the floor; they do not redraw the room.
 
 **Occupancy is not stored.** It derives from whether an open `pos_orders` doc
 references the table. Same principle as stock on hand being summed rather than

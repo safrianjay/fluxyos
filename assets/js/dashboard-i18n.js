@@ -5115,6 +5115,18 @@
         "Each close records what was counted against what was expected.": "Setiap penutupan mencatat jumlah hitungan dibanding jumlah yang seharusnya.",
         "No shift has been closed at this outlet yet.": "Belum ada shift yang ditutup di outlet ini.",
         "Could not load shift history.": "Tidak bisa memuat riwayat shift.",
+        // Floor plan (2026-08-31). "Cancel", "Manage tables" and "Free" are
+        // already in this dictionary — a second entry for any of them would
+        // silently override the first everywhere, since a duplicate key in one
+        // object literal is the LAST one to win.
+        "Arrange layout": "Atur denah",
+        "Done arranging": "Selesai mengatur",
+        "Reset to grid": "Kembalikan ke grid",
+        "Save layout": "Simpan denah",
+        "Drag each table to where it stands in the room.": "Geser tiap meja ke posisinya di ruangan.",
+        "No tables on this floor.": "Tidak ada meja di lantai ini.",
+        "Could not save the layout.": "Tidak bisa menyimpan denah.",
+
         // Orders board (reference-aligned, 2026-08-31). "Completed", "Pay Bills",
         // "Items", "Qty", "Takeaway" and "Receipt" are already in this
         // dictionary — a second entry for any of them would silently override
