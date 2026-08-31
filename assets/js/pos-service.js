@@ -288,7 +288,10 @@ export const POS_METHODS = {
         };
     },
 
-    async createPosOrder(userId, { dimensionId, tableId = null, tableLabel = null, channel = 'staff', note = null, shiftId = null } = {}) {
+    async createPosOrder(userId, {
+        dimensionId, tableId = null, tableLabel = null, channel = 'staff', note = null, shiftId = null,
+        customerName = null, customerPhone = null, guestCount = null
+    } = {}) {
         if (!userId) throw new Error('userId required');
         if (!dimensionId) throw new Error('Pick an outlet before opening an order.');
         const scope = this._scope(userId);
@@ -318,6 +321,16 @@ export const POS_METHODS = {
             service_charge_amount: 0, tax_amount: 0, total_amount: 0,
             payments: [], paid_amount: 0,
             note: this._nullableString(note, 200),
+            // Who the order is for. All three optional: a queue does not wait
+            // while a cashier types a phone number, so an order with none of
+            // them is as valid as one with all three.
+            customer_name: this._nullableString(customerName, 80),
+            customer_phone: this._nullableString(customerPhone, 32),
+            // Covers, for a dine-in. Whole people only — rules refuse a
+            // fractional count, and the seam that produces it should not be the
+            // place that discovers this.
+            guest_count: Number.isInteger(Number(guestCount)) && Number(guestCount) > 0
+                ? Math.min(999, Number(guestCount)) : null,
             // Which drawer rang this up. Null when no shift was open — those
             // sales are real but sit outside every cash count, which is exactly
             // what the POS overview nudges about.

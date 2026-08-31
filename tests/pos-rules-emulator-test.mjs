@@ -366,6 +366,37 @@ async function main() {
     await expectOutcome('viewer may still read orders', true, () =>
         getDoc(doc(db, `workspaces/${WS}/pos_orders/o3`)));
 
+    console.log('\n— who the order is for —');
+    // Captured at CREATE, because a dine-in needs a table and a cover count and a
+    // takeaway needs a way to call the customer back — and both are known before
+    // the first item is rung up. Every field is optional: a queue does not wait
+    // while a cashier types a phone number.
+    await setMemberRole(uid, 'finance');
+    await expectOutcome('an order with customer, phone and covers is allowed', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_orders/o-guest`), order({
+            order_number: 'G-1', customer_name: 'Pak Budi', customer_phone: '0812-3456-7890', guest_count: 4
+        })));
+    await expectOutcome('an order with none of them is still allowed', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_orders/o-noguest`), order({ order_number: 'G-2' })));
+    await expectOutcome('a 200-character customer name is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_orders/o-longname`), order({
+            order_number: 'G-3', customer_name: 'x'.repeat(200)
+        })));
+    await expectOutcome('a fractional cover count is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_orders/o-halfguest`), order({
+            order_number: 'G-4', guest_count: 2.5
+        })));
+    await expectOutcome('a negative cover count is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_orders/o-negguest`), order({
+            order_number: 'G-5', guest_count: -1
+        })));
+    // A cashier is the role that actually takes these details at the counter.
+    await setMemberRole(uid, 'cashier');
+    await expectOutcome('a cashier may take the customer details too', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_orders/o-guest-cashier`), order({
+            order_number: 'G-6', customer_name: 'Ibu Sari', guest_count: 2
+        })));
+
     console.log('\n— the settlement split: the field NAMES are the contract —');
     // The bug this exists for, 2026-08-30 → 2026-08-31: the DAL helper returned
     // `{ cash, clearing }` and both call sites spread it straight into a

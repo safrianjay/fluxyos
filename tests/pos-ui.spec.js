@@ -424,11 +424,13 @@ test.describe('Point of Sale', () => {
         });
 
         const newOrder = page.locator('#pos-new-order');
-        // Through the chooser: "Create Order" only opens a question, and a
-        // question is not a write. Take Away is the press that actually creates
-        // the order, and therefore the one with a window to observe.
+        // Through the dialog. "Create Order" only opens a form, and choosing a
+        // type only changes which fields it shows — neither is a write. Submit
+        // is the press that actually creates the order, and therefore the only
+        // one with a window to observe.
         await newOrder.click();
-        await page.locator('[data-type="takeaway"]').click();
+        await page.locator('#pos-create-modal [data-type="takeaway"]').click();
+        await page.locator('#pos-create-submit').click();
 
         // Mid-write: the attribute is set and the control refuses the pointer.
         await expect(page.locator('body')).toHaveAttribute('data-pos-busy', '1', { timeout: 5000 });

@@ -318,12 +318,10 @@
         .pos-col > * + *    { margin-top: 20px; }
         .pos-shell          { gap: 20px; }
         .pos-view section + section { margin-top: 20px; }
-        /* The header introduces the view directly beneath it, so it sits closer
-           to it than the 20px `.fluxy-section-stack` rhythm gives every other
-           pair — a title floating 20px above the thing it names reads as two
-           unrelated blocks. */
-        .pos-pagehead       { margin-bottom: 0; }
-        .pos-pagehead + *   { margin-top: 14px !important; }
+        /* The canvas now begins with the WORK. The page header moved into the
+           topbar, so the first thing under the bar is the shift strip or the
+           board itself rather than 90px of the view repeating its own name. */
+        .fluxy-page-canvas > :first-child { margin-top: 0; }
 
         /* The shared column: views switch here, the order panel stays put. */
         .pos-col { min-width: 0; container-type: inline-size; container-name: posboard; }
@@ -467,9 +465,60 @@
            menu offered. */
         .pos-line-mods { font-size: 12px; color: #64748B; margin-top: 2px; }
 
-        /* ── Order type chooser ─────────────────────────────────────────────
-           Two big targets, because this is the first decision of every order and
-           it is made with a customer waiting. */
+        /* ── Create Order dialog ────────────────────────────────────────────
+           A centred POPUP, not the right-hand drawer the rest of the till uses.
+           The drawer is for acting on the order already on screen; this is the
+           thing that brings one into existence, and it asks for details before
+           anything exists to attach them to. Centre-screen says "answer this
+           first" in a way a panel sliding in beside the work does not. */
+        .pos-modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 90; }
+        .pos-modal {
+            position: fixed; z-index: 91; left: 50%; top: 50%;
+            transform: translate(-50%, -50%);
+            width: min(460px, calc(100vw - 32px)); max-height: 92vh; overflow-y: auto;
+            background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(15,23,42,.24);
+        }
+        .pos-modal-head {
+            padding: 18px 20px 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+        }
+        .pos-modal-title { font-size: 16px; font-weight: 600; color: #0B0F19; }
+        .pos-modal-sub { font-size: 12px; color: #64748B; margin-top: 2px; }
+        .pos-modal-close {
+            border: 0; background: none; color: #94A3B8; cursor: pointer; padding: 2px; line-height: 1; flex-shrink: 0;
+        }
+        .pos-modal-close:hover { color: #0F172A; }
+        .pos-modal-close svg { width: 20px; height: 20px; }
+        .pos-modal-body { padding: 16px 20px; display: grid; gap: 14px; }
+        .pos-modal-foot {
+            padding: 14px 20px 18px; display: flex; gap: 8px; border-top: 1px solid #F1F5F9;
+        }
+        .pos-modal-foot .pos-btn-primary, .pos-modal-foot .pos-btn-ghost { flex: 1 1 auto; justify-content: center; }
+
+        /* The type switch. A segmented control rather than two cards: the choice
+           is now the top of a FORM whose fields change with it, so it has to read
+           as a setting on that form and not as the whole decision. */
+        .pos-typeseg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #F1F5F9; padding: 4px; border-radius: 10px; }
+        .pos-typeseg button {
+            min-height: 38px; border: 0; background: none; border-radius: 8px;
+            font-size: 14px; font-weight: 500; color: #475569; cursor: pointer;
+        }
+        .pos-typeseg button.is-on { background: #fff; color: #0F172A; font-weight: 600; box-shadow: 0 1px 2px rgba(15,23,42,.08); }
+        .pos-typeseg button:focus-visible { outline: 2px solid #EA580C; outline-offset: 1px; }
+
+        .pos-field label { display: block; font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 5px; }
+        .pos-field .opt { font-weight: 400; color: #94A3B8; }
+        .pos-field input, .pos-field select, .pos-field textarea {
+            width: 100%; min-height: 42px; padding: 8px 11px;
+            border: 1px solid #E2E8F0; border-radius: 9px; font-size: 14px; color: #0F172A; background: #fff;
+        }
+        .pos-field textarea { min-height: 64px; resize: vertical; }
+        .pos-field input:focus, .pos-field select:focus, .pos-field textarea:focus {
+            outline: 2px solid #EA580C; outline-offset: 1px; border-color: #CBD5E1;
+        }
+        .pos-field-row { display: grid; grid-template-columns: 1fr 110px; gap: 10px; }
+        @media (max-width: 420px) { .pos-field-row { grid-template-columns: 1fr; } }
+
+        /* ── Order type chooser (legacy drawer styles, still used nowhere else) */
         .pos-ordertype { display: grid; gap: 10px; }
         .pos-ordertype-opt {
             display: flex; align-items: center; gap: 12px; text-align: left;
@@ -855,7 +904,7 @@
 
         /* ── Topbar ─────────────────────────────────────────────────────── */
         .pos-topbar {
-            height: 60px; flex-shrink: 0; background: #fff;
+            min-height: 64px; flex-shrink: 0; background: #fff;
             border-bottom: 1px solid #E2E8F0; display: flex; align-items: center;
             gap: 14px; padding: 0 20px; position: sticky; top: 0; z-index: 30;
         }
@@ -876,14 +925,32 @@
         body.is-offline .pos-conn-text::after { content: ' — offline'; }
 
         /* ── Page header ────────────────────────────────────────────────── */
-        .pos-pagehead { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
-        .pos-pagetitle { font-size: 24px; font-weight: 700; letter-spacing: -0.025em; color: #0B0F19; line-height: 1.2; }
+        /* ── The header, in the topbar ──────────────────────────────────
+           20px, not the canvas title's 24px: this shares a 60px bar with two
+           buttons and the connection state, and it is on-scale either way. */
+        .pos-topbar-head { min-width: 0; flex: 1 1 auto; }
+        .pos-topbar-title {
+            font-size: 20px; font-weight: 700; letter-spacing: -0.02em; color: #0B0F19;
+            line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .pos-topbar-sub {
+            font-size: 12px; color: #64748B; line-height: 1.35; margin-top: 1px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .pos-topbar-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        /* Below this the bar cannot hold a sentence, two buttons and the bell.
+           The subtext goes first — it is the only piece that repeats on every
+           visit and is read once. */
+        @media (max-width: 1100px) { .pos-topbar-sub { display: none; } }
+        @media (max-width: 720px) {
+            .pos-topbar-actions .pos-btn-ghost span:not(.pos-btn-count),
+            .pos-topbar-actions .pos-btn-primary span { display: none; }
+        }
         /* 14px, not the 12px the breadcrumb used: this is a sentence to read
            rather than a trail to scan, and it now carries the only explanation
            each view gets. Bounded so it wraps at a readable measure instead of
            running the full width of a 1540px canvas. */
-        .pos-pagesub { margin-top: 4px; font-size: 14px; color: #64748B; line-height: 1.45; max-width: 62ch; }
-        .pos-pagehead-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
         .pos-btn-ghost, .pos-btn-primary {
             display: inline-flex; align-items: center; gap: 8px; min-height: 42px;
             padding: 0 15px; border-radius: 10px; font-size: 14px; font-weight: 600;
@@ -961,6 +1028,24 @@
             <button class="pos-burger md:hidden" id="pos-burger" aria-label="Open menu">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
+            <!-- The page header IS the topbar. It used to live in the canvas, so
+                 every view spent its first 90px re-introducing itself and the
+                 work started below the fold on a 10" tablet. -->
+            <div class="pos-topbar-head">
+                <h1 class="pos-topbar-title" id="pos-view-title">Point of Sale (POS)</h1>
+                <p class="pos-topbar-sub" id="pos-view-sub">Ring up a sale — scan, search or tap a product.</p>
+            </div>
+            <div class="pos-topbar-actions">
+                <button id="pos-tables-btn" type="button" class="pos-btn-ghost">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="7" rx="2"/><path d="M7 11v9M17 11v9"/></svg>
+                    <span>Table Order</span>
+                    <span id="pos-tables-count" class="pos-btn-count hidden"></span>
+                </button>
+                <button id="pos-new-order" type="button" class="pos-btn-primary" aria-label="Create an order" disabled>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                    <span>Create Order</span>
+                </button>
+            </div>
             <div class="pos-topbar-right">
                 <span class="pos-conn" id="pos-conn"><span class="pos-conn-dot"></span><span class="pos-conn-text">Online</span></span>
                 <!-- Everything that used to stack above the catalogue as a banner
@@ -979,31 +1064,6 @@
 
         <div class="fluxy-page-shell">
             <div class="fluxy-page-canvas fluxy-section-stack">
-
-                <!-- Page header: title + breadcrumb + actions, as the reference -->
-                <div class="pos-pagehead">
-                    <div>
-                        <h1 class="pos-pagetitle" id="pos-view-title">Point of Sale (POS)</h1>
-                        <!-- What this view is FOR, replacing the breadcrumb.
-                             "FluxyOS • Pos" said nothing the 24px title above it
-                             had not already said, and the till never changes URL
-                             — four in-page views behind one path — so there was
-                             no trail to retrace. Every view now explains itself
-                             here instead. -->
-                        <p class="pos-pagesub" id="pos-view-sub">Ring up a sale — scan, search or tap a product.</p>
-                    </div>
-                    <div class="pos-pagehead-actions">
-                        <button id="pos-tables-btn" type="button" class="pos-btn-ghost">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="7" rx="2"/><path d="M7 11v9M17 11v9"/></svg>
-                            <span>Table Order</span>
-                            <span id="pos-tables-count" class="pos-btn-count hidden"></span>
-                        </button>
-                        <button id="pos-new-order" type="button" class="pos-btn-primary" aria-label="Create an order" disabled>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                            <span>Create Order</span>
-                        </button>
-                    </div>
-                </div>
 
                 <div id="pos-offline" class="pos-offline" role="status">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636 5.636 18.364M12 20h.01M8.111 12.111a5.5 5.5 0 017.778 0M4.929 8.929a10 10 0 0114.142 0"></path></svg>

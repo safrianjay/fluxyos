@@ -95,6 +95,9 @@ nothing would report it.
 | `total_amount` | integer | What the customer owes |
 | `payments` | array | `{ payment_id, method, provider, amount, reference, status, received_at, received_by }` |
 | `paid_amount` | integer | Σ settled payments |
+| `customer_name` | string ≤80 \| null | Taken in the Create Order dialog. Optional |
+| `customer_phone` | string ≤32 \| null | How to call a takeaway back. Optional |
+| `guest_count` | int 0–999 \| null | Covers, for a dine-in. Whole people — rules refuse a fractional count |
 | `version` | integer | Bumped on every write — the concurrency guard |
 | `transaction_id` / `stock_adjustment_id` | string \| null | What this order emitted. **The idempotency key** |
 | `refund_transaction_id` / `refund_reason` / `refunded_at` | | The refund trail |
@@ -160,6 +163,29 @@ belongs to its ingredients rather than to itself.
 ⚠️ `getPosMenu` projects an explicit whitelist, so `track_stock` and `barcode`
 had to be added to it. A field on `items` that is not in that map reaches the
 till as `undefined` and the feature silently does nothing.
+
+### Who the order is for (2026-09-01)
+
+Captured when the order is CREATED, in the Create Order dialog, because both
+answers are known before the first item is rung up — and because the dining type
+used to be decided afterwards by a select in the order panel that is DISABLED
+once an order exists, so getting it wrong meant voiding and starting again.
+
+**Everything is optional except the table.** A queue does not wait while a
+cashier types a phone number, so an order carrying nothing but a type is as valid
+as one carrying all of it. A dine-in with no table is the one refusal: it has
+nowhere to sit and nothing downstream could repair that.
+
+A takeaway is never asked for a table it will not have, nor for a cover count
+that means nothing without one.
+
+⚠️ These three are the first `pos_orders` fields added since the collection
+shipped, and `pos_orders` has a `hasOnly` — so unlike modifiers, barcode and the
+hold label, this **required a rules change and a deploy** (2026-08-31, stamped).
+They are scalars, so unlike `lines[]`/`payments[]` they are bounded in rules as
+well as in the DAL: nine expressions, which the lean POS validators afford, and
+worth spending because they are the only fields on this document a customer's
+own words reach.
 
 ### `channel` is the connector seam
 

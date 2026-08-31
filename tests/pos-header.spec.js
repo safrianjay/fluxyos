@@ -77,10 +77,18 @@ test('every view names itself and says what it is for', async ({ page }) => {
         await expect(page.locator(`.pos-view[data-view="${view}"]`)).toBeVisible();
         await page.waitForTimeout(300);
 
-        const head = await page.evaluate(() => ({
-            title: (document.getElementById('pos-view-title') || {}).textContent || '',
-            sub: (document.getElementById('pos-view-sub') || {}).textContent || ''
-        }));
+        const head = await page.evaluate(() => {
+            const t = document.getElementById('pos-view-title');
+            return {
+                title: (t || {}).textContent || '',
+                sub: (document.getElementById('pos-view-sub') || {}).textContent || '',
+                // It must be in the TOPBAR. In the canvas it cost every view its
+                // first ~90px re-introducing itself, which on a 10" tablet put
+                // the work below the fold.
+                inTopbar: !!(t && t.closest('.pos-topbar'))
+            };
+        });
+        expect(head.inTopbar, 'the page header must live in the topbar, not the canvas').toBe(true);
         expect(head.title.trim(), `"${view}" has no title`).not.toBe('');
         expect(head.sub.trim(), `"${view}" has no subtext`).not.toBe('');
         // The subtext must EXPLAIN, not restate. A breadcrumb that echoed the
@@ -90,45 +98,69 @@ test('every view names itself and says what it is for', async ({ page }) => {
         expect(head.sub, 'the breadcrumb is gone; this should be a sentence').not.toMatch(/FluxyOS\s*•/);
     }
 
-    // The header introduces what is under it, so it sits closer than the 20px
-    // rhythm every other pair on the page gets.
-    const gap = await page.evaluate(() => {
-        const head = document.querySelector('.pos-pagehead').getBoundingClientRect();
-        let el = document.querySelector('.pos-pagehead').nextElementSibling;
-        while (el && el.getBoundingClientRect().height === 0) el = el.nextElementSibling;
-        return el ? Math.round(el.getBoundingClientRect().top - head.bottom) : null;
+    // And the canvas begins with the WORK. Nothing in it may repeat the page
+    // title, which is what the old in-canvas header did.
+    const canvasStart = await page.evaluate(() => {
+        const canvas = document.querySelector('.fluxy-page-canvas');
+        const first = [...canvas.children].find((el) => el.getBoundingClientRect().height > 0);
+        return first ? { cls: String(first.className), top: Math.round(first.getBoundingClientRect().top) } : null;
     });
-    expect(gap, 'the header floats away from the view it introduces').toBeLessThanOrEqual(28);
-    expect(gap, 'the header is touching the view below it').toBeGreaterThanOrEqual(8);
+    expect(canvasStart, 'the canvas is empty').not.toBeNull();
+    expect(canvasStart.cls, 'the page title is back in the canvas').not.toMatch(/pagehead|pagetitle/);
 });
 
 test('Create Order asks dine in or take away before it creates anything', async ({ page }) => {
     await openTill(page);
     await expect(page.locator('#pos-new-order')).toContainText(/create order/i);
 
-    // Take away: nothing left to ask.
     await page.click('#pos-new-order');
-    await expect(page.locator('.pos-ordertype')).toBeVisible({ timeout: 10000 });
-    const options = await page.locator('.pos-ordertype-opt').allInnerTexts();
-    expect(options.length, 'both ways an order can go').toBe(2);
-    expect(options.join(' ')).toMatch(/dine in/i);
-    expect(options.join(' ')).toMatch(/take away/i);
+    // The wrapper has no size of its own — everything inside it is fixed —  so
+    // visibility is asserted on the dialog, and removal on the wrapper.
+    const modal = page.locator('#pos-create-modal .pos-modal');
+    const wrapper = page.locator('#pos-create-modal');
+    await expect(modal, 'Create Order must open a popup, not the side drawer').toBeVisible({ timeout: 10000 });
 
-    // Nothing is created by opening the chooser — the decision comes first.
+    const types = await modal.locator('[data-type]').allInnerTexts();
+    expect(types.join(' ')).toMatch(/dine in/i);
+    expect(types.join(' ')).toMatch(/take away/i);
+
+    // Opening the dialog creates nothing — the details come first.
     await expect(page.locator('#pos-order-title')).toHaveText(/no order open|belum ada pesanan/i);
 
-    await page.click('[data-type="takeaway"]');
+    // Dine in asks for a table and covers; take away asks for neither, because
+    // it will never have one and the other means nothing without it.
+    await expect(modal.locator('#pos-create-table')).toBeVisible();
+    await expect(modal.locator('#pos-create-covers')).toBeVisible();
+    await modal.locator('[data-type="takeaway"]').click();
+    await expect(modal.locator('#pos-create-table'),
+        'a takeaway was asked to pick a table').toBeHidden();
+    await expect(modal.locator('#pos-create-covers'),
+        'a takeaway was asked for a cover count').toBeHidden();
+    // The details it CAN have are still offered.
+    await expect(modal.locator('#pos-create-name')).toBeVisible();
+    await expect(modal.locator('#pos-create-phone')).toBeVisible();
+    await expect(modal.locator('#pos-create-note')).toBeVisible();
+
+    // Take away, with a customer.
+    await modal.locator('#pos-create-name').fill('Pak Budi');
+    await modal.locator('#pos-create-phone').fill('0812-3456-7890');
+    await page.click('#pos-create-submit');
+    await expect(wrapper).toHaveCount(0, { timeout: 20000 });
     await expect(page.locator('#pos-order-title')).toHaveText(/takeaway|bawa pulang/i, { timeout: 20000 });
+    // Captured details that are never shown back would make the dialog a form
+    // that goes nowhere.
+    await expect(page.locator('#pos-order-sub')).toContainText('Pak Budi');
     await voidOpen(page);
 
-    // Dine in: it needs a table, so it hands over to the floor rather than
-    // creating an order with nowhere to sit.
+    // A dine-in with no table has nowhere to sit, and nothing downstream could
+    // repair that — so it is the one thing the dialog refuses.
     await page.click('#pos-new-order');
-    await expect(page.locator('.pos-ordertype')).toBeVisible({ timeout: 10000 });
-    await page.click('[data-type="dine_in"]');
-    await expect(page.locator('.pos-view[data-view="tables"]'),
-        'dine in must land on the floor plan, not create a tableless order').toBeVisible({ timeout: 10000 });
+    await expect(modal).toBeVisible({ timeout: 10000 });
+    await page.click('#pos-create-submit');
+    await expect(modal, 'a tableless dine-in was created anyway').toBeVisible();
+    await expect(modal.locator('#pos-create-error')).toBeVisible();
     await expect(page.locator('#pos-order-title')).toHaveText(/no order open|belum ada pesanan/i);
+    await modal.locator('.pos-modal-close').click();
 });
 
 test('a counter is not asked a question with one answer', async ({ page }) => {
@@ -144,7 +176,7 @@ test('a counter is not asked a question with one answer', async ({ page }) => {
 
         await page.click('#pos-new-order');
         await page.waitForTimeout(1200);
-        expect(await page.locator('.pos-ordertype').count(),
+        expect(await page.locator('#pos-create-modal').count(),
             'a retail till was asked to choose a dining option').toBe(0);
     } finally {
         await page.goto('/pos').catch(() => {});

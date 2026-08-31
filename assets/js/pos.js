@@ -1600,7 +1600,17 @@ function renderOrder() {
 
     const st = STATUS[o.status] || STATUS.open;
     $('pos-order-title').textContent = o.table_label ? `Table ${o.table_label}` : 'Takeaway';
-    $('pos-order-sub').textContent = `Order ${o.order_number || ''}${o.channel === 'qr' ? ' · scanned by the customer' : ''}`;
+    // Who it is for, beside the order number. Capturing a customer and then
+    // never showing them back would make the dialog a form that goes nowhere —
+    // and the name is what a cashier calls out when the food is ready.
+    const who = [
+        o.customer_name || null,
+        o.guest_count ? `${o.guest_count} ${o.guest_count === 1 ? 'guest' : 'guests'}` : null,
+        o.customer_phone || null
+    ].filter(Boolean).join(' · ');
+    $('pos-order-sub').textContent = `Order ${o.order_number || ''}`
+        + (o.channel === 'qr' ? ' · scanned by the customer' : '')
+        + (who ? ` · ${who}` : '');
     // `.fluxy-status` carries colour and nothing else — no padding, no
     // background, no radius — so the label rendered as bare tinted text jammed
     // against the table name. `.fluxy-table-status` is the actual pill. Same
@@ -1784,7 +1794,7 @@ function renderOrder() {
 
 // ── Actions ──────────────────────────────────────────────────────────────────
 
-async function startOrder(tableId) {
+async function startOrder(tableId, details = {}) {
     const t = state.overview.tables.find((x) => x.id === tableId);
     try {
         const order = await ds.createPosOrder(state.uid, {
@@ -1792,6 +1802,13 @@ async function startOrder(tableId) {
             tableId: tableId || null,
             tableLabel: t ? t.label : null,
             channel: 'staff',
+            // Who it is for, captured in the Create Order dialog. Absent for
+            // every other caller — the floor plan, the table select, a scan into
+            // an empty cart — which all open an order with nothing known yet.
+            customerName: details.customerName || null,
+            customerPhone: details.customerPhone || null,
+            guestCount: details.guestCount || null,
+            note: details.note || null,
             // Stamps which drawer rang it up. Null when no shift is open — the
             // sale is still real, it just sits outside every cash count.
             shiftId: state.shift ? state.shift.id : null
@@ -2160,54 +2177,143 @@ function openRefundDrawer() {
 // queue should be able to press Hold, press Enter and move on; the label is for
 // the times there are three carts down and "Takeaway #019" identifies none of
 // them.
-// Dine in or take away, asked BEFORE the order exists.
+// Create Order: a popup that asks who the order is for before it exists.
 //
-// It used to be decided after the fact by a select inside the order panel, which
-// meant the cashier created a takeaway order and then changed it — and that
-// select is disabled once an order is open, so getting it wrong meant voiding
-// and starting again. The question belongs at the start, where the answer is
-// still free.
+// It replaced a drawer, and the difference is not decoration. The right-hand
+// drawer is where the till acts on the order ALREADY on screen; this is the
+// thing that brings one into existence, and centre-screen is how a form says
+// "answer this first" rather than sliding in beside work that has not started.
 //
-// Dine in does not create anything here: it needs a table, so it hands over to
-// the floor plan. Take away has nothing left to ask.
-function openOrderTypeDrawer() {
-    const d = drawer({
-        title: 'Create Order',
-        subtitle: 'Where is this order going?',
-        body: `
-            <div class="pos-ordertype">
-                <button type="button" class="pos-ordertype-opt" data-type="dine_in">
-                    <span class="pos-ordertype-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="7" rx="2"/><path d="M7 11v9M17 11v9"/></svg>
-                    </span>
-                    <span class="pos-ordertype-body">
-                        <span class="pos-ordertype-name">Dine In</span>
-                        <span class="pos-ordertype-hint">Pick the table it belongs to</span>
-                    </span>
+// The type is the top of the form rather than the whole decision, because the
+// fields below it change: a dine-in needs a table and a cover count, a takeaway
+// needs neither and would be asked for a table it does not have.
+//
+// EVERY DETAIL IS OPTIONAL EXCEPT THE TABLE. A queue does not wait while a
+// cashier types a phone number, so an order with nothing but a type is as valid
+// as one with all of it — but a dine-in with no table has nowhere to sit, and
+// nothing downstream could repair that.
+function openCreateOrderDialog() {
+    const tables = ((state.overview && state.overview.tables) || []);
+    const taken = new Set(((state.overview && state.overview.activeOrders) || [])
+        .map((o) => o.table_id).filter(Boolean));
+
+    let type = 'dine_in';
+
+    document.getElementById('pos-create-modal')?.remove();
+    const el = document.createElement('div');
+    el.id = 'pos-create-modal';
+    el.innerHTML = `
+        <div class="pos-modal-backdrop" data-close></div>
+        <div class="pos-modal" role="dialog" aria-modal="true" aria-labelledby="pos-create-title">
+            <div class="pos-modal-head">
+                <div>
+                    <h2 class="pos-modal-title" id="pos-create-title">Create Order</h2>
+                    <p class="pos-modal-sub">Who is this order for?</p>
+                </div>
+                <button type="button" class="pos-modal-close" data-close aria-label="Close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18 18 6M6 6l12 12"/></svg>
                 </button>
-                <button type="button" class="pos-ordertype-opt" data-type="takeaway">
-                    <span class="pos-ordertype-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2h12l2 6H4z"/><path d="M5 8v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
-                    </span>
-                    <span class="pos-ordertype-body">
-                        <span class="pos-ordertype-name">Take Away</span>
-                        <span class="pos-ordertype-hint">Start it straight away</span>
-                    </span>
-                </button>
-            </div>`
+            </div>
+            <form class="pos-modal-body" id="pos-create-form">
+                <div class="pos-typeseg" role="tablist" aria-label="Order type">
+                    <button type="button" role="tab" data-type="dine_in" class="is-on" aria-selected="true">Dine In</button>
+                    <button type="button" role="tab" data-type="takeaway" aria-selected="false">Take Away</button>
+                </div>
+
+                <div class="pos-field" data-only="dine_in">
+                    <label for="pos-create-table">Table</label>
+                    <select id="pos-create-table" name="table">
+                        <option value="">Choose a table…</option>
+                        ${tables.map((t) => `<option value="${esc(t.id)}"${taken.has(t.id) ? ' disabled' : ''}>`
+                            + `${esc(t.label)}${t.zone ? ` · ${esc(t.zone)}` : ''}${taken.has(t.id) ? ' — in use' : ''}</option>`).join('')}
+                    </select>
+                </div>
+
+                <div class="pos-field-row">
+                    <div class="pos-field">
+                        <label for="pos-create-name">Customer name <span class="opt">(optional)</span></label>
+                        <input id="pos-create-name" name="name" maxlength="80" autocomplete="off" placeholder="Pak Budi">
+                    </div>
+                    <div class="pos-field" data-only="dine_in">
+                        <label for="pos-create-covers">Guests <span class="opt">(optional)</span></label>
+                        <input id="pos-create-covers" name="covers" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="2">
+                    </div>
+                </div>
+
+                <div class="pos-field">
+                    <label for="pos-create-phone">Phone number <span class="opt">(optional)</span></label>
+                    <input id="pos-create-phone" name="phone" maxlength="32" inputmode="tel" autocomplete="off" placeholder="0812-3456-7890">
+                </div>
+
+                <div class="pos-field">
+                    <label for="pos-create-note">Notes <span class="opt">(optional)</span></label>
+                    <textarea id="pos-create-note" name="note" maxlength="200" placeholder="Allergies, seating, anything the kitchen should know"></textarea>
+                </div>
+
+                <p class="pos-modal-sub" id="pos-create-error" style="color:#B91C1C" hidden></p>
+            </form>
+            <div class="pos-modal-foot">
+                <button type="button" class="pos-btn-ghost" data-close>Cancel</button>
+                <button type="submit" form="pos-create-form" class="pos-btn-primary" id="pos-create-submit">Create Order</button>
+            </div>
+        </div>`;
+    document.body.appendChild(el);
+
+    const close = () => el.remove();
+    el.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', close));
+    // Escape closes, because a modal that traps a cashier mid-service is worse
+    // than one they dismissed by accident.
+    const onKey = (e) => { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); } };
+    document.addEventListener('keydown', onKey);
+
+    const applyType = () => {
+        el.querySelectorAll('[data-type]').forEach((b) => {
+            const on = b.dataset.type === type;
+            b.classList.toggle('is-on', on);
+            b.setAttribute('aria-selected', String(on));
+        });
+        // A takeaway is not asked for a table it will never have, nor for a
+        // cover count that means nothing without one.
+        el.querySelectorAll('[data-only="dine_in"]').forEach((f) => { f.hidden = type !== 'dine_in'; });
+    };
+    el.querySelectorAll('[data-type]').forEach((b) => b.addEventListener('click', () => {
+        type = b.dataset.type; applyType();
+    }));
+    applyType();
+
+    el.querySelector('#pos-create-covers').addEventListener('input', (e) => {
+        e.target.value = e.target.value.replace(/\D/g, '');
     });
 
-    d.querySelectorAll('[data-type]').forEach((btn) => btn.addEventListener('click', () => once(async () => {
-        const type = btn.dataset.type;
-        d.close();
-        // GUARDED. A drawer's body buttons are not inside the once() its submit
-        // handler runs in, so an impatient double-tap here would have created
-        // two orders — precisely what once() exists to stop. It does not nest
-        // with anything on this path, so wrapping is safe.
-        if (type === 'takeaway') { await startOrder(null); return; }
-        setView('tables');
-        toast('Pick the table this order is for.', 'info');
-    })));
+    el.querySelector('#pos-create-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const err = el.querySelector('#pos-create-error');
+        const tableId = type === 'dine_in' ? el.querySelector('#pos-create-table').value : '';
+        if (type === 'dine_in' && !tableId) {
+            err.textContent = 'Pick the table this order is for.';
+            err.hidden = false;
+            el.querySelector('#pos-create-table').focus();
+            return;
+        }
+        err.hidden = true;
+        const submit = el.querySelector('#pos-create-submit');
+        submit.disabled = true;
+        submit.textContent = 'Creating…';
+        once(async () => {
+            const t = tables.find((x) => x.id === tableId) || null;
+            await startOrder(tableId || null, {
+                customerName: el.querySelector('#pos-create-name').value.trim() || null,
+                customerPhone: el.querySelector('#pos-create-phone').value.trim() || null,
+                guestCount: type === 'dine_in' ? Number(el.querySelector('#pos-create-covers').value || 0) || null : null,
+                note: el.querySelector('#pos-create-note').value.trim() || null
+            });
+            close();
+            document.removeEventListener('keydown', onKey);
+            if (t) toast(`Table ${t.label} opened.`);
+        });
+    });
+
+    setTimeout(() => el.querySelector('#pos-create-table')?.focus(), 40);
 }
 
 function openHoldDrawer() {
@@ -2758,7 +2864,7 @@ function wire() {
         // with one answer. Pay-first also opens its sale on the first tap of a
         // product, so there is nothing left to do once the cart is clear.
         if (p.payFirst) { if (!parked) await startOrder(null); return; }
-        openOrderTypeDrawer();
+        openCreateOrderDialog();
     }));
 
     $('pos-hold-btn')?.addEventListener('click', () => openHoldDrawer());

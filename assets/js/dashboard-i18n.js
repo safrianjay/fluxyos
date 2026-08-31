@@ -5132,6 +5132,16 @@
         // Order-type chooser + page subtexts (2026-09-01). "Dine In"/"Take Away"
         // are NOT repeated — "Dine In" and "Takeaway" already map above.
         "Create Order": "Buat Pesanan",
+        "Who is this order for?": "Pesanan ini untuk siapa?",
+        "Choose a table…": "Pilih meja…",
+        // "Customer name" and "Pick the table this order is for." already map in
+        // this dictionary — not repeated, since a duplicate key is the LAST one
+        // to win and would silently change them everywhere else.
+        "Phone number": "Nomor telepon",
+        "Guests": "Jumlah tamu",
+        "Creating…": "Membuat…",
+        "Allergies, seating, anything the kitchen should know":
+            "Alergi, tempat duduk, apa pun yang perlu diketahui dapur",
         "Create an order": "Buat pesanan",
         "Where is this order going?": "Pesanan ini untuk di mana?",
         "Take Away": "Bawa Pulang",

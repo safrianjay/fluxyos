@@ -12,11 +12,16 @@
 // landed, thirteen specs broke at once for exactly this reason.
 async function startTakeawayOrder(page) {
     await page.click('#pos-new-order');
-    const takeaway = page.locator('[data-type="takeaway"]');
+    const takeaway = page.locator('#pos-create-modal [data-type="takeaway"]');
     // Present on an F&B till, absent on a counter. Waited for rather than
-    // assumed: the drawer is built on click, so a bare count() can race it.
+    // assumed: the dialog is built on click, so a bare count() can race it.
     await takeaway.waitFor({ state: 'visible', timeout: 4000 }).catch(() => {});
-    if (await takeaway.count()) await takeaway.click();
+    if (!(await takeaway.count())) return;          // a counter creates directly
+    await takeaway.click();
+    // Take away asks for nothing it cannot have — no table, no covers — so the
+    // form is already complete.
+    await page.click('#pos-create-submit');
+    await page.locator('#pos-create-modal').waitFor({ state: 'detached', timeout: 20000 });
 }
 
 module.exports = { startTakeawayOrder };

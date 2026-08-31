@@ -2642,11 +2642,32 @@ service cloud.firestore {
           'note', 'version', 'opened_at', 'paid_at', 'voided_at', 'void_reason',
           'transaction_id', 'stock_adjustment_id', 'refund_transaction_id', 'refund_reason', 'refunded_at',
           'shift_id',
+          // Who the order is for. Captured when the order is CREATED — a dine-in
+          // needs a table and a cover count, a takeaway needs a way to call the
+          // customer back. Every one is optional: a queue does not wait while a
+          // cashier types a phone number.
+          'customer_name', 'customer_phone', 'guest_count',
           'created_at', 'updated_at', 'created_by', 'updated_by'
         ]);
     }
+    // Bounded scalars, checked in rules rather than only in the DAL.
+    //
+    // `lines[]` and `payments[]` are DAL-validated because rules cannot iterate
+    // an array cheaply and the evaluation budget is real (the invoice open→paid
+    // trip of 2026-07-14). These three are scalars: nine expressions, which the
+    // lean POS validators can afford, and worth spending because they are the
+    // only fields on this document a customer's own words reach.
+    function wsValidPosOrderGuest(data) {
+      return (!('customer_name' in data) || data.customer_name == null
+          || (data.customer_name is string && data.customer_name.size() <= 80))
+        && (!('customer_phone' in data) || data.customer_phone == null
+          || (data.customer_phone is string && data.customer_phone.size() <= 32))
+        && (!('guest_count' in data) || data.guest_count == null
+          || (data.guest_count is int && data.guest_count >= 0 && data.guest_count <= 999));
+    }
     function wsValidPosOrderCreate(data) {
       return wsPosOrderKeys(data)
+        && wsValidPosOrderGuest(data)
         && data.dimension_id is string
         && data.channel in ['staff', 'qr', 'connector']
         && data.status in ['open', 'submitted']
@@ -2659,6 +2680,7 @@ service cloud.firestore {
     // stale second device lose the race instead of overwriting the first's lines.
     function wsValidPosOrderUpdate(data, prev) {
       return wsPosOrderKeys(data)
+        && wsValidPosOrderGuest(data)
         && data.status in ['open', 'submitted', 'sent', 'served', 'awaiting_payment', 'paid', 'void']
         && data.version == prev.version + 1
         && data.dimension_id == prev.dimension_id
