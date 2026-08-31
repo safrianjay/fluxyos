@@ -126,17 +126,37 @@ test.describe('base currency renders without a flash', () => {
     test('checkout does reveal its amounts — the shimmer is not permanent', async ({ page }) => {
         // The other half. A skeleton that never lifts is worse than one showing
         // the currency we already have, so this runs with auth working normally.
+        // WARM THE SESSION FIRST — this is the actual fix for a flake that cost
+        // three QA cycles on 2026-08-31.
+        //
+        // `checkout.js:58` sets a 2500ms timer that REPLACES the location with
+        // /login when auth has not arrived. Under `npm run qa` — emulator, a
+        // second browser project and the console sweep on one machine — the
+        // token round trip can exceed that, so the page does not paint slowly,
+        // it LEAVES. A longer timeout can never help, because the element is
+        // gone rather than late: raising 15s → 30s did not fix this, and could
+        // not have. Landing on an app page first means the SDK has already
+        // resolved the session before checkout starts its own countdown.
+        await page.goto('/dashboard');
+        await page.waitForFunction(
+            () => window.FluxyWorkspace && window.FluxyWorkspace.id, null, { timeout: 60000 });
+
         await page.goto('/checkout.html?plan=growth&billing=annually');
-        // 30s, not 15s. The shimmer lifts on a live Firestore round trip, and
-        // under `npm run qa` this races the emulator, a second browser project
-        // and the console sweep on one machine. It failed once at 15s while
-        // passing 8/8 three times standalone at the same commit — contention,
-        // not a regression. A generous ceiling costs nothing when passing and
-        // stops a random push blocker that looks like a currency bug.
-        await page.waitForFunction(() => {
-            const el = document.getElementById('summary-total');
-            return el && !el.classList.contains('amount-pending');
-        }, null, { timeout: 30000 });
+        try {
+            await page.waitForFunction(() => {
+                const el = document.getElementById('summary-total');
+                return el && !el.classList.contains('amount-pending');
+            }, null, { timeout: 30000 });
+        } catch (err) {
+            // Say which failure this is. "waiting for function" on a page that
+            // navigated away reads exactly like a currency bug, and it is not.
+            const where = page.url();
+            if (!/checkout/.test(where)) {
+                throw new Error(`checkout bounced to ${where} before revealing its amounts — `
+                    + 'auth did not arrive inside checkout.js\'s 2500ms redirect. Contention, not a currency bug.');
+            }
+            throw err;
+        }
         const revealed = (await page.locator('#summary-total').textContent() || '').trim();
         expect(revealed, 'amounts revealed but painted nothing').toMatch(/\d/);
         const base = await page.evaluate(() => window.FluxyMoney.baseCurrency());
