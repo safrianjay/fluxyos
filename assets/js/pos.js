@@ -1055,8 +1055,19 @@ async function startOrder(tableId) {
     } catch (err) { fail(err, 'Could not open that order.'); }
 }
 
+// Searches paidToday as well as activeOrders, and that is the whole point.
+//
+// A paid order is not an ACTIVE one, so looking only at activeOrders meant
+// clicking a card on the Orders board's Completed tab hit `if (!found) return`
+// and did nothing whatsoever — no panel, no refund, no reprint, no error. The
+// refund button became unreachable for the second time, by a different route
+// than the first (the panel used to clear itself the instant payment landed).
+// The board is now the only way back to a paid order, so anything the board can
+// LIST, this must be able to OPEN.
 function selectOrder(orderId) {
-    const found = (state.overview.activeOrders || []).find((o) => o.id === orderId);
+    const ov = state.overview || {};
+    const found = (ov.activeOrders || []).concat(ov.paidToday || [])
+        .find((o) => o.id === orderId);
     if (!found) return;
     state.orderId = orderId;
     state.order = found;

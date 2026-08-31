@@ -366,6 +366,37 @@ async function main() {
     await expectOutcome('viewer may still read orders', true, () =>
         getDoc(doc(db, `workspaces/${WS}/pos_orders/o3`)));
 
+    console.log('\n— the settlement split: the field NAMES are the contract —');
+    // The bug this exists for, 2026-08-30 → 2026-08-31: the DAL helper returned
+    // `{ cash, clearing }` and both call sites spread it straight into a
+    // transaction. Neither name is in wsValidTxCreate's hasOnly list, so every
+    // POS write carrying them was refused — sales were marked paid and never
+    // reached the ledger, and refunds failed outright. Nothing went red: the
+    // sale emitter catches and defers to a retry sweep, and the retry rebuilt
+    // the same permanently-invalid payload every time.
+    //
+    // hasOnly denials are the quietest rule failure there is — an unknown field
+    // is refused with the same opaque message as a stolen document — so the two
+    // shapes are pinned here rather than left to be re-derived at a counter.
+    await setMemberRole(uid, 'owner');
+    const settleTx = (extra) => ({
+        amount: 20000, vendor_name: 'Order 20260831-024', category: 'Sales',
+        type: 'refund', icon: '\ud83d\udcb8', status: 'Completed',
+        timestamp: new Date(), created_at: serverTimestamp(),
+        source: 'pos', accounting_status: 'pending', dimension_id: 'outlet-kemang',
+        pos_order_id: 'o1', pos_discount_amount: 0, pos_discount_reason: null,
+        pos_settlement: 'cash', pos_refund_reason: 'Salah pesan', ...extra
+    });
+    await expectOutcome('a refund carrying pos_cash_amount / pos_clearing_amount is allowed', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/transactions/tx-split-ok`),
+            settleTx({ pos_cash_amount: 20000, pos_clearing_amount: 0 })));
+    await expectOutcome('the same refund with bare `cash` / `clearing` is DENIED', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/transactions/tx-split-bad`),
+            settleTx({ cash: 20000, clearing: 0 })));
+    await expectOutcome('a POS SALE with bare `cash` / `clearing` is DENIED too', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/transactions/tx-sale-bad`),
+            settleTx({ type: 'income', icon: '\ud83d\udcb0', pos_refund_reason: null, cash: 20000, clearing: 0 })));
+
     console.log('\n— the QR token directory is invisible to every client —');
     await adminDb.doc('pos_table_directory/tok123').set({ workspace_id: WS, table_id: 't12' });
     await setMemberRole(uid, 'owner');

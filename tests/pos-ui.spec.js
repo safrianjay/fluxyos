@@ -9,10 +9,23 @@ const { auditSpacing, MIN_GAP } = require('./helpers/spacing-audit');
 // boots clean, that the shared components are actually wired, and that the two
 // honesty signals the design depends on are present rather than merely intended.
 //
-// Deliberately does NOT create orders against production Firestore. The QA
-// workspace is shared, orders are effectively immutable once paid, and a spec
-// that leaves paid orders behind would pollute a real ledger permanently — the
-// same reason seed-fnb-demo.js refuses a workspace that already holds items.
+// Most of this file deliberately does NOT create orders against production
+// Firestore. The QA workspace is shared, orders are effectively immutable once
+// paid, and a spec that leaves paid orders behind would pollute a real ledger
+// permanently — the same reason seed-fnb-demo.js refuses a workspace that
+// already holds items.
+//
+// ONE spec is exempt, by decision on 2026-08-31: the paid-order spec rings up a
+// real sale and refunds it again. The alternative was worse. It depended on the
+// workspace happening to contain a paid order, which it usually does not, so it
+// skipped — and a spec that is green because it never ran is indistinguishable
+// from one that passed. Refund is also the single most dangerous button on the
+// till and the one nobody exercises by hand.
+//
+// It leaves nothing behind: the sale is refunded in the same spec, and the
+// refund IS the last assertion rather than a courtesy. What it does leave is
+// ledger MOVEMENT — a sale and its reversal, netting zero — which is the price
+// of covering this path at all.
 
 test.describe('Point of Sale', () => {
     test('boots clean, with the shared components actually wired', async ({ page }) => {
@@ -203,50 +216,115 @@ test.describe('Point of Sale', () => {
         // gone and paid orders now live behind the Orders board's Completed tab.
         // The old selectors (#pos-paid-card, [data-paid]) still MATCHED NOTHING
         // rather than failing, so this spec skipped itself and the whole refund
-        // path silently left coverage. Anchored on the board now, and the tab
-        // itself is asserted before the skip so a renamed tab goes red.
+        // path silently left coverage.
+        //
+        // It then skipped for a second reason: the QA workspace simply has no
+        // paid order most days. A spec that is green because it did not run is
+        // the same failure wearing a different hat, so it now RINGS UP ITS OWN
+        // ORDER and refunds it again at the end. See the file header for why
+        // that is allowed here and nowhere else in this file.
         await page.goto('/pos');
         await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
+
+        // ── Ring up a real takeaway sale ────────────────────────────────────
+        const newOrder = page.locator('#pos-new-order');
+        await expect(newOrder, 'the till never enabled Takeaway — no outlet resolved?')
+            .toBeEnabled({ timeout: 25000 });
+        await newOrder.click();
+
+        await page.waitForSelector('.pos-card:not([disabled])', { timeout: 20000 });
+        await page.locator('.pos-card:not([disabled])').first().click();
+        await expect(page.locator('.pos-line')).toHaveCount(1, { timeout: 20000 });
+
+        // open → sent → served → awaiting_payment.
+        //
+        // The press has to be RETRIED, not just awaited. `once()` in pos.js
+        // returns immediately when `state.busy` is set and leaves no trace in
+        // the DOM, so a press that lands during the previous write is swallowed
+        // in silence — this loop hung on "Mark served" for twenty seconds
+        // because of exactly that. (Worth noting the cashier gets the same
+        // silence at a counter; that is a product gap, not a test one.)
+        const primary = page.locator('#pos-primary');
+        const advance = async () => {
+            const before = (await primary.textContent() || '').trim();
+            for (let attempt = 0; attempt < 6; attempt += 1) {
+                await primary.click();
+                try {
+                    await expect(primary).not.toHaveText(before, { timeout: 3000 });
+                    return;
+                } catch { /* press swallowed while busy — press again */ }
+            }
+            throw new Error(`the till never advanced past "${before}"`);
+        };
+        for (let i = 0; i < 4; i += 1) {
+            const label = (await primary.textContent() || '').trim();
+            if (/take payment|terima pembayaran/i.test(label)) break;
+            await advance();
+        }
+        await expect(primary, 'the order never reached awaiting_payment')
+            .toHaveText(/take payment|terima pembayaran/i);
+
+        // The receipt opens in a popup that prints itself. Caught and closed, or
+        // it outlives the test and the run hangs on an extra page.
+        const receipt = page.waitForEvent('popup', { timeout: 30000 })
+            .then((p) => p.close())
+            .catch(() => {});
+
+        // Retried for the same reason as the transitions above: this press also
+        // goes through `once()`, and the first attempt was swallowed by the
+        // refresh that the previous transition had just started.
+        for (let attempt = 0; attempt < 6; attempt += 1) {
+            await primary.click();                   // opens the payment drawer
+            if (await page.locator('#pos-pay-amount').isVisible().catch(() => false)) break;
+            await page.waitForTimeout(1500);
+        }
+        await expect(page.locator('#pos-pay-amount'),
+            'the payment drawer never opened').toBeVisible({ timeout: 15000 });
+        // Cash, and the amount is prefilled with the exact due — this spec is
+        // about what happens AFTER payment, not about tender arithmetic.
+        await page.locator('#pos-method-row [data-method="cash"]').click();
+        await page.locator('button[type="submit"][form="pos-drawer-form"]').click();
+
+        await expect(page.locator('#pos-order-status')).toHaveText(/paid|lunas/i, { timeout: 30000 });
+        await receipt;
+
+        // ── The assertions this spec exists for ─────────────────────────────
+        // A paid order opens read-only: no void (the revenue is posted), but a
+        // refund and a reprint, which are the only two things left to do to it.
+        await expect(page.locator('#pos-void-btn')).toBeHidden();
+        await expect(page.locator('#pos-reprint-btn')).toBeVisible();
+        await expect(page.locator('#pos-primary')).toHaveText(/close|tutup/i);
+        // Refund is finance+ only. The QA account is the owner, so it shows.
+        await expect(page.locator('#pos-refund-btn')).toBeVisible();
+
+        // And it is REACHABLE — the whole point of the move to the board. A
+        // paid order leaves the table grid, so if the Completed tab does not
+        // list it there is no route back to the refund button at all.
         await page.click('#nav-container [data-view="orders"]');
-
-        // Wait for the board to have RENDERED before filtering it. Clicking the
-        // tab while the first render is still in flight left the unfiltered list
-        // on screen, and the spec then opened whatever order happened to be
-        // first — passing in isolation and failing in a full run.
         await page.waitForSelector('#pos-orders-grid .pos-ocard, #pos-orders-empty:not(.hidden)', { timeout: 20000 });
-
         const done = page.locator('.pos-tab[data-otab="done"]');
         await expect(done, 'the Completed tab is where paid orders live now').toBeVisible();
         await done.click();
         await expect(done).toHaveAttribute('aria-selected', 'true');
-
         // Matched on the status the card carries, not on position in the grid —
         // a filter that silently failed to apply can no longer feed this spec a
         // non-paid order.
-        const rows = page.locator('#pos-orders-grid .pos-ocard[data-status="paid"]');
-        const n = await rows.count();
-        test.skip(n === 0, 'no paid orders in the QA workspace today');
+        const paidCards = page.locator('#pos-orders-grid .pos-ocard[data-status="paid"]');
+        await expect(paidCards.first(), 'the sale just rung up is not on the Completed tab')
+            .toBeVisible({ timeout: 20000 });
+        await paidCards.first().click();
+        await expect(page.locator('#pos-refund-btn'),
+            'reopened from the board, the refund button must still be there').toBeVisible();
 
-        await rows.first().click();
-
-        // A paid order opens read-only: no void (the revenue is posted), but a
-        // refund and a reprint, which are the only two things left to do to it.
-        // `Refunded` is the other legitimate terminal state — an order refunded
-        // earlier in the service is still reachable here, and must still reprint.
-        await expect(page.locator('#pos-order-status')).toHaveText(/paid|lunas|refund/i);
-        await expect(page.locator('#pos-void-btn')).toBeHidden();
-        await expect(page.locator('#pos-reprint-btn')).toBeVisible();
-        await expect(page.locator('#pos-primary')).toHaveText(/close|tutup/i);
-
-        // Refund is finance+ only. The QA account is the owner, so it shows —
-        // and it must NOT show twice on an order already refunded.
-        const refund = page.locator('#pos-refund-btn');
-        const alreadyRefunded = await page.evaluate(() => {
-            const el = document.getElementById('pos-order-status');
-            return /refund/i.test(el ? el.textContent : '');
-        });
-        if (alreadyRefunded) await expect(refund).toBeHidden();
-        else await expect(refund).toBeVisible();
+        // ── Put the money back ──────────────────────────────────────────────
+        // Not politeness: this workspace is a real ledger and the spec runs on
+        // every QA pass. The refund is also the last assertion — proving the
+        // button works, not merely that it renders.
+        await page.click('#pos-refund-btn');
+        await page.fill('#pos-refund-why', 'Spec cleanup — automated QA sale');
+        await page.locator('button[type="submit"][form="pos-drawer-form"]').click();
+        await expect(page.locator('#pos-order-title'))
+            .toHaveText(/no order open|belum ada pesanan/i, { timeout: 30000 });
     });
 
     test('a discount can be entered as a percent, and resolves to Rupiah', async ({ page }) => {

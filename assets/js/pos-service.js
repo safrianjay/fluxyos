@@ -441,7 +441,18 @@ export const POS_METHODS = {
             .filter((p) => p.status === 'settled' && this._posSettlementFor(p.method) === 'clearing')
             .reduce((sum, p) => sum + Math.round(Number(p.amount) || 0), 0);
         const clearing = Math.max(0, Math.min(total, clearingPaid));
-        return { cash: total - clearing, clearing };
+        // The keys are the TRANSACTION FIELD NAMES, because both call sites
+        // spread this straight into a transaction document.
+        //
+        // It returned `{ cash, clearing }` from 2026-08-30 until 2026-08-31, and
+        // the cost was invisible: `cash` and `clearing` are not in
+        // wsValidTxCreate's hasOnly list, so EVERY POS write carrying them was
+        // refused by rules. Sales were marked paid and never reached the ledger
+        // (the emission retry could not help — the payload was permanently
+        // invalid), and every refund failed outright. The journal builder reads
+        // pos_cash_amount / pos_clearing_amount too, so these were the only
+        // names that were ever going to work.
+        return { pos_cash_amount: total - clearing, pos_clearing_amount: clearing };
     },
 
     // Record money received. An order becomes `paid` only when what has been
