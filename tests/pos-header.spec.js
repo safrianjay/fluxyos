@@ -138,6 +138,30 @@ test('Create Order asks dine in or take away before it creates anything', async 
     await modal.locator('.pos-modal-close').click();
 });
 
+test('the empty panel offers the same one way in as the topbar', async ({ page }) => {
+    // The panel's primary used to read "Pick a table", then "Create Table" —
+    // both of which sent the cashier somewhere other than the one entry point
+    // the till is supposed to have. Two controls on one screen that start work
+    // differently is the thing Create Order exists to remove.
+    await openTill(page);
+    await expect(page.locator('#pos-order-title')).toHaveText(/no order open|belum ada pesanan/i);
+
+    const primary = page.locator('#pos-primary');
+    await expect(primary, 'the empty panel names an action that is not starting an order')
+        .toContainText(/create order/i);
+    await expect(primary, 'a disabled button is not an offer').toBeEnabled();
+
+    // And it opens the SAME dialog the topbar does, rather than a second flow.
+    await primary.click();
+    await expect(page.locator('#pos-create-modal .pos-modal')).toBeVisible({ timeout: 10000 });
+    await page.locator('#pos-create-modal .pos-modal-close').click();
+    await expect(page.locator('#pos-create-modal')).toHaveCount(0, { timeout: 10000 });
+
+    // The subtext must not tell the cashier to press something that is not there.
+    const sub = (await page.locator('#pos-order-sub').textContent() || '').toLowerCase();
+    expect(sub, 'the subtext still names a removed control').not.toMatch(/pick a table|create table/);
+});
+
 test('tapping a free table asks the same questions, with the table answered', async ({ page }) => {
     // Tapping a table used to open an order on the spot knowing NOTHING about
     // it — and since the customer details can only be taken at creation, that

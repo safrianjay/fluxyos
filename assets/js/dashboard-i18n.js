@@ -5290,12 +5290,8 @@
 
         // Order panel
         "No order open": "Belum ada pesanan terbuka",
-        "Press Create Order above to start one.": "Tekan Create Order di atas untuk memulai.",
-        "Press Create Order above, or tap a free table.": "Tekan Create Order di atas, atau ketuk meja yang kosong.",
-        "Add a table first, or press Create Order for a take away.": "Tambah meja dulu, atau tekan Create Order untuk pesanan bawa pulang.",
-        // Was "Pick a table", which named an action the panel could no longer
-        // perform — the table pickers moved into the Create Order dialog.
-        "Create Table": "Buat Meja",
+        "Start one below, or tap a free table.": "Mulai di bawah, atau ketuk meja yang kosong.",
+        "Start a take away below, or add a table first.": "Mulai pesanan bawa pulang di bawah, atau tambah meja dulu.",
         // Create Order dialog. The name is required for both order types now;
         // "Customer name" itself is already translated with the invoice fields.
         "Give this table a name so staff can address it.": "Beri nama meja ini agar staf bisa menyapa tamunya.",

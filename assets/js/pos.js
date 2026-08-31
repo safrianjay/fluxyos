@@ -111,10 +111,11 @@ const POS_PROFILES = {
         startLabel: 'Create Order',
         closeLabel: 'Close',
         emptyTitle: 'No order open',
-        // Not "Pick a table": picking one is no longer something this panel can
-        // do, and a button that names an action it cannot perform is worse than
-        // no button. What a floor with no tables actually needs is a table.
-        emptyAction: 'Create Table'
+        // The SAME action as the topbar CTA, deliberately. Create Order is the
+        // single entry point, and the dialog behind it already asks dine-in or
+        // take away — so the one control on an empty panel is that, not a
+        // detour into table setup.
+        emptyAction: 'Create Order'
     },
     retail: {
         // Empty on purpose: there is no step between opening a sale and charging
@@ -1585,13 +1586,12 @@ function renderOrder() {
         $('pos-order-title').textContent = prof.emptyTitle;
         $('pos-order-sub').textContent = prof.payFirst
             ? 'Scan or tap a product to start.'
-            // Both of these used to name controls this panel no longer has —
-            // "Pick a table" beside a button reading "Create Table" told the
-            // cashier to do something neither the panel nor the button does.
-            // They point at the two things that actually start an order now.
+            // Names the two things that actually start an order. The button
+            // directly below is Create Order, so this says what the OTHER way
+            // in is rather than repeating the control under it.
             : (state.overview && state.overview.tables.length
-                ? 'Press Create Order above, or tap a free table.'
-                : 'Add a table first, or press Create Order for a take away.');
+                ? 'Start one below, or tap a free table.'
+                : 'Start a take away below, or add a table first.');
         badge.classList.add('hidden');
         lines.innerHTML = '';
         totals.innerHTML = '';
@@ -1601,7 +1601,7 @@ function renderOrder() {
         const prof2 = posProfile();
         primary.disabled = false;
         primary.textContent = prof2.emptyAction;
-        primary.dataset.emptyAction = prof2.payFirst ? 'new-sale' : 'create-table';
+        primary.dataset.emptyAction = prof2.payFirst ? 'new-sale' : 'create-order';
         discountBtn.classList.add('hidden');
         voidBtn.classList.add('hidden');
         refundBtn.classList.add('hidden');
@@ -2927,7 +2927,7 @@ function wire() {
         // sale to start.
         if (!state.order) {
             const what = $('pos-primary').dataset.emptyAction;
-            if (what === 'create-table') return openTableDrawer();
+            if (what === 'create-order') return openCreateOrderDialog();
             return once(() => startOrder(null));
         }
         return once(advance);
