@@ -79,8 +79,12 @@ function setView(name) {
     document.querySelectorAll('.pos-view').forEach((v) => {
         v.classList.toggle('hidden', v.dataset.view !== name);
     });
-    document.querySelectorAll('.pos-nav[data-view]').forEach((b) => {
-        b.classList.toggle('is-active', b.dataset.view === name);
+    // `dashboard-active` is the SHARED sidebar's active class (orange text +
+    // icon under .app-sidebar-light). Using a page-local `is-active` here gave
+    // the till a nav with no visible current item — the styling lives in
+    // shared-dashboard.css, so the class has to be the one it styles.
+    document.querySelectorAll('#nav-container [data-view]').forEach((b) => {
+        b.classList.toggle('dashboard-active', b.dataset.view === name);
     });
     $('pos-view-title').textContent = VIEWS[name].title;
     $('pos-view-crumb').textContent = VIEWS[name].crumb;
@@ -92,9 +96,81 @@ function setView(name) {
     closeSideNav();
 }
 
+// Replace the finance nav inside the SHARED sidebar with the till's.
+//
+// The chrome — logo, entity switcher, Lucide icons, the light theme, the profile
+// block, the mobile drawer — all comes from sidebar-loader.js and
+// shared-dashboard.css untouched. Only #nav-container's contents change, using
+// the same `.section-label` / `.nav-item` / `.sidebar-icon` / `.sidebar-text`
+// classes, so the two sidebars are the same component with a different menu and
+// cannot drift apart when either is restyled.
+//
+// A first attempt built a parallel sidebar. It duplicated every one of those
+// pieces and was visibly a different component within an hour.
+const TILL_NAV = [
+    { section: 'Point of sale' },
+    { view: 'till',   id: 'nav-pos',        label: 'Point of Sale' },
+    { view: 'tables', id: 'nav-outlet-pnl', label: 'Tables',  badge: 'pos-nav-tables' },
+    { view: 'orders', id: 'nav-ledger',     label: 'Orders',  badge: 'pos-nav-orders' },
+    { view: 'shift',  id: 'nav-accounting', label: 'Shift',   badge: 'pos-nav-shift' }
+];
+
+function mountTillNav() {
+    const host = document.getElementById('nav-container');
+    if (!host) return false;
+
+    const ws = (typeof window !== 'undefined' && window.FluxyWorkspace) || {};
+    // Snapshot the Lucide icons the shared sidebar has ALREADY injected, keyed by
+    // the nav ids this menu reuses. Taken before the wipe, obviously — and taken
+    // from the DOM rather than redrawn here, so the till cannot end up with a
+    // second icon family the first time the dashboard's are restyled.
+    const icons = {};
+    TILL_NAV.filter((n) => n.id).forEach((n) => {
+        const svg = document.querySelector(`#${n.id} .sidebar-icon`);
+        if (svg) icons[n.id] = svg.outerHTML;
+    });
+    // The loader has not painted yet — try again rather than render iconless.
+    if (!Object.keys(icons).length) return false;
+
+    const item = (n) => `
+        <button type="button" id="till-${n.view}" data-view="${n.view}"
+            class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all hover:bg-gray-800/50 text-gray-400 hover:text-white font-medium w-full justify-center lg:justify-start">
+            ${icons[n.id] || ''}
+            <span class="sidebar-text text-[13px] sidebar-hide">${esc(n.label)}</span>
+            ${n.badge ? `<span class="pos-nav-badge sidebar-hide" id="${n.badge}"></span>` : ''}
+        </button>`;
+
+    host.innerHTML = TILL_NAV.map((n) => n.section
+        ? `<p class="section-label px-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 sidebar-hide">${esc(n.section)}</p>`
+        : item(n)).join('');
+
+    host.querySelectorAll('[data-view]').forEach((b) => {
+        b.addEventListener('click', () => setView(b.dataset.view));
+    });
+
+    // Only a role that HAS a dashboard is offered one — a cashier is denied
+    // every collection behind that link, so it would be a door onto a wall.
+    import('/assets/js/perms-service.js').then(({ isPosOnlyRole }) => {
+        if (isPosOnlyRole(ws.role)) return;
+        host.insertAdjacentHTML('beforeend',
+            `<p class="section-label px-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-6 mb-2 sidebar-hide">Workspace</p>
+             <a href="/dashboard" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all hover:bg-gray-800/50 text-gray-400 hover:text-white font-medium w-full justify-center lg:justify-start">
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                <span class="sidebar-text text-[13px] sidebar-hide">Back to Dashboard</span>
+             </a>`);
+    }).catch(() => {});
+
+    setView(state.view);
+    return true;
+}
+
 function closeSideNav() {
-    document.getElementById('pos-sidebar')?.classList.remove('is-open');
-    document.querySelector('.pos-scrim')?.classList.remove('is-open');
+    // Switching view on a phone should close the drawer. The SHARED sidebar owns
+    // those classes, so this reaches for them rather than inventing a second pair.
+    document.getElementById('sidebar')?.classList.remove('sidebar-mobile-open');
+    const bd = document.querySelector('.sidebar-mobile-backdrop');
+    if (bd) { bd.classList.remove('is-visible'); bd.hidden = true; }
+    document.body.style.overflow = '';
 }
 
 // ── Formatting ───────────────────────────────────────────────────────────────
@@ -1466,32 +1542,18 @@ function wire() {
     $('pos-tables-btn').addEventListener('click', openTableSheet);
     $('pos-manage-tables')?.addEventListener('click', openTableDrawer);
 
-    // ── The till's own navigation ───────────────────────────────────────
-    document.querySelectorAll('.pos-nav[data-view]').forEach((b) => {
-        b.addEventListener('click', () => setView(b.dataset.view));
-    });
+    // sidebar-loader.js renders asynchronously (it awaits auth), so the nav may
+    // not exist yet. Observe rather than poll on a timer: a fixed delay is a
+    // race that passes on a fast machine and ships a nav-less till on a slow one.
+    if (!mountTillNav()) {
+        const mo = new MutationObserver(() => { if (mountTillNav()) mo.disconnect(); });
+        mo.observe(document.getElementById('sidebar'), { childList: true, subtree: true });
+        setTimeout(() => mo.disconnect(), 15000);
+    }
 
-    // Off-canvas nav below 900px, with a scrim — the same shape the dashboard
-    // sidebar uses, so the gesture is the one a user already knows.
-    const scrim = document.createElement('div');
-    scrim.className = 'pos-scrim';
-    document.body.appendChild(scrim);
-    const side = $('pos-sidebar');
-    $('pos-burger').addEventListener('click', () => {
-        const open = !side.classList.contains('is-open');
-        side.classList.toggle('is-open', open);
-        scrim.classList.toggle('is-open', open);
-    });
-    scrim.addEventListener('click', closeSideNav);
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSideNav(); });
-
-    $('pos-signout').addEventListener('click', async () => {
-        try {
-            const { signOut } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
-            await signOut(auth);
-        } catch (_) { /* fall through to the redirect either way */ }
-        window.location.href = '/login';
-    });
+    // The burger, the backdrop and Sign Out all belong to the SHARED sidebar:
+    // sidebar-loader.js binds `header button.md:hidden` and owns #logout-btn.
+    // Rolling my own left two off-canvas mechanisms racing over one element.
 
     // Catalogue filters. Client-side against an already-loaded menu, so this is
     // a repaint per keystroke and never a query.
@@ -1538,21 +1600,11 @@ onAuthStateChanged(auth, async (user) => {
     state.uid = user.uid;
     ds.actorUid = user.uid;
 
-    // Who is standing at the till. The dashboard sidebar is not rendered here,
-    // so this page has to say it itself.
-    const ws = (typeof window !== 'undefined' && window.FluxyWorkspace) || {};
+    // The shared sidebar paints the user block, the avatar and the role itself
+    // (#sidebar-user-name / #sidebar-user-avatar / #sidebar-user-role), so this
+    // page no longer duplicates any of it. It only needs the topbar avatar.
     const name = user.displayName || (user.email || '').split('@')[0] || 'Staff';
-    const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0F172A&color=fff`;
-    $('pos-side-name').textContent = name;
-    $('pos-side-avatar').src = avatar;
-    $('pos-top-avatar').src = avatar;
-    try {
-        const { roleMeta, isPosOnlyRole } = await import('/assets/js/perms-service.js');
-        $('pos-side-role').textContent = roleMeta(ws.role).label || 'Staff';
-        // Only a role with a dashboard is offered one. A cashier is denied every
-        // collection behind that link, so showing it would be a door onto a wall.
-        if (!isPosOnlyRole(ws.role)) $('pos-back-dashboard').classList.remove('hidden');
-    } catch (_) { /* the label is cosmetic; never block the till on it */ }
+    $('pos-top-avatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0F172A&color=fff`;
 
     wire();
 

@@ -56,7 +56,7 @@ test.describe('Point of Sale', () => {
         expect(real, `console errors: ${real.join(' | ')}`).toEqual([]);
     });
 
-    test('the till has its OWN shell, not the finance dashboard chrome', async ({ page }) => {
+    test('the till reuses the SHARED sidebar with its own menu', async ({ page }) => {
         // The POS is a different EXPERIENCE from the finance app, not a page
         // inside it: a cashier's destinations are the till, the floor, the
         // orders and the drawer — not nineteen links to collections their role
@@ -65,19 +65,32 @@ test.describe('Point of Sale', () => {
         await page.goto('/pos');
         await page.waitForSelector('#pos-menu .pos-card, #pos-menu-empty', { timeout: 25000 });
 
-        // The shared dashboard sidebar is still LOADED (it runs the trial guard,
-        // the presence heartbeat and the roster mirror) and must stay hidden.
-        await expect(page.locator('#sidebar')).toBeHidden();
-        await expect(page.locator('#pos-sidebar')).toBeVisible();
+        // It is the SAME sidebar component the dashboard uses — same logo, entity
+        // switcher, Lucide icons, light theme and profile block — carrying a
+        // different MENU. A parallel sidebar would duplicate all of that and
+        // drift the first time either side is restyled.
+        await expect(page.locator('#sidebar')).toBeVisible();
+        await expect(page.locator('#sidebar')).toHaveClass(/app-sidebar-light/);
+        await expect(page.locator('#sidebar #logo-container')).toBeVisible();
+        await expect(page.locator('#sidebar #profile-area')).toBeVisible();
 
-        const navs = await page.locator('.pos-nav[data-view]').allInnerTexts();
-        expect(navs.map((t) => t.trim().split('\n')[0]))
+        const navs = await page.locator('#nav-container [data-view] .sidebar-text').allInnerTexts();
+        expect(navs.map((t) => t.trim()))
             .toEqual(['Point of Sale', 'Tables', 'Orders', 'Shift']);
+
+        // Icons come from the shared Lucide set, not a second family drawn here.
+        expect(await page.locator('#nav-container [data-view] .sidebar-icon').count()).toBe(4);
+
+        // No finance destination survives the swap — those are pages this role
+        // is denied, and a nav full of permission errors is the bug this fixes.
+        for (const gone of ['nav-bills', 'nav-invoices', 'nav-tax-center', 'nav-budgets']) {
+            expect(await page.locator(`#nav-container #${gone}`).count(), `${gone} must not be in the till nav`).toBe(0);
+        }
 
         // Every view switches in place. New ROUTES were explicitly out of scope.
         const before = page.url();
         for (const v of ['tables', 'orders', 'shift', 'till']) {
-            await page.click(`.pos-nav[data-view="${v}"]`);
+            await page.click(`#nav-container [data-view="${v}"]`);
             await expect(page.locator(`.pos-view[data-view="${v}"]`)).toBeVisible();
             expect(page.url(), 'views must not add routes').toBe(before);
         }

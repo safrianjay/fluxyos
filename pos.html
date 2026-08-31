@@ -420,69 +420,18 @@
         /* Floor plan, now behind the "Table Order" button. */
         .pos-tablesheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
 
-        /* ══ THE TILL SHELL ═══════════════════════════════════════════════
-           A cashier's chrome, not a finance user's. The dashboard sidebar is
-           nineteen links to pages this role is denied; these four are the
-           surfaces the till actually has. Same tokens, same type scale, same
-           components — a different information architecture, which is the whole
-           distinction between the two experiences. */
-
-        .pos-hidden-shell { display: none !important; }
-
-        .pos-sidebar {
-            width: 232px; flex-shrink: 0; background: #0B0F19; color: #E2E8F0;
-            display: flex; flex-direction: column; height: 100vh; z-index: 40;
-        }
-        .pos-brand {
-            display: flex; align-items: center; gap: 9px;
-            padding: 18px 16px 14px; border-bottom: 1px solid rgba(255,255,255,.07);
-        }
-        .pos-brand-mark { width: 30px; height: 30px; flex-shrink: 0; }
-        .pos-brand-mark svg { width: 100%; height: 100%; }
-        .pos-brand-mark rect { fill: #fff; }
-        .pos-brand-mark path { fill: #0B0F19; }
-        .pos-brand-name { font-size: 16px; font-weight: 700; color: #fff; letter-spacing: -0.02em; }
-        .pos-brand-tag {
-            margin-left: auto; font-size: 10px; font-weight: 600; letter-spacing: .08em;
-            text-transform: uppercase; color: #EA580C;
-            border: 1px solid rgba(234,88,12,.45); border-radius: 999px; padding: 2px 7px;
-        }
-
-        .pos-side-user {
-            display: flex; align-items: center; gap: 10px; padding: 14px 16px;
-            border-bottom: 1px solid rgba(255,255,255,.07);
-        }
-        .pos-side-user img { width: 34px; height: 34px; border-radius: 999px; flex-shrink: 0; }
-        .pos-side-user p:first-child {
-            font-size: 13px; font-weight: 600; color: #fff;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .pos-side-user p:last-child { font-size: 12px; color: #7C8798; }
-
-        .pos-side-nav { flex: 1; padding: 14px 10px; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; }
-        .pos-nav {
-            display: flex; align-items: center; gap: 11px; width: 100%;
-            min-height: 44px; padding: 0 12px; border: 0; border-radius: 10px;
-            background: transparent; color: #94A3B8; cursor: pointer;
-            font-size: 14px; font-weight: 500; text-align: left; text-decoration: none;
-            transition: background 120ms ease, color 120ms ease;
-        }
-        .pos-nav svg { width: 19px; height: 19px; flex-shrink: 0; }
-        .pos-nav:hover { background: rgba(255,255,255,.06); color: #E2E8F0; }
-        .pos-nav:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
-        /* Active is a filled panel, not an orange fill — orange stays an accent
-           (CLAUDE.md), so it marks the item with text and a rule instead. */
-        .pos-nav.is-active { background: rgba(255,255,255,.10); color: #fff; }
-        .pos-nav.is-active svg { color: #EA580C; }
+        /* ══ The till's nav, inside the SHARED sidebar ════════════════════
+           No sidebar chrome is restyled here: the logo, entity switcher,
+           profile block and light theme all come from shared-dashboard.css via
+           `app-sidebar-light`, and the nav items reuse `.nav-item`,
+           `.section-label`, `.sidebar-icon` and `.sidebar-text` verbatim so the
+           two sidebars cannot drift. Only the count badge is new. */
         .pos-nav-badge {
-            margin-left: auto; font-size: 12px; font-weight: 600; color: #0B0F19;
-            background: #E2E8F0; border-radius: 999px; padding: 1px 7px;
-            font-variant-numeric: tabular-nums;
+            margin-left: auto; font-size: 10px; font-weight: 600;
+            background: #F1F5F9; color: #475569; border-radius: 999px;
+            padding: 1px 7px; font-variant-numeric: tabular-nums;
         }
         .pos-nav-badge:empty { display: none; }
-        .pos-nav-dot { margin-left: auto; width: 7px; height: 7px; border-radius: 999px; background: #16A34A; }
-        .pos-side-foot { padding: 10px; border-top: 1px solid rgba(255,255,255,.07); display: flex; flex-direction: column; gap: 3px; }
-        .pos-nav-quiet { color: #7C8798; font-size: 13px; min-height: 40px; }
 
         /* ── Topbar ─────────────────────────────────────────────────────── */
         .pos-topbar {
@@ -490,7 +439,7 @@
             border-bottom: 1px solid #E2E8F0; display: flex; align-items: center;
             gap: 14px; padding: 0 20px; position: sticky; top: 0; z-index: 30;
         }
-        .pos-burger { display: none; border: 0; background: none; color: #475569; padding: 6px; cursor: pointer; }
+        .pos-burger { border: 0; background: none; color: #475569; padding: 6px; cursor: pointer; }
         .pos-burger svg { width: 22px; height: 22px; }
         .pos-topbar-outlet { display: flex; align-items: center; gap: 10px; min-width: 0; }
         .pos-topbar-outlet label {
@@ -528,96 +477,23 @@
             border-radius: 999px; padding: 1px 7px; font-variant-numeric: tabular-nums;
         }
 
-        /* ── Mobile: the till sidebar is off-canvas, like the dashboard's ── */
-        @media (max-width: 900px) {
-            .pos-sidebar {
-                position: fixed; top: 0; bottom: 0; left: 0;
-                transform: translateX(-100%); transition: transform 220ms ease;
-                box-shadow: 0 24px 48px rgba(11,15,25,.28);
-            }
-            .pos-sidebar.is-open { transform: translateX(0); }
-            .pos-burger { display: block; }
-            .pos-topbar-outlet label { display: none; }
-        }
-        @media (max-width: 900px) and (prefers-reduced-motion: reduce) {
-            .pos-sidebar { transition: none; }
-        }
-        .pos-scrim {
-            position: fixed; inset: 0; z-index: 39; background: rgba(11,15,25,.5);
-            opacity: 0; pointer-events: none; transition: opacity 220ms ease;
-        }
-        .pos-scrim.is-open { opacity: 1; pointer-events: auto; }
+        /* Mobile: the SHARED sidebar's own off-canvas behaviour applies
+           (shared-dashboard.css ≤640px + the wiring in sidebar-loader.js, which
+           binds `header button.md:hidden`). The burger below carries that exact
+           selector so it is picked up rather than reimplemented. */
+        @media (max-width: 900px) { .pos-topbar-outlet label { display: none; } }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
 
-    <!-- The shared finance sidebar is STILL LOADED, and hidden.
-         sidebar-loader.js does far more than paint nav: it runs the trial-access
-         guard, the presence heartbeat and the internal-roster mirror, and it
-         bails early on `if (!sidebar) return`. Deleting the element would stop
-         all three silently. So it stays in the DOM, display:none, and the till
-         paints its own. -->
-    <aside id="sidebar" class="pos-hidden-shell w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 border-r border-slate-200 overflow-hidden">
+    <!-- The SHARED sidebar, rendered by sidebar-loader.js exactly as every app
+         page renders it — same logo, same entity switcher, same Lucide icons,
+         same profile block, same light theme. Only the NAV ITEMS are swapped,
+         by pos.js, for the till's four destinations.
+         Building a parallel sidebar (which I did first) duplicates all of that
+         chrome and guarantees the two drift apart the first time either moves. -->
+    <aside id="sidebar" class="w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
         <!-- Sidebar content loaded by sidebar-loader.js -->
-    </aside>
-
-    <!-- ── The till's own sidebar ──────────────────────────────────────────
-         A cashier's destinations, not a finance user's. The dashboard nav is
-         nineteen links to pages this role cannot read; these four are the
-         surfaces the till actually has. Views switch in place — no new routes,
-         which the brief requires preserved. -->
-    <aside class="pos-sidebar" id="pos-sidebar">
-        <div class="pos-brand">
-            <span class="pos-brand-mark" aria-hidden="true">
-                <svg viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="9" fill="#0B0F19"/><path d="M14 11h13v4.4h-8.2v4h7.1v4.4h-7.1V29H14z" fill="#fff"/></svg>
-            </span>
-            <span class="pos-brand-name">FluxyOS</span>
-            <span class="pos-brand-tag">POS</span>
-        </div>
-
-        <div class="pos-side-user">
-            <img id="pos-side-avatar" alt="" src="https://ui-avatars.com/api/?name=User&background=0F172A&color=fff">
-            <div class="min-w-0">
-                <p id="pos-side-name">Loading…</p>
-                <p id="pos-side-role">Cashier</p>
-            </div>
-        </div>
-
-        <nav class="pos-side-nav" aria-label="Point of sale">
-            <button type="button" class="pos-nav is-active" data-view="till">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85"><path d="M3.4 5.5a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.7a2 2 0 0 0-.4-1.2l-2-2.7A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/><path d="M3.1 6h17.8"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                <span>Point of Sale</span>
-            </button>
-            <button type="button" class="pos-nav" data-view="tables">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85"><rect x="3" y="4" width="18" height="7" rx="2"/><path d="M7 11v9M17 11v9"/></svg>
-                <span>Tables</span>
-                <span class="pos-nav-badge" id="pos-nav-tables"></span>
-            </button>
-            <button type="button" class="pos-nav" data-view="orders">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85"><path d="M6 2h12l2 6H4z"/><path d="M5 8v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
-                <span>Orders</span>
-                <span class="pos-nav-badge" id="pos-nav-orders"></span>
-            </button>
-            <button type="button" class="pos-nav" data-view="shift">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="14" r="1.2"/></svg>
-                <span>Shift</span>
-                <span class="pos-nav-dot" id="pos-nav-shift" hidden></span>
-            </button>
-        </nav>
-
-        <div class="pos-side-foot">
-            <!-- Only for a role that HAS a dashboard. A cashier is denied every
-                 collection behind it, so offering the link would be a door that
-                 opens onto a wall. -->
-            <a href="/dashboard" class="pos-nav pos-nav-quiet hidden" id="pos-back-dashboard">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85"><path d="M3 12l9-9 9 9"/><path d="M9 21V12h6v9"/></svg>
-                <span>Back to Dashboard</span>
-            </a>
-            <button type="button" class="pos-nav pos-nav-quiet" id="pos-signout">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
-                <span>Sign Out</span>
-            </button>
-        </div>
     </aside>
 
     <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
@@ -627,7 +503,7 @@
              below. The dashboard's title/subtitle pair is gone — a cashier does
              not need to be told which page they are on twice. -->
         <header class="pos-topbar">
-            <button class="pos-burger" id="pos-burger" aria-label="Open menu">
+            <button class="pos-burger md:hidden" id="pos-burger" aria-label="Open menu">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
             <div class="pos-topbar-outlet">
