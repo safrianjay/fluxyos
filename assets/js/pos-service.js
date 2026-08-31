@@ -42,7 +42,7 @@
 
 import {
     collection, query, where, getDocs, getDoc, setDoc, updateDoc,
-    serverTimestamp, orderBy, limit, writeBatch, runTransaction, doc,
+    serverTimestamp, orderBy, limit, startAfter, writeBatch, runTransaction, doc,
     Timestamp, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { periodKey as acctPeriodKey } from "./accounting-engine.js";
@@ -910,14 +910,60 @@ export const POS_METHODS = {
     // Retry emission for orders that were paid but never reached the ledger —
     // the till lost connectivity mid-commit, or stock relief threw. Idempotent:
     // an order carrying a transaction_id is skipped.
-    async emitUnpostedPosSales(userId, { limitCount = 50 } = {}) {
-        const orders = await this.getPosOrders(userId, { statuses: ['paid'], limitCount });
-        let emitted = 0;
-        for (const o of orders) {
-            if (o.transaction_id) continue;
-            try { await this._emitPosSale(userId, o); emitted++; } catch (_) { /* next sweep */ }
+    // Every paid order that never reached the ledger — PAGED, not capped.
+    //
+    // The sweep used to read `getPosOrders(… limitCount: 50)`, which takes the
+    // fifty most recent orders of ANY status and then keeps the paid ones. On a
+    // busy day the unposted orders sit well outside that window and no amount of
+    // pressing "Post now" could ever reach them, while the badge — computed over
+    // a different window again, 300 orders of ONE outlet — went on reporting
+    // them. Two windows disagreeing is how a button comes to look broken.
+    //
+    // This walks pages until the collection is exhausted or `maxScan` docs have
+    // been read. The cap is a cost ceiling, not a correctness one: it is only
+    // ever reached by a workspace with thousands of orders, and the report says
+    // when it truncated rather than quietly returning less.
+    async findUnpostedPosSales(userId, { maxScan = 3000, pageSize = 300 } = {}) {
+        const base = collection(this.db, `${this._scope(userId)}/pos_orders`);
+        const found = [];
+        let cursor = null;
+        let scanned = 0;
+        let truncated = false;
+
+        while (scanned < maxScan) {
+            const q = cursor
+                ? query(base, orderBy('created_at', 'desc'), startAfter(cursor), limit(pageSize))
+                : query(base, orderBy('created_at', 'desc'), limit(pageSize));
+            const snap = await getDocs(q);
+            if (snap.empty) break;
+
+            snap.docs.forEach((d) => {
+                const o = { id: d.id, ...d.data() };
+                if (o.status === 'paid' && !o.transaction_id) found.push(o);
+            });
+            scanned += snap.docs.length;
+            cursor = snap.docs[snap.docs.length - 1];
+            if (snap.docs.length < pageSize) break;
+            if (scanned >= maxScan) truncated = true;
         }
-        return { emitted };
+        return { orders: found, scanned, truncated };
+    },
+
+    async emitUnpostedPosSales(userId, options = {}) {
+        const { orders, scanned, truncated } = await this.findUnpostedPosSales(userId, options);
+        let emitted = 0;
+        const failed = [];
+        for (const o of orders) {
+            // `transaction_id` is the idempotency key and _emitPosSale stamps it
+            // in the same batch as the row, so re-running this is safe.
+            try { await this._emitPosSale(userId, o); emitted += 1; }
+            catch (err) { failed.push({ id: o.id, reason: (err && err.message) || 'unknown' }); }
+        }
+        // The failures are RETURNED rather than swallowed. The whole reason this
+        // sweep existed and could not help was that its payload was permanently
+        // invalid and every attempt failed in silence — see the note on
+        // _posSettlementAmounts.
+        return { emitted, found: orders.length, failed, scanned, truncated };
     },
 
     // ── Refund ──────────────────────────────────────────────────────────────

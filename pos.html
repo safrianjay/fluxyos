@@ -762,6 +762,29 @@
         }
         .pos-btn-ghost { background: #fff; border: 1px solid #E2E8F0; color: #334155; }
         .pos-btn-ghost:hover { background: #F8FAFC; }
+
+        /* A write is in flight — see once() in pos.js.
+           The guard refused re-entry in complete silence: the button stayed lit,
+           the press did nothing, and the cashier pressed again. Blocking the
+           pointer means the press cannot be swallowed, because it cannot be made
+           — and the control says so. */
+        body[data-pos-busy] { cursor: progress; }
+        body[data-pos-busy] .pos-primary,
+        body[data-pos-busy] .pos-card,
+        body[data-pos-busy] .pos-table,
+        body[data-pos-busy] .pos-ocard-btn,
+        body[data-pos-busy] #pos-new-order,
+        body[data-pos-busy] #pos-post-now,
+        body[data-pos-busy] [data-arrange],
+        body[data-pos-busy] .pos-line button,
+        body[data-pos-busy] button[form="pos-drawer-form"] {
+            pointer-events: none;
+            opacity: .55;
+            /* Delayed, so a 200ms write does not flash the whole till grey. A
+               slow one dims right about when a person starts to wonder. On
+               release the rule stops applying and it snaps back with no lag. */
+            transition: opacity 120ms ease 180ms;
+        }
         /* The arrange toggle stays visibly ON while the floor is editable —
            a mode you cannot see you are in is how a drag gets mistaken for a
            tap that should have opened an order. */

@@ -70,7 +70,10 @@ const state = {
     // undo. Keyed by table id → { x, y } in canvas percent.
     arranging: false,
     floorMoves: {},
-    floorReset: false
+    floorReset: false,
+    // The automatic ledger sweep runs once per page load, not once per refresh —
+    // the sweep ends in a refresh, and a refresh that swept would not stop.
+    sweptOnce: false
 };
 
 // The till's own views. No new routes — the brief requires the existing ones
@@ -232,10 +235,26 @@ function fail(err, fallback) {
 
 // Guard every mutation: a double-tap on a slow connection must not open two
 // orders or take payment twice.
+//
+// The guard is right; its SILENCE was not. Re-entry was refused by returning
+// null, and nothing else happened — the button still looked live, the tap did
+// nothing, and there was no spinner, no disabled state and no error. A cashier
+// at a counter presses again. It also cost two spec failures on 2026-08-31
+// before it was recognised, which is the same symptom seen from the outside.
+//
+// So the busy state is now IN THE DOM. `pointer-events: none` on the mutating
+// controls means a press can no longer be swallowed — it cannot be made at all,
+// and the control is visibly unavailable while the write is in flight. The
+// dimming is delayed in CSS so a 200ms write does not flash the till grey.
 async function once(fn) {
     if (state.busy) return null;
     state.busy = true;
-    try { return await fn(); } finally { state.busy = false; }
+    document.body.dataset.posBusy = '1';
+    try { return await fn(); }
+    finally {
+        state.busy = false;
+        delete document.body.dataset.posBusy;
+    }
 }
 
 // ── Status vocabulary ────────────────────────────────────────────────────────
@@ -2000,6 +2019,46 @@ async function refresh({ keepOrder = false } = {}) {
     if (navShift) navShift.hidden = !state.shift;
 
     if (state.view === 'orders') renderOrderLists();
+
+    autoSweepUnposted();
+}
+
+// The retry the design always described and never wired.
+//
+// firestore.rules says it in as many words — "a finance session sweeps them
+// later" — and _emitPosSale's catch says the same. But nothing ever called
+// emitUnpostedPosSales except a button in the notification panel, so "later"
+// meant "when somebody notices the badge". Between 2026-08-30 and 2026-08-31
+// every till sale failed to post and the backlog simply accumulated.
+//
+// Runs ONCE per page load, only when there is a backlog and only for a session
+// that may write journals — a cashier cannot post, and hammering a sweep that
+// is guaranteed to fail is worse than not trying. `transaction_id` is stamped
+// in the same batch as the transaction, so re-running is idempotent.
+function autoSweepUnposted() {
+    if (state.sweptOnce) return;
+    if (!state.overview || !(state.overview.unpostedCount > 0)) return;
+    const ws = (typeof window !== 'undefined' && window.FluxyWorkspace) || null;
+    if (!(ws && typeof ws.can === 'function' && ws.can('accounting.post'))) return;
+
+    state.sweptOnce = true;
+    (async () => {
+        try {
+            const r = await ds.emitUnpostedPosSales(state.uid);
+            if (!r.emitted) {
+                // Nothing moved. Loud on purpose: a sweep that finds a backlog
+                // and posts none of it is the exact shape of the bug above.
+                if (r.found) console.error('[pos] sweep could not post any of the',
+                    r.found, 'unposted sale(s):', r.failed.slice(0, 3));
+                return;
+            }
+            toast(`${r.emitted} till ${r.emitted === 1 ? 'sale' : 'sales'} posted to the ledger.`);
+            await ds.postPendingJournals(state.uid).catch(() => {});
+            await refresh();
+        } catch (err) {
+            console.error('[pos] automatic ledger sweep failed:', err && err.message);
+        }
+    })();
 }
 
 function watch() {

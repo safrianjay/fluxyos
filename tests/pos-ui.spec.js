@@ -277,10 +277,16 @@ test.describe('Point of Sale', () => {
         // Retried for the same reason as the transitions above: this press also
         // goes through `once()`, and the first attempt was swallowed by the
         // refresh that the previous transition had just started.
-        for (let attempt = 0; attempt < 6; attempt += 1) {
+        for (let attempt = 0; attempt < 4; attempt += 1) {
+            // The drawer check comes FIRST. Without it a slow open meant the
+            // loop pressed again through the drawer's own overlay, and the retry
+            // failed on the thing it had already succeeded at.
+            if (await page.locator('#pos-drawer').count()) break;
             await primary.click();                   // opens the payment drawer
-            if (await page.locator('#pos-pay-amount').isVisible().catch(() => false)) break;
-            await page.waitForTimeout(1500);
+            try {
+                await page.locator('#pos-pay-amount').waitFor({ state: 'visible', timeout: 4000 });
+                break;
+            } catch { /* press swallowed while busy — press again */ }
         }
         await expect(page.locator('#pos-pay-amount'),
             'the payment drawer never opened').toBeVisible({ timeout: 15000 });
@@ -392,6 +398,51 @@ test.describe('Point of Sale', () => {
         await page.fill('#pos-void-why', 'Spec cleanup');
         await page.locator('#pos-drawer-form button[type="submit"], button[form="pos-drawer-form"]').first().click();
         await expect(page.locator('#pos-order-title')).toHaveText(/no order open|belum ada pesanan/i, { timeout: 20000 });
+    });
+
+    test('a press during a write is refused visibly, not swallowed', async ({ page }) => {
+        // `once()` returned null on re-entry and did nothing else — the button
+        // stayed lit, the press vanished, and the cashier pressed again. It also
+        // cost two spec failures on 2026-08-31 before anyone recognised it,
+        // which is exactly the symptom from the outside.
+        //
+        // Firestore is throttled to make the window observable. Asserting on the
+        // real timing would be a race that passes on a fast laptop and ships the
+        // bug.
+        await page.goto('/pos');
+        await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
+        await expect(page.locator('#pos-new-order')).toBeEnabled({ timeout: 25000 });
+
+        // Kept installed for the whole test and switched off by a flag rather
+        // than unrouted: unrouting mid-flight auto-continues the requests still
+        // in the handler, and the second continue throws "Route is already
+        // handled".
+        let slow = true;
+        await page.route('**/google.firestore.v1.Firestore/**', async (route) => {
+            if (slow) await new Promise((r) => setTimeout(r, 1200));
+            await route.continue().catch(() => {});
+        });
+
+        const newOrder = page.locator('#pos-new-order');
+        await newOrder.click();
+
+        // Mid-write: the attribute is set and the control refuses the pointer.
+        await expect(page.locator('body')).toHaveAttribute('data-pos-busy', '1', { timeout: 5000 });
+        const blocked = await newOrder.evaluate((el) => getComputedStyle(el).pointerEvents);
+        expect(blocked, 'the button still accepts presses while a write is in flight').toBe('none');
+
+        // And it clears — a stuck busy attribute would brick the till.
+        await expect(page.locator('body')).not.toHaveAttribute('data-pos-busy', '1', { timeout: 30000 });
+        slow = false;
+
+        // Clean up the order this opened.
+        if (await page.locator('#pos-void-btn').isVisible().catch(() => false)) {
+            await page.click('#pos-void-btn');
+            await page.fill('#pos-void-why', 'Spec cleanup');
+            await page.locator('button[type="submit"][form="pos-drawer-form"]').first().click();
+            await expect(page.locator('#pos-order-title'))
+                .toHaveText(/no order open|belum ada pesanan/i, { timeout: 20000 });
+        }
     });
 
     test('the floor plan is a room, and management can rearrange it', async ({ page }) => {
