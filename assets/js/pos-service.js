@@ -450,9 +450,28 @@ export const POS_METHODS = {
     // integrity, no discount analytics, no anomaly detection (§18.4).
     async setPosOrderDiscount(userId, orderId, { lineId = null, amount = 0, reason = null } = {}) {
         const amt = Math.max(0, Math.round(Number(amount) || 0));
+        // A discount may not take the bill to zero.
+        //
+        // `recordPosPayment` refuses an amount of zero, so a fully discounted
+        // order can never reach `paid` — it strands, and the only way out is to
+        // void it. Refusing here says so at the moment the cashier can still do
+        // something about it. A genuinely free item is a giveaway with a COGS
+        // consequence, not a sale, and belongs in waste rather than on a till.
+        const willZero = (order) => {
+            const lines = order.lines || [];
+            const gross = lines.reduce((sum, l) => sum + (Number(l.gross_amount) || 0), 0);
+            const otherLineDisc = lines.reduce((sum, l) => sum
+                + (l.line_id === lineId ? 0 : (Number(l.discount_amount) || 0)), 0);
+            const orderDisc = lineId === null ? amt : (Number(order.discount_amount) || 0);
+            const lineDisc = lineId === null ? otherLineDisc : otherLineDisc + amt;
+            return gross > 0 && (gross - lineDisc - orderDisc) <= 0;
+        };
         const why = this._nullableString(reason, 80);
         if (amt > 0 && !why) throw new Error('Say why the discount was given — it is the only record of it.');
         return this.updatePosOrder(userId, orderId, (order) => {
+            if (amt > 0 && willZero(order)) {
+                throw new Error('That discount would bring the bill to zero, and a zero bill cannot be paid. Void the order instead.');
+            }
             if (!lineId) return { discount_amount: amt, discount_reason: amt > 0 ? why : null };
             const lines = (order.lines || []).map((l) => (l.line_id === lineId
                 ? { ...l, discount_amount: Math.min(amt, Number(l.gross_amount) || 0), discount_reason: amt > 0 ? why : null }

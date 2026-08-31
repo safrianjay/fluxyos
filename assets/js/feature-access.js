@@ -97,18 +97,20 @@ export const FEATURE_RULES = {
             'safrianjayadi77@gmail.com'
         ],
         allowEmailPatterns: [/^fluxyos\.qa\+.*@example\.com$/i],
-        // F&B is the initial segment. Retail and other categories run tills too;
-        // they are deliberately NOT listed until someone decides to serve them,
-        // because the till's F&B assumptions (tables, covers) are visible in the UI.
+        // Retail added 2026-08-31, once the till stopped being F&B-shaped. The
+        // reason it was withheld — "the till's F&B assumptions (tables, covers)
+        // are visible in the UI" — is what POS_PROFILES in pos.js now fixes: a
+        // retail workspace gets a pay-first counter with no floor plan and no
+        // kitchen ladder. See docs/POS_BUSINESS_TYPE_STRATEGY.md.
         //
-        // ⚠️ DO NOT REMOVE allowEmails ABOVE. The 2026-08-30 backfill finished, so
-        // the old reason ("workspaces are unstamped") is gone — but it uncovered a
-        // better one: this list is NARROWER than the allowlist it was meant to
-        // replace. TB Bangun Utama is a building-supplies RETAILER already running
-        // the till (2 pos_orders, 1 paid, 1 table). Dropping allowEmails today
-        // removes POS from a live user. Widening to ['fnb', 'retail'] is a product
-        // decision, not a cleanup. See docs/data-model/onboarding.md.
-        allowCategories: ['fnb']
+        // ⚠️ allowEmails STAYS. Widening to include retail removes the reason
+        // that was BLOCKING its removal (TB Bangun Utama, a building-supplies
+        // retailer already running the till, is now covered by category) — but
+        // "the blocker is gone" is not "the list is empty". Dropping it needs
+        // proof that no OTHER allowlisted workspace carries a third category,
+        // and that is a data question, not a code one. Removing it on the
+        // assumption would take a live module off a paying user in silence.
+        allowCategories: ['fnb', 'retail']
     }
 };
 

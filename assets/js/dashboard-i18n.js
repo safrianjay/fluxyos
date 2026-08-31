@@ -5115,6 +5115,17 @@
         "Each close records what was counted against what was expected.": "Setiap penutupan mencatat jumlah hitungan dibanding jumlah yang seharusnya.",
         "No shift has been closed at this outlet yet.": "Belum ada shift yang ditutup di outlet ini.",
         "Could not load shift history.": "Tidak bisa memuat riwayat shift.",
+        // Retail / pay-first till (2026-08-31). "Close", "Takeaway" and "Void
+        // order" already map elsewhere in this dictionary — a duplicate key in
+        // one object literal is the LAST one to win, so they are not repeated.
+        "Charge": "Bayar",
+        "New sale": "Transaksi baru",
+        "No sale open": "Belum ada transaksi",
+        "Scan or tap a product to start.": "Pindai atau ketuk produk untuk mulai.",
+        "Start a new sale": "Mulai transaksi baru",
+        "That discount would bring the bill to zero, and a zero bill cannot be paid. Void the order instead.":
+            "Diskon itu membuat tagihan jadi nol, dan tagihan nol tidak bisa dibayar. Batalkan pesanannya saja.",
+
         // Menu modifiers (2026-08-31). "Optional" is NOT added — it already maps
         // elsewhere in this dictionary, and a duplicate key in one object literal
         // is the LAST one to win, so a second entry would change it app-wide.

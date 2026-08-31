@@ -78,6 +78,57 @@ const state = {
 
 // The till's own views. No new routes — the brief requires the existing ones
 // preserved, and a cashier gains nothing from four URLs they never type.
+// ── Business-type profiles ───────────────────────────────────────────────────
+//
+// One POS, several ways of selling. The workflow is verticalized by business
+// type; the transaction engine, the posting rules and the inventory relief stay
+// shared and know nothing about any of this.
+//
+// The important one is `ladder`. Every order used to walk the dine-in chain
+// (open → sent → served → awaiting_payment → paid) because it was the only chain
+// there was — correct for a restaurant, where the customer eats and then pays.
+// It is wrong for every counter transaction, where the customer pays BEFORE they
+// get the goods: a retail cashier pressed "Send to kitchen", "Mark served" and
+// "Request bill" before reaching the one button that meant anything, on every
+// single sale.
+//
+// This is UI only. `recordPosPayment` has no status precondition and
+// `wsValidPosOrderUpdate` imposes no ordering, so `open → paid` was always legal
+// at the data layer — which is why pay-first needs no schema change and no rules
+// deploy. See docs/POS_BUSINESS_TYPE_STRATEGY.md.
+const POS_PROFILES = {
+    fnb: {
+        ladder: { open: 'sent', submitted: 'sent', sent: 'served', served: 'awaiting_payment' },
+        views: ['till', 'tables', 'orders', 'shift'],
+        payFirst: false,
+        startLabel: 'Takeaway',
+        closeLabel: 'Close',
+        emptyTitle: 'No order open',
+        emptyAction: 'Pick a table'
+    },
+    retail: {
+        // Empty on purpose: there is no step between opening a sale and charging
+        // for it. `advance()` reads "no next step" as "the only thing left is to
+        // take the money", which is exactly what a counter sale is.
+        ladder: {},
+        views: ['till', 'orders', 'shift'],
+        payFirst: true,
+        startLabel: 'New sale',
+        closeLabel: 'New sale',
+        emptyTitle: 'No sale open',
+        emptyAction: 'New sale'
+    }
+};
+
+// Unknown or absent category falls back to F&B — today's behaviour, unchanged.
+// An unstamped workspace reaching the till through the legacy email allowlist
+// must not have its workflow altered by a field it does not carry.
+function posProfile() {
+    const cat = (typeof window !== 'undefined' && window.FluxyWorkspace
+        && window.FluxyWorkspace.businessCategory) || null;
+    return POS_PROFILES[cat] || POS_PROFILES.fnb;
+}
+
 const VIEWS = {
     till:   { title: 'Point of Sale (POS)', crumb: 'Pos' },
     tables: { title: 'Tables',              crumb: 'Tables' },
@@ -140,8 +191,13 @@ function mountTillNav() {
     // the nav ids this menu reuses. Taken before the wipe, obviously — and taken
     // from the DOM rather than redrawn here, so the till cannot end up with a
     // second icon family the first time the dashboard's are restyled.
+    // Only the views this business actually uses. A retail till has no floor to
+    // draw, and a menu entry onto a room that does not exist is worse than one
+    // fewer entry.
+    const nav = TILL_NAV.filter((n) => n.section || posProfile().views.includes(n.view));
+
     const icons = {};
-    TILL_NAV.filter((n) => n.id).forEach((n) => {
+    nav.filter((n) => n.id).forEach((n) => {
         const svg = document.querySelector(`#${n.id} .sidebar-icon`);
         if (svg) icons[n.id] = svg.outerHTML;
     });
@@ -156,7 +212,7 @@ function mountTillNav() {
             ${n.badge ? `<span class="pos-nav-badge sidebar-hide" id="${n.badge}"></span>` : ''}
         </button>`;
 
-    host.innerHTML = TILL_NAV.map((n) => n.section
+    host.innerHTML = nav.map((n) => n.section
         ? `<p class="section-label px-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 sidebar-hide">${esc(n.section)}</p>`
         : item(n)).join('');
 
@@ -1057,7 +1113,12 @@ function renderMenu() {
     }
 
     const rows = visibleMenu();
-    const live = !!state.order && !['paid', 'void'].includes(state.order.status);
+    const open = !!state.order && !['paid', 'void'].includes(state.order.status);
+    // At a counter nobody "opens an order" — they start scanning. In a pay-first
+    // profile the catalogue stays live with no order, and the first tap creates
+    // the sale and puts the item on it. Requiring "New sale" first would be the
+    // extra tap this whole profile exists to remove.
+    const live = open || (posProfile().payFirst && !!state.outletId);
 
     if (count) {
         count.textContent = rows.length === state.menu.length
@@ -1104,12 +1165,26 @@ function renderMenu() {
             if (item && posModifierGroups(item).length) return openModifierDrawer(item);
             addMenuLine(btn.dataset.item, btn.dataset.name, Number(btn.dataset.price));
         });
+        // Kept in sync with `live` above: a card that is tappable with no order
+        // open must be able to open one.
+        if (!state.orderId && posProfile().payFirst) btn.removeAttribute('disabled');
     });
 }
 
 // Unguarded on purpose — see addMenuLine below.
 async function addLineNow(itemId, itemName, unitPrice, modifiers = null, note = null) {
     try {
+        // Pay-first: the first tap opens the sale. Sequential rather than
+        // parallel on purpose — the line needs the order id.
+        if (!state.orderId && posProfile().payFirst) {
+            const order = await ds.createPosOrder(state.uid, {
+                dimensionId: state.outletId,
+                tableId: null, tableLabel: null, channel: 'staff',
+                shiftId: state.shift ? state.shift.id : null
+            });
+            state.orderId = order.id;
+            state.order = order;
+        }
         state.order = await ds.addPosOrderLine(state.uid, state.orderId, {
             itemId, itemName, quantity: 1, unitPrice, modifiers, note
         });
@@ -1246,6 +1321,31 @@ function openModifierDrawer(item) {
     sync();
 }
 
+// What the one primary button says.
+//
+// In a pay-first profile it carries the AMOUNT — the number a cashier reads
+// before committing is the number the customer will be charged, and it is due
+// (total − already paid), so a part-paid sale asks for the balance rather than
+// the whole bill again.
+//
+// Two text nodes, never one interpolated string: the DOM translator matches
+// WHOLE text nodes, so "Charge Rp125.000" would leave the English word sitting
+// in a Bahasa till.
+function setPrimaryAction(primary, o, st) {
+    const p = posProfile();
+    if (o.status === 'paid' || o.status === 'void') {
+        primary.textContent = p.closeLabel;
+        return;
+    }
+    const nextIsPayment = o.status === 'awaiting_payment' || !p.ladder[o.status];
+    if (p.payFirst && nextIsPayment) {
+        const due = Math.max(0, (Number(o.total_amount) || 0) - (Number(o.paid_amount) || 0));
+        primary.innerHTML = `<span>Charge</span> ${esc(rp(due))}`;
+        return;
+    }
+    primary.textContent = st.action;
+}
+
 function renderOrder() {
     const o = state.order;
     const lines = $('pos-order-lines');
@@ -1259,14 +1359,17 @@ function renderOrder() {
     document.getElementById('pos-order-panel').classList.toggle('is-empty', !o);
 
     if (!o) {
-        $('pos-order-title').textContent = 'No order open';
-        $('pos-order-sub').textContent = state.overview && state.overview.tables.length
-            ? 'Pick a table to start.' : 'Add a table, or start a takeaway order.';
+        const prof = posProfile();
+        $('pos-order-title').textContent = prof.emptyTitle;
+        $('pos-order-sub').textContent = prof.payFirst
+            ? 'Scan or tap a product to start.'
+            : (state.overview && state.overview.tables.length
+                ? 'Pick a table to start.' : 'Add a table, or start a takeaway order.');
         badge.classList.add('hidden');
         lines.innerHTML = '';
         totals.innerHTML = '';
         primary.disabled = true;
-        primary.textContent = 'Pick a table';
+        primary.textContent = posProfile().emptyAction;
         discountBtn.classList.add('hidden');
         voidBtn.classList.add('hidden');
         refundBtn.classList.add('hidden');
@@ -1282,7 +1385,11 @@ function renderOrder() {
     badge.classList.remove('hidden');
 
     const rows = o.lines || [];
-    const editableNow = !!(st.next || o.status === 'awaiting_payment');
+    // "Not finished with" — said directly. It used to read `st.next || awaiting`,
+    // which happened to mean the same thing only because STATUS still carries the
+    // F&B chain; once the ladder became profile data that coincidence was one
+    // edit away from silently locking a retail cart.
+    const editableNow = !['paid', 'void'].includes(o.status);
     // Reference line shape: the name, the arithmetic spelled out
     // (`Rp10.000 × 2 = Rp20.000`), a stepper, notes, and a remove control.
     // Spelling out the multiplication is the reference's one genuinely better
@@ -1386,7 +1493,7 @@ function renderOrder() {
 
     const empty = !rows.length;
     primary.disabled = empty && o.status !== 'paid';
-    primary.textContent = st.action;
+    setPrimaryAction(primary, o, st);
 
     const editable = !['paid', 'void'].includes(o.status);
     discountBtn.classList.toggle('hidden', !editable || empty);
@@ -1463,10 +1570,13 @@ async function advance() {
         return;
     }
     if (o.status === 'awaiting_payment') return openPaymentDrawer();
-    const st = STATUS[o.status];
-    if (!st || !st.next) return;
+    // The ladder is PROFILE data, not a property of the status. A pay-first
+    // profile has no next step, and "no next step" here means charge — never
+    // "do nothing", which is what a bare `return` would have made it.
+    const next = posProfile().ladder[o.status];
+    if (!next) return openPaymentDrawer();
     try {
-        state.order = await ds.setPosOrderStatus(state.uid, state.orderId, st.next);
+        state.order = await ds.setPosOrderStatus(state.uid, state.orderId, next);
         renderOrder();
         await refresh({ keepOrder: true });
     } catch (err) { fail(err, 'Could not update that order.'); }
@@ -2158,6 +2268,8 @@ async function refresh({ keepOrder = false } = {}) {
     renderOrder();
     $('pos-new-order').disabled = !state.outletId;
 
+    applyPosProfileChrome();
+
     // Free-table count on the "Table Order" button — the floor plan is behind a
     // click now, so its one at-a-glance number comes forward to the button.
     const badge = $('pos-tables-count');
@@ -2219,6 +2331,25 @@ function autoSweepUnposted() {
             console.error('[pos] automatic ledger sweep failed:', err && err.message);
         }
     })();
+}
+
+// The parts of the shell that are F&B-shaped. Applied on every refresh rather
+// than once at boot, because the workspace resolves asynchronously and the first
+// render can happen before the category is known.
+function applyPosProfileChrome() {
+    const p = posProfile();
+
+    // "Table Order" opens the floor plan. Without tables there is no floor.
+    $('pos-tables-btn')?.classList.toggle('hidden', !p.views.includes('tables'));
+
+    // "Takeaway" is a distinction only a business with a dining room makes.
+    const start = $('pos-new-order');
+    const startText = start && start.querySelector('span');
+    if (startText) startText.textContent = p.startLabel;
+    if (start) start.setAttribute('aria-label', p.payFirst ? 'Start a new sale' : 'Start a takeaway order');
+
+    // Dine-in / table pickers: meaningless at a counter.
+    document.querySelector('.pos-order-selects')?.classList.toggle('hidden', !p.views.includes('tables'));
 }
 
 function watch() {

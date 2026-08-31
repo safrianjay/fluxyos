@@ -367,6 +367,10 @@
 
         /* ── Order panel, reference shape ───────────────────────────────── */
         .pos-order-selects { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+        /* Beats the grid above regardless of stylesheet order — a bare `.hidden`
+           ties on specificity with `.pos-order-selects` and the winner would
+           depend on where the Tailwind CDN happened to inject itself. */
+        .pos-order-selects.hidden { display: none; }
         .pos-order-selects select {
             width: 100%; min-height: 36px; padding: 0 10px; font-size: 13px;
             border: 1px solid #E2E8F0; border-radius: 10px; background: #fff; color: #0F172A;

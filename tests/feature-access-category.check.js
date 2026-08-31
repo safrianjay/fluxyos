@@ -48,9 +48,14 @@ function withCategory(category, fn) {
 
     console.log('\nbusiness-category eligibility\n');
 
-    check('the pos rule is actually gated on F&B (not left null)', () => {
+    // Retail joined F&B on 2026-08-31, once POS_PROFILES gave a retail workspace
+    // a pay-first counter instead of the F&B ladder. The assertion is pinned to
+    // the exact list rather than "contains fnb": widening this hands a live
+    // module to a whole segment, and it should never happen as a side effect of
+    // some other edit.
+    check('the pos rule is gated on the categories the till actually serves', () => {
         assert.ok(Array.isArray(pos.allowCategories), 'pos.allowCategories must be an array');
-        assert.deepStrictEqual(pos.allowCategories, ['fnb']);
+        assert.deepStrictEqual(pos.allowCategories, ['fnb', 'retail']);
     });
 
     check('an F&B workspace qualifies with NO allowlisted email', () => {
@@ -59,7 +64,13 @@ function withCategory(category, fn) {
         });
     });
 
-    check('a non-F&B workspace is refused, even though it has a category', () => {
+    check('a RETAIL workspace qualifies with no allowlisted email', () => {
+        withCategory('retail', () => {
+            assert.strictEqual(matches(pos, STRANGER), true);
+        });
+    });
+
+    check('a category the till does not serve is still refused', () => {
         withCategory('services', () => {
             assert.strictEqual(matches(pos, STRANGER), false);
         });

@@ -233,7 +233,25 @@ The version specified above works because **retail hands the goods over at the
 counter, so there is nothing left to track**. Ship that first; sequence
 counter-service F&B fulfilment as its own change with its own rules deploy.
 
-## B7. Acceptance
+## B7. Shipped 2026-08-31
+
+Implemented as `POS_PROFILES` in `assets/js/pos.js`, with `allowCategories`
+widened to `['fnb', 'retail']`. Coverage: `tests/pos-pay-first.spec.js`.
+
+Two things learned building it, both worth keeping:
+
+**`window.FluxyWorkspace` is published in STAGES.** `id` lands before the
+profile read returns, so anything reading `businessCategory` right after waiting
+on `id` gets `null` for a workspace that has one. Wait for `ready`. The first cut
+of the spec captured a false "original" that way, and its restore — guarded by a
+falsy check on that null — then skipped and left the QA workspace mis-stamped.
+`if (original)` is the bug; restoring *absent* is a real state.
+
+**A control that skips is a control that lies.** The F&B control originally
+`test.skip`ped when it found the workspace still set to `retail` — reporting
+green on precisely the leak it exists to catch. It asserts now.
+
+## B8. Acceptance
 
 - [ ] A retail workspace reaches payment in **one** press from a filled cart.
 - [ ] An F&B workspace still walks the kitchen ladder, unchanged.
