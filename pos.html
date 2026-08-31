@@ -358,7 +358,7 @@
         .pos-card:focus-within .pos-card-add { display: flex; }
         /* Touch has no hover: on a tablet the affordance must always be visible. */
         @media (hover: none) { .pos-card-add { display: flex; } }
-        .pos-card-warn { font-size: 11px; color: #A16207; margin-top: 4px; }
+        .pos-card-warn { font-size: 12px; color: #A16207; margin-top: 4px; }
 
         /* ── Order panel, reference shape ───────────────────────────────── */
         .pos-order-selects { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
@@ -419,67 +419,257 @@
 
         /* Floor plan, now behind the "Table Order" button. */
         .pos-tablesheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+
+        /* ══ THE TILL SHELL ═══════════════════════════════════════════════
+           A cashier's chrome, not a finance user's. The dashboard sidebar is
+           nineteen links to pages this role is denied; these four are the
+           surfaces the till actually has. Same tokens, same type scale, same
+           components — a different information architecture, which is the whole
+           distinction between the two experiences. */
+
+        .pos-hidden-shell { display: none !important; }
+
+        .pos-sidebar {
+            width: 232px; flex-shrink: 0; background: #0B0F19; color: #E2E8F0;
+            display: flex; flex-direction: column; height: 100vh; z-index: 40;
+        }
+        .pos-brand {
+            display: flex; align-items: center; gap: 9px;
+            padding: 18px 16px 14px; border-bottom: 1px solid rgba(255,255,255,.07);
+        }
+        .pos-brand-mark { width: 30px; height: 30px; flex-shrink: 0; }
+        .pos-brand-mark svg { width: 100%; height: 100%; }
+        .pos-brand-mark rect { fill: #fff; }
+        .pos-brand-mark path { fill: #0B0F19; }
+        .pos-brand-name { font-size: 16px; font-weight: 700; color: #fff; letter-spacing: -0.02em; }
+        .pos-brand-tag {
+            margin-left: auto; font-size: 10px; font-weight: 600; letter-spacing: .08em;
+            text-transform: uppercase; color: #EA580C;
+            border: 1px solid rgba(234,88,12,.45); border-radius: 999px; padding: 2px 7px;
+        }
+
+        .pos-side-user {
+            display: flex; align-items: center; gap: 10px; padding: 14px 16px;
+            border-bottom: 1px solid rgba(255,255,255,.07);
+        }
+        .pos-side-user img { width: 34px; height: 34px; border-radius: 999px; flex-shrink: 0; }
+        .pos-side-user p:first-child {
+            font-size: 13px; font-weight: 600; color: #fff;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .pos-side-user p:last-child { font-size: 12px; color: #7C8798; }
+
+        .pos-side-nav { flex: 1; padding: 14px 10px; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; }
+        .pos-nav {
+            display: flex; align-items: center; gap: 11px; width: 100%;
+            min-height: 44px; padding: 0 12px; border: 0; border-radius: 10px;
+            background: transparent; color: #94A3B8; cursor: pointer;
+            font-size: 14px; font-weight: 500; text-align: left; text-decoration: none;
+            transition: background 120ms ease, color 120ms ease;
+        }
+        .pos-nav svg { width: 19px; height: 19px; flex-shrink: 0; }
+        .pos-nav:hover { background: rgba(255,255,255,.06); color: #E2E8F0; }
+        .pos-nav:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
+        /* Active is a filled panel, not an orange fill — orange stays an accent
+           (CLAUDE.md), so it marks the item with text and a rule instead. */
+        .pos-nav.is-active { background: rgba(255,255,255,.10); color: #fff; }
+        .pos-nav.is-active svg { color: #EA580C; }
+        .pos-nav-badge {
+            margin-left: auto; font-size: 12px; font-weight: 600; color: #0B0F19;
+            background: #E2E8F0; border-radius: 999px; padding: 1px 7px;
+            font-variant-numeric: tabular-nums;
+        }
+        .pos-nav-badge:empty { display: none; }
+        .pos-nav-dot { margin-left: auto; width: 7px; height: 7px; border-radius: 999px; background: #16A34A; }
+        .pos-side-foot { padding: 10px; border-top: 1px solid rgba(255,255,255,.07); display: flex; flex-direction: column; gap: 3px; }
+        .pos-nav-quiet { color: #7C8798; font-size: 13px; min-height: 40px; }
+
+        /* ── Topbar ─────────────────────────────────────────────────────── */
+        .pos-topbar {
+            height: 60px; flex-shrink: 0; background: #fff;
+            border-bottom: 1px solid #E2E8F0; display: flex; align-items: center;
+            gap: 14px; padding: 0 20px; position: sticky; top: 0; z-index: 30;
+        }
+        .pos-burger { display: none; border: 0; background: none; color: #475569; padding: 6px; cursor: pointer; }
+        .pos-burger svg { width: 22px; height: 22px; }
+        .pos-topbar-outlet { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .pos-topbar-outlet label {
+            font-size: 10px; font-weight: 600; letter-spacing: .08em;
+            text-transform: uppercase; color: #64748B;
+        }
+        .pos-topbar-outlet .fluxy-select { flex: 0 1 250px; min-width: 170px; }
+        .pos-outlet-hint { font-size: 12px; color: #94A3B8; }
+        .pos-topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+        .pos-top-avatar { width: 32px; height: 32px; border-radius: 999px; }
+        .pos-conn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #64748B; }
+        .pos-conn-dot { width: 7px; height: 7px; border-radius: 999px; background: #16A34A; }
+        body.is-offline .pos-conn-dot { background: #DC2626; }
+        body.is-offline .pos-conn-text::after { content: ' — offline'; }
+
+        /* ── Page header ────────────────────────────────────────────────── */
+        .pos-pagehead { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+        .pos-pagetitle { font-size: 24px; font-weight: 700; letter-spacing: -0.025em; color: #0B0F19; line-height: 1.2; }
+        .pos-crumb { margin-top: 3px; font-size: 12px; color: #94A3B8; display: flex; align-items: center; gap: 6px; }
+        .pos-crumb i { font-style: normal; color: #CBD5E1; }
+        .pos-pagehead-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .pos-btn-ghost, .pos-btn-primary {
+            display: inline-flex; align-items: center; gap: 8px; min-height: 42px;
+            padding: 0 15px; border-radius: 10px; font-size: 14px; font-weight: 600;
+            cursor: pointer; white-space: nowrap;
+        }
+        .pos-btn-ghost { background: #fff; border: 1px solid #E2E8F0; color: #334155; }
+        .pos-btn-ghost:hover { background: #F8FAFC; }
+        .pos-btn-primary { background: #0F172A; border: 1px solid #0F172A; color: #fff; }
+        .pos-btn-primary:hover:not(:disabled) { background: #1E293B; }
+        .pos-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+        .pos-btn-ghost svg, .pos-btn-primary svg { width: 16px; height: 16px; }
+        .pos-btn-count {
+            font-size: 12px; font-weight: 600; background: #F1F5F9; color: #475569;
+            border-radius: 999px; padding: 1px 7px; font-variant-numeric: tabular-nums;
+        }
+
+        /* ── Mobile: the till sidebar is off-canvas, like the dashboard's ── */
+        @media (max-width: 900px) {
+            .pos-sidebar {
+                position: fixed; top: 0; bottom: 0; left: 0;
+                transform: translateX(-100%); transition: transform 220ms ease;
+                box-shadow: 0 24px 48px rgba(11,15,25,.28);
+            }
+            .pos-sidebar.is-open { transform: translateX(0); }
+            .pos-burger { display: block; }
+            .pos-topbar-outlet label { display: none; }
+        }
+        @media (max-width: 900px) and (prefers-reduced-motion: reduce) {
+            .pos-sidebar { transition: none; }
+        }
+        .pos-scrim {
+            position: fixed; inset: 0; z-index: 39; background: rgba(11,15,25,.5);
+            opacity: 0; pointer-events: none; transition: opacity 220ms ease;
+        }
+        .pos-scrim.is-open { opacity: 1; pointer-events: auto; }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
 
-    <aside id="sidebar" class="w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+    <!-- The shared finance sidebar is STILL LOADED, and hidden.
+         sidebar-loader.js does far more than paint nav: it runs the trial-access
+         guard, the presence heartbeat and the internal-roster mirror, and it
+         bails early on `if (!sidebar) return`. Deleting the element would stop
+         all three silently. So it stays in the DOM, display:none, and the till
+         paints its own. -->
+    <aside id="sidebar" class="pos-hidden-shell w-[220px] bg-white text-[#1E2F4A] flex flex-col flex-shrink-0 z-20 border-r border-slate-200 overflow-hidden">
         <!-- Sidebar content loaded by sidebar-loader.js -->
     </aside>
 
-    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
-        <header class="dashboard-main-topbar h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-3">
-            <div class="dashboard-topbar-left flex items-center gap-3 min-w-0 flex-1">
-                <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-                </button>
-                <div class="dashboard-topbar-copy min-w-0">
-                    <span class="dashboard-topbar-title">Point of Sale</span>
-                    <p class="dashboard-topbar-subtitle hidden sm:block">What is happening in the room right now.</p>
-                </div>
+    <!-- ── The till's own sidebar ──────────────────────────────────────────
+         A cashier's destinations, not a finance user's. The dashboard nav is
+         nineteen links to pages this role cannot read; these four are the
+         surfaces the till actually has. Views switch in place — no new routes,
+         which the brief requires preserved. -->
+    <aside class="pos-sidebar" id="pos-sidebar">
+        <div class="pos-brand">
+            <span class="pos-brand-mark" aria-hidden="true">
+                <svg viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="9" fill="#0B0F19"/><path d="M14 11h13v4.4h-8.2v4h7.1v4.4h-7.1V29H14z" fill="#fff"/></svg>
+            </span>
+            <span class="pos-brand-name">FluxyOS</span>
+            <span class="pos-brand-tag">POS</span>
+        </div>
+
+        <div class="pos-side-user">
+            <img id="pos-side-avatar" alt="" src="https://ui-avatars.com/api/?name=User&background=0F172A&color=fff">
+            <div class="min-w-0">
+                <p id="pos-side-name">Loading…</p>
+                <p id="pos-side-role">Cashier</p>
             </div>
-            <div class="flex items-center gap-2 flex-shrink-0">
-                <!-- Reference parity: "Table Order" opens the floor plan. The grid
-                     did not disappear — it moved behind this button so the product
-                     catalogue can be the primary surface, which is the reference's
-                     core IA change. QR Menu Orders and Draft List are deliberately
-                     absent: QR ordering is not built and FluxyOS has no draft
-                     order state, and a button that does nothing is worse than one
-                     that is missing. -->
-                <button id="pos-tables-btn" type="button" class="px-3 sm:px-4 py-2 min-h-[44px] bg-white border border-gray-200 text-gray-700 rounded-lg text-[14px] font-semibold hover:bg-gray-50 transition-all flex items-center gap-2 whitespace-nowrap">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="4" width="18" height="7" rx="2"/><path d="M7 11v9M17 11v9"/></svg>
-                    <span class="hidden sm:inline">Table Order</span>
-                    <span id="pos-tables-count" class="fluxy-status fluxy-status-neutral hidden"></span>
-                </button>
-                <button id="pos-new-order" type="button" aria-label="Start a takeaway order" title="Takeaway" class="px-3 sm:px-4 py-2 min-h-[44px] bg-gray-900 text-white rounded-lg text-[14px] font-bold hover:bg-gray-800 transition-all flex items-center gap-2 shadow-sm active:scale-95 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"></path></svg>
-                    <span class="hidden sm:inline">Takeaway</span>
-                </button>
+        </div>
+
+        <nav class="pos-side-nav" aria-label="Point of sale">
+            <button type="button" class="pos-nav is-active" data-view="till">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85"><path d="M3.4 5.5a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.7a2 2 0 0 0-.4-1.2l-2-2.7A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/><path d="M3.1 6h17.8"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                <span>Point of Sale</span>
+            </button>
+            <button type="button" class="pos-nav" data-view="tables">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85"><rect x="3" y="4" width="18" height="7" rx="2"/><path d="M7 11v9M17 11v9"/></svg>
+                <span>Tables</span>
+                <span class="pos-nav-badge" id="pos-nav-tables"></span>
+            </button>
+            <button type="button" class="pos-nav" data-view="orders">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85"><path d="M6 2h12l2 6H4z"/><path d="M5 8v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
+                <span>Orders</span>
+                <span class="pos-nav-badge" id="pos-nav-orders"></span>
+            </button>
+            <button type="button" class="pos-nav" data-view="shift">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="14" r="1.2"/></svg>
+                <span>Shift</span>
+                <span class="pos-nav-dot" id="pos-nav-shift" hidden></span>
+            </button>
+        </nav>
+
+        <div class="pos-side-foot">
+            <!-- Only for a role that HAS a dashboard. A cashier is denied every
+                 collection behind it, so offering the link would be a door that
+                 opens onto a wall. -->
+            <a href="/dashboard" class="pos-nav pos-nav-quiet hidden" id="pos-back-dashboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85"><path d="M3 12l9-9 9 9"/><path d="M9 21V12h6v9"/></svg>
+                <span>Back to Dashboard</span>
+            </a>
+            <button type="button" class="pos-nav pos-nav-quiet" id="pos-signout">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+                <span>Sign Out</span>
+            </button>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <!-- ── Till topbar ────────────────────────────────────────────
+             The outlet moves up here: it is the context every figure and every
+             sale on this screen depends on, and it was costing a full card row
+             below. The dashboard's title/subtitle pair is gone — a cashier does
+             not need to be told which page they are on twice. -->
+        <header class="pos-topbar">
+            <button class="pos-burger" id="pos-burger" aria-label="Open menu">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+            <div class="pos-topbar-outlet">
+                <label for="pos-outlet">Outlet</label>
+                <select id="pos-outlet"></select>
+                <span id="pos-outlet-hint" class="pos-outlet-hint"></span>
+            </div>
+            <div class="pos-topbar-right">
+                <span class="pos-conn" id="pos-conn" title="Connection"><span class="pos-conn-dot"></span><span class="pos-conn-text">Online</span></span>
+                <img id="pos-top-avatar" class="pos-top-avatar" alt="" src="https://ui-avatars.com/api/?name=User&background=0F172A&color=fff">
             </div>
         </header>
 
         <div class="fluxy-page-shell">
             <div class="fluxy-page-canvas fluxy-section-stack">
 
+                <!-- Page header: title + breadcrumb + actions, as the reference -->
+                <div class="pos-pagehead">
+                    <div>
+                        <h1 class="pos-pagetitle" id="pos-view-title">Point of Sale (POS)</h1>
+                        <p class="pos-crumb"><span>FluxyOS</span> <i aria-hidden="true">•</i> <span id="pos-view-crumb">Pos</span></p>
+                    </div>
+                    <div class="pos-pagehead-actions">
+                        <button id="pos-tables-btn" type="button" class="pos-btn-ghost">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="7" rx="2"/><path d="M7 11v9M17 11v9"/></svg>
+                            <span>Table Order</span>
+                            <span id="pos-tables-count" class="pos-btn-count hidden"></span>
+                        </button>
+                        <button id="pos-new-order" type="button" class="pos-btn-primary" aria-label="Start a takeaway order" title="Takeaway" disabled>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                            <span>Takeaway</span>
+                        </button>
+                    </div>
+                </div>
+
                 <div id="pos-offline" class="pos-offline" role="status">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636 5.636 18.364M12 20h.01M8.111 12.111a5.5 5.5 0 017.778 0M4.929 8.929a10 10 0 0114.142 0"></path></svg>
                     <span>No connection. Orders cannot be saved until this clears — do not take payment yet.</span>
                 </div>
 
-                <!-- Outlet first: without it a sale cannot be attributed and lands
-                     in "Unassigned" on the outlet P&L. Remembered per device. -->
-                <div class="pos-outletbar">
-                    <label for="pos-outlet">Outlet</label>
-                    <!-- Plain <select>. fluxy-select.js enhances it into the shared
-                         custom dropdown automatically (DESIGN_SYSTEM §6 — never the
-                         native control). Do NOT hand-apply `.fluxy-select-native`:
-                         that is the visually-hidden class the ENHANCER applies to the
-                         underlying element, so setting it without the enhancer loaded
-                         hides the control and leaves a bare "Outlet" label. -->
-                    <select id="pos-outlet" style="min-width:200px;"></select>
-                    <span id="pos-outlet-hint" class="text-[12px] text-slate-500"></span>
-                </div>
-
+                <!-- ── VIEW: Point of Sale ───────────────────────────── -->
+                <section class="pos-view" data-view="till">
                 <div id="pos-shiftbar" class="pos-shiftbar"></div>
 
                 <div id="pos-banners" class="fluxy-section-stack" style="gap:8px;"></div>
@@ -512,17 +702,6 @@
                             </div>
                         </section>
 
-                        <section class="fluxy-table-card hidden" id="pos-paid-card">
-                            <div class="fluxy-table-card-header">
-                                <div>
-                                    <h2 class="fluxy-table-title">Paid today</h2>
-                                    <p class="fluxy-table-subtitle">Open one to reprint its receipt or refund it.</p>
-                                </div>
-                            </div>
-                            <div style="padding:12px 16px;">
-                                <div id="pos-paid-today"></div>
-                            </div>
-                        </section>
                     </div>
 
                     <!-- ── RIGHT: the order panel ────────────────────────────
@@ -568,6 +747,68 @@
                         </div>
                     </aside>
                 </div>
+                </section>
+
+                <!-- ── VIEW: Tables ──────────────────────────────────────── -->
+                <section class="pos-view hidden" data-view="tables">
+                    <section class="fluxy-table-card">
+                        <div class="fluxy-table-card-header">
+                            <div>
+                                <h2 class="fluxy-table-title">Tables</h2>
+                                <p class="fluxy-table-subtitle">Tap a table to open or continue its order.</p>
+                            </div>
+                            <div class="fluxy-table-actions">
+                                <button type="button" id="pos-manage-tables" class="pos-btn-ghost">Manage tables</button>
+                            </div>
+                        </div>
+                        <div style="padding:16px;">
+                            <div id="pos-tables" class="pos-tablesheet"></div>
+                            <div id="pos-tables-empty" class="hidden"></div>
+                        </div>
+                    </section>
+                </section>
+
+                <!-- ── VIEW: Orders ──────────────────────────────────────── -->
+                <section class="pos-view hidden" data-view="orders">
+                    <section class="fluxy-table-card">
+                        <div class="fluxy-table-card-header">
+                            <div>
+                                <h2 class="fluxy-table-title">Open orders</h2>
+                                <p class="fluxy-table-subtitle">Everything still on the floor.</p>
+                            </div>
+                        </div>
+                        <div style="padding:12px 16px;">
+                            <div id="pos-open-orders"></div>
+                        </div>
+                    </section>
+                    <section class="fluxy-table-card" style="margin-top:16px;">
+                        <div class="fluxy-table-card-header">
+                            <div>
+                                <h2 class="fluxy-table-title">Paid today</h2>
+                                <p class="fluxy-table-subtitle">Open one to reprint its receipt or refund it.</p>
+                            </div>
+                        </div>
+                        <div style="padding:12px 16px;">
+                            <div id="pos-paid-today-list"></div>
+                        </div>
+                    </section>
+                </section>
+
+                <!-- ── VIEW: Shift ───────────────────────────────────────── -->
+                <section class="pos-view hidden" data-view="shift">
+                    <div id="pos-shiftbar-full" class="pos-shiftbar"></div>
+                    <section class="fluxy-table-card" style="margin-top:16px;">
+                        <div class="fluxy-table-card-header">
+                            <div>
+                                <h2 class="fluxy-table-title">Recent shifts</h2>
+                                <p class="fluxy-table-subtitle">Each close records what was counted against what was expected.</p>
+                            </div>
+                        </div>
+                        <div style="padding:12px 16px;">
+                            <div id="pos-shift-history"></div>
+                        </div>
+                    </section>
+                </section>
             </div>
         </div>
     </main>

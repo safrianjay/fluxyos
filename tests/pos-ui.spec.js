@@ -20,7 +20,10 @@ test.describe('Point of Sale', () => {
         page.on('pageerror', (e) => errors.push(String(e)));
 
         await page.goto('/pos');
-        await expect(page.locator('.dashboard-topbar-title')).toHaveText('Point of Sale');
+        // The till has its OWN topbar now — the dashboard's title/subtitle pair is
+        // deliberately gone, because the POS is a different experience from the
+        // finance app rather than a page inside it.
+        await expect(page.locator('#pos-view-title')).toHaveText(/Point of Sale/);
         await page.waitForSelector('#pos-metrics .pos-metric', { timeout: 15000 });
 
         // The marketing footer must never load on an app page. It auto-runs on
@@ -33,11 +36,11 @@ test.describe('Point of Sale', () => {
         // without the enhancer loaded hides the picker entirely.
         const outlet = page.locator('#pos-outlet');
         await expect(outlet).toHaveAttribute('data-fluxy-enhanced', /.*/);
-        await expect(page.locator('.pos-outletbar .fluxy-select--enhanced')).toBeVisible();
+        await expect(page.locator('.pos-topbar-outlet .fluxy-select--enhanced')).toBeVisible();
 
         // The enhanced wrapper must stay pinned. Left unconstrained it stretched
         // to the full page width for a two-word value.
-        const w = await page.locator('.pos-outletbar .fluxy-select').evaluate((el) => el.getBoundingClientRect().width);
+        const w = await page.locator('.pos-topbar-outlet .fluxy-select').evaluate((el) => el.getBoundingClientRect().width);
         expect(w, 'the outlet picker must not eat the whole row').toBeLessThan(400);
 
         // Every collapsed icon button keeps a name for assistive tech — below
@@ -51,6 +54,36 @@ test.describe('Point of Sale', () => {
         // till blind to QR orders and to a second device on the floor.
         const real = errors.filter((e) => !/tailwindcss\.com|favicon|net::ERR_/i.test(e));
         expect(real, `console errors: ${real.join(' | ')}`).toEqual([]);
+    });
+
+    test('the till has its OWN shell, not the finance dashboard chrome', async ({ page }) => {
+        // The POS is a different EXPERIENCE from the finance app, not a page
+        // inside it: a cashier's destinations are the till, the floor, the
+        // orders and the drawer — not nineteen links to collections their role
+        // is denied. Without this, the shared sidebar creeping back would look
+        // like a styling regression rather than the wrong product.
+        await page.goto('/pos');
+        await page.waitForSelector('#pos-menu .pos-card, #pos-menu-empty', { timeout: 25000 });
+
+        // The shared dashboard sidebar is still LOADED (it runs the trial guard,
+        // the presence heartbeat and the roster mirror) and must stay hidden.
+        await expect(page.locator('#sidebar')).toBeHidden();
+        await expect(page.locator('#pos-sidebar')).toBeVisible();
+
+        const navs = await page.locator('.pos-nav[data-view]').allInnerTexts();
+        expect(navs.map((t) => t.trim().split('\n')[0]))
+            .toEqual(['Point of Sale', 'Tables', 'Orders', 'Shift']);
+
+        // Every view switches in place. New ROUTES were explicitly out of scope.
+        const before = page.url();
+        for (const v of ['tables', 'orders', 'shift', 'till']) {
+            await page.click(`.pos-nav[data-view="${v}"]`);
+            await expect(page.locator(`.pos-view[data-view="${v}"]`)).toBeVisible();
+            expect(page.url(), 'views must not add routes').toBe(before);
+        }
+
+        // Exactly one view at a time, or two order panels fight over the same ids.
+        expect(await page.locator('.pos-view:not(.hidden)').count()).toBe(1);
     });
 
     test('the till figure is labelled operational and points at the accounting one', async ({ page }) => {
@@ -90,7 +123,7 @@ test.describe('Point of Sale', () => {
         expect(small, `tap targets under 40px: ${small.join(', ')}`).toEqual([]);
 
         // The page title must still be the first thing read, not displaced.
-        await expect(page.locator('.dashboard-topbar-title')).toBeVisible();
+        await expect(page.locator('#pos-view-title')).toBeVisible();
     });
 
     test('type stays on the dashboard scale and no background is orange', async ({ page }) => {
@@ -192,11 +225,15 @@ test.describe('Point of Sale', () => {
         // would have silently dropped the entire discount flow from coverage
         // rather than going red.
         await page.click('#pos-tables-btn');
-        await page.waitForSelector('#pos-drawer .pos-table', { timeout: 15000 });
-        const free = page.locator('#pos-drawer .pos-table.is-free');
+        await page.waitForSelector('.pos-view[data-view="tables"] .pos-table', { timeout: 15000 });
+        const free = page.locator('.pos-view[data-view="tables"] .pos-table.is-free');
         test.skip(await free.count() === 0, 'no free table in the QA workspace');
 
         await free.first().click();
+        // Selecting a table returns to the till — the catalogue is where the
+        // next action is, and leaving the cashier on the floor plan after they
+        // have chosen a table is a step they would have to undo every time.
+        await page.waitForSelector('.pos-view[data-view="till"]:not(.hidden)', { timeout: 10000 });
         await page.waitForSelector('.pos-card:not([disabled])', { timeout: 15000 });
         await page.locator('.pos-card:not([disabled])').first().click();
         await page.waitForSelector('.pos-line', { timeout: 15000 });

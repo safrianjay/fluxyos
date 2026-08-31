@@ -60,8 +60,42 @@ const state = {
     // loaded (getPosMenu), so filtering is a paint, not a query — a till must
     // not wait on the network to narrow a list the cashier can already see.
     menuQuery: '',
-    menuCategory: null
+    menuCategory: null,
+    view: 'till'
 };
+
+// The till's own views. No new routes — the brief requires the existing ones
+// preserved, and a cashier gains nothing from four URLs they never type.
+const VIEWS = {
+    till:   { title: 'Point of Sale (POS)', crumb: 'Pos' },
+    tables: { title: 'Tables',              crumb: 'Tables' },
+    orders: { title: 'Orders',              crumb: 'Orders' },
+    shift:  { title: 'Shift',               crumb: 'Shift' }
+};
+
+function setView(name) {
+    if (!VIEWS[name]) name = 'till';
+    state.view = name;
+    document.querySelectorAll('.pos-view').forEach((v) => {
+        v.classList.toggle('hidden', v.dataset.view !== name);
+    });
+    document.querySelectorAll('.pos-nav[data-view]').forEach((b) => {
+        b.classList.toggle('is-active', b.dataset.view === name);
+    });
+    $('pos-view-title').textContent = VIEWS[name].title;
+    $('pos-view-crumb').textContent = VIEWS[name].crumb;
+    // The floor plan and the order lists are painted on demand: they read from
+    // state.overview, which refresh() already holds, so switching is a repaint.
+    if (name === 'tables') renderTables();
+    if (name === 'orders') renderOrderLists();
+    if (name === 'shift')  { renderShift(); renderShiftHistory(); }
+    closeSideNav();
+}
+
+function closeSideNav() {
+    document.getElementById('pos-sidebar')?.classList.remove('is-open');
+    document.querySelector('.pos-scrim')?.classList.remove('is-open');
+}
 
 // ── Formatting ───────────────────────────────────────────────────────────────
 // Rupiah, no space after Rp, dot thousands separator. Never a monospace face.
@@ -250,35 +284,89 @@ function renderTables() {
     }).join('');
 
     host.querySelectorAll('[data-table]').forEach((btn) => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
             const orderId = btn.dataset.order;
-            if (orderId) return selectOrder(orderId);
-            return once(() => startOrder(btn.dataset.table));
+            // Back to the till either way: the catalogue is where the next action
+            // is, and leaving a cashier on the floor plan after they picked a
+            // table is a step they would undo every single time.
+            if (orderId) { selectOrder(orderId); setView('till'); return; }
+            await once(() => startOrder(btn.dataset.table));
+            setView('till');
         });
     });
     mountTableArchive(host);
 }
 
-// The floor plan, in the shared drawer. Reference parity for "Table Order".
-function openTableSheet() {
-    const el = drawer({
-        title: 'Tables',
-        subtitle: 'Tap a table to open or continue its order.',
-        submitLabel: null,   // a view, not a form — no footer button
-        body: `<div id="pos-tables" class="pos-tablesheet"></div>
-               <div id="pos-tables-empty" class="hidden"></div>
-               <div style="margin-top:14px;display:flex;justify-content:flex-end">
-                   <button type="button" id="pos-manage-tables" class="pos-shift-btn">Manage tables</button>
-               </div>`,
-        onSubmit: null
-    });
-    renderTables();
-    el.querySelector('#pos-manage-tables')?.addEventListener('click', openTableDrawer);
-    // Tapping a table starts or opens an order — the sheet has done its job.
-    el.querySelectorAll('[data-table]').forEach((b) => b.addEventListener('click', () => {
-        setTimeout(() => el.remove(), 0);
+// "Table Order" is now a VIEW, not a drawer. A drawer over the catalogue was
+// the right shape when the floor plan was a secondary surface; with its own nav
+// entry it is a place you go, and two ways to reach the same grid is one more
+// than a cashier should have to learn.
+function openTableSheet() { setView('tables'); }
+
+// ── Orders view ─────────────────────────────────────────────────────────────
+function orderRow(ord, kind) {
+    const when = ord.paid_at && typeof ord.paid_at.toDate === 'function'
+        ? ord.paid_at.toDate().toLocaleTimeString(window.FluxyMoney.baseLocale(), { hour: '2-digit', minute: '2-digit' })
+        : '';
+    const st = STATUS[ord.status] || STATUS.open;
+    return `<button type="button" class="pos-order-result" data-open="${esc(ord.id)}">
+        <span>${esc(ord.table_label ? `Table ${ord.table_label}` : 'Takeaway')}
+            · ${esc(ord.order_number || '')}
+            ${kind === 'paid' && when ? ` · ${esc(when)}` : ` · ${esc(st.label)}`}</span>
+        <span>${rp(ord.total_amount)}</span>
+    </button>`;
+}
+
+function renderOrderLists() {
+    const o = state.overview;
+    if (!o) return;
+    const openHost = $('pos-open-orders');
+    const paidHost = $('pos-paid-today-list');
+    if (!openHost || !paidHost) return;
+
+    const active = o.activeOrders || [];
+    const paid = o.paidToday || [];
+    const none = (what) => `<div style="padding:18px 4px;text-align:center;color:#94A3B8;font-size:13px">${what}</div>`;
+
+    openHost.innerHTML = active.length
+        ? `<div class="pos-order-results" style="max-height:none;margin-top:0">${active.map((x) => orderRow(x, 'open')).join('')}</div>`
+        : none('Nothing on the floor right now.');
+    paidHost.innerHTML = paid.length
+        ? `<div class="pos-order-results" style="max-height:none;margin-top:0">${paid.map((x) => orderRow(x, 'paid')).join('')}</div>`
+        : none('No sale has been settled today yet.');
+
+    [openHost, paidHost].forEach((host) => host.querySelectorAll('[data-open]').forEach((b) => {
+        b.addEventListener('click', () => { selectOrder(b.dataset.open); setView('till'); });
     }));
-    return el;
+}
+
+// ── Shift view ──────────────────────────────────────────────────────────────
+async function renderShiftHistory() {
+    const host = $('pos-shift-history');
+    if (!host) return;
+    host.innerHTML = '<div style="padding:14px 4px;color:#94A3B8;font-size:13px">Loading…</div>';
+    try {
+        const rows = await ds.listPosShifts(state.uid, { dimensionId: state.outletId, limitCount: 10 });
+        if (!rows.length) {
+            host.innerHTML = '<div style="padding:18px 4px;text-align:center;color:#94A3B8;font-size:13px">No shift has been closed at this outlet yet.</div>';
+            return;
+        }
+        host.innerHTML = `<div class="pos-order-results" style="max-height:none;margin-top:0">${rows.map((sh) => {
+            const closed = sh.closed_at && typeof sh.closed_at.toDate === 'function'
+                ? sh.closed_at.toDate().toLocaleString(window.FluxyMoney.baseLocale(), { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                : 'Open';
+            const v = Number(sh.variance) || 0;
+            // Over and short are both control signals — neither is hidden, and a
+            // balanced drawer says so rather than showing a bare zero.
+            const note = sh.status !== 'closed' ? 'Open'
+                : (v === 0 ? 'Balanced' : (v < 0 ? `Short ${rp(Math.abs(v))}` : `Over ${rp(v)}`));
+            return `<div class="pos-order-result" style="cursor:default">
+                <span>${esc(closed)} · ${esc(String(sh.order_count || 0))} order${Number(sh.order_count) === 1 ? '' : 's'}</span>
+                <span>${esc(note)}</span></div>`;
+        }).join('')}</div>`;
+    } catch (err) {
+        host.innerHTML = '<div style="padding:14px 4px;color:#94A3B8;font-size:13px">Could not load shift history.</div>';
+    }
 }
 
 // Reference parity: dining type + table, and a search over open orders. All
@@ -336,35 +424,6 @@ function renderOrderSearch() {
     }));
 }
 
-function renderPaidToday() {
-    const host = $('pos-paid-today');
-    const rows = (state.overview && state.overview.paidToday) || [];
-    if (!rows.length) { host.closest('section').classList.add('hidden'); return; }
-    host.closest('section').classList.remove('hidden');
-    host.innerHTML = rows.map((o) => `
-        <button type="button" class="pos-paid-row" data-paid="${esc(o.id)}">
-            <span>
-                <span class="pos-paid-label">${esc(o.table_label ? `Table ${o.table_label}` : 'Takeaway')}</span>
-                <span class="pos-paid-meta">${esc(o.order_number || '')}${o.refund_transaction_id ? ' · Refunded' : ''}</span>
-            </span>
-            <span class="pos-paid-amt${o.refund_transaction_id ? ' is-void' : ''}">${rp(o.total_amount)}</span>
-        </button>`).join('');
-    host.querySelectorAll('[data-paid]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const o = rows.find((x) => x.id === btn.dataset.paid);
-            if (!o) return;
-            state.orderId = o.id; state.order = o;
-            renderOrder(); renderMenu();
-            $('pos-order-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        });
-    });
-}
-
-// The catalogue. Reference layout: search, category chips, a product grid of
-// image-topped cards. `items` carries no image field yet, so the media slot is
-// reserved and filled with the item's initials — the brief is explicit that
-// placeholder imagery must not be invented, and a reserved slot means an <img>
-// drops in later without the card reflowing around it.
 function menuCategories() {
     const seen = [];
     state.menu.forEach((m) => {
@@ -1104,7 +1163,12 @@ function openTableDrawer() {
 // a sales figure and a drawer full of cash and no way to ask whether they agree.
 
 function renderShift() {
-    const bar = $('pos-shiftbar');
+    // Two hosts: the compact bar on the till, and the full one on the Shift
+    // view. Same markup — a second rendering of the drawer state is a second
+    // thing to keep in step with the first.
+    const bars = ['pos-shiftbar', 'pos-shiftbar-full'].map((id) => $(id)).filter(Boolean);
+    const bar = bars[0];
+    if (!bar) return;
     const s = state.shift;
     const mayManage = !!state.outletId;
 
@@ -1117,6 +1181,7 @@ function renderShift() {
                 <button type="button" id="pos-open-shift" class="pos-shift-btn is-primary" ${mayManage ? '' : 'disabled'}>Open shift</button>
             </span>`;
         $('pos-open-shift')?.addEventListener('click', openShiftDrawer);
+        mirrorShiftBar(bars);
         return;
     }
 
@@ -1133,8 +1198,27 @@ function renderShift() {
             <button type="button" id="pos-drawer-move" class="pos-shift-btn">Paid in / out</button>
             <button type="button" id="pos-close-shift" class="pos-shift-btn is-primary">Close shift</button>
         </span>`;
-    $('pos-drawer-move').addEventListener('click', openMovementDrawer);
-    $('pos-close-shift').addEventListener('click', () => once(openCloseShiftDrawer));
+    mirrorShiftBar(bars);
+}
+
+// The Shift view shows the same bar. Cloning the HTML and re-binding by class
+// keeps ONE source of truth for what a shift bar says; rendering it twice from
+// two code paths is how the two come to disagree.
+function mirrorShiftBar(bars) {
+    if (bars.length < 2) return;
+    const src = bars[0];
+    bars.slice(1).forEach((dst) => {
+        dst.className = src.className;
+        dst.innerHTML = src.innerHTML.replace(/id="pos-(open-shift|drawer-move|close-shift)"/g, 'data-act="$1"');
+        dst.querySelectorAll('[data-act]').forEach((b) => {
+            const act = b.dataset.act;
+            b.addEventListener('click', () => {
+                if (act === 'open-shift') return openShiftDrawer();
+                if (act === 'drawer-move') return openMovementDrawer();
+                return once(openCloseShiftDrawer);
+            });
+        });
+    });
 }
 
 function openShiftDrawer() {
@@ -1324,7 +1408,6 @@ async function refresh({ keepOrder = false } = {}) {
     renderMetrics();
     renderBanners();
     renderTables();        // no-op unless the floor-plan sheet is open
-    renderPaidToday();
     renderChips();
     renderMenu();
     renderOrderControls();
@@ -1340,6 +1423,18 @@ async function refresh({ keepOrder = false } = {}) {
         badge.classList.toggle('hidden', !has);
         if (has) badge.textContent = `${c.tablesFree}/${c.tablesTotal}`;
     }
+
+    // Sidebar counters. The till's nav carries the two numbers a cashier glances
+    // at between orders, so switching view is a choice rather than a check.
+    const c = overview.counts || {};
+    const navTables = $('pos-nav-tables');
+    if (navTables) navTables.textContent = Number(c.tablesTotal) ? `${c.tablesFree}/${c.tablesTotal}` : '';
+    const navOrders = $('pos-nav-orders');
+    if (navOrders) navOrders.textContent = Number(c.activeOrders) ? String(c.activeOrders) : '';
+    const navShift = $('pos-nav-shift');
+    if (navShift) navShift.hidden = !state.shift;
+
+    if (state.view === 'orders') renderOrderLists();
 }
 
 function watch() {
@@ -1369,6 +1464,34 @@ function wire() {
     $('pos-reprint-btn').addEventListener('click', () => openReceipt(state.order));
     $('pos-new-order').addEventListener('click', () => once(() => startOrder(null)));
     $('pos-tables-btn').addEventListener('click', openTableSheet);
+    $('pos-manage-tables')?.addEventListener('click', openTableDrawer);
+
+    // ── The till's own navigation ───────────────────────────────────────
+    document.querySelectorAll('.pos-nav[data-view]').forEach((b) => {
+        b.addEventListener('click', () => setView(b.dataset.view));
+    });
+
+    // Off-canvas nav below 900px, with a scrim — the same shape the dashboard
+    // sidebar uses, so the gesture is the one a user already knows.
+    const scrim = document.createElement('div');
+    scrim.className = 'pos-scrim';
+    document.body.appendChild(scrim);
+    const side = $('pos-sidebar');
+    $('pos-burger').addEventListener('click', () => {
+        const open = !side.classList.contains('is-open');
+        side.classList.toggle('is-open', open);
+        scrim.classList.toggle('is-open', open);
+    });
+    scrim.addEventListener('click', closeSideNav);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSideNav(); });
+
+    $('pos-signout').addEventListener('click', async () => {
+        try {
+            const { signOut } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+            await signOut(auth);
+        } catch (_) { /* fall through to the redirect either way */ }
+        window.location.href = '/login';
+    });
 
     // Catalogue filters. Client-side against an already-loaded menu, so this is
     // a repaint per keystroke and never a query.
@@ -1414,6 +1537,23 @@ onAuthStateChanged(auth, async (user) => {
 
     state.uid = user.uid;
     ds.actorUid = user.uid;
+
+    // Who is standing at the till. The dashboard sidebar is not rendered here,
+    // so this page has to say it itself.
+    const ws = (typeof window !== 'undefined' && window.FluxyWorkspace) || {};
+    const name = user.displayName || (user.email || '').split('@')[0] || 'Staff';
+    const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0F172A&color=fff`;
+    $('pos-side-name').textContent = name;
+    $('pos-side-avatar').src = avatar;
+    $('pos-top-avatar').src = avatar;
+    try {
+        const { roleMeta, isPosOnlyRole } = await import('/assets/js/perms-service.js');
+        $('pos-side-role').textContent = roleMeta(ws.role).label || 'Staff';
+        // Only a role with a dashboard is offered one. A cashier is denied every
+        // collection behind that link, so showing it would be a door onto a wall.
+        if (!isPosOnlyRole(ws.role)) $('pos-back-dashboard').classList.remove('hidden');
+    } catch (_) { /* the label is cosmetic; never block the till on it */ }
+
     wire();
 
     const hasOutlet = await loadOutlets();
