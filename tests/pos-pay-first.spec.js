@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { startTakeawayOrder } = require('./helpers/pos-order');
 
 // =============================================================================
 // The retail till: pay-first, and no room to draw.
@@ -177,7 +178,7 @@ test('an F&B workspace still walks the kitchen ladder', async ({ page }) => {
     expect(category, 'the retail spec did not restore business_category — its fixture leaked')
         .not.toBe('retail');
 
-    await page.click('#pos-new-order');
+    await startTakeawayOrder(page);
     await page.waitForSelector('.pos-card:not([disabled])', { timeout: 20000 });
     await page.locator('.pos-card:not([disabled])').first().click();
     await expect(page.locator('.pos-line')).toHaveCount(1, { timeout: 25000 });

@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { startTakeawayOrder } = require('./helpers/pos-order');
 const { setUnit } = require('./helpers/inventory-unit');
 
 // =============================================================================
@@ -66,7 +67,7 @@ test('a barcode set on the item scans into the cart at the till', async ({ page 
     await page.goto('/pos');
     await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
     await expect(page.locator('#pos-new-order')).toBeEnabled({ timeout: 25000 });
-    await page.click('#pos-new-order');
+    await startTakeawayOrder(page);
     await page.waitForSelector('.pos-card:not([disabled])', { timeout: 20000 });
 
     // Exactly what the hardware does: type the code, press Enter.
@@ -114,7 +115,7 @@ test('a partial code narrows the grid instead of guessing', async ({ page }) => 
     await page.goto('/pos');
     await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
     await expect(page.locator('#pos-new-order')).toBeEnabled({ timeout: 25000 });
-    await page.click('#pos-new-order');
+    await startTakeawayOrder(page);
     await page.waitForSelector('.pos-card:not([disabled])', { timeout: 20000 });
 
     await page.fill('#pos-menu-search', CODE.slice(0, 6));

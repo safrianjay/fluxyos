@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { startTakeawayOrder } = require('./helpers/pos-order');
 const { auditSpacing, MIN_GAP } = require('./helpers/spacing-audit');
 
 // Browser coverage for the till.
@@ -62,7 +63,7 @@ test.describe('Point of Sale', () => {
 
         // Every collapsed icon button keeps a name for assistive tech — below
         // 640px the Takeaway label is hidden and only the glyph remains.
-        await expect(page.locator('#pos-new-order')).toHaveAttribute('aria-label', /takeaway/i);
+        await expect(page.locator('#pos-new-order')).toHaveAttribute('aria-label', /create an order/i);
 
         // Strict. `pos_orders` is in the DEPLOYED rules (stamped 2026-08-21), so
         // the live-order listener must connect — and if it stops, this is the
@@ -227,10 +228,9 @@ test.describe('Point of Sale', () => {
         await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
 
         // ── Ring up a real takeaway sale ────────────────────────────────────
-        const newOrder = page.locator('#pos-new-order');
-        await expect(newOrder, 'the till never enabled Takeaway — no outlet resolved?')
+        await expect(page.locator('#pos-new-order'), 'the till never enabled Create Order — no outlet resolved?')
             .toBeEnabled({ timeout: 25000 });
-        await newOrder.click();
+        await startTakeawayOrder(page);
 
         await page.waitForSelector('.pos-card:not([disabled])', { timeout: 20000 });
         await page.locator('.pos-card:not([disabled])').first().click();
@@ -362,7 +362,7 @@ test.describe('Point of Sale', () => {
         } else {
             // Back to the till, then open a takeaway order.
             await page.click('#nav-container [data-view="till"]');
-            await page.locator('#pos-new-order').click();
+            await startTakeawayOrder(page);
         }
         // Selecting a table returns to the till — the catalogue is where the
         // next action is, and leaving the cashier on the floor plan after they
@@ -424,7 +424,11 @@ test.describe('Point of Sale', () => {
         });
 
         const newOrder = page.locator('#pos-new-order');
+        // Through the chooser: "Create Order" only opens a question, and a
+        // question is not a write. Take Away is the press that actually creates
+        // the order, and therefore the one with a window to observe.
         await newOrder.click();
+        await page.locator('[data-type="takeaway"]').click();
 
         // Mid-write: the attribute is set and the control refuses the pointer.
         await expect(page.locator('body')).toHaveAttribute('data-pos-busy', '1', { timeout: 5000 });

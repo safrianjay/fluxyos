@@ -101,7 +101,9 @@ const POS_PROFILES = {
         ladder: { open: 'sent', submitted: 'sent', sent: 'served', served: 'awaiting_payment' },
         views: ['till', 'tables', 'orders', 'shift'],
         payFirst: false,
-        startLabel: 'Takeaway',
+        // "Create Order" rather than "Takeaway": the button opens a choice now,
+        // and naming it after one of the two options hid the other.
+        startLabel: 'Create Order',
         closeLabel: 'Close',
         emptyTitle: 'No order open',
         emptyAction: 'Pick a table'
@@ -129,11 +131,17 @@ function posProfile() {
     return POS_PROFILES[cat] || POS_PROFILES.fnb;
 }
 
+// Title and subtext for every view, both shown in the page header.
+//
+// The subtext replaced a breadcrumb that read "FluxyOS • Orders" above a 24px
+// heading that already said "Orders" — no information, and no trail to retrace
+// either, since all four views live behind one URL. Each view now says what it
+// is for in the one place a person looks first.
 const VIEWS = {
-    till:   { title: 'Point of Sale (POS)', crumb: 'Pos' },
-    tables: { title: 'Tables',              crumb: 'Tables' },
-    orders: { title: 'Orders',              crumb: 'Orders' },
-    shift:  { title: 'Shift',               crumb: 'Shift' }
+    till:   { title: 'Point of Sale (POS)', sub: 'Ring up a sale — scan, search or tap a product.' },
+    tables: { title: 'Tables',              sub: 'Tap a table to open or continue its order.' },
+    orders: { title: 'Orders',              sub: 'Every order on the floor today, and everything already settled.' },
+    shift:  { title: 'Shift',               sub: 'The cash drawer — what was counted against what was expected.' }
 };
 
 function setView(name) {
@@ -150,7 +158,11 @@ function setView(name) {
         b.classList.toggle('dashboard-active', b.dataset.view === name);
     });
     $('pos-view-title').textContent = VIEWS[name].title;
-    $('pos-view-crumb').textContent = VIEWS[name].crumb;
+    // A counter has no floor plan, so the till's own line has to differ — it is
+    // the one view whose purpose changes with the business.
+    $('pos-view-sub').textContent = (name === 'till' && posProfile().payFirst)
+        ? 'Scan or tap a product to start a sale.'
+        : VIEWS[name].sub;
     // The floor plan and the order lists are painted on demand: they read from
     // state.overview, which refresh() already holds, so switching is a repaint.
     if (name === 'tables') renderTables();
@@ -1153,6 +1165,10 @@ async function parkCurrentSale({ label = null, silent = false } = {}) {
     const o = state.order;
     if (!o || ['paid', 'void'].includes(o.status)) return false;
     if (!(o.lines || []).length) return false;
+    // A dine-in order is ALREADY parked — at its table, where the floor plan
+    // finds it. Parking it again would label a table order as though it were a
+    // loose cart and put it in a list it does not belong in.
+    if (o.table_id) return false;
     let parked = o;
     try {
         if (label) parked = await ds.setPosOrderLabel(state.uid, state.orderId, label);
@@ -2144,6 +2160,56 @@ function openRefundDrawer() {
 // queue should be able to press Hold, press Enter and move on; the label is for
 // the times there are three carts down and "Takeaway #019" identifies none of
 // them.
+// Dine in or take away, asked BEFORE the order exists.
+//
+// It used to be decided after the fact by a select inside the order panel, which
+// meant the cashier created a takeaway order and then changed it — and that
+// select is disabled once an order is open, so getting it wrong meant voiding
+// and starting again. The question belongs at the start, where the answer is
+// still free.
+//
+// Dine in does not create anything here: it needs a table, so it hands over to
+// the floor plan. Take away has nothing left to ask.
+function openOrderTypeDrawer() {
+    const d = drawer({
+        title: 'Create Order',
+        subtitle: 'Where is this order going?',
+        body: `
+            <div class="pos-ordertype">
+                <button type="button" class="pos-ordertype-opt" data-type="dine_in">
+                    <span class="pos-ordertype-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="7" rx="2"/><path d="M7 11v9M17 11v9"/></svg>
+                    </span>
+                    <span class="pos-ordertype-body">
+                        <span class="pos-ordertype-name">Dine In</span>
+                        <span class="pos-ordertype-hint">Pick the table it belongs to</span>
+                    </span>
+                </button>
+                <button type="button" class="pos-ordertype-opt" data-type="takeaway">
+                    <span class="pos-ordertype-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2h12l2 6H4z"/><path d="M5 8v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
+                    </span>
+                    <span class="pos-ordertype-body">
+                        <span class="pos-ordertype-name">Take Away</span>
+                        <span class="pos-ordertype-hint">Start it straight away</span>
+                    </span>
+                </button>
+            </div>`
+    });
+
+    d.querySelectorAll('[data-type]').forEach((btn) => btn.addEventListener('click', () => once(async () => {
+        const type = btn.dataset.type;
+        d.close();
+        // GUARDED. A drawer's body buttons are not inside the once() its submit
+        // handler runs in, so an impatient double-tap here would have created
+        // two orders — precisely what once() exists to stop. It does not nest
+        // with anything on this path, so wrapping is safe.
+        if (type === 'takeaway') { await startOrder(null); return; }
+        setView('tables');
+        toast('Pick the table this order is for.', 'info');
+    })));
+}
+
 function openHoldDrawer() {
     const o = state.order;
     if (!o) return;
@@ -2635,11 +2701,12 @@ function applyPosProfileChrome() {
     // "Table Order" opens the floor plan. Without tables there is no floor.
     $('pos-tables-btn')?.classList.toggle('hidden', !p.views.includes('tables'));
 
-    // "Takeaway" is a distinction only a business with a dining room makes.
+    // "Create Order" on a floor with tables, "New sale" at a counter.
     const start = $('pos-new-order');
     const startText = start && start.querySelector('span');
     if (startText) startText.textContent = p.startLabel;
-    if (start) start.setAttribute('aria-label', p.payFirst ? 'Start a new sale' : 'Start a takeaway order');
+    // Matches what the button now does: a counter creates, an F&B till asks.
+    if (start) start.setAttribute('aria-label', p.payFirst ? 'Start a new sale' : 'Create an order');
 
     // Dine-in / table pickers: meaningless at a counter.
     document.querySelector('.pos-order-selects')?.classList.toggle('hidden', !p.views.includes('tables'));
@@ -2686,10 +2753,12 @@ function wire() {
         // them silently — no warning, no toast, and the only route back was the
         // Orders board, which nobody had a reason to open.
         const parked = await parkCurrentSale();
-        // Pay-first opens its sale on the first tap of a product, so there is
-        // nothing more to do once the cart is clear.
-        if (!posProfile().payFirst) await startOrder(null);
-        else if (!parked) await startOrder(null);
+        const p = posProfile();
+        // A counter has one kind of order, so asking which would be a question
+        // with one answer. Pay-first also opens its sale on the first tap of a
+        // product, so there is nothing left to do once the cart is clear.
+        if (p.payFirst) { if (!parked) await startOrder(null); return; }
+        openOrderTypeDrawer();
     }));
 
     $('pos-hold-btn')?.addEventListener('click', () => openHoldDrawer());

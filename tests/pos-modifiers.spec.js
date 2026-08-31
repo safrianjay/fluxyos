@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { startTakeawayOrder } = require('./helpers/pos-order');
 const { setUnit } = require('./helpers/inventory-unit');
 
 // =============================================================================
@@ -86,7 +87,7 @@ test('an option priced on the item reaches the order total', async ({ page }) =>
     await page.goto('/pos');
     await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
     await expect(page.locator('#pos-new-order')).toBeEnabled({ timeout: 25000 });
-    await page.click('#pos-new-order');
+    await startTakeawayOrder(page);
     await page.waitForSelector('.pos-card:not([disabled])', { timeout: 20000 });
 
     await page.fill('#pos-menu-search', TAG);
@@ -151,7 +152,7 @@ test('an item with no options still adds in one tap', async ({ page }) => {
     await page.goto('/pos');
     await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
     await expect(page.locator('#pos-new-order')).toBeEnabled({ timeout: 25000 });
-    await page.click('#pos-new-order');
+    await startTakeawayOrder(page);
     await page.waitForSelector('.pos-card:not([disabled])', { timeout: 20000 });
 
     await page.locator('.pos-card:not([disabled])').first().click();

@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { startTakeawayOrder } = require('./helpers/pos-order');
 
 // =============================================================================
 // The order line: a typable quantity, honest stock, and one row of controls.
@@ -40,7 +41,7 @@ async function openCart(page) {
     await page.goto('/pos');
     await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
     await expect(page.locator('#pos-new-order')).toBeEnabled({ timeout: 25000 });
-    await page.click('#pos-new-order');
+    await startTakeawayOrder(page);
     await page.waitForSelector('.pos-card:not([disabled])', { timeout: 20000 });
     await page.locator('.pos-card:not([disabled])').first().click();
     await expect(page.locator('.pos-line')).toHaveCount(1, { timeout: 25000 });

@@ -5129,6 +5129,22 @@
         "Out of stock — selling it anyway will leave inventory short":
             "Stok habis — tetap menjualnya akan membuat stok minus",
 
+        // Order-type chooser + page subtexts (2026-09-01). "Dine In"/"Take Away"
+        // are NOT repeated — "Dine In" and "Takeaway" already map above.
+        "Create Order": "Buat Pesanan",
+        "Create an order": "Buat pesanan",
+        "Where is this order going?": "Pesanan ini untuk di mana?",
+        "Take Away": "Bawa Pulang",
+        "Pick the table it belongs to": "Pilih meja untuk pesanan ini",
+        "Start it straight away": "Langsung mulai",
+        "Pick the table this order is for.": "Pilih meja untuk pesanan ini.",
+        "Ring up a sale — scan, search or tap a product.": "Buat transaksi — pindai, cari, atau ketuk produk.",
+        "Scan or tap a product to start a sale.": "Pindai atau ketuk produk untuk memulai transaksi.",
+        "Every order on the floor today, and everything already settled.":
+            "Semua pesanan yang berjalan hari ini, dan semua yang sudah lunas.",
+        "The cash drawer — what was counted against what was expected.":
+            "Laci kas — jumlah yang dihitung dibanding yang seharusnya.",
+
         "Name it": "Beri nama",
 
         "Hold sale": "Tahan transaksi",

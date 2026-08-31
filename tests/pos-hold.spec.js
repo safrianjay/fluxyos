@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { startTakeawayOrder } = require('./helpers/pos-order');
 
 // =============================================================================
 // Parking a sale — Hold and Resume.
@@ -155,7 +156,7 @@ test('starting a new sale parks the open one instead of dropping it', async ({ p
         await page.locator('.pos-card:not([disabled])').first().click();
         await expect(page.locator('.pos-line')).toHaveCount(1, { timeout: 25000 });
 
-        await page.click('#pos-new-order');
+        await startTakeawayOrder(page);
         await expect(page.locator('.pos-line')).toHaveCount(0, { timeout: 20000 });
 
         // Cleared, yes — but PARKED, not abandoned. The chip is the difference
@@ -189,7 +190,7 @@ test('an F&B till has no Hold — the table is the parking slot', async ({ page 
     const category = await page.evaluate(() => window.FluxyWorkspace.businessCategory || null);
     expect(category, 'a previous spec did not restore business_category').not.toBe('retail');
 
-    await page.click('#pos-new-order');
+    await startTakeawayOrder(page);
     await page.waitForSelector('.pos-card:not([disabled])', { timeout: 20000 });
     await page.locator('.pos-card:not([disabled])').first().click();
     await expect(page.locator('.pos-line')).toHaveCount(1, { timeout: 25000 });

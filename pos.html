@@ -318,7 +318,12 @@
         .pos-col > * + *    { margin-top: 20px; }
         .pos-shell          { gap: 20px; }
         .pos-view section + section { margin-top: 20px; }
-        .pos-pagehead       { margin-bottom: 2px; }
+        /* The header introduces the view directly beneath it, so it sits closer
+           to it than the 20px `.fluxy-section-stack` rhythm gives every other
+           pair — a title floating 20px above the thing it names reads as two
+           unrelated blocks. */
+        .pos-pagehead       { margin-bottom: 0; }
+        .pos-pagehead + *   { margin-top: 14px !important; }
 
         /* The shared column: views switch here, the order panel stays put. */
         .pos-col { min-width: 0; container-type: inline-size; container-name: posboard; }
@@ -461,6 +466,28 @@
            note is an instruction someone typed and a modifier is a choice the
            menu offered. */
         .pos-line-mods { font-size: 12px; color: #64748B; margin-top: 2px; }
+
+        /* ── Order type chooser ─────────────────────────────────────────────
+           Two big targets, because this is the first decision of every order and
+           it is made with a customer waiting. */
+        .pos-ordertype { display: grid; gap: 10px; }
+        .pos-ordertype-opt {
+            display: flex; align-items: center; gap: 12px; text-align: left;
+            min-height: 68px; padding: 12px 14px;
+            border: 1px solid #E2E8F0; border-radius: 12px; background: #fff;
+            cursor: pointer; transition: border-color 120ms ease, box-shadow 120ms ease;
+        }
+        .pos-ordertype-opt:hover { border-color: #0F172A; box-shadow: 0 3px 10px rgba(15,23,42,.08); }
+        .pos-ordertype-opt:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
+        .pos-ordertype-icon {
+            width: 40px; height: 40px; flex-shrink: 0; border-radius: 10px;
+            background: #F1F5F9; color: #0F172A;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .pos-ordertype-icon svg { width: 20px; height: 20px; }
+        .pos-ordertype-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .pos-ordertype-name { font-size: 14px; font-weight: 600; color: #0F172A; }
+        .pos-ordertype-hint { font-size: 12px; color: #64748B; }
 
         /* ── Modifier chooser ───────────────────────────────────────────────
            Options are TAP TARGETS, not a select: a cashier picks these at a
@@ -851,8 +878,11 @@
         /* ── Page header ────────────────────────────────────────────────── */
         .pos-pagehead { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
         .pos-pagetitle { font-size: 24px; font-weight: 700; letter-spacing: -0.025em; color: #0B0F19; line-height: 1.2; }
-        .pos-crumb { margin-top: 3px; font-size: 12px; color: #94A3B8; display: flex; align-items: center; gap: 6px; }
-        .pos-crumb i { font-style: normal; color: #CBD5E1; }
+        /* 14px, not the 12px the breadcrumb used: this is a sentence to read
+           rather than a trail to scan, and it now carries the only explanation
+           each view gets. Bounded so it wraps at a readable measure instead of
+           running the full width of a 1540px canvas. */
+        .pos-pagesub { margin-top: 4px; font-size: 14px; color: #64748B; line-height: 1.45; max-width: 62ch; }
         .pos-pagehead-actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .pos-btn-ghost, .pos-btn-primary {
             display: inline-flex; align-items: center; gap: 8px; min-height: 42px;
@@ -954,7 +984,13 @@
                 <div class="pos-pagehead">
                     <div>
                         <h1 class="pos-pagetitle" id="pos-view-title">Point of Sale (POS)</h1>
-                        <p class="pos-crumb"><span>FluxyOS</span> <i aria-hidden="true">•</i> <span id="pos-view-crumb">Pos</span></p>
+                        <!-- What this view is FOR, replacing the breadcrumb.
+                             "FluxyOS • Pos" said nothing the 24px title above it
+                             had not already said, and the till never changes URL
+                             — four in-page views behind one path — so there was
+                             no trail to retrace. Every view now explains itself
+                             here instead. -->
+                        <p class="pos-pagesub" id="pos-view-sub">Ring up a sale — scan, search or tap a product.</p>
                     </div>
                     <div class="pos-pagehead-actions">
                         <button id="pos-tables-btn" type="button" class="pos-btn-ghost">
@@ -962,9 +998,9 @@
                             <span>Table Order</span>
                             <span id="pos-tables-count" class="pos-btn-count hidden"></span>
                         </button>
-                        <button id="pos-new-order" type="button" class="pos-btn-primary" aria-label="Start a takeaway order" title="Takeaway" disabled>
+                        <button id="pos-new-order" type="button" class="pos-btn-primary" aria-label="Create an order" disabled>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                            <span>Takeaway</span>
+                            <span>Create Order</span>
                         </button>
                     </div>
                 </div>
