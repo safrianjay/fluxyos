@@ -156,6 +156,27 @@ const ACCOUNTING_PENALTY_CAP = 24;
 const INCOME_STATEMENT_REVENUE_TYPES = ['income', 'revenue', 'refund', 'pending_receivable'];
 const INCOME_STATEMENT_OPEX_TYPES = ['expense', 'fee', 'tax', 'pending_payable'];
 
+function normalizeModifierGroups(groups) {
+    const clean = (v, max) => {
+        const t = String(v == null ? '' : v).trim();
+        return t ? t.slice(0, max) : '';
+    };
+    return (Array.isArray(groups) ? groups : []).slice(0, 10).map((g, gi) => ({
+        id: clean(g && g.id, 40) || `g${gi}`,
+        name: clean(g && g.name, 40),
+        // Three shapes, because a free min/max pair invites combinations nobody
+        // asked for and every one of them would need a rule at the till.
+        select: ['one_required', 'one_optional', 'many'].includes(g && g.select) ? g.select : 'one_required',
+        options: (Array.isArray(g && g.options) ? g.options : []).slice(0, 20).map((o, oi) => ({
+            id: clean(o && o.id, 40) || `o${gi}_${oi}`,
+            name: clean(o && o.name, 40),
+            // May be negative — a smaller size costs less. Raw integer, like
+            // every other amount in this file.
+            price_delta: Math.round(Number(o && o.price_delta) || 0)
+        })).filter((o) => o.name)
+    })).filter((g) => g.name && g.options.length);
+}
+
 class DataService {
     constructor(app) {
         this.app = app;
@@ -6233,7 +6254,14 @@ class DataService {
                 ? Number(data.sales_price) : null,
             pos_visible: data.pos_visible === true,
             pos_category: this._nullableString(data.pos_category, 40),
-            pos_sort: Number.isInteger(Number(data.pos_sort)) ? Number(data.pos_sort) : 0
+            pos_sort: Number.isInteger(Number(data.pos_sort)) ? Number(data.pos_sort) : 0,
+            // Option groups — size, sugar level, add-ons. Validated HERE and
+            // nowhere else: rules cannot iterate an array cheaply and the
+            // evaluation budget is real (docs/data-model/pos.md §7), and `items`
+            // has no `hasOnly`, so nothing downstream would refuse a malformed
+            // one. A group with no named options is dropped rather than stored
+            // empty — the till would otherwise ask a question with no answers.
+            pos_modifier_groups: normalizeModifierGroups(data.pos_modifier_groups)
         };
 
         // ── Bulk-import template fields ──────────────────────────────────────

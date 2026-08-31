@@ -5115,6 +5115,28 @@
         "Each close records what was counted against what was expected.": "Setiap penutupan mencatat jumlah hitungan dibanding jumlah yang seharusnya.",
         "No shift has been closed at this outlet yet.": "Belum ada shift yang ditutup di outlet ini.",
         "Could not load shift history.": "Tidak bisa memuat riwayat shift.",
+        // Menu modifiers (2026-08-31). "Optional" is NOT added — it already maps
+        // elsewhere in this dictionary, and a duplicate key in one object literal
+        // is the LAST one to win, so a second entry would change it app-wide.
+        "Add to order": "Tambah ke pesanan",
+        "Choose the required options": "Pilih opsi yang wajib",
+        "Choose one": "Pilih satu",
+        "Choose any": "Pilih bebas",
+        "Optional, one": "Opsional, satu",
+        "Options": "Opsi",
+        "Add an option group": "Tambah grup opsi",
+        "Add an option": "Tambah opsi",
+        "Remove group": "Hapus grup",
+        "Option group name": "Nama grup opsi",
+        "How many can be chosen": "Berapa yang bisa dipilih",
+        "Option name": "Nama opsi",
+        "Extra charge": "Biaya tambahan",
+        "Size, Sugar level, Add-ons": "Ukuran, Level gula, Tambahan",
+        "Remove this option": "Hapus opsi ini",
+        "What the cashier is asked when this is rung up. Leave empty and it adds in one tap.":
+            "Yang ditanyakan ke kasir saat item ini dipesan. Kosongkan agar langsung masuk sekali ketuk.",
+        "Those options price this item below zero.": "Opsi itu membuat harga item ini di bawah nol.",
+
         // Floor plan (2026-08-31). "Cancel", "Manage tables" and "Free" are
         // already in this dictionary — a second entry for any of them would
         // silently override the first everywhere, since a duplicate key in one

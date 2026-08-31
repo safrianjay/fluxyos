@@ -221,7 +221,12 @@ export const POS_METHODS = {
                 // A composite with components has a real cost basis; a bare stock
                 // item is costed from its own movements. Neither is asserted here
                 // — getPosOverview measures it against actual movements.
-                has_recipe: i.type === 'composite' && Array.isArray(i.components) && i.components.length > 0
+                has_recipe: i.type === 'composite' && Array.isArray(i.components) && i.components.length > 0,
+                // The options the till asks about. Projected explicitly, like
+                // every other field here — this map is a whitelist, so a field
+                // added to `items` and not added here reaches the page as
+                // undefined and the feature silently does nothing.
+                pos_modifier_groups: Array.isArray(i.pos_modifier_groups) ? i.pos_modifier_groups : []
             }))
             .sort((a, b) => (a.pos_sort - b.pos_sort)
                 || String(a.pos_category || '').localeCompare(String(b.pos_category || ''))
@@ -350,27 +355,68 @@ export const POS_METHODS = {
         });
     },
 
-    async addPosOrderLine(userId, orderId, { itemId, itemName, quantity = 1, unitPrice, note = null }) {
+    // Chosen modifiers, normalized onto a line.
+    //
+    // `price_delta` is per UNIT and may be negative (a smaller size). It is kept
+    // OFF `unit_price` deliberately, for the same reason a discount is not folded
+    // into the price: `unit_price` is the menu price, and a line that has
+    // forgotten it can never be audited against the menu or analysed. The line
+    // carries `modifier_amount` beside it and `gross_amount` is the sum, so
+    // totals — and therefore POS-SALE and the ledger — need no knowledge of
+    // modifiers at all.
+    _normalizePosModifiers(chosen) {
+        const rows = Array.isArray(chosen) ? chosen : [];
+        return rows.slice(0, 20).map((m) => ({
+            group_id: String(m.group_id || ''),
+            group_name: this._nullableString(m.group_name, 40),
+            option_id: String(m.option_id || ''),
+            option_name: this._nullableString(m.option_name, 40),
+            price_delta: Math.round(Number(m.price_delta) || 0)
+        })).filter((m) => m.option_id && m.option_name);
+    },
+
+    // The identity of a line for merging: same item, same price, same note, same
+    // modifiers. Two iced coffees where one is decaf are not the same line, and
+    // merging them loses the instruction the kitchen needs.
+    _posLineKey(itemId, price, note, modifiers) {
+        const mods = (modifiers || []).map((m) => `${m.group_id}:${m.option_id}`).sort().join(',');
+        return `${itemId}|${price}|${note || ''}|${mods}`;
+    },
+
+    async addPosOrderLine(userId, orderId, { itemId, itemName, quantity = 1, unitPrice, note = null, modifiers = null }) {
         const qty = Number(quantity);
         if (!Number.isInteger(qty) || qty <= 0) throw new Error('Quantity must be a whole number of one or more.');
         const price = Number(unitPrice);
         if (!Number.isInteger(price) || price < 0) throw new Error('That item has no valid price.');
+
+        const mods = this._normalizePosModifiers(modifiers);
+        const modAmount = mods.reduce((s, m) => s + m.price_delta, 0);
+        // A modifier may not take a line below zero — a "free" upgrade priced at
+        // −20.000 on a 15.000 drink would emit negative revenue.
+        if (price + modAmount < 0) throw new Error('Those options price this item below zero.');
+        const each = price + modAmount;
+        const cleanNote = this._nullableString(note, 120);
+
         return this.updatePosOrder(userId, orderId, (order) => {
             const lines = [...(order.lines || [])];
-            // Same item, same price, no note → bump the existing line rather than
-            // stacking duplicates. A kitchen ticket reading "1 × Nasi Goreng"
-            // four times is how a portion goes missing.
-            const at = lines.findIndex((l) => l.item_id === itemId && !l.note && !note && Number(l.unit_price) === price);
+            // Same item, same price, same note, same options → bump the existing
+            // line rather than stacking duplicates. A kitchen ticket reading
+            // "1 × Nasi Goreng" four times is how a portion goes missing.
+            const key = this._posLineKey(itemId, price, cleanNote, mods);
+            const at = lines.findIndex((l) => this._posLineKey(
+                l.item_id, Number(l.unit_price), l.note, l.modifiers) === key);
             if (at >= 0) {
                 const q = (Number(lines[at].quantity) || 0) + qty;
-                lines[at] = { ...lines[at], quantity: q, gross_amount: q * price };
+                const per = (Number(lines[at].unit_price) || 0) + (Number(lines[at].modifier_amount) || 0);
+                lines[at] = { ...lines[at], quantity: q, gross_amount: q * per };
             } else {
                 lines.push({
                     line_id: `l${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`,
                     item_id: itemId, item_name: itemName, quantity: qty,
-                    unit_price: price, gross_amount: qty * price,
+                    unit_price: price, gross_amount: qty * each,
+                    modifiers: mods, modifier_amount: modAmount,
                     discount_amount: 0, discount_reason: null,
-                    note: this._nullableString(note, 120)
+                    note: cleanNote
                 });
             }
             return { lines };
@@ -385,8 +431,14 @@ export const POS_METHODS = {
                 .map((l) => (l.line_id === lineId
                     // The price is the one copied onto the line when it was added,
                     // never today's menu price: a price edited mid-service must
-                    // not retroactively change an open order.
-                    ? { ...l, quantity: qty, gross_amount: qty * (Number(l.unit_price) || 0) }
+                    // not retroactively change an open order. `modifier_amount`
+                    // rides with it — omitting it here would silently drop every
+                    // upcharge the moment a cashier pressed "+".
+                    ? {
+                        ...l,
+                        quantity: qty,
+                        gross_amount: qty * ((Number(l.unit_price) || 0) + (Number(l.modifier_amount) || 0))
+                    }
                     : l))
                 .filter((l) => Number(l.quantity) > 0);
             return { lines };
@@ -1061,6 +1113,16 @@ export const POS_METHODS = {
     },
 
     // ── Reads ───────────────────────────────────────────────────────────────
+
+    // One order, read directly. `getPosOrders` is a bounded, outlet-filtered
+    // list, so "absent from it" is not the same as "gone" — and the till used to
+    // treat the two as identical, which is how an order could vanish from under
+    // a cashier seconds after they opened it.
+    async getPosOrder(userId, orderId) {
+        if (!orderId) return null;
+        const snap = await getDoc(doc(this.db, `${this._scope(userId)}/pos_orders/${orderId}`));
+        return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    },
 
     async getPosOrders(userId, { dimensionId = null, statuses = null, sinceDate = null, limitCount = 200 } = {}) {
         try {

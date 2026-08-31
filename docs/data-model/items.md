@@ -45,6 +45,7 @@ creates `stock` items and preserves — but does not edit — a `composite`'s
 | `track_stock` | boolean | `false` = a service. Never held as stock: `createGoodsReceipt` refuses it, and the importer refuses an opening balance on one. Absent reads as `true` |
 | `tracking_type` | enum \| null | `qty` \| `batch` \| `serial`. **Only `qty` is enforced** — see §7 |
 | `is_sold` / `is_purchased` | boolean | The template's "I Sell / I Buy This Item". `is_sold` also sets `pos_visible` on import |
+| `pos_modifier_groups` | array | The options the till asks about: `{ id, name, select, options: [{ id, name, price_delta }] }`. `select` is `one_required` \| `one_optional` \| `many`; `price_delta` is per unit and may be negative. Validated in `db-service.saveItem` (`normalizeModifierGroups`) — `items` has no `hasOnly` in rules, so nothing downstream would refuse a malformed one. See [`pos.md`](pos.md) → Modifiers |
 | `purchase_price` | integer minor units \| null | Reference buy price. **Not the cost the ledger uses** — that stays the weighted average derived from `stock_movements`, so this can never reach a journal |
 | `default_inventory_account_code` | string ≤12 \| null | **Recorded, not acted on** (§7) |
 | `default_sales_account_code` | string ≤12 \| null | **Recorded, not acted on** (§7) |

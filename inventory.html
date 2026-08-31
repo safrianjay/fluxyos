@@ -334,6 +334,29 @@
             color: #64748B;
             font-weight: 500;
         }
+        /* Option-group editor. Same .inv-line shell as the recipe row — the
+           question has the same shape (a name, then a repeating list), so it
+           gets the same control. */
+        .mod-group-head {
+            display: grid;
+            grid-template-columns: 1fr 132px;
+            gap: 8px;
+            align-items: center;
+        }
+        .mod-opt-row {
+            display: grid;
+            grid-template-columns: 1fr 116px 28px;
+            gap: 8px;
+            align-items: center;
+            margin-top: 8px;
+        }
+        .mod-opt-del {
+            width: 28px; height: 28px; border: 0; background: none; padding: 0;
+            color: #94A3B8; font-size: 16px; line-height: 1; cursor: pointer; border-radius: 6px;
+        }
+        .mod-opt-del:hover { color: #EF4444; background: #FEF2F2; }
+        .mod-opt-del:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
+
         .rcp-line-grid {
             display: grid;
             grid-template-columns: 1fr 90px 108px;
@@ -809,6 +832,24 @@
                         <span class="inv-check-sub">Needs a selling price. Without a recipe it sells at 100% margin, overstating gross profit.</span>
                     </span>
                 </label>
+
+                <!-- ── Options (modifiers) ───────────────────────────────────
+                     Size, sugar level, add-ons. They live on the ITEM because
+                     the menu IS this collection — a separate modifier master
+                     would drift from the recipe, and the direction it drifts is
+                     a flattering margin (docs/data-model/pos.md §1).
+
+                     A price here is a CHARGE, not a discount: FluxyOS discounts
+                     only ever subtract, so before this an "extra shot +Rp5.000"
+                     could not be rung up at all. -->
+                <div class="fluxy-drawer-field" id="item-modifier-field" style="margin-top:14px;">
+                    <label class="fluxy-drawer-label">Options <span class="inv-muted">(optional)</span></label>
+                    <p class="fluxy-drawer-hint" style="margin-bottom:8px;">
+                        What the cashier is asked when this is rung up. Leave empty and it adds in one tap.
+                    </p>
+                    <div id="item-modifier-groups"></div>
+                    <button type="button" id="item-modifier-add" class="fluxy-drawer-btn fluxy-drawer-btn--secondary fluxy-drawer-btn--block" style="margin-top:8px;">Add an option group</button>
+                </div>
             </div>
 
             <!-- ── Accounting ──────────────────────────────────────────────
@@ -1793,6 +1834,93 @@
         // it WOULD BE after the write — so this is a form, not a second
         // implementation. It converts units and shows the cost; it decides
         // nothing.
+        // ── Option groups (POS modifiers) ───────────────────────────────
+        //
+        // `select` collapses min/max into the three shapes an F&B menu actually
+        // uses — size (one, required), sugar level (one, optional), add-ons
+        // (any) — because a min/max pair invites nonsense combinations nobody
+        // asked for and every one of them would need a rule at the till.
+        //
+        // A group with no named options is dropped on save, not stored empty:
+        // the till would otherwise ask a question with no answers.
+        let modifierGroups = [];
+        let modifierUid = 0;
+
+        const MODIFIER_SELECTS = [
+            ['one_required', 'Choose one'],
+            ['one_optional', 'Optional, one'],
+            ['many', 'Choose any']
+        ];
+
+        function newModifierOption() {
+            modifierUid += 1;
+            return { uid: `mo${modifierUid}`, id: `o${modifierUid}${Date.now().toString(36)}`, name: '', price: '' };
+        }
+        function newModifierGroup() {
+            modifierUid += 1;
+            return {
+                uid: `mg${modifierUid}`, id: `g${modifierUid}${Date.now().toString(36)}`,
+                name: '', select: 'one_required', options: [newModifierOption()]
+            };
+        }
+
+        function renderModifierGroups() {
+            const host = document.getElementById('item-modifier-groups');
+            if (!host) return;
+            host.innerHTML = modifierGroups.map((g) => `
+                <div class="inv-line" data-mgroup="${g.uid}">
+                    <div class="mod-group-head">
+                        <input class="fluxy-drawer-input" data-mfield="name" maxlength="40"
+                               placeholder="Size, Sugar level, Add-ons" value="${esc(g.name)}" aria-label="Option group name">
+                        <select class="fluxy-drawer-select" data-mfield="select" aria-label="How many can be chosen">
+                            ${MODIFIER_SELECTS.map(([v, label]) =>
+                                `<option value="${v}"${g.select === v ? ' selected' : ''}>${label}</option>`).join('')}
+                        </select>
+                    </div>
+                    ${g.options.map((o) => `
+                        <div class="mod-opt-row" data-mopt="${o.uid}">
+                            <input class="fluxy-drawer-input" data-mfield="opt-name" maxlength="40"
+                                   placeholder="Large" value="${esc(o.name)}" aria-label="Option name">
+                            <input class="fluxy-drawer-input" data-mfield="opt-price" inputmode="numeric"
+                                   placeholder="+5.000" value="${esc(o.price)}" aria-label="Extra charge">
+                            <button type="button" class="mod-opt-del" data-mfield="opt-remove"
+                                    aria-label="Remove this option"${g.options.length === 1 ? ' disabled' : ''}>×</button>
+                        </div>`).join('')}
+                    <div class="inv-line-foot">
+                        <button type="button" class="inv-line-remove" data-mfield="opt-add">Add an option</button>
+                        <button type="button" class="inv-line-remove" data-mfield="group-remove">Remove group</button>
+                    </div>
+                </div>`).join('');
+        }
+
+        // What actually saves. Blank names are dropped rather than stored — a
+        // nameless option is a button the cashier cannot read.
+        function resolvedModifierGroups() {
+            // Pull the live DOM values in first. The array is only synced on
+            // add/remove, so saving straight after typing would store the value
+            // from before the last keystroke.
+            readModifiersFromForm();
+            return modifierGroups.map((g) => ({
+                id: g.id,
+                name: String(g.name || '').trim(),
+                select: MODIFIER_SELECTS.some(([v]) => v === g.select) ? g.select : 'one_required',
+                options: g.options
+                    .map((o) => ({
+                        id: o.id,
+                        name: String(o.name || '').trim(),
+                        // Same raw-integer rule as every other amount here. A
+                        // leading "-" is kept so a smaller size can cost less.
+                        price_delta: (() => {
+                            const raw = String(o.price || '').trim();
+                            const neg = raw.startsWith('-') || raw.startsWith('−');
+                            const n = Number(raw.replace(/\D/g, '')) || 0;
+                            return neg ? -n : n;
+                        })()
+                    }))
+                    .filter((o) => o.name)
+            })).filter((g) => g.name && g.options.length);
+        }
+
         let recipeLines = [];
         let recipeUid = 0;
 
@@ -2177,12 +2305,52 @@
                 : [newRecipeLine()];
             document.getElementById('recipe-error').classList.add('hidden');
 
+            // Option groups. Empty for a new item — most menu items have none,
+            // and an editor pre-seeded with a blank group reads as a required
+            // step.
+            modifierGroups = (isEdit && Array.isArray(item.pos_modifier_groups))
+                ? item.pos_modifier_groups.map((g) => {
+                    modifierUid += 1;
+                    return {
+                        uid: `mg${modifierUid}`,
+                        id: g.id || `g${modifierUid}`,
+                        name: g.name || '',
+                        select: g.select || 'one_required',
+                        options: (Array.isArray(g.options) && g.options.length ? g.options : [{}]).map((o) => {
+                            modifierUid += 1;
+                            return {
+                                uid: `mo${modifierUid}`,
+                                id: o.id || `o${modifierUid}`,
+                                name: o.name || '',
+                                // Rendered back as the user typed it: a raw
+                                // integer, with the minus kept for a cheaper size.
+                                price: o.price_delta ? String(o.price_delta) : ''
+                            };
+                        })
+                    };
+                })
+                : [];
+            renderModifierGroups();
+
             const baseUnitEl = document.getElementById('item-base-unit');
             baseUnitEl.value = isEdit ? (item.base_unit || '') : '';
             // base_unit is immutable — every recorded quantity is an integer count
             // of it, so changing it would silently reinterpret existing stock.
             baseUnitEl.disabled = isEdit;
-            syncUnitPicker('item-base-unit-pick', 'item-base-unit');
+            // NO syncUnitPicker here.
+            //
+            // It derives the INPUT from the select, and at this moment the select
+            // still holds whatever the last drawer left in it — empty on a fresh
+            // page. So it ran `input.value = ''` and wiped the base unit this
+            // function had just prefilled, one line above. `validateForm()`
+            // requires a base unit, so Save then stayed disabled forever and NO
+            // EXISTING ITEM COULD BE EDITED AT ALL — silently, with the field
+            // simply looking blank.
+            //
+            // `applyItemType()` runs below and calls `fillUnitSelect`, which
+            // derives the select FROM the input — the right direction here,
+            // since the item's stored unit is the source of truth — and calls
+            // syncUnitPicker itself once the select agrees.
             document.getElementById('item-base-unit-hint').textContent = isEdit
                 ? 'Fixed once the item exists — every quantity already recorded is counted in it.'
                 : 'The smallest unit you count in. Fixed once the item exists.';
@@ -2322,6 +2490,9 @@
                 sales_price: Number(document.getElementById('item-price').value.replace(/\D/g, '')) || null,
                 pos_visible: document.getElementById('item-pos-visible').checked,
                 pos_category: document.getElementById('item-pos-category').value.trim() || null,
+                // Additive on a collection with no `hasOnly` in firestore.rules,
+                // so this needs no rules change and no deploy.
+                pos_modifier_groups: resolvedModifierGroups(),
                 components: isRecipe
                     ? resolvedComponents().map((c) => ({
                         item_id: c.item_id, quantity: c.quantity, yield_percent: c.yield_percent
@@ -2788,6 +2959,63 @@
                 window.showToast('Give the item a selling price first — the till needs something to charge.', 'error');
             }
         });
+        // ── Option-group editor wiring ──────────────────────────────────
+        //
+        // One delegated listener for the whole editor, because every change
+        // re-renders the rows and a per-row listener would be attached to a
+        // node that no longer exists. Same reason the recipe editor delegates.
+        function readModifiersFromForm() {
+            document.querySelectorAll('#item-modifier-groups [data-mgroup]').forEach((el) => {
+                const g = modifierGroups.find((x) => x.uid === el.dataset.mgroup);
+                if (!g) return;
+                g.name = el.querySelector('[data-mfield="name"]').value;
+                g.select = el.querySelector('[data-mfield="select"]').value;
+                el.querySelectorAll('[data-mopt]').forEach((row) => {
+                    const o = g.options.find((x) => x.uid === row.dataset.mopt);
+                    if (!o) return;
+                    o.name = row.querySelector('[data-mfield="opt-name"]').value;
+                    o.price = row.querySelector('[data-mfield="opt-price"]').value;
+                });
+            });
+        }
+
+        document.getElementById('item-modifier-add').addEventListener('click', () => {
+            readModifiersFromForm();
+            modifierGroups.push(newModifierGroup());
+            renderModifierGroups();
+        });
+
+        document.getElementById('item-modifier-groups').addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-mfield]');
+            if (!btn || btn.tagName !== 'BUTTON') return;
+            const groupEl = btn.closest('[data-mgroup]');
+            const g = modifierGroups.find((x) => x.uid === groupEl.dataset.mgroup);
+            if (!g) return;
+            readModifiersFromForm();
+
+            if (btn.dataset.mfield === 'group-remove') {
+                modifierGroups = modifierGroups.filter((x) => x.uid !== g.uid);
+            } else if (btn.dataset.mfield === 'opt-add') {
+                g.options.push(newModifierOption());
+            } else if (btn.dataset.mfield === 'opt-remove') {
+                const row = btn.closest('[data-mopt]');
+                if (g.options.length > 1) g.options = g.options.filter((o) => o.uid !== row.dataset.mopt);
+            } else { return; }
+            renderModifierGroups();
+        });
+
+        // Live thousands formatting on the extra charge, matching every other
+        // amount field. The minus is preserved — a smaller size costs less.
+        document.getElementById('item-modifier-groups').addEventListener('input', (e) => {
+            if (e.target.dataset.mfield !== 'opt-price') return;
+            const raw = e.target.value;
+            const neg = raw.trim().startsWith('-') || raw.trim().startsWith('−');
+            const digits = raw.replace(/\D/g, '');
+            e.target.value = digits
+                ? (neg ? '-' : '') + digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+                : (neg ? '-' : '');
+        });
+
         document.getElementById('recipe-add-line').addEventListener('click', () => {
             readRecipeFromForm();
             recipeLines.push(newRecipeLine());

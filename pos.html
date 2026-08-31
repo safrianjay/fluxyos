@@ -393,6 +393,36 @@
         /* A line row, matching the reference: name, `price × qty = total`, a
            stepper, a remove control, and a notes affordance. */
         .pos-line-calc { font-size: 12px; color: #C2410C; font-variant-numeric: tabular-nums; margin-top: 2px; }
+        /* The chosen options, under the line. Quieter than the note, because a
+           note is an instruction someone typed and a modifier is a choice the
+           menu offered. */
+        .pos-line-mods { font-size: 12px; color: #64748B; margin-top: 2px; }
+
+        /* ── Modifier chooser ───────────────────────────────────────────────
+           Options are TAP TARGETS, not a select: a cashier picks these at a
+           counter with a queue, and every one is at least 44px. */
+        .pos-mod-group + .pos-mod-group { margin-top: 18px; }
+        .pos-mod-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+        .pos-mod-name { font-size: 14px; font-weight: 600; color: #0F172A; }
+        .pos-mod-rule {
+            font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+            color: #94A3B8;
+        }
+        .pos-mod-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+        .pos-mod-opt {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            min-height: 44px; padding: 8px 12px; text-align: left;
+            border: 1px solid #E2E8F0; border-radius: 10px; background: #fff;
+            font-size: 14px; color: #334155; cursor: pointer;
+            transition: border-color 120ms ease, background 120ms ease;
+        }
+        .pos-mod-opt:hover { background: #F8FAFC; }
+        .pos-mod-opt:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
+        /* Selected is a filled dark chip, matching every other "on" state on the
+           till. Never colour alone — the label is the identity. */
+        .pos-mod-opt.is-on { background: #0F172A; border-color: #0F172A; color: #fff; }
+        .pos-mod-delta { font-size: 12px; color: #64748B; font-variant-numeric: tabular-nums; }
+        .pos-mod-opt.is-on .pos-mod-delta { color: #CBD5E1; }
         .pos-line-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
         .pos-line-remove {
             width: 26px; height: 26px; border-radius: 7px; border: 1px solid #F1D5D7;

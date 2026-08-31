@@ -88,7 +88,7 @@ nothing would report it.
 | `table_id` / `table_label` | string \| null | Null for takeaway |
 | `channel` | enum | `staff` \| `qr` \| `connector` |
 | `status` | enum | `open` \| `submitted` \| `sent` \| `served` \| `awaiting_payment` \| `paid` \| `void` |
-| `lines` | array | `{ line_id, item_id, item_name, quantity, unit_price, gross_amount, discount_amount, discount_reason, note }` |
+| `lines` | array | `{ line_id, item_id, item_name, quantity, unit_price, gross_amount, discount_amount, discount_reason, note, modifiers, modifier_amount }` |
 | `discount_amount` / `discount_reason` | integer / string | **Order-level**, separate from line discounts |
 | `subtotal` / `discount_total` | integer | Σ line gross; Σ line + order discounts |
 | `service_charge_amount` / `tax_amount` | integer | Always `0` in v1 — see §6 |
@@ -98,6 +98,47 @@ nothing would report it.
 | `version` | integer | Bumped on every write — the concurrency guard |
 | `transaction_id` / `stock_adjustment_id` | string \| null | What this order emitted. **The idempotency key** |
 | `refund_transaction_id` / `refund_reason` / `refunded_at` | | The refund trail |
+
+### Modifiers (2026-08-31)
+
+Size, sugar level, add-ons. Authored on the **item** (`pos_modifier_groups`),
+chosen at the till, stored on the line:
+
+```
+modifiers        [{ group_id, group_name, option_id, option_name, price_delta }]
+modifier_amount  Σ price_delta, PER UNIT
+gross_amount     (unit_price + modifier_amount) × quantity
+```
+
+**`unit_price` stays the MENU price.** The upcharge rides beside it, for exactly
+the reason a discount is not folded into the price (§4): a line that has
+forgotten what the menu charged can never be audited against it, and
+per-option analytics become unbuildable.
+
+Because the whole effect lands in `gross_amount` — already the only input to
+`_posTotals` — **`POS-SALE`, the journal and the ledger need no knowledge of
+modifiers at all.** An upcharge is revenue; a negative delta (a smaller size)
+is a lower price, not a discount. The DAL refuses a combination that would take
+a line below zero.
+
+Lines merge on item + price + note + **the exact set of options**. Two iced
+coffees where one is decaf are not the same line, and merging them loses the
+instruction the kitchen needs.
+
+Neither `items` nor `pos_orders.lines[]` is validated by `hasOnly` in
+`firestore.rules`, so this needed **no rules change and no deploy** — and the
+validation therefore lives entirely in `db-service.saveItem`
+(`normalizeModifierGroups`) and `pos-service._normalizePosModifiers`.
+
+⚠️ **`getPosMenu` projects an explicit field whitelist.** A field added to
+`items` and not added there arrives at the till as `undefined` and the feature
+silently does nothing — which is exactly what happened to `pos_modifier_groups`
+on the first cut.
+
+**Not built:** per-outlet modifier pricing, and modifier→recipe stock relief (an
+extra shot consuming beans). The second one matters: a priced modifier moves
+revenue today but not COGS, so a heavily-modified menu overstates gross margin
+by the cost of the extras.
 
 ### `channel` is the connector seam
 

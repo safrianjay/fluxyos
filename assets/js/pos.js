@@ -1097,18 +1097,153 @@ function renderMenu() {
         </button>`).join('');
 
     host.querySelectorAll('[data-item]').forEach((btn) => {
-        btn.addEventListener('click', () => once(async () => {
-            try {
-                state.order = await ds.addPosOrderLine(state.uid, state.orderId, {
-                    itemId: btn.dataset.item,
-                    itemName: btn.dataset.name,
-                    quantity: 1,
-                    unitPrice: Number(btn.dataset.price)
-                });
-                renderOrder();
-            } catch (err) { fail(err, 'Could not add that item.'); }
-        }));
+        btn.addEventListener('click', () => {
+            const item = (state.menu || []).find((m) => m.id === btn.dataset.item);
+            // An item with options asks before it lands. One without still adds
+            // in a single tap — the common case must not pay for the rare one.
+            if (item && posModifierGroups(item).length) return openModifierDrawer(item);
+            addMenuLine(btn.dataset.item, btn.dataset.name, Number(btn.dataset.price));
+        });
     });
+}
+
+// Unguarded on purpose — see addMenuLine below.
+async function addLineNow(itemId, itemName, unitPrice, modifiers = null, note = null) {
+    try {
+        state.order = await ds.addPosOrderLine(state.uid, state.orderId, {
+            itemId, itemName, quantity: 1, unitPrice, modifiers, note
+        });
+        renderOrder();
+    } catch (err) { fail(err, 'Could not add that item.'); }
+}
+
+// `once()` DOES NOT NEST. It returns null the moment `state.busy` is set, so a
+// guarded call made from inside another guarded call does nothing at all, in
+// silence. The drawer's submit handler already runs its onSubmit inside once(),
+// so the modifier flow must call `addLineNow` directly — wrapping it cost an
+// afternoon here: the drawer closed, no line appeared, no error anywhere.
+function addMenuLine(itemId, itemName, unitPrice, modifiers = null, note = null) {
+    return once(() => addLineNow(itemId, itemName, unitPrice, modifiers, note));
+}
+
+// ── Modifiers ────────────────────────────────────────────────────────────────
+//
+// The menu IS `items`, so modifier groups live on the item — no second master to
+// drift from the recipe (docs/data-model/pos.md §1). A group is only real when it
+// has options; a half-authored one is ignored rather than shown as an empty
+// question the cashier cannot answer.
+//
+// `select` collapses min/max into the three shapes an F&B menu actually uses:
+// size (one, required), sugar level (one, optional), add-ons (any).
+function posModifierGroups(item) {
+    const groups = Array.isArray(item && item.pos_modifier_groups) ? item.pos_modifier_groups : [];
+    return groups
+        .map((g) => ({
+            id: String(g.id || ''),
+            name: String(g.name || '').trim(),
+            select: ['one_required', 'one_optional', 'many'].includes(g.select) ? g.select : 'one_optional',
+            options: (Array.isArray(g.options) ? g.options : [])
+                .map((o) => ({
+                    id: String(o.id || ''),
+                    name: String(o.name || '').trim(),
+                    price_delta: Math.round(Number(o.price_delta) || 0)
+                }))
+                .filter((o) => o.id && o.name)
+        }))
+        .filter((g) => g.name && g.options.length);
+}
+
+const groupRule = (g) => (g.select === 'one_required' ? 'Choose one'
+    : (g.select === 'many' ? 'Choose any' : 'Optional'));
+
+function openModifierDrawer(item) {
+    const groups = posModifierGroups(item);
+    const base = Number(item.sales_price) || 0;
+    const chosen = new Map();   // group_id → Set(option_id)
+
+    const priceTag = (d) => (d === 0 ? '' : `<span class="pos-mod-delta">${d > 0 ? '+' : '−'}${rp(d)}</span>`);
+
+    const d = drawer({
+        title: item.name,
+        subtitle: rp(base),
+        submitLabel: 'Add to order',
+        body: groups.map((g) => `
+            <div class="pos-mod-group" data-group="${esc(g.id)}" data-select="${esc(g.select)}">
+                <div class="pos-mod-head">
+                    <span class="pos-mod-name">${esc(g.name)}</span>
+                    <span class="pos-mod-rule">${groupRule(g)}</span>
+                </div>
+                <div class="pos-mod-options">
+                    ${g.options.map((o) => `
+                        <button type="button" class="pos-mod-opt" data-opt="${esc(o.id)}"
+                                data-delta="${o.price_delta}" data-name="${esc(o.name)}">
+                            <span>${esc(o.name)}</span>${priceTag(o.price_delta)}
+                        </button>`).join('')}
+                </div>
+            </div>`).join(''),
+        onSubmit: async () => {
+            const picked = [];
+            groups.forEach((g) => {
+                (chosen.get(g.id) || new Set()).forEach((optId) => {
+                    const o = g.options.find((x) => x.id === optId);
+                    if (o) picked.push({
+                        group_id: g.id, group_name: g.name,
+                        option_id: o.id, option_name: o.name, price_delta: o.price_delta
+                    });
+                });
+            });
+            // NOT addMenuLine: this already runs inside the drawer's once().
+            await addLineNow(item.id, item.name, base, picked);
+        }
+    });
+
+    // The submit button carries the RESULTING price, so the number a cashier
+    // reads before committing is the number the customer will be charged.
+    const submit = d.querySelector('button[type="submit"][form="pos-drawer-form"]');
+    const sync = () => {
+        let delta = 0;
+        let missing = false;
+        groups.forEach((g) => {
+            const set = chosen.get(g.id) || new Set();
+            set.forEach((id) => { delta += (g.options.find((o) => o.id === id) || {}).price_delta || 0; });
+            if (g.select === 'one_required' && set.size === 0) missing = true;
+        });
+        if (submit) {
+            submit.disabled = missing;
+            // Two text nodes, not one interpolated string: the DOM translator
+            // matches WHOLE text nodes, so "Add to order · Rp52.000" would leave
+            // the English half sitting in a Bahasa drawer.
+            submit.innerHTML = missing
+                ? '<span>Choose the required options</span>'
+                : `<span>Add to order</span> · <span>${esc(rp(base + delta))}</span>`;
+        }
+    };
+
+    d.querySelectorAll('.pos-mod-group').forEach((groupEl) => {
+        const gid = groupEl.dataset.group;
+        const single = groupEl.dataset.select !== 'many';
+        groupEl.querySelectorAll('[data-opt]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const set = chosen.get(gid) || new Set();
+                const id = btn.dataset.opt;
+                if (set.has(id)) {
+                    // A required group cannot be emptied by tapping the one
+                    // choice again — that would arm a submit nobody can press.
+                    if (!(single && groupEl.dataset.select === 'one_required')) set.delete(id);
+                } else {
+                    if (single) set.clear();
+                    set.add(id);
+                }
+                chosen.set(gid, set);
+                groupEl.querySelectorAll('[data-opt]').forEach((b) => {
+                    b.classList.toggle('is-on', set.has(b.dataset.opt));
+                    b.setAttribute('aria-pressed', String(set.has(b.dataset.opt)));
+                });
+                sync();
+            });
+        });
+    });
+    sync();
 }
 
 function renderOrder() {
@@ -1166,7 +1301,11 @@ function renderOrder() {
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
                     </button>` : ''}
                 </div>
-                <div class="pos-line-calc">${rp(l.unit_price)} × ${qty} = ${rp(gross)}</div>
+                <div class="pos-line-calc">${rp((Number(l.unit_price) || 0) + (Number(l.modifier_amount) || 0))} × ${qty} = ${rp(gross)}</div>
+                ${(l.modifiers || []).length ? `<div class="pos-line-mods">${
+                    l.modifiers.map((m) => esc(m.option_name)
+                        + (m.price_delta ? ` (${m.price_delta > 0 ? '+' : '−'}${rp(m.price_delta)})` : '')).join(' · ')
+                }</div>` : ''}
                 ${disc > 0 ? `<div class="pos-line-meta" style="color:#C2410C">${esc(l.discount_reason || 'Discount')} −${rp(disc)} · now ${rp(net)}</div>` : ''}
                 ${l.note ? `<div class="pos-line-meta">${esc(l.note)}</div>` : ''}
                 ${editableNow ? `
@@ -1540,7 +1679,13 @@ function openReceipt(order) {
     const o = order;
     const line = (l) => {
         const net = (Number(l.gross_amount) || 0) - (Number(l.discount_amount) || 0);
-        return `<tr><td>${esc(l.item_name)}<br><span class="m">${l.quantity} × ${rp(l.unit_price)}</span></td>`
+        const each = (Number(l.unit_price) || 0) + (Number(l.modifier_amount) || 0);
+        // Options are printed. A customer checking a bill against what they
+        // ordered cannot verify an upcharge that appears only in the total.
+        const mods = (l.modifiers || []).length
+            ? `<br><span class="m">${(l.modifiers || []).map((m) => esc(m.option_name)).join(', ')}</span>`
+            : '';
+        return `<tr><td>${esc(l.item_name)}${mods}<br><span class="m">${l.quantity} × ${rp(each)}</span></td>`
              + `<td class="r">${rp(net)}</td></tr>`;
     };
     const row = (label, value, cls = '') => `<tr class="${cls}"><td>${esc(label)}</td><td class="r">${value}</td></tr>`;
@@ -1984,7 +2129,22 @@ async function refresh({ keepOrder = false } = {}) {
             .find((o) => o.id === state.orderId);
         if (live) state.order = live;
         else if (state.order && !['paid', 'void'].includes(state.order.status)) {
-            state.orderId = null; state.order = null;
+            // ABSENT FROM THE OVERVIEW IS NOT GONE.
+            //
+            // The overview is a bounded, outlet-filtered list read. The live
+            // watcher calls refresh() on every snapshot, so a snapshot landing
+            // moments after an order is created triggers a read that has not
+            // caught up with it yet — and this branch then threw away the order
+            // the cashier had just opened: panel back to "No order open", every
+            // product card disabled again, no error anywhere. Intermittent, and
+            // more likely the busier the outlet.
+            //
+            // So ask the document before discarding it. One read, only on the
+            // miss, and it still clears for the case this branch is FOR: an
+            // order voided on another device really is gone.
+            const fresh = await ds.getPosOrder(state.uid, state.orderId).catch(() => null);
+            if (fresh && fresh.status !== 'void') state.order = fresh;
+            else { state.orderId = null; state.order = null; }
         }
     }
 
