@@ -1043,27 +1043,139 @@ function renderOrderControls() {
     }
 }
 
+// Every unpaid sale that is not the one on screen. In a pay-first profile that
+// is exactly "parked": there are no tables, so a cart the cashier put down has
+// nowhere to be except this list.
+//
+// Dine-in orders are excluded — a table order is already parked AT ITS TABLE,
+// and listing it here would be a second way to do one thing.
+function parkedSales() {
+    const open = (state.overview && state.overview.activeOrders) || [];
+    return open
+        .filter((o) => !o.table_id && o.id !== state.orderId && o.status !== 'void'
+            // An order with nothing on it is not a parked SALE — it is residue
+            // from a cart that was opened and walked away from. Listing it makes
+            // the cashier read past noise to find the one they put down, and
+            // resuming it looks exactly like losing their items.
+            && (o.lines || []).length > 0)
+        .sort((a, b) => {
+            const ta = a.opened_at?.toDate ? a.opened_at.toDate().getTime() : 0;
+            const tb = b.opened_at?.toDate ? b.opened_at.toDate().getTime() : 0;
+            return tb - ta;
+        });
+}
+
+function renderParkedChip() {
+    const chip = $('pos-parked-chip');
+    if (!chip) return;
+    const n = posProfile().payFirst ? parkedSales().length : 0;
+    chip.classList.toggle('hidden', n === 0);
+    $('pos-parked-count').textContent = String(n);
+}
+
+// One row per sale: what it is, what is on it, what it is worth, how long it has
+// been sitting. The age matters — a cart from yesterday is almost certainly
+// abandoned, and the cashier is the only one who can decide that.
+function orderResultRow(ord) {
+    const label = ord.note
+        || (ord.table_label ? `Table ${ord.table_label}` : 'Takeaway');
+    const count = (ord.lines || []).reduce((n, l) => n + (Number(l.quantity) || 0), 0);
+    const age = elapsedSince(ord.opened_at);
+    return `<button type="button" class="pos-order-result" data-open="${esc(ord.id)}">
+        <span>${esc(label)}
+            <span class="pos-order-result-meta">· ${count} ${count === 1 ? 'item' : 'items'}${age ? ` · ${esc(age)}` : ''}</span>
+        </span>
+        <span>${rp(ord.total_amount)}</span>
+    </button>`;
+}
+
 function renderOrderSearch() {
     const box = $('pos-order-results');
     const input = $('pos-order-search');
     if (!box || !input) return;
     const q = input.value.trim().toLowerCase();
     const open = (state.overview && state.overview.activeOrders) || [];
-    if (!q) { box.classList.add('hidden'); box.innerHTML = ''; return; }
-    const hits = open.filter((ord) =>
-        String(ord.order_number || '').toLowerCase().includes(q)
-        || String(ord.table_label || '').toLowerCase().includes(q));
-    box.classList.remove('hidden');
-    box.innerHTML = hits.length ? hits.map((ord) => `
-        <button type="button" class="pos-order-result" data-open="${esc(ord.id)}">
-            <span>${esc(ord.table_label ? `Table ${ord.table_label}` : 'Takeaway')} · ${esc(ord.order_number || '')}</span>
-            <span>${rp(ord.total_amount)}</span>
-        </button>`).join('')
-        : '<div style="padding:10px 12px;font-size:13px;color:#94A3B8">No open order matches that.</div>';
-    box.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => {
-        selectOrder(b.dataset.open);
-        input.value = ''; box.classList.add('hidden'); box.innerHTML = '';
-    }));
+
+    // An empty box used to mean "show nothing", which made every parked sale
+    // invisible until the cashier guessed at a number they never saw. Empty now
+    // means "show me what is parked" — but only when the panel was deliberately
+    // opened, never as ambient clutter.
+    if (!q) {
+        if (!box.dataset.showParked) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+        const parked = parkedSales();
+        box.classList.remove('hidden');
+        box.innerHTML = parked.length
+            ? parked.map(orderResultRow).join('')
+            : '<div style="padding:10px 12px;font-size:13px;color:#94A3B8">No parked sales.</div>';
+    } else {
+        const hits = open.filter((ord) =>
+            String(ord.order_number || '').toLowerCase().includes(q)
+            || String(ord.table_label || '').toLowerCase().includes(q)
+            || String(ord.note || '').toLowerCase().includes(q));
+        box.classList.remove('hidden');
+        box.innerHTML = hits.length ? hits.map(orderResultRow).join('')
+            : '<div style="padding:10px 12px;font-size:13px;color:#94A3B8">No open order matches that.</div>';
+    }
+
+    box.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => once(async () => {
+        // Resuming with a cart already open must PARK it, never drop it. That is
+        // the whole defect this exists to fix, and it would be absurd to
+        // reintroduce it here.
+        await parkCurrentSale({ silent: true });
+
+        const id = b.dataset.open;
+        selectOrder(id);
+        if (state.orderId !== id) {
+            // The list is a snapshot. Another device — or the cashier's own
+            // earlier tab — may have paid or voided this sale since it was drawn,
+            // and `selectOrder` simply does nothing when it cannot find the
+            // order. Doing nothing is the worst possible answer here: the cashier
+            // taps a sale and the screen does not move, so they tap it again.
+            toast('That sale is no longer open.', 'error');
+            await refresh().catch(() => {});
+            renderOrderSearch();
+            renderParkedChip();
+            return;
+        }
+
+        input.value = '';
+        delete box.dataset.showParked;
+        box.classList.add('hidden'); box.innerHTML = '';
+        renderParkedChip();
+    })));
+}
+
+// Put the open cart down. Returns false when there was nothing to put down.
+//
+// Nothing is written unless a label is given: an unpaid order is already parked
+// by virtue of existing, so "hold" is just letting go of it on screen.
+async function parkCurrentSale({ label = null, silent = false } = {}) {
+    const o = state.order;
+    if (!o || ['paid', 'void'].includes(o.status)) return false;
+    if (!(o.lines || []).length) return false;
+    let parked = o;
+    try {
+        if (label) parked = await ds.setPosOrderLabel(state.uid, state.orderId, label);
+    } catch (err) { fail(err, 'Could not label that sale.'); return false; }
+
+    // Update the overview IN MEMORY rather than re-reading it.
+    //
+    // A refresh() here races the live watcher, which the label write has just
+    // woken: two overlapping refreshes, one of them re-binding `state.order`
+    // from a read taken while the order was still selected, and the cart the
+    // cashier just put down flickers back onto the screen. We already hold the
+    // updated document — there is nothing to go and fetch.
+    if (state.overview) {
+        const list = state.overview.activeOrders || (state.overview.activeOrders = []);
+        const at = list.findIndex((x) => x.id === parked.id);
+        if (at >= 0) list[at] = { ...list[at], ...parked };
+        else list.push(parked);
+    }
+    state.orderId = null;
+    state.order = null;
+    renderOrder(); renderMenu(); renderParkedChip();
+    if (!silent) toast(`Sale parked${label ? ` as "${label}"` : ''}.`);
+    return true;
 }
 
 function menuCategories() {
@@ -1544,6 +1656,10 @@ function renderOrder() {
     setPrimaryAction(primary, o, st);
 
     const editable = !['paid', 'void'].includes(o.status);
+    // Hold is pay-first only. In F&B the TABLE is the parking slot, so a second
+    // parking concept would be two ways to do one thing.
+    $('pos-hold-btn')?.classList.toggle('hidden',
+        !posProfile().payFirst || !editable || empty);
     discountBtn.classList.toggle('hidden', !editable || empty);
     voidBtn.classList.toggle('hidden', !editable);
 
@@ -1933,6 +2049,35 @@ function openRefundDrawer() {
     });
 }
 
+// Naming a parked sale is optional, and the drawer says so. A cashier with a
+// queue should be able to press Hold, press Enter and move on; the label is for
+// the times there are three carts down and "Takeaway #019" identifies none of
+// them.
+function openHoldDrawer() {
+    const o = state.order;
+    if (!o) return;
+    drawer({
+        title: 'Hold this sale',
+        subtitle: `${rp(o.total_amount)} · ${(o.lines || []).length} line${(o.lines || []).length === 1 ? '' : 's'}`,
+        submitLabel: 'Hold sale',
+        body: `
+            <div>
+                <label class="block text-[12px] font-semibold text-slate-700 mb-2" for="pos-hold-label">
+                    Name it <span class="font-normal text-slate-400">(optional)</span>
+                </label>
+                <input id="pos-hold-label" name="label" class="w-full min-h-[44px] px-3 border border-slate-300 rounded-lg text-[14px]"
+                       maxlength="60" placeholder="Blue jacket, Pak Budi…" autocomplete="off">
+                <p class="text-[11px] text-slate-500 mt-2">The sale stays exactly as it is. It does not hold stock — whoever pays first gets the last one.</p>
+            </div>`,
+        onSubmit: async (fd) => {
+            // NOT once() — the drawer's submit already runs inside one, and
+            // once() does not nest.
+            await parkCurrentSale({ label: (fd.get('label') || '').trim() || null });
+        }
+    });
+    setTimeout(() => $('pos-hold-label')?.focus(), 40);
+}
+
 function openLineNoteDrawer(lineId) {
     const line = (state.order.lines || []).find((l) => l.line_id === lineId);
     if (!line) return;
@@ -2197,11 +2342,19 @@ function openMovementDrawer() {
 // staged deliberately rather than by accident of layout.
 async function openCloseShiftDrawer() {
     const tally = await ds.getPosShiftTally(state.uid, state.shift.id).catch(() => null);
+    // Parked sales do NOT distort the count — only paid ones reach the drawer —
+    // but they are unfinished business walking out of the door with the person
+    // closing up, and nothing else on this screen would mention them.
+    const parked = parkedSales().length;
     drawer({
         title: 'Close shift',
         subtitle: tally ? `${tally.order_count} ${tally.order_count === 1 ? 'order' : 'orders'} this shift` : '',
         submitLabel: 'Count and close',
         body: `
+            ${parked ? `<div class="pos-note is-warn">
+                <strong>${parked} ${parked === 1 ? 'sale is' : 'sales are'} still on hold.</strong>
+                <span class="block text-[12px] mt-0.5">They are not in this count — nothing is owed on them yet — but they will still be here tomorrow.</span>
+            </div>` : ''}
             <div>
                 <label class="block text-[12px] font-semibold text-slate-700 mb-2" for="pos-counted">Cash counted in the drawer</label>
                 <input id="pos-counted" name="counted" inputmode="numeric" class="pos-amount-input" value="" placeholder="0" autocomplete="off" required>
@@ -2317,6 +2470,7 @@ async function refresh({ keepOrder = false } = {}) {
     $('pos-new-order').disabled = !state.outletId;
 
     applyPosProfileChrome();
+    renderParkedChip();
 
     // Free-table count on the "Table Order" button — the floor plan is behind a
     // click now, so its one at-a-glance number comes forward to the button.
@@ -2436,7 +2590,26 @@ function wire() {
     $('pos-void-btn').addEventListener('click', openVoidDrawer);
     $('pos-refund-btn').addEventListener('click', openRefundDrawer);
     $('pos-reprint-btn').addEventListener('click', () => openReceipt(state.order));
-    $('pos-new-order').addEventListener('click', () => once(() => startOrder(null)));
+    $('pos-new-order').addEventListener('click', () => once(async () => {
+        // PARK, never drop. Pressing this with items in the cart used to abandon
+        // them silently — no warning, no toast, and the only route back was the
+        // Orders board, which nobody had a reason to open.
+        const parked = await parkCurrentSale();
+        // Pay-first opens its sale on the first tap of a product, so there is
+        // nothing more to do once the cart is clear.
+        if (!posProfile().payFirst) await startOrder(null);
+        else if (!parked) await startOrder(null);
+    }));
+
+    $('pos-hold-btn')?.addEventListener('click', () => openHoldDrawer());
+
+    const parkedChip = $('pos-parked-chip');
+    parkedChip?.addEventListener('click', () => {
+        const box = $('pos-order-results');
+        if (box.dataset.showParked) { delete box.dataset.showParked; }
+        else { box.dataset.showParked = '1'; }
+        renderOrderSearch();
+    });
     $('pos-tables-btn').addEventListener('click', openTableSheet);
     $('pos-manage-tables')?.addEventListener('click', openTableDrawer);
     $('pos-arrange-btn')?.addEventListener('click', () => {

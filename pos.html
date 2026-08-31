@@ -381,6 +381,22 @@
         .pos-order-id h2 { font-size: 16px; font-weight: 600; color: #0B0F19; letter-spacing: -0.01em; }
         .pos-order-sub { font-size: 12px; color: #64748B; margin-top: 4px; }
 
+        /* Parked sales. A cart the cashier put down has to be findable, or the
+           only thing that ever finds it is the Orders board and nobody looks. */
+        .pos-parked-chip {
+            display: inline-flex; align-items: center; gap: 6px; margin-top: 8px;
+            padding: 5px 10px; border: 1px solid #E2E8F0; border-radius: 999px;
+            background: #fff; color: #334155; font-size: 12px; font-weight: 500; cursor: pointer;
+        }
+        .pos-parked-chip:hover { background: #F8FAFC; border-color: #CBD5E1; }
+        .pos-parked-chip:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
+        .pos-parked-chip svg { width: 14px; height: 14px; color: #94A3B8; }
+        .pos-parked-count {
+            font-weight: 700; font-variant-numeric: tabular-nums;
+            background: #0F172A; color: #fff; border-radius: 999px; padding: 0 6px;
+        }
+        .pos-order-result-meta { font-size: 12px; color: #94A3B8; }
+
         .pos-order-results {
             margin-top: 8px; border: 1px solid #E2E8F0; border-radius: 10px;
             overflow: hidden; max-height: 190px; overflow-y: auto;
@@ -1043,6 +1059,10 @@
                                 <input id="pos-order-search" type="search" autocomplete="off"
                                        placeholder="Search in existing" aria-label="Search open orders">
                             </div>
+                            <button type="button" id="pos-parked-chip" class="pos-parked-chip hidden">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h9"/></svg>
+                                <span>Parked</span><span id="pos-parked-count" class="pos-parked-count">0</span>
+                            </button>
                             <div id="pos-order-results" class="pos-order-results hidden"></div>
                             <div class="pos-order-selects">
                                 <select id="pos-dining" aria-label="Dining type">
@@ -1067,6 +1087,7 @@
                             <div id="pos-order-totals"></div>
                             <button id="pos-primary" type="button" class="pos-primary" disabled>Pick a table</button>
                             <div class="pos-order-actions">
+                                <button id="pos-hold-btn" type="button" class="pos-secondary hidden">Hold sale</button>
                                 <button id="pos-discount-btn" type="button" class="pos-secondary hidden">Add discount</button>
                                 <button id="pos-void-btn" type="button" class="pos-secondary hidden">Void order</button>
                                 <button id="pos-refund-btn" type="button" class="pos-secondary hidden">Refund order</button>

@@ -5115,6 +5115,15 @@
         "Each close records what was counted against what was expected.": "Setiap penutupan mencatat jumlah hitungan dibanding jumlah yang seharusnya.",
         "No shift has been closed at this outlet yet.": "Belum ada shift yang ditutup di outlet ini.",
         "Could not load shift history.": "Tidak bisa memuat riwayat shift.",
+        "Hold sale": "Tahan transaksi",
+        "Hold this sale": "Tahan transaksi ini",
+        "Parked": "Ditahan",
+        "No parked sales.": "Tidak ada transaksi yang ditahan.",
+        "The sale stays exactly as it is. It does not hold stock — whoever pays first gets the last one.":
+            "Transaksi disimpan apa adanya. Stok tidak ikut ditahan — siapa yang bayar duluan dapat sisa terakhirnya.",
+        "Could not label that sale.": "Tidak bisa memberi nama transaksi itu.",
+        "That sale is already closed.": "Transaksi itu sudah ditutup.",
+
         "Barcode": "Barcode",
         "Scan it here to fill it in. A cashier can then scan the same code at the till and this drops straight into the cart.":
             "Pindai di sini untuk mengisinya. Kasir lalu bisa memindai kode yang sama di kasir dan item ini langsung masuk keranjang.",

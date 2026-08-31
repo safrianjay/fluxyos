@@ -263,3 +263,104 @@ green on precisely the leak it exists to catch. It asserts now.
       Orders board's Completed tab (B4).
 - [ ] Partial payment still resolves to `awaiting_payment`.
 - [ ] No change to `firestore.rules`; `check:deploy-stamp` stays green.
+
+---
+
+# Part C — Parking a sale (Hold / Resume)
+
+## C1. The defect, verified
+
+With a Rp20.000 cart open, pressing "New sale" today:
+
+```
+before  { title: "Takeaway", lines: 1, total: "Total Rp20.000" }
+after   { title: "Takeaway", lines: 0, warned: false, toast: "" }
+```
+
+The cart is **silently abandoned**. It is not lost — it is still an `open`
+document and reachable from the Orders board — but nothing on screen says so,
+and the cashier has no reason to look. It is also where a workspace's pile of
+stray open orders comes from.
+
+## C2. Why it appears only now
+
+**In F&B the table IS the parking slot.** Every dine-in order is attached to
+one, so "park this and serve someone else" is walking to another table, and the
+floor plan is the resume list. Retail has no tables, so with pay-first (Part B)
+the cart has nowhere to go: the feature that was implicit became missing.
+
+That is also what makes it cheap. **Every unpaid order is already parked** — an
+`open` document that survives a reload, a crash and a shift change. This is an
+affordance over data that already exists, not a new capability.
+
+## C3. The flow
+
+**Park.** The customer goes back for milk. Press **Hold**, optionally label it
+("blue jacket", "Pak Budi"), the cart clears, the next customer is served.
+
+**Resume.** A `Parked · 2` chip sits by the search. It opens the parked sales —
+label, item count, total, age — and tapping one resumes it. The order-search
+panel that already lists open orders becomes that list; it simply shows them
+without a query typed first.
+
+**The guard.** "New sale" with items in the cart PARKS the current one and says
+so. Never discards.
+
+## C4. Edge cases
+
+| Situation | Behaviour |
+|---|---|
+| Hold an empty cart | Disabled — nothing to park |
+| Hold a part-paid sale | Allowed. Payment is recorded; resuming shows the **balance**, not the whole bill again |
+| Resume with another cart open | Auto-park the current one and say so. Never discard — that is the defect above |
+| Paid on another device meanwhile | The `version` guard refuses the write; refresh and say it was already paid |
+| Item repriced or hidden since parking | Already safe — the line carries the price copied onto it when added, never today's menu price |
+| **Stock** | **Parking does not reserve stock.** Two carts may each hold the last unit; whoever pays first gets it. Correct, but say it or it becomes a surprise |
+| Shift close with parked sales | The drawer count is still right (only paid sales count), but warn that N sales are on hold and not in it |
+| Yesterday's holds | **Never auto-void** — that destroys a record. Show the age; let the cashier void it |
+| Tab crash / reload mid-sale | The cart survives, but `state.orderId` is memory-only so today it looks lost. The parked list makes it findable — quietly the biggest win here |
+| Void a parked sale | Already possible from the Orders board |
+| Two lanes at one outlet | Out of scope until registers ship. Parked sales are outlet-scoped, so both lanes would see them |
+| Dine-in | Hold is **pay-first only**. In F&B the table is the label, and a second parking concept would be two ways to do one thing |
+
+## C5. Shipped 2026-08-31
+
+`parkedSales()` / `parkCurrentSale()` / `openHoldDrawer()` in `assets/js/pos.js`,
+`setPosOrderLabel` in `pos-service.js`. Coverage: `tests/pos-hold.spec.js`.
+
+Three things learned building it:
+
+**Do not refresh inside the park.** The label write wakes the live watcher, which
+calls `refresh()` on its own — so parking also refreshing gives two overlapping
+reads, one of them re-binding `state.order` from a copy taken while the order was
+still selected. The cart the cashier just put down flickers back onto the screen,
+intermittently. The updated document is already in hand, so the overview is
+patched IN MEMORY and nothing is re-read.
+
+**An empty order is not a parked sale.** It is residue from a cart someone opened
+and walked away from. Listed, it makes the cashier read past noise to find the
+one they put down — and resuming it looks exactly like losing their items.
+
+**`selectOrder` returns silently when it cannot find the order.** The parked list
+is a snapshot, so a sale paid or voided elsewhere since it was drawn leaves a row
+that does nothing at all when tapped. Doing nothing is the worst available answer
+— the cashier taps again. It now says so and re-reads the list.
+
+⚠️ And a test-fixture rule, learned twice: when several specs flip the same
+workspace field, capture the baseline ONCE for the file. Capturing per test means
+the second one captures what the first left behind and faithfully restores THAT,
+which perpetuates the leak and then fails a control for a reason that looks
+nothing like the cause.
+
+## C6. Cost
+
+**No rules deploy.** `pos_orders.note` already exists, is already inside
+`wsPosOrderKeys`, and the till has never written or read it — only LINE notes are
+used. The hold label lives there.
+
+⚠️ That reuse is worth knowing about: if an order-level note is ever wanted for
+its own sake (a kitchen instruction for the whole ticket), it collides with the
+hold label and one of them needs a new field — which, on this collection, means
+a rules deploy.
+
+Everything else is `pos.js`.

@@ -454,6 +454,29 @@ export const POS_METHODS = {
     // A discount is stored SEPARATELY from the price, never as a lower price.
     // Fold it in and the menu price is gone from the ledger forever: no price
     // integrity, no discount analytics, no anomaly detection (§18.4).
+    // Park a sale. The label is the only thing that changes.
+    //
+    // "Held" is not a status and deliberately not a new field: an unpaid order
+    // is ALREADY parked — it is an `open` document that survives a reload, a
+    // crash and a shift change. All that was ever missing was a way to find it
+    // again, which is a label and a list. `pos_orders` has a `hasOnly`, so a
+    // dedicated field would have cost a rules deploy for something the data
+    // model already supported.
+    //
+    // ⚠️ `note` is the order-level note field. It exists, it is inside
+    // wsPosOrderKeys, and the till has never written or read it (only LINE notes
+    // are used), so it is free. If an order-level note is ever wanted for its own
+    // sake — a kitchen instruction for the whole ticket — it collides with this
+    // and one of the two needs a new field. See docs/POS_BUSINESS_TYPE_STRATEGY.md §C5.
+    async setPosOrderLabel(userId, orderId, label) {
+        return this.updatePosOrder(userId, orderId, (order) => {
+            if (['paid', 'void'].includes(order.status)) {
+                throw new Error('That sale is already closed.');
+            }
+            return { note: this._nullableString(label, 60) };
+        });
+    },
+
     async setPosOrderDiscount(userId, orderId, { lineId = null, amount = 0, reason = null } = {}) {
         const amt = Math.max(0, Math.round(Number(amount) || 0));
         // A discount may not take the bill to zero.

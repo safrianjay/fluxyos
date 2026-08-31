@@ -52,6 +52,20 @@ async function readCategory(page) {
  * so a literal null would be refused — and "absent" is a state a workspace can
  * genuinely be in, which is exactly what a restore has to be able to reach.
  */
+// The baseline category, captured ONCE for the whole file.
+//
+// Each test used to capture its own "original", which meant the second one
+// captured `retail` left behind by the first and faithfully restored THAT — a
+// leak that perpetuates itself and then fails the F&B control for a reason that
+// looks nothing like the cause. `retail` can never be a real baseline here:
+// these specs are the only thing in the suite that sets it.
+let baseline;
+async function captureBaseline(page) {
+    const seen = await page.evaluate(() => (window.FluxyWorkspace && window.FluxyWorkspace.businessCategory) || null);
+    if (baseline === undefined) baseline = (seen === 'retail' ? null : seen);
+    return baseline;
+}
+
 async function setCategory(page, category) {
     const err = await page.evaluate(async (cat) => {
         try {
@@ -80,7 +94,7 @@ async function openTill(page) {
 test('a retail workspace gets a pay-first counter, and the money is unchanged', async ({ page }) => {
     await page.goto('/pos');
     await workspaceReady(page);
-    const original = await readCategory(page);
+    const original = await captureBaseline(page);
 
     try {
         await setCategory(page, 'retail');
