@@ -358,7 +358,13 @@ test.describe('Point of Sale', () => {
         const free = page.locator('.pos-view[data-view="tables"] .pos-table.is-free');
 
         if (await free.count() > 0) {
+            // Tapping a free table opens the Create Order dialog with the table
+            // already answered — it no longer creates on the spot, because the
+            // customer details can only be taken at creation.
             await free.first().click();
+            await page.locator('#pos-create-modal .pos-modal').waitFor({ state: 'visible', timeout: 10000 });
+            await page.click('#pos-create-submit');
+            await page.locator('#pos-create-modal').waitFor({ state: 'detached', timeout: 20000 });
         } else {
             // Back to the till, then open a takeaway order.
             await page.click('#nav-container [data-view="till"]');

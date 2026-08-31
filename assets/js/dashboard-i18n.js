@@ -5133,6 +5133,7 @@
         // are NOT repeated — "Dine In" and "Takeaway" already map above.
         "Create Order": "Buat Pesanan",
         "Who is this order for?": "Pesanan ini untuk siapa?",
+        "Who is this table for?": "Meja ini untuk siapa?",
         "Choose a table…": "Pilih meja…",
         // "Customer name" and "Pick the table this order is for." already map in
         // this dictionary — not repeated, since a duplicate key is the LAST one

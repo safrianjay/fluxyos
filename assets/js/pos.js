@@ -697,16 +697,19 @@ function renderTables() {
     host.querySelectorAll('[data-table]').forEach((btn) => {
         btn.addEventListener('click', async () => {
             const orderId = btn.dataset.order;
-            // The order opens in the SHARED right-hand panel, beside the floor
-            // plan — the same interaction as picking a table from the order
-            // flow. It used to jump to the till view, which is a context switch
-            // for something already on screen, and it lost the cashier's place
-            // on the floor.
-            if (orderId) selectOrder(orderId);
-            else await once(() => startOrder(btn.dataset.table));
-            renderOrderControls();
-            document.getElementById('pos-order-panel')
-                ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            if (orderId) {
+                // An occupied table: the order already exists, so open it and go
+                // where the work is.
+                selectOrder(orderId);
+                renderOrderControls();
+                setView('till');
+                return;
+            }
+            // A FREE table asks the same questions the Create Order button does,
+            // with the table already answered. It used to open an order on the
+            // spot knowing nothing about it — and since the details can only be
+            // taken at creation, that meant a table order could never have any.
+            openCreateOrderDialog({ tableId: btn.dataset.table });
         });
     });
     mountTableArchive(host);
@@ -2192,11 +2195,16 @@ function openRefundDrawer() {
 // cashier types a phone number, so an order with nothing but a type is as valid
 // as one with all of it — but a dine-in with no table has nowhere to sit, and
 // nothing downstream could repair that.
-function openCreateOrderDialog() {
+function openCreateOrderDialog({ tableId = null } = {}) {
     const tables = ((state.overview && state.overview.tables) || []);
     const taken = new Set(((state.overview && state.overview.activeOrders) || [])
         .map((o) => o.table_id).filter(Boolean));
 
+    // Arriving from the floor plan, the table IS the question already answered —
+    // so it is pre-filled and locked, and the type cannot be takeaway. Tapping a
+    // table used to create an order on the spot with nothing known about it,
+    // which meant the details could only ever be added by not adding them.
+    const fromFloor = !!tableId;
     let type = 'dine_in';
 
     document.getElementById('pos-create-modal')?.remove();
@@ -2215,17 +2223,21 @@ function openCreateOrderDialog() {
                 </button>
             </div>
             <form class="pos-modal-body" id="pos-create-form">
+                ${fromFloor ? '' : `
                 <div class="pos-typeseg" role="tablist" aria-label="Order type">
                     <button type="button" role="tab" data-type="dine_in" class="is-on" aria-selected="true">Dine In</button>
                     <button type="button" role="tab" data-type="takeaway" aria-selected="false">Take Away</button>
-                </div>
+                </div>`}
 
                 <div class="pos-field" data-only="dine_in">
                     <label for="pos-create-table">Table</label>
-                    <select id="pos-create-table" name="table">
+                    <select id="pos-create-table" name="table"${fromFloor ? ' disabled' : ''}>
                         <option value="">Choose a table…</option>
-                        ${tables.map((t) => `<option value="${esc(t.id)}"${taken.has(t.id) ? ' disabled' : ''}>`
-                            + `${esc(t.label)}${t.zone ? ` · ${esc(t.zone)}` : ''}${taken.has(t.id) ? ' — in use' : ''}</option>`).join('')}
+                        ${tables.map((t) => `<option value="${esc(t.id)}"`
+                            + `${t.id === tableId ? ' selected' : ''}`
+                            + `${taken.has(t.id) && t.id !== tableId ? ' disabled' : ''}>`
+                            + `${esc(t.label)}${t.zone ? ` · ${esc(t.zone)}` : ''}`
+                            + `${taken.has(t.id) && t.id !== tableId ? ' — in use' : ''}</option>`).join('')}
                     </select>
                 </div>
 
@@ -2280,6 +2292,9 @@ function openCreateOrderDialog() {
         type = b.dataset.type; applyType();
     }));
     applyType();
+    if (fromFloor) {
+        el.querySelector('.pos-modal-sub').textContent = 'Who is this table for?';
+    }
 
     el.querySelector('#pos-create-covers').addEventListener('input', (e) => {
         e.target.value = e.target.value.replace(/\D/g, '');
@@ -2288,8 +2303,11 @@ function openCreateOrderDialog() {
     el.querySelector('#pos-create-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const err = el.querySelector('#pos-create-error');
-        const tableId = type === 'dine_in' ? el.querySelector('#pos-create-table').value : '';
-        if (type === 'dine_in' && !tableId) {
+        // A disabled select submits nothing, so the table it was opened WITH is
+        // the answer when the cashier never had a choice to make.
+        const chosen = el.querySelector('#pos-create-table').value || tableId || '';
+        const table = type === 'dine_in' ? chosen : '';
+        if (type === 'dine_in' && !table) {
             err.textContent = 'Pick the table this order is for.';
             err.hidden = false;
             el.querySelector('#pos-create-table').focus();
@@ -2300,8 +2318,8 @@ function openCreateOrderDialog() {
         submit.disabled = true;
         submit.textContent = 'Creating…';
         once(async () => {
-            const t = tables.find((x) => x.id === tableId) || null;
-            await startOrder(tableId || null, {
+            const t = tables.find((x) => x.id === table) || null;
+            await startOrder(table || null, {
                 customerName: el.querySelector('#pos-create-name').value.trim() || null,
                 customerPhone: el.querySelector('#pos-create-phone').value.trim() || null,
                 guestCount: type === 'dine_in' ? Number(el.querySelector('#pos-create-covers').value || 0) || null : null,
@@ -2309,11 +2327,17 @@ function openCreateOrderDialog() {
             });
             close();
             document.removeEventListener('keydown', onKey);
+            // Straight to the menu. The next thing a cashier does after opening
+            // an order is put something on it, and leaving them on the floor
+            // plan is a step they would undo every single time.
+            setView('till');
             if (t) toast(`Table ${t.label} opened.`);
         });
     });
 
-    setTimeout(() => el.querySelector('#pos-create-table')?.focus(), 40);
+    // The table is already known when arriving from the floor, so the cursor
+    // starts on the first thing still to answer.
+    setTimeout(() => el.querySelector(fromFloor ? '#pos-create-name' : '#pos-create-table')?.focus(), 40);
 }
 
 function openHoldDrawer() {
@@ -3000,7 +3024,11 @@ function wire() {
         const ord = ((state.overview && state.overview.activeOrders) || [])
             .find((o) => o.table_id === id);
         if (ord) return selectOrder(ord.id);
-        return once(() => startOrder(id));
+        // Same dialog as the floor plan and the button. Three ways to start an
+        // order is already one too many; three ways that ask DIFFERENT questions
+        // would be a bug waiting to be reported as "the details are missing".
+        e.target.value = '';
+        return openCreateOrderDialog({ tableId: id });
     });
 
     // Offline is v1's honest limitation: the till is online-only, so it says so

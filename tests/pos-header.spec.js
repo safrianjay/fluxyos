@@ -163,6 +163,69 @@ test('Create Order asks dine in or take away before it creates anything', async 
     await modal.locator('.pos-modal-close').click();
 });
 
+test('tapping a free table asks the same questions, with the table answered', async ({ page }) => {
+    // Tapping a table used to open an order on the spot knowing NOTHING about
+    // it — and since the customer details can only be taken at creation, that
+    // meant a table order could never have any. The floor plan now routes
+    // through the same dialog, with the one question it has already answered
+    // filled in and locked.
+    await openTill(page);
+    await page.click('#nav-container [data-view="tables"]');
+    await page.waitForSelector('#pos-floor .pos-table', { timeout: 20000 });
+
+    // FREE ONE IF NONE IS FREE, rather than skipping. A spec that opts out when
+    // the workspace is busy is a spec that reports green on the day it matters —
+    // and the order occupying the table is spec residue anyway, so voiding it is
+    // a tidy-up as much as a fixture.
+    const free = page.locator('#pos-floor .pos-table.is-free');
+    if (await free.count() === 0) {
+        const busy = page.locator('#pos-floor .pos-table.is-busy, #pos-floor .pos-table.is-bill').first();
+        expect(await busy.count(), 'this outlet has no tables at all').toBeGreaterThan(0);
+        await busy.click();
+        await expect(page.locator('.pos-view[data-view="till"]')).toBeVisible({ timeout: 10000 });
+        await voidOpen(page);
+        // Reload rather than switch views: the floor paints from
+        // `state.overview`, and the refresh that follows a void is still in
+        // flight when the panel has already cleared.
+        await page.reload();
+        await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
+        await page.click('#nav-container [data-view="tables"]');
+        await page.waitForSelector('#pos-floor .pos-table', { timeout: 20000 });
+        await expect(free.first(), 'voiding the order did not free its table').toBeVisible({ timeout: 20000 });
+    }
+
+    const label = (await free.first().locator('.pos-table-label').textContent() || '').trim();
+    await free.first().click();
+
+    const modal = page.locator('#pos-create-modal .pos-modal');
+    await expect(modal, 'a free table must ask, not create').toBeVisible({ timeout: 10000 });
+    // Nothing exists yet.
+    await expect(page.locator('#pos-order-title')).toHaveText(/no order open|belum ada pesanan/i);
+
+    // The table is answered and cannot be changed — it was chosen by tapping it.
+    const table = modal.locator('#pos-create-table');
+    await expect(table).toBeDisabled();
+    expect((await table.locator('option:checked').textContent() || '').trim(),
+        'the table tapped is not the one selected').toContain(label);
+    // And there is no type switch: a table is a dine-in by definition.
+    expect(await modal.locator('[data-type]').count(),
+        'a table cannot be a takeaway').toBe(0);
+
+    await modal.locator('#pos-create-name').fill('Pak Budi');
+    await page.click('#pos-create-submit');
+    await expect(page.locator('#pos-create-modal')).toHaveCount(0, { timeout: 20000 });
+
+    // Straight to the menu, because putting something on the order is the next
+    // thing that happens — leaving the cashier on the floor plan is a step they
+    // would undo every time.
+    await expect(page.locator('.pos-view[data-view="till"]'),
+        'opening a table must land on the menu').toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#pos-order-title')).toContainText(label, { timeout: 20000 });
+    await expect(page.locator('#pos-order-sub')).toContainText('Pak Budi');
+
+    await voidOpen(page);
+});
+
 test('a counter is not asked a question with one answer', async ({ page }) => {
     // The control. A pay-first profile has no dine-in, so the chooser must not
     // appear — an extra tap on every sale, to answer something that cannot vary.

@@ -179,6 +179,18 @@ nowhere to sit and nothing downstream could repair that.
 A takeaway is never asked for a table it will not have, nor for a cover count
 that means nothing without one.
 
+**Every route into an order asks the same questions.** Tapping a free table on
+the floor plan opens the same dialog with the table already answered and locked
+— it used to create an order on the spot knowing nothing about it, which meant a
+table order could never carry any details at all, since they can only be taken at
+creation. The panel's table select routes here too. Three ways to start an order
+is already one more than ideal; three that asked DIFFERENT questions would be a
+bug reported as "the customer details are missing".
+
+Creating always lands on the till, whichever route it came from: putting
+something on the order is the next thing that happens, and leaving the cashier on
+the floor plan is a step they would undo every time.
+
 ⚠️ These three are the first `pos_orders` fields added since the collection
 shipped, and `pos_orders` has a `hasOnly` — so unlike modifiers, barcode and the
 hold label, this **required a rules change and a deploy** (2026-08-31, stamped).
