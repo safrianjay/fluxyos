@@ -61,7 +61,8 @@ const state = {
     // not wait on the network to narrow a list the cashier can already see.
     menuQuery: '',
     menuCategory: null,
-    view: 'till'
+    view: 'till',
+    zone: null
 };
 
 // The till's own views. No new routes — the brief requires the existing ones
@@ -160,9 +161,38 @@ function mountTillNav() {
              </a>`);
     }).catch(() => {});
 
+    // Reveals the nav and retires the shimmer. Set only once the till's items
+    // are actually in the DOM, so the finance nav never gets a frame.
+    host.setAttribute('data-till-nav', '1');
+    mountOutletSwitcher();
     setView(state.view);
     return true;
 }
+
+// The sidebar's workspace switcher becomes an OUTLET switcher.
+//
+// A cashier belongs to exactly one workspace and never switches it, so that
+// control spent the most prominent slot in the sidebar on a choice that does not
+// exist for this role. The outlet is the one thing they DO switch, and every
+// figure and every sale on the page is scoped by it.
+function mountOutletSwitcher() {
+    const wrap = document.getElementById('entity-switcher-wrap');
+    if (!wrap || wrap.dataset.posOutlet) return;
+    wrap.dataset.posOutlet = '1';
+    wrap.classList.remove('relative');
+    wrap.innerHTML = `
+        <label class="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5" for="pos-outlet">Outlet</label>
+        <select id="pos-outlet" aria-label="Outlet"></select>`;
+    // fluxy-select.js auto-enhances selects added later via its MutationObserver,
+    // so this gets the shared custom dropdown without a manual call — the same
+    // control the rest of the app uses (DESIGN_SYSTEM §6: never the native one).
+    document.getElementById('entity-switcher-menu')?.remove();
+    bindOutlet();
+    if (typeof outletMountedResolve === 'function') { outletMountedResolve(); outletMountedResolve = null; }
+}
+
+let outletMountedResolve = null;
+const outletMounted = new Promise((res) => { outletMountedResolve = res; });
 
 function closeSideNav() {
     // Switching view on a phone should close the drawer. The SHARED sidebar owns
@@ -216,16 +246,30 @@ async function loadOutlets() {
     state.outlets = (dims || []).filter((d) => d.type === 'outlet' && d.status !== 'archived');
 
     const sel = $('pos-outlet');
-    const hint = $('pos-outlet-hint');
+    if (!sel) return false;
+    // The hint lives beside the select in the sidebar, created with it. Written
+    // through a helper because the select moved once already and a hard
+    // `$('pos-outlet-hint').textContent` threw the moment it did — taking
+    // loadOutlets, and therefore the whole catalogue, down with it.
+    const setHint = (html) => {
+        let el = document.getElementById('pos-outlet-hint');
+        if (!el && sel.parentElement) {
+            el = document.createElement('p');
+            el.id = 'pos-outlet-hint';
+            el.className = 'pos-outlet-hint';
+            sel.parentElement.appendChild(el);
+        }
+        if (el) el.innerHTML = html;
+    };
     if (!state.outlets.length) {
         sel.innerHTML = '<option value="">No outlets yet</option>';
         sel.disabled = true;
         // Not a dead end: say exactly where an outlet comes from. Outlets are
         // created in the receive-stock drawer today, which nobody would guess.
-        hint.innerHTML = 'Create one from <a href="/inventory" class="underline font-semibold">Inventory → Receive stock</a> first — a sale with no outlet cannot be attributed.';
+        setHint('Create one from <a href="/inventory" class="underline font-semibold">Inventory → Receive stock</a> first — a sale with no outlet cannot be attributed.');
         return false;
     }
-    hint.textContent = '';
+    setHint('');
     sel.disabled = false;
     const stored = localStorage.getItem(OUTLET_KEY);
     state.outletId = state.outlets.some((o) => o.id === stored) ? stored : state.outlets[0].id;
@@ -299,7 +343,19 @@ function renderBanners() {
         </div>`);
     }
 
-    $('pos-banners').innerHTML = out.join('');
+    const panel = $('pos-banners');
+    panel.innerHTML = out.length ? out.join('')
+        : '<div class="pos-bell-empty">Nothing needs your attention.</div>';
+
+    // The count is what earns the bell: a badge that is always lit is furniture,
+    // so the informational "till vs accounting" note is deliberately NOT counted
+    // — it is context, not an action.
+    const actionable = (o.unpostedCount > 0 ? 1 : 0) + (o.noCostBasisCount > 0 ? 1 : 0);
+    const badge = $('pos-bell-count');
+    if (badge) {
+        badge.classList.toggle('hidden', actionable === 0);
+        badge.textContent = String(actionable);
+    }
     const post = $('pos-post-now');
     if (post) post.addEventListener('click', () => once(async () => {
         post.disabled = true;
@@ -317,19 +373,33 @@ function renderBanners() {
 // the CATALOGUE primary, so the grid moved behind the header's "Table Order"
 // button. Same markup, same handlers, same startOrder/selectOrder calls — only
 // where it is painted changed, which is why no order flow moved with it.
+function elapsedSince(ts) {
+    const t = ts && typeof ts.toDate === 'function' ? ts.toDate() : null;
+    if (!t) return '';
+    const mins = Math.max(0, Math.round((Date.now() - t.getTime()) / 60000));
+    const h = Math.floor(mins / 60);
+    return `${String(h).padStart(2, '0')}.${String(mins % 60).padStart(2, '0')}h`;
+}
+
+// The floor plan, following the supplied reference: zone tabs, a legend, and
+// table shapes that carry their own state — label, running total, time seated.
+//
+// Two things in the reference are NOT built, because FluxyOS has no data behind
+// them and a floor plan that lies is worse than one that is plain:
+//   · "Reserved" — there is no reservation concept. A third legend colour that
+//     nothing can ever enter is decoration.
+//   · seat-count chair rendering per side — `seats` exists but is display-only
+//     and frequently null, so chairs would be invented furniture.
 function renderTables() {
     const o = state.overview;
     if (!o) return;
     const host = $('pos-tables');
     const empty = $('pos-tables-empty');
-    // Only rendered while the sheet is open.
     if (!host || !empty) return;
 
     if (!o.tables.length) {
         host.classList.add('hidden');
         empty.classList.remove('hidden');
-        // The empty state offers the action that actually applies here, not a
-        // generic "Add Record".
         window.renderEmptyState('pos-tables-empty', {
             title: 'No tables at this outlet yet',
             description: 'Add the tables in this room so orders can be attached to them. Takeaway orders work without one.',
@@ -344,20 +414,55 @@ function renderTables() {
     const byTable = {};
     (o.activeOrders || []).forEach((ord) => { if (ord.table_id) byTable[ord.table_id] = ord; });
 
-    host.innerHTML = o.tables.map((t) => {
+    // Zone tabs, from `pos_tables.zone`. One zone is not a choice, so the strip
+    // only appears when there is more than one floor to choose between.
+    const zones = [];
+    o.tables.forEach((t) => { const z = t.zone || null; if (z && !zones.includes(z)) zones.push(z); });
+    zones.sort((a, b) => a.localeCompare(b));
+    if (state.zone && !zones.includes(state.zone)) state.zone = null;
+
+    const tabs = zones.length > 1 ? `
+        <div class="pos-floor-tabs" role="tablist" aria-label="Floors">
+            ${[null].concat(zones).map((z) => `
+                <button type="button" role="tab" aria-selected="${(state.zone || null) === z}"
+                    class="pos-floor-tab${(state.zone || null) === z ? ' is-active' : ''}"
+                    data-zone="${z === null ? '' : esc(z)}">${z === null ? 'All' : esc(z)}</button>`).join('')}
+        </div>` : '';
+
+    const shown = o.tables.filter((t) => !state.zone || (t.zone || null) === state.zone);
+
+    const legend = `
+        <div class="pos-legend">
+            <span><i class="pos-dot is-free"></i>Free</span>
+            <span><i class="pos-dot is-busy"></i>In use</span>
+            <span><i class="pos-dot is-bill"></i>Awaiting payment</span>
+        </div>`;
+
+    const cards = shown.map((t) => {
         const ord = byTable[t.id];
         const cls = !ord ? 'is-free' : (ord.status === 'awaiting_payment' ? 'is-bill' : 'is-busy');
-        const foot = !ord ? 'Free'
-            : (ord.status === 'awaiting_payment' ? rp(ord.total_amount) : STATUS[ord.status]?.label || 'Open');
+        const money = ord ? rp(ord.total_amount) : '';
+        const since = ord ? elapsedSince(ord.opened_at) : '';
         return `<button type="button" class="pos-table ${cls}" data-table="${esc(t.id)}"
-                    data-order="${esc(ord ? ord.id : '')}" aria-label="Table ${esc(t.label)} — ${esc(foot)}">
-            <span>
+                    data-order="${esc(ord ? ord.id : '')}"
+                    aria-label="Table ${esc(t.label)} — ${ord ? 'in use' : 'free'}">
+            <span class="pos-table-top">
                 <span class="pos-table-label">${esc(t.label)}</span>
-                ${t.zone ? `<span class="pos-table-zone">${esc(t.zone)}</span>` : ''}
+                ${t.zone && !state.zone ? `<span class="pos-table-zone">${esc(t.zone)}</span>` : ''}
             </span>
-            <span class="pos-table-foot">${esc(foot)}</span>
+            ${ord ? `<span class="pos-table-meta">
+                <span class="pos-table-chip">${money}</span>
+                ${since ? `<span class="pos-table-chip">${esc(since)}</span>` : ''}
+            </span>` : '<span class="pos-table-free">Free</span>'}
         </button>`;
     }).join('');
+
+    host.innerHTML = `${tabs}${legend}<div class="pos-floor-grid">${cards}</div>`;
+
+    host.querySelectorAll('[data-zone]').forEach((b) => b.addEventListener('click', () => {
+        state.zone = b.dataset.zone || null;
+        renderTables();
+    }));
 
     host.querySelectorAll('[data-table]').forEach((btn) => {
         btn.addEventListener('click', async () => {
@@ -1525,14 +1630,25 @@ function watch() {
     });
 }
 
-function wire() {
-    $('pos-outlet').addEventListener('change', async (e) => {
+// Bound where the control is CREATED, not in wire(). The outlet select moved
+// into the sidebar, which the loader paints asynchronously — so wire() ran
+// first, `$('pos-outlet')` was null, and the throw aborted the rest of wire()
+// including the nav swap. The symptom was the finance nav never being replaced,
+// which reads as a layout bug and is really an unhandled null three calls away.
+function bindOutlet() {
+    const sel = document.getElementById('pos-outlet');
+    if (!sel || sel.dataset.posBound) return;
+    sel.dataset.posBound = '1';
+    sel.addEventListener('change', async (e) => {
         state.outletId = e.target.value;
         localStorage.setItem(OUTLET_KEY, state.outletId);
         state.orderId = null; state.order = null;
         await refresh();
         watch();
     });
+}
+
+function wire() {
     $('pos-primary').addEventListener('click', () => once(advance));
     $('pos-discount-btn').addEventListener('click', openDiscountDrawer);
     $('pos-void-btn').addEventListener('click', openVoidDrawer);
@@ -1557,6 +1673,30 @@ function wire() {
 
     // Catalogue filters. Client-side against an already-loaded menu, so this is
     // a repaint per keystroke and never a query.
+    // Notifications. Everything that used to stack above the catalogue lives
+    // here, the way the dashboard gathers what needs attention instead of
+    // pushing the actual work further down the page.
+    const bell = $('pos-bell');
+    const panel = $('pos-bell-panel');
+    bell.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const open = panel.classList.contains('hidden');
+        panel.classList.toggle('hidden', !open);
+        bell.setAttribute('aria-expanded', String(open));
+    });
+    document.addEventListener('click', (e) => {
+        if (panel.classList.contains('hidden')) return;
+        if (panel.contains(e.target) || bell.contains(e.target)) return;
+        panel.classList.add('hidden');
+        bell.setAttribute('aria-expanded', 'false');
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape' || panel.classList.contains('hidden')) return;
+        panel.classList.add('hidden');
+        bell.setAttribute('aria-expanded', 'false');
+        bell.focus();
+    });
+
     $('pos-menu-search').addEventListener('input', (e) => {
         state.menuQuery = e.target.value || '';
         renderMenu();
@@ -1600,14 +1740,16 @@ onAuthStateChanged(auth, async (user) => {
     state.uid = user.uid;
     ds.actorUid = user.uid;
 
-    // The shared sidebar paints the user block, the avatar and the role itself
-    // (#sidebar-user-name / #sidebar-user-avatar / #sidebar-user-role), so this
-    // page no longer duplicates any of it. It only needs the topbar avatar.
-    const name = user.displayName || (user.email || '').split('@')[0] || 'Staff';
-    $('pos-top-avatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0F172A&color=fff`;
+    // No identity painted here at all: the shared sidebar's profile block already
+    // carries the avatar, name and role, and a second avatar on a 60px topbar
+    // said the same thing twice.
 
     wire();
 
+    // The outlet <select> lives in the sidebar now, which sidebar-loader.js
+    // paints asynchronously. Waiting on the mount beats a timer: a fixed delay
+    // is a race that loads outlets into an element that does not exist yet.
+    await Promise.race([outletMounted, new Promise((r) => setTimeout(r, 12000))]);
     const hasOutlet = await loadOutlets();
     if (!hasOutlet) {
         $('pos-metrics').innerHTML = '';

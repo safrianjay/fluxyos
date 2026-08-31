@@ -5116,6 +5116,19 @@
         "No shift has been closed at this outlet yet.": "Belum ada shift yang ditutup di outlet ini.",
         "Could not load shift history.": "Tidak bisa memuat riwayat shift.",
         "Back to Dashboard": "Kembali ke Dasbor",
+        "Point of sale": "Kasir",
+        "Notifications": "Notifikasi",
+        // "Needs your attention" is already in this dictionary (the dashboard's
+        // attention queue uses the same words, which is the point).
+        "Nothing needs your attention.": "Tidak ada yang perlu perhatian Anda.",
+        // "Available" is NOT added here: it already maps to "Tersedia" (in stock)
+        // and a second entry would silently override that everywhere, because a
+        // duplicate key in one object literal just wins. The floor plan says
+        // "Free" instead, which already maps to "Kosong" and is the right word
+        // for a table anyway. "All" and "Awaiting payment" are likewise already
+        // in this dictionary.
+        "In use": "Terpakai",
+        "Floors": "Lantai",
         "Balanced": "Sesuai",
         "Online": "Online",
         "Connection": "Koneksi",

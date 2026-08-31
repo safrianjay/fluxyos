@@ -36,11 +36,14 @@ test.describe('Point of Sale', () => {
         // without the enhancer loaded hides the picker entirely.
         const outlet = page.locator('#pos-outlet');
         await expect(outlet).toHaveAttribute('data-fluxy-enhanced', /.*/);
-        await expect(page.locator('.pos-topbar-outlet .fluxy-select--enhanced')).toBeVisible();
+        // The outlet picker moved into the SIDEBAR, into the slot the workspace
+        // switcher used to hold: a cashier belongs to one workspace and never
+        // switches it, but switches outlet constantly.
+        await expect(page.locator('#entity-switcher-wrap .fluxy-select--enhanced')).toBeVisible();
 
         // The enhanced wrapper must stay pinned. Left unconstrained it stretched
         // to the full page width for a two-word value.
-        const w = await page.locator('.pos-topbar-outlet .fluxy-select').evaluate((el) => el.getBoundingClientRect().width);
+        const w = await page.locator('#entity-switcher-wrap .fluxy-select').evaluate((el) => el.getBoundingClientRect().width);
         expect(w, 'the outlet picker must not eat the whole row').toBeLessThan(400);
 
         // Every collapsed icon button keeps a name for assistive tech — below

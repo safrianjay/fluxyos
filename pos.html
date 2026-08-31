@@ -296,7 +296,17 @@
         .pos-chip:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
         .pos-chip.is-active { background: #0F172A; border-color: #0F172A; color: #fff; }
 
-        .pos-catalog-body { padding: 16px; }
+        .pos-catalog-body { padding: 18px; }
+
+        /* Room to breathe. The page stacked shift bar → two banners → an info
+           note → metrics → catalogue at one gap, so nothing grouped and the
+           first product sat most of a screen down. The banners are in the bell
+           now; what is left gets a larger, more deliberate rhythm. */
+        .pos-view > .fluxy-section-stack,
+        .pos-view.fluxy-section-stack { gap: 20px; }
+        .pos-pagehead { margin-bottom: 4px; }
+        .pos-shell { gap: 20px; }
+        .pos-metrics { margin-top: 2px; }
 
         /* Product grid. 4-up on desktop like the reference, stepping down to 2
            on a phone — the till is used one-handed and a 3rd column at 375px
@@ -417,8 +427,106 @@
         .pos-order-actions { display: flex; flex-wrap: wrap; gap: 8px; }
         .pos-order-actions .pos-secondary { flex: 1 1 auto; }
 
-        /* Floor plan, now behind the "Table Order" button. */
-        .pos-tablesheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+        /* ── Floor plan ─────────────────────────────────────────────────
+           Following the supplied reference: zone tabs, a legend, and table
+           shapes that carry their own state. The reference's chair rendering is
+           not reproduced — `seats` is display-only and often null, so chairs
+           would be invented furniture — and neither is "Reserved", which has no
+           concept behind it. A floor plan that shows a state nothing can enter
+           is worse than one that is plain. */
+        .pos-floor-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 14px; }
+        .pos-floor-tab {
+            flex: 0 0 auto; min-height: 34px; padding: 0 14px; border-radius: 8px;
+            border: 1px solid #E2E8F0; background: #fff; color: #475569;
+            font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap;
+        }
+        .pos-floor-tab:hover { background: #F8FAFC; }
+        .pos-floor-tab:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
+        .pos-floor-tab.is-active { background: #0F172A; border-color: #0F172A; color: #fff; }
+
+        .pos-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; font-size: 12px; color: #64748B; }
+        .pos-legend span { display: inline-flex; align-items: center; gap: 6px; }
+        /* Rings, not fills. Orange as a BACKGROUND is prohibited project-wide
+           (CLAUDE.md) and the design lint catches it — which it did here. A ring
+           reads the same at 9px and keeps orange an accent. */
+        .pos-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; border: 2px solid; }
+        .pos-dot.is-free { border-color: #CBD5E1; background: #F1F5F9; }
+        .pos-dot.is-busy { border-color: #3B82F6; background: #EFF6FF; }
+        .pos-dot.is-bill { border-color: #EA580C; background: #FFF7ED; }
+
+        .pos-floor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+        .pos-table {
+            position: relative; display: flex; flex-direction: column; justify-content: space-between;
+            gap: 12px; min-height: 108px; padding: 12px; border-radius: 14px;
+            border: 2px solid #E2E8F0; background: #F8FAFC; cursor: pointer; text-align: left;
+            transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+        }
+        .pos-table:hover { box-shadow: 0 2px 8px rgba(15,23,42,.10); }
+        .pos-table:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
+        /* State is carried by the label AND the colour, never colour alone — a
+           colour-blind cashier reads the same floor. */
+        .pos-table.is-busy { background: #EFF6FF; border-color: #3B82F6; }
+        .pos-table.is-bill { background: #FFF7ED; border-color: #EA580C; }
+        .pos-table-top { display: flex; align-items: baseline; gap: 8px; }
+        .pos-table-label { font-size: 16px; font-weight: 600; color: #0B0F19; }
+        .pos-table-zone { font-size: 10px; color: #94A3B8; }
+        .pos-table-free { font-size: 12px; color: #94A3B8; }
+        .pos-table-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+        .pos-table-chip {
+            display: inline-flex; align-items: center; gap: 4px;
+            background: rgba(255,255,255,.85); border: 1px solid rgba(15,23,42,.08);
+            border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 500;
+            color: #1E293B; font-variant-numeric: tabular-nums;
+        }
+        .pos-tablesheet { display: block; }
+
+        /* Until the till's nav replaces it, the shared FINANCE nav must not
+           paint. sidebar-loader.js renders Bills, Invoices, Tax Centre and the
+           rest before pos.js can swap them, so on every reload a cashier saw a
+           third of a second of the wrong product — and of destinations their
+           role is denied. Hidden until mountTillNav() stamps the attribute, with
+           the repo's shimmer idiom in its place rather than a blank column. */
+        #nav-container:not([data-till-nav]) > * { display: none !important; }
+        #nav-container:not([data-till-nav])::before {
+            content: ''; display: block; margin: 4px 0 0;
+            height: 232px; border-radius: 8px;
+            background:
+                linear-gradient(#E9EDF2 0 0) 0 14px / 60% 10px no-repeat,
+                linear-gradient(#F1F5F9 0 0) 0 44px / 100% 34px no-repeat,
+                linear-gradient(#F1F5F9 0 0) 0 86px / 100% 34px no-repeat,
+                linear-gradient(#F1F5F9 0 0) 0 128px / 100% 34px no-repeat,
+                linear-gradient(#F1F5F9 0 0) 0 170px / 100% 34px no-repeat;
+            animation: pos-nav-pulse 1.4s ease-in-out infinite;
+        }
+        @keyframes pos-nav-pulse { 0%,100% { opacity: 1 } 50% { opacity: .55 } }
+        @media (prefers-reduced-motion: reduce) {
+            #nav-container:not([data-till-nav])::before { animation: none; }
+        }
+
+        /* ── Notifications ──────────────────────────────────────────────── */
+        .pos-bell { position: relative; border: 0; background: none; color: #475569; padding: 7px; border-radius: 9px; cursor: pointer; }
+        .pos-bell:hover { background: #F1F5F9; }
+        .pos-bell:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
+        .pos-bell svg { width: 20px; height: 20px; display: block; }
+        .pos-bell-count {
+            position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px;
+            padding: 0 4px; border-radius: 999px; background: #C2410C; color: #fff;
+            font-size: 10px; font-weight: 700; line-height: 16px; text-align: center;
+            font-variant-numeric: tabular-nums;
+        }
+        .pos-bell-panel {
+            position: absolute; top: 52px; right: 20px; width: min(420px, calc(100vw - 32px));
+            max-height: 70vh; overflow-y: auto; z-index: 60;
+            background: #fff; border: 1px solid #E2E8F0; border-radius: 12px;
+            box-shadow: 0 18px 40px rgba(15,23,42,.14); padding: 6px;
+        }
+        .pos-bell-head {
+            font-size: 12px; font-weight: 600; color: #64748B;
+            padding: 8px 10px 6px; letter-spacing: .01em;
+        }
+        .pos-bell-panel .pos-note { margin: 0 0 6px; }
+        .pos-bell-panel .pos-note:last-child { margin-bottom: 0; }
+        .pos-bell-empty { padding: 18px 10px 22px; text-align: center; color: #94A3B8; font-size: 13px; }
 
         /* ══ The till's nav, inside the SHARED sidebar ════════════════════
            No sidebar chrome is restyled here: the logo, entity switcher,
@@ -502,18 +610,28 @@
              sale on this screen depends on, and it was costing a full card row
              below. The dashboard's title/subtitle pair is gone — a cashier does
              not need to be told which page they are on twice. -->
+        <!-- The outlet moved into the sidebar, where the workspace switcher used
+             to be: it is the one thing a cashier switches, and the workspace is
+             not (they belong to exactly one). The avatar is gone too — the
+             sidebar's profile block already says who is signed in, and saying it
+             twice on a 60px bar earns nothing. -->
         <header class="pos-topbar">
             <button class="pos-burger md:hidden" id="pos-burger" aria-label="Open menu">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
-            <div class="pos-topbar-outlet">
-                <label for="pos-outlet">Outlet</label>
-                <select id="pos-outlet"></select>
-                <span id="pos-outlet-hint" class="pos-outlet-hint"></span>
-            </div>
             <div class="pos-topbar-right">
-                <span class="pos-conn" id="pos-conn" title="Connection"><span class="pos-conn-dot"></span><span class="pos-conn-text">Online</span></span>
-                <img id="pos-top-avatar" class="pos-top-avatar" alt="" src="https://ui-avatars.com/api/?name=User&background=0F172A&color=fff">
+                <span class="pos-conn" id="pos-conn"><span class="pos-conn-dot"></span><span class="pos-conn-text">Online</span></span>
+                <!-- Everything that used to stack above the catalogue as a banner
+                     lives here now, the way the dashboard collects what needs
+                     attention rather than pushing the work down the page. -->
+                <button type="button" class="pos-bell" id="pos-bell" aria-label="Notifications" aria-expanded="false">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    <span class="pos-bell-count hidden" id="pos-bell-count"></span>
+                </button>
+                <div class="pos-bell-panel hidden" id="pos-bell-panel" role="dialog" aria-label="Notifications">
+                    <div class="pos-bell-head">Needs your attention</div>
+                    <div id="pos-banners"></div>
+                </div>
             </div>
         </header>
 
@@ -547,8 +665,6 @@
                 <!-- ── VIEW: Point of Sale ───────────────────────────── -->
                 <section class="pos-view" data-view="till">
                 <div id="pos-shiftbar" class="pos-shiftbar"></div>
-
-                <div id="pos-banners" class="fluxy-section-stack" style="gap:8px;"></div>
 
                 <div id="pos-metrics" class="pos-metrics"></div>
 
