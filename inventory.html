@@ -824,6 +824,13 @@
             </div>
 
             <div class="fluxy-drawer-field" id="item-pos-field">
+                <label class="fluxy-drawer-label" for="item-barcode">Barcode <span class="inv-muted">(optional)</span></label>
+                <input id="item-barcode" type="text" class="fluxy-drawer-input" maxlength="32"
+                       placeholder="8991002101234" autocomplete="off" inputmode="numeric">
+                <p class="fluxy-drawer-hint" style="margin-bottom:10px;">
+                    Scan it here to fill it in. A cashier can then scan the same code at the till and this drops straight into the cart.
+                </p>
+
                 <label class="fluxy-drawer-label" for="item-pos-category">Menu group <span class="inv-muted">(optional)</span></label>
                 <input id="item-pos-category" type="text" class="fluxy-drawer-input" maxlength="40" placeholder="Makanan, Minuman" autocomplete="off">
                 <label class="inv-check" style="margin-top:4px;">
@@ -2266,6 +2273,11 @@
             document.getElementById('item-name').value = isEdit ? (item.name || '') : '';
             document.getElementById('item-shelf').value = isEdit ? (item.storage_location || '') : '';
             document.getElementById('item-sku').value = isEdit ? (item.sku || '') : '';
+            // Round-trips, and it MUST. `saveItem` writes barcode only when the
+            // caller supplies the key, precisely so a merge cannot blank one that
+            // arrived by import — but this drawer now always supplies it, so an
+            // edit that opened with the field empty would erase it.
+            document.getElementById('item-barcode').value = isEdit ? (item.barcode || '') : '';
             document.getElementById('item-reorder').value = (isEdit && reorderPointOf(item) !== null)
                 ? String(reorderPointOf(item)) : '';
             document.getElementById('item-notes').value = isEdit ? (item.notes || '') : '';
@@ -2472,6 +2484,7 @@
                 units,
                 storage_location: document.getElementById('item-shelf').value.trim() || null,
                 sku: document.getElementById('item-sku').value.trim() || null,
+                barcode: document.getElementById('item-barcode').value.trim() || null,
                 track_stock: isRecipe ? true : document.getElementById('item-track-stock').checked,
                 // Untracked has nothing to track BY, so the mode goes with it.
                 tracking_type: (isRecipe || document.getElementById('item-track-stock').checked) ? 'qty' : null,

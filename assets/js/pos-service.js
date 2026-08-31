@@ -226,7 +226,13 @@ export const POS_METHODS = {
                 // every other field here — this map is a whitelist, so a field
                 // added to `items` and not added here reaches the page as
                 // undefined and the feature silently does nothing.
-                pos_modifier_groups: Array.isArray(i.pos_modifier_groups) ? i.pos_modifier_groups : []
+                pos_modifier_groups: Array.isArray(i.pos_modifier_groups) ? i.pos_modifier_groups : [],
+                // What a scanner types. Projected explicitly like everything
+                // else here — this map is a WHITELIST, and a field left out of
+                // it reaches the till as undefined with the feature silently
+                // doing nothing. That is exactly how pos_modifier_groups failed
+                // on its first cut.
+                barcode: i.barcode || null
             }))
             .sort((a, b) => (a.pos_sort - b.pos_sort)
                 || String(a.pos_category || '').localeCompare(String(b.pos_category || ''))

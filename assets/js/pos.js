@@ -161,6 +161,19 @@ function setView(name) {
     // goes full width — it has no order to work on.
     document.getElementById('pos-shell')?.classList.toggle('is-wide', name === 'shift');
     closeSideNav();
+
+    // A scanner types into whatever has focus, so at a counter the search box
+    // has to have it by default — otherwise the first scan of every sale goes
+    // nowhere and the cashier has to click the field first, which is the same
+    // wasted motion pay-first exists to remove.
+    //
+    // Only when nothing else is focused: stealing focus out from under someone
+    // mid-typing is worse than the problem it solves.
+    if (name === 'till' && posProfile().payFirst) {
+        const box = $('pos-menu-search');
+        const idle = !document.activeElement || document.activeElement === document.body;
+        if (box && idle) box.focus();
+    }
 }
 
 // Replace the finance nav inside the SHARED sidebar with the till's.
@@ -1067,8 +1080,43 @@ function visibleMenu() {
     return state.menu.filter((m) => {
         if (state.menuCategory && (m.pos_category || null) !== state.menuCategory) return false;
         if (!q) return true;
-        return String(m.name || '').toLowerCase().includes(q);
+        // Barcode too: a half-scanned or hand-typed code should narrow the grid
+        // rather than empty it, so the cashier can still see what they meant.
+        return String(m.name || '').toLowerCase().includes(q)
+            || String(m.barcode || '').toLowerCase().includes(q);
     });
+}
+
+// ── Scanning ─────────────────────────────────────────────────────────────────
+//
+// A barcode scanner is a KEYBOARD. It types the code into whatever has focus and
+// presses Enter — there is no device integration to write, no permission to ask
+// for and nothing to pair. So "scanning" is: the search box receives a burst of
+// characters and an Enter, and Enter means "this is a complete code, act on it".
+//
+// Exact match only, and never a partial one: `899100210` is a prefix of a real
+// product's code, and adding the wrong item to a cart because a scan was cut
+// short is worse than adding nothing.
+function scanBarcode(raw) {
+    const code = String(raw || '').trim();
+    if (!code) return false;
+
+    const hits = (state.menu || []).filter((m) => String(m.barcode || '').trim() === code);
+    if (!hits.length) return false;
+    if (hits.length > 1) {
+        // Two products sharing a code is a data problem the cashier cannot solve
+        // at the counter, and guessing between them books the wrong revenue
+        // against the wrong item. Name it and refuse.
+        toast(`${hits.length} products share the barcode ${code}. Fix the duplicate before scanning it.`, 'error');
+        return true;
+    }
+
+    const item = hits[0];
+    // A scanned item with options still has to ask — the scan says WHICH
+    // product, not which size.
+    if (posModifierGroups(item).length) { openModifierDrawer(item); return true; }
+    addMenuLine(item.id, item.name, Number(item.sales_price));
+    return true;
 }
 
 function renderChips() {
@@ -2472,9 +2520,29 @@ function wire() {
         bell.focus();
     });
 
-    $('pos-menu-search').addEventListener('input', (e) => {
+    const menuSearch = $('pos-menu-search');
+    menuSearch.addEventListener('input', (e) => {
         state.menuQuery = e.target.value || '';
         renderMenu();
+    });
+    menuSearch.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        const typed = menuSearch.value;
+        if (scanBarcode(typed)) {
+            // Clear and stay focused: a cashier scans a queue of items without
+            // touching the screen between them.
+            menuSearch.value = '';
+            state.menuQuery = '';
+            renderMenu();
+            menuSearch.focus();
+            return;
+        }
+        // Enter on something that is not a code is not an error — the grid is
+        // already filtered by it. Only say so when it matched nothing at all.
+        if (typed.trim() && !visibleMenu().length) {
+            toast(`Nothing matches "${typed.trim()}".`, 'error');
+        }
     });
 
     // Open-order search + the dining/table selectors.

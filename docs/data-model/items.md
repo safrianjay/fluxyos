@@ -40,7 +40,7 @@ creates `stock` items and preserves — but does not edit — a `composite`'s
 | `notes` | string ≤500 \| null | |
 | `status` | enum | `active` \| `archived`. Soft archive only |
 | `created_at` / `updated_at` | Timestamp | Server-set |
-| `barcode` | string ≤32 \| null | From the import template. Stored for lookup and round-trip; **nothing scans it yet** |
+| `barcode` | string ≤32 \| null | Set in the item drawer or by import. **Scanned at the till** (2026-08-31): a scanner is a keyboard, so Enter in the POS search resolves an EXACT match straight into the cart. Partial codes filter the grid rather than resolving — a prefix of a real code must never add the wrong item. Duplicates are refused by name, not guessed between |
 | `categories` | string[] ≤8 | Product categories, semicolon-separated in the file. The first also seeds `pos_category` |
 | `track_stock` | boolean | `false` = a service. Never held as stock: `createGoodsReceipt` refuses it, and the importer refuses an opening balance on one. Absent reads as `true` |
 | `tracking_type` | enum \| null | `qty` \| `batch` \| `serial`. **Only `qty` is enforced** — see §7 |

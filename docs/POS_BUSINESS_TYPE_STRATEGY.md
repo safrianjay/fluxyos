@@ -96,7 +96,7 @@ category-driven would break real cases in both directions:
 |---|---|
 | "Customer selection" (§2) | **No customer on `pos_orders` at all.** And unlike `items` and `lines[]`, `pos_orders` **has a `hasOnly`** (`wsPosOrderKeys`) — so any new order field needs a rules change **and a deploy** |
 | "Taxes" (§2) | `tax_amount` is hardcoded `0` by deliberate decision ([`pos.md`](data-model/pos.md) §6). Indonesian F&B owes regional **PBJT**, not PPN; booking gross as revenue overstates it ~9%. **Retail is a different regime.** This is the largest unbuilt financial question in POS, and it varies by business type *and by regency* |
-| "Barcode scanning" (§4) | `items.barcode` is stored and **nothing scans it** |
+| "Barcode scanning" (§4) | ~~stored and nothing scans it~~ **SHIPPED 2026-08-31.** A scanner is a keyboard: Enter in the POS search resolves an exact `items.barcode` match into the cart. The item drawer had no field for it either, so a code could not be taught — that is now there too |
 | "Product variants" (§4) | Not built |
 | "Returns" as distinct from refunds (§6) | Only `refundPosOrder` exists |
 | "Register" (§5 Step 1) | `openPosShift` enforces **one open shift per outlet**. Two lanes at one store is a refused write today |
@@ -126,8 +126,9 @@ The proposal devotes §4, §5, §6 and §11 to the right-hand column. Invert tha
 2. **`POS_PROFILE`** — a map keyed on `business_category` deciding which views
    appear, **which status ladder `advance()` walks**, and what the primary action
    says. Pure UI layer. No schema, no rules, no deploy. This is Part B.
-3. **Barcode** → **registers** → **tax**, each its own scoped change. Barcode
-   needs no rules deploy; registers and any customer field do.
+3. ~~**Barcode**~~ (shipped 2026-08-31) → **registers** → **tax**, each its own
+   scoped change. Barcode needed no rules deploy; registers and any customer
+   field do.
 
 **Non-goal:** category-driven inventory relief (A4).
 

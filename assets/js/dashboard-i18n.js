@@ -5115,6 +5115,10 @@
         "Each close records what was counted against what was expected.": "Setiap penutupan mencatat jumlah hitungan dibanding jumlah yang seharusnya.",
         "No shift has been closed at this outlet yet.": "Belum ada shift yang ditutup di outlet ini.",
         "Could not load shift history.": "Tidak bisa memuat riwayat shift.",
+        "Barcode": "Barcode",
+        "Scan it here to fill it in. A cashier can then scan the same code at the till and this drops straight into the cart.":
+            "Pindai di sini untuk mengisinya. Kasir lalu bisa memindai kode yang sama di kasir dan item ini langsung masuk keranjang.",
+
         // Retail / pay-first till (2026-08-31). "Close", "Takeaway" and "Void
         // order" already map elsewhere in this dictionary — a duplicate key in
         // one object literal is the LAST one to win, so they are not repeated.
