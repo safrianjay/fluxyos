@@ -127,18 +127,43 @@
            minimum left a dead gap between the heading and the only action. */
         .pos-order.is-empty .pos-order-lines { min-height: 0; }
         .pos-order.is-empty .pos-order-foot { border-top: 0; background: #fff; }
-        .pos-line { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 10px 16px; border-bottom: 1px solid #F1F5F9; }
+        /* 12px vertical, not 10px, and 10px between the two columns: at 10/8 the
+           name, the arithmetic, the stock note and the control row read as one
+           undifferentiated block. */
+        /* Two columns for the item and its amount, and the controls on a row of
+           their own SPANNING both. They used to live inside the left column,
+           which is only ~215px once the amount has taken its share — so the
+           third control ("Discount") wrapped onto a line by itself and the row
+           read as 2+1, which looks like a mistake rather than a layout. */
+        .pos-line {
+            display: grid; grid-template-columns: 1fr auto;
+            column-gap: 10px; row-gap: 2px;
+            padding: 12px 16px; border-bottom: 1px solid #F1F5F9;
+        }
+        .pos-line-main { min-width: 0; }
+        .pos-line-controls { grid-column: 1 / -1; }
         .pos-line-name { font-size: 14px; font-weight: 500; color: #0F172A; }
         .pos-line-meta { font-size: 12px; color: #64748B; margin-top: 2px; font-variant-numeric: tabular-nums; }
         .pos-line-amt { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: #0F172A; text-align: right; white-space: nowrap; }
         .pos-line-strike { text-decoration: line-through; color: #94A3B8; font-weight: 400; font-size: 12px; display: block; }
-        .pos-qty { display: inline-flex; align-items: center; gap: 2px; margin-top: 6px; }
+        /* No margin-top: the controls are their own row now, and the stepper
+           carrying its old offset left it 3px below the buttons beside it. */
+        .pos-qty { display: inline-flex; align-items: center; gap: 2px; }
         .pos-qty button {
             width: 30px; height: 30px; border: 1px solid #E2E8F0; background: #fff; border-radius: 6px;
             font-size: 14px; line-height: 1; color: #475569; cursor: pointer;
         }
         .pos-qty button:hover { background: #F8FAFC; }
         .pos-qty span { min-width: 30px; text-align: center; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+        /* Typable. Wide enough for three digits without the box growing as the
+           number does, which would shunt the buttons beside it. */
+        .pos-qty-input {
+            width: 42px; height: 30px; text-align: center;
+            border: 1px solid #E2E8F0; border-radius: 7px; background: #fff;
+            font-size: 14px; font-weight: 600; color: #0F172A;
+            font-variant-numeric: tabular-nums;
+        }
+        .pos-qty-input:focus { outline: 2px solid #EA580C; outline-offset: 1px; border-color: #CBD5E1; }
         /* Note and discount sit apart from the +/- pair: they are occasional,
            and adjacent same-weight buttons is how the wrong one gets pressed
            on a phone mid-service. */
@@ -319,6 +344,11 @@
         .pos-card:hover:not(:disabled) { border-color: #CBD5E1; box-shadow: 0 1px 3px rgba(15,23,42,.08); }
         .pos-card:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
         .pos-card:disabled { opacity: .55; cursor: not-allowed; }
+        /* Stock on the card. Deliberately NOT a disabled state — the card stays
+           tappable, because a shop that has the thing in its hand sells it. */
+        .pos-card-stock { font-size: 12px; margin-top: 2px; }
+        .pos-card-stock.is-out { color: #B45309; font-weight: 500; }
+        .pos-card-stock.is-low { color: #64748B; }
 
         /* THE IMAGE SLOT. `items` has no image field yet (docs/data-model/items.md),
            and the brief is explicit: do not invent placeholder imagery. So the
@@ -375,7 +405,12 @@
             width: 100%; min-height: 36px; padding: 0 10px; font-size: 13px;
             border: 1px solid #E2E8F0; border-radius: 10px; background: #fff; color: #0F172A;
         }
-        .pos-order-id { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+        /* The order header. `flex-wrap` because the status label is a pill now
+           and "Awaiting payment" beside a long table name will not fit on one
+           line at 380px — wrapping is better than either truncating the table
+           or squeezing the label. */
+        .pos-order-id { display: flex; align-items: center; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+        .pos-order-badge { font-size: 12px; padding: 3px 8px; }
         .pos-order-id-icon { width: 22px; height: 22px; color: #0F172A; flex-shrink: 0; }
         .pos-order-id-icon svg { width: 100%; height: 100%; }
         .pos-order-id h2 { font-size: 16px; font-weight: 600; color: #0B0F19; letter-spacing: -0.01em; }
@@ -412,7 +447,16 @@
 
         /* A line row, matching the reference: name, `price × qty = total`, a
            stepper, a remove control, and a notes affordance. */
-        .pos-line-calc { font-size: 12px; color: #C2410C; font-variant-numeric: tabular-nums; margin-top: 2px; }
+        /* Slate, not orange. The arithmetic is ordinary information; it was
+           wearing the same colour as a genuine warning, so on a line that had
+           something wrong with it the two were indistinguishable. Warm colour is
+           now reserved for the stock notes below. */
+        .pos-line-calc { font-size: 12px; color: #64748B; font-variant-numeric: tabular-nums; margin-top: 3px; }
+
+        /* Stock, said on the line. Advisory only — nothing here blocks a sale. */
+        .pos-line-stock { font-size: 12px; margin-top: 3px; }
+        .pos-line-stock.is-out { color: #B45309; font-weight: 500; }
+        .pos-line-stock.is-low { color: #64748B; }
         /* The chosen options, under the line. Quieter than the note, because a
            note is an instruction someone typed and a modifier is a choice the
            menu offered. */
@@ -452,13 +496,18 @@
         .pos-line-remove:hover { background: #FEE2E2; }
         .pos-line-remove svg { width: 13px; height: 13px; }
         .pos-line-note-btn {
-            display: inline-flex; align-items: center; gap: 5px; min-height: 28px;
-            padding: 0 9px; border-radius: 7px; border: 1px solid #E2E8F0;
+            display: inline-flex; align-items: center; gap: 4px; min-height: 30px;
+            padding: 0 8px; border-radius: 7px; border: 1px solid #E2E8F0;
             background: #fff; color: #475569; font-size: 12px; cursor: pointer;
+            white-space: nowrap;
         }
         .pos-line-note-btn:hover { background: #F8FAFC; }
         .pos-line-note-btn svg { width: 12px; height: 12px; }
-        .pos-line-controls { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+        /* One row, not two. The typable quantity box is wider than the number it
+           replaced, which pushed "Discount" onto a line of its own — three
+           controls stacked as 2+1 reads as a layout accident. Still wraps rather
+           than overflowing on a genuinely narrow panel. */
+        .pos-line-controls { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 
         /* Totals stack. The reference's editable rows carry a pencil; here it
            opens the discount drawer that already exists. */

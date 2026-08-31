@@ -5124,6 +5124,13 @@
         "Those sales could not be posted. The details are in the console.":
             "Transaksi itu tidak bisa diposting. Detailnya ada di konsol.",
 
+        // Stock on the till (2026-08-31). "Out of stock" already maps in this
+        // dictionary — not repeated, since a duplicate key is the last one to win.
+        "Out of stock — selling it anyway will leave inventory short":
+            "Stok habis — tetap menjualnya akan membuat stok minus",
+
+        "Name it": "Beri nama",
+
         "Hold sale": "Tahan transaksi",
         "Hold this sale": "Tahan transaksi ini",
         "Parked": "Ditahan",
@@ -5416,6 +5423,13 @@
           id: function (m) { return 'Pembayaran sebagian — sisa ' + m[1] + ' masih harus dibayar.'; } },
         { re: /^(\d+) paid · at the till$/,
           id: function (m) { return m[1] + ' lunas · di kasir'; } },
+        // Stock on the till. Indonesian puts the count after the noun ("sisa 3"),
+        // which is exactly why these cannot be split into translatable spans the
+        // way the button labels were — the word order flips.
+        { re: /^(\d+) left in stock$/, id: function (m) { return 'Sisa ' + m[1] + ' di stok'; } },
+        { re: /^(\d+) left$/, id: function (m) { return 'Sisa ' + m[1]; } },
+        { re: /^Only (\d+) in stock, (\d+) on this order$/,
+          id: function (m) { return 'Stok hanya ' + m[1] + ', pesanan ini ' + m[2]; } },
         { re: /^Table (.+)$/, id: function (m) { return 'Meja ' + m[1]; } },
         { re: /^Discount (.+)$/, id: function (m) { return 'Diskon ' + m[1]; } },
         { re: /^Since (.+) · float (Rp[\d.]+)$/,

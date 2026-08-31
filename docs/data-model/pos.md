@@ -140,6 +140,27 @@ extra shot consuming beans). The second one matters: a priced modifier moves
 revenue today but not COGS, so a heavily-modified menu overstates gross margin
 by the cost of the extras.
 
+### Stock on the till warns, and never blocks (2026-08-31)
+
+`getPosOverview` returns `onHand` — item id → base units — summed from the stock
+movements it **already reads**, so the till can say "3 left" and "Out of stock"
+at no extra read cost. Summed, never cached, for the reason `stock.md` §5 gives:
+a stored count and the movements eventually disagree and nothing reports it.
+
+**Advisory only.** A shop that has physically got the thing sells it, whatever
+inventory believes, and a cashier cannot stop mid-service to reconcile. Refusing
+the sale would make FluxyOS wrong about the MONEY as well as the stock — the
+worse of the two errors. The negative on-hand left behind is the correct record
+of what happened and surfaces in the next count as a real discrepancy.
+
+Silent on anything with no on-hand number of its own: a **service**
+(`track_stock: false`) is never held as stock, and a **recipe**'s availability
+belongs to its ingredients rather than to itself.
+
+⚠️ `getPosMenu` projects an explicit whitelist, so `track_stock` and `barcode`
+had to be added to it. A field on `items` that is not in that map reaches the
+till as `undefined` and the feature silently does nothing.
+
 ### `channel` is the connector seam
 
 `pos_orders` is a **normalized** order document; the first-party till is merely

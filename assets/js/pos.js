@@ -1314,6 +1314,7 @@ function renderMenu() {
             </span>
             <span class="pos-card-name">${esc(m.name)}</span>
             <span class="pos-card-price">${rp(m.sales_price)}</span>
+            ${cardStockTag(m)}
             <span class="pos-card-add" aria-hidden="true">+</span>
         </button>`).join('');
 
@@ -1506,6 +1507,50 @@ function setPrimaryAction(primary, o, st) {
     primary.textContent = st.action;
 }
 
+// What the till knows about stock, said plainly and never used to refuse a sale.
+//
+// A shop that has physically got the thing sells it, whatever the system
+// believes — and a cashier cannot stop mid-service to reconcile inventory.
+// Blocking the sale would make FluxyOS wrong about the MONEY as well as about
+// the stock, which is the worse of the two errors. So this warns and gets out of
+// the way; the negative on-hand it leaves behind is the correct record of what
+// happened and shows up in the stock count as a real discrepancy.
+//
+// Silent on anything that has no on-hand number of its own: a service is never
+// held as stock, and a recipe's availability belongs to its ingredients.
+function itemStock(itemId) {
+    const item = (state.menu || []).find((m) => m.id === itemId);
+    if (!item || item.type === 'composite' || item.track_stock === false) return null;
+    const map = (state.overview && state.overview.onHand) || null;
+    if (!map || !(itemId in map)) return null;
+    return Number(map[itemId]) || 0;
+}
+
+function stockNote(line, qty) {
+    const left = itemStock(line.item_id);
+    if (left === null) return '';
+    if (left <= 0) {
+        return `<div class="pos-line-stock is-out">Out of stock — selling it anyway will leave inventory short</div>`;
+    }
+    if (qty > left) {
+        return `<div class="pos-line-stock is-out">Only ${left} in stock, ${qty} on this order</div>`;
+    }
+    if (left <= 5) return `<div class="pos-line-stock is-low">${left} left in stock</div>`;
+    return '';
+}
+
+// Stock on the card, so the answer arrives BEFORE the item is on the bill.
+// Never disables the card — see stockNote().
+function cardStockTag(m) {
+    if (!m || m.type === 'composite' || m.track_stock === false) return '';
+    const map = (state.overview && state.overview.onHand) || null;
+    if (!map || !(m.id in map)) return '';
+    const left = Number(map[m.id]) || 0;
+    if (left <= 0) return '<span class="pos-card-stock is-out">Out of stock</span>';
+    if (left <= 5) return `<span class="pos-card-stock is-low">${left} left</span>`;
+    return '';
+}
+
 function renderOrder() {
     const o = state.order;
     const lines = $('pos-order-lines');
@@ -1540,7 +1585,11 @@ function renderOrder() {
     const st = STATUS[o.status] || STATUS.open;
     $('pos-order-title').textContent = o.table_label ? `Table ${o.table_label}` : 'Takeaway';
     $('pos-order-sub').textContent = `Order ${o.order_number || ''}${o.channel === 'qr' ? ' · scanned by the customer' : ''}`;
-    badge.className = `fluxy-status ${st.cls}`;
+    // `.fluxy-status` carries colour and nothing else — no padding, no
+    // background, no radius — so the label rendered as bare tinted text jammed
+    // against the table name. `.fluxy-table-status` is the actual pill. Same
+    // omission as the Orders board had.
+    badge.className = `fluxy-table-status ${st.cls} pos-order-badge`;
     badge.textContent = st.label;
     badge.classList.remove('hidden');
 
@@ -1560,7 +1609,7 @@ function renderOrder() {
         const disc = Number(l.discount_amount) || 0;
         const net = gross - disc;
         return `<div class="pos-line">
-            <div>
+            <div class="pos-line-main">
                 <div class="pos-line-head">
                     <div class="pos-line-name">${esc(l.item_name)}</div>
                     ${editableNow ? `<button type="button" class="pos-line-remove" data-remove="${esc(l.line_id)}"
@@ -1569,30 +1618,33 @@ function renderOrder() {
                     </button>` : ''}
                 </div>
                 <div class="pos-line-calc">${rp((Number(l.unit_price) || 0) + (Number(l.modifier_amount) || 0))} × ${qty} = ${rp(gross)}</div>
+                ${stockNote(l, qty)}
                 ${(l.modifiers || []).length ? `<div class="pos-line-mods">${
                     l.modifiers.map((m) => esc(m.option_name)
                         + (m.price_delta ? ` (${m.price_delta > 0 ? '+' : '−'}${rp(m.price_delta)})` : '')).join(' · ')
                 }</div>` : ''}
                 ${disc > 0 ? `<div class="pos-line-meta" style="color:#C2410C">${esc(l.discount_reason || 'Discount')} −${rp(disc)} · now ${rp(net)}</div>` : ''}
                 ${l.note ? `<div class="pos-line-meta">${esc(l.note)}</div>` : ''}
-                ${editableNow ? `
+            </div>
+            <div class="pos-line-amt">${rp(net)}</div>
+            ${editableNow ? `
                 <div class="pos-line-controls">
                     <div class="pos-qty">
                         <button type="button" data-dec="${esc(l.line_id)}" aria-label="One fewer ${esc(l.item_name)}">−</button>
-                        <span>${qty}</span>
+                        <input type="text" class="pos-qty-input" data-qty="${esc(l.line_id)}"
+                               value="${qty}" inputmode="numeric" autocomplete="off"
+                               aria-label="Quantity of ${esc(l.item_name)}">
                         <button type="button" data-inc="${esc(l.line_id)}" aria-label="One more ${esc(l.item_name)}">+</button>
                     </div>
                     <button type="button" class="pos-line-note-btn" data-note="${esc(l.line_id)}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h4L20 8l-4-4L4 16z"/></svg>
-                        ${l.note ? 'Edit note' : 'Add notes'}
+                        ${l.note ? 'Edit note' : 'Note'}
                     </button>
                     <button type="button" class="pos-line-note-btn" data-disc="${esc(l.line_id)}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 5 5 19M6.5 8a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg>
                         Discount
                     </button>
                 </div>` : ''}
-            </div>
-            <div class="pos-line-amt">${rp(net)}</div>
         </div>`;
     }).join('') : '<div style="padding:24px 16px;text-align:center;color:#94A3B8;font-size:13px">Nothing added yet.</div>';
 
@@ -1613,6 +1665,45 @@ function renderOrder() {
     lines.querySelectorAll('[data-note]').forEach((btn) => {
         btn.addEventListener('click', () => openLineNoteDrawer(btn.dataset.note));
     });
+    // Typed quantity. Tapping "+" eleven times to sell a dozen is not a till,
+    // and a stepper is only tolerable for the two or three it was designed for.
+    // The steppers stay — most lines are one or two — but the number itself is
+    // now a field.
+    lines.querySelectorAll('[data-qty]').forEach((input) => {
+        const commit = () => once(async () => {
+            const id = input.dataset.qty;
+            const line = (state.order.lines || []).find((l) => l.line_id === id);
+            if (!line) return;
+            const typed = String(input.value).replace(/\D/g, '');
+            // Empty is not zero. Clearing the box to retype is the commonest
+            // thing a person does in a number field, and reading that as "remove
+            // the line" would delete an item mid-edit.
+            if (typed === '') { input.value = String(Number(line.quantity) || 0); return; }
+            // 999 is not a limit anyone will meet legitimately; it is a guard
+            // against a leaning finger turning one coffee into 111111.
+            const q = Math.min(999, Number(typed));
+            if (q === Number(line.quantity)) return;
+            try {
+                state.order = await ds.setPosOrderLineQuantity(state.uid, state.orderId, id, q);
+                renderOrder();
+            } catch (err) {
+                fail(err, 'Could not change that quantity.');
+                input.value = String(Number(line.quantity) || 0);
+            }
+        });
+        input.addEventListener('input', () => { input.value = input.value.replace(/\D/g, ''); });
+        input.addEventListener('blur', commit);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+            // Escape abandons the edit rather than committing a half-typed number.
+            if (e.key === 'Escape') {
+                const line = (state.order.lines || []).find((l) => l.line_id === input.dataset.qty);
+                input.value = String((line && Number(line.quantity)) || 0);
+                input.blur();
+            }
+        });
+    });
+
     lines.querySelectorAll('[data-inc],[data-dec]').forEach((btn) => {
         btn.addEventListener('click', () => once(async () => {
             const id = btn.dataset.inc || btn.dataset.dec;

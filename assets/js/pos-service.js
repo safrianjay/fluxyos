@@ -232,7 +232,11 @@ export const POS_METHODS = {
                 // it reaches the till as undefined with the feature silently
                 // doing nothing. That is exactly how pos_modifier_groups failed
                 // on its first cut.
-                barcode: i.barcode || null
+                barcode: i.barcode || null,
+                // Whether "how many are left" is even a question for this item.
+                // A service is never held as stock, and a recipe's availability
+                // is its ingredients' — neither has an on-hand number of its own.
+                track_stock: i.track_stock !== false
             }))
             .sort((a, b) => (a.pos_sort - b.pos_sort)
                 || String(a.pos_category || '').localeCompare(String(b.pos_category || ''))
@@ -1247,6 +1251,16 @@ export const POS_METHODS = {
         // per-sale relief existed — the whole reason this chain was built.
         const costed = new Set();
         movements.forEach((m) => { if (Number(m.amount)) costed.add(m.item_id); });
+
+        // On hand, summed from the movements this function ALREADY reads — so
+        // the till can say "3 left" and "out of stock" at no extra read cost.
+        //
+        // Stock is summed, never cached (stock.md §5): a stored count and the
+        // movements eventually disagree and nothing reports it.
+        const onHand = {};
+        movements.forEach((m) => {
+            onHand[m.item_id] = (onHand[m.item_id] || 0) + (Number(m.quantity) || 0);
+        });
         const noCostBasis = menu.filter((m) => (m.type === 'composite' ? !m.has_recipe : !costed.has(m.id)));
 
         return {
@@ -1270,6 +1284,11 @@ export const POS_METHODS = {
             // The two honesty signals. Both are counts of things that are wrong
             // and would otherwise be invisible.
             unpostedCount: orders.filter((o) => o.status === 'paid' && !o.transaction_id).length,
+            // itemId -> base units on hand. Advisory ONLY: the till shows it and
+            // never enforces it. A shop that has physically got the thing sells
+            // it, whatever the system believes — refusing the sale would make
+            // FluxyOS wrong about the money as well as about the stock.
+            onHand,
             noCostBasisCount: noCostBasis.length,
             noCostBasisNames: noCostBasis.slice(0, 5).map((m) => m.name),
             menuSize: menu.length
