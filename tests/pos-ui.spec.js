@@ -278,6 +278,7 @@ test.describe('Point of Sale', () => {
             .then((p) => p.close())
             .catch(() => {});
 
+
         // Retried for the same reason as the transitions above: this press also
         // goes through `once()`, and the first attempt was swallowed by the
         // refresh that the previous transition had just started.
@@ -294,10 +295,40 @@ test.describe('Point of Sale', () => {
         }
         await expect(page.locator('#pos-pay-amount'),
             'the payment modal never opened').toBeVisible({ timeout: 15000 });
-        // Cash, and the amount is prefilled with the exact due — this spec is
-        // about what happens AFTER payment, not about tender arithmetic.
+        // Cash, deliberately OVER-TENDERED, because the difference between what
+        // was handed over and what is applied to the bill is where the money bug
+        // lived: the till used to send the whole tender as `amount`, so
+        // `paid_amount` carried the change too and the shift tally expected the
+        // drawer to hold cash that had already been given back. Every
+        // over-tender made the close read short by the change.
         await page.locator('#pos-method-row [data-method="cash"]').click();
+        const due = await page.evaluate(() => {
+            const v = document.getElementById('pos-pay-due').textContent.replace(/\D/g, '');
+            return Number(v);
+        });
+        const tendered = due + 5000;
+        await page.fill('#pos-pay-amount', '');
+        await page.locator('#pos-pay-amount').type(String(tendered));
+        await expect(page.locator('#pos-change-value')).toHaveText(/5\.000/);
         await page.locator('#pos-pay-submit').click();
+
+        // ── What was actually RECORDED ──────────────────────────────────────
+        // The bug, in one assertion: `amount` is what the bill absorbed, not
+        // what the customer handed over. When the two were the same field, an
+        // over-tender inflated `paid_amount` — and `getPosShiftTally` sums
+        // exactly that, so the close expected the drawer to still hold the
+        // change. Every over-tender read as a short till, silently, and the
+        // variance posted to 6700 Cash Over & Short as a loss.
+        await expect.poll(async () => (await page.evaluate(() => window.__posOrder()))?.status,
+            { timeout: 30000 }).toBe('paid');
+        const rec = await page.evaluate(() => window.__posOrder());
+        const cash = rec.payments[rec.payments.length - 1];
+        expect(cash.method).toBe('cash');
+        expect(cash.tender, 'cash is the only tender that puts notes in the drawer').toBe('cash');
+        expect(cash.amount_received, 'what the customer handed over').toBe(tendered);
+        expect(cash.change_given, 'what went back across the counter').toBe(5000);
+        expect(cash.amount, 'only the bill is applied — the change is not revenue').toBe(due);
+        expect(rec.paid_amount, 'paid_amount must be the bill, never the tender').toBe(rec.total_amount);
 
         await expect(page.locator('#pos-order-status')).toHaveText(/paid|lunas/i, { timeout: 30000 });
         await receipt;

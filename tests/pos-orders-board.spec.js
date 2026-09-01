@@ -348,6 +348,74 @@ test('cash payment: change, a floor on the tender, and locale-correct quick amou
     await expect(page.locator('#pos-pay-modal')).toHaveCount(0);
 });
 
+// ── Amount received belongs to CASH, and only to cash ──────────────────────
+//
+// The cashier counts notes out of a drawer. Nobody counts a card, nobody
+// overpays a QRIS, and nobody hands change back for a bank transfer — so on
+// every method but cash the field states the bill and is not theirs to type.
+//
+// The interesting one is Bank transfer. It SETTLES to the same account as cash
+// (both land in 1000), and reading `settlement` for "is this cash" is what made
+// it behave as cash here — and, more expensively, made the shift tally count
+// transfers as notes that ought to be in the drawer.
+test('amount received is editable for cash only, and change is always stated', async ({ page }) => {
+    await openBoard(page);
+    await seedBoard(page, [{ status: 'awaiting_payment', ageMin: 5, total: 120000 }]);
+    await page.locator('.pos-ocard[data-status="awaiting_payment"] [data-pay]').first().click();
+    await expect(page.locator('#pos-pay-modal .pos-modal')).toBeVisible({ timeout: 10000 });
+
+    const amount = page.locator('#pos-pay-amount');
+    const change = page.locator('#pos-change');
+
+    // ── CASH ────────────────────────────────────────────────────────────────
+    await expect(amount).toBeEnabled();
+    await expect(page.locator('#pos-quick')).toBeVisible();
+
+    // Equal to the bill → change is STATED as zero, not hidden. A missing row
+    // and "the screen has not caught up with what I typed" look identical, and
+    // this is the moment a customer is standing there waiting to be told.
+    await page.locator('#pos-quick [data-cash="120000"]').click();
+    await expect(change).toBeVisible();
+    await expect(page.locator('#pos-change-value')).toHaveText(/^Rp0$/);
+    await expect(change).toHaveClass(/is-zero/);
+    await expect(page.locator('#pos-pay-submit')).toBeEnabled();
+
+    // More than the bill → change, immediately, without leaving the field.
+    await amount.fill('');
+    await amount.type('150000');
+    await expect(page.locator('#pos-change-value')).toHaveText(/30\.000/);
+    await expect(change).not.toHaveClass(/is-zero/);
+    await expect(page.locator('#pos-pay-submit')).toBeEnabled();
+
+    // Less than the bill → insufficient, and the payment cannot be completed.
+    await amount.fill('');
+    await amount.type('100000');
+    await expect(page.locator('#pos-short')).toBeVisible();
+    await expect(page.locator('#pos-short')).toContainText(/20\.000 short/);
+    await expect(page.locator('#pos-pay-submit')).toBeDisabled();
+    // No change row beside a shortfall: "Rp0 to give back" is true and useless.
+    await expect(change).toBeHidden();
+
+    // ── EVERY OTHER METHOD ──────────────────────────────────────────────────
+    for (const m of ['card', 'qris', 'transfer', 'other']) {
+        await page.locator(`#pos-method-row [data-method="${m}"]`).click();
+        await expect(amount, `${m}: the cashier must not enter a received amount`).toBeDisabled();
+        await expect(change, `${m}: a card has no change to give`).toBeHidden();
+        await expect(page.locator('#pos-quick'), `${m}: quick notes are meaningless`).toBeHidden();
+        await expect(page.locator('#pos-amount-note')).toBeVisible();
+        // The field still STATES the bill — it is what is about to be charged.
+        await expect(amount).toHaveValue(/120\.000/);
+        await expect(page.locator('#pos-pay-submit'), `${m} must be payable`).toBeEnabled();
+    }
+
+    // …and back to cash restores the field. A method toggle is not a one-way door.
+    await page.locator('#pos-method-row [data-method="cash"]').click();
+    await expect(amount).toBeEnabled();
+    await expect(page.locator('#pos-quick')).toBeVisible();
+
+    await page.locator('#pos-pay-modal .pos-modal-close').click();
+});
+
 test('opening a card still reaches the actions the board does not carry', async ({ page }) => {
     // Hiding the order panel on this view nearly orphaned Refund and Reprint:
     // they live in that panel and nowhere else, so selecting a card without

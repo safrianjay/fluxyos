@@ -94,7 +94,7 @@ nothing would report it.
 | `subtotal` / `discount_total` | integer | Σ line gross; Σ line + order discounts |
 | `service_charge_amount` / `tax_amount` | integer | Always `0` in v1 — see §6 |
 | `total_amount` | integer | What the customer owes |
-| `payments` | array | `{ payment_id, method, provider, amount, reference, status, received_at, received_by }` |
+| `payments` | array | `{ payment_id, method, tender, amount, amount_received, change_given, provider, reference, status, received_at, received_by }` — see below |
 | `paid_amount` | integer | Σ settled payments |
 | `customer_name` | string ≤80 \| null | Taken in the Create Order dialog. Optional |
 | `customer_phone` | string ≤32 \| null | How to call a takeaway back. Optional |
@@ -258,6 +258,56 @@ status missing from it does not error — the order simply disappears from the
 board and the floor plan, and the table it is sitting at reads as free. When
 adding a status, grep for every list that enumerates them.
 
+### `amount` is what the BILL absorbed; `amount_received` is what was handed over
+
+Added 2026-09-01, and the difference is money.
+
+Until then the till sent the whole tender as `amount`, so a Rp150.000 note
+against a Rp120.000 bill recorded `paid_amount: 150.000`. **`getPosShiftTally`
+sums exactly that**, so the close expected the drawer to still hold the
+Rp30.000 that had already been handed back. Every over-tender made the count
+read SHORT by the change given, and the variance posted to `6700 Cash Over &
+Short` as a loss.
+
+The ledger was never wrong — revenue posts from `total_amount`, not from the
+payments (§4). Only the cash reconciliation was, which is the one thing the
+shift exists to do.
+
+```
+amount           min(tender, amount due)   what the bill absorbed
+amount_received  what crossed the counter
+change_given     amount_received − amount
+```
+
+Recorded rather than derived: the bill can be discounted or refunded later, so
+"what did this customer actually hand over" stops being recoverable from the
+totals the moment anything else moves.
+
+`payments[]` has **no `hasOnly`** in `firestore.rules` (§7), so these three
+fields needed no rules change and no deploy. The validation lives entirely in
+`recordPosPayment`, which refuses a tender below the applied amount and refuses
+any change at all on a non-cash tender.
+
+### `settlement` and `tender` answer different questions
+
+| Field | Question | Cash | Transfer | QRIS / Card |
+|---|---|---|---|---|
+| `settlement` | which ACCOUNT does it land in | `1000` | `1000` | `1030` |
+| `tender` | did NOTES enter this drawer | yes | no | no |
+
+Conflating them was the second silent bug of the same day. `getPosShiftTally`
+read `settlement === 'cash'` for "cash in the drawer", so **every bank transfer
+was counted as notes that ought to be in the till** — the blind count came up
+short by the transfers taken and the variance posted as a loss, exactly as
+above. A transfer really does settle to the same account as cash; what it does
+not do is put anything in the drawer.
+
+`other` is `tender: 'external'` deliberately. It is whatever is not one of the
+four named methods, and a drawer count is the wrong place to discover that
+assumption was generous — counting it as notes produces an unexplained
+shortfall, not counting it produces an unexplained **surplus**, which is the
+direction that gets investigated rather than absorbed.
+
 ### Payment is a modal, and every figure goes through the money seam
 
 `openPaymentModal` uses the shared `.pos-modal-layer` (blurred navy scrim, 16px
@@ -268,6 +318,26 @@ Cash specifics: the bill is stated once and large, the tender is entered against
 locale-correct formatting, CHANGE is the loudest thing after the bill (it is
 what physically leaves the drawer), and a tender below the bill cannot be
 confirmed as a completed payment.
+
+**Amount received belongs to cash and only to cash.** On every other method the
+field states the bill and is disabled — the provider moves the exact figure, and
+nobody counts change out of a drawer for a card. It is disabled rather than
+removed: a field that vanishes makes the dialog jump under a cashier's hand
+mid-payment and leaves them wondering whether they missed a step.
+
+**Change is always stated on a cash payment, including zero.** It used to appear
+only when there was change to give, so "exact money" and "the screen has not
+caught up with what I typed" looked identical — the two cases are
+indistinguishable when the row is simply absent, and this is the moment a
+customer is standing there waiting to be told. A short tender shows the
+shortfall instead; "Rp0 to give back" beside an insufficient payment is true and
+useless.
+
+⚠️ Both of those were also load-bearing on a CSS fix: `.pos-change` and
+`.pos-quick` are `display: flex`, and a class rule outranks the UA stylesheet's
+`[hidden]` rule — so `el.hidden = true` on either did nothing at all, and the
+change box sat on screen for every payment showing an empty value. `pos.html`
+now carries `[hidden] { display: none !important; }`.
 
 **A short tender is refused outright.** The first cut allowed it as an explicit
 part payment to preserve split tender — cash + QRIS on one bill — but the

@@ -2613,6 +2613,12 @@ function openPaymentModal() {
                 <div id="pos-cash-block">
                     <div class="pos-field">
                         <label for="pos-pay-amount">Amount received</label>
+                        <!-- DISABLED rather than removed on a non-cash method.
+                             A field that vanishes makes the dialog jump under a
+                             cashier's hand mid-payment and leaves them wondering
+                             whether they missed a step; a disabled field with the
+                             bill already in it says "this one is not yours to
+                             enter" and is done. -->
                         <!-- The symbol is rendered beside the field rather than
                              typed into it: the input carries digits only, so the
                              parser never has to strip a currency mark that
@@ -2625,6 +2631,7 @@ function openPaymentModal() {
                                    value="${esc(M.formatMoneyInput(M.fromMinor(due, cur), cur))}">
                         </div>
                     </div>
+                    <p class="pos-hint" id="pos-amount-note" hidden>The provider moves the exact amount — nothing to count out.</p>
                     <!-- What the customer plausibly hands over, derived from the
                          bill and this currency's own banknotes. -->
                     <div class="pos-quick" id="pos-quick"></div>
@@ -2656,32 +2663,56 @@ function openPaymentModal() {
         if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc2); }
     });
 
-    const isCash = () => (methods.find((m) => m.id === method) || {}).settlement !== 'clearing';
+    // TENDER, not settlement. A bank transfer settles to the same account as
+    // cash and puts nothing in the drawer, so the cashier does not count it out
+    // and must not be asked what they received — reading `settlement` here made
+    // Bank transfer and Other behave as cash, which is also how they came to be
+    // counted as drawer cash at close. See POS_PAYMENT_METHODS.
+    const isCash = () => (methods.find((m) => m.id === method) || {}).tender === 'cash';
 
     // Redraws change, shortfall and the submit button from `received`.
     const sync = () => {
         const cash = isCash();
-        $$('pos-cash-block').hidden = !cash;
         const submit = $$('pos-pay-submit');
+        // The quick-cash row is the only part that goes: "what note did they
+        // hand you" is a question with no meaning on a card.
+        $$('pos-quick').hidden = !cash;
+        amt.disabled = !cash;
+        amt.readOnly = !cash;
 
         if (!cash) {
-            // A card or QRIS is tendered for the exact bill by definition — the
-            // provider moves the amount, nobody counts change out of a drawer.
+            // The provider moves the exact bill. Nobody overpays a terminal and
+            // no change comes out of a drawer, so the field states the amount
+            // and is not editable.
             received = due;
+            amt.value = M.formatMoneyInput(M.fromMinor(due, cur), cur);
             $$('pos-change').hidden = true;
             $$('pos-short').hidden = true;
+            $$('pos-amount-note').hidden = false;
             submit.disabled = false;
             submit.textContent = 'Confirm payment';
             return;
         }
+        $$('pos-amount-note').hidden = true;
 
-        const change = received - due;
-        $$('pos-change').hidden = !(change > 0);
-        if (change > 0) $$('pos-change-value').textContent = rp(change);
+        // CHANGE IS ALWAYS SHOWN ON A CASH PAYMENT, including zero.
+        //
+        // It used to appear only when there was change to give, so the cashier
+        // could not tell "exact money" from "the screen has not caught up with
+        // what I typed" — the two look identical when the row is simply absent.
+        // A stated Rp0 is a confirmation; a missing row is an open question, and
+        // this is the moment a customer is standing there waiting to be told.
+        const change = Math.max(0, received - due);
+        $$('pos-change').hidden = false;
+        $$('pos-change-value').textContent = rp(change);
+        $$('pos-change').classList.toggle('is-zero', change === 0);
 
         const short = received > 0 && received < due;
         $$('pos-short').hidden = !short;
         if (short) $$('pos-short').textContent = `${rp(due - received)} short — payment cannot be taken.`;
+        // A short tender has no change to state; showing Rp0 beside a shortfall
+        // reads as "nothing to give back", which is true and useless.
+        if (short) $$('pos-change').hidden = true;
 
         // A tender below the bill cannot be taken at all.
         //
@@ -2728,9 +2759,16 @@ function openPaymentModal() {
         method = b.dataset.method;
         el.querySelectorAll('.pos-method').forEach((x) => x.classList.toggle('is-on', x === b));
         const m = methods.find((x) => x.id === method);
-        $$('pos-settle-note').textContent = m.settlement === 'clearing'
-            ? 'Settles when the provider pays out — not cash in the drawer today.'
-            : 'Counts as cash in the drawer today.';
+        // Two facts, and the note has to get both right — this line said
+        // "Counts as cash in the drawer today" for a BANK TRANSFER, because it
+        // read `settlement` alone. A transfer does land in the same account as
+        // cash; what it does not do is put notes in the till, which is the only
+        // thing this sentence is here to tell the person holding the drawer.
+        $$('pos-settle-note').textContent = m.tender === 'cash'
+            ? 'Counts as cash in the drawer today.'
+            : (m.settlement === 'clearing'
+                ? 'Settles when the provider pays out — not cash in the drawer today.'
+                : 'Lands in the bank, not in the drawer — it is not counted at close.');
         if (!isCash()) setReceived(due); else sync();
     });
 
@@ -2750,12 +2788,24 @@ function openPaymentModal() {
             submit.disabled = true;
             try {
                 const order = await ds.recordPosPayment(state.uid, state.orderId, {
-                    method, amount: received, reference: $$('pos-pay-ref').value
+                    method,
+                    // What is APPLIED to the bill is capped at what is owed; the
+                    // rest is change, not revenue and not money in the drawer.
+                    // Sending the whole tender as `amount` is what used to make
+                    // every over-tender read as a short drawer at close.
+                    amount: Math.min(received, due),
+                    amountReceived: received,
+                    reference: $$('pos-pay-ref').value
                 });
                 state.order = order;
                 close();
                 if (order.status === 'paid') {
-                    toast(`Paid — ${rp(order.total_amount)} recorded.`);
+                    const change = Math.max(0, received - due);
+                    // The change is the part that still has to HAPPEN after the
+                    // screen is done, so it is what the confirmation says.
+                    toast(change > 0
+                        ? `Paid — give ${rp(change)} change.`
+                        : `Paid — ${rp(order.total_amount)} recorded.`);
                     // The bill is paid, so the party has left and the table is
                     // the house's again. Closing the booking here is what stops
                     // a seated reservation holding its table for the rest of its
@@ -2923,6 +2973,16 @@ function openReceipt(order) {
     ${Number(o.discount_total) > 0 ? row(o.discount_reason || 'Diskon', `−${rp(o.discount_total)}`, 'dsc') : ''}
     ${row('Total', rp(o.total_amount), 'tot')}
     ${paid.map((p) => row(methodLabel(p.method), rp(p.amount))).join('')}
+    ${
+        // Tendered and change, on the receipt, for the one case where they
+        // differ from the total: cash. This is the customer's own record of what
+        // they handed over and what came back — the two figures a dispute at the
+        // counter is actually about, and the receipt was silent on both.
+        // Older payments carry neither field; they fall out rather than
+        // rendering "Rp0" against a sale nobody can now check.
+        paid.filter((p) => Number(p.change_given) > 0).map((p) =>
+            row('Tunai', rp(p.amount_received)) + row('Kembalian', rp(p.change_given))).join('')
+    }
   </table>
   ${o.refund_transaction_id ? '<hr><div class="c"><strong>DIREFUND</strong></div>' : ''}
   <div class="foot">Terima kasih 🙏</div>
@@ -3808,6 +3868,24 @@ async function closeReservationForOrder(orderId) {
     if (!r) return;
     await ds.setPosReservationStatus(state.uid, r.id, 'completed');
 }
+
+// Read-only view of the order on screen, for specs.
+//
+// A payment's recorded shape — what was applied to the bill, what was handed
+// over, what went back as change — is not rendered anywhere except the receipt,
+// which prints in a popup a test has to close. Those three figures are exactly
+// where the drawer-reconciliation bug lived, so they need an assertion that
+// reads the RECORD rather than a screen.
+window.__posOrder = () => (state.order ? JSON.parse(JSON.stringify({
+    id: state.order.id,
+    status: state.order.status,
+    total_amount: state.order.total_amount,
+    paid_amount: state.order.paid_amount,
+    payments: (state.order.payments || []).map((p) => ({
+        method: p.method, tender: p.tender, amount: p.amount,
+        amount_received: p.amount_received, change_given: p.change_given
+    }))
+})) : null);
 
 // Replace the floor's tables and bookings with a known fixture, then repaint.
 //

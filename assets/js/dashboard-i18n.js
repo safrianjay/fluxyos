@@ -5271,6 +5271,14 @@
         "Add a table": "Tambah meja",
         "Add table": "Tambah meja",
         "Table name or number": "Nama atau nomor meja",
+        // Take payment: the drawer statement per method. "Counts as cash in the
+        // drawer today." and "Amount received" are deliberately NOT here — both
+        // already exist later in this dictionary with the same translation, and
+        // a later duplicate wins. Same for the provider-payout line.
+        "Lands in the bank, not in the drawer — it is not counted at close.":
+            "Masuk ke rekening, bukan ke laci — tidak dihitung saat tutup kasir.",
+        "The provider moves the exact amount — nothing to count out.":
+            "Penyedia memindahkan jumlah persis — tidak ada yang perlu dihitung.",
         // Singular "Table"/"seat" are used to BUILD a picker label at runtime
         // ("Lantai 2 · Meja 1 · 4 kursi"). The DOM translator matches whole text
         // nodes, so a composed <option> can never be translated after the fact —

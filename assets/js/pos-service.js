@@ -69,12 +69,31 @@ import {
 // clear through 1030 on payout. Provider-agnostic on purpose — Midtrans and
 // Xendit later add a row here rather than a branch anywhere else
 // (docs/POS_IMPLEMENTATION_PLAN.md §11).
+// `settlement` and `tender` answer two DIFFERENT questions, and conflating them
+// was a silent money bug.
+//
+//   settlement — which ACCOUNT the money lands in. Cash and a bank transfer both
+//                land in 1000; QRIS and card sit with the acquirer in 1030 until
+//                payout. This drives the journal and must not change.
+//   tender     — whether physical notes crossed the counter INTO THIS DRAWER.
+//                Only cash does.
+//
+// Until 2026-09-01 the shift tally read `settlement` for "cash in the drawer",
+// so every bank transfer was counted as notes that ought to be in the till. The
+// blind count then came up short by exactly the transfers taken, and the
+// variance posted to 6700 Cash Over & Short as though the cashier had lost the
+// money. Nothing went red; the shift simply never reconciled.
 export const POS_PAYMENT_METHODS = [
-    { id: 'cash', label: 'Cash', settlement: 'cash' },
-    { id: 'qris', label: 'QRIS', settlement: 'clearing' },
-    { id: 'transfer', label: 'Bank transfer', settlement: 'cash' },
-    { id: 'card', label: 'Card', settlement: 'clearing' },
-    { id: 'other', label: 'Other', settlement: 'cash' }
+    { id: 'cash', label: 'Cash', settlement: 'cash', tender: 'cash' },
+    { id: 'qris', label: 'QRIS', settlement: 'clearing', tender: 'external' },
+    { id: 'transfer', label: 'Bank transfer', settlement: 'cash', tender: 'external' },
+    { id: 'card', label: 'Card', settlement: 'clearing', tender: 'external' },
+    // Deliberately `external`. "Other" is whatever is not one of the four above,
+    // and a drawer count is the wrong place to discover that assumption was
+    // generous — counting it as notes would make an unexplained shortfall, while
+    // not counting it makes an unexplained SURPLUS, which is the direction that
+    // gets investigated rather than absorbed.
+    { id: 'other', label: 'Other', settlement: 'cash', tender: 'external' }
 ];
 
 // Mixed onto DataService.prototype by db-service.js. Written as an object of
@@ -883,6 +902,15 @@ export const POS_METHODS = {
         return m ? m.settlement : 'cash';
     },
 
+    // Did notes cross the counter into this drawer? Only cash does.
+    // Unknown methods are treated as cash, matching _posSettlementFor: a method
+    // this build does not recognise is more likely an older cash row than a
+    // provider that did not exist yet.
+    _posTenderFor(method) {
+        const m = POS_PAYMENT_METHODS.find((x) => x.id === method);
+        return m ? (m.tender || 'cash') : 'cash';
+    },
+
     // Split an order's settled payments into the two accounts they land in.
     //
     // NON-CASH TENDER IS EXACT; CASH ABSORBS THE REMAINDER. Nobody overpays a
@@ -933,11 +961,41 @@ export const POS_METHODS = {
     // recorded covers the bill — paid is DERIVED, never asserted. Partial
     // payments accumulate; the order stays awaiting_payment until the balance
     // reaches zero.
-    async recordPosPayment(userId, orderId, { method = 'cash', amount, reference = null } = {}) {
+    // `amount` is what is APPLIED to the bill. `amountReceived` is what the
+    // customer physically handed over, which for cash can be more.
+    //
+    // ⚠️ They were the same field until 2026-09-01, and the difference is money.
+    // The till sent the whole tender as `amount`, so a 150.000 note against a
+    // 120.000 bill recorded `paid_amount: 150.000` — and `getPosShiftTally` sums
+    // exactly that, so the drawer was expected to hold the 30.000 that had
+    // already been handed back as change. Every over-tender made the close read
+    // SHORT by the change given, and the variance posted to 6700 as a loss.
+    //
+    // The ledger was never wrong: revenue posts from `total_amount`, not from
+    // the payments. Only the cash reconciliation was — which is the one thing
+    // the shift feature exists to do.
+    //
+    // `payments[]` has no `hasOnly` in firestore.rules (pos.md §7), so the three
+    // new fields needed no rules change and no deploy.
+    async recordPosPayment(userId, orderId, {
+        method = 'cash', amount, amountReceived = null, reference = null
+    } = {}) {
         const amt = Math.round(Number(amount) || 0);
         if (amt <= 0) throw new Error('Enter how much was received.');
         const methods = POS_PAYMENT_METHODS.map((m) => m.id);
         if (!methods.includes(method)) throw new Error('Pick how the customer paid.');
+        const tender = this._posTenderFor(method);
+        // Absent means "the tender was the applied amount" — every caller
+        // written before this existed, and every non-cash payment, where the
+        // provider moves the exact figure and no change is possible.
+        const received = amountReceived == null ? amt : Math.round(Number(amountReceived) || 0);
+        if (received < amt) throw new Error('The amount received is less than the amount being applied.');
+        if (tender !== 'cash' && received !== amt) {
+            // Nobody overpays a card terminal, and change is only ever given in
+            // cash. Silently accepting it would put a phantom change figure on
+            // the receipt and in the drawer count.
+            throw new Error('Change can only be given on a cash payment.');
+        }
 
         const order = await this.updatePosOrder(userId, orderId, (o) => {
             if (o.status === 'paid') throw new Error('This order is already fully paid.');
@@ -945,6 +1003,13 @@ export const POS_METHODS = {
             const payments = [...(o.payments || []), {
                 payment_id: `p${Date.now().toString(36)}`,
                 method, provider: 'manual', amount: amt,
+                // What crossed the counter, and what went back. Recorded rather
+                // than derived: the bill can be discounted or refunded later, so
+                // "what did this customer actually hand over" stops being
+                // recoverable from the totals the moment anything else moves.
+                tender,
+                amount_received: received,
+                change_given: Math.max(0, received - amt),
                 reference: this._nullableString(reference, 80),
                 status: 'settled',
                 received_at: Timestamp.fromDate(new Date()),
@@ -1106,15 +1171,16 @@ export const POS_METHODS = {
     async getPosShiftTally(userId, shiftId) {
         const orders = await this.getPosOrders(userId, { statuses: ['paid'], limitCount: 300 });
         const mine = orders.filter((o) => o.shift_id === shiftId);
-        const cashMethods = POS_PAYMENT_METHODS
-            .filter((m) => m.settlement === 'cash').map((m) => m.id);
+        // TENDER, not settlement. A bank transfer settles to the same account as
+        // cash and puts nothing in the drawer — counting it here made the blind
+        // count short by every transfer taken. See POS_PAYMENT_METHODS.
         let cash = 0; let nonCash = 0;
         const byMethod = {};
         mine.forEach((o) => {
             (o.payments || []).filter((p) => p.status === 'settled').forEach((p) => {
                 const amt = Number(p.amount) || 0;
                 byMethod[p.method] = (byMethod[p.method] || 0) + amt;
-                if (cashMethods.includes(p.method)) cash += amt; else nonCash += amt;
+                if (this._posTenderFor(p.method) === 'cash') cash += amt; else nonCash += amt;
             });
             // A refund hands cash back out of the same drawer.
             if (o.refund_transaction_id) cash -= Number(o.total_amount) || 0;

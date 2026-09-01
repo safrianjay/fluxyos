@@ -335,28 +335,34 @@ test.describe('The reservations board', () => {
     test('the booking dialog refuses a table that is already booked at that time', async ({ page }) => {
         await openTill(page);
         await openFloor(page);
-        await seedFloor(page, [booking({
-            starts_at: { toDate: () => new Date(Date.now() + 3 * 60 * 60000) }
-        })]);
+        // TOMORROW at 19:00, stated absolutely on both sides.
+        //
+        // It used to seed "now + 3 hours" and then set only the TIME, leaving
+        // the dialog on today. That is fine until 21:00, when now+3h lands
+        // tomorrow and the two are suddenly a day apart — the conflict correctly
+        // does not fire and the spec fails for a reason that is nowhere near
+        // what it is testing. Caught at 21:12; it would have been green again by
+        // morning, which is the worst kind of flake.
+        const target = await page.evaluate(() => {
+            const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            const p = (n) => String(n).padStart(2, '0');
+            d.setHours(19, 0, 0, 0);
+            return { key: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, ms: d.getTime() };
+        });
+        await seedFloor(page, [booking({ starts_at: { toDate: () => new Date(target.ms) } })]);
 
         await page.click('#nav-container [data-view="reservations"]');
         await page.click('#pos-res-new');
         const dialog = page.locator('#pos-res-modal');
         await expect(dialog).toBeVisible();
 
-        // Set the new booking to the same moment as the seeded one. The table
-        // list is REBUILT on every time change, because which tables are takeable
-        // is a question about a moment — a list computed once would be answering
-        // about whatever time the dialog happened to open with.
-        //
-        // Only the TIME needs setting: the dialog opens on today, and the seeded
-        // booking is three hours from now.
-        const time = await page.evaluate(() => {
-            const d = new Date(Date.now() + 3 * 60 * 60000);
-            const p = (n) => String(n).padStart(2, '0');
-            return `${p(d.getHours())}:${p(d.getMinutes())}`;
-        });
-        await dialog.locator('#pos-res-time').fill(time);
+        // Point the new booking at the same moment as the seeded one. The table
+        // list is REBUILT on every date or time change, because which tables are
+        // takeable is a question about a moment — a list computed once would be
+        // answering about whatever time the dialog happened to open with.
+        await dialog.locator('#pos-res-datefield [data-drp-trigger]').click();
+        await page.click(`[data-drp-day="${target.key}"]`);
+        await dialog.locator('#pos-res-time').fill('19:00');
         await dialog.locator('#pos-res-time').dispatchEvent('change');
 
         await expect(dialog.locator('#pos-res-table option', { hasText: 'A04' })).toBeDisabled();

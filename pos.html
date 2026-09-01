@@ -225,6 +225,12 @@
             font-size: 13px; font-weight: 500; color: #334155; cursor: pointer;
         }
         .pos-method.is-on { border-color: #0F172A; background: #0F172A; color: #fff; }
+        /* A disabled amount field still has to be READABLE — it is stating the
+           figure the cashier is about to charge. Greyed to say "not yours to
+           type", not greyed out of legibility. */
+        .pos-amount-input:disabled {
+            background: #F8FAFC; color: #475569; cursor: not-allowed;
+        }
         .pos-amount-input {
             width: 100%; min-height: 48px; padding: 0 14px; border: 1px solid #CBD5E1; border-radius: 10px;
             font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums;
@@ -716,6 +722,21 @@
             font-size: 24px; font-weight: 700; color: #15803D;
             font-variant-numeric: tabular-nums; letter-spacing: -0.025em;
         }
+        /* Exact money. Still stated — a cashier needs to be TOLD there is
+           nothing to give back, not left to infer it from a missing row — but
+           quieter, because green at 24px is the signal for "count this out of
+           the drawer" and there is nothing to count. */
+        .pos-change.is-zero { background: #F8FAFC; border-color: #E2E8F0; }
+        .pos-change.is-zero .pos-change-label { color: #64748B; }
+        .pos-change.is-zero .pos-change-value { color: #334155; }
+
+        /* ⚠️ The `hidden` ATTRIBUTE must beat a class that sets `display`.
+           `.pos-change` and `.pos-quick` are `display: flex`, and a class rule
+           outranks the UA stylesheet's `[hidden]` rule — so `el.hidden = true`
+           on either did nothing at all. The change box was therefore on screen
+           for every payment from the moment the dialog opened, showing an empty
+           value until there happened to be change to put in it. */
+        [hidden] { display: none !important; }
         .pos-btn-primary:disabled { opacity: .45; cursor: not-allowed; }
 
         /* The board is full width on this view, so it earns another column. */
