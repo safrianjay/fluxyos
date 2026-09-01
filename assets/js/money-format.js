@@ -42,11 +42,16 @@
     // ribu/juta/miliar; everything else uses K/M/B. Keeping IDR on 'id' is what
     // makes the compact formatters byte-identical to the inline ones they replaced.
     var CURRENCIES = {
-        IDR: { symbol: 'Rp', decimals: 0, minorPerUnit: 1,   locale: 'id-ID', label: 'Indonesian Rupiah', compact: 'id', shortName: 'Rupiah', unit: 'rupiah' },
-        PHP: { symbol: '₱',  decimals: 2, minorPerUnit: 100, locale: 'en-PH', label: 'Philippine Peso',   compact: 'en', shortName: 'Peso', unit: 'peso' },
-        SGD: { symbol: 'S$', decimals: 2, minorPerUnit: 100, locale: 'en-SG', label: 'Singapore Dollar',  compact: 'en', shortName: 'Singapore Dollar', unit: 'dollar' },
-        MYR: { symbol: 'RM', decimals: 2, minorPerUnit: 100, locale: 'ms-MY', label: 'Malaysian Ringgit', compact: 'en', shortName: 'Ringgit', unit: 'ringgit' },
-        USD: { symbol: '$',  decimals: 2, minorPerUnit: 100, locale: 'en-US', label: 'US Dollar',         compact: 'en', shortName: 'US Dollar', unit: 'dollar' }
+        // `notes` are the circulating BANKNOTES, in major units, ascending. They
+        // exist for the till: a cashier is handed notes, so "what could this
+        // person plausibly have given me" is a currency fact, not a POS one.
+        // Keeping them here is what stops the quick-cash buttons from being
+        // Indonesian in Manila. See cashSuggestions().
+        IDR: { symbol: 'Rp', decimals: 0, minorPerUnit: 1,   locale: 'id-ID', label: 'Indonesian Rupiah', compact: 'id', shortName: 'Rupiah', unit: 'rupiah', notes: [1000, 2000, 5000, 10000, 20000, 50000, 100000] },
+        PHP: { symbol: '₱',  decimals: 2, minorPerUnit: 100, locale: 'en-PH', label: 'Philippine Peso',   compact: 'en', shortName: 'Peso', unit: 'peso', notes: [20, 50, 100, 200, 500, 1000] },
+        SGD: { symbol: 'S$', decimals: 2, minorPerUnit: 100, locale: 'en-SG', label: 'Singapore Dollar',  compact: 'en', shortName: 'Singapore Dollar', unit: 'dollar', notes: [2, 5, 10, 50, 100] },
+        MYR: { symbol: 'RM', decimals: 2, minorPerUnit: 100, locale: 'ms-MY', label: 'Malaysian Ringgit', compact: 'en', shortName: 'Ringgit', unit: 'ringgit', notes: [1, 5, 10, 20, 50, 100] },
+        USD: { symbol: '$',  decimals: 2, minorPerUnit: 100, locale: 'en-US', label: 'US Dollar',         compact: 'en', shortName: 'US Dollar', unit: 'dollar', notes: [1, 5, 10, 20, 50, 100] }
     };
 
     // Invoice/bill FACE currencies. Mirrored by firestore.rules — widening this
@@ -367,6 +372,56 @@
     //     without complaint.
     //
     // Anything editable uses these two. Nothing formats money for an input by hand.
+    // What a customer plausibly hands over for a bill of `dueMinor`.
+    //
+    // Derived from the amount's own magnitude, never from a fixed list — a
+    // hardcoded [25000, 50000, 100000] is correct in Jakarta and absurd in
+    // Singapore, and that is exactly the class of bug the money seam exists to
+    // prevent (IDR is both the right answer and the fallback, so it looks fine
+    // on an Indonesian account either way).
+    //
+    // The ladder is 1-2-5 scaled to the bill: round up to a handy step, then the
+    // round figures above it. For Rp22.500 that yields 25.000 / 50.000 / 100.000;
+    // for $22.50 it yields 25 / 50 / 100 — the same shapes, because the shapes
+    // are a property of how people carry money, not of a country.
+    //
+    // Returns MINOR units, ascending, always strictly greater than the bill.
+    // "Exact" is offered separately by the caller — it is not a guess.
+    function cashSuggestions(dueMinor, currency, count) {
+        var c = cfg(currency || BASE);
+        var want = count || 3;
+        var due = Math.max(0, Math.round(Number(dueMinor) || 0));
+        if (!due) return [];
+        var per = c.minorPerUnit;
+        var dueMajor = due / per;
+        var magnitude = Math.pow(10, Math.floor(Math.log10(dueMajor)));
+        var smallestNote = (c.notes && c.notes[0]) || magnitude;
+        // Half a magnitude is the "handy" step (Rp5.000 on a Rp22.500 bill), but
+        // never finer than the smallest note in circulation — suggesting change
+        // nobody carries is worse than suggesting nothing.
+        var step = Math.max(magnitude / 2, smallestNote);
+
+        var roundUp = function (v, s) { return Math.ceil(v / s) * s; };
+        // A bill already on a round figure (RM45.00, $5.00) simply yields fewer
+        // suggestions, and that is correct: the plausible tenders really are 50
+        // and 100. Manufacturing a third chip invents an amount nobody hands
+        // over — $6 for a $5 bill — which costs the cashier a moment's thought
+        // for no gain.
+        var candidates = [roundUp(dueMajor, step)]
+            .concat([magnitude, magnitude * 2, magnitude * 5, magnitude * 10])
+            .concat(c.notes || []);
+
+        var out = [];
+        candidates
+            .filter(function (v) { return v > dueMajor; })
+            .sort(function (a, b) { return a - b; })
+            .forEach(function (v) {
+                var minor = Math.round(v * per);
+                if (out.indexOf(minor) === -1) out.push(minor);
+            });
+        return out.slice(0, want);
+    }
+
     function seedMoneyInput(minor) {
         var b = baseCurrency();
         return formatMoneyInput(String(fromMinor(Math.max(0, Number(minor) || 0), b)), b);
@@ -454,6 +509,7 @@
         baseCurrencyUnit: baseCurrencyUnit,
         currencyName: currencyName,
         paintCurrencyNames: paintCurrencyNames,
+        cashSuggestions: cashSuggestions,
         seedMoneyInput: seedMoneyInput,
         liveMoneyInput: liveMoneyInput,
         moneyInputMode: moneyInputMode,

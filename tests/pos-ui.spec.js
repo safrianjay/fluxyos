@@ -262,11 +262,11 @@ test.describe('Point of Sale', () => {
         let label = '';
         for (let i = 0; i < 6; i += 1) {
             label = (await primary.textContent() || '').trim();
-            if (/take payment|terima pembayaran/i.test(label)) break;
+            if (/pay bill|bayar tagihan/i.test(label)) break;
             await advance();
         }
         await expect(primary, `the order never reached awaiting_payment (stopped at "${label}")`)
-            .toHaveText(/take payment|terima pembayaran/i);
+            .toHaveText(/pay bill|bayar tagihan/i);
 
         // The receipt opens in a popup that prints itself. Caught and closed, or
         // it outlives the test and the run hangs on an extra page.
@@ -281,19 +281,19 @@ test.describe('Point of Sale', () => {
             // The drawer check comes FIRST. Without it a slow open meant the
             // loop pressed again through the drawer's own overlay, and the retry
             // failed on the thing it had already succeeded at.
-            if (await page.locator('#pos-drawer').count()) break;
-            await primary.click();                   // opens the payment drawer
+            if (await page.locator('#pos-pay-modal').count()) break;
+            await primary.click();                   // opens the payment modal
             try {
                 await page.locator('#pos-pay-amount').waitFor({ state: 'visible', timeout: 4000 });
                 break;
             } catch { /* press swallowed while busy — press again */ }
         }
         await expect(page.locator('#pos-pay-amount'),
-            'the payment drawer never opened').toBeVisible({ timeout: 15000 });
+            'the payment modal never opened').toBeVisible({ timeout: 15000 });
         // Cash, and the amount is prefilled with the exact due — this spec is
         // about what happens AFTER payment, not about tender arithmetic.
         await page.locator('#pos-method-row [data-method="cash"]').click();
-        await page.locator('button[type="submit"][form="pos-drawer-form"]').click();
+        await page.locator('#pos-pay-submit').click();
 
         await expect(page.locator('#pos-order-status')).toHaveText(/paid|lunas/i, { timeout: 30000 });
         await receipt;

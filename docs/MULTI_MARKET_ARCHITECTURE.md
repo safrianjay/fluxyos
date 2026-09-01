@@ -80,6 +80,25 @@ editable amount**: `.seed(el, minor)` to fill, `.attach(el)` / `.format(el)`
 while typing. It also preserves caret position, counted in digits. Never
 hand-roll; never `\D`-strip.
 
+### 2d. Banknotes are a currency fact, so they live in the seam
+
+The till's quick-cash buttons ("the customer handed me Rp50.000") need to know
+what notes exist. That is a property of the currency, not of the POS, so
+`CURRENCIES[x].notes` carries the circulating banknotes in major units and
+`cashSuggestions(dueMinor, currency, count)` derives the offers.
+
+The suggestions are computed from the bill's own magnitude on a 1-2-5 ladder,
+never from a fixed list — a hardcoded `[25000, 50000, 100000]` is right in
+Jakarta, absurd in Singapore, and **invisible on an Indonesian account**, which
+is the failure mode this whole document exists for. The same input shape
+produces Rp25.000 / Rp50.000 / Rp100.000 on a Rp22.500 bill and $25 / $50 / $100
+on a $22.50 one, because the shapes are a property of how people carry money
+rather than of a country.
+
+A bill already on a round figure yields FEWER suggestions, deliberately: for a
+$5.00 bill the plausible tenders are $10 and $20, and manufacturing a third chip
+would offer $6 — an amount nobody hands over.
+
 ### 2b. Locale is not language
 
 `toLocaleString('id-ID')` was hardcoded in **73 places across 22 files**, so a

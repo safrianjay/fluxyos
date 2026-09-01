@@ -232,6 +232,43 @@ Thresholds live in `SLA` in `assets/js/pos.js`; a terminal status (`paid`,
 `void`) has none, because a settled order is waiting on nobody and a permanently
 amber board teaches staff to ignore the colour.
 
+### The board's CTA is the next step, never a later one
+
+Each order card carries exactly ONE action, taken from `STATUS[status].action`:
+open → *Process to Kitchen*, sent → *Mark as Served*, served → *Request Bill*,
+awaiting_payment → *Pay Bill*, paid → *Print receipt*, void → nothing.
+
+It used to read "Pay Bills" on anything carrying a total, including an order
+still being typed at the till. Naming a step three moves away invites the
+cashier to skip the ones in between, and on a till that means a dish leaves the
+pass unrecorded.
+
+⚠️ **There is no `ready` state** between `sent` and `served`. A kitchen that
+wants "Mark as Ready" and then "Serve" as two presses needs one, and that is a
+schema change: the status enum is enforced in `firestore.rules`, so it needs a
+deploy AND a seventh tab — orders in a status no tab matches are invisible.
+Deliberately deferred.
+
+### Payment is a modal, and every figure goes through the money seam
+
+`openPaymentModal` uses the shared `.pos-modal-layer` (blurred navy scrim, 16px
+card, pinned footer) rather than the side drawer: taking money is the one moment
+the cashier must not be doing anything else.
+
+Cash specifics: the bill is stated once and large, the tender is entered against
+locale-correct formatting, CHANGE is the loudest thing after the bill (it is
+what physically leaves the drawer), and a tender below the bill cannot be
+confirmed as a completed payment.
+
+**A short tender is still recordable as an explicit part payment**, and the
+button says so. Blocking it outright would delete split tender — cash + QRIS on
+one bill — which `_posSettlementAmounts` supports and which produced a silent
+money bug on 2026-08-30 when it was got wrong. The guard the board needs is
+"this must not LOOK settled", not "this must be impossible".
+
+Quick-cash amounts come from `FluxyMoney.cashSuggestions`, which reads the
+currency's own banknotes — see `MULTI_MARKET_ARCHITECTURE.md` §2d.
+
 ### `channel` is the connector seam
 
 `pos_orders` is a **normalized** order document; the first-party till is merely

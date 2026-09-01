@@ -182,10 +182,13 @@ function setView(name) {
     if (name === 'tables') renderTables();
     if (name === 'orders') renderOrderLists();
     if (name === 'shift')  { renderShift(); renderShiftHistory(); }
-    // Orders KEEPS the panel: clicking a card opens the order there and the
-    // board stays visible behind it, which is the whole interaction. Only Shift
-    // goes full width — it has no order to work on.
-    document.getElementById('pos-shell')?.classList.toggle('is-wide', name === 'shift');
+    // Orders goes full width too, now that the cards carry their own detail.
+    //
+    // The panel was a second copy of what the card already shows, costing the
+    // board ~380px — a third of its width — to duplicate it. With the cards
+    // expanded there is nothing left for it to add, and the grid uses the space
+    // for another column of orders instead.
+    document.getElementById('pos-shell')?.classList.toggle('is-wide', name === 'shift' || name === 'orders');
     closeSideNav();
 
     // A scanner types into whatever has focus, so at a counter the search box
@@ -355,14 +358,24 @@ async function once(fn) {
 // ── Status vocabulary ────────────────────────────────────────────────────────
 // Status is carried by TEXT everywhere. The colour is a second channel, never
 // the only one.
+// `action` is the NEXT STEP, named as the thing that is about to happen — it is
+// the board's one instruction to the person reading it. Never "Pay Bill" on an
+// order still in the kitchen: a button that names a later step invites the
+// cashier to skip the one in front of them, and on a till that means a dish
+// leaves the pass unrecorded.
+//
+// ⚠️ There is no `ready` state between `sent` and `served`. A kitchen that wants
+// "Mark as Ready" then "Serve" as two presses needs one, and that is a schema
+// change: the status enum lives in firestore.rules and would need a deploy AND
+// a seventh tab, or orders in it belong to no tab at all. Deliberately deferred.
 const STATUS = {
-    open:             { label: 'Open',            cls: 'fluxy-status-neutral', next: 'sent',              action: 'Send to kitchen' },
-    submitted:        { label: 'New QR order',    cls: 'fluxy-status-info',    next: 'sent',              action: 'Confirm order' },
-    sent:             { label: 'In the kitchen',  cls: 'fluxy-status-info',    next: 'served',            action: 'Mark served' },
-    served:           { label: 'Served',          cls: 'fluxy-status-success', next: 'awaiting_payment',  action: 'Request bill' },
-    awaiting_payment: { label: 'Awaiting payment', cls: 'fluxy-status-warning', next: null,               action: 'Take payment' },
-    paid:             { label: 'Paid',            cls: 'fluxy-status-success', next: null,                action: 'Close' },
-    void:             { label: 'Voided',          cls: 'fluxy-status-danger',  next: null,                action: 'Close' }
+    open:             { label: 'Open',             cls: 'fluxy-status-neutral', next: 'sent',             action: 'Process to Kitchen' },
+    submitted:        { label: 'New QR order',     cls: 'fluxy-status-info',    next: 'sent',             action: 'Confirm Order' },
+    sent:             { label: 'In the kitchen',   cls: 'fluxy-status-info',    next: 'served',           action: 'Mark as Served' },
+    served:           { label: 'Served',           cls: 'fluxy-status-success', next: 'awaiting_payment', action: 'Request Bill' },
+    awaiting_payment: { label: 'Awaiting payment', cls: 'fluxy-status-warning', next: null,               action: 'Pay Bill' },
+    paid:             { label: 'Paid',             cls: 'fluxy-status-success', next: null,               action: null },
+    void:             { label: 'Voided',           cls: 'fluxy-status-danger',  next: null,               action: null }
 };
 
 // ── Outlets ──────────────────────────────────────────────────────────────────
@@ -907,11 +920,22 @@ const SLA = {
     void: null
 };
 
-/** 'ok' | 'warn' | 'late' | null (null = not waiting on anyone). */
+// Past this, an order is not late — it is ABANDONED, and saying "late" about it
+// is how a board ends up entirely red. Observed on the real till: open carts from
+// the previous day rendered "23h 1m LATE" beside a dish that was genuinely six
+// minutes over, and the two were indistinguishable. A screen where everything
+// shouts has stopped saying anything.
+//
+// Two hours is past any service window and comfortably short of a trading day,
+// so nothing in a live service can reach it by accident.
+const STALE_MINS = 120;
+
+/** 'ok' | 'warn' | 'late' | 'stale' | null (null = waiting on nobody). */
 function waitLevel(o, now = Date.now()) {
     const sla = SLA[o.status];
     if (!sla) return null;
     const mins = waitMs(o, now) / 60000;
+    if (mins >= STALE_MINS) return 'stale';
     if (mins >= sla.late) return 'late';
     if (mins >= sla.warn) return 'warn';
     return 'ok';
@@ -932,7 +956,12 @@ function fmtWait(ms) {
 function urgency(o, now = Date.now()) {
     const sla = SLA[o.status];
     if (!sla) return -1;
-    return (waitMs(o, now) / 60000) / sla.late;
+    const mins = waitMs(o, now) / 60000;
+    // A stale cart ranks BELOW everything live. Left on the same scale a
+    // day-old order scores ~200x and permanently owns the top of the board,
+    // burying the dish that is actually six minutes over.
+    if (mins >= STALE_MINS) return -0.5;
+    return mins / sla.late;
 }
 
 const ORDER_SORTS = {
@@ -1023,6 +1052,10 @@ function orderShort(o) {
     return seq ? `#${seq}` : 'Order';
 }
 
+// The word that goes beside the figure. `ok` gets none: a number with no label
+// is the quiet state, which is most of the board most of the time.
+const WAIT_TAG = { warn: 'slow', late: 'late', stale: 'stale' };
+
 // The number the kitchen actually scans for.
 //
 // Text first, colour second — "18m · late" is legible to a colour-blind cook and
@@ -1036,10 +1069,9 @@ function waitChip(o, now = Date.now()) {
     const since = statusSince(o);
     return `<span class="pos-wait is-${lvl}" data-wait-since="${since ? since.getTime() : ''}"
                   data-wait-status="${esc(o.status || '')}"
-                  title="Waiting in this status since ${since ? esc(since.toLocaleTimeString(window.FluxyMoney.baseLocale(), { hour: '2-digit', minute: '2-digit' })) : ''}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                  title="In this status since ${since ? esc(since.toLocaleTimeString(window.FluxyMoney.baseLocale(), { hour: '2-digit', minute: '2-digit' })) : ''}">
         <span class="pos-wait-num">${esc(fmtWait(waitMs(o, now)))}</span>
-        ${lvl === 'ok' ? '' : `<span class="pos-wait-tag">${lvl === 'late' ? 'late' : 'slow'}</span>`}
+        ${WAIT_TAG[lvl] ? `<span class="pos-wait-tag">${WAIT_TAG[lvl]}</span>` : ''}
     </span>`;
 }
 
@@ -1066,18 +1098,19 @@ function tickWaits() {
         if (!sla) return;
         const ms = Math.max(0, now - since);
         const mins = ms / 60000;
-        const lvl = mins >= sla.late ? 'late' : (mins >= sla.warn ? 'warn' : 'ok');
+        const lvl = mins >= STALE_MINS ? 'stale'
+            : (mins >= sla.late ? 'late' : (mins >= sla.warn ? 'warn' : 'ok'));
         const num = el.querySelector('.pos-wait-num');
         if (num) num.textContent = fmtWait(ms);
-        el.classList.remove('is-ok', 'is-warn', 'is-late');
+        el.classList.remove('is-ok', 'is-warn', 'is-late', 'is-stale');
         el.classList.add(`is-${lvl}`);
         const tag = el.querySelector('.pos-wait-tag');
-        if (lvl === 'ok') { if (tag) tag.remove(); }
-        else if (tag) { tag.textContent = lvl === 'late' ? 'late' : 'slow'; }
+        if (!WAIT_TAG[lvl]) { if (tag) tag.remove(); }
+        else if (tag) { tag.textContent = WAIT_TAG[lvl]; }
         else {
             const span = document.createElement('span');
             span.className = 'pos-wait-tag';
-            span.textContent = lvl === 'late' ? 'late' : 'slow';
+            span.textContent = WAIT_TAG[lvl];
             el.appendChild(span);
         }
         el.closest('.pos-ocard')?.classList.toggle('is-late', lvl === 'late');
@@ -1277,12 +1310,39 @@ window.__posSeedBoard = (rows) => {
         const w = c.querySelector('.pos-wait');
         return {
             status: c.dataset.status,
-            level: w ? (String(w.className).match(/is-(ok|warn|late)/) || [])[1] || null : null,
+            level: w ? (String(w.className).match(/is-(ok|warn|late|stale)/) || [])[1] || null : null,
             text: w ? w.textContent.replace(/\s+/g, ' ').trim() : null,
-            flagged: c.classList.contains('is-late')
+            flagged: c.classList.contains('is-late'),
+            // The card's actions, returned with everything else so a caller
+            // never has to make a SECOND round-trip to read them — the live
+            // watcher repaints from real data in between, and the assertion
+            // then describes the real board instead of the seeded one.
+            actions: [...c.querySelectorAll('.pos-ocard-btn')].map((b) => b.textContent.trim())
         };
     });
 };
+
+// The card's ONE action: whatever happens to this order next.
+//
+// It used to read "Pay Bills" on anything with a total, including an order still
+// being typed at the till — naming a step three moves away and inviting the
+// cashier to skip the ones in between. A settled order gets a receipt, because
+// that is genuinely the only thing left to do with it, and a voided one gets
+// nothing at all.
+function cardAction(o) {
+    const st = STATUS[o.status] || STATUS.open;
+    if (o.status === 'paid') {
+        return `<div class="pos-ocard-actions">
+            <button type="button" class="pos-ocard-btn" data-print="${esc(o.id)}">Print receipt</button>
+        </div>`;
+    }
+    if (!st.action) return '';
+    // `data-advance` for a status move, `data-pay` for the one that opens money.
+    const attr = o.status === 'awaiting_payment' ? 'data-pay' : 'data-advance';
+    return `<div class="pos-ocard-actions">
+        <button type="button" class="pos-ocard-btn is-primary is-only" ${attr}="${esc(o.id)}">${esc(st.action)}</button>
+    </div>`;
+}
 
 function renderTabCounts() {
     const ov = state.overview || {};
@@ -1304,13 +1364,7 @@ function renderTabCounts() {
 function renderOrderLists() {
     const grid = $('pos-orders-grid');
     const empty = $('pos-orders-empty');
-    const dateEl = $('pos-orders-date');
     if (!grid || !empty) return;
-
-    if (dateEl) {
-        dateEl.textContent = new Date().toLocaleDateString(window.FluxyMoney.baseLocale(),
-            { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
-    }
 
     renderTabCounts();
 
@@ -1329,10 +1383,11 @@ function renderOrderLists() {
     empty.classList.add('hidden');
     grid.classList.remove('hidden');
 
-    // Three or four lines, then a count. A card whose height is set by its
-    // longest order breaks the grid rhythm and buries the total and the actions
-    // below the fold of the card.
-    const MAX_LINES = 3;
+    // The card is the detail view now — the side panel is gone from this board,
+    // so truncating to three lines would put the information behind a click that
+    // no longer leads anywhere. A very long order still caps, because one
+    // 30-line card would set the height of its whole grid row.
+    const MAX_LINES = 8;
 
     const now = Date.now();
     grid.innerHTML = rows.map((o) => {
@@ -1381,21 +1436,24 @@ function renderOrderLists() {
 
             <div class="pos-ocard-total"><span>Total</span><span>${rp(o.total_amount)}</span></div>
 
-            <div class="pos-ocard-actions">
-                <button type="button" class="pos-ocard-btn" data-see="${esc(o.id)}">See Details</button>
-                ${payable
-                    ? `<button type="button" class="pos-ocard-btn is-primary" data-pay="${esc(o.id)}">Pay Bills</button>`
-                    : (o.status === 'paid'
-                        ? `<button type="button" class="pos-ocard-btn is-primary" data-print="${esc(o.id)}">Receipt</button>`
-                        : '')}
-            </div>
+            ${cardAction(o)}
         </article>`;
     }).join('');
 
     // Clicking the card — anywhere but a button — opens it in the SHARED panel.
     // The list stays put behind it: navigating away from a board a cashier is
     // working through is the thing this view exists to avoid.
-    const open = (id) => { selectOrder(id); renderOrderLists(); };
+    // Opening a card takes the order to the TILL, where the full panel is.
+    //
+    // The board hides that panel — the cards carry their own detail now — but
+    // "hidden" is not the same as "gone": Refund and Reprint live there and
+    // nowhere else, so selecting a paid card without switching view left them
+    // unreachable. That is precisely the dead end the refund spec exists to
+    // prevent, and removing the panel re-created it.
+    //
+    // The card's own CTA is unaffected: it stops the event, so the next step is
+    // still one press from the board.
+    const open = (id) => { selectOrder(id); setView('till'); };
     grid.querySelectorAll('[data-order-card]').forEach((card) => {
         card.addEventListener('click', (e) => {
             if (e.target.closest('button')) return;
@@ -1407,10 +1465,21 @@ function renderOrderLists() {
             open(card.dataset.orderCard);
         });
     });
-    grid.querySelectorAll('[data-see]').forEach((b) =>
-        b.addEventListener('click', () => open(b.dataset.see)));
+    // The next step, taken from the board without opening anything.
+    grid.querySelectorAll('[data-advance]').forEach((b) =>
+        b.addEventListener('click', (e) => {
+            e.stopPropagation();                    // the card itself is clickable
+            once(() => advanceOrderById(b.dataset.advance));
+        }));
     grid.querySelectorAll('[data-pay]').forEach((b) =>
-        b.addEventListener('click', () => { selectOrder(b.dataset.pay); openPaymentDrawer(); }));
+        b.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            // AWAITED. `selectOrder` is async, and the old code opened the
+            // payment sheet in the same tick — so it could read `state.order`
+            // before the order it was about to charge had been loaded.
+            selectOrder(b.dataset.pay);
+            openPaymentModal();
+        }));
     grid.querySelectorAll('[data-print]').forEach((b) =>
         b.addEventListener('click', () => {
             const o = visibleOrders().find((x) => x.id === b.dataset.print);
@@ -2281,6 +2350,30 @@ function selectOrder(orderId) {
     renderMenu();
 }
 
+// Move ONE order forward from the board, without pulling it into the panel.
+//
+// The board is the working surface now: a cook pressing "Mark as Served" wants
+// that order to move, not to be navigated into an editor. `advance()` stays for
+// the till, where the order on screen IS the subject.
+async function advanceOrderById(orderId) {
+    const ov = state.overview || {};
+    const o = (ov.activeOrders || []).concat(ov.paidToday || []).find((x) => x.id === orderId);
+    if (!o) return;
+    const next = posProfile().ladder[o.status];
+    if (!next) return;
+    try {
+        const updated = await ds.setPosOrderStatus(state.uid, orderId, next);
+        // Patch in memory and repaint straight away. Waiting for the refresh
+        // leaves the card sitting on its old status for a round trip, which on a
+        // busy board reads as "the press did nothing" and gets pressed again.
+        const patch = (list) => (list || []).map((x) => (x.id === orderId ? { ...x, ...updated } : x));
+        state.overview = { ...ov, activeOrders: patch(ov.activeOrders), paidToday: patch(ov.paidToday) };
+        if (state.orderId === orderId) { state.order = updated; renderOrder(); }
+        renderOrderLists();
+        refresh({ keepOrder: true }).catch(() => {});
+    } catch (err) { fail(err, 'Could not update that order.'); }
+}
+
 async function advance() {
     const o = state.order;
     if (!o) return;
@@ -2289,12 +2382,12 @@ async function advance() {
         renderOrder(); renderMenu();
         return;
     }
-    if (o.status === 'awaiting_payment') return openPaymentDrawer();
+    if (o.status === 'awaiting_payment') return openPaymentModal();
     // The ladder is PROFILE data, not a property of the status. A pay-first
     // profile has no next step, and "no next step" here means charge — never
     // "do nothing", which is what a bare `return` would have made it.
     const next = posProfile().ladder[o.status];
-    if (!next) return openPaymentDrawer();
+    if (!next) return openPaymentModal();
     try {
         state.order = await ds.setPosOrderStatus(state.uid, state.orderId, next);
         renderOrder();
@@ -2349,86 +2442,223 @@ function drawer({ title, subtitle, body, submitLabel, onSubmit, danger = false }
     return el;
 }
 
-function openPaymentDrawer() {
+// ── Take payment ────────────────────────────────────────────────────────────
+//
+// A centre-screen modal, not the side drawer it used to be. Taking money is the
+// one moment the cashier must not be doing anything else, and it is the step
+// with a customer standing over it — the same reason Create Order is a modal.
+// Uses the dashboard's overlay tokens (blurred navy scrim, 16px card, pinned
+// footer) so it is the same component the rest of the app uses.
+//
+// EVERY figure goes through window.FluxyMoney. Nothing here may assume rupiah:
+// the quick-cash amounts come from the currency's own banknotes, the input
+// parses in the workspace's locale, and the placeholder is built from the
+// currency name rather than written out per country. IDR is both the correct
+// answer and the fallback, so a hardcoded assumption is invisible on an
+// Indonesian account and wrong everywhere else.
+function openPaymentModal() {
     const o = state.order;
+    if (!o) return;
+    const M = window.FluxyMoney;
+    const cur = M.baseCurrency();
     const due = Math.max(0, Number(o.total_amount) - Number(o.paid_amount || 0));
     const methods = DataService.POS_PAYMENT_METHODS;
     let method = 'cash';
+    let received = due;                       // exact is the commonest tender
 
-    const d = drawer({
-        title: 'Take payment',
-        subtitle: `${o.table_label ? `Table ${o.table_label}` : 'Takeaway'} · ${rp(due)} due`,
-        submitLabel: 'Record payment',
-        body: `
-            <div>
-                <label class="block text-[12px] font-semibold text-slate-700 mb-2">How did they pay?</label>
-                <div class="pos-methods" id="pos-method-row">
-                    ${methods.map((m) => `<button type="button" class="pos-method${m.id === 'cash' ? ' is-on' : ''}" data-method="${m.id}">${esc(m.label)}</button>`).join('')}
+    document.getElementById('pos-pay-modal')?.remove();
+    const el = document.createElement('div');
+    el.id = 'pos-pay-modal';
+    el.className = 'pos-modal-layer';
+    el.innerHTML = `
+        <div class="pos-modal-backdrop" data-close></div>
+        <div class="pos-modal pos-pay" role="dialog" aria-modal="true" aria-labelledby="pos-pay-title">
+            <div class="pos-modal-head">
+                <div>
+                    <h2 class="pos-modal-title" id="pos-pay-title">Take payment</h2>
+                    <p class="pos-modal-sub">${esc(o.table_label ? `Table ${o.table_label}` : 'Takeaway')} · ${esc(orderShort(o))}</p>
                 </div>
-                <p class="text-[11px] text-slate-500 mt-2" id="pos-settle-note"></p>
+                <button type="button" class="pos-modal-close" data-close aria-label="Close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18 18 6M6 6l12 12"/></svg>
+                </button>
             </div>
-            <div>
-                <label class="block text-[12px] font-semibold text-slate-700 mb-2" for="pos-pay-amount">Amount received</label>
-                <input id="pos-pay-amount" name="amount" inputmode="numeric" class="pos-amount-input" value="${window.FluxyMoney.formatMoneyInput(window.FluxyMoney.fromMinor(due, window.FluxyMoney.baseCurrency()), window.FluxyMoney.baseCurrency())}" autocomplete="off">
-                <p class="text-[11px] text-slate-500 mt-2" id="pos-change-note"></p>
+
+            <form class="pos-modal-body" id="pos-pay-form">
+                <!-- The bill, stated once and large. Everything below is in
+                     service of matching this number. -->
+                <div class="pos-pay-due">
+                    <span class="pos-pay-due-label">Amount due</span>
+                    <span class="pos-pay-due-value" id="pos-pay-due">${esc(rp(due))}</span>
+                </div>
+
+                <div class="pos-field">
+                    <label>Payment method</label>
+                    <div class="pos-methods" id="pos-method-row">
+                        ${methods.map((m) => `<button type="button" class="pos-method${m.id === 'cash' ? ' is-on' : ''}" data-method="${esc(m.id)}">${esc(m.label)}</button>`).join('')}
+                    </div>
+                    <p class="pos-hint" id="pos-settle-note"></p>
+                </div>
+
+                <div id="pos-cash-block">
+                    <div class="pos-field">
+                        <label for="pos-pay-amount">Amount received</label>
+                        <!-- The symbol is rendered beside the field rather than
+                             typed into it: the input carries digits only, so the
+                             parser never has to strip a currency mark that
+                             differs per market (Rp / ₱ / S$ / RM / $). -->
+                        <div class="pos-amount-wrap">
+                            <span class="pos-amount-cur" aria-hidden="true">${esc(M.baseSymbol())}</span>
+                            <input id="pos-pay-amount" name="amount" class="pos-amount-input" autocomplete="off"
+                                   inputmode="${esc(M.moneyInputMode())}"
+                                   placeholder="Enter amount received"
+                                   value="${esc(M.formatMoneyInput(M.fromMinor(due, cur), cur))}">
+                        </div>
+                    </div>
+                    <!-- What the customer plausibly hands over, derived from the
+                         bill and this currency's own banknotes. -->
+                    <div class="pos-quick" id="pos-quick"></div>
+                    <div class="pos-change" id="pos-change" hidden>
+                        <span class="pos-change-label">Change</span>
+                        <span class="pos-change-value" id="pos-change-value"></span>
+                    </div>
+                    <p class="pos-hint is-warn" id="pos-short" hidden></p>
+                </div>
+
+                <div class="pos-field">
+                    <label for="pos-pay-ref">Reference <span class="opt">(optional)</span></label>
+                    <input id="pos-pay-ref" name="reference" placeholder="Transfer note, QRIS ref…" autocomplete="off">
+                </div>
+            </form>
+
+            <div class="pos-modal-foot">
+                <button type="button" class="pos-btn-ghost" data-close>Cancel</button>
+                <button type="submit" form="pos-pay-form" class="pos-btn-primary" id="pos-pay-submit">Confirm payment</button>
             </div>
-            <div>
-                <label class="block text-[12px] font-semibold text-slate-700 mb-2" for="pos-pay-ref">Reference <span class="font-normal text-slate-400">(optional)</span></label>
-                <input id="pos-pay-ref" name="reference" class="w-full min-h-[44px] px-3 border border-slate-300 rounded-lg text-[14px]" placeholder="Transfer note, QRIS ref…">
-            </div>`,
-        onSubmit: async (fd) => {
-            const amount = window.FluxyMoney.toMinor(fd.get('amount'), window.FluxyMoney.baseCurrency());
-            const order = await ds.recordPosPayment(state.uid, state.orderId, {
-                method, amount, reference: fd.get('reference')
-            });
-            state.order = order;
-            if (order.status === 'paid') {
-                toast(`Paid — ${rp(order.total_amount)} recorded.`);
-                // The receipt is asked for at the counter, in the second after
-                // payment — not from a history screen later.
-                openReceipt(order);
-                // The order STAYS on screen. Clearing it immediately was how the
-                // Refund button became unreachable: a paid order leaves the table
-                // grid, so the panel was the only way back to it and the panel
-                // had just emptied itself. The cashier dismisses it with Close.
-            } else {
-                toast(`${rp(amount)} recorded. ${rp(Number(order.total_amount) - Number(order.paid_amount))} still due.`);
-            }
-            renderOrder(); renderMenu();
-            await refresh();
-        }
+        </div>`;
+    document.body.appendChild(el);
+
+    const $$ = (id) => el.querySelector('#' + id);
+    const amt = $$('pos-pay-amount');
+    const close = () => el.remove();
+    el.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', close));
+    document.addEventListener('keydown', function esc2(e) {
+        if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc2); }
     });
 
-    const settleNote = () => {
-        const m = methods.find((x) => x.id === method);
-        // Say where the money actually goes. A cashier does not need the account
-        // number, but "not in the drawer until the payout" is operationally real.
-        $('pos-settle-note').textContent = m.settlement === 'clearing'
-            ? 'Settles when the provider pays out — not cash in the drawer today.'
-            : 'Counts as cash in the drawer today.';
+    const isCash = () => (methods.find((m) => m.id === method) || {}).settlement !== 'clearing';
+
+    // Redraws change, shortfall and the submit button from `received`.
+    const sync = () => {
+        const cash = isCash();
+        $$('pos-cash-block').hidden = !cash;
+        const submit = $$('pos-pay-submit');
+
+        if (!cash) {
+            // A card or QRIS is tendered for the exact bill by definition — the
+            // provider moves the amount, nobody counts change out of a drawer.
+            received = due;
+            $$('pos-change').hidden = true;
+            $$('pos-short').hidden = true;
+            submit.disabled = false;
+            submit.textContent = 'Confirm payment';
+            return;
+        }
+
+        const change = received - due;
+        $$('pos-change').hidden = !(change > 0);
+        if (change > 0) $$('pos-change-value').textContent = rp(change);
+
+        const short = received > 0 && received < due;
+        $$('pos-short').hidden = !short;
+        if (short) $$('pos-short').textContent = `${rp(due - received)} short of the bill.`;
+
+        // Cannot COMPLETE on less than the bill — the guard the brief asks for.
+        // A genuine part payment is still reachable: the button says so plainly
+        // rather than pretending the order is settled. Split tender is real
+        // (cash + QRIS on one bill) and silently removing it would be a money
+        // bug of exactly the kind this till has already had.
+        submit.disabled = received <= 0;
+        submit.textContent = short ? 'Record part payment' : 'Confirm payment';
+        submit.classList.toggle('is-partial', short);
     };
-    const changeNote = () => {
-        const v = window.FluxyMoney.toMinor($('pos-pay-amount').value, window.FluxyMoney.baseCurrency());
-        const el = $('pos-change-note');
-        if (v > due) el.innerHTML = `<strong>Change: ${rp(v - due)}</strong>`;
-        else if (v > 0 && v < due) el.textContent = `Part payment — ${rp(due - v)} would still be due.`;
-        else el.textContent = '';
+
+    const setReceived = (minor) => {
+        received = Math.max(0, Math.round(minor || 0));
+        amt.value = received ? M.formatMoneyInput(M.fromMinor(received, cur), cur) : '';
+        renderQuick();
+        sync();
     };
-    document.getElementById('pos-method-row').addEventListener('click', (e) => {
+
+    function renderQuick() {
+        const host = $$('pos-quick');
+        const picks = M.cashSuggestions(due, cur, 3);
+        host.innerHTML = [
+            `<button type="button" class="pos-quick-btn${received === due ? ' is-on' : ''}" data-cash="${due}">Exact</button>`
+        ].concat(picks.map((v) =>
+            `<button type="button" class="pos-quick-btn${received === v ? ' is-on' : ''}" data-cash="${v}">${esc(rp(v))}</button>`
+        )).join('');
+    }
+
+    $$('pos-quick').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-cash]');
+        if (!b) return;
+        setReceived(Number(b.dataset.cash));
+        amt.focus();
+    });
+
+    $$('pos-method-row').addEventListener('click', (e) => {
         const b = e.target.closest('[data-method]');
         if (!b) return;
         method = b.dataset.method;
-        document.querySelectorAll('.pos-method').forEach((x) => x.classList.toggle('is-on', x === b));
-        settleNote();
+        el.querySelectorAll('.pos-method').forEach((x) => x.classList.toggle('is-on', x === b));
+        const m = methods.find((x) => x.id === method);
+        $$('pos-settle-note').textContent = m.settlement === 'clearing'
+            ? 'Settles when the provider pays out — not cash in the drawer today.'
+            : 'Counts as cash in the drawer today.';
+        if (!isCash()) setReceived(due); else sync();
     });
-    const amt = $('pos-pay-amount');
+
     amt.addEventListener('input', () => {
         const digits = amt.value.replace(/\D/g, '');
-        amt.value = digits ? window.FluxyMoney.liveMoneyInput(amt.value) : '';
-        changeNote();
+        amt.value = digits ? M.liveMoneyInput(amt.value) : '';
+        received = M.toMinor(amt.value, cur);
+        renderQuick();
+        sync();
     });
-    settleNote(); changeNote();
-    return d;
+
+    $$('pos-pay-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        if ($$('pos-pay-submit').disabled) return;
+        once(async () => {
+            const submit = $$('pos-pay-submit');
+            submit.disabled = true;
+            try {
+                const order = await ds.recordPosPayment(state.uid, state.orderId, {
+                    method, amount: received, reference: $$('pos-pay-ref').value
+                });
+                state.order = order;
+                close();
+                if (order.status === 'paid') {
+                    toast(`Paid — ${rp(order.total_amount)} recorded.`);
+                    // Asked for at the counter, in the second after payment.
+                    openReceipt(order);
+                } else {
+                    toast(`${rp(received)} recorded. ${rp(Number(order.total_amount) - Number(order.paid_amount))} still due.`);
+                }
+                renderOrder(); renderMenu();
+                await refresh({ keepOrder: true });
+            } catch (err) {
+                submit.disabled = false;
+                fail(err, 'Could not record that payment.');
+            }
+        });
+    });
+
+    // Seed the settle note and the first paint.
+    el.querySelector('.pos-method.is-on')?.click();
+    setReceived(due);
+    setTimeout(() => amt.focus(), 40);
+    return el;
 }
 
 function openDiscountDrawer(lineId = null) {

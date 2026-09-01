@@ -96,7 +96,9 @@ test('a retail workspace gets a pay-first counter, and the money is unchanged', 
 
         await page.locator('#pos-method-row [data-method="cash"]').click();
         const receipt = page.waitForEvent('popup', { timeout: 30000 }).then((p) => p.close()).catch(() => {});
-        await page.locator('button[type="submit"][form="pos-drawer-form"]').click();
+        // Payment is a centre-screen MODAL now, not the side drawer: taking
+        // money is the one moment the cashier must not be doing anything else.
+        await page.locator('#pos-pay-submit').click();
         await expect(page.locator('#pos-order-status')).toHaveText(/paid|lunas/i, { timeout: 30000 });
         await receipt;
 
@@ -150,7 +152,9 @@ test('an F&B workspace still walks the kitchen ladder', async ({ page }) => {
     await expect(page.locator('.pos-line')).toHaveCount(1, { timeout: 25000 });
 
     // An F&B till does NOT offer payment first — the food has to reach the table.
-    await expect(page.locator('#pos-primary')).toHaveText(/send to kitchen|kirim ke dapur/i);
+    // The label names the NEXT STEP for the status the order is in — the
+    // Orders board's rule, and #pos-primary reads from the same STATUS table.
+    await expect(page.locator('#pos-primary')).toHaveText(/process to kitchen|proses ke dapur/i);
     await expect(page.locator('#nav-container [data-view="tables"]')).toHaveCount(1);
 
     await page.click('#pos-void-btn');

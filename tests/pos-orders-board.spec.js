@@ -53,8 +53,8 @@ async function seedBoard(page, orders) {
             table_id: o.table ? 't1' : null,
             table_label: o.table || null,
             lines: [{ line_id: 'l1', item_name: 'Seeded dish', quantity: 1, unit_price: 20000, gross_amount: 20000 }],
-            total_amount: 20000,
-            paid_amount: o.status === 'paid' ? 20000 : 0,
+            total_amount: o.total || 20000,
+            paid_amount: o.status === 'paid' ? (o.total || 20000) : 0,
             opened_at: ts(o.ageMin * 60000),
             status_changed_at: ts(o.ageMin * 60000)
         });
@@ -188,3 +188,145 @@ test('the filter panel is the dashboard component, and sorts what it says', asyn
     // why the board is not in its usual order.
     await expect(page.locator('#pos-filter-count')).not.toHaveClass(/hidden/);
 });
+
+test('every card names the next step, and never a later one', async ({ page }) => {
+    // The board's one instruction. It used to read "Pay Bills" on anything with
+    // a total — including an order still being typed at the till — which names a
+    // step three moves away and invites the cashier to skip the ones between.
+    // On a till that means a dish leaves the pass unrecorded.
+    await openBoard(page);
+    const rows = await seedBoard(page, [
+        { status: 'open',             ageMin: 2 },
+        { status: 'sent',             ageMin: 2 },
+        { status: 'served',           ageMin: 2 },
+        { status: 'awaiting_payment', ageMin: 2 },
+        { status: 'paid',             ageMin: 2 }
+    ]);
+    expect(rows).toHaveLength(5);
+
+    // Read from the seed's own return — a second round-trip would race the live
+    // watcher and assert against the real board.
+    const ctas = rows.map((r) => ({ status: r.status, buttons: r.actions }));
+    const by = (s) => ctas.find((c) => c.status === s);
+
+    expect(by('open').buttons).toEqual(['Process to Kitchen']);
+    expect(by('sent').buttons).toEqual(['Mark as Served']);
+    expect(by('served').buttons).toEqual(['Request Bill']);
+    expect(by('awaiting_payment').buttons).toEqual(['Pay Bill']);
+    // Settled: the only thing left to do with it is print. Never a step.
+    expect(by('paid').buttons).toEqual(['Print receipt']);
+
+    // Exactly ONE action per card — the card is the detail view now, so a second
+    // button would be a choice where the brief asks for an instruction.
+    ctas.forEach((c) => expect(c.buttons.length, `${c.status} has ${c.buttons.length} actions`).toBe(1));
+
+    // And "Pay Bill" appears on nothing that is still being worked.
+    ['open', 'sent', 'served'].forEach((st) => {
+        expect(by(st).buttons.join(' '), `${st} offers payment out of turn`).not.toMatch(/pay bill/i);
+    });
+});
+
+test('the board takes the whole width once the panel is gone', async ({ page }) => {
+    // The order panel was a second copy of what the card already shows, costing
+    // the board ~380px to duplicate it.
+    await openBoard(page);
+    const geom = await page.evaluate(() => {
+        const panel = document.getElementById('pos-order-panel');
+        const grid = document.getElementById('pos-orders-grid');
+        return {
+            panelHidden: getComputedStyle(panel).display === 'none',
+            columns: getComputedStyle(grid).gridTemplateColumns.split(' ').length
+        };
+    });
+    expect(geom.panelHidden, 'the Orders board is still paying for the order panel').toBe(true);
+    expect(geom.columns, 'the board did not use the space the panel gave back').toBeGreaterThanOrEqual(3);
+});
+
+test('an abandoned cart is stale, not late', async ({ page }) => {
+    // Measured on the real till: open carts from the previous day rendered
+    // "23h 1m LATE" beside a dish genuinely six minutes over, and the two were
+    // indistinguishable. A board where everything shouts says nothing — and the
+    // day-old order also OWNED the top of a longest-waiting sort, burying the
+    // one that mattered.
+    await openBoard(page);
+    // 3h20m rather than the real-world 23h, so the cart is still inside the
+    // board's default Today window — the staleness rule is what is under test,
+    // not the date filter, and a yesterday fixture would simply be filtered out.
+    const rows = await seedBoard(page, [
+        { status: 'open', ageMin: 200 },       // long abandoned
+        { status: 'sent', ageMin: 20 }         // genuinely late in the kitchen
+    ]);
+    const stale = rows.find((r) => /stale/.test(r.text || ''));
+    expect(stale, 'a day-old cart is still being called late').toBeTruthy();
+    expect(stale.flagged, 'a stale cart must not carry the late flag').toBe(false);
+
+    // The live one ranks first, despite being 75x younger.
+    expect(rows[0].status, 'an abandoned cart outranked a dish that is actually late').toBe('sent');
+    expect(rows[0].level).toBe('late');
+});
+
+test('cash payment: change, a floor on the tender, and locale-correct quick amounts', async ({ page }) => {
+    // The arithmetic a cashier is judged on. Change is what leaves the drawer, so
+    // it is the one figure on this screen that costs real money when wrong.
+    await openBoard(page);
+    await seedBoard(page, [{ status: 'awaiting_payment', ageMin: 5, total: 22500 }]);
+
+    await page.locator('.pos-ocard[data-status="awaiting_payment"] [data-pay]').first().click();
+    const modal = page.locator('#pos-pay-modal .pos-modal');
+    await expect(modal, 'payment must be a popup, not a page or a side drawer').toBeVisible({ timeout: 10000 });
+    // The dashboard's overlay, not a POS one — blurred scrim included.
+    await expect(page.locator('#pos-pay-modal .pos-modal-backdrop')).toBeVisible();
+
+    await expect(page.locator('#pos-pay-due')).toHaveText(/22\.500/);
+
+    // Quick amounts come from the CURRENCY's own banknotes, via the money seam.
+    // A fixed [25000, 50000, 100000] is right in Jakarta and absurd in Singapore.
+    const quick = await page.locator('#pos-quick .pos-quick-btn').allInnerTexts();
+    expect(quick[0]).toMatch(/exact|uang pas/i);
+    expect(quick.join(' ')).toMatch(/25\.000/);
+    expect(quick.join(' ')).toMatch(/50\.000/);
+
+    // Tender more than the bill → change, highlighted.
+    await page.locator('#pos-quick [data-cash="50000"]').click();
+    await expect(page.locator('#pos-change')).toBeVisible();
+    await expect(page.locator('#pos-change-value'), 'change is wrong').toHaveText(/27\.500/);
+
+    // Tender LESS → cannot be confirmed as a completed payment. It stays
+    // reachable as an explicit part payment, because split tender (cash + QRIS
+    // on one bill) is real and silently removing it would be a money bug.
+    await page.fill('#pos-pay-amount', '');
+    await page.locator('#pos-pay-amount').type('10000');
+    await expect(page.locator('#pos-short')).toBeVisible();
+    await expect(page.locator('#pos-pay-submit'),
+        'a short tender must not read as a completed payment').toHaveText(/part payment|sebagian/i);
+
+    // Nothing entered at all is not a payment.
+    await page.fill('#pos-pay-amount', '');
+    await expect(page.locator('#pos-pay-submit')).toBeDisabled();
+
+    // The close BUTTON, not `[data-close]` — that also matches the backdrop,
+    // which sits behind the dialog and cannot receive the click.
+    await page.locator('#pos-pay-modal .pos-modal-close').click();
+    await expect(page.locator('#pos-pay-modal')).toHaveCount(0);
+});
+
+test('opening a card still reaches the actions the board does not carry', async ({ page }) => {
+    // Hiding the order panel on this view nearly orphaned Refund and Reprint:
+    // they live in that panel and nowhere else, so selecting a card without
+    // switching view left a paid order with no way back to them — the exact
+    // dead end tests/pos-ui.spec.js was written to prevent, re-created by
+    // removing the panel. The card's own CTA is the next STEP; opening the card
+    // is how you reach everything else.
+    await openBoard(page);
+    await seedBoard(page, [{ status: 'served', ageMin: 3 }]);
+
+    // Pressing the CTA must NOT navigate — it acts in place, on the board.
+    await page.locator('.pos-ocard [data-advance]').first().click({ trial: true });
+
+    // Clicking the card body does navigate, to the till with the order loaded.
+    await page.locator('.pos-ocard .pos-ocard-items').first().click();
+    await expect(page.locator('.pos-view[data-view="till"]'),
+        'opening a card left the cashier with no route to the order panel').toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#pos-order-panel')).toBeVisible();
+});
+

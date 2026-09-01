@@ -5300,6 +5300,19 @@
         "Nothing added yet.": "Belum ada yang ditambahkan.",
         // ── Orders board: status tabs, sort & filter, waiting time ──────
         "Process to Kitchen": "Diproses ke Dapur",
+        // Next-step CTAs on the order card and the till's primary button.
+        "Confirm Order": "Konfirmasi Pesanan",
+        "Mark as Served": "Tandai Tersaji",
+        "Pay Bill": "Bayar Tagihan",
+        "Print receipt": "Cetak struk",
+        // Take payment modal.
+        "Enter amount received": "Masukkan jumlah diterima",
+        "Confirm payment": "Konfirmasi pembayaran",
+        "Record part payment": "Catat pembayaran sebagian",
+        "Exact": "Uang pas",
+        // The two settlement notes are already in the dictionary above.
+        // The waiting figure. Lowercase: it sits beside the number, not as a heading.
+        "stale": "basi",
         "Request Bill": "Minta Bon",
         "Sort & filter": "Urutkan & filter",
         "Sort by": "Urutkan menurut",

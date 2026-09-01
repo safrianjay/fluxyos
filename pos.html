@@ -664,6 +664,69 @@
            Dense on purpose. This is a surface a cashier scans under pressure,
            so the spacing here is tighter than the rest of the app — every gap
            is 8/10/12/14, never the 20/24 the reading surfaces use. */
+        /* ── Take payment ───────────────────────────────────────────────
+           Built on the shared modal (.pos-modal-layer / .pos-modal), so the
+           scrim, blur, card and pinned footer are the dashboard's, not a second
+           dialog language. What is specific to money is below. */
+        .pos-modal.pos-pay { width: min(480px, 100%); }
+        /* The bill, stated once and large. Everything else on this screen is in
+           service of matching this number, so it outranks all of it. */
+        .pos-pay-due {
+            display: flex; align-items: baseline; justify-content: space-between;
+            gap: 12px; padding: 12px 14px; border-radius: 12px;
+            background: #F8FAFC; border: 1px solid #E2E8F0;
+        }
+        .pos-pay-due-label { font-size: 12px; font-weight: 500; color: #64748B; }
+        .pos-pay-due-value {
+            font-size: 24px; font-weight: 700; color: #0B0F19;
+            font-variant-numeric: tabular-nums; letter-spacing: -0.025em;
+        }
+        .pos-amount-wrap { position: relative; }
+        .pos-amount-wrap .pos-amount-cur {
+            position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+            font-size: 14px; font-weight: 600; color: #64748B; pointer-events: none;
+        }
+        .pos-amount-wrap .pos-amount-input { padding-left: 42px; }
+        .pos-hint { font-size: 12px; color: #64748B; margin-top: 6px; }
+        .pos-hint.is-warn { color: #B45309; font-weight: 500; }
+
+        /* Quick cash. Derived from the bill and this currency's own banknotes —
+           never a fixed list, which would be Indonesian in Manila. */
+        .pos-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .pos-quick-btn {
+            min-height: 38px; padding: 0 14px; border-radius: 10px;
+            border: 1px solid #E2E8F0; background: #fff; color: #0F172A;
+            font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums;
+            cursor: pointer;
+        }
+        .pos-quick-btn:hover { background: #F8FAFC; }
+        .pos-quick-btn:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
+        .pos-quick-btn.is-on { background: #0F172A; color: #fff; border-color: #0F172A; }
+
+        /* CHANGE is the number the cashier acts on — it is how much cash leaves
+           the drawer, and getting it wrong costs real money in both directions.
+           Green, large, and the loudest thing on screen after the bill itself. */
+        .pos-change {
+            display: flex; align-items: baseline; justify-content: space-between;
+            gap: 12px; margin-top: 10px; padding: 12px 14px; border-radius: 12px;
+            background: #F0FDF4; border: 1px solid #BBF7D0;
+        }
+        .pos-change-label { font-size: 12px; font-weight: 600; color: #15803D; }
+        .pos-change-value {
+            font-size: 24px; font-weight: 700; color: #15803D;
+            font-variant-numeric: tabular-nums; letter-spacing: -0.025em;
+        }
+        /* A part payment is allowed but must never look like a completed one. */
+        .pos-btn-primary.is-partial { background: #B45309; }
+        .pos-btn-primary.is-partial:hover { background: #92400E; }
+        .pos-btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+
+        /* The board is full width on this view, so it earns another column. */
+        @container posboard (min-width: 1180px) { .pos-orders-grid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+        @container posboard (min-width: 1560px) { .pos-orders-grid { grid-template-columns: repeat(4, minmax(0,1fr)); } }
+        /* One action, full width: it is the only thing to press on the card. */
+        .pos-ocard-btn.is-only { flex: 1 1 100%; }
+
         /* ── Waiting time ───────────────────────────────────────────────
            The one number a kitchen screen is read for. Text carries the state
            ("18m" + "late"); colour is the second channel, never the only one —
@@ -671,44 +734,64 @@
            colour-alone status anyway. No orange fills: orange backgrounds are
            banned project-wide, and "late" needs to outrank the brand accent
            rather than compete with it. */
+        /* The elapsed figure, set as TYPE rather than as a badge.
+           The first cut was a red pill with a clock glyph in it — the glyph said
+           nothing the number did not already say, and a coloured capsule on
+           every card is the look of a component library rather than of a till.
+           What is left is the figure itself (tabular, so a column of them lines
+           up) and one lowercase word when there is something to say. The quiet
+           state has no colour at all, which is what makes the loud one mean
+           something. */
         .pos-wait {
-            display: inline-flex; align-items: center; gap: 5px; flex: none;
+            display: inline-flex; align-items: baseline; gap: 5px; flex: none;
             margin-left: auto; align-self: flex-start;
-            padding: 3px 8px; border-radius: 999px;
-            font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
-            border: 1px solid transparent; white-space: nowrap;
+            font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums;
+            white-space: nowrap; letter-spacing: -0.01em;
         }
-        .pos-wait svg { width: 13px; height: 13px; flex: none; }
-        .pos-wait.is-ok   { background: #F1F5F9; color: #475569; border-color: #E2E8F0; }
-        .pos-wait.is-warn { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
-        .pos-wait.is-late { background: #FEE2E2; color: #B91C1C; border-color: #FECACA; }
+        .pos-wait.is-ok    { color: #64748B; font-weight: 500; }
+        .pos-wait.is-stale { color: #94A3B8; font-weight: 500; }
+        .pos-wait.is-warn  { color: #B45309; }
+        .pos-wait.is-late  { color: #DC2626; }
         .pos-wait-tag {
-            font-size: 10px; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 0.06em; opacity: .85;
+            font-size: 11px; font-weight: 500; letter-spacing: 0;
+            opacity: .9;
         }
         /* A late card is findable without reading it — the left edge is the
            cheapest place to carry that, because it survives the card being
            scanned peripherally down a column. */
-        .pos-ocard.is-late { border-color: #FCA5A5; box-shadow: inset 3px 0 0 0 #DC2626; }
+        /* One channel, on the edge: findable down a column without turning the
+           whole card into an alert. Stale orders deliberately get nothing. */
+        .pos-ocard.is-late { box-shadow: inset 3px 0 0 0 #DC2626; }
 
+        /* The count is data, so it is set as data: no capsule, just a dimmer
+           weight beside the label. */
         .pos-tab-count {
-            margin-left: 6px; padding: 1px 6px; border-radius: 999px;
-            background: #E2E8F0; color: #475569;
-            font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums;
+            margin-left: 5px; color: #94A3B8;
+            font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
         }
-        .pos-tab.is-active .pos-tab-count { background: #0F172A; color: #fff; }
-        /* A tab holding something late says so, so the cook does not have to
-           open every tab to find out where the trouble is. */
-        .pos-tab-count.is-late { background: #DC2626; color: #fff; }
+        .pos-tab.is-active .pos-tab-count { color: #475569; }
+        /* A tab holding something late says so — otherwise a cook opens all six
+           to find out where the trouble is. */
+        .pos-tab-count.is-late { color: #DC2626; }
+        .pos-tab-count.is-late::after {
+            content: ''; display: inline-block; width: 5px; height: 5px;
+            margin-left: 4px; border-radius: 50%; background: #DC2626;
+            vertical-align: 1px;
+        }
 
-        .pos-orders-date { font-size: 12px; color: #64748B; white-space: nowrap; }
-        /* Two deliberate rows, not one wrapping row.
-           Six status tabs plus their counts run ~620px, and the board column is
-           ~800px once the sidebar and the order panel have taken theirs — so on
-           one row the strip WRAPPED, stranding "Completed" on a line of its own
-           beside a band of dead space. Two clean rows are shorter than one
-           wrapped one, which is the point of the white-space rule. */
-        .pos-orders-bar { display: flex; flex-direction: column; gap: 8px; }
+        /* ONE row: tabs left, controls right, on a shared baseline.
+           Two rows were a consequence of the 380px order panel, which this view
+           no longer carries — the board is full width, so the six tabs and the
+           controls fit the same line with room to spare. Stacking them now would
+           be a row of empty space for nothing. Below ~900px of board it falls
+           back to two rows rather than crushing the search box. */
+        .pos-orders-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 16px; flex-wrap: wrap;
+        }
+        @container posboard (max-width: 900px) {
+            .pos-orders-bar { flex-direction: column; align-items: stretch; gap: 8px; }
+        }
         .pos-orders-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
         /* Never wraps. A narrow till scrolls the strip sideways instead — a
            tab row that reflows moves the tab out from under a cook's finger. */
@@ -725,10 +808,9 @@
         .pos-tab:hover { color: #0F172A; }
         .pos-tab:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
         .pos-tab.is-active { background: #fff; color: #0B0F19; font-weight: 600; box-shadow: 0 1px 2px rgba(15,23,42,.10); }
-        .pos-orders-controls { display: flex; align-items: center; gap: 8px; }
-        .pos-orders-controls .pos-search { flex: 1 1 auto; max-width: 320px; }
-        /* Pushes the filter and the search box to the right edge. */
-        .pos-orders-date { margin-right: auto; }
+        .pos-orders-controls { display: flex; align-items: center; gap: 8px; flex: 0 1 auto; }
+        .pos-orders-controls .pos-search { flex: 1 1 260px; min-width: 200px; max-width: 320px; }
+        .pos-orders-left { flex: 0 1 auto; min-width: 0; }
         .pos-filter-btn {
             display: inline-flex; align-items: center; justify-content: center;
             width: 36px; height: 36px; flex-shrink: 0; border-radius: 9px;
@@ -1288,7 +1370,6 @@
                             </div>
                         </div>
                         <div class="pos-orders-controls">
-                            <span class="pos-orders-date" id="pos-orders-date"></span>
                             <!-- The dashboard's filter component, not a POS one:
                                  same `.fluxy-filter-*` classes the Ledger uses,
                                  so a cashier who has filtered transactions
