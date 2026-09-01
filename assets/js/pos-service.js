@@ -47,6 +47,23 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { periodKey as acctPeriodKey } from "./accounting-engine.js";
 
+// The availability rule, shared with the floor plan and the Create Order dialog.
+//
+// Imported rather than reimplemented: a reservation the till cannot see is worse
+// than no reservation system at all, and two copies of "is this table free" is
+// exactly how that happens. See assets/js/pos-availability.js.
+import {
+    HOLDING_STATUSES as POS_HOLDING_STATUSES,
+    RESERVATION_STATUSES as POS_RESERVATION_STATUSES,
+    RESERVATION_SOURCES as POS_RESERVATION_SOURCES,
+    DEFAULT_DURATION_MIN as POS_DEFAULT_DURATION_MIN,
+    toMs as posToMs,
+    reservationWindow as posReservationWindow,
+    reservationConflicts as posReservationConflicts,
+    reservationHoldsAt as posReservationHoldsAt,
+    formatClock as posFormatClock
+} from "./pos-availability.js";
+
 // The payment methods a till can take. `settlement` is what the posting rules
 // read: cash lands in 1000 immediately, QRIS/card sit with the acquirer and
 // clear through 1030 on payout. Provider-agnostic on purpose — Midtrans and
@@ -203,6 +220,258 @@ export const POS_METHODS = {
             restore ? 'pos_table.reactivated' : 'pos_table.archived', 'pos_tables', tableId, {});
     },
 
+    // ── Reservations ────────────────────────────────────────────────────────
+    //
+    // A booking is a CLAIM ON A TABLE IN THE FUTURE. That is the whole reason it
+    // lives next to the tables rather than in a calendar of its own: the moment
+    // it exists, the floor plan and the Create Order dialog must both stop
+    // offering that table, or the room gets sold twice.
+    //
+    // Every question about whether a table is takeable — here, on the floor
+    // plan, and in the Create Order dialog — is answered by
+    // `assets/js/pos-availability.js`. Three surfaces, one rule.
+    //
+    // Occupancy still is not stored (pos.md §2). A reservation does not stamp
+    // anything onto `pos_tables`; the table's state is derived from the orders
+    // and reservations that reference it, every time it is asked for.
+
+    // The window this board reads, either side of the day being looked at. Wide
+    // enough that a week view never needs a second query, bounded so a two-year
+    // old booking history is not dragged onto a tablet on every refresh.
+    async getPosReservations(userId, {
+        dimensionId = null, fromMs = null, toMs: untilMs = null, statuses = null, limitCount = 400
+    } = {}) {
+        try {
+            // Range + orderBy on the SAME field needs no composite index, which
+            // is why the outlet is filtered in JS below rather than in the query
+            // — exactly what getPosOrders does, and for the same reason: an
+            // index that has to be deployed by hand is a thing that ships broken
+            // (docs/data-model/pos.md, deploy/deployed-stamps.json).
+            const parts = [collection(this.db, `${this._scope(userId)}/pos_reservations`)];
+            if (fromMs != null) parts.push(where('starts_at', '>=', Timestamp.fromMillis(fromMs)));
+            if (untilMs != null) parts.push(where('starts_at', '<=', Timestamp.fromMillis(untilMs)));
+            parts.push(orderBy('starts_at', 'asc'), limit(limitCount));
+            const snap = await getDocs(query(...parts));
+            return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+                .filter((r) => !dimensionId || r.dimension_id === dimensionId)
+                .filter((r) => !statuses || statuses.includes(r.status));
+        } catch (_) { return []; }
+    },
+
+    async getPosReservation(userId, reservationId) {
+        if (!reservationId) return null;
+        const snap = await getDoc(doc(this.db, `${this._scope(userId)}/pos_reservations/${reservationId}`));
+        return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    },
+
+    // Everything holding a table from now until the end of the day after next.
+    //
+    // The bound is what keeps this cheap enough to run inside `createPosOrder`
+    // on every single walk-in: a booking three weeks out cannot block a table
+    // tonight, so reading it would be work done to reach the same answer.
+    async _holdingReservations(userId, { dimensionId = null, atMs = Date.now() } = {}) {
+        return this.getPosReservations(userId, {
+            dimensionId,
+            // Back far enough to catch a sitting that started before now and is
+            // still running — a 90-minute booking made at 18:00 still holds its
+            // table at 19:15, and a window anchored at `now` would miss it.
+            fromMs: atMs - 12 * 60 * 60 * 1000,
+            toMs: atMs + 36 * 60 * 60 * 1000,
+            statuses: POS_HOLDING_STATUSES,
+            limitCount: 300
+        });
+    },
+
+    _reservationPayload(data) {
+        const startMs = posToMs(data.starts_at);
+        if (startMs == null) throw new Error('Pick the date and time this reservation is for.');
+        const name = String(data.guest_name || '').trim();
+        if (!name) throw new Error('A reservation needs a guest name.');
+        if (name.length > 80) throw new Error('That guest name is too long (80 characters max).');
+        const party = Number(data.party_size);
+        if (!Number.isInteger(party) || party < 1 || party > 999) {
+            throw new Error('How many guests? Enter a whole number of people.');
+        }
+        // Bounded on both ends. A zero-minute sitting would hold nothing and a
+        // twelve-hour one would take a table out of service for a whole service
+        // by typo — the two failure modes are opposite and both silent.
+        const durationRaw = Number(data.duration_minutes);
+        const duration = Number.isFinite(durationRaw) && durationRaw > 0
+            ? Math.min(600, Math.max(15, Math.round(durationRaw)))
+            : POS_DEFAULT_DURATION_MIN;
+        const dimensionId = String(data.dimension_id || '').trim();
+        if (!dimensionId) throw new Error('Pick which outlet this reservation is for.');
+
+        return {
+            dimension_id: dimensionId,
+            // Null is a real, supported answer: a booking taken before the host
+            // knows which table it will sit at holds NOTHING, and holding a
+            // table nobody chose is how a floor loses capacity to a maybe.
+            table_id: data.table_id ? String(data.table_id) : null,
+            table_label: data.table_label ? String(data.table_label).slice(0, 40) : null,
+            guest_name: name,
+            guest_phone: this._nullableString(data.guest_phone, 32),
+            guest_email: this._nullableString(data.guest_email, 120),
+            party_size: party,
+            starts_at: Timestamp.fromMillis(startMs),
+            duration_minutes: duration,
+            source: POS_RESERVATION_SOURCES.includes(data.source) ? data.source : 'direct',
+            note: this._nullableString(data.note, 200)
+        };
+    },
+
+    // Create or edit. The conflict check runs against a FRESH read rather than
+    // whatever the board is holding — the board can be minutes stale, and a
+    // stale double-booking check is no check at all.
+    //
+    // ⚠️ Honest limitation: this is read-then-write, not a transaction, because
+    // Firestore has no cross-document uniqueness constraint and a table is not a
+    // document that could be locked. Two hosts booking the same table in the
+    // same second can both succeed. The board therefore also DETECTS overlaps
+    // and flags them, rather than trusting that this check made them impossible.
+    async savePosReservation(userId, data = {}, { create = false, reservationId = null } = {}) {
+        if (!userId) throw new Error('userId required');
+        const payload = this._reservationPayload(data);
+        const scope = this._scope(userId);
+
+        if (payload.table_id) {
+            const window = posReservationWindow({
+                starts_at: payload.starts_at, duration_minutes: payload.duration_minutes
+            });
+            const existing = await this.getPosReservations(userId, {
+                dimensionId: payload.dimension_id,
+                fromMs: window.startMs - 12 * 60 * 60 * 1000,
+                toMs: window.endMs + 12 * 60 * 60 * 1000,
+                statuses: POS_HOLDING_STATUSES,
+                limitCount: 300
+            });
+            const clash = posReservationConflicts(existing, {
+                tableId: payload.table_id,
+                startsAt: payload.starts_at,
+                durationMinutes: payload.duration_minutes,
+                excludeId: reservationId
+            })[0];
+            if (clash) {
+                throw new Error(`${payload.table_label || 'That table'} is already booked for `
+                    + `${clash.guest_name} at ${posFormatClock(posToMs(clash.starts_at))}.`);
+            }
+        }
+
+        if (create) {
+            const ref = doc(collection(this.db, `${scope}/pos_reservations`));
+            const full = {
+                ...payload,
+                status: 'confirmed',
+                order_id: null,
+                seated_at: null,
+                released_at: null,
+                release_reason: null,
+                version: 1,
+                created_at: serverTimestamp(),
+                updated_at: serverTimestamp(),
+                created_by: this.actorUid || userId,
+                updated_by: this.actorUid || userId
+            };
+            await setDoc(ref, full);
+            await this._auditCreateBestEffort(userId, 'pos_reservation.created', 'pos_reservations', ref.id,
+                { guest_name: payload.guest_name, table_id: payload.table_id, party_size: payload.party_size });
+            return { id: ref.id, ...full };
+        }
+
+        if (!reservationId) throw new Error('reservationId required');
+        return this._mutatePosReservation(userId, reservationId, (current) => {
+            if (current.status === 'completed' || current.status === 'cancelled') {
+                throw new Error('This reservation is closed. Create a new one instead of editing it.');
+            }
+            return payload;
+        }, 'pos_reservation.updated');
+    },
+
+    // Every reservation mutation goes through here, for the same reason
+    // `updatePosOrder` exists: `version` advancing by exactly one is what makes
+    // a second host's stale device lose the race loudly instead of silently
+    // overwriting the change the first one just made.
+    async _mutatePosReservation(userId, reservationId, mutate, auditAction = 'pos_reservation.updated') {
+        if (!userId || !reservationId) throw new Error('userId and reservationId required');
+        const ref = doc(this.db, `${this._scope(userId)}/pos_reservations/${reservationId}`);
+        const result = await runTransaction(this.db, async (tx) => {
+            const snap = await tx.get(ref);
+            if (!snap.exists()) throw new Error('That reservation no longer exists.');
+            const current = { id: snap.id, ...snap.data() };
+            const changes = (await mutate(current)) || {};
+            const patch = {
+                ...changes,
+                version: (Number(current.version) || 1) + 1,
+                updated_at: serverTimestamp(),
+                updated_by: this.actorUid || userId
+            };
+            delete patch.id;
+            tx.update(ref, patch);
+            return { ...current, ...patch, version: patch.version };
+        });
+        await this._auditCreateBestEffort(userId, auditAction, 'pos_reservations', reservationId,
+            { status: result.status });
+        return result;
+    },
+
+    // Move a booking through its life: confirm it, seat it, close it, lose it.
+    //
+    // `completed`, `cancelled` and `no_show` are the three ways a table comes
+    // BACK into supply, and all three are a person's decision. Nothing here
+    // expires a booking on a timer — see the note on `isLate` in
+    // pos-availability.js: a table that frees itself while the guest is parking
+    // is a table that gets sold from under them, silently.
+    async setPosReservationStatus(userId, reservationId, status, { orderId = null, reason = null } = {}) {
+        if (!POS_RESERVATION_STATUSES.includes(status)) throw new Error(`Unknown reservation status: ${status}`);
+        return this._mutatePosReservation(userId, reservationId, (current) => {
+            if (current.status === status) return {};
+            const changes = { status };
+            if (status === 'arrived') {
+                changes.seated_at = serverTimestamp();
+                if (orderId) changes.order_id = orderId;
+            }
+            if (['completed', 'cancelled', 'no_show'].includes(status)) {
+                changes.released_at = serverTimestamp();
+                changes.release_reason = this._nullableString(reason, 200);
+            }
+            return changes;
+        }, `pos_reservation.${status}`);
+    },
+
+    // Seat the party: open their order and hand the table over to it.
+    //
+    // ONE call rather than two on the page, because the two writes are one
+    // decision and a half-done seating is the worst state of the three — a
+    // reservation marked arrived with no order is a table the board thinks is
+    // working and the till has never heard of.
+    //
+    // The order is created FIRST: if the status write then fails, the party is
+    // sitting at a table with an order open, which is recoverable by a person
+    // looking at the screen. The other order of operations loses the sale.
+    async seatPosReservation(userId, reservationId, { shiftId = null } = {}) {
+        const res = await this.getPosReservation(userId, reservationId);
+        if (!res) throw new Error('That reservation no longer exists.');
+        if (res.order_id) throw new Error('This reservation already has an order open.');
+        if (!res.table_id) throw new Error('Assign a table to this reservation before seating it.');
+
+        const order = await this.createPosOrder(userId, {
+            dimensionId: res.dimension_id,
+            tableId: res.table_id,
+            tableLabel: res.table_label,
+            channel: 'staff',
+            customerName: res.guest_name,
+            customerPhone: res.guest_phone,
+            guestCount: res.party_size,
+            note: res.note,
+            shiftId,
+            // The table is held BY this booking, so the guard below must not
+            // refuse the very party it is holding it for.
+            forReservationId: reservationId
+        });
+        await this.setPosReservationStatus(userId, reservationId, 'arrived', { orderId: order.id });
+        return order;
+    },
+
     // ── Menu ────────────────────────────────────────────────────────────────
 
     // The menu IS `items`: anything with a price that is marked visible. No
@@ -290,10 +559,42 @@ export const POS_METHODS = {
 
     async createPosOrder(userId, {
         dimensionId, tableId = null, tableLabel = null, channel = 'staff', note = null, shiftId = null,
-        customerName = null, customerPhone = null, guestCount = null
+        customerName = null, customerPhone = null, guestCount = null,
+        // Set only by `seatPosReservation`. The reservation holding this table is
+        // the one party allowed to sit at it, so the guard below must not refuse
+        // the guest it is holding the table FOR.
+        forReservationId = null
     } = {}) {
         if (!userId) throw new Error('userId required');
         if (!dimensionId) throw new Error('Pick an outlet before opening an order.');
+
+        // ── The reservation guard ───────────────────────────────────────────
+        //
+        // Enforced HERE, in the data layer, and not only in the dialog that
+        // usually calls it. The brief is that a reserved table cannot be given
+        // to a walk-in, and a rule that lives in one dialog is a rule that the
+        // floor plan, a scan into an empty cart, or the next surface anyone
+        // builds will quietly not have. The dialog still greys the option out —
+        // this is what makes it true rather than merely displayed.
+        //
+        // It cannot live in firestore.rules: answering it needs a QUERY across
+        // pos_reservations, which rules cannot do at any price (they can `get()`
+        // a known document, not search for an overlapping one). So this is a
+        // client-side business rule, honestly — the same standing the per-outlet
+        // scoping has (pos.md §8), and it is stated as such in the docs rather
+        // than dressed up as a security boundary.
+        if (tableId && channel === 'staff') {
+            const held = (await this._holdingReservations(userId, { dimensionId }))
+                .filter((r) => r.id !== forReservationId)
+                .filter((r) => r.table_id === tableId && posReservationHoldsAt(r));
+            if (held.length) {
+                const r = held[0];
+                throw new Error(`${tableLabel ? `Table ${tableLabel}` : 'That table'} is reserved for `
+                    + `${r.guest_name} at ${posFormatClock(posToMs(r.starts_at))}. `
+                    + 'Release the reservation first, or seat them at another table.');
+            }
+        }
+
         const scope = this._scope(userId);
         const now = new Date();
         const dayKey = this._posDayKey(now);
@@ -545,7 +846,10 @@ export const POS_METHODS = {
     },
 
     async setPosOrderStatus(userId, orderId, status) {
-        const allowed = ['open', 'submitted', 'sent', 'served', 'awaiting_payment'];
+        // `paid` and `void` are absent on purpose: those are earned by
+        // recordPosPayment and voidPosOrder, which do the posting and the
+        // reason-keeping. This method only walks the service ladder.
+        const allowed = ['open', 'submitted', 'sent', 'ready', 'served', 'awaiting_payment'];
         if (!allowed.includes(status)) throw new Error(`"${status}" is not a status an order can be moved to here.`);
         return this.updatePosOrder(userId, orderId, () => ({ status }));
     },
@@ -1261,14 +1565,23 @@ export const POS_METHODS = {
         const start = (m && typeof m.startOfBusinessDay === 'function')
             ? m.startOfBusinessDay()
             : (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
-        const [orders, tables, menu, movements] = await Promise.all([
+        const [orders, tables, menu, movements, reservations] = await Promise.all([
             this.getPosOrders(userId, { dimensionId, limitCount: 300 }),
             this.getPosTables(userId, { dimensionId }),
             this.getPosMenu(userId),
-            this.getStockMovements(userId, { limitCount: 1000 }).catch(() => [])
+            this.getStockMovements(userId, { limitCount: 1000 }).catch(() => []),
+            // Bookings that could hold a table anywhere near now. Read in the
+            // SAME call as the tables and the orders on purpose: the floor plan
+            // paints all three together, and a floor plan that renders before
+            // its reservations have landed shows a reserved table as free — for
+            // one frame, which is one frame longer than it takes to tap it.
+            this._holdingReservations(userId, { dimensionId }).catch(() => [])
         ]);
 
-        const openStatuses = ['open', 'submitted', 'sent', 'served', 'awaiting_payment'];
+        // Every non-terminal status. Missing one here does not fail loudly — the
+        // order simply stops being "active", disappears from the board and the
+        // floor plan, and the table it is sitting at reads as free.
+        const openStatuses = ['open', 'submitted', 'sent', 'ready', 'served', 'awaiting_payment'];
         const active = orders.filter((o) => openStatuses.includes(o.status));
         const todayPaid = orders.filter((o) => o.status === 'paid' && (() => {
             const t = o.paid_at && typeof o.paid_at.toDate === 'function' ? o.paid_at.toDate() : null;
@@ -1276,6 +1589,10 @@ export const POS_METHODS = {
         })());
 
         const occupied = new Set(active.map((o) => o.table_id).filter(Boolean));
+        // Held by a booking right now — the second reason a table cannot be sold.
+        const reservedNow = new Set(reservations
+            .filter((r) => posReservationHoldsAt(r))
+            .map((r) => r.table_id).filter(Boolean));
 
         // Which menu items have a real cost basis. An item selling at zero cost
         // inflates gross margin exactly the way marketplace orders did before
@@ -1295,15 +1612,42 @@ export const POS_METHODS = {
         const noCostBasis = menu.filter((m) => (m.type === 'composite' ? !m.has_recipe : !costed.has(m.id)));
 
         return {
-            tables: tables.map((t) => ({ ...t, occupied: occupied.has(t.id) })),
+            // `occupied` is "somebody is sitting here"; `reserved` is "somebody
+            // is about to be". They are kept apart because they read differently
+            // on the floor and are released differently — an order is paid, a
+            // booking is completed, cancelled or marked a no-show.
+            tables: tables.map((t) => ({
+                ...t, occupied: occupied.has(t.id), reserved: reservedNow.has(t.id)
+            })),
+            // The board and the floor plan share ONE list, so they can never
+            // disagree about which tables are spoken for.
+            reservations,
             counts: {
                 tablesTotal: tables.length,
                 tablesOccupied: occupied.size,
-                tablesFree: Math.max(0, tables.length - occupied.size),
+                tablesReserved: reservedNow.size,
+                // A free table is one that is neither sat at NOR held. The count
+                // on the Table Order button is what a cashier decides by, so
+                // counting a reserved table as free would send them to it.
+                tablesFree: Math.max(0, tables.length
+                    - new Set([...occupied, ...reservedNow]).size),
                 activeOrders: active.length,
                 awaitingPayment: active.filter((o) => o.status === 'awaiting_payment').length,
                 newQrOrders: active.filter((o) => o.channel === 'qr' && o.status === 'submitted').length,
-                paidToday: todayPaid.length
+                paidToday: todayPaid.length,
+                // Bookings still to arrive today, and the covers they bring —
+                // the two numbers that decide whether a walk-in can be taken.
+                reservationsUpcoming: reservations.filter((r) => {
+                    const t = posToMs(r.starts_at);
+                    return ['pending', 'confirmed'].includes(r.status) && t != null && t >= start.getTime();
+                }).length,
+                reservationCovers: reservations
+                    .filter((r) => {
+                        const t = posToMs(r.starts_at);
+                        return ['pending', 'confirmed', 'arrived'].includes(r.status)
+                            && t != null && t >= start.getTime();
+                    })
+                    .reduce((sum, r) => sum + (Number(r.party_size) || 0), 0)
             },
             // The paid orders themselves, not just the total — a refund or a
             // reprint has to be able to REACH the order, and a paid one has

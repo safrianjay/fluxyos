@@ -716,9 +716,6 @@
             font-size: 24px; font-weight: 700; color: #15803D;
             font-variant-numeric: tabular-nums; letter-spacing: -0.025em;
         }
-        /* A part payment is allowed but must never look like a completed one. */
-        .pos-btn-primary.is-partial { background: #B45309; }
-        .pos-btn-primary.is-partial:hover { background: #92400E; }
         .pos-btn-primary:disabled { opacity: .45; cursor: not-allowed; }
 
         /* The board is full width on this view, so it earns another column. */
@@ -726,6 +723,31 @@
         @container posboard (min-width: 1560px) { .pos-orders-grid { grid-template-columns: repeat(4, minmax(0,1fr)); } }
         /* One action, full width: it is the only thing to press on the card. */
         .pos-ocard-btn.is-only { flex: 1 1 100%; }
+
+        /* ── The ticket, on the card ────────────────────────────────────
+           A cook reads this with their hands full. Modifiers and notes are not
+           secondary detail here — they ARE the order, and a card that hides
+           them says "Wagyu x2" for two completely different plates. */
+        .pos-ocard-item { display: block; }
+        .pos-ocard-mods {
+            display: block; margin-top: 2px;
+            font-size: 12px; font-weight: 500; color: #B45309;
+        }
+        .pos-ocard-note {
+            display: block; margin-top: 2px;
+            font-size: 12px; color: #64748B; font-style: italic;
+        }
+        .pos-ocard-who {
+            font-size: 12px; font-weight: 500; color: #475569; margin-top: 2px;
+        }
+        /* An instruction to the whole ticket — an allergy, "serve together".
+           It outranks the line items, so it sits above them and is the one
+           thing on the card that gets a fill. */
+        .pos-ocard-ordernote {
+            margin-top: 8px; padding: 7px 10px; border-radius: 8px;
+            background: #FEF3C7; border: 1px solid #FDE68A;
+            font-size: 12px; font-weight: 500; color: #92400E;
+        }
 
         /* ── Waiting time ───────────────────────────────────────────────
            The one number a kitchen screen is read for. Text carries the state
@@ -1193,6 +1215,186 @@
            binds `header button.md:hidden`). The burger below carries that exact
            selector so it is picked up rather than reimplemented. */
         @media (max-width: 900px) { .pos-topbar-outlet label { display: none; } }
+
+        /* ══ RESERVATIONS ═════════════════════════════════════════════════
+           A booking calendar in the till's own language. The reference design
+           this was built to is a white-card calendar with an orange primary
+           button and orange time markers; two things had to change to belong
+           here, and both are project rules rather than taste:
+
+             - ORANGE BACKGROUNDS ARE PROHIBITED (CLAUDE.md). The primary button
+               is the same dark navy every primary control on this page uses, and
+               orange survives only where it is genuinely an accent: the 2px
+               "now" line and the today column's tint.
+             - The type scale is the dashboard's six steps, not the reference's
+               9/10/11px. A 9px booking label is unreadable at arm's length on a
+               host stand, which is exactly where this screen is used.          */
+
+        .pos-res-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 16px; flex-wrap: wrap;
+        }
+        .pos-res-bar-left, .pos-res-bar-right { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .pos-res-bar-right .pos-search { flex: 1 1 220px; min-width: 170px; max-width: 280px; }
+        .pos-res-nav { display: flex; align-items: center; gap: 2px; }
+        .pos-res-navbtn {
+            width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
+            border: 1px solid #E2E8F0; background: #fff; border-radius: 8px; color: #475569; cursor: pointer;
+        }
+        .pos-res-navbtn:hover { background: #F8FAFC; color: #0F172A; }
+        .pos-res-navbtn svg { width: 16px; height: 16px; }
+        /* Wide enough for "1 – 7 Sep 2026" so the two arrows do not shuffle
+           sideways every time the label changes length. */
+        .pos-res-date {
+            min-width: 148px; text-align: center; font-size: 14px; font-weight: 600;
+            color: #0F172A; font-variant-numeric: tabular-nums;
+        }
+        .pos-res-today { min-height: 34px; padding: 0 12px; font-size: 12px; }
+        @media (max-width: 1100px) {
+            .pos-res-bar-left, .pos-res-bar-right { width: 100%; flex-wrap: wrap; }
+            .pos-res-bar-right .pos-btn-primary { margin-left: auto; }
+        }
+
+        /* ── The calendar ─────────────────────────────────────────────────
+           One grid, one column per day, bookings positioned by time. The head
+           and the body are two grids with the SAME template so the columns line
+           up; they scroll together inside one horizontal scroller, because a
+           head that scrolls independently of its body puts Wednesday's bookings
+           under Friday. */
+        .pos-cal {
+            background: #fff; border: 1px solid #E2E8F0; border-radius: 12px;
+            overflow: hidden;
+        }
+        .pos-cal-scroll { overflow-x: auto; overflow-y: hidden; }
+        /* --cal-cols is written by the renderer: 1 column for Day, 7 for Week. */
+        .pos-cal-head, .pos-cal-grid {
+            display: grid;
+            grid-template-columns: 56px repeat(var(--cal-cols, 7), minmax(112px, 1fr));
+            min-width: max-content;
+        }
+        .pos-cal-head { border-bottom: 1px solid #E2E8F0; background: #fff; }
+        .pos-cal-head > div { padding: 10px 10px; border-left: 1px solid #E2E8F0; }
+        .pos-cal-head > div:first-child { border-left: 0; }
+        .pos-cal-dow {
+            font-size: 10px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.08em; color: #64748B;
+        }
+        .pos-cal-dom {
+            display: block; margin-top: 3px; font-size: 16px; font-weight: 600;
+            color: #0F172A; letter-spacing: -0.01em; font-variant-numeric: tabular-nums;
+        }
+        .pos-cal-count { display: block; margin-top: 2px; font-size: 12px; color: #94A3B8; }
+        /* Today is the only place orange earns its keep here: it is the column a
+           person looks for first, and a tint is an accent, not a fill. */
+        .pos-cal-day.is-today { background: #FFF8F4; }
+        .pos-cal-day.is-today .pos-cal-dom { color: #EA580C; }
+        .pos-cal-grid { position: relative; }
+        .pos-cal-times { border-right: 1px solid #E2E8F0; }
+        .pos-cal-time {
+            height: var(--cal-hour, 56px); padding: 6px 8px; font-size: 10px; color: #94A3B8;
+            border-bottom: 1px solid #F1F5F9; font-variant-numeric: tabular-nums;
+        }
+        .pos-cal-col { position: relative; border-right: 1px solid #E2E8F0; }
+        .pos-cal-col.is-today { background: #FFFCFA; }
+        .pos-cal-slot { height: var(--cal-hour, 56px); border-bottom: 1px solid #F1F5F9; }
+
+        /* A booking block. Status is carried by BOTH a tint and the words on the
+           block — colour alone fails the moment the tablet is in sunlight, which
+           on a host stand by a window is most of service. */
+        .pos-res {
+            position: absolute; left: 5px; right: 5px; overflow: hidden;
+            border: 1px solid #CBD5E1; background: #F8FAFC; border-radius: 8px;
+            padding: 6px 8px; text-align: left; cursor: pointer; min-height: 40px;
+            transition: box-shadow 120ms ease, transform 120ms ease;
+        }
+        .pos-res:hover { box-shadow: 0 2px 8px rgba(15,23,42,.10); }
+        .pos-res:focus-visible { outline: 2px solid #EA580C; outline-offset: 1px; }
+        .pos-res-name {
+            font-size: 12px; font-weight: 600; color: #0F172A;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .pos-res-meta {
+            margin-top: 2px; font-size: 10px; color: #64748B;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font-variant-numeric: tabular-nums;
+        }
+        .pos-res-state { margin-top: 3px; font-size: 10px; font-weight: 600; color: #475569; }
+        .pos-res.is-confirmed { background: #ECFDF5; border-color: #A7F3D0; }
+        .pos-res.is-confirmed .pos-res-state { color: #047857; }
+        .pos-res.is-pending   { background: #FFFBEB; border-color: #FDE68A; }
+        .pos-res.is-pending .pos-res-state { color: #B45309; }
+        .pos-res.is-arrived   { background: #EFF6FF; border-color: #BFDBFE; }
+        .pos-res.is-arrived .pos-res-state { color: #1D4ED8; }
+        .pos-res.is-completed { background: #F8FAFC; border-color: #E2E8F0; opacity: .75; }
+        /* Cancelled and no-show still render: an evening's history is what the
+           no-show rate is computed from, and hiding them makes a busy-looking
+           book out of a night that half emptied. */
+        .pos-res.is-cancelled, .pos-res.is-no_show { background: #FEF2F2; border-color: #FECACA; opacity: .8; }
+        .pos-res.is-cancelled .pos-res-name, .pos-res.is-no_show .pos-res-name { text-decoration: line-through; }
+        .pos-res.is-cancelled .pos-res-state, .pos-res.is-no_show .pos-res-state { color: #B91C1C; }
+        /* Late: booked, due, nobody seated. It keeps its table — see isLate() in
+           pos-availability.js — so the board has to say so loudly enough that a
+           host deals with it instead of the table quietly staying dead. */
+        .pos-res.is-late { box-shadow: inset 3px 0 0 0 #DC2626; }
+        /* Two bookings whose sittings overlap on one table. The DAL refuses this
+           on write, but it is read-then-write and cannot be a transaction, so
+           the board detects it rather than trusting it away. */
+        .pos-res.is-clash { border-color: #DC2626; }
+
+        .pos-cal-now { position: absolute; left: 56px; right: 0; height: 2px; background: #EA580C; z-index: 4; pointer-events: none; }
+        .pos-cal-now::before {
+            content: ''; position: absolute; left: -4px; top: -3px;
+            width: 8px; height: 8px; border-radius: 50%; background: #EA580C;
+        }
+        .pos-cal-now span {
+            position: absolute; left: -52px; top: -8px; background: #fff; border: 1px solid #EA580C;
+            color: #C2410C; font-size: 10px; font-weight: 600; padding: 1px 4px; border-radius: 4px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ── Month ────────────────────────────────────────────────────────
+           Deliberately NOT a timeline. At month scale the question stops being
+           "when is this table free" and becomes "which nights are filling up",
+           so each cell answers that: covers, count, and the first few names. */
+        .pos-cal-month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+        .pos-cal-mcell {
+            min-height: 96px; padding: 8px; border-right: 1px solid #F1F5F9;
+            border-bottom: 1px solid #F1F5F9; background: #fff; text-align: left;
+            display: flex; flex-direction: column; gap: 4px; cursor: pointer;
+        }
+        .pos-cal-mcell:hover { background: #F8FAFC; }
+        .pos-cal-mcell:nth-child(7n) { border-right: 0; }
+        .pos-cal-mcell.is-outside { background: #FAFAFA; color: #CBD5E1; }
+        .pos-cal-mcell.is-today { background: #FFF8F4; }
+        .pos-cal-mdate { font-size: 12px; font-weight: 600; color: #334155; font-variant-numeric: tabular-nums; }
+        .pos-cal-mcell.is-today .pos-cal-mdate { color: #EA580C; }
+        .pos-cal-mcell.is-outside .pos-cal-mdate { color: #CBD5E1; }
+        .pos-cal-mcovers { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #64748B; }
+        .pos-cal-mchip {
+            font-size: 10px; color: #475569; background: #F1F5F9; border-radius: 5px;
+            padding: 2px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        /* ── Detail sheet ─────────────────────────────────────────────────
+           Opened from a block. Reuses the shared modal (.pos-modal-layer) so a
+           booking is inspected in the same component an order is paid in. */
+        .pos-res-detail { display: grid; gap: 10px; }
+        .pos-res-detail dl { display: grid; grid-template-columns: 96px 1fr; gap: 6px 12px; margin: 0; }
+        .pos-res-detail dt { font-size: 12px; color: #64748B; }
+        .pos-res-detail dd { margin: 0; font-size: 14px; color: #0F172A; }
+        .pos-res-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .pos-res-actions .pos-btn-ghost, .pos-res-actions .pos-btn-primary { justify-content: center; }
+        .pos-res-warn {
+            font-size: 12px; color: #B91C1C; background: #FEF2F2; border: 1px solid #FECACA;
+            border-radius: 8px; padding: 8px 10px; line-height: 1.4;
+        }
+        /* The floor plan's reserved state. A tinted table is a table a cashier
+           can see is spoken for before they reach for it; the label says who and
+           when, because "reserved" alone reads as the system being cautious and
+           a cashier who thinks that seats the table anyway. */
+        .pos-table.is-reserved { border-color: #C4B5FD; background: #F5F3FF; }
+        .pos-table.is-reserved .pos-table-free { color: #6D28D9; font-weight: 600; }
+        .pos-dot.is-reserved { background: #A78BFA; }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
@@ -1331,6 +1533,7 @@
                             <span><i class="pos-dot is-free"></i>Free</span>
                             <span><i class="pos-dot is-busy"></i>In use</span>
                             <span><i class="pos-dot is-bill"></i>Awaiting payment</span>
+                            <span><i class="pos-dot is-reserved"></i>Reserved</span>
                         </div>
                         <div class="pos-floor-actions">
                             <button type="button" id="pos-arrange-btn" class="pos-btn-ghost hidden">
@@ -1364,6 +1567,7 @@
                                 <button type="button" role="tab" aria-selected="true" class="pos-tab is-active" data-otab="all">All<span class="pos-tab-count" data-otab-count="all"></span></button>
                                 <button type="button" role="tab" aria-selected="false" class="pos-tab" data-otab="process">In Process<span class="pos-tab-count" data-otab-count="process"></span></button>
                                 <button type="button" role="tab" aria-selected="false" class="pos-tab" data-otab="kitchen">Process to Kitchen<span class="pos-tab-count" data-otab-count="kitchen"></span></button>
+                                <button type="button" role="tab" aria-selected="false" class="pos-tab" data-otab="ready">Ready<span class="pos-tab-count" data-otab-count="ready"></span></button>
                                 <button type="button" role="tab" aria-selected="false" class="pos-tab" data-otab="served">Served<span class="pos-tab-count" data-otab-count="served"></span></button>
                                 <button type="button" role="tab" aria-selected="false" class="pos-tab" data-otab="bill">Request Bill<span class="pos-tab-count" data-otab-count="bill"></span></button>
                                 <button type="button" role="tab" aria-selected="false" class="pos-tab" data-otab="done">Completed<span class="pos-tab-count" data-otab-count="done"></span></button>
@@ -1421,6 +1625,63 @@
                     </div>
                     <div id="pos-orders-grid" class="pos-orders-grid"></div>
                     <div id="pos-orders-empty" class="hidden"></div>
+                </section>
+
+                <!-- ── VIEW: Reservations ────────────────────────────────────
+                     A booking is a claim on a table in the future, so this view
+                     sits beside the floor plan rather than in a calendar app of
+                     its own — and both read the same availability rule
+                     (assets/js/pos-availability.js), which is what stops a
+                     reserved table being sold to a walk-in.
+
+                     The page title and subtext are in the TOPBAR, like every
+                     other view here: a header rendered in the canvas costs the
+                     first 90px of a 10" tablet re-introducing the screen. -->
+                <section class="pos-view hidden" data-view="reservations">
+                    <div class="pos-res-bar">
+                        <div class="pos-res-bar-left">
+                            <div class="pos-tabs" role="tablist" aria-label="Calendar range">
+                                <button type="button" role="tab" aria-selected="false" class="pos-tab" data-rperiod="day">Day</button>
+                                <button type="button" role="tab" aria-selected="true" class="pos-tab is-active" data-rperiod="week">Week</button>
+                                <button type="button" role="tab" aria-selected="false" class="pos-tab" data-rperiod="month">Month</button>
+                            </div>
+                            <div class="pos-res-nav">
+                                <button type="button" class="pos-res-navbtn" data-rmove="-1" aria-label="Previous">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+                                </button>
+                                <span class="pos-res-date" id="pos-res-date">—</span>
+                                <button type="button" class="pos-res-navbtn" data-rmove="1" aria-label="Next">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+                                </button>
+                            </div>
+                            <button type="button" class="pos-btn-ghost pos-res-today" data-rmove="0">Today</button>
+                        </div>
+                        <div class="pos-res-bar-right">
+                            <div class="pos-search pos-search-sm">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                                <input id="pos-res-search" type="search" autocomplete="off"
+                                       placeholder="Search guest, table or phone" aria-label="Search reservations">
+                            </div>
+                            <div class="pos-tabs" role="tablist" aria-label="Layout">
+                                <button type="button" role="tab" aria-selected="true" class="pos-tab is-active" data-rlayout="calendar">Calendar</button>
+                                <button type="button" role="tab" aria-selected="false" class="pos-tab" data-rlayout="list">List</button>
+                            </div>
+                            <!-- This view's ONE primary action. The topbar's
+                                 Create Order is hidden while it is open: a
+                                 planning screen and a till CTA competing for the
+                                 same glance is two primary actions in one zone. -->
+                            <button type="button" class="pos-btn-primary" id="pos-res-new">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                                <span>New reservation</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="pos-res-metrics" class="pos-metrics"></div>
+
+                    <div id="pos-res-calendar" class="pos-cal"></div>
+                    <div id="pos-res-list" class="hidden"></div>
+                    <div id="pos-res-empty" class="hidden"></div>
                 </section>
 
                 <!-- ── VIEW: Shift ───────────────────────────────────────── -->

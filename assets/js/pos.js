@@ -108,7 +108,7 @@ const tr = (s) => (window.FluxyI18n && window.FluxyI18n.t ? window.FluxyI18n.t(s
 
 const POS_PROFILES = {
     fnb: {
-        ladder: { open: 'sent', submitted: 'sent', sent: 'served', served: 'awaiting_payment' },
+        ladder: { open: 'sent', submitted: 'sent', sent: 'ready', ready: 'served', served: 'awaiting_payment' },
         views: ['till', 'tables', 'orders', 'shift'],
         payFirst: false,
         // "Create Order" rather than "Takeaway": the button opens a choice now,
@@ -364,14 +364,15 @@ async function once(fn) {
 // cashier to skip the one in front of them, and on a till that means a dish
 // leaves the pass unrecorded.
 //
-// ⚠️ There is no `ready` state between `sent` and `served`. A kitchen that wants
-// "Mark as Ready" then "Serve" as two presses needs one, and that is a schema
-// change: the status enum lives in firestore.rules and would need a deploy AND
-// a seventh tab, or orders in it belong to no tab at all. Deliberately deferred.
 const STATUS = {
     open:             { label: 'Open',             cls: 'fluxy-status-neutral', next: 'sent',             action: 'Process to Kitchen' },
     submitted:        { label: 'New QR order',     cls: 'fluxy-status-info',    next: 'sent',             action: 'Confirm Order' },
-    sent:             { label: 'In the kitchen',   cls: 'fluxy-status-info',    next: 'served',           action: 'Mark as Served' },
+    sent:             { label: 'In the kitchen',   cls: 'fluxy-status-info',    next: 'ready',            action: 'Mark as Ready' },
+    // Cooked and waiting to be carried out. Its own state because it is a
+    // different person's problem: a plate under the pass is the runner's, not
+    // the cook's, and without it the board shows a 12-minute "in the kitchen"
+    // for food that was done in four.
+    ready:            { label: 'Ready to serve',   cls: 'fluxy-status-warning', next: 'served',           action: 'Serve' },
     served:           { label: 'Served',           cls: 'fluxy-status-success', next: 'awaiting_payment', action: 'Request Bill' },
     awaiting_payment: { label: 'Awaiting payment', cls: 'fluxy-status-warning', next: null,               action: 'Pay Bill' },
     paid:             { label: 'Paid',             cls: 'fluxy-status-success', next: null,               action: null },
@@ -880,6 +881,7 @@ const ORDER_TABS = {
     // reached the kitchen.
     process: (o) => ['open', 'submitted'].includes(o.status),
     kitchen: (o) => o.status === 'sent',
+    ready:   (o) => o.status === 'ready',
     served:  (o) => o.status === 'served',
     bill:    (o) => o.status === 'awaiting_payment',
     done:    (o) => o.status === 'paid'
@@ -914,6 +916,10 @@ const SLA = {
     open:             { warn: 3,  late: 6 },
     submitted:        { warn: 2,  late: 5 },
     sent:             { warn: 10, late: 18 },
+    // The tightest clock on the board, deliberately. Food that is cooked and
+    // not moving is the thing that reaches the customer cold, and the fix costs
+    // one person ten seconds — so it should shout early.
+    ready:            { warn: 2,  late: 4 },
     served:           { warn: 15, late: 30 },
     awaiting_payment: { warn: 4,  late: 8 },
     paid: null,
@@ -1298,6 +1304,17 @@ function closePosFilterPanel() {
 // seeding and asserting in two round-trips is a race the assertion loses — it
 // reads the real board and reports a confusing failure about sort order.
 window.__posSeedBoard = (rows) => {
+    // FREEZE the board first.
+    //
+    // The live watcher repaints from real data whenever anything writes, which
+    // detaches the seeded cards mid-interaction — Playwright reports "element
+    // was detached from the DOM" on a card that was simply replaced. Patching
+    // each spec around it treats the symptom; a seeded board is a frozen board
+    // by definition, so seeding says so once and every seeded spec is
+    // deterministic. Reversed by reloading the page, which every spec does.
+    if (state.unwatch) { state.unwatch(); state.unwatch = null; }
+    state.frozen = true;
+
     const all = (rows || []).map((o) => ({ ...o }));
     state.overview = {
         ...(state.overview || {}),
@@ -1421,14 +1438,39 @@ function renderOrderLists() {
                 ${waitChip(o, now)}
             </div>
 
+            ${o.customer_name || o.guest_count ? `<div class="pos-ocard-who">${
+                [o.customer_name ? esc(o.customer_name) : '',
+                 o.guest_count ? `${Number(o.guest_count)} guests` : ''].filter(Boolean).join(' · ')
+            }</div>` : ''}
+            <!-- The order-level note is an instruction to the whole ticket —
+                 an allergy, a "serve together". It outranks the line items, so
+                 it sits above them and is the one thing on the card allowed to
+                 carry a colour. -->
+            ${o.note ? `<p class="pos-ocard-ordernote">${esc(o.note)}</p>` : ''}
+
             <table class="pos-ocard-items">
                 <thead><tr><th>Items</th><th>Qty</th><th>Price</th></tr></thead>
                 <tbody>
-                    ${shown.map((l) => `<tr>
-                        <td>${esc(l.item_name)}</td>
+                    ${shown.map((l) => {
+                        // Everything the person COOKING needs, on the card.
+                        //
+                        // A kitchen screen that hides "medium well" or "no ice"
+                        // behind a tap is not a kitchen screen: hands are full,
+                        // and the one thing a cook must never have to do is
+                        // navigate. Modifiers and the line note are the order —
+                        // without them the card says "Wagyu ×2" for two
+                        // completely different plates.
+                        const mods = (l.modifiers || []).map((m) => esc(m.option_name)).join(' · ');
+                        const note = l.note ? esc(l.note) : '';
+                        return `<tr>
+                        <td>
+                            <span class="pos-ocard-item">${esc(l.item_name)}</span>
+                            ${mods ? `<span class="pos-ocard-mods">${mods}</span>` : ''}
+                            ${note ? `<span class="pos-ocard-note">${note}</span>` : ''}
+                        </td>
                         <td>${Number(l.quantity) || 0}</td>
                         <td>${rp((Number(l.gross_amount) || 0) - (Number(l.discount_amount) || 0))}</td>
-                    </tr>`).join('')}
+                    </tr>`; }).join('')}
                     ${more > 0 ? `<tr class="pos-ocard-more"><td colspan="3">+${more} more</td></tr>` : ''}
                     ${!lines.length ? '<tr class="pos-ocard-more"><td colspan="3">Nothing added yet</td></tr>' : ''}
                 </tbody>
@@ -2570,16 +2612,21 @@ function openPaymentModal() {
 
         const short = received > 0 && received < due;
         $$('pos-short').hidden = !short;
-        if (short) $$('pos-short').textContent = `${rp(due - received)} short of the bill.`;
+        if (short) $$('pos-short').textContent = `${rp(due - received)} short — payment cannot be taken.`;
 
-        // Cannot COMPLETE on less than the bill — the guard the brief asks for.
-        // A genuine part payment is still reachable: the button says so plainly
-        // rather than pretending the order is settled. Split tender is real
-        // (cash + QRIS on one bill) and silently removing it would be a money
-        // bug of exactly the kind this till has already had.
-        submit.disabled = received <= 0;
-        submit.textContent = short ? 'Record part payment' : 'Confirm payment';
-        submit.classList.toggle('is-partial', short);
+        // A tender below the bill cannot be taken at all.
+        //
+        // The earlier cut allowed it as an explicit "part payment" to preserve
+        // split tender — cash + QRIS on one bill. The business does not do that,
+        // and confirmed so: on this floor a short tender is a miscount, and the
+        // useful thing is to refuse it while the customer is still standing
+        // there. The DAL still accepts partial amounts, so this is a till rule
+        // rather than a lost capability — `recordPosPayment` is unchanged.
+        //
+        // The button is disabled, and the reason sits right above it. A dead
+        // button with no explanation is the worst of both.
+        submit.disabled = received <= 0 || short;
+        submit.textContent = 'Confirm payment';
     };
 
     const setReceived = (minor) => {
@@ -3404,6 +3451,8 @@ function showShiftResult(s) {
 // ── Load ─────────────────────────────────────────────────────────────────────
 
 async function refresh({ keepOrder = false } = {}) {
+    // A seeded board must not be repainted from the server — see __posSeedBoard.
+    if (state.frozen) return;
     const [overview, menu, shift] = await Promise.all([
         ds.getPosOverview(state.uid, { dimensionId: state.outletId }),
         ds.getPosMenu(state.uid),

@@ -37,6 +37,12 @@ module.exports = defineConfig({
         video: 'retain-on-failure',
         screenshot: 'only-on-failure',
     },
+    // Voids the till orders the run leaves behind. Specs create real orders in a
+    // real workspace and a spec that fails never reaches its own cleanup — and
+    // those leftovers are not inert: the parked list, the floor's free tables
+    // and the Orders board all read "every non-terminal order", so one spec's
+    // residue becomes the next spec's input. Never fails the run.
+    globalTeardown: require.resolve('./tests/global-teardown.js'),
     webServer: {
         command: 'node tests/qa-static-server.js',
         url: 'http://127.0.0.1:8765/dashboard.html',

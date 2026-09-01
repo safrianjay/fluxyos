@@ -67,10 +67,10 @@ test('the board shows one tab per real order status', async ({ page }) => {
     const tabs = await page.locator('[data-otab]').evaluateAll((els) => els.map((e) => ({
         key: e.dataset.otab, label: e.textContent.replace(/\d+$/, '').trim()
     })));
-    expect(tabs.map((t) => t.key)).toEqual(['all', 'process', 'kitchen', 'served', 'bill', 'done']);
+    expect(tabs.map((t) => t.key)).toEqual(['all', 'process', 'kitchen', 'ready', 'served', 'bill', 'done']);
     // Ladder order, so the row reads the way service actually flows.
     expect(tabs.map((t) => t.label).join(' | '))
-        .toMatch(/All \| In Process \| Process to Kitchen \| Served \| Request Bill \| Completed/i);
+        .toMatch(/All \| In Process \| Process to Kitchen \| Ready \| Served \| Request Bill \| Completed/i);
 });
 
 test('waiting time escalates on each status own threshold', async ({ page }) => {
@@ -198,11 +198,12 @@ test('every card names the next step, and never a later one', async ({ page }) =
     const rows = await seedBoard(page, [
         { status: 'open',             ageMin: 2 },
         { status: 'sent',             ageMin: 2 },
+        { status: 'ready',            ageMin: 1 },
         { status: 'served',           ageMin: 2 },
         { status: 'awaiting_payment', ageMin: 2 },
         { status: 'paid',             ageMin: 2 }
     ]);
-    expect(rows).toHaveLength(5);
+    expect(rows).toHaveLength(6);
 
     // Read from the seed's own return — a second round-trip would race the live
     // watcher and assert against the real board.
@@ -210,7 +211,9 @@ test('every card names the next step, and never a later one', async ({ page }) =
     const by = (s) => ctas.find((c) => c.status === s);
 
     expect(by('open').buttons).toEqual(['Process to Kitchen']);
-    expect(by('sent').buttons).toEqual(['Mark as Served']);
+    // Two beats through the kitchen: the cook finishes, the runner carries.
+    expect(by('sent').buttons).toEqual(['Mark as Ready']);
+    expect(by('ready').buttons).toEqual(['Serve']);
     expect(by('served').buttons).toEqual(['Request Bill']);
     expect(by('awaiting_payment').buttons).toEqual(['Pay Bill']);
     // Settled: the only thing left to do with it is print. Never a step.
@@ -221,7 +224,7 @@ test('every card names the next step, and never a later one', async ({ page }) =
     ctas.forEach((c) => expect(c.buttons.length, `${c.status} has ${c.buttons.length} actions`).toBe(1));
 
     // And "Pay Bill" appears on nothing that is still being worked.
-    ['open', 'sent', 'served'].forEach((st) => {
+    ['open', 'sent', 'ready', 'served'].forEach((st) => {
         expect(by(st).buttons.join(' '), `${st} offers payment out of turn`).not.toMatch(/pay bill/i);
     });
 });
@@ -270,7 +273,6 @@ test('cash payment: change, a floor on the tender, and locale-correct quick amou
     // it is the one figure on this screen that costs real money when wrong.
     await openBoard(page);
     await seedBoard(page, [{ status: 'awaiting_payment', ageMin: 5, total: 22500 }]);
-
     await page.locator('.pos-ocard[data-status="awaiting_payment"] [data-pay]').first().click();
     const modal = page.locator('#pos-pay-modal .pos-modal');
     await expect(modal, 'payment must be a popup, not a page or a side drawer').toBeVisible({ timeout: 10000 });
@@ -291,14 +293,17 @@ test('cash payment: change, a floor on the tender, and locale-correct quick amou
     await expect(page.locator('#pos-change')).toBeVisible();
     await expect(page.locator('#pos-change-value'), 'change is wrong').toHaveText(/27\.500/);
 
-    // Tender LESS → cannot be confirmed as a completed payment. It stays
-    // reachable as an explicit part payment, because split tender (cash + QRIS
-    // on one bill) is real and silently removing it would be a money bug.
+    // Tender LESS → refused outright. This floor does not take split tender, so
+    // a short amount is a miscount, and the useful thing is to refuse it while
+    // the customer is still standing there rather than leave a half-paid order
+    // behind. The DAL still accepts partial amounts; this is a till rule.
     await page.fill('#pos-pay-amount', '');
     await page.locator('#pos-pay-amount').type('10000');
-    await expect(page.locator('#pos-short')).toBeVisible();
     await expect(page.locator('#pos-pay-submit'),
-        'a short tender must not read as a completed payment').toHaveText(/part payment|sebagian/i);
+        'a tender below the bill was accepted').toBeDisabled();
+    // …and it says WHY. A dead button with no explanation is the worst of both.
+    await expect(page.locator('#pos-short')).toBeVisible();
+    await expect(page.locator('#pos-short')).toContainText(/short/i);
 
     // Nothing entered at all is not a payment.
     await page.fill('#pos-pay-amount', '');

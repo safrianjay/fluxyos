@@ -5300,6 +5300,10 @@
         "Nothing added yet.": "Belum ada yang ditambahkan.",
         // ── Orders board: status tabs, sort & filter, waiting time ──────
         "Process to Kitchen": "Diproses ke Dapur",
+        // "Ready" is already in the dictionary above.
+        "Ready to serve": "Siap disajikan",
+        "Mark as Ready": "Tandai Siap",
+        "Serve": "Sajikan",
         // Next-step CTAs on the order card and the till's primary button.
         "Confirm Order": "Konfirmasi Pesanan",
         "Mark as Served": "Tandai Tersaji",

@@ -87,7 +87,7 @@ nothing would report it.
 | `dimension_id` | string | Outlet. `buildJournal` stamps it onto every line it produces |
 | `table_id` / `table_label` | string \| null | Null for takeaway |
 | `channel` | enum | `staff` \| `qr` \| `connector` |
-| `status` | enum | `open` \| `submitted` \| `sent` \| `served` \| `awaiting_payment` \| `paid` \| `void` |
+| `status` | enum | `open` \| `submitted` \| `sent` \| `ready` \| `served` \| `awaiting_payment` \| `paid` \| `void` |
 | `lines` | array | `{ line_id, item_id, item_name, quantity, unit_price, gross_amount, discount_amount, discount_reason, note, modifiers, modifier_amount }` |
 | `discount_amount` / `discount_reason` | integer / string | **Order-level**, separate from line discounts |
 | `subtotal` / `discount_total` | integer | Σ line gross; Σ line + order discounts |
@@ -243,11 +243,19 @@ still being typed at the till. Naming a step three moves away invites the
 cashier to skip the ones in between, and on a till that means a dish leaves the
 pass unrecorded.
 
-⚠️ **There is no `ready` state** between `sent` and `served`. A kitchen that
-wants "Mark as Ready" and then "Serve" as two presses needs one, and that is a
-schema change: the status enum is enforced in `firestore.rules`, so it needs a
-deploy AND a seventh tab — orders in a status no tab matches are invisible.
-Deliberately deferred.
+**`ready` is a real state** (added 2026-09-01, rules deployed and stamped):
+cooked and waiting to be carried out. It exists because it is a different
+person's problem — a plate under the pass going cold is the runner's, not the
+cook's — and without it the board showed a 12-minute "in the kitchen" for food
+that was done in four. It has the tightest SLA on the board (slow at 2 min, late
+at 4): cold food is the failure, and the fix costs one person ten seconds.
+
+Adding it touched **three** allowlists, and only one of them was in rules. The
+other two are in `pos-service.js`, and the second is the dangerous one:
+`getPosOverview`'s `openStatuses` decides which orders count as ACTIVE, so a
+status missing from it does not error — the order simply disappears from the
+board and the floor plan, and the table it is sitting at reads as free. When
+adding a status, grep for every list that enumerates them.
 
 ### Payment is a modal, and every figure goes through the money seam
 
@@ -260,11 +268,13 @@ locale-correct formatting, CHANGE is the loudest thing after the bill (it is
 what physically leaves the drawer), and a tender below the bill cannot be
 confirmed as a completed payment.
 
-**A short tender is still recordable as an explicit part payment**, and the
-button says so. Blocking it outright would delete split tender — cash + QRIS on
-one bill — which `_posSettlementAmounts` supports and which produced a silent
-money bug on 2026-08-30 when it was got wrong. The guard the board needs is
-"this must not LOOK settled", not "this must be impossible".
+**A short tender is refused outright.** The first cut allowed it as an explicit
+part payment to preserve split tender — cash + QRIS on one bill — but the
+business confirmed it does not take split tender: on this floor a short amount
+is a miscount, and the useful thing is to refuse it while the customer is still
+standing there. The button is disabled and the shortfall is stated above it; a
+dead button with no explanation is the worst of both. `recordPosPayment` still
+accepts partial amounts, so this is a till rule rather than a lost capability.
 
 Quick-cash amounts come from `FluxyMoney.cashSuggestions`, which reads the
 currency's own banknotes — see `MULTI_MARKET_ARCHITECTURE.md` §2d.
