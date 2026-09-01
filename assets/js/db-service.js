@@ -1407,6 +1407,87 @@ class DataService {
         return url;
     }
 
+    // --- ITEM IMAGES (product photos on the inventory master) ---
+    //
+    // Same security posture as documents and for the same reason: the bytes are
+    // uploaded with no download token surfaced, and every read carries the
+    // caller's ID token so storage.rules is enforced server-side. NOTHING here
+    // may call getDownloadURL().
+    //
+    // Deliberately NOT filed as a `documents` row. A document is a record — it
+    // gets a Firestore doc, counts against the monthly document-processing
+    // quota, and is read once. A product photo is a PROPERTY of an item: written
+    // once by whoever maintains the catalogue, read on every till load, never
+    // processed. Filing it as a document would spend a workspace's extraction
+    // quota on a thumbnail.
+    async uploadItemImage(userId, itemId, file) {
+        if (!userId || !itemId) throw new Error('userId and itemId required');
+        if (!file) throw new Error('Pick an image first.');
+        const ALLOWED = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!ALLOWED.includes(file.type)) {
+            throw new Error('That file is not an image. Use a JPG, PNG or WebP.');
+        }
+        // Checked here as well as in storage.rules. Rules refuse the upload with
+        // an opaque error; this refuses it with a sentence, before the person has
+        // waited for a 5 MB upload to fail.
+        const MAX = 2 * 1024 * 1024;
+        if (file.size > MAX) {
+            throw new Error('That image is larger than 2 MB. Use a smaller one.');
+        }
+        // The storage quota is a plan limit and applies to any bytes we keep.
+        await this.assertCanUseStorage(userId, file.size || 0, { source: 'item_image' });
+
+        const { getStorage, ref, uploadBytes } =
+            await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
+        if (!this._storage) this._storage = getStorage(this.app);
+
+        const safeName = String(file.name || 'photo').replace(/[^\w.\-]+/g, '_').slice(0, 120) || 'photo';
+        // The timestamp makes each upload a NEW object rather than overwriting.
+        // Replacing a photo in place would leave every already-loaded till
+        // showing the old bytes from its blob cache with no way to know, and it
+        // would make a mis-click unrecoverable.
+        const storagePath = `${this._scope(userId)}/items/${itemId}/${Date.now()}_${safeName}`;
+        await uploadBytes(ref(this._storage, storagePath), file, this._uploadMetadata(file.type));
+        await this._auditCreateBestEffort(userId, 'item.image_uploaded', 'items', itemId, {});
+        return { storagePath, fileName: safeName, fileSize: file.size || 0 };
+    }
+
+    // Attach or detach an item's photo, WITHOUT going through saveItem.
+    //
+    // `saveItem` validates a whole draft — name, base unit, the recipe graph —
+    // because it is the item editor's write path. Calling it with just a photo
+    // throws "item name is required", and re-running recipe explosion to record
+    // a thumbnail would be the wrong shape of work even if it did not.
+    //
+    // A targeted update is also what keeps the rules happy: `items` validates
+    // explicit fields, and for an update `request.resource.data` is the MERGED
+    // document, so name and base_unit are still there to be checked.
+    async setItemImage(userId, itemId, storagePath) {
+        if (!userId || !itemId) throw new Error('userId and itemId required');
+        await updateDoc(doc(this.db, `${this._scope(userId)}/items/${itemId}`), {
+            image_path: this._nullableString(storagePath, 400),
+            updated_at: serverTimestamp()
+        });
+        await this._auditCreateBestEffort(userId,
+            storagePath ? 'item.image_set' : 'item.image_cleared', 'items', itemId, {});
+    }
+
+    // A blob: URL for an item's photo. Origin-bound and dead when the tab closes,
+    // exactly like the document one, and cached per session because the till
+    // re-renders its grid on every refresh — without the cache a menu of 60 items
+    // would re-download 60 images every time an order changed.
+    async getItemImageObjectURL(userId, storagePath) {
+        if (!storagePath) throw new Error('storagePath required');
+        if (this._docUrlCache.has(storagePath)) return this._docUrlCache.get(storagePath);
+        const { getStorage, ref, getBlob } =
+            await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
+        if (!this._storage) this._storage = getStorage(this.app);
+        const blob = await getBlob(ref(this._storage, storagePath));
+        const url = URL.createObjectURL(blob);
+        this._docUrlCache.set(storagePath, url);
+        return url;
+    }
+
     revokeDocumentObjectURL(storagePath) {
         const url = this._docUrlCache.get(storagePath);
         if (!url) return;
@@ -6285,6 +6366,18 @@ class DataService {
         const extra = {};
         const put = (key, value) => { if (key in data) extra[key] = value; };
         put('barcode', this._nullableString(data.barcode, 32));
+        // A product photo, shown on the POS menu card. Optional everywhere.
+        //
+        // The STORAGE PATH is stored, never a download URL. getDownloadURL()
+        // mints a permanent public link that Firebase serves with Security Rules
+        // BYPASSED — the whole reason this codebase removed it from the document
+        // path — so a product photo read through one would be a workspace's menu
+        // and prices readable by anyone who ever saw the link. Reads go through
+        // `getItemImageObjectURL`, which carries the caller's ID token.
+        //
+        // 400 chars: a workspace id, an item id and a sanitized filename, with
+        // room to spare.
+        put('image_path', this._nullableString(data.image_path, 400));
         put('categories', Array.isArray(data.categories)
             ? data.categories.map((c) => String(c || '').trim().slice(0, 40)).filter(Boolean).slice(0, 8)
             : []);

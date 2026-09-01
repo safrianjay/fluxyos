@@ -182,6 +182,27 @@
         .inv-qty-unit { color: #94A3B8; font-weight: 400; margin-left: 3px; }
         .inv-muted { color: #94A3B8; }
 
+        /* ── Product photo control ──────────────────────────────────────────
+           The preview keeps a fixed 4:3 tile and shows the image with
+           `object-fit: contain` — the SAME treatment as the POS card, so what is
+           approved here is what a cashier sees. `cover` would crop the preview
+           and the till differently from each other, which is how a photo comes
+           to look right in one place and wrong in the other. */
+        .inv-photo { display: flex; gap: 12px; align-items: flex-start; }
+        .inv-photo-preview {
+            flex: 0 0 112px; aspect-ratio: 4 / 3;
+            border: 1px solid #E2E8F0; border-radius: 10px; background: #F1F5F9;
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+        }
+        .inv-photo-preview img { width: 100%; height: 100%; object-fit: contain; display: block; }
+        .inv-photo-preview img[hidden] { display: none; }
+        .inv-photo-empty { font-size: 12px; color: #94A3B8; text-align: center; padding: 0 8px; }
+        .inv-photo-actions {
+            flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap;
+            gap: 8px; align-items: flex-start;
+        }
+        .inv-photo-actions .fluxy-drawer-hint { flex: 1 0 100%; margin: 0; }
+
         .inv-tag {
             display: inline-block;
             margin-left: 6px;
@@ -831,7 +852,31 @@
                     Scan it here to fill it in. A cashier can then scan the same code at the till and this drops straight into the cart.
                 </p>
 
-                <label class="fluxy-drawer-label" for="item-pos-category">Menu group <span class="inv-muted">(optional)</span></label>
+                <!-- ── Product photo ────────────────────────────────────────
+                     Optional, and shown only on the POS card. It lives in the
+                     POS section rather than beside the name because that is the
+                     only place it is used: an ingredient does not need a picture,
+                     and a field asking for one on every flour entry is a question
+                     with no right answer.
+
+                     The STORAGE PATH is what gets stored, never a URL. Reads are
+                     authenticated, so a menu photo can never become a public link
+                     — see uploadItemImage in db-service.js. -->
+                <label class="fluxy-drawer-label" style="margin-top:14px;">Photo <span class="inv-muted">(optional)</span></label>
+                <div class="inv-photo" id="item-photo">
+                    <div class="inv-photo-preview" id="item-photo-preview">
+                        <span class="inv-photo-empty" id="item-photo-empty">No photo</span>
+                        <img id="item-photo-img" alt="" hidden>
+                    </div>
+                    <div class="inv-photo-actions">
+                        <input id="item-photo-file" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+                        <button type="button" id="item-photo-pick" class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Choose image</button>
+                        <button type="button" id="item-photo-clear" class="fluxy-drawer-btn fluxy-drawer-btn--secondary" hidden>Remove</button>
+                        <p class="fluxy-drawer-hint" id="item-photo-hint">JPG, PNG or WebP, up to 2&nbsp;MB. Shown whole on the till — it is never cropped, so any shape works.</p>
+                    </div>
+                </div>
+
+                <label class="fluxy-drawer-label" for="item-pos-category" style="margin-top:14px;">Menu group <span class="inv-muted">(optional)</span></label>
                 <input id="item-pos-category" type="text" class="fluxy-drawer-input" maxlength="40" placeholder="Makanan, Minuman" autocomplete="off">
                 <label class="inv-check" style="margin-top:4px;">
                     <input id="item-pos-visible" type="checkbox" class="inv-check-box">
@@ -1075,6 +1120,14 @@
         let currentUid = null;
         let allRows = [];        // items joined with their stock
         let editingItem = null;  // null = create mode
+        // The item's CURRENT photo path, and a file chosen but not yet uploaded.
+        //
+        // They are separate because an upload needs an item id and a new item has
+        // none until it is written. The file is therefore held here and uploaded
+        // AFTER the save, which is also why a failed upload cannot lose the item:
+        // the item is already safe on disk by then.
+        let pendingImagePath = null;
+        let pendingImageFile = null;
         let paginator = null;
         let stockItems = [];     // type 'stock' only — composites cannot be received
         let dimensions = [];
@@ -2261,7 +2314,87 @@
         }
 
         // ── Drawer ───────────────────────────────────────────────────────────
+        // The photo control. Preview, pick, remove.
+        //
+        // The preview renders through an AUTHENTICATED read for a stored photo
+        // (getItemImageObjectURL) and a local object URL for one just chosen —
+        // never a download URL, which would be a permanent public link to the
+        // workspace's menu.
+        async function setItemPhoto(path) {
+            pendingImagePath = path || null;
+            pendingImageFile = null;
+            const img = document.getElementById('item-photo-img');
+            const empty = document.getElementById('item-photo-empty');
+            const clear = document.getElementById('item-photo-clear');
+            if (!img) return;
+            img.hidden = true;
+            img.removeAttribute('src');
+            empty.hidden = false;
+            clear.hidden = !path;
+            if (!path) return;
+            try {
+                img.src = await ds.getItemImageObjectURL(currentUid, path);
+                img.hidden = false;
+                empty.hidden = true;
+            } catch (_) {
+                // The path is still on the record and still valid for the till;
+                // only this preview failed. Saying "no photo" would invite the
+                // person to re-attach one they already have.
+                empty.textContent = 'Photo could not be previewed';
+                empty.hidden = false;
+            }
+        }
+
+        function wireItemPhoto() {
+            const file = document.getElementById('item-photo-file');
+            const pick = document.getElementById('item-photo-pick');
+            const clear = document.getElementById('item-photo-clear');
+            const img = document.getElementById('item-photo-img');
+            const empty = document.getElementById('item-photo-empty');
+            if (!file || file.dataset.wired) return;
+            file.dataset.wired = '1';
+
+            pick.addEventListener('click', () => file.click());
+            file.addEventListener('change', () => {
+                const chosen = file.files && file.files[0];
+                if (!chosen) return;
+                // Checked here as well as in the DAL and in storage.rules. Each
+                // layer refuses it later and more opaquely than the last; this
+                // one says so before anything is uploaded.
+                if (!['image/jpeg', 'image/png', 'image/webp'].includes(chosen.type)) {
+                    window.showToast('That file is not an image. Use a JPG, PNG or WebP.', 'error');
+                    file.value = '';
+                    return;
+                }
+                if (chosen.size > 2 * 1024 * 1024) {
+                    window.showToast('That image is larger than 2 MB. Use a smaller one.', 'error');
+                    file.value = '';
+                    return;
+                }
+                pendingImageFile = chosen;
+                img.src = URL.createObjectURL(chosen);
+                img.hidden = false;
+                empty.hidden = true;
+                clear.hidden = false;
+            });
+
+            clear.addEventListener('click', () => {
+                // Clears the RECORD's reference. The stored object is left alone
+                // — an item is never deleted either, and keeping the bytes makes
+                // a mis-click recoverable for the cost of a few KB.
+                pendingImagePath = null;
+                pendingImageFile = null;
+                file.value = '';
+                img.hidden = true;
+                img.removeAttribute('src');
+                empty.textContent = 'No photo';
+                empty.hidden = false;
+                clear.hidden = true;
+            });
+        }
+
         function openDrawer(item) {
+            wireItemPhoto();
             editingItem = item;
             const isEdit = Boolean(item);
 
@@ -2284,6 +2417,10 @@
             const priceEl = document.getElementById('item-price');
             if (isEdit && Number(item.sales_price) > 0) window.FluxyAmountInput.seed(priceEl, item.sales_price);
             else priceEl.value = '';
+            // Same round-trip rule as barcode above: this drawer always sends
+            // `image_path`, so opening an edit without seeding it would erase a
+            // photo somebody attached earlier.
+            setItemPhoto(isEdit ? (item.image_path || null) : null);
             document.getElementById('item-pos-category').value = isEdit ? (item.pos_category || '') : '';
             document.getElementById('item-pos-visible').checked = isEdit ? item.pos_visible === true : false;
 
@@ -2485,6 +2622,11 @@
                 storage_location: document.getElementById('item-shelf').value.trim() || null,
                 sku: document.getElementById('item-sku').value.trim() || null,
                 barcode: document.getElementById('item-barcode').value.trim() || null,
+                // The path of the photo currently attached, or null once removed.
+                // A pending FILE is uploaded separately, after the item exists —
+                // an upload needs an item id, and a new item has none until it is
+                // written. See saveItemPhoto().
+                image_path: pendingImagePath,
                 track_stock: isRecipe ? true : document.getElementById('item-track-stock').checked,
                 // Untracked has nothing to track BY, so the mode goes with it.
                 tracking_type: (isRecipe || document.getElementById('item-track-stock').checked) ? 'qty' : null,
@@ -2554,6 +2696,26 @@
                 const saved = await ds.saveItem(currentUid, draft, editingItem
                     ? { create: false, itemId: editingItem.id }
                     : { create: true });
+
+                // The photo goes up AFTER the item exists, because the storage
+                // path is keyed by item id. Deliberately ordered this way: an
+                // upload that fails now costs the picture, not the item, and the
+                // person is told which of the two happened. Uploading first would
+                // orphan bytes for every save that then failed validation.
+                if (pendingImageFile && saved && saved.id) {
+                    try {
+                        const up = await ds.uploadItemImage(currentUid, saved.id, pendingImageFile);
+                        // setItemImage, not saveItem: saveItem validates a whole
+                        // draft (name, base unit, the recipe graph) and would
+                        // throw on a payload carrying only a photo.
+                        await ds.setItemImage(currentUid, saved.id, up.storagePath);
+                    } catch (imgErr) {
+                        // Named, never swallowed. The item saved; the photo did
+                        // not, and a person who is not told will assume it did
+                        // and wonder later why the till shows an initial.
+                        window.showToast(imgErr.message || 'The item saved, but the photo did not upload.', 'error');
+                    }
+                }
                 window.showToast(editingItem ? 'Item updated.' : 'Item added.', 'success');
                 closeDrawer();
                 await loadInventory();

@@ -166,6 +166,23 @@ belongs to its ingredients rather than to itself.
 had to be added to it. A field on `items` that is not in that map reaches the
 till as `undefined` and the feature silently does nothing.
 
+### Product photos are optional, and never cropped (2026-09-02)
+
+`items.image_path` → the menu card. Full rationale in
+[`items.md`](items.md) §9; the two things that matter here:
+
+- **The ratio is kept.** `object-fit: contain` in a fixed 4:3 tile — the image is
+  scaled to fit, never stretched and never cropped, because on a menu the part
+  `cover` cuts is often what identifies the product. `.pos-grid.has-images` gives
+  every card the tile once any visible item has a photo, so a part-illustrated
+  menu does not rag.
+- **The till never receives a URL.** `image_path` is a storage path; the card
+  resolves it through an authenticated read into a short-lived `blob:` URL. A
+  download URL would be a permanent public link to the workspace's menu.
+
+Loaded lazily via `IntersectionObserver` (one authenticated round trip each, paid
+as the cashier scrolls) and falling back to the item's initials on any failure.
+
 ### Who the order is for (2026-09-01)
 
 Captured when the order is CREATED, in the Create Order dialog, because both

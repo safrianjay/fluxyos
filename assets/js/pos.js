@@ -1914,11 +1914,21 @@ function renderMenu() {
     });
 
     host.innerHTML = rows.map((m) => `
-        <button type="button" class="pos-card${onOrder[m.id] ? ' is-in-order' : ''}" data-item="${esc(m.id)}"
+        <button type="button" class="pos-card${onOrder[m.id] ? ' is-in-order' : ''}${m.image_path ? ' has-image' : ''}" data-item="${esc(m.id)}"
                 data-price="${m.sales_price}" data-name="${esc(m.name)}" ${live ? '' : 'disabled'}
                 title="${live ? '' : 'Open a table or start a takeaway order first'}">
             <span class="pos-card-media">
+                <!-- The initial is the FALLBACK, and it stays until an image has
+                     actually decoded. Most items have no photo, and one that
+                     fails to load must land back on the card the till had before
+                     images existed rather than on an empty grey tile.
+                     The alt text is empty on purpose: the product name is the
+                     next line of the same button, so a screen reader announcing
+                     the photo would read it twice.
+                     (No backticks in this comment - it sits inside a template
+                     literal and one would end the string.) -->
                 <span class="pos-card-initial">${esc(initials(m.name))}</span>
+                ${m.image_path ? `<img alt="" hidden data-img="${esc(m.image_path)}">` : ''}
             </span>
             <span class="pos-card-name">${esc(m.name)}</span>
             <span class="pos-card-price">${rp(m.sales_price)}</span>
@@ -1927,6 +1937,14 @@ function renderMenu() {
                 ? `<span class="pos-card-qty" aria-label="${onOrder[m.id]} on this order">${onOrder[m.id]}</span>`
                 : '<span class="pos-card-add" aria-hidden="true">+</span>'}
         </button>`).join('');
+
+    // One tile shape for the whole grid — see `.pos-grid.has-images`. Decided
+    // from the ROWS on screen rather than the whole menu, so filtering to a
+    // category of photo-less drinks compacts the grid instead of leaving it
+    // spaced for pictures that are not there.
+    host.classList.toggle('has-images', rows.some((m) => !!m.image_path));
+
+    loadMenuImages(host);
 
     host.querySelectorAll('[data-item]').forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -1940,6 +1958,61 @@ function renderMenu() {
         // open must be able to open one.
         if (!state.orderId && posProfile().payFirst) btn.removeAttribute('disabled');
     });
+}
+
+// Product photos, fetched only when a card is about to be seen.
+//
+// Every read is AUTHENTICATED — `getItemImageObjectURL` sends the caller's ID
+// token and storage.rules decides, so a menu photo can never become a public
+// link. That rules out the obvious implementation (put a URL in `src`) and is
+// the reason this needs code at all rather than an attribute.
+//
+// Two consequences of that, both handled here:
+//
+//   · one HTTP round trip per image. A 60-item menu eagerly loaded is 60
+//     authenticated downloads on a tablet over a shop's wifi, which would make
+//     the till slow at exactly the moment it is opened. An IntersectionObserver
+//     fetches a photo when its card is near the viewport, so scrolling pays for
+//     what it shows.
+//   · `renderMenu` runs on every refresh — an order changes, the clock ticks —
+//     so without a cache the same images would be re-fetched continuously. The
+//     DAL caches the object URL per session, and `data-img-done` stops the
+//     observer re-requesting a card that already has its picture.
+function loadMenuImages(host) {
+    const targets = [...host.querySelectorAll('img[data-img]:not([data-img-done])')];
+    if (!targets.length) return;
+
+    const paint = async (img) => {
+        if (img.dataset.imgDone) return;
+        img.dataset.imgDone = '1';
+        try {
+            const url = await ds.getItemImageObjectURL(state.uid, img.dataset.img);
+            // Swap only once the bytes have DECODED. Setting src and unhiding
+            // together shows a broken-image glyph for as long as the fetch takes,
+            // and forever if it fails.
+            img.addEventListener('load', () => {
+                img.hidden = false;
+                img.closest('.pos-card-media')?.querySelector('.pos-card-initial')?.remove();
+            }, { once: true });
+            img.src = url;
+        } catch (_) {
+            // Silent, and deliberately so. A missing photo is a cosmetic gap on a
+            // screen someone is using to serve a customer; the card still names
+            // the product and takes the tap. The initial stays.
+            img.remove();
+            img.closest?.('.pos-card')?.classList.remove('has-image');
+        }
+    };
+
+    if (typeof IntersectionObserver !== 'function') { targets.forEach(paint); return; }
+    const io = new IntersectionObserver((entries) => {
+        entries.forEach((e) => {
+            if (!e.isIntersecting) return;
+            io.unobserve(e.target);
+            paint(e.target);
+        });
+    }, { root: host.closest('.pos-catalog-body') || null, rootMargin: '200px' });
+    targets.forEach((img) => io.observe(img));
 }
 
 // Unguarded on purpose — see addMenuLine below.

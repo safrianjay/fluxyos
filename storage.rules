@@ -94,6 +94,32 @@ service firebase.storage {
                     && request.resource.contentType in ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
       allow delete: if false;
     }
+    // Product photos on the inventory master, shown on the POS menu card.
+    //
+    // A separate path from `documents` on purpose. A document is a RECORD — it
+    // gets a Firestore row, counts against the plan's document-processing quota,
+    // and is meant to be read once by a person or an extractor. A product photo
+    // is a PROPERTY of an item: written once by whoever maintains the catalogue,
+    // read on every till load by every cashier, and never processed. Filing it as
+    // a document would burn the workspace's monthly extraction quota for a
+    // thumbnail and put a stray row in the attachments list of nothing.
+    //
+    // `delete: if false` matches every other path here. An item is never deleted
+    // either (docs/data-model/items.md §5), and replacing a photo writes a new
+    // object — the old one is unreferenced, not removed, which keeps a mis-click
+    // recoverable and costs a few KB.
+    //
+    // 2 MB, tighter than documents' 5 MB: this is a menu thumbnail rendered at
+    // ~200px on a tablet, and the cost of a generous ceiling is paid on every
+    // till load by the person least able to wait for it.
+    match /workspaces/{workspaceId}/items/{itemId}/{fileName} {
+      allow read:   if isWorkspaceMember(workspaceId);
+      allow write:  if isWorkspaceMember(workspaceId)
+                    && respectsTrialStorageSingleFileLimit(workspaceId)
+                    && request.resource.size <= 2 * 1024 * 1024
+                    && request.resource.contentType in ['image/jpeg', 'image/png', 'image/webp'];
+      allow delete: if false;
+    }
     match /workspaces/{workspaceId}/bank_statement_imports/{importId}/{fileName} {
       allow read:   if isWorkspaceMember(workspaceId);
       allow write:  if isWorkspaceMember(workspaceId)

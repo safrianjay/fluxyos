@@ -53,6 +53,7 @@ creates `stock` items and preserves — but does not edit — a `composite`'s
 | `source_account_codes` | map \| null | The client's own codes, kept **only** where we could not resolve them against this chart |
 | `custom_fields` | map ≤20 \| null | `custom_field_*` columns. Flat strings, values ≤200 chars |
 | `import_batch_id` | string \| null | Set by a bulk import. Ties the items, their movements and their opening journal to one event |
+| `image_path` | string ≤400 \| null | Product photo, shown on the POS menu card. **A STORAGE PATH, never a URL** — see §9. Optional everywhere; most items have none |
 
 ## 2a. `reorder_point`: absence is not zero
 
@@ -489,6 +490,79 @@ Three things worth knowing before touching it:
 Guard: `tests/inventory-purchase-unit.spec.js`, plus the receive tests in
 `inventory-ui.spec.js` and `inventory-recipe.spec.js`, which now define their
 `kg` inline.
+
+## 9. Product photos (`image_path`)
+
+Added 2026-09-02. Optional, and used on exactly one surface: the POS menu card.
+
+### It is a path, not a URL, and that is a security boundary
+
+`getDownloadURL()` mints a permanent public link that Firebase serves **with
+Security Rules bypassed** — proven by fetching one with `curl` and getting HTTP
+200, which is why it was removed from the document path entirely
+(`db-service.js`, "A NOTE ON DOWNLOAD TOKENS"). A menu photo behind one would
+make a workspace's products readable by anyone who ever saw the link.
+
+So `image_path` holds `workspaces/{ws}/items/{itemId}/{ts}_{name}` and every
+read goes through `getItemImageObjectURL`, which sends the caller's ID token and
+returns a `blob:` URL — origin-bound, dead when the tab closes, impossible to
+paste into a chat and open. Guard: `tests/pos-item-image.spec.js` asserts the
+till never receives an `http(s)` URL.
+
+### Not a `document`
+
+`documents` is for records: a Firestore row, the monthly document-processing
+quota, read once by a person or an extractor. A product photo is a **property**
+of an item — written once by whoever maintains the catalogue, read on every till
+load, never processed. Filing it as a document would spend a workspace's
+extraction quota on a thumbnail and leave a stray row in an attachments list.
+
+Its own `storage.rules` block, mirroring the documents one: workspace-member
+read and write, `delete: if false`, **2 MB** (tighter than documents' 5 MB — this
+is a ~200px tile and the cost of a generous ceiling is paid on every till load).
+⚠️ `storage.rules` does not ship with `git push`; it is `firebase deploy --only
+storage` and a stamp.
+
+### Writing it does NOT go through `saveItem`
+
+`setItemImage(userId, itemId, path)` does a targeted `updateDoc`. `saveItem`
+validates a whole draft — name, base unit, the recipe graph — so a payload
+carrying only a photo throws `item name is required`, and re-running recipe
+explosion to record a thumbnail is the wrong shape of work regardless. Found by
+the spec, before it reached the drawer.
+
+The upload happens **after** the item is written, because the storage path is
+keyed by item id and a new item has none until it exists. An upload that then
+fails costs the picture, not the item, and the drawer says which of the two
+happened rather than letting the person assume the photo saved.
+
+Replacing a photo writes a **new object** (the path carries a timestamp) and
+leaves the old one unreferenced. Overwriting in place would leave every
+already-loaded till showing stale bytes from its blob cache with no way to know,
+and would make a mis-click unrecoverable.
+
+### The ratio is kept — `contain`, not `cover`
+
+Both preserve the image's own proportions; `cover` does it by CROPPING to fill
+the tile, and on a menu the cropped part is often what identifies the product.
+The tile stays a fixed 4:3 so the grid keeps one rhythm — letting each card take
+its photo's height would rag the catalogue and move every tap target the moment
+an image finished loading.
+
+`.pos-grid.has-images` applies the tile to **every** card once any visible item
+has a photo. Sizing per card made a mixed menu ragged, and a shop part-way
+through adding photos is the normal state, not a transitional one. A catalogue
+with no photos at all keeps its compact 64px slot.
+
+Photos load through an `IntersectionObserver` — one authenticated round trip per
+image, so a 60-item menu is not 60 downloads on open — and the card falls back to
+the item's initials on any failure, which is the state the till had before images
+existed.
+
+⚠️ `getPosMenu` projects an explicit **whitelist**. `image_path` had to be added
+there; a field left out reaches the till as `undefined` and the feature silently
+does nothing, which is how `pos_modifier_groups` and `barcode` each failed on
+their first cut.
 
 ## 8. Composites are not importable
 

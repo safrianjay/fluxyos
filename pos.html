@@ -394,8 +394,30 @@
            of space for an initial.
            When items gain an image field, `.pos-card.has-image .pos-card-media`
            takes the aspect ratio back and nothing else moves. */
-        .pos-card.has-image .pos-card-media { height: auto; aspect-ratio: 4 / 3; }
-        .pos-card-media img { width: 100%; height: 100%; object-fit: cover; }
+        /* The tile takes a photo's proportions as soon as the CATALOGUE has any
+           photos — not just on the cards that have one. Sizing per card made a
+           mixed menu ragged: a card with a picture stood ~70px taller than the
+           one beside it, so rows ended at different heights and the grid read as
+           broken rather than as partly-illustrated. A shop mid-way through
+           adding photos is the normal state, not a transitional one.
+           A catalogue with NO photos keeps the compact 64px slot it has always
+           had — an empty 4:3 tile carries no meaning and costs two thirds of
+           every card. */
+        .pos-grid.has-images .pos-card-media { height: auto; aspect-ratio: 4 / 3; }
+        /* CONTAIN, not cover. Both preserve the image's own proportions; `cover`
+           does it by CROPPING to fill the tile, so a tall bottle or a wide platter
+           loses its ends — and on a menu the part that gets cut is often the part
+           that identifies the product.
+           The tile keeps a fixed 4:3 so the grid stays on one rhythm: letting each
+           card take its photo's height would rag the catalogue and move every tap
+           target the moment an image finished loading, which on a till is worse
+           than a letterbox. The neutral tile colour shows through the bars, so
+           they read as the slot rather than as a broken image. */
+        .pos-card-media img { width: 100%; height: 100%; object-fit: contain; display: block; }
+        /* Until the bytes arrive the initial stays. Swapping only on a successful
+           decode means a slow or failed image degrades to the state the card had
+           before images existed, rather than to an empty grey tile. */
+        .pos-card-media img[hidden] { display: none; }
         .pos-card-initial {
             font-size: 20px; font-weight: 600; color: #94A3B8; letter-spacing: -0.02em;
             text-transform: uppercase;
