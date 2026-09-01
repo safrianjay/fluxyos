@@ -1292,6 +1292,30 @@ window.showAddTransactionModal = function(options = {}) {
                         </section>
 
                         ${context === 'bill' ? `
+                        <!-- ── Invoicing a delivery ──────────────────────────
+                             The one control that stops a stock purchase being
+                             counted twice. Receiving goods already booked the
+                             cost as inventory (Dr 1200 / Cr 2050 GRNI); a bill
+                             linked here CLEARS that liability instead of booking
+                             a fresh expense, and the cost becomes an expense
+                             later, as COGS, when the stock is actually sold.
+                             Unlinked, the bill posts BILL-ACCRUE and the same
+                             money is expensed twice — once in OpEx now, once in
+                             COGS on the sale — while 2050 grows forever. -->
+                        <section class="fluxy-drawer-section" id="tx-grni-section" hidden>
+                            <h3 class="fluxy-drawer-section-title">Is this for a delivery?</h3>
+                            <p class="fluxy-drawer-section-desc">Link the goods receipt this invoice covers. The cost is already in your books as stock, so linking settles what you owe instead of charging it to expenses a second time.</p>
+                            <div class="fluxy-drawer-field">
+                                <label for="tx-goods-receipt" class="fluxy-drawer-label">Goods receipt <span class="text-gray-400 font-normal">(optional)</span></label>
+                                <select id="tx-goods-receipt" name="goods_receipt_id" class="fluxy-drawer-select">
+                                    <option value="">Not for a delivery — charge to expenses</option>
+                                </select>
+                                <p class="fluxy-drawer-hint" id="tx-grni-hint"></p>
+                            </div>
+                        </section>
+                        ` : ''}
+
+                        ${context === 'bill' ? `
                         <section class="fluxy-drawer-section">
                             <h3 class="fluxy-drawer-section-title">Tax</h3>
                             <div id="tx-budget-preview" class="hidden rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[12px] text-gray-600"></div>
@@ -1790,6 +1814,88 @@ window.showAddTransactionModal = function(options = {}) {
     if (context === 'bill') {
         applyTransactionTaxVisibility();
         mountPphPicker();
+        // NOT here. `mountGoodsReceiptPicker` needs the transaction service, and
+        // `_txSvc` is declared further down this function — calling it at this
+        // point threw "Cannot access '_txSvc' before initialization" straight
+        // into the catch, which left the section hidden. Hidden reads as "this
+        // workspace holds no stock", so the control that stops a stock bill
+        // being expensed twice simply never appeared. Mounted after the service
+        // exists instead; see below.
+    }
+
+    // ── The GRNI matcher ────────────────────────────────────────────────────
+    //
+    // Offers the deliveries still waiting for an invoice. The section HIDES
+    // itself when there are none, because a workspace that does not hold stock
+    // should never be asked a question about goods receipts — an empty picker
+    // above the Tax section would be a control that can only ever have one
+    // answer.
+    async function mountGoodsReceiptPicker() {
+        const section = document.getElementById('tx-grni-section');
+        const select = document.getElementById('tx-goods-receipt');
+        const hint = document.getElementById('tx-grni-hint');
+        if (!section || !select) return;
+        let open = [];
+        try {
+            const { ds, scopeId } = await resolveTxServiceWhenReady();
+            open = await ds.getOpenGoodsReceipts(scopeId);
+        } catch (err) {
+            // Named, not swallowed. A silent return here leaves the section
+            // hidden, which is indistinguishable from "this workspace holds no
+            // stock" — and the consequence of getting that wrong is every stock
+            // bill quietly booking a second expense.
+            console.error('[bills] could not load open goods receipts:', err && err.message);
+            return;
+        }
+        if (!open.length) return;
+
+        const when = (r) => {
+            const t = r.timestamp && typeof r.timestamp.toDate === 'function' ? r.timestamp.toDate() : null;
+            return t ? t.toLocaleDateString(window.FluxyMoney.baseLocale(), { day: 'numeric', month: 'short' }) : '';
+        };
+        select.innerHTML = `<option value="">Not for a delivery — charge to expenses</option>`
+            + open.map((r) => {
+                const bits = [when(r), r.vendor_name, r.reference].filter(Boolean).join(' · ');
+                return `<option value="${escapeHtml(r.id)}" data-total="${Math.round(Number(r.total_amount) || 0)}"
+                    data-vendor="${escapeHtml(r.vendor_name || '')}">`
+                    + `${escapeHtml(bits || 'Delivery')} — ${window.FluxyMoney.formatBase(Math.round(Number(r.total_amount) || 0))}</option>`;
+            }).join('');
+        section.hidden = false;
+
+        const sync = () => {
+            const opt = select.selectedOptions[0];
+            const receiptTotal = Number(opt?.dataset.total || 0);
+            if (!select.value) {
+                hint.textContent = 'Leave this if the invoice is not for stock you have received.';
+                hint.classList.remove('is-warn');
+                return;
+            }
+            // The vendor is prefilled, not enforced — a delivery invoiced by a
+            // parent company or a factor is normal, and refusing it would make
+            // the correct posting unreachable for the case that needs it most.
+            if (vendorInput && !vendorInput.value.trim() && opt?.dataset.vendor) {
+                vendorInput.value = opt.dataset.vendor;
+            }
+            const billAmount = window.FluxyMoney.toMinor(amountInput?.value || '', billCurrency());
+            if (billAmount > 0 && receiptTotal > 0 && billAmount !== receiptTotal) {
+                // Stated, never corrected. A price difference between the
+                // delivery and the invoice is a real thing that happens, and the
+                // remainder stays in GRNI where it belongs — which is exactly
+                // what that account is for. Silently forcing the amounts to
+                // agree would hide a supplier overcharging.
+                const diff = Math.abs(billAmount - receiptTotal);
+                hint.textContent = `The delivery was ${window.FluxyMoney.formatBase(receiptTotal)}`
+                    + ` — ${window.FluxyMoney.formatBase(diff)} ${billAmount > receiptTotal ? 'more' : 'less'} than this invoice.`
+                    + ' The difference stays in Goods Received Not Invoiced.';
+                hint.classList.add('is-warn');
+            } else {
+                hint.textContent = 'This settles what you owe for the delivery. The cost is already in your books as stock — it becomes an expense when the stock sells.';
+                hint.classList.remove('is-warn');
+            }
+        };
+        select.addEventListener('change', sync);
+        amountInput?.addEventListener('input', () => { if (select.value) sync(); });
+        sync();
     }
 
     // Vendor master → Add Bill: when a known vendor is entered, prefill the bill's
@@ -2333,6 +2439,10 @@ window.showAddTransactionModal = function(options = {}) {
         }
         return _txSvc;
     }
+
+    // Safe here: `_txSvc` and its resolver are declared above, so the picker can
+    // actually reach the DAL. See the note where this used to be called.
+    if (context === 'bill') mountGoodsReceiptPicker();
 
     // Pull the account the kernel would resolve for the current direction/category
     // and pre-fill the picker (unless the user has taken over the field).
@@ -3574,6 +3684,16 @@ window.showAddTransactionModal = function(options = {}) {
                 if (chosenOutlet) data.dimension_id = chosenOutlet;
 
                 if (context === 'bill') {
+                    // The delivery this invoice covers, if any. Sent with the
+                    // CREATE rather than linked afterwards, because it is what
+                    // routes the journal: a bill carrying it posts BILL-GRNI
+                    // (Dr 2050 / Cr 2000, settling the liability the receipt
+                    // raised) instead of BILL-ACCRUE (Dr expense / Cr 2000).
+                    // Journals are immutable, so linking after the fact would
+                    // leave the double-counted expense standing.
+                    const grni = document.getElementById('tx-goods-receipt')?.value || '';
+                    if (grni) data.goods_receipt_id = grni;
+
                     // Phase 1.5 — attach optional budget fields when an active
                     // budget exists. Omit all five when there is no active
                     // budget so legacy/no-budget bill writes keep working.

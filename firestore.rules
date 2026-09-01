@@ -3222,7 +3222,18 @@ service cloud.firestore {
           'bill_number', 'outstanding_amount', 'amount_paid', 'currency', 'amount_paid_idr', 'fx_rate', 'fx_rate_date',
           'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number',
           'withholding_rate', 'withholding_type', 'withholding_code', 'bukti_potong_no',
-          'dimension_id'
+          'dimension_id',
+          // The delivery this bill is invoicing. Its PRESENCE routes the posting:
+          // `selectRule` returns BILL-GRNI (Dr 2050 / Cr 2000) instead of
+          // BILL-ACCRUE (Dr expense / Cr 2000), because the cost already entered
+          // the books as inventory when the goods arrived. Booking it again as an
+          // expense double-counts it against the COGS the sale will post, and
+          // leaves 2050 GRNI open forever.
+          //
+          // Only a KEY is added — no new expression. The value is validated in
+          // `linkBillToGoodsReceipt`, which is also what stamps the receipt, and
+          // rules cannot check the receipt exists without a get() per write.
+          'goods_receipt_id'
         ])
         && isValidBaseRecord(data)
         && billOptionalsCreateValid(data);
@@ -3284,7 +3295,9 @@ service cloud.firestore {
           'bill_number', 'outstanding_amount', 'amount_paid', 'currency', 'amount_paid_idr', 'fx_rate', 'fx_rate_date',
           'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number',
           'withholding_rate', 'withholding_type', 'withholding_code', 'bukti_potong_no',
-          'dimension_id'
+          'dimension_id',
+          // See wsValidBillCreate — the key that routes BILL-GRNI.
+          'goods_receipt_id'
         ])
         && isValidBaseRecordUpdate(data, existingData)
         && billTaxValid(data)

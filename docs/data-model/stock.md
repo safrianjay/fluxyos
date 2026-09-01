@@ -29,6 +29,78 @@ vendor who has not billed yet, which overstates A/P and breaks the aging tie-out
 trend to zero: a persistently growing balance means receipts are not being
 matched to bills.
 
+## 1a. Matching a bill to a delivery (2026-09-02)
+
+`selectRule` has always routed a bill carrying `goods_receipt_id` to
+**`BILL-GRNI`**. **Nothing ever set that field**, so the branch was unreachable
+from the day it shipped and every bill for received goods took `BILL-ACCRUE`
+instead. The same money was therefore expensed twice —
+
+```
+goods arrive   Dr 1200 Inventory / Cr 2050 GRNI
+bill posts     Dr <expense>      / Cr 2000 A/P     ← should have been Dr 2050
+stock sells    Dr 5100 COGS      / Cr 1200
+```
+
+— once in **Dashboard OpEx** when the bill is paid (a payment writes a
+`type: 'expense'` transaction, and OpEx sums exactly those), and again as COGS
+when the stock leaves. `2050` could only grow, which is the signal §1 says
+should trend to zero.
+
+Measured on the QA workspace before the fix: **100 receipts, 0 ever matched;
+441 bills, 0 linked; Rp68.492.000 in GRNI against Rp69.0M of inventory + COGS**
+— every rupiah ever received.
+
+### The link is set at CREATE, never after
+
+The Add Bill drawer offers the open deliveries
+(`getOpenGoodsReceipts` — `status: 'received'` and no `bill_id`) and sends
+`goods_receipt_id` with the create. It has to be on the payload *before* it
+commits, because that is what `selectRule` reads. Linking afterwards would set
+the field on a bill whose journal had already booked the expense, and journals
+are immutable — the double count would stand while the receipt looked matched.
+`linkBillToGoodsReceipt` exists for repairing a stamp, not for changing a
+posting.
+
+The receipt is checked before anything is written (already invoiced? reversed?)
+so a bad link fails with a sentence rather than leaving a posted bill pointing
+at a receipt that refuses to be stamped. The stamp itself
+(`status: 'billed'`, `bill_id`) happens after the commit, because
+`_commitSourceCreate` owns its batch: a failure there leaves a correctly posted
+bill beside a receipt still reading `received` — visible and repairable, which
+is the better of the two failure directions.
+
+**A price difference is stated, never corrected.** If the invoice and the
+delivery disagree, the remainder stays in GRNI. That is what the account is for,
+and silently forcing the amounts to agree would hide a supplier overcharging.
+
+⚠️ `bills` has a `hasOnly` in `firestore.rules`, so `goods_receipt_id` needed a
+rules change and a **deploy** (2026-09-02, stamped). `goods_receipts` has no
+`hasOnly`, so the stamp needed none.
+
+### The historical receipts are NOT auto-repaired
+
+`npm run report:grni` (`scripts/grni-match-report.js`) is **read-only and has no
+`--commit`**. Back-filling is not setting a field: those bills already posted
+their expense, so stamping `goods_receipt_id` on them now would change nothing
+in the ledger and would hide the problem by making the receipts look matched.
+
+The repair for a confirmed pair is a reclassification journal —
+
+```
+Dr 2050 GRNI / Cr <the expense account the bill debited>
+```
+
+— posted into an **open** period, after a person confirms the pair. The script
+produces the worksheet (same-vendor + amount + proximity, ranked, marked
+`confident` / `review` / `no-candidate`); a human decides. Nothing is ever called
+certain: a supplier delivering weekly at the same price produces several
+indistinguishable candidates, and picking one would be a guess wearing a number.
+
+Guard: `tests/bill-goods-receipt-match.spec.js` — asserts the JOURNAL, because
+the journal is what was wrong. A spec checking only that the field was set would
+pass on a bill that still posted an expense.
+
 ## 2. `goods_receipts/{id}`
 
 | Field | Type | Notes |

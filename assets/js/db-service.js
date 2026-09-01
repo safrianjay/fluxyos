@@ -845,9 +845,48 @@ class DataService {
         Object.keys(payload).forEach((field) => {
             if (payload[field] === null && !BILL_REQUIRED_FIELDS.has(field)) delete payload[field];
         });
-        // A bill accrues the expense now (Dr expense / Cr Accounts Payable). The
+        // ── Invoicing a delivery ────────────────────────────────────────────
+        //
+        // `goods_receipt_id` must be on the payload BEFORE it commits, because it
+        // is what `selectRule` reads to route BILL-GRNI (Dr 2050 / Cr 2000)
+        // instead of BILL-ACCRUE (Dr expense / Cr 2000). Linking afterwards would
+        // set the field on a bill whose journal had already booked the expense —
+        // and journals are immutable, so the double count would stand.
+        //
+        // The receipt is checked HERE, before anything is written, so an
+        // already-invoiced delivery fails with a sentence rather than leaving a
+        // posted bill pointing at a receipt that refuses to be stamped.
+        if (payload.goods_receipt_id) {
+            const rSnap = await getDoc(doc(this.db,
+                `${this._scope(userId)}/goods_receipts/${payload.goods_receipt_id}`));
+            if (!rSnap.exists()) throw new Error('That goods receipt no longer exists.');
+            const r = rSnap.data();
+            if (r.bill_id) throw new Error('That delivery has already been invoiced by another bill.');
+            if (r.status === 'reversed') throw new Error('That goods receipt was reversed.');
+        }
+
+        // A bill accrues the expense now (Dr expense / Cr Accounts Payable) —
+        // UNLESS it carries a goods_receipt_id, in which case it clears GRNI
+        // instead, because the cost is already in the books as inventory. The
         // later "mark paid" creates a linked expense transaction that settles A/P.
         const ref = await this._commitSourceCreate(userId, 'bills', payload, { date: data.due_date || timestamp });
+
+        // Stamp the delivery as invoiced. Deliberately AFTER the commit rather
+        // than in the same batch: `_commitSourceCreate` owns its batch (bill +
+        // journal + ledger balances), and a failure here leaves a correctly
+        // posted bill beside a receipt that still reads `received` — visible, and
+        // repairable by re-linking. The other order would risk a delivery marked
+        // invoiced by a bill that never existed.
+        if (payload.goods_receipt_id) {
+            try {
+                await updateDoc(doc(this.db,
+                    `${this._scope(userId)}/goods_receipts/${payload.goods_receipt_id}`), {
+                    status: 'billed', bill_id: ref.id, updated_at: serverTimestamp()
+                });
+            } catch (err) {
+                console.error('[bills] bill posted but the receipt was not stamped:', err && err.message);
+            }
+        }
         await this._auditCreateBestEffort(userId, 'bill.create', 'bills', ref.id, {
             amount: data.amount, vendor_name: data.vendor_name, category: data.category,
             due_date: data.due_date, payment_status: data.payment_status
@@ -6198,6 +6237,64 @@ class DataService {
             period_key: periodKey,
             statement: buildIncomeStatement(rows)
         })).sort((a, b) => String(a.dimension_name).localeCompare(String(b.dimension_name)));
+    }
+
+    // Receipts still waiting for their supplier invoice — what the bill drawer
+    // offers, and what 2050 GRNI's balance is made of.
+    //
+    // A receipt leaves this list when a bill is linked to it, never on a timer:
+    // GRNI is a real liability until the invoice arrives, and an old delivery is
+    // exactly the one somebody needs to find.
+    async getOpenGoodsReceipts(userId, { limitCount = 200 } = {}) {
+        const all = await this.getGoodsReceipts(userId, { limitCount });
+        return all.filter((r) => r.status === 'received' && !r.bill_id);
+    }
+
+    // Link a bill to the delivery it is invoicing, and stamp the receipt.
+    //
+    // ⚠️ WHY THIS EXISTS AT ALL. `selectRule` has always routed a bill carrying
+    // `goods_receipt_id` to BILL-GRNI — Dr 2050 / Cr 2000, clearing the liability
+    // the receipt raised — instead of BILL-ACCRUE, which books a fresh expense.
+    // But NOTHING in the codebase ever set that field, so the branch was
+    // unreachable and every bill for received goods booked the cost a second
+    // time: once as an expense when the bill posted, once as COGS when the stock
+    // sold. 2050 could only grow. Measured on the QA workspace 2026-09-02: 100
+    // receipts, 0 ever matched, 441 bills, 0 linked, Rp68.492.000 sitting in GRNI
+    // against Rp69.0M of inventory + COGS — i.e. every rupiah ever received.
+    //
+    // BOTH WRITES OR NEITHER. The bill's link and the receipt's stamp go in one
+    // batch: a bill pointing at a receipt that still reads `received` would offer
+    // the same delivery to the next invoice, and a receipt marked `billed` with
+    // no bill behind it would hide a liability that is still owed.
+    async linkBillToGoodsReceipt(userId, billId, receiptId) {
+        if (!userId || !billId || !receiptId) throw new Error('userId, billId and receiptId required');
+        const scope = this._scope(userId);
+        const receiptRef = doc(this.db, `${scope}/goods_receipts/${receiptId}`);
+        const snap = await getDoc(receiptRef);
+        if (!snap.exists()) throw new Error('That goods receipt no longer exists.');
+        const receipt = { id: snap.id, ...snap.data() };
+        // Refused rather than silently re-pointed: two bills against one delivery
+        // would clear GRNI twice and understate what is owed.
+        if (receipt.bill_id && receipt.bill_id !== billId) {
+            throw new Error('That delivery has already been invoiced by another bill.');
+        }
+        if (receipt.status === 'reversed') throw new Error('That goods receipt was reversed.');
+
+        const batch = writeBatch(this.db);
+        batch.update(doc(this.db, `${scope}/bills/${billId}`), {
+            goods_receipt_id: receiptId,
+            updated_at: serverTimestamp(),
+            updated_by: this.actorUid || userId
+        });
+        batch.update(receiptRef, {
+            status: 'billed',
+            bill_id: billId,
+            updated_at: serverTimestamp()
+        });
+        await batch.commit();
+        await this._auditCreateBestEffort(userId, 'bill.matched_to_receipt', 'bills', billId,
+            { goods_receipt_id: receiptId });
+        return { billId, receiptId, receiptTotal: Math.round(Number(receipt.total_amount) || 0) };
     }
 
     async getGoodsReceipts(userId, { limitCount = 100 } = {}) {

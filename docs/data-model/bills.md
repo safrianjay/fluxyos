@@ -111,4 +111,24 @@ stale the same way. It needs its own lean transition validator, because
 'partial']` and so rejects a `paid → partial` rollback, and the remaining branch
 is the full `isValidInvoiceBase` that already blew the rules budget once.
 
+### `goods_receipt_id` — invoicing a delivery (2026-09-02)
+
+| Field | Type | Notes |
+|---|---|---|
+| `goods_receipt_id` | string \| null | The delivery this bill invoices. **Its presence routes the posting**: `BILL-GRNI` (Dr 2050 / Cr 2000) instead of `BILL-ACCRUE` (Dr expense / Cr 2000) |
+
+Set by the Add Bill drawer's "Is this for a delivery?" picker, **with the
+create** — it must be on the payload before it commits, because that is what
+`selectRule` reads, and journals are immutable afterwards.
+
+Why it matters: receiving goods already booked the cost as inventory. A bill
+that accrues an expense for the same goods counts the money twice — once in
+Dashboard OpEx when the bill is paid (a payment writes a `type: 'expense'`
+transaction), and again as COGS when the stock sells. Full history, the measured
+exposure, and the repair procedure for pre-existing bills:
+[`stock.md` §1a](stock.md).
+
+⚠️ `bills` has a `hasOnly` on both create and update, so this key required a
+rules change and a **deploy**.
+
 **Ordering:** `timestamp DESC`.
