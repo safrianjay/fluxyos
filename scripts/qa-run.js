@@ -273,6 +273,19 @@ function laneBE(changed) {
   if (FORCE_ALL || touched(/statements-xlsx\.js|assets\/js\/accounting\.js/)) {
     ok = record('be', run('check:statements-workbook', 'node', ['tests/statements-workbook.check.js'])) && ok;
   }
+  // The QA cleanup script is run BY HAND against a real workspace, so its first
+  // execution must not also be its first test. The check is about what it
+  // REFUSES to touch — `awaiting_payment` (money partially applied), `paid`
+  // (revenue posted), and real products whose names merely start with "QA".
+  if (FORCE_ALL || touched(/cleanup-qa-test-data\.js|cleanup-pos\.check\.js/)) {
+    ok = record('be', run(
+      'check:cleanup-pos (emulator)',
+      'npx',
+      ['firebase', 'emulators:exec', '--config', '.rules-build/firebase.json', '--only', 'firestore',
+       'node tests/cleanup-pos.check.js'],
+      { timeout: 5 * 60_000 }
+    )) && ok;
+  }
   if (FORCE_ALL || touched(/^firestore\.rules$|^storage\.rules$/)) {
     console.log('    (rules changed — running emulator rules tests, ~60s)');
     const specs = gitLines(['ls-files', 'tests/*-rules-emulator-test.mjs']);
