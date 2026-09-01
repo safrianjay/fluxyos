@@ -110,6 +110,39 @@ test('longest waiting ranks by urgency, not by raw minutes', async ({ page }) =>
         'a bill the customer asked for 7 minutes ago outranks a 12-minute dish').toBe('awaiting_payment');
 });
 
+// ── Service type is scannable, not readable ────────────────────────────────
+// The kitchen sorts by service type before it reads anything else: a bag that
+// leaves the pass is a different job from a plate that goes to a table. When
+// every badge was the same navy, telling them apart meant READING two letters
+// down a column of cards, which is the thing a badge exists to avoid.
+test('a takeaway badge is a different colour from a table badge', async ({ page }) => {
+    await openBoard(page);
+    await seedBoard(page, [
+        { status: 'sent', ageMin: 2, table: 'A04' },
+        { status: 'sent', ageMin: 3 }                   // no table → takeaway
+    ]);
+
+    const badges = await page.evaluate(() => [...document.querySelectorAll('.pos-otag')].map((el) => ({
+        text: el.textContent.trim(),
+        takeaway: el.classList.contains('is-takeaway'),
+        bg: getComputedStyle(el).backgroundColor
+    })));
+
+    const ta = badges.find((b) => b.text === 'TA');
+    const table = badges.find((b) => b.text === 'A04');
+    expect(ta, 'the takeaway card rendered').toBeTruthy();
+    expect(table, 'the table card rendered').toBeTruthy();
+    expect(ta.takeaway).toBe(true);
+    expect(table.takeaway).toBe(false);
+    expect(ta.bg, 'takeaway and dine-in must not share a colour').not.toBe(table.bg);
+
+    // Colour is never the ONLY signal. The badge still carries the text, so the
+    // distinction survives a monochrome kitchen printer, sunlight on a pass, and
+    // dichromacy — the same rule the floor plan's reserved state follows.
+    expect(ta.text).toBe('TA');
+    expect(table.text).toBe('A04');
+});
+
 test('a paid order never outranks a live one', async ({ page }) => {
     await openBoard(page);
     const rows = await seedBoard(page, [

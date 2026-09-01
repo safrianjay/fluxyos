@@ -882,6 +882,13 @@
             display: inline-flex; align-items: center; justify-content: center;
             font-size: 16px; font-weight: 700; letter-spacing: -0.01em;
         }
+        /* Takeaway. #1D4ED8 rather than the palette's #3B82F6: white on the
+           lighter blue is 3.7:1, which fails AA at 16px even bold — and this
+           badge is read at arm's length, at speed, on a screen by a hot pass.
+           At #1D4ED8 it is 6.3:1, and it is a blue already in this page (the
+           reservation board's seated state). */
+        .pos-otag.is-takeaway { background: #1D4ED8; }
+
         .pos-ocard-id { min-width: 0; flex: 1 1 auto; overflow: hidden; }
         .pos-ocard-meta {
             font-size: 12px; font-weight: 600; color: #0F172A;

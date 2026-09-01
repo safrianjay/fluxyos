@@ -1478,9 +1478,18 @@ function renderOrderLists() {
             || (o.status !== 'paid' && o.status !== 'void' && Number(o.total_amount) > 0);
 
         return `<article class="pos-ocard${state.orderId === o.id ? ' is-open' : ''}${lvl === 'late' ? ' is-late' : ''}" data-order-card="${esc(o.id)}" data-status="${esc(o.status || '')}" tabindex="0" role="button"
-                    aria-label="Order ${esc(o.order_number || '')}, ${esc(orderTag(o))}">
+                    aria-label="Order ${esc(o.order_number || '')}, ${o.table_label ? `table ${esc(o.table_label)}` : 'takeaway'}">
             <div class="pos-ocard-head">
-                <span class="pos-otag">${esc(orderTag(o))}</span>
+                <!-- Blue for takeaway, navy for a table. The kitchen sorts by
+                     service type before it reads anything else — a bag that
+                     leaves the pass is a different job from a plate that goes to
+                     a table — and scanning a column of identically-black badges
+                     for the two letters "TA" is reading, not scanning.
+                     Colour is never the only signal: the badge still says TA or
+                     the table number, so the distinction survives a monochrome
+                     kitchen printer, sunlight, and dichromacy. -->
+                <span class="pos-otag${o.table_label ? '' : ' is-takeaway'}"
+                      title="${esc(tr(o.table_label ? 'Dine In' : 'Takeaway'))}">${esc(orderTag(o))}</span>
                 <div class="pos-ocard-id">
                     <!-- The service type is its OWN element on purpose. The DOM
                          translator matches whole text nodes, so "#018 · Takeaway"
