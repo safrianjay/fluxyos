@@ -2676,7 +2676,26 @@ function openPaymentModal() {
     // and must not be asked what they received — reading `settlement` here made
     // Bank transfer and Other behave as cash, which is also how they came to be
     // counted as drawer cash at close. See POS_PAYMENT_METHODS.
-    const isCash = () => (methods.find((m) => m.id === method) || {}).tender === 'cash';
+    //
+    // ⚠️ THE ID IS THE PRIMARY SIGNAL, `tender` only refines it.
+    //
+    // `tender` arrives from pos-service.js, a DIFFERENT module from this one —
+    // this page is three separate requests (pos.js → db-service.js →
+    // pos-service.js) and they can be a version apart in a browser that
+    // revalidated one and not the others. Keyed on `tender` alone, that
+    // combination made `m.tender` undefined, so EVERY method read as non-cash:
+    // the amount field came up disabled on Cash, pinned to the exact bill, and
+    // the change could only ever be zero. Reproduced by serving a pre-`tender`
+    // pos-service.js; the spec below keeps doing so.
+    //
+    // A method whose id is `cash` is cash, in every version of this file that
+    // has ever existed. Deriving the till's behaviour from the stable fact and
+    // letting the newer field refine it makes the mixed-version case a no-op
+    // instead of a silently broken drawer.
+    const isCash = () => {
+        const m = methods.find((x) => x.id === method) || {};
+        return m.tender ? m.tender === 'cash' : m.id === 'cash';
+    };
 
     // Redraws change, shortfall and the submit button from `received`.
     const sync = () => {

@@ -475,6 +475,43 @@ test('a non-cash amount cannot be typed even if the field is re-enabled', async 
     await page.locator('#pos-pay-modal .pos-modal-close').click();
 });
 
+// ── The mixed-version case, which broke the drawer in silence ──────────────
+//
+// This page is three separate module requests — pos.js → db-service.js →
+// pos-service.js — and a browser can revalidate one and not the others. `tender`
+// lives in the last of them, so a version skew made `m.tender` undefined and
+// EVERY method read as non-cash: the amount field came up disabled on CASH,
+// pinned to the exact bill, and the change could only ever be zero. Reported as
+// "why is the change still 0", and correctly, because it always was.
+//
+// The id is the stable fact and is now what the till keys on. This serves a
+// pre-`tender` pos-service.js to prove the skew is harmless.
+test('a pos-service.js without `tender` still takes cash correctly', async ({ page }) => {
+    await page.route('**/assets/js/pos-service.js', async (route) => {
+        const res = await route.fetch();
+        const body = (await res.text()).replace(/, tender: '(cash|external)'/g, '');
+        await route.fulfill({ response: res, body,
+            headers: { ...res.headers(), 'content-type': 'application/javascript' } });
+    });
+
+    await openBoard(page);
+    await seedBoard(page, [{ status: 'awaiting_payment', ageMin: 3, total: 120000 }]);
+    await page.locator('.pos-ocard[data-status="awaiting_payment"] [data-pay]').first().click();
+    await expect(page.locator('#pos-pay-amount')).toBeVisible({ timeout: 10000 });
+
+    // Cash is still cash, still typeable, and the change is still arithmetic.
+    await expect(page.locator('#pos-pay-amount')).toBeEnabled();
+    await page.fill('#pos-pay-amount', '');
+    await page.locator('#pos-pay-amount').type('150000');
+    await expect(page.locator('#pos-change-value')).toHaveText(/30\.000/);
+
+    // And a card is still not cash — the id says so without `tender`.
+    await page.locator('#pos-method-row [data-method="card"]').click();
+    await expect(page.locator('#pos-pay-amount')).toBeDisabled();
+
+    await page.locator('#pos-pay-modal .pos-modal-close').click();
+});
+
 test('opening a card still reaches the actions the board does not carry', async ({ page }) => {
     // Hiding the order panel on this view nearly orphaned Refund and Reprint:
     // they live in that panel and nowhere else, so selecting a card without
