@@ -1265,7 +1265,20 @@
             background: #fff; border: 1px solid #E2E8F0; border-radius: 12px;
             overflow: hidden;
         }
-        .pos-cal-scroll { overflow-x: auto; overflow-y: hidden; }
+        /* Both axes. The grid is the WHOLE day — 00:00 to 24:00 — so it is taller
+           than any viewport by design: the empty hours are where the next
+           booking goes, and a calendar cropped to its own contents cannot be
+           used to create one. It opens scrolled to the part of the day that
+           matters (scrollCalendarToHour), which is how the height is paid for
+           without deleting the rest of the day. */
+        .pos-cal-scroll {
+            overflow: auto;
+            max-height: calc(var(--cal-hour, 56px) * 12);
+            overscroll-behavior: contain;
+        }
+        /* The day/date header stays put while the hours scroll under it —
+           otherwise a scrolled grid is seven unlabelled columns. */
+        .pos-cal-head { position: sticky; top: 0; z-index: 5; }
         /* --cal-cols is written by the renderer: 1 column for Day, 7 for Week. */
         .pos-cal-head, .pos-cal-grid {
             display: grid;
@@ -1399,6 +1412,19 @@
         /* ── Detail sheet ─────────────────────────────────────────────────
            Opened from a block. Reuses the shared modal (.pos-modal-layer) so a
            booking is inspected in the same component an order is paid in. */
+        /* Date · Time · Guests on one line. The date takes the slack because its
+           control is the shared picker's own trigger, which carries a label
+           ("Sep 3, 2026") rather than a bare number. */
+        .pos-field-row.is-when { grid-template-columns: 1fr 108px 84px; }
+        @media (max-width: 560px) { .pos-field-row.is-when { grid-template-columns: 1fr 1fr; }
+            .pos-field-row.is-when > .pos-field:first-child { grid-column: 1 / -1; } }
+        /* The shared picker draws its own trigger (border, radius, calendar
+           icon). It is NOT restyled to look like a .pos-field input — looking
+           like the rest of the product is the whole reason it is here — only
+           sized to fill the field it sits in. */
+        .pos-res-datehost > div { width: 100%; }
+        .pos-res-datehost [data-drp-trigger] { min-width: 0; width: 100%; }
+
         .pos-res-detail { display: grid; gap: 10px; }
         .pos-res-detail dl { display: grid; grid-template-columns: 96px 1fr; gap: 6px 12px; margin: 0; }
         .pos-res-detail dt { font-size: 12px; color: #64748B; }
@@ -1768,6 +1794,12 @@
     <script src="assets/js/money-format.js"></script>
     <script src="assets/js/sidebar-loader.js"></script>
     <script src="assets/js/fluxy-select.js"></script>
+    <!-- The SHARED date picker. The reservation dialog uses it in single-date
+         mode: DESIGN_SYSTEM / PROJECT_BACKGROUND §5 forbid native date inputs
+         and page-local calendars, and a booking dialog that popped the
+         browser's own calendar was the one place on this page that did not look
+         like FluxyOS. -->
+    <script src="assets/js/date-range-picker.js"></script>
     <!-- No footer-loader.js. The marketing footer must never load on an app page
          (PROJECT_BACKGROUND §3) — it auto-runs on include and paints over the
          entire content area. -->

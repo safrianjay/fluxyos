@@ -63,6 +63,13 @@
         if (!host) return null;
 
         const maxDate = options.maxDate || getDayKey();
+        // The floor of the calendar. Absent by default, so every existing caller
+        // behaves exactly as before — this component was built for HISTORICAL
+        // finance ranges, where "no earlier than" never came up. A reservation
+        // is the first thing in the product that is inherently in the FUTURE,
+        // and a booking calendar that offers last Tuesday is offering a booking
+        // that can never be honoured.
+        const minDate = options.minDate || null;
         const defaultStart = options.defaultStart || getMonthStartKey();
         const defaultEnd = options.defaultEnd || getMonthEndKey();
         const isSingleDate = options.mode === 'single' || options.singleDate === true;
@@ -90,7 +97,7 @@
                     <div class="${isSingleDate ? 'grid grid-cols-1' : 'grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100'}">
                         <div class="p-5">
                             <div class="flex items-center justify-between mb-5">
-                                <button data-drp-calendar-prev type="button" class="h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all" aria-label="Previous calendar month">
+                                <button data-drp-calendar-prev type="button" class="h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all disabled:cursor-not-allowed disabled:opacity-35" aria-label="Previous calendar month">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="m15 18-6-6 6-6"></path></svg>
                                 </button>
                                 <h3 data-drp-left-title class="text-[15px] font-bold text-gray-900">Month</h3>
@@ -186,6 +193,8 @@
                 const key = getDayKey(date);
                 const isOutside = date.getMonth() !== month;
                 const isFuture = key > maxDate;
+                const isPast = !!minDate && key < minDate;
+                const isBlocked = isFuture || isPast;
                 const isStart = key === draftStart;
                 const isEnd = key === draftEnd;
                 const isInRange = key >= draftStart && key <= draftEnd;
@@ -194,9 +203,9 @@
                     isOutside ? 'text-gray-400' : 'text-gray-900',
                     isInRange && !isStart && !isEnd ? 'bg-blue-50 text-blue-700' : '',
                     isStart || isEnd ? 'bg-blue-600 text-white shadow-sm' : 'hover:bg-blue-50 hover:text-blue-700',
-                    isFuture ? 'opacity-30 cursor-not-allowed hover:bg-transparent hover:text-gray-400' : ''
+                    isBlocked ? 'opacity-30 cursor-not-allowed hover:bg-transparent hover:text-gray-400' : ''
                 ].join(' ');
-                html += `<button type="button" class="${classes}" data-drp-day="${key}" ${isFuture ? 'disabled' : ''}>${date.getDate()}</button>`;
+                html += `<button type="button" class="${classes}" data-drp-day="${key}" ${isBlocked ? 'disabled' : ''}>${date.getDate()}</button>`;
             }
             container.innerHTML = html;
         }
@@ -210,6 +219,12 @@
             get('[data-drp-calendar-next]').disabled = addMonths(calendarBaseMonth, 1) >= maxMonthStart;
             const nextSingle = get('[data-drp-calendar-next-single]');
             if (nextSingle) nextSingle.disabled = calendarBaseMonth >= maxMonthStart;
+            // Symmetric with the next-month clamp: without it a caller with a
+            // minDate can page back through months whose every day is disabled,
+            // which reads as the calendar being broken rather than bounded.
+            const prevBtn = get('[data-drp-calendar-prev]');
+            if (prevBtn) prevBtn.disabled = !!minDate
+                && addMonths(calendarBaseMonth, -1) < getMonthStartKey(parseDayKey(minDate));
         }
 
         function selectDraftDay(dayKey) {
@@ -290,6 +305,7 @@
         get('[data-drp-prev]').addEventListener('click', () => shiftPeriod(-1));
         nextButton.addEventListener('click', () => shiftPeriod(1));
         get('[data-drp-calendar-prev]').addEventListener('click', () => {
+            if (minDate && addMonths(calendarBaseMonth, -1) < getMonthStartKey(parseDayKey(minDate))) return;
             calendarBaseMonth = addMonths(calendarBaseMonth, -1);
             renderPanel();
         });

@@ -3210,34 +3210,24 @@ function openCreateOrderDialog({ tableId = null } = {}) {
 // fixed, because a fixed 08:00–23:00 grid is 15 rows of empty space on a floor
 // that opens at 17:00 — and this page is judged by how much of it is work.
 const CAL_HOUR_PX = 56;
-const CAL_DEFAULT_FROM = 10;
-const CAL_DEFAULT_TO = 22;
+// How much of the day is on screen before the grid scrolls. Twelve hours at
+// 56px is most of a laptop viewport and all of a 10" tablet's, and the day
+// continues above and below rather than being cropped to it.
+const CAL_VISIBLE_HOURS = 12;
 
-function calendarHours(rows) {
-    // The window is the DAY'S OWN, not a fixed 10:00–22:00.
-    //
-    // A floor that opens at 17:00 was rendering six empty hours above its first
-    // booking — a third of the screen spent proving nothing happens in the
-    // morning, on a page whose rule is that empty space says "nothing here" and
-    // costs a scroll on a 10" tablet (DESIGN_SYSTEM, "Unnecessary white space").
-    // The default is what an EMPTY day falls back to, not where every day starts.
-    let from = null;
-    let to = null;
-    rows.forEach((r) => {
-        const w = reservationWindow(r);
-        if (!w) return;
-        const s = new Date(w.startMs);
-        const e = new Date(w.endMs);
-        // One hour of air above the first booking and below the last, so a block
-        // is never flush against the edge of the grid — and so there is
-        // somewhere to click to book earlier or later.
-        const startHour = s.getHours() - 1;
-        const endHour = e.getHours() + (e.getMinutes() ? 1 : 0) + 1;
-        from = from == null ? startHour : Math.min(from, startHour);
-        to = to == null ? endHour : Math.max(to, endHour);
-    });
-    if (from == null) return { from: CAL_DEFAULT_FROM, to: CAL_DEFAULT_TO };
-    return { from: Math.max(0, from), to: Math.min(24, Math.max(from + 2, to)) };
+// THE GRID IS ALWAYS THE WHOLE DAY, 00:00 to 24:00.
+//
+// It was briefly cropped to the hours that had bookings in them, which is the
+// obvious way to spend less screen on empty space — and it was wrong. A
+// calendar cropped to its own contents cannot be used to CREATE anything: the
+// empty hours are where the next booking goes, and clicking one is how it is
+// taken. It also silently changed shape as bookings were added, so the same
+// Tuesday sat at a different height depending on what was already in it.
+//
+// The white-space problem is real, and it is solved by SCROLLING to the part of
+// the day that matters instead of by deleting the rest — see `scrollCalendarToNow`.
+function calendarHours() {
+    return { from: 0, to: 24 };
 }
 
 // Side-by-side lanes for bookings that overlap in time.
@@ -3516,7 +3506,7 @@ function renderReservationCalendar() {
 
     const days = resRangeDays();
     const dayRows = days.map((d) => reservationsOn(d, rows));
-    const { from, to } = calendarHours(dayRows.flat());
+    const { from, to } = calendarHours();
     const hours = Array.from({ length: Math.max(1, to - from) }, (_, i) => from + i);
     const todayKey = dayKey(new Date());
 
@@ -3548,7 +3538,7 @@ function renderReservationCalendar() {
 
     host.classList.remove('hidden');
     host.innerHTML = `
-        <div class="pos-cal-scroll">
+        <div class="pos-cal-scroll" style="--cal-hour:${CAL_HOUR_PX}px; max-height:calc(${CAL_HOUR_PX}px * ${CAL_VISIBLE_HOURS})">
             <div class="pos-cal-head" style="--cal-cols:${days.length}"><div></div>${head}</div>
             <div class="pos-cal-grid" style="--cal-cols:${days.length}; --cal-hour:${CAL_HOUR_PX}px">
                 <div class="pos-cal-times">
@@ -3558,6 +3548,8 @@ function renderReservationCalendar() {
                 ${nowLine}
             </div>
         </div>`;
+
+    scrollCalendarToHour(host, dayRows.flat(), from);
 
     wireReservationBlocks(host);
     host.querySelectorAll('[data-more]').forEach((b) => b.addEventListener('click', (e) => {
@@ -3580,6 +3572,27 @@ function renderReservationCalendar() {
             openReservationDialog({ startsAt: d });
         });
     });
+}
+
+// Open the day where the work is, without cropping the day.
+//
+// The whole 24 hours are rendered and scrollable — 03:00 is reachable, because
+// somebody eventually books it — but nobody opens this board to look at 03:00.
+// It lands one hour above the earliest booking, or above the current hour on a
+// day with none, which is where a host would have scrolled to anyway.
+//
+// Preserves an existing scroll position: this runs on every repaint (a booking
+// lands, the clock ticks), and yanking the grid back under someone mid-scroll
+// is worse than the problem it solves.
+function scrollCalendarToHour(host, rows, fromHour) {
+    const box = host.querySelector('.pos-cal-scroll');
+    if (!box || box.dataset.posScrolled) return;
+    const hours = rows.map((r) => reservationWindow(r))
+        .filter(Boolean)
+        .map((w) => new Date(w.startMs).getHours());
+    const target = hours.length ? Math.min(...hours) : new Date().getHours();
+    box.scrollTop = Math.max(0, (target - 1 - fromHour) * CAL_HOUR_PX);
+    box.dataset.posScrolled = '1';
 }
 
 function renderReservationMonth(host, rows, now) {
@@ -3808,12 +3821,12 @@ function openReservationDialog({ reservation = null, startsAt = null, tableId = 
     const tables = ((state.overview && state.overview.tables) || []);
     const when = reservation ? new Date(toMs(reservation.starts_at))
         : (startsAt || new Date(Date.now() + 60 * 60 * 1000));
-    // datetime-local wants a local ISO string with no zone. Building it by hand
-    // rather than through toISOString(), which converts to UTC and would offer a
-    // Jakarta host a booking seven hours in the past.
+    // Both halves are built by hand in LOCAL time. `toISOString()` converts to
+    // UTC and would offer a Jakarta host a booking seven hours in the past — the
+    // silent kind of wrong, since the dialog would still look perfectly normal.
     const pad = (n) => String(n).padStart(2, '0');
-    const localValue = `${when.getFullYear()}-${pad(when.getMonth() + 1)}-${pad(when.getDate())}`
-        + `T${pad(when.getHours())}:${pad(when.getMinutes())}`;
+    const dayValue = `${when.getFullYear()}-${pad(when.getMonth() + 1)}-${pad(when.getDate())}`;
+    const timeValue = `${pad(when.getHours())}:${pad(when.getMinutes())}`;
 
     document.getElementById('pos-res-modal')?.remove();
     const el = document.createElement('div');
@@ -3831,16 +3844,46 @@ function openReservationDialog({ reservation = null, startsAt = null, tableId = 
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18 18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            <form class="pos-modal-body" id="pos-res-form">
+            <!-- novalidate: this form does its OWN validation and reports it in
+                 #pos-res-error, in words a host can act on. Native constraint
+                 validation runs first and blocks the submit - and it blocks it
+                 SILENTLY here, because the submit button lives outside the form
+                 (linked by the form attribute), so the browser's bubble has
+                 nothing on screen to anchor to. That is exactly how a step of
+                 900 on the time field turned Create reservation into a dead
+                 button with no error anywhere: found 2026-09-01, and only
+                 because a spec caught it.
+                 (No backticks in this comment - it lives inside a template
+                 literal, and one would end the string.) -->
+            <form class="pos-modal-body" id="pos-res-form" novalidate>
                 <div class="pos-field">
                     <label for="pos-res-name">Guest name</label>
                     <input id="pos-res-name" name="name" maxlength="80" autocomplete="off" placeholder="Pak Budi"
                            value="${esc(reservation ? reservation.guest_name : '')}">
                 </div>
-                <div class="pos-field-row">
+                <div class="pos-field-row is-when">
                     <div class="pos-field">
-                        <label for="pos-res-when">Date &amp; time</label>
-                        <input id="pos-res-when" name="when" type="datetime-local" value="${esc(localValue)}">
+                        <label for="pos-res-datefield">Date</label>
+                        <!-- The SHARED FluxyDateRangePicker in single-date mode.
+                             Never a native date input: PROJECT_BACKGROUND §5 is
+                             explicit, and the browser's own calendar was the one
+                             control on this page that did not look like the
+                             product. Mounted below, once the dialog is in the DOM. -->
+                        <div id="pos-res-datefield" class="pos-res-datehost"></div>
+                    </div>
+                    <div class="pos-field">
+                        <label for="pos-res-time">Time</label>
+                        <!-- Time stays a native control. The ban is on calendars
+                             and date fields, there is no shared time component,
+                             and a native time input is the one the tablet's own
+                             keyboard is built for.
+                             NO step attribute. It looks like a free 15-minute
+                             grid and is not: for type=time the step BASE is the
+                             control's own initial value, so a dialog opened at
+                             18:54 rejected 19:00 with "the two nearest valid
+                             values are 18.54 and 19.09". A floor books at 19:05
+                             anyway. -->
+                        <input id="pos-res-time" name="time" type="time" value="${esc(timeValue)}">
                     </div>
                     <div class="pos-field">
                         <label for="pos-res-party">Guests</label>
@@ -3888,21 +3931,55 @@ function openReservationDialog({ reservation = null, startsAt = null, tableId = 
         </div>`;
     document.body.appendChild(el);
 
-    const close = () => { el.remove(); document.removeEventListener('keydown', onKey); };
+    // The picker renders its panel into a FIXED-position element outside the
+    // dialog, so removing the dialog does not remove the calendar — it would be
+    // left floating over the board with nothing to close it.
+    const close = () => { picker?.destroy?.(); el.remove(); document.removeEventListener('keydown', onKey); };
     const onKey = (e) => { if (e.key === 'Escape') close(); };
     el.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', close));
     document.addEventListener('keydown', onKey);
 
     const select = el.querySelector('#pos-res-table');
-    const whenInput = el.querySelector('#pos-res-when');
+    const timeInput = el.querySelector('#pos-res-time');
     const durationInput = el.querySelector('#pos-res-duration');
+
+    // The chosen day, held here rather than read back out of the control: the
+    // shared picker owns its own label and reports through onChange.
+    let chosenDay = dayValue;
+    const DRP = window.FluxyDateRangePicker;
+    const picker = DRP ? DRP.mount(el.querySelector('#pos-res-datefield'), {
+        mode: 'single',
+        start: dayValue,
+        defaultStart: dayValue,
+        // A booking is in the future. `minDate` defaults to today, so a host
+        // cannot hold a table for a night that has already happened; an EXISTING
+        // booking opens with its own date as the floor, or editing one taken
+        // yesterday would refuse to show the day it is for.
+        minDate: reservation ? (dayValue < DRP.getDayKey() ? dayValue : DRP.getDayKey()) : DRP.getDayKey(),
+        // A year out. The component's default max is TODAY — correct for a
+        // finance range, useless for a reservation, and the reason this is
+        // passed explicitly rather than left alone.
+        // `addDays` takes a day KEY, not a Date — it splits the string. Passing a
+        // Date threw inside the picker, which mount() does not catch, so the
+        // whole dialog rendered with no date control at all.
+        maxDate: DRP.addDays(DRP.getDayKey(), 365),
+        onChange: ({ start }) => { chosenDay = start; paintTables(); }
+    }) : null;
+    // No picker means the script did not load. Say so rather than presenting a
+    // dialog whose date cannot be changed.
+    if (!picker) el.querySelector('#pos-res-datefield').innerHTML =
+        '<p class="pos-modal-sub">Date picker unavailable — reload the page.</p>';
+
+    // The moment the two controls add up to. One place, so the table list, the
+    // validation and the write can never disagree about which minute is meant.
+    const chosenMs = () => Date.parse(`${chosenDay}T${timeInput.value || '00:00'}`);
 
     // The table list is REBUILT whenever the time changes, because which tables
     // are takeable is a question about a moment — a table free at 18:00 is not
     // free at 20:00, and a list computed once would be answering about whichever
     // time the dialog happened to open with.
-    const paintTables = () => {
-        const startMs = Date.parse(whenInput.value);
+    function paintTables() {
+        const startMs = chosenMs();
         const duration = Number(durationInput.value) || DEFAULT_DURATION_MIN;
         const chosen = select.value || (reservation ? reservation.table_id : tableId) || '';
         select.innerHTML = `<option value="">Assign later</option>` + tables.map((t) => {
@@ -3915,9 +3992,9 @@ function openReservationDialog({ reservation = null, startsAt = null, tableId = 
                 + `${esc(t.label)}${t.zone ? ` · ${esc(t.zone)}` : ''}${t.seats ? ` · ${t.seats} seats` : ''}`
                 + `${busy ? ` — booked ${formatClock(toMs(busy.starts_at))}` : ''}</option>`;
         }).join('');
-    };
+    }
     paintTables();
-    whenInput.addEventListener('change', paintTables);
+    timeInput.addEventListener('change', paintTables);
     durationInput.addEventListener('change', paintTables);
     [el.querySelector('#pos-res-party'), durationInput].forEach((i) => i.addEventListener('input', (e) => {
         e.target.value = e.target.value.replace(/\D/g, '');
@@ -3929,8 +4006,8 @@ function openReservationDialog({ reservation = null, startsAt = null, tableId = 
         const show = (msg, focus) => { err.textContent = msg; err.hidden = false; focus?.focus(); };
         const name = el.querySelector('#pos-res-name').value.trim();
         if (!name) return show('Give this reservation a guest name.', el.querySelector('#pos-res-name'));
-        const startMs = Date.parse(whenInput.value);
-        if (Number.isNaN(startMs)) return show('Pick the date and time this reservation is for.', whenInput);
+        const startMs = chosenMs();
+        if (Number.isNaN(startMs)) return show('Pick the date and time this reservation is for.', timeInput);
         const party = Number(el.querySelector('#pos-res-party').value);
         if (!Number.isInteger(party) || party < 1) return show('How many guests are coming?', el.querySelector('#pos-res-party'));
         err.hidden = true;

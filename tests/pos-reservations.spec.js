@@ -249,14 +249,19 @@ test('a booking survives a real round-trip to Firestore, and releases its table 
         await expect(dialog).toBeVisible();
         await dialog.locator('#pos-res-name').fill(guest);
         await dialog.locator('#pos-res-party').fill('2');
-        // Tomorrow, so it cannot hold a table during anything else running now.
-        const when = await page.evaluate(() => {
+        // Tomorrow at 19:00, so it cannot hold a table during anything else
+        // running now. The date goes through the SHARED picker — clicking the
+        // day, as a person would, which is also what proves the picker is wired
+        // to the value the write uses rather than merely rendered beside it.
+        await dialog.locator('#pos-res-datefield [data-drp-trigger]').click();
+        const tomorrow = await page.evaluate(() => {
             const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
             const p = (n) => String(n).padStart(2, '0');
-            return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T19:00`;
+            return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
         });
-        await dialog.locator('#pos-res-when').fill(when);
-        await dialog.locator('#pos-res-when').dispatchEvent('change');
+        await page.click(`[data-drp-day="${tomorrow}"]`);
+        await dialog.locator('#pos-res-time').fill('19:00');
+        await dialog.locator('#pos-res-time').dispatchEvent('change');
 
         // A real table when the outlet has a free one — that is the path that
         // carries `table_label` and the one a permission failure would hide.
@@ -343,13 +348,16 @@ test.describe('The reservations board', () => {
         // list is REBUILT on every time change, because which tables are takeable
         // is a question about a moment — a list computed once would be answering
         // about whatever time the dialog happened to open with.
-        const when = await page.evaluate(() => {
+        //
+        // Only the TIME needs setting: the dialog opens on today, and the seeded
+        // booking is three hours from now.
+        const time = await page.evaluate(() => {
             const d = new Date(Date.now() + 3 * 60 * 60000);
             const p = (n) => String(n).padStart(2, '0');
-            return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+            return `${p(d.getHours())}:${p(d.getMinutes())}`;
         });
-        await dialog.locator('#pos-res-when').fill(when);
-        await dialog.locator('#pos-res-when').dispatchEvent('change');
+        await dialog.locator('#pos-res-time').fill(time);
+        await dialog.locator('#pos-res-time').dispatchEvent('change');
 
         await expect(dialog.locator('#pos-res-table option', { hasText: 'A04' })).toBeDisabled();
         await expect(dialog.locator('#pos-res-table option', { hasText: 'A05' })).toBeEnabled();
@@ -357,6 +365,52 @@ test.describe('The reservations board', () => {
         // deciding the seat, and a host on the phone should never be blocked on
         // a choice they can make afterwards.
         await expect(dialog.locator('#pos-res-table option', { hasText: 'Assign later' })).toBeEnabled();
+    });
+
+    // ── The date control is the shared one ──────────────────────────────────
+    // PROJECT_BACKGROUND §5: "Reuse this shared picker for every dashboard
+    // calendar/date picker, including single-date entry fields; never create
+    // page-local calendar components or native date inputs." The first cut of
+    // this dialog used `<input type="datetime-local">`, which popped the
+    // BROWSER's calendar — the one control on the till that did not look like
+    // FluxyOS, and a rule that a linter cannot catch.
+    test('the date field is the shared picker, not a native date input', async ({ page }) => {
+        await openTill(page);
+        await page.click('#nav-container [data-view="reservations"]');
+        await page.click('#pos-res-new');
+        const dialog = page.locator('#pos-res-modal');
+        await expect(dialog).toBeVisible();
+
+        await expect(dialog.locator('input[type="date"], input[type="datetime-local"]')).toHaveCount(0);
+        const trigger = dialog.locator('#pos-res-datefield [data-drp-trigger]');
+        await expect(trigger).toBeVisible();
+
+        await trigger.click();
+        // The panel is re-parented to <body> by the picker itself — which is what
+        // keeps it out of the modal's transform containing block, where a fixed
+        // element would be clipped by the body's own overflow.
+        const panel = page.locator('[data-drp-panel]:not(.hidden)');
+        await expect(panel).toBeVisible();
+
+        // A booking is in the future, so yesterday is not offerable. The shared
+        // component defaults `maxDate` to TODAY — right for a finance range and
+        // useless here — so both bounds are passed explicitly.
+        const bounds = await page.evaluate(() => {
+            const p = (n) => String(n).padStart(2, '0');
+            const key = (d) => `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+            return {
+                yesterday: key(new Date(Date.now() - 86400000)),
+                nextWeek: key(new Date(Date.now() + 7 * 86400000))
+            };
+        });
+        await expect(page.locator(`[data-drp-day="${bounds.yesterday}"]`)).toBeDisabled();
+        await expect(page.locator(`[data-drp-day="${bounds.nextWeek}"]`)).toBeEnabled();
+
+        // Closing the dialog takes the panel with it. It lives on <body>, so
+        // without an explicit teardown it would be left floating over the board
+        // with nothing left on screen able to close it.
+        await page.keyboard.press('Escape');
+        await expect(page.locator('[data-drp-panel]')).toHaveCount(0);
     });
 
     test('a booking cannot be saved without the two things it cannot work without', async ({ page }) => {

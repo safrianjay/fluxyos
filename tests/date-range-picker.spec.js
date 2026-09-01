@@ -19,8 +19,19 @@ async function mountSharedPickerFixture(page, options) {
     }, options);
 }
 
-function formatMonth(date) {
-    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+// Render the expected label IN THE BROWSER, not in Node.
+//
+// The label is produced by Chrome's `toLocaleDateString`; computing the
+// expectation with Node's meant comparing two different ICU versions, and they
+// disagree. September is the month where that shows: Chrome renders "Sept 2026",
+// Node "Sep 2026", so these three specs went red on 2026-09-01 having passed
+// every day of August — a date-dependent failure with nothing to do with the
+// code under test. Asking the same engine that drew the label what the label
+// should be removes the boundary entirely.
+async function formatMonth(page, date) {
+    return page.evaluate((iso) => new Date(iso).toLocaleDateString(
+        (window.FluxyI18n?.locale?.() || 'en-US'), { month: 'short', year: 'numeric' }
+    ), date.toISOString());
 }
 
 const monthlyFilterPages = [
@@ -36,11 +47,13 @@ for (const { path, picker } of monthlyFilterPages) {
         await page.goto(path);
 
         const host = page.locator(picker);
-        await expect(host.locator('[data-drp-label]')).toHaveText(formatMonth(currentMonth));
+        const thisMonth = await formatMonth(page, currentMonth);
+        const lastMonth = await formatMonth(page, previousMonth);
+        await expect(host.locator('[data-drp-label]')).toHaveText(thisMonth);
         await host.locator('[data-drp-prev]').click();
-        await expect(host.locator('[data-drp-label]')).toHaveText(formatMonth(previousMonth));
+        await expect(host.locator('[data-drp-label]')).toHaveText(lastMonth);
         await host.locator('[data-drp-next]').click();
-        await expect(host.locator('[data-drp-label]')).toHaveText(formatMonth(currentMonth));
+        await expect(host.locator('[data-drp-label]')).toHaveText(thisMonth);
     });
 }
 
