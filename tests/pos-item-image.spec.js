@@ -99,6 +99,73 @@ test('a product photo round-trips to Storage and never becomes a public URL', as
     expect(result.looksPublic, 'a public download URL reached the till').toBe(false);
 });
 
+// THE ONE THAT WOULD HAVE CAUGHT IT.
+//
+// The CSS test below injects markup with `src` already set, which walks past the
+// loader entirely — so it stayed green while no photo on the real till ever
+// loaded. This drives the actual path: a real item, a real upload, a real till
+// render, and an assertion that the card ends up holding image bytes.
+//
+// The bug it guards: the <img> starts `hidden` so a failed load degrades to the
+// card's initial, and `[hidden]` is `display: none`, which gives the element a
+// ZERO-SIZE rect. IntersectionObserver never reports a zero-area element, so
+// observing the image meant the callback never fired and no photo ever loaded.
+// Nothing errored — the cards just kept their initials, which looks exactly like
+// having no photo set.
+test('a photo actually paints onto the card, through the real lazy loader', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/inventory.html');
+    await page.waitForSelector('#item-photo-file', { state: 'attached', timeout: 30000 });
+    await page.waitForFunction(async () => {
+        const { getApps } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+        const { getAuth } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+        if (!getApps().length) return false;
+        const a = getAuth(getApps()[0]);
+        await a.authStateReady();
+        return !!a.currentUser;
+    }, null, { timeout: 40000 });
+
+    const seeded = await page.evaluate(async (b64) => {
+        const mod = await import('/assets/js/db-service.js');
+        const { getApps } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+        const { getAuth } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+        const ds = new mod.default(getApps()[0]);
+        const uid = getAuth(getApps()[0]).currentUser.uid;
+        // pos_visible + a price is what puts an item on the till at all.
+        const item = await ds.saveItem(uid, {
+            name: `QA Photo Menu ${Date.now()}`, type: 'stock', base_unit: 'pcs',
+            sales_price: 12000, pos_visible: true, is_sold: true
+        }, { create: true });
+        const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+        const up = await ds.uploadItemImage(uid, item.id, new File([bytes], 'p.png', { type: 'image/png' }));
+        await ds.setItemImage(uid, item.id, up.storagePath);
+        return { itemId: item.id };
+    }, PNG_4x3);
+
+    await page.goto('/pos');
+    await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
+    await page.waitForSelector('#pos-new-order:not([disabled])', { timeout: 40000 });
+
+    const card = page.locator(`#pos-menu [data-item="${seeded.itemId}"]`);
+    await expect(card, 'the seeded item never reached the till menu').toBeVisible({ timeout: 30000 });
+    await expect(card).toHaveClass(/has-image/);
+
+    // The image must become VISIBLE, which only happens after the authenticated
+    // fetch resolves and the bytes decode.
+    const img = card.locator('img[data-img]');
+    await expect(img, 'the photo never loaded — the lazy loader did not fire').toBeVisible({ timeout: 30000 });
+
+    const painted = await img.evaluate((el) => ({
+        src: (el.getAttribute('src') || '').slice(0, 5),
+        width: el.getBoundingClientRect().width,
+        naturalWidth: el.naturalWidth
+    }));
+    // A blob URL, never http(s): the till must not be handed a public link.
+    expect(painted.src, 'the till was given something other than a blob URL').toBe('blob:');
+    expect(painted.width, 'the image has no box').toBeGreaterThan(0);
+    expect(painted.naturalWidth, 'the bytes never decoded').toBeGreaterThan(0);
+});
+
 test('the card shows the whole photo, undistorted, and falls back to the initial', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/pos');

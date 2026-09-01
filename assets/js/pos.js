@@ -1982,6 +1982,20 @@ function loadMenuImages(host) {
     const targets = [...host.querySelectorAll('img[data-img]:not([data-img-done])')];
     if (!targets.length) return;
 
+    // ⚠️ OBSERVE THE TILE, NOT THE IMAGE.
+    //
+    // The <img> starts `hidden` so a slow or failed load degrades to the card's
+    // initial rather than to a broken-image glyph — and `[hidden]` resolves to
+    // `display: none`, which gives the element a ZERO-SIZE rect.
+    // IntersectionObserver never reports a zero-area element as intersecting, so
+    // observing the image itself meant the callback never fired, `paint()` never
+    // ran, and no photo ever loaded. Nothing errored; the cards simply kept
+    // their initials, which is indistinguishable from having no photo set.
+    //
+    // The media tile is the element that actually occupies space, so it is what
+    // gets watched; the image it contains is what gets painted.
+    const tileOf = (img) => img.closest('.pos-card-media') || img.closest('.pos-card') || img;
+
     const paint = async (img) => {
         if (img.dataset.imgDone) return;
         img.dataset.imgDone = '1';
@@ -2005,14 +2019,20 @@ function loadMenuImages(host) {
     };
 
     if (typeof IntersectionObserver !== 'function') { targets.forEach(paint); return; }
+    const byTile = new Map();
     const io = new IntersectionObserver((entries) => {
         entries.forEach((e) => {
             if (!e.isIntersecting) return;
             io.unobserve(e.target);
-            paint(e.target);
+            const img = byTile.get(e.target);
+            if (img) paint(img);
         });
     }, { root: host.closest('.pos-catalog-body') || null, rootMargin: '200px' });
-    targets.forEach((img) => io.observe(img));
+    targets.forEach((img) => {
+        const tile = tileOf(img);
+        byTile.set(tile, img);
+        io.observe(tile);
+    });
 }
 
 // Unguarded on purpose — see addMenuLine below.
