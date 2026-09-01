@@ -3048,3 +3048,78 @@ main > header {
     color: #6B7280;
     white-space: nowrap;
 }
+
+/* ═══ Budget assignment drawer ═══════════════════════════════════════════
+   Real CSS for a component that was built entirely from Tailwind utilities.
+
+   THE BUG THIS FIXES (2026-09-01, reported from the Bills page): the drawer is
+   INJECTED into the DOM the first time it opens, so every utility class on it
+   has to be generated at RUNTIME by the Tailwind Play CDN's MutationObserver.
+   When that has not happened — the CDN blocked by an ad blocker or Brave
+   shields, a proxy, an offline blip, or simply a slow generate — the drawer
+   renders as a raw block: `position: static` instead of fixed, 1424px instead
+   of 420px, no padding, default type. It lands in the page flow under the
+   topbar and looks like a broken page rather than a dialog.
+
+   Measured with the CDN blocked: width 1424px, max-width none, position static.
+
+   The rule this establishes: a component whose markup is injected must not
+   depend on runtime class generation for its STRUCTURE. The Tailwind classes
+   stay for the fine detail and still apply when the CDN is up; everything that
+   decides whether this reads as a dialog at all is declared here.
+
+   `is-open` is a real class rather than toggling `translate-x-full`/`hidden`,
+   for the same reason: with the CDN down those two toggles are no-ops, so the
+   drawer could neither hide itself nor slide in. */
+.fbx-backdrop {
+    position: fixed; inset: 0; z-index: 60;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+}
+.fbx-backdrop.is-open { display: block; }
+
+.fbx-drawer {
+    position: fixed; top: 0; right: 0; z-index: 70;
+    height: 100%; width: 100%; max-width: 420px;
+    display: flex; flex-direction: column;
+    background: #FFFFFF;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    transform: translateX(100%);
+    transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.fbx-drawer.is-open { transform: translateX(0); }
+@media (prefers-reduced-motion: reduce) { .fbx-drawer { transition: none; } }
+
+.fbx-drawer-head {
+    flex: none; display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 12px; padding: 16px 24px; border-bottom: 1px solid #E5E7EB;
+}
+.fbx-drawer-eyebrow {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: #9CA3AF;
+}
+.fbx-drawer-title { margin-top: 4px; font-size: 16px; font-weight: 600; color: #111827; }
+.fbx-drawer-form { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+.fbx-drawer-body { flex: 1; overflow-y: auto; padding: 20px 24px; display: grid; gap: 20px; align-content: start; }
+.fbx-drawer-foot {
+    flex: none; display: flex; align-items: center; gap: 12px;
+    padding: 16px 24px; border-top: 1px solid #F3F4F6;
+}
+.fbx-drawer-foot > button { flex: 1 1 0; min-height: 40px; border-radius: 8px; font-size: 12px; }
+.fbx-field-label {
+    display: block; margin-bottom: 8px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: #9CA3AF;
+}
+.fbx-drawer select, .fbx-drawer textarea {
+    width: 100%; padding: 10px 12px; font-size: 14px; color: #0F172A;
+    background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 10px; outline: none;
+}
+.fbx-drawer textarea { resize: none; }
+.fbx-drawer select:focus, .fbx-drawer textarea:focus { border-color: #EA580C; box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.25); }
+.fbx-record {
+    border: 1px solid #E5E7EB; background: #F9FAFB; border-radius: 8px; padding: 10px 12px;
+}
+.fbx-record-name { font-size: 14px; font-weight: 600; color: #111827; }
+.fbx-record-meta { margin-top: 2px; font-size: 12px; color: #6B7280; }
+.fbx-hint { margin-top: 4px; font-size: 12px; color: #9CA3AF; }

@@ -66,6 +66,27 @@ module.exports = defineConfig({
             dependencies: ['auth-setup'],
         },
 
+        // ── WebKit (Safari) ──────────────────────────────────────────────────
+        // Chromium-only QA is a real blind spot, and it has cost twice: an
+        // animated `::before` that painted over content in Safari alone, and a
+        // dialog that rendered as a raw page block for a Safari user while every
+        // Chromium check stayed green.
+        //
+        // Deliberately NARROW — `testMatch` is one file, not the sweep. Workers
+        // is 1 and fullyParallel is off, so a second full pass would add minutes
+        // to every push. What this buys is the class of bug that is invisible in
+        // Chromium: layout that depends on something WebKit does differently.
+        // Add a spec here when it is guarding exactly that.
+        {
+            name: 'webkit',
+            testMatch: /budget-assignment-drawer\.spec\.js$/,
+            use: {
+                ...devices['Desktop Safari'],
+                storageState: 'tests/.auth/storageState.json',
+            },
+            dependencies: ['auth-setup'],
+        },
+
         // ── Non-IDR workspace ────────────────────────────────────────────────
         // The main suite runs against an Indonesian workspace, so a bug that
         // only appears outside Indonesia passes every browser check — that is

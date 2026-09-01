@@ -4317,34 +4317,34 @@ window.attachChartHover = function attachChartHover(container, options) {
     function ensureMounted() {
         if (mounted) return;
         const html = `
-            <div id="fbx-assignment-backdrop" class="fixed inset-0 bg-black/50 z-[60] hidden"></div>
-            <div id="fbx-assignment-drawer" class="fixed top-0 right-0 h-full w-full max-w-[420px] bg-white shadow-2xl z-[70] transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
-                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+            <div id="fbx-assignment-backdrop" class="fbx-backdrop fixed inset-0 bg-black/50 z-[60] hidden"></div>
+            <div id="fbx-assignment-drawer" class="fbx-drawer fixed top-0 right-0 h-full w-full max-w-[420px] bg-white shadow-2xl z-[70] transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+                <div class="fbx-drawer-head flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
                     <div class="min-w-0">
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Budget</p>
-                        <h2 id="fbx-assignment-title" class="mt-1 text-[15px] font-bold text-gray-900">Change allocation</h2>
+                        <p class="fbx-drawer-eyebrow text-[11px] font-bold uppercase tracking-wider text-gray-400">Budget</p>
+                        <h2 id="fbx-assignment-title" class="fbx-drawer-title mt-1 text-[15px] font-bold text-gray-900">Change allocation</h2>
                     </div>
                     <button id="fbx-assignment-close" type="button" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
-                <form id="fbx-assignment-form" class="flex-1 flex flex-col overflow-hidden">
-                    <div class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-                        <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
-                            <p id="fbx-assignment-vendor" class="text-[13px] font-bold text-gray-900 truncate">—</p>
-                            <p id="fbx-assignment-meta" class="mt-0.5 text-[12px] text-gray-500">—</p>
+                <form id="fbx-assignment-form" class="fbx-drawer-form flex-1 flex flex-col overflow-hidden">
+                    <div class="fbx-drawer-body flex-1 overflow-y-auto px-6 py-5 space-y-5">
+                        <div class="fbx-record rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+                            <p id="fbx-assignment-vendor" class="fbx-record-name text-[13px] font-bold text-gray-900 truncate">—</p>
+                            <p id="fbx-assignment-meta" class="fbx-record-meta mt-0.5 text-[12px] text-gray-500">—</p>
                         </div>
                         <div id="fbx-assignment-allocation-row">
-                            <label for="fbx-assignment-allocation" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Allocation</label>
+                            <label for="fbx-assignment-allocation" class="fbx-field-label block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Allocation</label>
                             <select id="fbx-assignment-allocation" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#EA580C] text-[13px]"></select>
                         </div>
                         <div>
-                            <label for="fbx-assignment-reason" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Reason <span class="text-[#EA580C]">*</span></label>
+                            <label for="fbx-assignment-reason" class="fbx-field-label block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Reason <span class="text-[#EA580C]">*</span></label>
                             <textarea id="fbx-assignment-reason" rows="3" maxlength="500" required placeholder="Why is this record being updated?" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#EA580C] text-[13px] resize-none"></textarea>
-                            <p class="mt-1 text-[11px] text-gray-400">Recorded in the audit log for traceability.</p>
+                            <p class="fbx-hint mt-1 text-[11px] text-gray-400">Recorded in the audit log for traceability.</p>
                         </div>
                     </div>
-                    <div class="px-6 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0">
+                    <div class="fbx-drawer-foot px-6 py-4 border-t border-gray-100 flex items-center gap-3 flex-shrink-0">
                         <button id="fbx-assignment-cancel" type="button" class="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-[13px] font-medium hover:bg-gray-200 transition-colors">Cancel</button>
                         <button id="fbx-assignment-submit" type="submit" class="flex-1 px-4 py-2.5 bg-[#EA580C] text-white rounded-lg text-[13px] font-bold hover:bg-[#D94E0B] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed" disabled>Save</button>
                     </div>
@@ -4418,7 +4418,9 @@ window.attachChartHover = function attachChartHover(container, options) {
         const drawer = document.getElementById('fbx-assignment-drawer');
         const back = document.getElementById('fbx-assignment-backdrop');
         drawer?.classList.add('translate-x-full');
+        drawer?.classList.remove('is-open');
         back?.classList.add('hidden');
+        back?.classList.remove('is-open');
         activeCtx = null;
         // Release scroll lock only if no other drawer or modal still needs it.
         // The Budget detail drawer is the typical co-resident; checking its
@@ -4530,9 +4532,18 @@ window.attachChartHover = function attachChartHover(container, options) {
             submitBtn.disabled = true;
             submitBtn.textContent = 'Save';
 
-            document.getElementById('fbx-assignment-backdrop').classList.remove('hidden');
+            // `is-open` is the REAL class; the Tailwind pair is kept so nothing
+            // that reads them (the Escape handler, other drawers' scroll-lock
+            // checks) has to change. With the CDN blocked, `hidden` and
+            // `translate-x-full` are no-ops — so on their own they could neither
+            // hide the drawer nor slide it in.
+            const backEl = document.getElementById('fbx-assignment-backdrop');
+            backEl.classList.remove('hidden');
+            backEl.classList.add('is-open');
             requestAnimationFrame(() => {
-                document.getElementById('fbx-assignment-drawer').classList.remove('translate-x-full');
+                const drawerEl = document.getElementById('fbx-assignment-drawer');
+                drawerEl.classList.remove('translate-x-full');
+                drawerEl.classList.add('is-open');
                 reasonEl.focus();
             });
             // Lock background scroll so the page underneath doesn't drift
