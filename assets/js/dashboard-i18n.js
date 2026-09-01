@@ -5299,6 +5299,74 @@
         "Name or GoFood / GrabFood order…": "Nama atau pesanan GoFood / GrabFood…",
         "Nothing added yet.": "Belum ada yang ditambahkan.",
         // ── Orders board: status tabs, sort & filter, waiting time ──────
+        // ── Reservations (2026-09-01) ───────────────────────────────────
+        // A booking holds a table, so the vocabulary has to be unambiguous at a
+        // host stand: "Reservasi" for the booking, "ditahan/dipesan" for what it
+        // does to the table. "Tamu" is the guest, never "pelanggan" — a party
+        // that has not arrived is not yet a customer.
+        "Reservations": "Reservasi",
+        "New reservation": "Reservasi Baru",
+        // Deliberately NOT re-declared here: Source, Save changes, Month,
+        // Reserved, Phone, Guests, Other. All seven already exist earlier in
+        // this dictionary, and a later duplicate WINS in an object literal — so
+        // adding them again silently retranslates other pages. "Reserved" is
+        // inventory's reserved stock (Dicadangkan) and "Guests" is the Create
+        // Order dialog's cover count (Jumlah tamu); both were about to change
+        // meaning for the sake of one word on this board.
+        "Edit reservation": "Ubah Reservasi",
+        "Bookings hold their table — the floor plan and the till will not sell it twice.":
+            "Reservasi menahan mejanya — denah lantai dan kasir tidak akan menjualnya dua kali.",
+        "Hold a table for a guest. It stops being sellable 30 minutes before they are due.":
+            "Tahan meja untuk tamu. Meja berhenti bisa dijual 30 menit sebelum jam kedatangan.",
+        "Guest name": "Nama tamu",
+        "Guests expected": "Tamu diharapkan",
+        "Tables held now": "Meja ditahan sekarang",
+        "Need a table": "Butuh meja",
+        "No-shows": "Tidak datang",
+        "Minutes": "Menit",
+        "Assign later": "Tentukan nanti",
+        "Assign a table to this reservation before seating it.":
+            "Tentukan meja untuk reservasi ini sebelum menempatkan tamu.",
+        "Create reservation": "Buat Reservasi",
+        "Seat guest": "Tempatkan Tamu",
+        "Open their order": "Buka Pesanannya",
+        "Mark no-show": "Tandai Tidak Datang",
+        "Cancel booking": "Batalkan Reservasi",
+        "Close out": "Tutup",
+        "Confirmed": "Dikonfirmasi",
+        "Seated": "Sudah Duduk",
+        "No-show": "Tidak Datang",
+        "Not assigned": "Belum ditentukan",
+        "Late": "Terlambat",
+        "Late — not seated": "Terlambat — belum duduk",
+        "Clash": "Bentrok",
+        "Held from": "Ditahan sejak",
+        "Calendar": "Kalender",
+        "List": "Daftar",
+        "Day": "Hari",
+        "Week": "Minggu",
+        "Walk-up / direct": "Datang langsung",
+        "Website": "Website",
+        "Instagram": "Instagram",
+        "Other": "Lainnya",
+        "Search guest, table or phone": "Cari tamu, meja, atau nomor telepon",
+        "Date & time": "Tanggal & waktu",
+        "Duration": "Durasi",
+        "Birthday, allergies, seating preference": "Ulang tahun, alergi, preferensi tempat duduk",
+        "Give this reservation a guest name.": "Beri reservasi ini nama tamu.",
+        "Pick the date and time this reservation is for.": "Pilih tanggal dan waktu reservasi ini.",
+        "How many guests are coming?": "Berapa tamu yang akan datang?",
+        "No reservations in this range": "Tidak ada reservasi pada rentang ini",
+        "Take one with New reservation, or move to another week.":
+            "Buat lewat Reservasi Baru, atau pindah ke minggu lain.",
+        "Reservation updated.": "Reservasi diperbarui.",
+        "Reservation closed out.": "Reservasi ditutup.",
+        "Could not update that reservation.": "Tidak bisa memperbarui reservasi itu.",
+        "Could not save that reservation.": "Tidak bisa menyimpan reservasi itu.",
+        "This table already has an open order.": "Meja ini sudah punya pesanan terbuka.",
+        "A reservation needs a guest name.": "Reservasi harus punya nama tamu.",
+        "This reservation already has an order open.": "Reservasi ini sudah punya pesanan terbuka.",
+        "That reservation no longer exists.": "Reservasi itu sudah tidak ada.",
         "Process to Kitchen": "Diproses ke Dapur",
         // "Ready" is already in the dictionary above.
         "Ready to serve": "Siap disajikan",
@@ -5366,7 +5434,6 @@
         "QRIS": "QRIS",
         "Bank transfer": "Transfer bank",
         "Card": "Kartu",
-        "Other": "Lainnya",
         "Amount received": "Jumlah diterima",
         "Reference": "Referensi",
         "Transfer note, QRIS ref…": "Catatan transfer, ref QRIS…",

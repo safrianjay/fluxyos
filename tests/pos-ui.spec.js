@@ -77,9 +77,9 @@ test.describe('Point of Sale', () => {
     test('the till reuses the SHARED sidebar with its own menu', async ({ page }) => {
         // The POS is a different EXPERIENCE from the finance app, not a page
         // inside it: a cashier's destinations are the till, the floor, the
-        // orders and the drawer — not nineteen links to collections their role
-        // is denied. Without this, the shared sidebar creeping back would look
-        // like a styling regression rather than the wrong product.
+        // orders, the book and the drawer — not nineteen links to collections
+        // their role is denied. Without this, the shared sidebar creeping back
+        // would look like a styling regression rather than the wrong product.
         await page.goto('/pos');
         await page.waitForSelector('#pos-menu .pos-card, #pos-menu-empty', { timeout: 25000 });
 
@@ -93,11 +93,15 @@ test.describe('Point of Sale', () => {
         await expect(page.locator('#sidebar #profile-area')).toBeVisible();
 
         const navs = await page.locator('#nav-container [data-view] .sidebar-text').allInnerTexts();
-        expect(navs.map((t) => t.trim()))
-            .toEqual(['Point of Sale', 'Tables', 'Orders', 'Shift']);
+        // Reservations joined the menu on 2026-09-01: a booking holds a table,
+        // so the book belongs beside the floor rather than in a calendar
+        // elsewhere. Order matters — it sits between the orders and the drawer,
+        // which is the order of a service.
+        const TILL_NAV = ['Point of Sale', 'Tables', 'Orders', 'Reservations', 'Shift'];
+        expect(navs.map((t) => t.trim())).toEqual(TILL_NAV);
 
         // Icons come from the shared Lucide set, not a second family drawn here.
-        expect(await page.locator('#nav-container [data-view] .sidebar-icon').count()).toBe(4);
+        expect(await page.locator('#nav-container [data-view] .sidebar-icon').count()).toBe(TILL_NAV.length);
 
         // No finance destination survives the swap — those are pages this role
         // is denied, and a nav full of permission errors is the bug this fixes.
@@ -530,10 +534,10 @@ test.describe('Point of Sale', () => {
     });
 
     test('every till view holds its vertical rhythm', async ({ page }) => {
-        // The console sweep audits a page in ONE state. The till has four views
+        // The console sweep audits a page in ONE state. The till has FIVE views
         // behind `.hidden`, where every rect is zero and nothing is measurable —
-        // so three quarters of this surface was never checked. Each is switched
-        // to and audited here.
+        // so most of this surface was never checked. Each is switched to and
+        // audited here, and every view added since must be added to the list.
         //
         // The rule exists because `.fluxy-section-stack > * + *` spaces DIRECT
         // children only: wrapping the views in `.pos-view` dropped every gap to
@@ -542,7 +546,7 @@ test.describe('Point of Sale', () => {
         await page.goto('/pos');
         await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
 
-        for (const view of ['till', 'tables', 'orders', 'shift']) {
+        for (const view of ['till', 'tables', 'orders', 'reservations', 'shift']) {
             await page.click(`#nav-container [data-view="${view}"]`);
             await expect(page.locator(`.pos-view[data-view="${view}"]`)).toBeVisible();
             await page.waitForTimeout(500);   // let the view's async render land

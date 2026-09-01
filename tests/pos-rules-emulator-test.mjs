@@ -428,6 +428,85 @@ async function main() {
         setDoc(doc(db, `workspaces/${WS}/transactions/tx-sale-bad`),
             settleTx({ type: 'income', icon: '\ud83d\udcb0', pos_refund_reason: null, cash: 20000, clearing: 0 })));
 
+    console.log('\n— pos_reservations: a claim on a table in the future —');
+    // What rules can and cannot do here is worth being explicit about, because
+    // the gap looks like an oversight and is not: "this table is already booked
+    // at 19:00" is a QUERY across the collection, and rules can only get() a
+    // document whose id they already know. Double-booking is therefore refused
+    // in savePosReservation and createPosOrder — a business rule, not a security
+    // boundary. What IS proven below is the shape of the claim and who may make
+    // one.
+    await setMemberRole(uid, 'cashier');
+    const reservation = (o = {}) => ({
+        dimension_id: 'outlet-kemang', table_id: 't12', table_label: 'A04',
+        guest_name: 'Maya', guest_phone: '0812', guest_email: null,
+        party_size: 4, starts_at: new Date('2026-09-15T19:00:00+07:00'),
+        duration_minutes: 90, source: 'phone', note: null,
+        status: 'confirmed', order_id: null, seated_at: null,
+        released_at: null, release_reason: null, version: 1,
+        created_at: serverTimestamp(), updated_at: serverTimestamp(),
+        created_by: uid, updated_by: uid, ...o
+    });
+
+    // A cashier answers the phone. A reservation book only the owner can write
+    // to is a paper diary with extra steps.
+    await expectOutcome('cashier takes a reservation', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_reservations/r1`), reservation()));
+    await expectOutcome('a reservation with no guest name is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_reservations/r-noname`), reservation({ guest_name: '' })));
+    await expectOutcome('a party of zero is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_reservations/r-zero`), reservation({ party_size: 0 })));
+    await expectOutcome('a fractional party is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_reservations/r-frac`), reservation({ party_size: 2.5 })));
+    // Both directions are silent failures with opposite shapes: a zero-minute
+    // sitting holds nothing, a twelve-hour one takes a table out of service for
+    // a whole service by typo.
+    await expectOutcome('a zero-minute sitting is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_reservations/r-inst`), reservation({ duration_minutes: 0 })));
+    await expectOutcome('a sitting longer than ten hours is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_reservations/r-forever`), reservation({ duration_minutes: 900 })));
+    // The guest's own words, dictated over the phone — the reason these are
+    // bounded in rules and not only in the DAL.
+    await expectOutcome('an 81-character guest name is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_reservations/r-long`), reservation({ guest_name: 'x'.repeat(81) })));
+    await expectOutcome('a booking created already seated is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_reservations/r-seated`), reservation({ status: 'arrived' })));
+    await expectOutcome('a booking created with an order attached is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_reservations/r-order`), reservation({ order_id: 'o1' })));
+    await expectOutcome('an unknown field is denied (hasOnly)', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_reservations/r-extra`), reservation({ vip: true })));
+
+    // Version advances by exactly one, as on orders and shifts: two hosts on
+    // stale devices is the same race two waiters on one table are.
+    await expectOutcome('seating the booking is allowed', true, () =>
+        updateDoc(doc(db, `workspaces/${WS}/pos_reservations/r1`), {
+            version: 2, status: 'arrived', order_id: 'o1', seated_at: serverTimestamp()
+        }));
+    await expectOutcome('a stale device re-using version 2 is denied', false, () =>
+        updateDoc(doc(db, `workspaces/${WS}/pos_reservations/r1`), { version: 2, status: 'completed' }));
+    await expectOutcome('closing it out is allowed', true, () =>
+        updateDoc(doc(db, `workspaces/${WS}/pos_reservations/r1`), {
+            version: 3, status: 'completed', released_at: serverTimestamp()
+        }));
+    await expectOutcome('an unknown status is denied', false, () =>
+        updateDoc(doc(db, `workspaces/${WS}/pos_reservations/r1`), { version: 4, status: 'maybe' }));
+    await expectOutcome('moving a booking to another outlet is denied', false, () =>
+        updateDoc(doc(db, `workspaces/${WS}/pos_reservations/r1`), { version: 4, dimension_id: 'outlet-other' }));
+    // Never deleted: a cancelled booking is a fact about the evening, and
+    // deleting it hides the no-show it may have become.
+    await expectOutcome('nobody deletes a reservation', false, () =>
+        deleteDoc(doc(db, `workspaces/${WS}/pos_reservations/r1`)));
+
+    // The boundary that matters. `cashier` is not a finance role, but it IS a
+    // till role — reading the book is the whole job of the person on the door.
+    await expectOutcome('a cashier reads the book', true, () =>
+        getDoc(doc(db, `workspaces/${WS}/pos_reservations/r1`)));
+    await setMemberRole(uid, 'viewer');
+    await expectOutcome('a viewer reads the book', true, () =>
+        getDoc(doc(db, `workspaces/${WS}/pos_reservations/r1`)));
+    await expectOutcome('a viewer may NOT write one', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_reservations/r-viewer`), reservation()));
+
     console.log('\n— the QR token directory is invisible to every client —');
     await adminDb.doc('pos_table_directory/tok123').set({ workspace_id: WS, table_id: 't12' });
     await setMemberRole(uid, 'owner');

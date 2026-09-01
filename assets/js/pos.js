@@ -27,6 +27,15 @@ import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.7.
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import DataService from './db-service.js';
 import { applyToPage } from './onboarding-gate.js';
+// The availability rule, shared with the DAL and therefore with the floor plan,
+// the Create Order dialog and the reservations board. One answer to "can this
+// table take someone", or the room gets sold twice.
+import {
+    HOLDING_STATUSES, DEFAULT_DURATION_MIN,
+    toMs, reservationWindow, reservationConflicts, isLate,
+    tableStateAt, walkInBlockedReason,
+    formatClock, formatWindow, dayKey, startOfDay, startOfWeek, addDays
+} from './pos-availability.js';
 
 const firebaseConfig = {
     apiKey: 'AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA',
@@ -63,6 +72,16 @@ const state = {
     menuCategory: null,
     view: 'till',
     zone: null,
+    // ── Reservations ────────────────────────────────────────────────────
+    // The board's own view state. `resAnchor` is any moment inside the range
+    // being shown; the range itself is derived from it, so moving a week and
+    // switching to Month cannot disagree about where the user is.
+    reservations: [],
+    resRange: [],
+    resPeriod: 'week',
+    resLayout: 'calendar',
+    resAnchor: Date.now(),
+    resQuery: '',
     orderTab: 'all',
     orderQuery: '',
     // Longest-waiting FIRST by default. The board's whole purpose is "what needs
@@ -109,7 +128,7 @@ const tr = (s) => (window.FluxyI18n && window.FluxyI18n.t ? window.FluxyI18n.t(s
 const POS_PROFILES = {
     fnb: {
         ladder: { open: 'sent', submitted: 'sent', sent: 'ready', ready: 'served', served: 'awaiting_payment' },
-        views: ['till', 'tables', 'orders', 'shift'],
+        views: ['till', 'tables', 'orders', 'reservations', 'shift'],
         payFirst: false,
         // "Create Order" rather than "Takeaway": the button opens a choice now,
         // and naming it after one of the two options hid the other.
@@ -155,6 +174,10 @@ const VIEWS = {
     till:   { title: 'Point of Sale (POS)', sub: 'Ring up a sale — scan, search or tap a product.' },
     tables: { title: 'Tables',              sub: 'Tap a table to open or continue its order.' },
     orders: { title: 'Orders',              sub: 'Every order on the floor today, and everything already settled.' },
+    // Named for the claim it makes, not the calendar it draws: a booking takes a
+    // table out of supply, which is the only thing the rest of the till cares
+    // about.
+    reservations: { title: 'Reservations', sub: 'Bookings hold their table — the floor plan and the till will not sell it twice.' },
     shift:  { title: 'Shift',               sub: 'The cash drawer — what was counted against what was expected.' }
 };
 
@@ -182,13 +205,18 @@ function setView(name) {
     if (name === 'tables') renderTables();
     if (name === 'orders') renderOrderLists();
     if (name === 'shift')  { renderShift(); renderShiftHistory(); }
+    if (name === 'reservations') { renderReservations(); loadReservationRange().catch(() => {}); }
+    // The topbar's till CTAs step aside on the planning surface: Create Order
+    // and New reservation competing for one glance is two primary actions in one
+    // zone, and the one that belongs to the screen you are on should win.
+    document.querySelector('.pos-topbar-actions')?.classList.toggle('hidden', name === 'reservations');
     // Orders goes full width too, now that the cards carry their own detail.
     //
     // The panel was a second copy of what the card already shows, costing the
     // board ~380px — a third of its width — to duplicate it. With the cards
     // expanded there is nothing left for it to add, and the grid uses the space
     // for another column of orders instead.
-    document.getElementById('pos-shell')?.classList.toggle('is-wide', name === 'shift' || name === 'orders');
+    document.getElementById('pos-shell')?.classList.toggle('is-wide', name === 'shift' || name === 'orders' || name === 'reservations');
     closeSideNav();
 
     // A scanner types into whatever has focus, so at a counter the search box
@@ -221,6 +249,7 @@ const TILL_NAV = [
     { view: 'till',   id: 'nav-pos',        label: 'Point of Sale' },
     { view: 'tables', id: 'nav-outlet-pnl', label: 'Tables',  badge: 'pos-nav-tables' },
     { view: 'orders', id: 'nav-ledger',     label: 'Orders',  badge: 'pos-nav-orders' },
+    { view: 'reservations', id: 'nav-invoices', label: 'Reservations', badge: 'pos-nav-res' },
     { view: 'shift',  id: 'nav-accounting', label: 'Shift',   badge: 'pos-nav-shift' }
 ];
 
@@ -641,6 +670,12 @@ function renderTables() {
 
     const byTable = {};
     (o.activeOrders || []).forEach((ord) => { if (ord.table_id) byTable[ord.table_id] = ord; });
+    // Reservations are read through the SAME function the Create Order dialog
+    // and `createPosOrder` use. The floor plan does not get its own opinion
+    // about what "free" means — that is precisely how a reserved table ends up
+    // sold to a walk-in on one surface and held on another.
+    const reservations = o.reservations || [];
+    const now = Date.now();
 
     // Zone tabs, from `pos_tables.zone`. One zone is not a choice, so the strip
     // only appears when there is more than one floor to choose between — and
@@ -663,7 +698,9 @@ function renderTables() {
 
     const tables = shown.map((t, i) => {
         const ord = byTable[t.id];
-        const cls = !ord ? 'is-free' : (ord.status === 'awaiting_payment' ? 'is-bill' : 'is-busy');
+        const avail = tableStateAt(t.id, { orders: o.activeOrders || [], reservations }, now);
+        const res = avail.reservation;
+        const cls = { free: 'is-free', occupied: 'is-busy', bill: 'is-bill', reserved: 'is-reserved' }[avail.state];
         const seats = Math.min(12, Math.max(2, Number(t.seats) || 4));
         const fp = tableFootprint(seats);
         // The pending position wins while a drag is unsaved, so a re-render
@@ -678,8 +715,12 @@ function renderTables() {
         return `<button type="button" class="pos-table ${cls}"
                     data-table="${esc(t.id)}" data-order="${esc(ord ? ord.id : '')}"
                     ${spot ? '' : 'data-auto="1"'}
+                    ${res ? `data-reservation="${esc(res.id)}"` : ''}
                     style="${spot ? `left:${spot.x}%; top:${spot.y}%;` : ''} --pos-table-w:${fp.w}px; --pos-table-h:${fp.h}px;"
-                    aria-label="Table ${esc(t.label)}, ${seats} seats — ${ord ? 'in use' : 'free'}">
+                    aria-label="Table ${esc(t.label)}, ${seats} seats — ${
+                        avail.state === 'reserved'
+                            ? `reserved for ${esc(res.guest_name)} at ${esc(formatClock(toMs(res.starts_at)))}`
+                            : (ord ? 'in use' : 'free')}">
             ${chairRow(fp.perSide)}
             <span class="pos-table-body">
                 <span class="pos-table-top">
@@ -689,7 +730,16 @@ function renderTables() {
                 ${ord ? `<span class="pos-table-meta">
                     <span class="pos-table-money">${rp(ord.total_amount)}</span>
                     ${elapsedSince(ord.opened_at) ? `<span class="pos-table-since">${esc(elapsedSince(ord.opened_at))}</span>` : ''}
-                </span>` : '<span class="pos-table-free">Free</span>'}
+                </span>` : `<span class="pos-table-free">${
+                    // Who and when, never a bare "Reserved". A cashier reading
+                    // one word assumes the system is being cautious, and a
+                    // cashier who assumes that seats the table anyway.
+                    res ? `${esc(res.guest_name.split(' ')[0])} · ${esc(formatClock(toMs(res.starts_at)))}`
+                        // A table free NOW with a booking later says so, so a
+                        // two-hour party is not seated into a wall the cashier
+                        // could have seen coming.
+                        : (avail.upcoming ? `Free · booked ${esc(formatClock(toMs(avail.upcoming.starts_at)))}`
+                            : 'Free')}</span>`}
             </span>
             ${chairRow(seats - fp.perSide)}
         </button>`;
@@ -732,6 +782,16 @@ function renderTables() {
                 renderOrderControls();
                 setView('till');
                 return;
+            }
+            // A RESERVED table opens its booking, not a walk-in order. This is
+            // the requirement made physical: the cashier cannot take this table
+            // for someone else without first releasing it, and the release is a
+            // deliberate act (seat them, cancel, or mark a no-show) rather than
+            // a dialog they can click past.
+            const resId = btn.dataset.reservation;
+            if (resId) {
+                const r = (state.overview.reservations || []).find((x) => x.id === resId);
+                if (r) { openReservationDetail(r); return; }
             }
             // A FREE table asks the same questions the Create Order button does,
             // with the table already answered. It used to open an order on the
@@ -2687,6 +2747,19 @@ function openPaymentModal() {
                 close();
                 if (order.status === 'paid') {
                     toast(`Paid — ${rp(order.total_amount)} recorded.`);
+                    // The bill is paid, so the party has left and the table is
+                    // the house's again. Closing the booking here is what stops
+                    // a seated reservation holding its table for the rest of its
+                    // 90 minutes after the guests have gone — the table would
+                    // read free on the order side and held on the reservation
+                    // side, which is the exact disagreement this feature exists
+                    // to prevent, just pointing the other way.
+                    //
+                    // Best-effort: the money is already recorded and a failure
+                    // to tidy the booking must never surface as a failed
+                    // payment. The board still shows it as seated, which a
+                    // person can close out.
+                    closeReservationForOrder(order.id).catch(() => {});
                     // Asked for at the counter, in the second after payment.
                     openReceipt(order);
                 } else {
@@ -2903,8 +2976,17 @@ function openRefundDrawer() {
 // nothing downstream could repair that.
 function openCreateOrderDialog({ tableId = null } = {}) {
     const tables = ((state.overview && state.overview.tables) || []);
-    const taken = new Set(((state.overview && state.overview.activeOrders) || [])
-        .map((o) => o.table_id).filter(Boolean));
+    // A table is unavailable for two different reasons and the cashier needs to
+    // be told which: somebody is sitting at it, or somebody has booked it. Both
+    // come from `tableStateAt` — the same function the floor plan paints from
+    // and `createPosOrder` refuses on — so the three can never disagree about
+    // which tables are takeable.
+    const ctx = {
+        orders: (state.overview && state.overview.activeOrders) || [],
+        reservations: (state.overview && state.overview.reservations) || []
+    };
+    const availability = new Map(tables.map((t) => [t.id, tableStateAt(t.id, ctx)]));
+    const stateOf = (id) => availability.get(id) || { available: true, state: 'free' };
 
     // Arriving from the floor plan, the table IS the question already answered —
     // so it is pre-filled and locked, and the type cannot be takeaway. Tapping a
@@ -2941,11 +3023,22 @@ function openCreateOrderDialog({ tableId = null } = {}) {
                     <label for="pos-create-table">Table</label>
                     <select id="pos-create-table" name="table"${fromFloor ? ' disabled' : ''}>
                         <option value="">Choose a table…</option>
-                        ${tables.map((t) => `<option value="${esc(t.id)}"`
-                            + `${t.id === tableId ? ' selected' : ''}`
-                            + `${taken.has(t.id) && t.id !== tableId ? ' disabled' : ''}>`
-                            + `${esc(t.label)}${t.zone ? ` · ${esc(t.zone)}` : ''}`
-                            + `${taken.has(t.id) && t.id !== tableId ? ' — in use' : ''}</option>`).join('')}
+                        ${tables.map((t) => {
+                            const st = stateOf(t.id);
+                            // The table the dialog was OPENED with is never
+                            // disabled — arriving from the floor plan, it is the
+                            // question already answered, and the floor plan only
+                            // routes free tables here in the first place.
+                            const blocked = !st.available && t.id !== tableId;
+                            const why = st.state === 'reserved' && st.reservation
+                                ? ` — reserved ${esc(formatClock(toMs(st.reservation.starts_at)))}`
+                                : (blocked ? ' — in use' : '');
+                            return `<option value="${esc(t.id)}"`
+                                + `${t.id === tableId ? ' selected' : ''}`
+                                + `${blocked ? ' disabled' : ''}>`
+                                + `${esc(t.label)}${t.zone ? ` · ${esc(t.zone)}` : ''}`
+                                + `${why}</option>`;
+                        }).join('')}
                     </select>
                 </div>
 
@@ -3041,6 +3134,21 @@ function openCreateOrderDialog({ tableId = null } = {}) {
             el.querySelector('#pos-create-table').focus();
             return;
         }
+        // Re-checked at SUBMIT, not only when the list was painted. A dialog
+        // left open across a service is a list of tables as they were minutes
+        // ago, and the disabled attribute on a stale option is a rule that has
+        // already stopped applying. The DAL refuses it too — this is here so the
+        // cashier is told why in the dialog rather than by a red toast after it
+        // closed.
+        if (table && table !== tableId) {
+            const blocked = walkInBlockedReason(table, ctx);
+            if (blocked) {
+                err.textContent = blocked;
+                err.hidden = false;
+                el.querySelector('#pos-create-table').focus();
+                return;
+            }
+        }
         // Required for BOTH types now. A dine-in without a name is a table you
         // cannot address; a takeaway without one is a bag nobody can be called
         // for. It is the only field on this form that is always answerable.
@@ -3078,6 +3186,878 @@ function openCreateOrderDialog({ tableId = null } = {}) {
     // The table is already known when arriving from the floor, so the cursor
     // starts on the first thing still to answer.
     setTimeout(() => el.querySelector(fromFloor ? '#pos-create-name' : '#pos-create-table')?.focus(), 40);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// RESERVATIONS
+//
+// A booking board that shares ONE availability rule with the floor plan and the
+// Create Order dialog (assets/js/pos-availability.js). That sharing is the whole
+// feature: a reservation the till cannot see is worse than no reservations at
+// all, because the table gets sold twice and the party with the booking is the
+// one turned away.
+//
+// Three surfaces, one rule:
+//   - here, when a host books a table (refuses an overlapping sitting);
+//   - `renderTables`, where a reserved table paints as held and cannot be tapped
+//     into a walk-in order;
+//   - `openCreateOrderDialog`, where it is disabled in the table select — and
+//     `createPosOrder` in the DAL, which refuses it even if the dialog is
+//     bypassed.
+// ═════════════════════════════════════════════════════════════════════════════
+
+// Hours the calendar draws. Derived from the day's own bookings rather than
+// fixed, because a fixed 08:00–23:00 grid is 15 rows of empty space on a floor
+// that opens at 17:00 — and this page is judged by how much of it is work.
+const CAL_HOUR_PX = 56;
+const CAL_DEFAULT_FROM = 10;
+const CAL_DEFAULT_TO = 22;
+
+function calendarHours(rows) {
+    // The window is the DAY'S OWN, not a fixed 10:00–22:00.
+    //
+    // A floor that opens at 17:00 was rendering six empty hours above its first
+    // booking — a third of the screen spent proving nothing happens in the
+    // morning, on a page whose rule is that empty space says "nothing here" and
+    // costs a scroll on a 10" tablet (DESIGN_SYSTEM, "Unnecessary white space").
+    // The default is what an EMPTY day falls back to, not where every day starts.
+    let from = null;
+    let to = null;
+    rows.forEach((r) => {
+        const w = reservationWindow(r);
+        if (!w) return;
+        const s = new Date(w.startMs);
+        const e = new Date(w.endMs);
+        // One hour of air above the first booking and below the last, so a block
+        // is never flush against the edge of the grid — and so there is
+        // somewhere to click to book earlier or later.
+        const startHour = s.getHours() - 1;
+        const endHour = e.getHours() + (e.getMinutes() ? 1 : 0) + 1;
+        from = from == null ? startHour : Math.min(from, startHour);
+        to = to == null ? endHour : Math.max(to, endHour);
+    });
+    if (from == null) return { from: CAL_DEFAULT_FROM, to: CAL_DEFAULT_TO };
+    return { from: Math.max(0, from), to: Math.min(24, Math.max(from + 2, to)) };
+}
+
+// Side-by-side lanes for bookings that overlap in time.
+//
+// Without this, two parties booked at 19:00 render one exactly on top of the
+// other: the second is unreadable and the first is unclickable. On a floor with
+// more than one table that is not an edge case, it is Friday.
+//
+// Standard interval-graph colouring: walk the day in start order, put each
+// booking in the first lane whose previous booking has finished, and give every
+// booking in a connected overlap cluster the same lane COUNT so the widths line
+// up down the cluster instead of jittering block to block.
+function layoutDayLanes(rows) {
+    const items = rows.map((r) => ({ r, w: reservationWindow(r) }))
+        .filter((x) => x.w)
+        .sort((a, b) => a.w.startMs - b.w.startMs || a.w.endMs - b.w.endMs);
+
+    const laneEnds = [];        // lane index → end of the last booking in it
+    const placed = [];
+    let clusterStart = 0;       // index into `placed` where the current cluster began
+    let clusterEnd = -Infinity; // latest end seen in the current cluster
+
+    const closeCluster = (upto) => {
+        const lanes = Math.max(1, ...placed.slice(clusterStart, upto).map((p) => p.lane + 1));
+        for (let i = clusterStart; i < upto; i += 1) placed[i].lanes = lanes;
+    };
+
+    items.forEach((it) => {
+        // A booking starting after everything before it has finished begins a
+        // NEW cluster: nothing it overlaps can still be open, so the previous
+        // cluster's widths are settled.
+        if (it.w.startMs >= clusterEnd) {
+            closeCluster(placed.length);
+            clusterStart = placed.length;
+            clusterEnd = -Infinity;
+            laneEnds.length = 0;
+        }
+        let lane = laneEnds.findIndex((end) => end <= it.w.startMs);
+        if (lane === -1) { lane = laneEnds.length; }
+        laneEnds[lane] = it.w.endMs;
+        clusterEnd = Math.max(clusterEnd, it.w.endMs);
+        placed.push({ ...it, lane, lanes: 1 });
+    });
+    closeCluster(placed.length);
+    return placed;
+}
+
+// The days the current range covers. One list, so the header, the columns and
+// the "which day did I click" lookup can never disagree about what is on screen.
+function resRangeDays() {
+    const anchor = new Date(state.resAnchor);
+    if (state.resPeriod === 'day') return [startOfDay(anchor)];
+    if (state.resPeriod === 'week') {
+        const s = startOfWeek(anchor);
+        return Array.from({ length: 7 }, (_, i) => addDays(s, i));
+    }
+    // Month: a Monday-anchored 6×7 grid, so every month renders the same height
+    // and the cells never reflow under the cursor between months.
+    const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+    const gridStart = startOfWeek(first);
+    return Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
+}
+
+function resRangeLabel() {
+    const days = resRangeDays();
+    const d = new Date(state.resAnchor);
+    if (state.resPeriod === 'day') {
+        return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+    }
+    if (state.resPeriod === 'month') {
+        return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    }
+    const a = days[0];
+    const b = days[6];
+    const fmt = (x, withMonth) => x.toLocaleDateString(undefined,
+        withMonth ? { day: 'numeric', month: 'short' } : { day: 'numeric' });
+    const sameMonth = a.getMonth() === b.getMonth();
+    return `${fmt(a, !sameMonth)} – ${fmt(b, true)} ${b.getFullYear()}`;
+}
+
+function moveResRange(step) {
+    if (step === 0) { state.resAnchor = Date.now(); return; }
+    const d = new Date(state.resAnchor);
+    if (state.resPeriod === 'day') d.setDate(d.getDate() + step);
+    else if (state.resPeriod === 'week') d.setDate(d.getDate() + step * 7);
+    else d.setMonth(d.getMonth() + step);
+    state.resAnchor = d.getTime();
+}
+
+// Every booking the board knows about, filtered by the search box.
+//
+// Searches the phone number as well as the name, because the way a host finds a
+// booking is by the number the guest just called from.
+function visibleReservations() {
+    const rows = (state.reservations || []).slice();
+    const q = (state.resQuery || '').trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => [r.guest_name, r.table_label, r.guest_phone, r.note, r.guest_email]
+        .filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
+}
+
+function reservationsOn(day, rows = visibleReservations()) {
+    const key = dayKey(day);
+    return rows.filter((r) => dayKey(r.starts_at) === key)
+        .sort((a, b) => (toMs(a.starts_at) || 0) - (toMs(b.starts_at) || 0));
+}
+
+const RES_STATE = {
+    pending:   { label: 'Pending',   pill: 'fluxy-status-warning' },
+    confirmed: { label: 'Confirmed', pill: 'fluxy-status-success' },
+    arrived:   { label: 'Seated',    pill: 'fluxy-status-info' },
+    completed: { label: 'Completed', pill: 'fluxy-status-neutral' },
+    cancelled: { label: 'Cancelled', pill: 'fluxy-status-danger' },
+    no_show:   { label: 'No-show',   pill: 'fluxy-status-danger' }
+};
+
+const RES_SOURCES = [
+    { id: 'direct', label: 'Walk-up / direct' },
+    { id: 'phone', label: 'Phone' },
+    { id: 'whatsapp', label: 'WhatsApp' },
+    { id: 'website', label: 'Website' },
+    { id: 'instagram', label: 'Instagram' },
+    { id: 'other', label: 'Other' }
+];
+const sourceLabel = (id) => (RES_SOURCES.find((s) => s.id === id) || { label: 'Direct' }).label;
+
+// Bookings that overlap another sitting on the same table. The DAL refuses these
+// on write, but that check is read-then-write and cannot be a transaction (see
+// savePosReservation), so the board detects them instead of trusting they cannot
+// exist. A clash nobody can see is the failure this feature exists to prevent.
+function clashingIds(rows) {
+    const out = new Set();
+    rows.forEach((r) => {
+        if (!r.table_id || !HOLDING_STATUSES.includes(r.status)) return;
+        reservationConflicts(rows, {
+            tableId: r.table_id,
+            startsAt: r.starts_at,
+            durationMinutes: r.duration_minutes,
+            excludeId: r.id
+        }).forEach((c) => { out.add(r.id); out.add(c.id); });
+    });
+    return out;
+}
+
+// Tables a booking is holding at this moment, through the same function the
+// floor plan paints with.
+function heldNow() {
+    const o = state.overview || {};
+    const ctx = { orders: o.activeOrders || [], reservations: state.reservations || [] };
+    return (o.tables || []).filter((t) => tableStateAt(t.id, ctx).state === 'reserved').length;
+}
+
+function renderReservationMetrics() {
+    const host = $('pos-res-metrics');
+    if (!host) return;
+    const days = resRangeDays();
+    const inRange = new Set(days.map((d) => dayKey(d)));
+    const rows = visibleReservations().filter((r) => inRange.has(dayKey(r.starts_at)));
+    const live = rows.filter((r) => HOLDING_STATUSES.includes(r.status));
+    const covers = live.reduce((s, r) => s + (Number(r.party_size) || 0), 0);
+    const lost = rows.filter((r) => r.status === 'no_show').length;
+    const unassigned = live.filter((r) => !r.table_id).length;
+
+    host.innerHTML = [
+        { v: String(live.length), l: 'Reservations' },
+        { v: String(covers), l: 'Guests expected' },
+        // Not a table-utilisation percentage. The reference design shows one,
+        // and it would be a fabricated number here: utilisation needs a service
+        // window and a turn count this product does not model yet, and a
+        // plausible wrong number is the failure mode this codebase guards
+        // hardest against. Tables held right now is the true version of the
+        // same question.
+        //
+        // Computed from `tableStateAt` over the tables on screen, NOT from a
+        // count the server returned: this figure and the floor plan's colours
+        // are then the same calculation, so the strip can never claim two tables
+        // are held while the room shows three.
+        { v: String(heldNow()), l: 'Tables held now' },
+        { v: String(unassigned || lost), l: unassigned ? 'Need a table' : 'No-shows', warn: unassigned > 0 || lost > 0 }
+    ].map((m) => `
+        <div class="pos-metric">
+            <div class="pos-metric-value${m.warn ? ' is-warn' : ''}">${esc(m.v)}</div>
+            <div class="pos-metric-label">${esc(m.l)}</div>
+        </div>`).join('');
+}
+
+// One booking, drawn in its time slot.
+// Where a block sits, vertically and across its lanes. Percent of the column
+// minus the 10px of gutter the CSS reserves, so lanes divide evenly at whatever
+// width the grid is actually rendered at.
+function laneStyle(lane, lanes) {
+    if (lanes <= 1) return '';
+    const span = `(100% - 10px) / ${lanes}`;
+    return `left:calc(5px + ${lane} * ${span}); width:calc(${span} - 3px); right:auto;`;
+}
+
+const topFor = (ms, fromHour) => Math.max(0,
+    (((new Date(ms).getHours() - fromHour) * 60 + new Date(ms).getMinutes()) / 60) * CAL_HOUR_PX);
+
+function reservationBlock(r, { fromHour, clashes, now, lane = 0, lanes = 1 }) {
+    const w = reservationWindow(r);
+    if (!w) return '';
+    const top = topFor(w.startMs, fromHour);
+    const height = Math.max(38, (w.durationMin / 60) * CAL_HOUR_PX - 3);
+    const late = isLate(r, now);
+    const cls = [`is-${r.status}`, late ? 'is-late' : '', clashes.has(r.id) ? 'is-clash' : '']
+        .filter(Boolean).join(' ');
+    const meta = `${formatWindow(r)} · ${r.table_label ? `Table ${r.table_label}` : 'No table yet'}`;
+
+    // A shared lane is roughly 70px wide in the week view. "Maya Kusuma · 4"
+    // does not fit and rendered as "Maya Kusu" with the party count clipped off
+    // — a label that has lost the thing it was there to say. So a narrow block
+    // drops to what stays true when shortened: the first name, the covers, and
+    // the start time. The full text is on `title` and in the detail sheet, and
+    // the Day view and the List show everything at full width.
+    const narrow = lanes > 1;
+    const firstName = String(r.guest_name || '').trim().split(/\s+/)[0] || r.guest_name;
+    return `<button type="button" class="pos-res ${cls}${narrow ? ' is-narrow' : ''}" data-res="${esc(r.id)}"
+                style="top:${top}px; height:${height}px; ${laneStyle(lane, lanes)}"
+                title="${esc(`${r.guest_name} · ${r.party_size} · ${meta}`)}"
+                aria-label="${esc(r.guest_name)}, ${esc(meta)}">
+        <span class="pos-res-name">${esc(narrow ? firstName : r.guest_name)} · ${Number(r.party_size) || 0}</span>
+        <span class="pos-res-meta">${esc(narrow ? formatClock(w.startMs) : meta)}</span>
+        ${!narrow && height >= 52 ? `<span class="pos-res-state">${esc(late ? 'Late — not seated' : RES_STATE[r.status].label)}</span>` : ''}
+    </button>`;
+}
+
+// Below this the lanes stop being readable and start being decoration.
+//
+// A week column is ~156px on a 1540px canvas: two lanes is 70px, which holds a
+// first name and a time. Three is 45px, which holds neither — so a busier
+// cluster collapses its tail into one "+N more" block that opens the day. The
+// Day view is one wide column, so it affords more.
+const laneCap = () => (state.resPeriod === 'day' ? 4 : 2);
+
+// Render a day's bookings, folding anything past the lane cap into an overflow
+// block covering the cluster's own time span.
+function renderDayColumn(rows, opts) {
+    const placed = layoutDayLanes(rows);
+    const cap = laneCap();
+    const out = [];
+    const hidden = [];
+    placed.forEach((p) => {
+        const lanes = Math.min(p.lanes, cap);
+        if (p.lanes <= cap || p.lane < cap - 1) {
+            out.push(reservationBlock(p.r, { ...opts, lane: p.lane, lanes }));
+        } else {
+            hidden.push(p);
+        }
+    });
+    if (hidden.length) {
+        // One overflow block per contiguous run, spanning what it stands for —
+        // a "+3" floating at a single minute would not say WHEN the three are.
+        const startMs = Math.min(...hidden.map((h) => h.w.startMs));
+        const endMs = Math.max(...hidden.map((h) => h.w.endMs));
+        const top = topFor(startMs, opts.fromHour);
+        const height = Math.max(30, ((endMs - startMs) / 3600000) * CAL_HOUR_PX - 3);
+        out.push(`<button type="button" class="pos-res is-more" data-more="${esc(opts.dayKey)}"
+                    style="top:${top}px; height:${height}px; ${laneStyle(cap - 1, cap)}"
+                    title="Open this day">
+            <span class="pos-res-name">+${hidden.length}</span>
+            <span class="pos-res-meta">more</span>
+        </button>`);
+    }
+    return out.join('');
+}
+
+function renderReservationCalendar() {
+    const host = $('pos-res-calendar');
+    if (!host) return;
+    const now = Date.now();
+    const rows = visibleReservations();
+    const clashes = clashingIds(rows);
+
+    if (state.resPeriod === 'month') { renderReservationMonth(host, rows, now); return; }
+
+    const days = resRangeDays();
+    const dayRows = days.map((d) => reservationsOn(d, rows));
+    const { from, to } = calendarHours(dayRows.flat());
+    const hours = Array.from({ length: Math.max(1, to - from) }, (_, i) => from + i);
+    const todayKey = dayKey(new Date());
+
+    const head = days.map((d) => {
+        const isToday = dayKey(d) === todayKey;
+        const count = dayRows[days.indexOf(d)].filter((r) => HOLDING_STATUSES.includes(r.status)).length;
+        return `<div class="pos-cal-day${isToday ? ' is-today' : ''}">
+            <span class="pos-cal-dow">${esc(d.toLocaleDateString(undefined, { weekday: 'short' }))}</span>
+            <strong class="pos-cal-dom">${d.getDate()}</strong>
+            <span class="pos-cal-count">${count ? `${count} booked` : '—'}</span>
+        </div>`;
+    }).join('');
+
+    const cols = days.map((d, i) => {
+        const isToday = dayKey(d) === todayKey;
+        return `<div class="pos-cal-col${isToday ? ' is-today' : ''}" data-calday="${esc(dayKey(d))}">
+            ${hours.map(() => '<div class="pos-cal-slot"></div>').join('')}
+            ${renderDayColumn(dayRows[i], { fromHour: from, clashes, now, dayKey: dayKey(d) })}
+        </div>`;
+    }).join('');
+
+    // The "now" line only exists on a range that contains today — drawing it on
+    // next week's grid would be a marker pointing at nothing.
+    const nowDate = new Date(now);
+    const showsToday = days.some((d) => dayKey(d) === todayKey);
+    const nowOffset = ((nowDate.getHours() - from) * 60 + nowDate.getMinutes()) / 60 * CAL_HOUR_PX;
+    const nowLine = (showsToday && nowDate.getHours() >= from && nowDate.getHours() < to)
+        ? `<div class="pos-cal-now" style="top:${nowOffset}px"><span>${formatClock(now)}</span></div>` : '';
+
+    host.classList.remove('hidden');
+    host.innerHTML = `
+        <div class="pos-cal-scroll">
+            <div class="pos-cal-head" style="--cal-cols:${days.length}"><div></div>${head}</div>
+            <div class="pos-cal-grid" style="--cal-cols:${days.length}; --cal-hour:${CAL_HOUR_PX}px">
+                <div class="pos-cal-times">
+                    ${hours.map((h) => `<div class="pos-cal-time">${String(h).padStart(2, '0')}:00</div>`).join('')}
+                </div>
+                ${cols}
+                ${nowLine}
+            </div>
+        </div>`;
+
+    wireReservationBlocks(host);
+    host.querySelectorAll('[data-more]').forEach((b) => b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.resAnchor = new Date(`${b.dataset.more}T12:00:00`).getTime();
+        state.resPeriod = 'day';
+        renderReservations();
+    }));
+    // Clicking empty time books it: the host's actual gesture is "this slot,
+    // this day", and making them re-enter both in a dialog they opened from a
+    // button is the same information typed twice.
+    host.querySelectorAll('[data-calday]').forEach((col) => {
+        col.addEventListener('click', (e) => {
+            if (e.target.closest('[data-res]')) return;
+            const rect = col.getBoundingClientRect();
+            const minutes = Math.round(((e.clientY - rect.top) / CAL_HOUR_PX) * 60 / 15) * 15;
+            const d = new Date(`${col.dataset.calday}T00:00:00`);
+            d.setHours(from, 0, 0, 0);
+            d.setMinutes(d.getMinutes() + Math.max(0, minutes));
+            openReservationDialog({ startsAt: d });
+        });
+    });
+}
+
+function renderReservationMonth(host, rows, now) {
+    const days = resRangeDays();
+    const month = new Date(state.resAnchor).getMonth();
+    const todayKey = dayKey(new Date());
+    const dows = days.slice(0, 7).map((d) => `<div class="pos-cal-day">
+        <span class="pos-cal-dow">${esc(d.toLocaleDateString(undefined, { weekday: 'short' }))}</span></div>`).join('');
+
+    host.classList.remove('hidden');
+    // `is-month` gives the header its own SEVEN-column grid. The week header's
+    // template starts with a 56px time gutter, and reusing it here pushed every
+    // weekday one column right of the cells it labelled — Sunday wrapped onto a
+    // second row and the whole grid read one day out.
+    host.innerHTML = `
+        <div class="pos-cal-head is-month">${dows}</div>
+        <div class="pos-cal-month">
+            ${days.map((d) => {
+                const list = reservationsOn(d, rows).filter((r) => HOLDING_STATUSES.includes(r.status));
+                const covers = list.reduce((s, r) => s + (Number(r.party_size) || 0), 0);
+                return `<button type="button" class="pos-cal-mcell${d.getMonth() !== month ? ' is-outside' : ''}${dayKey(d) === todayKey ? ' is-today' : ''}" data-monthday="${esc(dayKey(d))}">
+                    <span class="pos-cal-mdate">${d.getDate()}</span>
+                    ${covers ? `<span class="pos-cal-mcovers">${list.length} · ${covers} guests</span>` : ''}
+                    ${list.slice(0, 2).map((r) => `<span class="pos-cal-mchip">${esc(formatClock(toMs(r.starts_at)))} ${esc(r.guest_name)}</span>`).join('')}
+                    ${list.length > 2 ? `<span class="pos-cal-mchip">+${list.length - 2} more</span>` : ''}
+                </button>`;
+            }).join('')}
+        </div>`;
+
+    // A month cell drills into its day rather than opening a booking: at month
+    // scale the question is which night, and the answer to "which night" is that
+    // night's timeline.
+    host.querySelectorAll('[data-monthday]').forEach((cell) => cell.addEventListener('click', () => {
+        state.resAnchor = new Date(`${cell.dataset.monthday}T12:00:00`).getTime();
+        state.resPeriod = 'day';
+        renderReservations();
+    }));
+}
+
+function renderReservationList() {
+    const host = $('pos-res-list');
+    if (!host) return;
+    const now = Date.now();
+    const days = new Set(resRangeDays().map((d) => dayKey(d)));
+    const rows = visibleReservations()
+        .filter((r) => days.has(dayKey(r.starts_at)))
+        .sort((a, b) => (toMs(a.starts_at) || 0) - (toMs(b.starts_at) || 0));
+    const clashes = clashingIds(visibleReservations());
+
+    host.classList.remove('hidden');
+    if (!rows.length) {
+        host.innerHTML = `<section class="fluxy-table-card"><div class="fluxy-table-empty">
+            <p class="fluxy-table-empty-title">No reservations in this range</p>
+            <p class="fluxy-table-empty-description">Take one with New reservation, or move to another week.</p>
+        </div></section>`;
+        return;
+    }
+
+    host.innerHTML = `
+        <section class="fluxy-table-card">
+            <div class="fluxy-table-card-header">
+                <div>
+                    <h2 class="fluxy-table-title">Reservations</h2>
+                    <p class="fluxy-table-subtitle">${rows.length} booking${rows.length === 1 ? '' : 's'} in this range${
+                        // The strip above counts only bookings that still hold a
+                        // table; this list shows cancelled and no-show history
+                        // too. Two different numbers side by side read as a bug
+                        // unless the smaller one says what it is.
+                        (() => { const live = rows.filter((r) => HOLDING_STATUSES.includes(r.status)).length;
+                            return live === rows.length ? '' : ` · ${live} still holding a table`; })()
+                    }. Tap one to seat it or release its table.</p>
+                </div>
+            </div>
+            <div class="fluxy-table-scroll">
+                <table class="fluxy-table">
+                    <thead><tr class="fluxy-table-header">
+                        <th>Guest</th><th>Date &amp; time</th><th>Table</th>
+                        <th class="fluxy-table-money">Guests</th><th>Duration</th><th>Status</th><th>Source</th>
+                    </tr></thead>
+                    <tbody>
+                        ${rows.map((r) => {
+                            const w = reservationWindow(r);
+                            const late = isLate(r, now);
+                            const st = RES_STATE[r.status] || RES_STATE.pending;
+                            return `<tr class="fluxy-table-row fluxy-table-row-clickable" data-res="${esc(r.id)}">
+                                <td class="fluxy-table-cell">
+                                    <span class="fluxy-table-cell-primary">${esc(r.guest_name)}</span>
+                                    <span class="fluxy-table-cell-meta">${esc(r.guest_phone || r.guest_email || '—')}</span>
+                                </td>
+                                <td class="fluxy-table-cell">${esc(new Date(w.startMs).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }))} · ${esc(formatClock(w.startMs))}</td>
+                                <td class="fluxy-table-cell">${r.table_label ? esc(r.table_label) : '<span class="fluxy-table-cell-meta">Not assigned</span>'}</td>
+                                <td class="fluxy-table-cell fluxy-table-money">${Number(r.party_size) || 0}</td>
+                                <td class="fluxy-table-cell">${w.durationMin} min</td>
+                                <td class="fluxy-table-cell">
+                                    <span class="fluxy-table-status ${st.pill}">${esc(late ? 'Late' : st.label)}</span>
+                                    ${clashes.has(r.id) ? '<span class="fluxy-table-status fluxy-status-danger">Clash</span>' : ''}
+                                </td>
+                                <td class="fluxy-table-cell">${esc(sourceLabel(r.source))}</td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </section>`;
+    wireReservationBlocks(host);
+}
+
+function wireReservationBlocks(host) {
+    host.querySelectorAll('[data-res]').forEach((el) => el.addEventListener('click', () => {
+        const r = (state.reservations || []).find((x) => x.id === el.dataset.res);
+        if (r) openReservationDetail(r);
+    }));
+}
+
+// The two sources of bookings, folded into one list.
+//
+//   - `state.overview.reservations` — everything that could hold a table near
+//     now. The floor plan needs exactly this and nothing more.
+//   - `state.resRange` — whatever range the board is showing, which may be a
+//     week in October and may include cancelled and no-show history the floor
+//     plan has no use for.
+//
+// Merged by id, range last, so a booking present in both takes its freshest
+// copy. One list means the board and the floor plan cannot hold two different
+// opinions about the same table.
+function mergeReservations() {
+    const byId = new Map();
+    ((state.overview && state.overview.reservations) || []).forEach((r) => byId.set(r.id, r));
+    (state.resRange || []).forEach((r) => byId.set(r.id, r));
+    state.reservations = [...byId.values()];
+}
+
+// Fetch the range the board is looking at. Called when the range moves, not on
+// every repaint: scrubbing through a week is a paint against data already in
+// hand, and a query per arrow press would make the board feel like a website.
+async function loadReservationRange() {
+    if (!state.uid || !state.outletId) return;
+    const days = resRangeDays();
+    const from = startOfDay(days[0]).getTime();
+    const to = addDays(startOfDay(days[days.length - 1]), 1).getTime();
+    // Every status, unlike the floor plan's read: a cancelled booking and a
+    // no-show are what an evening's history is made of, and a board that hides
+    // them makes a full night out of one that half emptied.
+    state.resRange = await ds.getPosReservations(state.uid, {
+        dimensionId: state.outletId, fromMs: from, toMs: to, limitCount: 400
+    });
+    mergeReservations();
+    renderReservations();
+}
+
+function renderReservations() {
+    if (!$('pos-res-date')) return;
+    $('pos-res-date').textContent = resRangeLabel();
+    document.querySelectorAll('[data-rperiod]').forEach((b) => {
+        const on = b.dataset.rperiod === state.resPeriod;
+        b.classList.toggle('is-active', on);
+        b.setAttribute('aria-selected', String(on));
+    });
+    document.querySelectorAll('[data-rlayout]').forEach((b) => {
+        const on = b.dataset.rlayout === state.resLayout;
+        b.classList.toggle('is-active', on);
+        b.setAttribute('aria-selected', String(on));
+    });
+
+    renderReservationMetrics();
+    const calendar = state.resLayout === 'calendar';
+    // A month grid IS the calendar layout; the list stays available in both.
+    $('pos-res-calendar').classList.toggle('hidden', !calendar);
+    $('pos-res-list').classList.toggle('hidden', calendar);
+    if (calendar) renderReservationCalendar(); else renderReservationList();
+}
+
+// The booking whose party has just paid and left.
+//
+// One-directional by design: the reservation carries `order_id`, the order
+// carries nothing. `pos_orders` has a `hasOnly` in firestore.rules and is frozen
+// once paid, so a back-reference would have meant widening the key set on the
+// document the money path runs through — real risk, for a link that is one
+// client-side lookup away.
+async function closeReservationForOrder(orderId) {
+    const r = (state.reservations || []).find((x) => x.order_id === orderId && x.status === 'arrived');
+    if (!r) return;
+    await ds.setPosReservationStatus(state.uid, r.id, 'completed');
+}
+
+// Replace the floor's tables and bookings with a known fixture, then repaint.
+//
+// Nothing is written to Firestore. The claim under test is a RENDERING and
+// SELECTION rule — "a reserved table cannot be given to a walk-in" — and proving
+// it against real data would mean writing bookings into a live workspace that
+// rules will never let a test delete (a cancelled booking is a fact about the
+// evening; see firestore.rules). Freezing is the same mechanism and the same
+// reason as `__posSeedBoard`: the live watcher repaints from the server
+// mid-interaction and detaches the element the spec is holding.
+window.__posSeedFloor = (tables, reservations) => {
+    if (state.unwatch) { state.unwatch(); state.unwatch = null; }
+    state.frozen = true;
+    const rows = (reservations || []).map((r) => ({ ...r }));
+    state.overview = {
+        ...(state.overview || {}),
+        tables: (tables || []).map((t) => ({ ...t })),
+        activeOrders: (state.overview || {}).activeOrders || [],
+        paidToday: (state.overview || {}).paidToday || [],
+        counts: { ...((state.overview || {}).counts || {}), tablesReserved: 0 },
+        reservations: rows
+    };
+    state.resRange = rows;
+    mergeReservations();
+    renderTables();
+    renderReservations();
+    return [...document.querySelectorAll('.pos-table')].map((el) => ({
+        label: el.querySelector('.pos-table-label')?.textContent.trim() || '',
+        state: (String(el.className).match(/is-(free|busy|bill|reserved)/) || [])[1] || null,
+        caption: el.querySelector('.pos-table-free')?.textContent.replace(/\s+/g, ' ').trim() || null,
+        reservation: el.dataset.reservation || null
+    }));
+};
+
+// ── Taking a booking ────────────────────────────────────────────────────────
+//
+// A modal, not the side drawer, for the same reason Create Order and the payment
+// screen are: it is taken while somebody is waiting — on the phone or at the
+// door — and it must be the only thing on screen.
+function openReservationDialog({ reservation = null, startsAt = null, tableId = null } = {}) {
+    const editing = !!reservation;
+    const tables = ((state.overview && state.overview.tables) || []);
+    const when = reservation ? new Date(toMs(reservation.starts_at))
+        : (startsAt || new Date(Date.now() + 60 * 60 * 1000));
+    // datetime-local wants a local ISO string with no zone. Building it by hand
+    // rather than through toISOString(), which converts to UTC and would offer a
+    // Jakarta host a booking seven hours in the past.
+    const pad = (n) => String(n).padStart(2, '0');
+    const localValue = `${when.getFullYear()}-${pad(when.getMonth() + 1)}-${pad(when.getDate())}`
+        + `T${pad(when.getHours())}:${pad(when.getMinutes())}`;
+
+    document.getElementById('pos-res-modal')?.remove();
+    const el = document.createElement('div');
+    el.id = 'pos-res-modal';
+    el.className = 'pos-modal-layer';
+    el.innerHTML = `
+        <div class="pos-modal-backdrop" data-close></div>
+        <div class="pos-modal" role="dialog" aria-modal="true" aria-labelledby="pos-res-title">
+            <div class="pos-modal-head">
+                <div>
+                    <h2 class="pos-modal-title" id="pos-res-title">${editing ? 'Edit reservation' : 'New reservation'}</h2>
+                    <p class="pos-modal-sub">Hold a table for a guest. It stops being sellable 30 minutes before they are due.</p>
+                </div>
+                <button type="button" class="pos-modal-close" data-close aria-label="Close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18 18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <form class="pos-modal-body" id="pos-res-form">
+                <div class="pos-field">
+                    <label for="pos-res-name">Guest name</label>
+                    <input id="pos-res-name" name="name" maxlength="80" autocomplete="off" placeholder="Pak Budi"
+                           value="${esc(reservation ? reservation.guest_name : '')}">
+                </div>
+                <div class="pos-field-row">
+                    <div class="pos-field">
+                        <label for="pos-res-when">Date &amp; time</label>
+                        <input id="pos-res-when" name="when" type="datetime-local" value="${esc(localValue)}">
+                    </div>
+                    <div class="pos-field">
+                        <label for="pos-res-party">Guests</label>
+                        <input id="pos-res-party" name="party" inputmode="numeric" maxlength="3" autocomplete="off"
+                               value="${esc(String(reservation ? reservation.party_size : 2))}">
+                    </div>
+                </div>
+                <div class="pos-field-row">
+                    <div class="pos-field">
+                        <label for="pos-res-table">Table</label>
+                        <select id="pos-res-table" name="table">
+                            <option value="">Assign later</option>
+                        </select>
+                    </div>
+                    <div class="pos-field">
+                        <label for="pos-res-duration">Minutes</label>
+                        <input id="pos-res-duration" name="duration" inputmode="numeric" maxlength="3" autocomplete="off"
+                               value="${esc(String(reservation ? reservation.duration_minutes : DEFAULT_DURATION_MIN))}">
+                    </div>
+                </div>
+                <div class="pos-field-row">
+                    <div class="pos-field">
+                        <label for="pos-res-phone">Phone <span class="opt">(optional)</span></label>
+                        <input id="pos-res-phone" name="phone" maxlength="32" inputmode="tel" autocomplete="off"
+                               placeholder="0812-3456-7890" value="${esc(reservation ? (reservation.guest_phone || '') : '')}">
+                    </div>
+                    <div class="pos-field">
+                        <label for="pos-res-source">Source</label>
+                        <select id="pos-res-source" name="source">
+                            ${RES_SOURCES.map((s) => `<option value="${esc(s.id)}"${reservation && reservation.source === s.id ? ' selected' : ''}>${esc(s.label)}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+                <div class="pos-field">
+                    <label for="pos-res-note">Notes <span class="opt">(optional)</span></label>
+                    <textarea id="pos-res-note" name="note" maxlength="200"
+                              placeholder="Birthday, allergies, seating preference">${esc(reservation ? (reservation.note || '') : '')}</textarea>
+                </div>
+                <p class="pos-modal-sub" id="pos-res-error" style="color:#B91C1C" hidden></p>
+            </form>
+            <div class="pos-modal-foot">
+                <button type="button" class="pos-btn-ghost" data-close>Cancel</button>
+                <button type="submit" form="pos-res-form" class="pos-btn-primary" id="pos-res-submit">${editing ? 'Save changes' : 'Create reservation'}</button>
+            </div>
+        </div>`;
+    document.body.appendChild(el);
+
+    const close = () => { el.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    el.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', close));
+    document.addEventListener('keydown', onKey);
+
+    const select = el.querySelector('#pos-res-table');
+    const whenInput = el.querySelector('#pos-res-when');
+    const durationInput = el.querySelector('#pos-res-duration');
+
+    // The table list is REBUILT whenever the time changes, because which tables
+    // are takeable is a question about a moment — a table free at 18:00 is not
+    // free at 20:00, and a list computed once would be answering about whichever
+    // time the dialog happened to open with.
+    const paintTables = () => {
+        const startMs = Date.parse(whenInput.value);
+        const duration = Number(durationInput.value) || DEFAULT_DURATION_MIN;
+        const chosen = select.value || (reservation ? reservation.table_id : tableId) || '';
+        select.innerHTML = `<option value="">Assign later</option>` + tables.map((t) => {
+            const clash = Number.isNaN(startMs) ? [] : reservationConflicts(state.reservations || [], {
+                tableId: t.id, startsAt: startMs, durationMinutes: duration,
+                excludeId: reservation ? reservation.id : null
+            });
+            const busy = clash[0];
+            return `<option value="${esc(t.id)}"${t.id === chosen ? ' selected' : ''}${busy ? ' disabled' : ''}>`
+                + `${esc(t.label)}${t.zone ? ` · ${esc(t.zone)}` : ''}${t.seats ? ` · ${t.seats} seats` : ''}`
+                + `${busy ? ` — booked ${formatClock(toMs(busy.starts_at))}` : ''}</option>`;
+        }).join('');
+    };
+    paintTables();
+    whenInput.addEventListener('change', paintTables);
+    durationInput.addEventListener('change', paintTables);
+    [el.querySelector('#pos-res-party'), durationInput].forEach((i) => i.addEventListener('input', (e) => {
+        e.target.value = e.target.value.replace(/\D/g, '');
+    }));
+
+    el.querySelector('#pos-res-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const err = el.querySelector('#pos-res-error');
+        const show = (msg, focus) => { err.textContent = msg; err.hidden = false; focus?.focus(); };
+        const name = el.querySelector('#pos-res-name').value.trim();
+        if (!name) return show('Give this reservation a guest name.', el.querySelector('#pos-res-name'));
+        const startMs = Date.parse(whenInput.value);
+        if (Number.isNaN(startMs)) return show('Pick the date and time this reservation is for.', whenInput);
+        const party = Number(el.querySelector('#pos-res-party').value);
+        if (!Number.isInteger(party) || party < 1) return show('How many guests are coming?', el.querySelector('#pos-res-party'));
+        err.hidden = true;
+
+        const submit = el.querySelector('#pos-res-submit');
+        submit.disabled = true;
+        submit.textContent = 'Saving…';
+        const table = tables.find((t) => t.id === select.value) || null;
+        once(async () => {
+            try {
+                await ds.savePosReservation(state.uid, {
+                    dimension_id: state.outletId,
+                    table_id: table ? table.id : null,
+                    table_label: table ? table.label : null,
+                    guest_name: name,
+                    guest_phone: el.querySelector('#pos-res-phone').value.trim() || null,
+                    party_size: party,
+                    starts_at: startMs,
+                    duration_minutes: Number(durationInput.value) || DEFAULT_DURATION_MIN,
+                    source: el.querySelector('#pos-res-source').value,
+                    note: el.querySelector('#pos-res-note').value.trim() || null
+                }, { create: !editing, reservationId: editing ? reservation.id : null });
+                close();
+                toast(editing ? 'Reservation updated.' : `Table held for ${name}.`);
+                await refresh();
+                renderReservations();
+            } catch (error) {
+                submit.disabled = false;
+                submit.textContent = editing ? 'Save changes' : 'Create reservation';
+                show(error && error.message ? error.message : 'Could not save that reservation.');
+            }
+        });
+    });
+
+    setTimeout(() => el.querySelector('#pos-res-name')?.focus(), 40);
+}
+
+// ── One booking, and what to do with it ─────────────────────────────────────
+//
+// Every action here either SEATS the party or RELEASES the table, because those
+// are the only two things that happen to a booking. Nothing expires on a timer:
+// a table comes back into supply when a person says it has.
+function openReservationDetail(r) {
+    const w = reservationWindow(r);
+    const late = isLate(r);
+    const st = RES_STATE[r.status] || RES_STATE.pending;
+    const held = HOLDING_STATUSES.includes(r.status);
+
+    document.getElementById('pos-res-detail')?.remove();
+    const el = document.createElement('div');
+    el.id = 'pos-res-detail';
+    el.className = 'pos-modal-layer';
+    el.innerHTML = `
+        <div class="pos-modal-backdrop" data-close></div>
+        <div class="pos-modal" role="dialog" aria-modal="true" aria-labelledby="pos-resd-title">
+            <div class="pos-modal-head">
+                <div>
+                    <h2 class="pos-modal-title" id="pos-resd-title">${esc(r.guest_name)}</h2>
+                    <p class="pos-modal-sub">${esc(formatWindow(r))} · ${Number(r.party_size) || 0} guests · ${esc(sourceLabel(r.source))}</p>
+                </div>
+                <button type="button" class="pos-modal-close" data-close aria-label="Close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18 18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="pos-modal-body">
+                ${late ? `<p class="pos-res-warn">Due at ${esc(formatClock(w.startMs))} and nobody is seated. The table stays held until you seat them or mark a no-show — it will not free itself while the guest may still be on their way.</p>` : ''}
+                ${!r.table_id && held ? '<p class="pos-res-warn">No table assigned, so this booking is holding nothing. Edit it to pick one.</p>' : ''}
+                <div class="pos-res-detail">
+                    <dl>
+                        <dt>Status</dt><dd><span class="fluxy-table-status ${st.pill}">${esc(st.label)}</span></dd>
+                        <dt>Table</dt><dd>${r.table_label ? esc(r.table_label) : 'Not assigned'}</dd>
+                        <dt>Held from</dt><dd>${esc(formatClock(w.holdFrom))} until ${esc(formatClock(w.endMs))}</dd>
+                        <dt>Phone</dt><dd>${esc(r.guest_phone || '—')}</dd>
+                        ${r.note ? `<dt>Notes</dt><dd>${esc(r.note)}</dd>` : ''}
+                    </dl>
+                </div>
+                <div class="pos-res-actions">
+                    ${held && r.table_id && !r.order_id ? '<button type="button" class="pos-btn-primary" data-act="seat">Seat guest</button>' : ''}
+                    ${r.order_id ? '<button type="button" class="pos-btn-primary" data-act="open">Open their order</button>' : ''}
+                    ${held ? '<button type="button" class="pos-btn-ghost" data-act="edit">Edit</button>' : ''}
+                    ${held ? '<button type="button" class="pos-btn-ghost" data-act="no_show">Mark no-show</button>' : ''}
+                    ${held ? '<button type="button" class="pos-btn-ghost" data-act="cancelled">Cancel booking</button>' : ''}
+                    ${r.status === 'arrived' ? '<button type="button" class="pos-btn-ghost" data-act="completed">Close out</button>' : ''}
+                </div>
+            </div>
+        </div>`;
+    document.body.appendChild(el);
+
+    const close = () => { el.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    el.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', close));
+    document.addEventListener('keydown', onKey);
+
+    el.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
+        const act = b.dataset.act;
+        if (act === 'edit') { close(); openReservationDialog({ reservation: r }); return; }
+        if (act === 'open') {
+            close();
+            selectOrder(r.order_id);
+            setView('till');
+            return;
+        }
+        once(async () => {
+            try {
+                if (act === 'seat') {
+                    const order = await ds.seatPosReservation(state.uid, r.id,
+                        { shiftId: state.shift ? state.shift.id : null });
+                    close();
+                    await refresh();
+                    // Straight to the till with their order open: seating a party
+                    // and taking their first order are one motion, and landing
+                    // the host back on the calendar is a step they would undo.
+                    selectOrder(order.id);
+                    setView('till');
+                    toast(`${r.guest_name} seated at ${r.table_label}.`);
+                    return;
+                }
+                await ds.setPosReservationStatus(state.uid, r.id, act);
+                close();
+                await refresh();
+                renderReservations();
+                toast(act === 'completed' ? 'Reservation closed out.'
+                    : act === 'no_show' ? `${r.guest_name} marked a no-show. ${r.table_label || 'The table'} is free again.`
+                    : `Reservation cancelled. ${r.table_label || 'The table'} is free again.`);
+            } catch (error) { fail(error, 'Could not update that reservation.'); }
+        });
+    }));
 }
 
 function openHoldDrawer() {
@@ -3458,9 +4438,21 @@ async function refresh({ keepOrder = false } = {}) {
         ds.getPosMenu(state.uid),
         ds.getOpenPosShift(state.uid, { dimensionId: state.outletId })
     ]);
+    // Checked AGAIN, after the await. Freezing stops the next refresh from
+    // starting; it cannot stop one that was already in flight, and that one
+    // resolves a second later and overwrites the fixture with real data — the
+    // spec's seeded tables silently become the workspace's own. Intermittent by
+    // construction, and worse the busier the workspace, which is exactly the
+    // shape of bug a seeded fixture exists to avoid.
+    if (state.frozen) return;
     state.overview = overview;
     state.menu = menu;
     state.shift = shift;
+    // The board and the floor plan read ONE list. `getPosOverview` returns the
+    // bookings that could hold a table near now, which is what the floor plan
+    // needs; the board additionally loads the range it is showing (see
+    // loadReservationRange), because a week in October is not "near now".
+    mergeReservations();
 
     // Re-bind the open order to the freshly-read copy, so the panel can never
     // show a stale version and lose the concurrency race on the next write.
@@ -3521,7 +4513,11 @@ async function refresh({ keepOrder = false } = {}) {
     const navShift = $('pos-nav-shift');
     if (navShift) navShift.hidden = !state.shift;
 
+    const navRes = $('pos-nav-res');
+    if (navRes) navRes.textContent = Number(c.reservationsUpcoming) ? String(c.reservationsUpcoming) : '';
+
     if (state.view === 'orders') renderOrderLists();
+    if (state.view === 'reservations') renderReservations();
 
     autoSweepUnposted();
 }
@@ -3695,6 +4691,31 @@ function wire() {
         state.orderQuery = e.target.value || '';
         renderOrderLists();
     });
+
+    // ── Reservations board ──────────────────────────────────────────────
+    // Range, layout and search are all client-side repaints against a range
+    // already loaded — a host scrubbing through a week must not wait on a query
+    // per click. Only moving the RANGE fetches, and only when it leaves what is
+    // already in hand.
+    document.querySelectorAll('[data-rperiod]').forEach((b) => b.addEventListener('click', () => {
+        state.resPeriod = b.dataset.rperiod;
+        loadReservationRange().catch(() => {});
+        renderReservations();
+    }));
+    document.querySelectorAll('[data-rlayout]').forEach((b) => b.addEventListener('click', () => {
+        state.resLayout = b.dataset.rlayout;
+        renderReservations();
+    }));
+    document.querySelectorAll('[data-rmove]').forEach((b) => b.addEventListener('click', () => {
+        moveResRange(Number(b.dataset.rmove));
+        loadReservationRange().catch(() => {});
+        renderReservations();
+    }));
+    $('pos-res-search')?.addEventListener('input', (e) => {
+        state.resQuery = e.target.value || '';
+        renderReservations();
+    });
+    $('pos-res-new')?.addEventListener('click', () => openReservationDialog());
     // ── Sort & filter panel ─────────────────────────────────────────────
     // The button used to be a second, hidden way to set the "In Process" tab —
     // a control that silently moved another control. It now opens the panel.

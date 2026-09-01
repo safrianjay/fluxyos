@@ -1273,6 +1273,9 @@
             min-width: max-content;
         }
         .pos-cal-head { border-bottom: 1px solid #E2E8F0; background: #fff; }
+        /* The month grid has no time gutter, so its header cannot reuse the
+           week's template — doing so labelled every cell with the day before. */
+        .pos-cal-head.is-month { grid-template-columns: repeat(7, minmax(0, 1fr)); min-width: 0; }
         .pos-cal-head > div { padding: 10px 10px; border-left: 1px solid #E2E8F0; }
         .pos-cal-head > div:first-child { border-left: 0; }
         .pos-cal-dow {
@@ -1319,6 +1322,17 @@
             font-variant-numeric: tabular-nums;
         }
         .pos-res-state { margin-top: 3px; font-size: 10px; font-weight: 600; color: #475569; }
+        /* A shared lane is ~70px. Tighter padding buys back most of a character,
+           and the name is the one thing that must survive the squeeze. */
+        .pos-res.is-narrow { padding: 5px 6px; }
+        .pos-res.is-narrow .pos-res-name { font-size: 11px; }
+        /* The overflow block. Deliberately unstyled by status — it stands for
+           several bookings and cannot claim any one of their states. */
+        .pos-res.is-more {
+            background: #F1F5F9; border-color: #CBD5E1; border-style: dashed;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .pos-res.is-more .pos-res-name { font-size: 12px; color: #475569; }
         .pos-res.is-confirmed { background: #ECFDF5; border-color: #A7F3D0; }
         .pos-res.is-confirmed .pos-res-state { color: #047857; }
         .pos-res.is-pending   { background: #FFFBEB; border-color: #FDE68A; }
@@ -1341,10 +1355,17 @@
            the board detects it rather than trusting it away. */
         .pos-res.is-clash { border-color: #DC2626; }
 
-        .pos-cal-now { position: absolute; left: 56px; right: 0; height: 2px; background: #EA580C; z-index: 4; pointer-events: none; }
+        /* The "now" marker. Drawn with BORDERS, not fills: orange backgrounds
+           are prohibited project-wide (CLAUDE.md), and filling a 2px rule with
+           the brand orange is still a fill — the design linter is right to flag
+           it, and a border reads identically on screen. */
+        .pos-cal-now {
+            position: absolute; left: 56px; right: 0; height: 0;
+            border-top: 2px solid #EA580C; z-index: 4; pointer-events: none;
+        }
         .pos-cal-now::before {
-            content: ''; position: absolute; left: -4px; top: -3px;
-            width: 8px; height: 8px; border-radius: 50%; background: #EA580C;
+            content: ''; position: absolute; left: -5px; top: -5px;
+            width: 8px; height: 8px; border-radius: 50%; border: 3px solid #EA580C;
         }
         .pos-cal-now span {
             position: absolute; left: -52px; top: -8px; background: #fff; border: 1px solid #EA580C;

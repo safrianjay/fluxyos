@@ -2689,7 +2689,12 @@ service cloud.firestore {
     function wsValidPosOrderUpdate(data, prev) {
       return wsPosOrderKeys(data)
         && wsValidPosOrderGuest(data)
-        && data.status in ['open', 'submitted', 'sent', 'served', 'awaiting_payment', 'paid', 'void']
+        // `ready` sits between `sent` and `served`: the kitchen has finished the
+        // dish and it is waiting to be carried out. Two beats, because they are
+        // two different people's problems — a plate under the pass going cold is
+        // the runner's, not the cook's, and a board that cannot tell them apart
+        // shows a 12-minute "in the kitchen" for food that was done in four.
+        && data.status in ['open', 'submitted', 'sent', 'ready', 'served', 'awaiting_payment', 'paid', 'void']
         && data.version == prev.version + 1
         && data.dimension_id == prev.dimension_id
         && data.created_at == prev.created_at
@@ -2731,6 +2736,70 @@ service cloud.firestore {
         && data.transaction_id == prev.transaction_id
         && data.refund_reason is string
         && data.refund_reason.size() > 0;
+    }
+    // ── Reservations ────────────────────────────────────────────────────────
+    //
+    // A booking is a claim on a table in the future. Rules bound the SHAPE of
+    // that claim; they cannot enforce the claim itself.
+    //
+    // ⚠️ Worth being explicit about, because it looks like a gap: "this table is
+    // already booked at 19:00" is a QUERY across pos_reservations, and rules can
+    // only `get()` a document whose id they already know. There is no way to
+    // express it here at any price. Double-booking is therefore refused in
+    // `savePosReservation` and in `createPosOrder` (assets/js/pos-service.js),
+    // which makes it a business rule rather than a security boundary — the same
+    // honest standing per-outlet scoping has (docs/data-model/pos.md §8). What
+    // rules DO guarantee is that only this workspace's staff can write one, and
+    // that a booking cannot carry an unbounded blob of a customer's own words.
+    function wsPosReservationKeys(data) {
+      return data.keys().hasOnly([
+          'dimension_id', 'table_id', 'table_label', 'guest_name', 'guest_phone',
+          'guest_email', 'party_size', 'starts_at', 'duration_minutes', 'source',
+          'note', 'status', 'order_id', 'seated_at', 'released_at', 'release_reason',
+          'version', 'created_at', 'updated_at', 'created_by', 'updated_by'
+        ]);
+    }
+    // The bounded scalars. Every one of these is a field a member of the public
+    // dictated over the phone, which is the reason they are checked in rules and
+    // not only in the DAL.
+    function wsValidPosReservationFields(data) {
+      return data.guest_name is string
+        && data.guest_name.size() > 0
+        && data.guest_name.size() <= 80
+        && data.party_size is int
+        && data.party_size >= 1
+        && data.party_size <= 999
+        && data.starts_at is timestamp
+        && data.duration_minutes is int
+        && data.duration_minutes >= 15
+        && data.duration_minutes <= 600
+        && (data.guest_phone == null || (data.guest_phone is string && data.guest_phone.size() <= 32))
+        && (data.guest_email == null || (data.guest_email is string && data.guest_email.size() <= 120))
+        && (data.note == null || (data.note is string && data.note.size() <= 200));
+    }
+    function wsValidPosReservationCreate(data) {
+      return wsPosReservationKeys(data)
+        && wsValidPosReservationFields(data)
+        && data.dimension_id is string
+        && data.status == 'confirmed'
+        && data.order_id == null
+        && data.version == 1
+        && data.created_at == request.time;
+    }
+    // `version` advances by exactly one, as on orders and shifts: two hosts
+    // editing one booking from stale devices is the same race two waiters on one
+    // table are, and losing it silently loses the change.
+    //
+    // The three RELEASED statuses are the only way a table comes back into
+    // supply, and each is a person's decision — nothing expires a booking on a
+    // timer. See the note on `isLate` in assets/js/pos-availability.js.
+    function wsValidPosReservationUpdate(data, prev) {
+      return wsPosReservationKeys(data)
+        && wsValidPosReservationFields(data)
+        && data.status in ['pending', 'confirmed', 'arrived', 'completed', 'cancelled', 'no_show']
+        && data.version == prev.version + 1
+        && data.dimension_id == prev.dimension_id
+        && data.created_at == prev.created_at;
     }
     // Accounting kernel: a journal may only post into a period that is not closed
     // or locked. A missing period doc means the period has never been closed (open).
@@ -3766,6 +3835,18 @@ service cloud.firestore {
                 && wsValidPosOrderRefund(request.resource.data, resource.data)))
           : (hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'cashier'])
               && wsValidPosOrderUpdate(request.resource.data, resource.data));
+        allow delete: if false;
+      }
+      // Bookings. A cashier may take one: they are who answers the phone, and a
+      // reservation system only the owner can write to is a paper diary with
+      // extra steps. Never deleted — a cancelled booking is a fact about the
+      // evening, and deleting it hides the no-show it may have become.
+      match /pos_reservations/{reservationId} {
+        allow read: if wsReadPos(workspaceId);
+        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'cashier'])
+          && wsValidPosReservationCreate(request.resource.data);
+        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'cashier'])
+          && wsValidPosReservationUpdate(request.resource.data, resource.data);
         allow delete: if false;
       }
       // Period lifecycle. Closing requires finance+; locking is owner/admin only.

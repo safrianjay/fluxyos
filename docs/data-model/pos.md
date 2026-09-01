@@ -1,7 +1,7 @@
 ---
 status: current
-owns: [pos_tables, pos_orders, pos_table_directory]
-updated: 2026-08-31
+owns: [pos_tables, pos_orders, pos_reservations, pos_table_directory]
+updated: 2026-09-01
 source: docs/POS_IMPLEMENTATION_PLAN.md
 ---
 
@@ -75,7 +75,8 @@ Arranging is the `pos.manage` capability, the same one that creates and archives
 tables. A cashier reads the floor; they do not redraw the room.
 
 **Occupancy is not stored.** It derives from whether an open `pos_orders` doc
-references the table. Same principle as stock on hand being summed rather than
+references the table — or, since 2026-09-01, from whether a `pos_reservations`
+doc holds it (§4a). Same principle as stock on hand being summed rather than
 cached (`stock.md` §5): a stored status and a real order eventually disagree, and
 nothing would report it.
 
@@ -411,6 +412,136 @@ no rules change: the country is already immutable workspace config shared by eve
 member, so it cannot disagree with itself. Indonesia's three zones collapse to
 Asia/Jakarta — a per-outlet refinement belongs on the outlet if an eastern one
 ever ships, and `settings/company.timezone` already accepts those values.
+
+## 4a. `pos_reservations/{reservationId}` — a claim on a table in the future
+
+Added 2026-09-01. The reason it lives here, beside the tables, rather than in a
+calendar module of its own: **the moment a booking exists, the floor plan and
+the Create Order dialog must stop offering that table.** A reservation the till
+cannot see is worse than no reservation system at all — the table gets sold
+twice and the party holding the booking is the one turned away at the door.
+
+| Field | Type | Notes |
+|---|---|---|
+| `dimension_id` | string | Outlet. Immutable after create |
+| `table_id` / `table_label` | string \| null | **Null is a real answer** — a booking taken before the host knows where it will sit holds NOTHING. Holding a table nobody chose loses floor capacity to a maybe |
+| `guest_name` | string 1–80 | Required. The only field that is always answerable |
+| `guest_phone` / `guest_email` | string ≤32 / ≤120 \| null | |
+| `party_size` | int 1–999 | Whole people; rules refuse a fractional count |
+| `starts_at` | Timestamp | When the guest is expected |
+| `duration_minutes` | int 15–600 | The assumed sitting. Bounded both ways — see below |
+| `source` | enum | `direct` \| `phone` \| `whatsapp` \| `website` \| `instagram` \| `walk_in` \| `other`. Reporting only; nothing branches on it |
+| `status` | enum | `pending` \| `confirmed` \| `arrived` \| `completed` \| `cancelled` \| `no_show` |
+| `order_id` | string \| null | The order opened when the party was seated |
+| `seated_at` / `released_at` / `release_reason` | | The trail |
+| `note` | string ≤200 \| null | |
+| `version` | integer | Concurrency guard, as on orders and shifts |
+
+### One rule, four callers
+
+`assets/js/pos-availability.js` is a **pure module** — no Firestore, no DOM, no
+`window` — and it is the only place that answers "can this table take someone".
+It is imported by:
+
+| Caller | What it asks |
+|---|---|
+| `renderTables` (floor plan) | paint every table's state |
+| `openCreateOrderDialog` | which options to disable, and a re-check at submit |
+| `createPosOrder` (DAL) | refuse a walk-in on a held table |
+| the reservations board | refuse an overlapping sitting |
+
+Two copies of "is this table free" is exactly how a reserved table ends up sold
+on one surface and held on another. Being pure is also what lets
+`tests/pos-availability.check.js` exercise every boundary of the hold window in
+milliseconds instead of during service.
+
+### The hold window
+
+```
+starts_at − 30 min          the table stops being sellable   (HOLD_BEFORE_MIN)
+starts_at                   the guest is expected
+starts_at + duration        the sitting is assumed over
+```
+
+**Thirty minutes before, not at the booked minute.** A table that only locks at
+19:00:00 is a table somebody was seated at 18:55, and the party with the booking
+arrives to find it holding a main course.
+
+`pending`, `confirmed` and `arrived` hold. `completed`, `cancelled` and
+`no_show` release — and those three are **the only ways a table comes back into
+supply.** Each is a person's decision.
+
+### Nothing expires on a timer
+
+A booking past its time with nobody seated is **late**, and it *keeps its
+table*. Auto-releasing is the tempting behaviour and the wrong one: the table
+would free itself while the party is still walking from the car park, a walk-in
+would be seated in it, and nothing would report what happened. Lateness is
+surfaced on the board with the two actions a host actually takes — seat them
+anyway, or mark a no-show — and a human releases the table.
+
+The `duration_minutes` bounds are the same shape of guard from the other end: a
+zero-minute sitting holds nothing, and a twelve-hour one takes a table out of
+service for a whole service by typo. Both are silent.
+
+### What rules can and cannot do here
+
+⚠️ Worth stating plainly, because the gap looks like an oversight. **"This table
+is already booked at 19:00" is a QUERY**, and `firestore.rules` can only `get()`
+a document whose id it already knows — there is no way to express it at any
+price. Double-booking is therefore refused in `savePosReservation` and in
+`createPosOrder`, which makes it a **business rule, not a security boundary** —
+the same honest standing per-outlet scoping has (§8).
+
+That check is also read-then-write rather than a transaction (Firestore has no
+cross-document uniqueness constraint, and a table is not a document that could
+be locked), so two hosts booking one table in the same second can both succeed.
+The board therefore **detects** overlaps and flags them rather than trusting the
+check made them impossible.
+
+What rules do guarantee: only this workspace's staff can write one, the guest's
+own words are bounded, `version` advances by exactly one, a booking cannot be
+created already seated, and none is ever deleted.
+
+### The link is one-directional
+
+The reservation carries `order_id`; the order carries nothing. `pos_orders` has
+a `hasOnly` and is frozen once paid, so a back-reference would have meant
+widening the key set on the document the money path runs through — real risk,
+for a link that is one client-side lookup away.
+
+Seating writes the order **first**: if the status write then fails, the party is
+sitting at a table with an order open, which a person can see and fix. The other
+order of operations loses the sale.
+
+When the bill is paid the booking is closed out automatically (best-effort — a
+failure to tidy the booking must never surface as a failed payment). Without
+that, a seated reservation would keep holding its table for the rest of its 90
+minutes after the guests had gone: free on the order side, held on the
+reservation side, which is the same disagreement this feature exists to prevent,
+pointing the other way.
+
+### Deliberately not built
+
+**Table utilisation %.** The reference design carries one; it needs a service
+window and a turn count this product does not model, so the figure would be
+plausible and wrong. "Tables held now" is the true version of the same question.
+
+Also absent: waitlists, deposits and no-show charges (money, and therefore a
+posting rule — none exists), guest history across bookings, SMS/WhatsApp
+confirmations, and per-zone capacity limits. A reservation posts nothing to the
+kernel: no value has moved until the party eats.
+
+### Rules
+
+Read = all member roles **plus `cashier`**. Create/update = finance+ and
+`cashier` — they are who answers the phone, and a book only the owner can write
+to is a paper diary with extra steps. **Never deleted**: a cancelled booking is
+a fact about the evening, and deleting it hides the no-show it may have become.
+
+Emulator coverage: `tests/pos-rules-emulator-test.mjs` (19 reservation cases).
+Rule engine: `tests/pos-availability.check.js` (47 assertions, no emulator).
+Page: `tests/pos-reservations.spec.js`.
 
 ## 5. `pos_table_directory/{token}` — top-level, deny-all
 

@@ -138,6 +138,9 @@ const FINANCE_COLLECTIONS = [
   'goods_receipts', 'stock_movements', 'stock_adjustments',
   // Point of sale (2026-08-21).
   'pos_tables', 'pos_orders', 'pos_shifts',
+  // Reservations (2026-09-01) — a booking holds a table, so it is operational
+  // data the scope guard has to see.
+  'pos_reservations',
 ];
 
 function scopeGuard() {
@@ -215,6 +218,13 @@ function laneBE(changed) {
   // also breached by DELETING a method from db-service.js that the POS still
   // calls — and that edit lands in a file the POS author never opened.
   ok = record('be', run('check:pos-boundary (POS DAL edge into DataService)', 'node', ['tests/pos-service-boundary.check.js'])) && ok;
+  // Unconditional, for the reason the check itself explains: the availability
+  // rule is one claim asserted in FOUR places — pos-availability.js, the floor
+  // plan, the Create Order dialog and `createPosOrder` — and the way it breaks
+  // is silent. A status dropped from an allowlist does not error; the order
+  // vanishes from the board and its table reads as free, which is a table sold
+  // twice during service.
+  ok = record('be', run('check:pos-availability (one rule for a free table)', 'node', ['tests/pos-availability.check.js'])) && ok;
   // Unconditional: the origin list is mirrored into cors.json and netlify.toml,
   // which are enforced by Google and the browser rather than by our code. Either
   // can fall out of sync without a function file being in the diff, and the

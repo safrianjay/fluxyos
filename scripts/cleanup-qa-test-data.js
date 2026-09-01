@@ -211,6 +211,27 @@ async function main() {
             }
         }
 
+        // Bookings left holding a table. Same treatment and same reasoning as an
+        // order: never deleted, CANCELLED — which is the product's own way of
+        // releasing a table and leaves the evening's history intact. A stray QA
+        // reservation is not cosmetic residue: it holds a real table against
+        // every walk-in until somebody releases it.
+        const bookings = (await db.collection(`${base}/pos_reservations`).get()).docs;
+        const holding = bookings.filter((d) => ['pending', 'confirmed'].includes(d.data().status));
+        console.log(`POS reservations: ${bookings.length} total → ${holding.length} still holding a table`
+            + preview(holding, (d) => `${d.data().guest_name}:${d.data().table_label || 'unassigned'}`));
+        if (COMMIT) {
+            for (const d of holding) {
+                await d.ref.set({
+                    status: 'cancelled',
+                    release_reason: 'QA workspace cleanup',
+                    released_at: new Date(),
+                    updated_at: new Date(),
+                    version: (Number(d.data().version) || 1) + 1
+                }, { merge: true });
+            }
+        }
+
         const items = (await db.collection(`${base}/items`).get()).docs;
         const onMenu = items.filter((d) => d.data().pos_visible && isTestItem(d.data()));
         console.log(`POS menu: ${items.length} items → ${onMenu.length} QA fixtures to un-publish`
