@@ -3045,7 +3045,7 @@ function openCreateOrderDialog({ tableId = null } = {}) {
                             return `<option value="${esc(t.id)}"`
                                 + `${t.id === tableId ? ' selected' : ''}`
                                 + `${blocked ? ' disabled' : ''}>`
-                                + `${esc(t.label)}${t.zone ? ` · ${esc(t.zone)}` : ''}`
+                                + `${esc(tableOptionLabel(t))}`
                                 + `${why}</option>`;
                         }).join('')}
                     </select>
@@ -3352,6 +3352,28 @@ const RES_STATE = {
     cancelled: { label: 'Cancelled', pill: 'fluxy-status-danger' },
     no_show:   { label: 'No-show',   pill: 'fluxy-status-danger' }
 };
+
+// How a table reads in a picker.
+//
+// It was `1 · Floor 2 · 1 seats`, which is wrong three times over:
+//   - a bare leading number reads as a ROW INDEX, not a table. "Assign later"
+//     sat above it, so the list looked numbered rather than named.
+//   - the zone is the CATEGORY — it is how a host narrows a floor before
+//     choosing within it, so it belongs in front, the way every other grouped
+//     list in the product reads.
+//   - "1 seats".
+//
+// Now: `Floor 2 · Table 1 · 1 seat`. Each part drops out when it is absent
+// rather than leaving a dangling separator — plenty of tables have no zone, and
+// `seats` is nullable by design (pos.md §2: display only).
+function tableOptionLabel(t) {
+    const seats = Number(t.seats);
+    return [
+        t.zone || null,
+        `${tr('Table')} ${t.label}`,
+        seats > 0 ? `${seats} ${tr(seats === 1 ? 'seat' : 'seats')}` : null
+    ].filter(Boolean).join(' · ');
+}
 
 const RES_SOURCES = [
     { id: 'direct', label: 'Walk-up / direct' },
@@ -3998,7 +4020,7 @@ function openReservationDialog({ reservation = null, startsAt = null, tableId = 
             });
             const busy = clash[0];
             return `<option value="${esc(t.id)}"${t.id === chosen ? ' selected' : ''}${busy ? ' disabled' : ''}>`
-                + `${esc(t.label)}${t.zone ? ` · ${esc(t.zone)}` : ''}${t.seats ? ` · ${t.seats} seats` : ''}`
+                + `${esc(tableOptionLabel(t))}`
                 + `${busy ? ` — booked ${formatClock(toMs(busy.starts_at))}` : ''}</option>`;
         }).join('');
     }

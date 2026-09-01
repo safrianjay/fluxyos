@@ -5271,6 +5271,13 @@
         "Add a table": "Tambah meja",
         "Add table": "Tambah meja",
         "Table name or number": "Nama atau nomor meja",
+        // Singular "Table"/"seat" are used to BUILD a picker label at runtime
+        // ("Lantai 2 · Meja 1 · 4 kursi"). The DOM translator matches whole text
+        // nodes, so a composed <option> can never be translated after the fact —
+        // the words have to be translated as they are assembled.
+        "Table": "Meja",
+        "seat": "kursi",
+        "seats": "kursi",
         "12, A3, Bar 2": "12, A3, Bar 2",
         "Area": "Area",
         "Lantai 2, Teras": "Lantai 2, Teras",

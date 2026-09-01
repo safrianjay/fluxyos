@@ -361,6 +361,12 @@ test.describe('The reservations board', () => {
 
         await expect(dialog.locator('#pos-res-table option', { hasText: 'A04' })).toBeDisabled();
         await expect(dialog.locator('#pos-res-table option', { hasText: 'A05' })).toBeEnabled();
+        // Category first, then the table, then the seats — and a bare leading
+        // number is what this replaced. "1 · Floor 2 · 1 seats" read as a row
+        // index above an "Assign later" row, so the list looked numbered rather
+        // than named.
+        await expect(dialog.locator('#pos-res-table option', { hasText: 'A05' }))
+            .toContainText(/Table A05 · 2 seats/);
         // Assign later is always available: taking the booking matters more than
         // deciding the seat, and a host on the phone should never be blocked on
         // a choice they can make afterwards.
