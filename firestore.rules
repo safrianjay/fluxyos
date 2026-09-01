@@ -2925,7 +2925,32 @@ service cloud.firestore {
           'commerce_settlements', 'commerce_payouts', 'commerce_sync_jobs',
           'commerce_sync_errors', 'commerce_webhook_logs', 'duplicate_reviews',
           'dimensions', 'ledger_balances_by_dim', 'items',
-          'goods_receipts', 'stock_movements', 'stock_adjustments'
+          'goods_receipts', 'stock_movements', 'stock_adjustments',
+          // ── Point of sale + the business-category seed (added 2026-09-02) ──
+          //
+          // EVERY POS AUDIT WRITE HAD BEEN DENIED SINCE POS SHIPPED
+          // (2026-08-21). The DAL logs ten actions across these four
+          // collections — a refund, a void and its reason, a shift open and
+          // close, table changes, a reservation — and none of their
+          // target_collection values were in this list, so `isValidWorkspaceAuditLog`
+          // refused all of them.
+          //
+          // Nothing went red. `_auditCreateBestEffort` catches and warns, which
+          // is correct for an audit write (losing the log must never lose the
+          // sale) and is exactly why it went unnoticed for eleven days: the
+          // Activity Log simply had no POS entries, which looks the same as
+          // nobody using the till.
+          //
+          // For a finance product the missing ones are the ones that matter
+          // most: `pos_order.refunded` is money handed back out, and
+          // `pos_shift.closed` is the cash count. An audit trail with a hole in
+          // it is worse than none, because it looks complete.
+          //
+          // Costs no expression budget: `in [...]` is one expression however
+          // long the list is.
+          'pos_tables', 'pos_orders', 'pos_shifts', 'pos_reservations',
+          // `business_categories.seeded` was denied the same way.
+          'business_categories'
         ]
         && data.target_id is string && data.target_id.size() <= 200
         && data.source in ['dashboard', 'ai', 'integration', 'system', 'onboarding']

@@ -507,6 +507,70 @@ async function main() {
     await expectOutcome('a viewer may NOT write one', false, () =>
         setDoc(doc(db, `workspaces/${WS}/pos_reservations/r-viewer`), reservation()));
 
+    console.log('\n— the audit trail the till writes —');
+    // EVERY POS AUDIT WRITE WAS DENIED FROM 2026-08-21 TO 2026-09-02.
+    //
+    // `isValidWorkspaceAuditLog` validates `target_collection` against an
+    // allowlist, and none of the four POS collections were on it. The DAL logs
+    // ten actions across them; all ten were refused. Nothing went red, because
+    // `_auditCreateBestEffort` catches and warns — correct for an audit write
+    // (losing the log must never lose the sale), and exactly why it went
+    // unnoticed: the Activity Log had no POS entries, which looks identical to
+    // nobody using the till.
+    //
+    // The cases below are the REAL actions the DAL emits, spelled the way it
+    // spells them, so a renamed collection breaks this rather than the trail.
+    const auditLog = (o = {}) => ({
+        actor_uid: uid, action: 'pos_order.refunded', target_collection: 'pos_orders',
+        target_id: 'o1', before: null, after: {}, source: 'dashboard',
+        created_at: serverTimestamp(), ...o
+    });
+
+    // A CASHIER is who performs most of these, so they are the role that has to
+    // be able to write them. `audit_logs` create is `isMember`, not a finance
+    // role, which is what makes that work.
+    await setMemberRole(uid, 'cashier');
+    const posAudits = [
+        ['pos_order.paid', 'pos_orders'],
+        ['pos_order.refunded', 'pos_orders'],
+        ['pos_order.voided', 'pos_orders'],
+        ['pos_shift.opened', 'pos_shifts'],
+        ['pos_shift.closed', 'pos_shifts'],
+        ['pos_table.created', 'pos_tables'],
+        ['pos_table.updated', 'pos_tables'],
+        ['pos_table.layout_saved', 'pos_tables'],
+        ['pos_reservation.created', 'pos_reservations'],
+        ['pos_reservation.no_show', 'pos_reservations']
+    ];
+    for (const [action, target] of posAudits) {
+        await expectOutcome(`cashier logs ${action}`, true, () =>
+            setDoc(doc(db, `workspaces/${WS}/audit_logs/al-${action.replace(/\./g, '-')}`),
+                auditLog({ action, target_collection: target })));
+    }
+
+    // `pos_table.layout_saved` passes a NULL target id, which
+    // `_auditCreateBestEffort` normalises to ''. The rule requires a string, so
+    // the empty one has to be acceptable or that action alone would keep failing.
+    await expectOutcome('an empty target_id is accepted (layout_saved sends null)', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/audit_logs/al-empty-target`),
+            auditLog({ action: 'pos_table.layout_saved', target_collection: 'pos_tables', target_id: '' })));
+
+    // The seed action denied the same way.
+    await setMemberRole(uid, 'owner');
+    await expectOutcome('business_categories.seeded is logged', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/audit_logs/al-bizcat`),
+            auditLog({ action: 'business_categories.seeded', target_collection: 'business_categories', target_id: '' })));
+
+    // The allowlist is still an allowlist. Widening it to anything would make
+    // target_collection a free-text field and the trail unfilterable.
+    await expectOutcome('an unknown target_collection is still denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/audit_logs/al-bogus`),
+            auditLog({ target_collection: 'not_a_collection' })));
+    // Impersonating another actor stays denied — the whole point of the trail.
+    await expectOutcome('logging as someone else is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/audit_logs/al-spoof`),
+            auditLog({ actor_uid: 'someone-else' })));
+
     console.log('\n— the QR token directory is invisible to every client —');
     await adminDb.doc('pos_table_directory/tok123').set({ workspace_id: WS, table_id: 't12' });
     await setMemberRole(uid, 'owner');

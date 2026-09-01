@@ -688,6 +688,47 @@ Emulator coverage: `tests/pos-rules-emulator-test.mjs` (52 cases, over half of
 them the cashier boundary). Posting rules: `tests/pos-posting.spec.js`. Page:
 `tests/pos-ui.spec.js`.
 
+## 7a. The audit trail was denied for eleven days
+
+Every POS audit write was refused from 2026-08-21 (POS shipping) to
+2026-09-02. `isValidWorkspaceAuditLog` in `firestore.rules` validates
+`target_collection` against an allowlist, and **none of the four POS
+collections were on it** — so all ten actions the DAL emits were denied:
+
+```
+pos_order.paid / .refunded / .voided
+pos_shift.opened / .closed
+pos_table.created / .updated / .layout_saved
+pos_reservation.created  (+ every status transition)
+```
+
+`business_categories.seeded` was denied the same way.
+
+**Nothing went red.** `_auditCreateBestEffort` catches and warns, which is the
+right behaviour for an audit write — losing the log must never lose the sale —
+and is exactly why it went unnoticed. The Activity Log simply had no POS
+entries, which looks identical to nobody using the till.
+
+The two that matter most in a finance product are the ones that were missing:
+`pos_order.refunded` is money handed back out, and `pos_shift.closed` is the
+cash count. **An audit trail with a hole in it is worse than none, because it
+looks complete.**
+
+Adding names costs no expression budget — `in [...]` is one expression however
+long the list is — but `audit_logs` create is `isMember`, not a finance role,
+which is what lets a **cashier** write them. They perform most of these actions,
+so that is the boundary the emulator cases exercise.
+
+Guards: `tests/pos-rules-emulator-test.mjs` (14 cases; verified they FAIL
+against the pre-fix allowlist) and `tests/pos-audit-trail.spec.js`, which writes
+against the **deployed** rules — the emulator proves the rule accepts the shape,
+not that production does, and `firestore.rules` is a separate deploy from
+`git push`.
+
+⚠️ **When a new collection starts writing audit entries, add it here too.** The
+DAL's call and the rules allowlist are one claim in two files, and the failure
+mode is silent.
+
 ## 8. The `cashier` role
 
 The first role in this product that is **not** a finance role. Built from an
