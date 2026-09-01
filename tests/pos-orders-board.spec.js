@@ -416,6 +416,45 @@ test('amount received is editable for cash only, and change is always stated', a
     await page.locator('#pos-pay-modal .pos-modal-close').click();
 });
 
+// ── The fraud path, closed even when the field IS editable ─────────────────
+//
+// Disabling the input is a UI affordance, and a UI affordance is one bug away
+// from not being there. An editable "amount received" on a card payment is a
+// fraud surface — type a bigger figure, pocket the difference as change, and
+// the drawer still reconciles — so the guarantee must not rest on one
+// assignment having run at the right moment.
+//
+// This test FORCES the field back on, exactly as a missed `sync()` would, and
+// proves the value cannot be moved anyway.
+test('a non-cash amount cannot be typed even if the field is re-enabled', async ({ page }) => {
+    await openBoard(page);
+    await seedBoard(page, [{ status: 'awaiting_payment', ageMin: 3, total: 120000 }]);
+    await page.locator('.pos-ocard[data-status="awaiting_payment"] [data-pay]').first().click();
+    await expect(page.locator('#pos-pay-amount')).toBeVisible({ timeout: 10000 });
+
+    await page.locator('#pos-method-row [data-method="card"]').click();
+    await expect(page.locator('#pos-pay-amount')).toBeDisabled();
+
+    // Simulate the bug being reported: the field is editable on a card payment.
+    await page.evaluate(() => {
+        const el = document.getElementById('pos-pay-amount');
+        el.disabled = false;
+        el.readOnly = false;
+    });
+    await expect(page.locator('#pos-pay-amount')).toBeEnabled();
+
+    // Type a fraudulent figure. Every keystroke is discarded and the bill is
+    // restored, so the tender can never differ from what is being charged.
+    await page.locator('#pos-pay-amount').type('999000');
+    await expect(page.locator('#pos-pay-amount'),
+        'a typed amount survived on a card payment — this is the fraud surface')
+        .toHaveValue(/^120\.000$/);
+    // And no change was invented out of it.
+    await expect(page.locator('#pos-change')).toBeHidden();
+
+    await page.locator('#pos-pay-modal .pos-modal-close').click();
+});
+
 test('opening a card still reaches the actions the board does not carry', async ({ page }) => {
     // Hiding the order panel on this view nearly orphaned Refund and Reprint:
     // they live in that panel and nowhere else, so selecting a card without

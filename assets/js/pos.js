@@ -2624,6 +2624,13 @@ function openPaymentModal() {
                              parser never has to strip a currency mark that
                              differs per market (Rp / ₱ / S$ / RM / $). -->
                         <div class="pos-amount-wrap">
+                            <!-- The symbol precedes the digits in source order,
+                                 so the pair reads symbol-then-digits; the
+                                 CSS pushes the two of them to the right edge
+                                 together. (No backticks in this comment: it is
+                                 inside a template literal and one would end the
+                                 string. Caught by check:module-parse, which is
+                                 exactly what that check is for.) -->
                             <span class="pos-amount-cur" aria-hidden="true">${esc(M.baseSymbol())}</span>
                             <input id="pos-pay-amount" name="amount" class="pos-amount-input" autocomplete="off"
                                    inputmode="${esc(M.moneyInputMode())}"
@@ -2773,6 +2780,25 @@ function openPaymentModal() {
     });
 
     amt.addEventListener('input', () => {
+        // ── The guard that does not depend on anything else having run ──────
+        //
+        // `sync()` disables this field on every non-cash method, and that holds
+        // on every path I can reach. It is still the WRONG place for this to be
+        // the only defence: an editable "amount received" on a card payment is
+        // a fraud surface — a cashier types a bigger figure, pockets the
+        // difference as change, and the drawer still reconciles — so it must not
+        // rest on one assignment having executed at the right moment.
+        //
+        // If input arrives on a non-cash method at all, the value is put back
+        // and the keystroke is discarded. Three layers now stand between a
+        // typed figure and the books: this, `sync()`, and `recordPosPayment`,
+        // which refuses any tender that differs from the applied amount on a
+        // non-cash method.
+        if (!isCash()) {
+            received = due;
+            amt.value = M.formatMoneyInput(M.fromMinor(due, cur), cur);
+            return;
+        }
         const digits = amt.value.replace(/\D/g, '');
         amt.value = digits ? M.liveMoneyInput(amt.value) : '';
         received = M.toMinor(amt.value, cur);

@@ -219,12 +219,21 @@
         .pos-paid-amt.is-void { text-decoration: line-through; color: #94A3B8; }
 
         /* ── Payment ────────────────────────────────────────────────────── */
-        .pos-methods { display: grid; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: 8px; }
+        /* Five methods on a fixed 3-wide grid, so the last row is 3 + 2.
+           `auto-fit minmax(88px, 1fr)` fitted four across at this dialog width
+           and orphaned "Other" alone on a second row — which reads as a
+           rendering fault rather than a menu, because a lone button under a full
+           row looks like something failed to load. A ragged last row is fine
+           when it is obviously deliberate; 4 + 1 never is. */
+        .pos-methods { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+        @media (max-width: 420px) { .pos-methods { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
         .pos-method {
             min-height: 44px; border: 1px solid #E2E8F0; background: #fff; border-radius: 8px;
             font-size: 13px; font-weight: 500; color: #334155; cursor: pointer;
         }
         .pos-method.is-on { border-color: #0F172A; background: #0F172A; color: #fff; }
+        .pos-method:hover:not(.is-on) { background: #F8FAFC; border-color: #CBD5E1; }
+        .pos-method:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
         /* A disabled amount field still has to be READABLE — it is stating the
            figure the cashier is about to charge. Greyed to say "not yours to
            type", not greyed out of legibility. */
@@ -687,12 +696,50 @@
             font-size: 24px; font-weight: 700; color: #0B0F19;
             font-variant-numeric: tabular-nums; letter-spacing: -0.025em;
         }
-        .pos-amount-wrap { position: relative; }
-        .pos-amount-wrap .pos-amount-cur {
-            position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-            font-size: 14px; font-weight: 600; color: #64748B; pointer-events: none;
+        /* The currency sits WITH its number, not at the opposite end of the box.
+           Pinned to the left while the digits were right-aligned, the symbol and
+           the amount had ~300px of nothing between them and read as two
+           unrelated things — the amount looked unanchored and the symbol looked
+           like a label. They now travel together against the right edge, which
+           is also where the eye goes on a right-aligned money field.
+
+           The symbol is still a separate element rather than typed into the
+           input: the field carries digits only, so the parser never has to strip
+           a mark that differs per market (Rp / ₱ / S$ / RM). */
+        .pos-amount-wrap {
+            /* gap: 0 — "Rp" and its digits are ONE token. A 6px gap renders as
+               the symbol detached from its digits, and no space after the
+               currency mark is a hard rule (CLAUDE.md / DESIGN_SYSTEM
+               "Numeric & currency format"). The Amount due line directly above
+               sets the reference. */
+            display: flex; align-items: center; gap: 0;
+            min-height: 48px; padding: 0 14px;
+            border: 1px solid #CBD5E1; border-radius: 10px; background: #fff;
         }
-        .pos-amount-wrap .pos-amount-input { padding-left: 42px; }
+        .pos-amount-wrap:focus-within { outline: 2px solid #EA580C; outline-offset: -1px; border-color: transparent; }
+        .pos-amount-wrap .pos-amount-cur {
+            /* Same size, weight and colour as the digits: it is part of the
+               amount, not a label sitting beside it. */
+            margin-left: auto;
+            font-size: 20px; font-weight: 600; color: #0B0F19; pointer-events: none;
+        }
+        .pos-amount-wrap:has(.pos-amount-input:disabled) .pos-amount-cur { color: #475569; }
+        /* The input shrinks to its content so the pair stays glued together, but
+           keeps a floor so an empty field is still a target worth tapping. */
+        .pos-amount-wrap .pos-amount-input {
+            width: auto; flex: 0 1 auto; min-width: 0;
+            border: 0; padding: 0; min-height: 0; background: transparent;
+            field-sizing: content;
+        }
+        .pos-amount-wrap .pos-amount-input:focus { outline: none; }
+        /* `field-sizing` is Chromium-only today. Everywhere else the input keeps
+           its full width and the pair simply reads as it did before — degraded,
+           not broken. */
+        @supports not (field-sizing: content) {
+            .pos-amount-wrap .pos-amount-input { flex: 1 1 auto; }
+            .pos-amount-wrap .pos-amount-cur { margin-left: 0; }
+        }
+        .pos-amount-wrap:has(.pos-amount-input:disabled) { background: #F8FAFC; }
         .pos-hint { font-size: 12px; color: #64748B; margin-top: 6px; }
         .pos-hint.is-warn { color: #B45309; font-weight: 500; }
 
