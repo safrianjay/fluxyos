@@ -876,8 +876,19 @@
                     </div>
                 </div>
 
-                <label class="fluxy-drawer-label" for="item-pos-category" style="margin-top:14px;">Menu group <span class="inv-muted">(optional)</span></label>
-                <input id="item-pos-category" type="text" class="fluxy-drawer-input" maxlength="40" placeholder="Makanan, Minuman" autocomplete="off">
+                <!-- ── Menu group ───────────────────────────────────────────
+                     Pick one that exists, or define a new one — the SAME shape
+                     as the purchase-unit picker on the receipt line (items.md
+                     §7i), which solved this exact problem: a free-text field
+                     invites "Minuman", "minuman" and "Minuman " as three groups
+                     that then render as three tabs on the till, and nobody finds
+                     out until a cashier is looking at them.
+                     The options come from what the catalogue already uses, so
+                     the common answer is one tap and the field cannot drift. -->
+                <label class="fluxy-drawer-label" for="item-pos-category-select" style="margin-top:14px;">Menu group <span class="inv-muted">(optional)</span></label>
+                <select id="item-pos-category-select" class="fluxy-drawer-input"></select>
+                <input id="item-pos-category" type="text" class="fluxy-drawer-input" maxlength="40"
+                       placeholder="Name the new group" autocomplete="off" hidden style="margin-top:8px;">
                 <label class="inv-check" style="margin-top:4px;">
                     <input id="item-pos-visible" type="checkbox" class="inv-check-box">
                     <span class="inv-check-text">Show on the till
@@ -918,7 +929,7 @@
                 <div class="fluxy-drawer-section-head">
                     <h3 class="fluxy-drawer-section-title">Accounting</h3>
                 </div>
-                <p class="fluxy-drawer-section-desc">Where this item belongs in your chart of accounts. Recorded on the item today — postings still route through 1200 Inventory and your Account Mapping.</p>
+                <p class="fluxy-drawer-section-desc">Where this item sits in your chart of accounts. Recorded here, but postings still route through 1200 Inventory and your Account Mapping.</p>
 
                 <div class="fluxy-drawer-field">
                     <label class="fluxy-drawer-label" for="item-sell-account">Revenue account <span class="inv-muted">(optional)</span></label>
@@ -1119,6 +1130,7 @@
 
         let currentUid = null;
         let allRows = [];        // items joined with their stock
+        let menuGroups = [];     // distinct pos_category values across ALL items
         let editingItem = null;  // null = create mode
         // The item's CURRENT photo path, and a file chosen but not yet uploaded.
         //
@@ -1249,6 +1261,22 @@
             const countedItems = new Set(
                 movements.filter((m) => m.movement_type === 'count').map((m) => m.item_id)
             );
+
+            // Every menu group the catalogue uses, captured from the FULL item
+            // set. Reading it back off `allRows` looked equivalent and is not:
+            // that array is what the table renders, and the table filters — so
+            // the picker offered nothing on a workspace with 22 categorised
+            // items. Taken here, it is the same list `getPosMenu` builds its
+            // category chips from and cannot disagree with the till.
+            menuGroups = [...new Map(items
+                .map((i) => String(i.pos_category || '').trim())
+                .filter(Boolean)
+                // Keyed lowercase so "Minuman" and "minuman" collapse to one
+                // option; the first spelling seen is the one offered, because
+                // choosing a canonical form for someone is worse than showing
+                // them the one already on their menu.
+                .map((c) => [c.toLowerCase(), c])).values()]
+                .sort((a, b) => a.localeCompare(b));
 
             allRows = items.map((item) => {
                 const stock = stockByItem[item.id] || null;
@@ -2393,6 +2421,54 @@
             });
         }
 
+        // Every menu group the catalogue already uses. Built once per load in
+        // loadInventory() from the FULL item set, so opening the drawer costs no
+        // extra query and the options cannot be narrowed by whatever the table
+        // happens to be filtered to.
+        const NEW_MENU_GROUP = '__newgroup__';
+        const existingMenuGroups = () => menuGroups.slice();
+
+        function renderMenuGroups(current) {
+            const sel = document.getElementById('item-pos-category-select');
+            const free = document.getElementById('item-pos-category');
+            if (!sel) return;
+            const groups = existingMenuGroups();
+            const cur = String(current || '').trim();
+            // An item whose group is no longer used by anything else still has to
+            // show its own value — otherwise opening an edit would silently move
+            // it to "No group".
+            if (cur && !groups.some((g) => g.toLowerCase() === cur.toLowerCase())) groups.unshift(cur);
+
+            sel.innerHTML = `<option value="">No group</option>`
+                + groups.map((g) => `<option value="${escAttr(g)}"${g.toLowerCase() === cur.toLowerCase() ? ' selected' : ''}>${escHtml(g)}</option>`).join('')
+                + `<option value="${NEW_MENU_GROUP}">New group…</option>`;
+            sel.value = cur || '';
+            free.hidden = true;
+            free.value = '';
+            if (!sel.dataset.wired) {
+                sel.dataset.wired = '1';
+                sel.addEventListener('change', () => {
+                    const isNew = sel.value === NEW_MENU_GROUP;
+                    free.hidden = !isNew;
+                    if (isNew) free.focus();
+                    else free.value = '';
+                });
+            }
+        }
+
+        // The group actually chosen: the typed name when defining a new one,
+        // otherwise the selected existing group.
+        function menuGroupValue() {
+            const sel = document.getElementById('item-pos-category-select');
+            const free = document.getElementById('item-pos-category');
+            if (!sel) return null;
+            if (sel.value === NEW_MENU_GROUP) return free.value.trim().slice(0, 40) || null;
+            return sel.value.trim() || null;
+        }
+
+        const escAttr = (v) => String(v).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        const escHtml = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
         function openDrawer(item) {
             wireItemPhoto();
             editingItem = item;
@@ -2421,7 +2497,7 @@
             // `image_path`, so opening an edit without seeding it would erase a
             // photo somebody attached earlier.
             setItemPhoto(isEdit ? (item.image_path || null) : null);
-            document.getElementById('item-pos-category').value = isEdit ? (item.pos_category || '') : '';
+            renderMenuGroups(isEdit ? (item.pos_category || '') : '');
             document.getElementById('item-pos-visible').checked = isEdit ? item.pos_visible === true : false;
 
             // `type` is immutable once the item exists: a stock item may already
@@ -2644,7 +2720,10 @@
                 // every other amount in the app.
                 sales_price: Number(document.getElementById('item-price').value.replace(/\D/g, '')) || null,
                 pos_visible: document.getElementById('item-pos-visible').checked,
-                pos_category: document.getElementById('item-pos-category').value.trim() || null,
+                // The picker's answer, not the raw text box — the box only holds
+                // a NEW group's name and is empty whenever an existing one is
+                // selected.
+                pos_category: menuGroupValue(),
                 // Additive on a collection with no `hasOnly` in firestore.rules,
                 // so this needs no rules change and no deploy.
                 pos_modifier_groups: resolvedModifierGroups(),
