@@ -378,6 +378,25 @@ test('amount received is editable for cash only, and change is always stated', a
     await expect(change).toBeVisible();
     await expect(page.locator('#pos-change-value')).toHaveText(/^Rp0$/);
     await expect(change).toHaveClass(/is-zero/);
+    // …and it says so in WORDS. A bare 0 in a result panel is indistinguishable
+    // from a panel nothing has been written into — which is how a correctly
+    // calculated exact payment came to be reported as "the change is not
+    // calculated".
+    await expect(page.locator('#pos-change-note')).toBeVisible();
+    await expect(page.locator('#pos-change-note')).toContainText(/exact amount|uang pas/i);
+
+    // The currency mark and the digits are ONE amount: same size, same weight,
+    // no gap. They rendered at 20px and 14px, because `.pos-field input` (0,1,1)
+    // outranks `.pos-amount-input` (0,1,0) — so the number a cashier is judged
+    // on was the smallest money on the screen and the field looked broken.
+    const type = await page.evaluate(() => {
+        const g = (s) => { const c = getComputedStyle(document.querySelector(s));
+            return `${c.fontSize}/${c.fontWeight}`; };
+        return { cur: g('.pos-amount-cur'), digits: g('#pos-pay-amount'),
+                 align: getComputedStyle(document.querySelector('#pos-pay-amount')).textAlign };
+    });
+    expect(type.digits, 'the amount and its currency mark must match').toBe(type.cur);
+    expect(type.align, 'the amount reads from the left, like every other input').toBe('left');
     await expect(page.locator('#pos-pay-submit')).toBeEnabled();
 
     // More than the bill → change, immediately, without leaving the field.
@@ -385,6 +404,7 @@ test('amount received is editable for cash only, and change is always stated', a
     await amount.type('150000');
     await expect(page.locator('#pos-change-value')).toHaveText(/30\.000/);
     await expect(change).not.toHaveClass(/is-zero/);
+    await expect(page.locator('#pos-change-note')).toBeHidden();
     await expect(page.locator('#pos-pay-submit')).toBeEnabled();
 
     // Less than the bill → insufficient, and the payment cannot be completed.

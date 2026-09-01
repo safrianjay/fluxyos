@@ -2645,6 +2645,7 @@ function openPaymentModal() {
                     <div class="pos-change" id="pos-change" hidden>
                         <span class="pos-change-label">Change</span>
                         <span class="pos-change-value" id="pos-change-value"></span>
+                        <span class="pos-change-note" id="pos-change-note" hidden>Exact amount — nothing to give back.</span>
                     </div>
                     <p class="pos-hint is-warn" id="pos-short" hidden></p>
                 </div>
@@ -2713,6 +2714,11 @@ function openPaymentModal() {
         $$('pos-change').hidden = false;
         $$('pos-change-value').textContent = rp(change);
         $$('pos-change').classList.toggle('is-zero', change === 0);
+        // A zero says so IN WORDS. On its own, a 0 in a result panel is
+        // indistinguishable from a panel that has not been filled in — which is
+        // exactly how a correctly-calculated exact payment came to be reported
+        // as "the change is not calculated".
+        $$('pos-change-note').hidden = change !== 0;
 
         const short = received > 0 && received < due;
         $$('pos-short').hidden = !short;

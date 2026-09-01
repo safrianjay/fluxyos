@@ -707,11 +707,9 @@
            input: the field carries digits only, so the parser never has to strip
            a mark that differs per market (Rp / ₱ / S$ / RM). */
         .pos-amount-wrap {
-            /* gap: 0 — "Rp" and its digits are ONE token. A 6px gap renders as
-               the symbol detached from its digits, and no space after the
-               currency mark is a hard rule (CLAUDE.md / DESIGN_SYSTEM
-               "Numeric & currency format"). The Amount due line directly above
-               sets the reference. */
+            /* gap: 0 — the currency mark and its digits are ONE token. Any gap
+               renders as a space after the mark, which is a hard rule
+               (CLAUDE.md / DESIGN_SYSTEM "Numeric & currency format"). */
             display: flex; align-items: center; gap: 0;
             min-height: 48px; padding: 0 14px;
             border: 1px solid #CBD5E1; border-radius: 10px; background: #fff;
@@ -720,25 +718,26 @@
         .pos-amount-wrap .pos-amount-cur {
             /* Same size, weight and colour as the digits: it is part of the
                amount, not a label sitting beside it. */
-            margin-left: auto;
             font-size: 20px; font-weight: 600; color: #0B0F19; pointer-events: none;
         }
         .pos-amount-wrap:has(.pos-amount-input:disabled) .pos-amount-cur { color: #475569; }
-        /* The input shrinks to its content so the pair stays glued together, but
-           keeps a floor so an empty field is still a target worth tapping. */
+        /* ⚠️ The font-size has to be declared HERE, not on `.pos-amount-input`.
+           `.pos-field input` (0,1,1) outranks `.pos-amount-input` (0,1,0), so
+           the amount had silently been rendering at 14px while the currency mark
+           beside it sat at 20px — the field looked broken, and the number a
+           cashier is judged on was the smallest money on the screen.
+
+           The amount reads LEFT to right from the edge of the field, like every
+           other input on this page. Right-aligning it (correct in a table, where
+           digits line up in a column) put it alone at the far edge with a field
+           of white in front of it, which is not what a person typing expects. */
         .pos-amount-wrap .pos-amount-input {
-            width: auto; flex: 0 1 auto; min-width: 0;
+            flex: 1 1 auto; width: auto; min-width: 0;
             border: 0; padding: 0; min-height: 0; background: transparent;
-            field-sizing: content;
+            font-size: 20px; font-weight: 600; text-align: left;
         }
         .pos-amount-wrap .pos-amount-input:focus { outline: none; }
-        /* `field-sizing` is Chromium-only today. Everywhere else the input keeps
-           its full width and the pair simply reads as it did before — degraded,
-           not broken. */
-        @supports not (field-sizing: content) {
-            .pos-amount-wrap .pos-amount-input { flex: 1 1 auto; }
-            .pos-amount-wrap .pos-amount-cur { margin-left: 0; }
-        }
+        .pos-amount-wrap .pos-amount-input::placeholder { font-size: 14px; font-weight: 500; }
         .pos-amount-wrap:has(.pos-amount-input:disabled) { background: #F8FAFC; }
         .pos-hint { font-size: 12px; color: #64748B; margin-top: 6px; }
         .pos-hint.is-warn { color: #B45309; font-weight: 500; }
@@ -769,13 +768,17 @@
             font-size: 24px; font-weight: 700; color: #15803D;
             font-variant-numeric: tabular-nums; letter-spacing: -0.025em;
         }
-        /* Exact money. Still stated — a cashier needs to be TOLD there is
-           nothing to give back, not left to infer it from a missing row — but
-           quieter, because green at 24px is the signal for "count this out of
-           the drawer" and there is nothing to count. */
-        .pos-change.is-zero { background: #F8FAFC; border-color: #E2E8F0; }
-        .pos-change.is-zero .pos-change-label { color: #64748B; }
-        .pos-change.is-zero .pos-change-value { color: #334155; }
+        /* Exact money.
+           Greying this out was a mistake: a grey panel holding a zero reads as
+           an EMPTY field, not as a computed answer — reported as "the change is
+           not calculated" when it had been calculated correctly. It keeps the
+           green, so it is visibly the same result field it always is, and says
+           in words that the sum came out at nothing. Only the emphasis drops. */
+        .pos-change.is-zero .pos-change-value { font-size: 20px; }
+        .pos-change { flex-wrap: wrap; }
+        .pos-change-note {
+            flex: 1 0 100%; font-size: 12px; color: #15803D; margin-top: 2px;
+        }
 
         /* ⚠️ The `hidden` ATTRIBUTE must beat a class that sets `display`.
            `.pos-change` and `.pos-quick` are `display: flex`, and a class rule

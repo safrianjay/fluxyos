@@ -5271,6 +5271,7 @@
         "Add a table": "Tambah meja",
         "Add table": "Tambah meja",
         "Table name or number": "Nama atau nomor meja",
+        "Exact amount — nothing to give back.": "Uang pas — tidak ada kembalian.",
         // Take payment: the drawer statement per method. "Counts as cash in the
         // drawer today." and "Amount received" are deliberately NOT here — both
         // already exist later in this dictionary with the same translation, and
