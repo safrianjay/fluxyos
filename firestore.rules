@@ -2647,6 +2647,14 @@ service cloud.firestore {
           // customer back. Every one is optional: a queue does not wait while a
           // cashier types a phone number.
           'customer_name', 'customer_phone', 'guest_count',
+          // When the order ENTERED its current status. The Orders board is a
+          // kitchen screen as well as a cashier's, and "how long has this been
+          // waiting" is the question it exists to answer. `updated_at` cannot
+          // answer it: every write bumps it, so adding one drink to a table that
+          // had waited 40 minutes would reset its timer to zero — hiding exactly
+          // the order that needed attention most, and looking plausible while it
+          // did. Write-only-on-transition, stamped by the DAL.
+          'status_changed_at',
           'created_at', 'updated_at', 'created_by', 'updated_by'
         ]);
     }

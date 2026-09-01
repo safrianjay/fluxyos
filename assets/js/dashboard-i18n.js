@@ -5298,6 +5298,27 @@
         "Give this order a name so it can be called out.": "Beri nama pesanan ini agar bisa dipanggil saat siap.",
         "Name or GoFood / GrabFood order…": "Nama atau pesanan GoFood / GrabFood…",
         "Nothing added yet.": "Belum ada yang ditambahkan.",
+        // ── Orders board: status tabs, sort & filter, waiting time ──────
+        "Process to Kitchen": "Diproses ke Dapur",
+        "Request Bill": "Minta Bon",
+        "Sort & filter": "Urutkan & filter",
+        "Sort by": "Urutkan menurut",
+        "Longest waiting": "Menunggu paling lama",
+        "Newest to oldest": "Terbaru ke terlama",
+        "Oldest to newest": "Terlama ke terbaru",
+        "Earliest time": "Jam paling awal",
+        "Latest time": "Jam paling akhir",
+        "Last 7 days": "7 hari terakhir",
+        "All dates": "Semua tanggal",
+        "All orders": "Semua pesanan",
+        "Take away": "Bawa pulang",
+        // "Service" is already in the dictionary above (as the rail label).
+        "Sort": "Urutan",
+        // The waiting chip. Lowercase on purpose — it sits inside the chip
+        // beside the figure, not as a heading.
+        "late": "telat",
+        "slow": "lambat",
+        "just now": "baru saja",
         "Subtotal": "Subtotal",
         "Discount": "Diskon",
         "Total": "Total",

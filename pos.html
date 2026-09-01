@@ -664,22 +664,71 @@
            Dense on purpose. This is a surface a cashier scans under pressure,
            so the spacing here is tighter than the rest of the app — every gap
            is 8/10/12/14, never the 20/24 the reading surfaces use. */
-        .pos-orders-date { font-size: 12px; color: #64748B; white-space: nowrap; }
-        .pos-orders-bar {
-            display: flex; align-items: center; justify-content: space-between;
-            gap: 12px; flex-wrap: wrap;
+        /* ── Waiting time ───────────────────────────────────────────────
+           The one number a kitchen screen is read for. Text carries the state
+           ("18m" + "late"); colour is the second channel, never the only one —
+           a service line is a bad place to rely on hue, and DESIGN_SYSTEM bans
+           colour-alone status anyway. No orange fills: orange backgrounds are
+           banned project-wide, and "late" needs to outrank the brand accent
+           rather than compete with it. */
+        .pos-wait {
+            display: inline-flex; align-items: center; gap: 5px; flex: none;
+            margin-left: auto; align-self: flex-start;
+            padding: 3px 8px; border-radius: 999px;
+            font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
+            border: 1px solid transparent; white-space: nowrap;
         }
+        .pos-wait svg { width: 13px; height: 13px; flex: none; }
+        .pos-wait.is-ok   { background: #F1F5F9; color: #475569; border-color: #E2E8F0; }
+        .pos-wait.is-warn { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
+        .pos-wait.is-late { background: #FEE2E2; color: #B91C1C; border-color: #FECACA; }
+        .pos-wait-tag {
+            font-size: 10px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.06em; opacity: .85;
+        }
+        /* A late card is findable without reading it — the left edge is the
+           cheapest place to carry that, because it survives the card being
+           scanned peripherally down a column. */
+        .pos-ocard.is-late { border-color: #FCA5A5; box-shadow: inset 3px 0 0 0 #DC2626; }
+
+        .pos-tab-count {
+            margin-left: 6px; padding: 1px 6px; border-radius: 999px;
+            background: #E2E8F0; color: #475569;
+            font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums;
+        }
+        .pos-tab.is-active .pos-tab-count { background: #0F172A; color: #fff; }
+        /* A tab holding something late says so, so the cook does not have to
+           open every tab to find out where the trouble is. */
+        .pos-tab-count.is-late { background: #DC2626; color: #fff; }
+
+        .pos-orders-date { font-size: 12px; color: #64748B; white-space: nowrap; }
+        /* Two deliberate rows, not one wrapping row.
+           Six status tabs plus their counts run ~620px, and the board column is
+           ~800px once the sidebar and the order panel have taken theirs — so on
+           one row the strip WRAPPED, stranding "Completed" on a line of its own
+           beside a band of dead space. Two clean rows are shorter than one
+           wrapped one, which is the point of the white-space rule. */
+        .pos-orders-bar { display: flex; flex-direction: column; gap: 8px; }
         .pos-orders-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
-        .pos-tabs { display: inline-flex; gap: 4px; background: #F1F5F9; padding: 3px; border-radius: 10px; }
+        /* Never wraps. A narrow till scrolls the strip sideways instead — a
+           tab row that reflows moves the tab out from under a cook's finger. */
+        .pos-tabs {
+            display: flex; gap: 4px; background: #F1F5F9; padding: 3px; border-radius: 10px;
+            flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+        }
+        .pos-tabs::-webkit-scrollbar { display: none; }
         .pos-tab {
             min-height: 32px; padding: 0 14px; border: 0; border-radius: 8px;
-            background: none; color: #475569; font-size: 13px; font-weight: 500; cursor: pointer;
+            background: none; color: #475569; font-size: 12px; font-weight: 500; cursor: pointer;
+            white-space: nowrap; flex: none;
         }
         .pos-tab:hover { color: #0F172A; }
         .pos-tab:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
         .pos-tab.is-active { background: #fff; color: #0B0F19; font-weight: 600; box-shadow: 0 1px 2px rgba(15,23,42,.10); }
-        .pos-orders-controls { display: flex; align-items: center; gap: 8px; flex: 1 1 260px; justify-content: flex-end; }
-        .pos-orders-controls .pos-search { flex: 0 1 300px; }
+        .pos-orders-controls { display: flex; align-items: center; gap: 8px; }
+        .pos-orders-controls .pos-search { flex: 1 1 auto; max-width: 320px; }
+        /* Pushes the filter and the search box to the right edge. */
+        .pos-orders-date { margin-right: auto; }
         .pos-filter-btn {
             display: inline-flex; align-items: center; justify-content: center;
             width: 36px; height: 36px; flex-shrink: 0; border-radius: 9px;
@@ -1225,17 +1274,63 @@
                          tabs instead. -->
                     <div class="pos-orders-bar">
                         <div class="pos-orders-left">
+                            <!-- One tab per real order status, in ladder order.
+                                 Each carries a live count: on a kitchen screen
+                                 "how many are in the kitchen right now" is read
+                                 more often than any single card. -->
                             <div class="pos-tabs" role="tablist" aria-label="Order status">
-                                <button type="button" role="tab" aria-selected="true" class="pos-tab is-active" data-otab="all">All</button>
-                                <button type="button" role="tab" aria-selected="false" class="pos-tab" data-otab="process">In Process</button>
-                                <button type="button" role="tab" aria-selected="false" class="pos-tab" data-otab="done">Completed</button>
+                                <button type="button" role="tab" aria-selected="true" class="pos-tab is-active" data-otab="all">All<span class="pos-tab-count" data-otab-count="all"></span></button>
+                                <button type="button" role="tab" aria-selected="false" class="pos-tab" data-otab="process">In Process<span class="pos-tab-count" data-otab-count="process"></span></button>
+                                <button type="button" role="tab" aria-selected="false" class="pos-tab" data-otab="kitchen">Process to Kitchen<span class="pos-tab-count" data-otab-count="kitchen"></span></button>
+                                <button type="button" role="tab" aria-selected="false" class="pos-tab" data-otab="served">Served<span class="pos-tab-count" data-otab-count="served"></span></button>
+                                <button type="button" role="tab" aria-selected="false" class="pos-tab" data-otab="bill">Request Bill<span class="pos-tab-count" data-otab-count="bill"></span></button>
+                                <button type="button" role="tab" aria-selected="false" class="pos-tab" data-otab="done">Completed<span class="pos-tab-count" data-otab-count="done"></span></button>
                             </div>
-                            <span class="pos-orders-date" id="pos-orders-date"></span>
                         </div>
                         <div class="pos-orders-controls">
-                            <button type="button" class="pos-filter-btn" id="pos-orders-filter" aria-label="Filter orders" aria-expanded="false">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M7 12h10M11 18h2"/></svg>
-                            </button>
+                            <span class="pos-orders-date" id="pos-orders-date"></span>
+                            <!-- The dashboard's filter component, not a POS one:
+                                 same `.fluxy-filter-*` classes the Ledger uses,
+                                 so a cashier who has filtered transactions
+                                 already knows this control. -->
+                            <div id="pos-filter-popover" class="fluxy-filter-popover">
+                                <button id="pos-orders-filter" type="button" class="fluxy-select-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="pos-filter-panel" aria-label="Sort and filter orders">
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18M6 12h12M10 20h4"></path></svg>
+                                    <span class="fluxy-select-label">Sort &amp; filter</span>
+                                    <span id="pos-filter-count" class="fluxy-filter-count hidden" aria-hidden="true">0</span>
+                                    <svg class="fluxy-select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m6 9 6 6 6-6"/></svg>
+                                </button>
+                                <div id="pos-filter-panel" class="fluxy-filter-panel" role="dialog" aria-label="Order filters" hidden>
+                                    <div class="fluxy-filter-panel-header">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-[14px] font-semibold text-gray-900">Sort &amp; filter</span>
+                                            <span id="pos-filter-applied-badge" class="fluxy-filter-applied-badge hidden">0 applied</span>
+                                        </div>
+                                        <button id="pos-filter-close" type="button" class="fluxy-filter-icon-btn" aria-label="Close filters">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    </div>
+                                    <div class="fluxy-filter-panel-main">
+                                        <div id="pos-filter-rail" class="fluxy-filter-rail" role="tablist" aria-label="Filter categories"></div>
+                                        <div class="fluxy-filter-detail">
+                                            <p id="pos-filter-detail-title" class="fluxy-filter-detail-title">Show only</p>
+                                            <div id="pos-filter-options" role="radiogroup" aria-labelledby="pos-filter-detail-title"></div>
+                                        </div>
+                                    </div>
+                                    <div class="fluxy-filter-panel-footer">
+                                        <span id="pos-filter-result-count" class="fluxy-filter-result-count">Results: 0</span>
+                                        <div class="flex items-center gap-2">
+                                            <button id="pos-filter-reset" type="button" class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[12px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors active:scale-95">Reset</button>
+                                            <!-- Navy, not the Ledger's orange. Orange BACKGROUNDS are banned
+                                                 project-wide (CLAUDE.md) and the till's own primaries —
+                                                 Create Order, Pay Bills — are already navy, so an orange
+                                                 Apply would be the only one of its kind on the screen.
+                                                 The dashboard's copy of this panel predates the rule. -->
+                                            <button id="pos-filter-apply" type="button" class="px-3 py-2 bg-gray-900 text-white rounded-lg text-[12px] font-bold hover:bg-gray-800 transition-colors active:scale-95">Apply</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="pos-search pos-search-sm">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
                                 <input id="pos-orders-search" type="search" autocomplete="off"

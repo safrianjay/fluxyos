@@ -65,6 +65,11 @@ const state = {
     zone: null,
     orderTab: 'all',
     orderQuery: '',
+    // Longest-waiting FIRST by default. The board's whole purpose is "what needs
+    // attention next", and newest-first answers the opposite question.
+    orderSort: 'waiting',
+    orderDate: 'today',
+    orderService: 'all',
     // Floor-plan arrange mode. Drags are STAGED here and unsaved until Save, so
     // one mis-drag is not a trip to the database and Cancel has something to
     // undo. Keyed by table id → { x, y } in canvas percent.
@@ -852,19 +857,131 @@ function openTableSheet() { setView('tables'); }
 // order states are open → sent → served → awaiting_payment → paid, and inventing
 // a display state that no order can ever be in is how a board stops meaning
 // anything. The two tabs map onto the real states rather than the labels.
+// One tab per REAL status, in ladder order: open → sent → served →
+// awaiting_payment → paid. The tab labels are the kitchen's words, but each one
+// resolves to a status an order can genuinely be in — a board with a tab nothing
+// can ever land in stops meaning anything.
 const ORDER_TABS = {
-    all:     () => true,
-    process: (o) => ['open', 'submitted', 'sent', 'served', 'awaiting_payment'].includes(o.status),
+    all:     (o) => o.status !== 'void',
+    // Being taken at the till, or a QR order not yet confirmed. Nothing has
+    // reached the kitchen.
+    process: (o) => ['open', 'submitted'].includes(o.status),
+    kitchen: (o) => o.status === 'sent',
+    served:  (o) => o.status === 'served',
+    bill:    (o) => o.status === 'awaiting_payment',
     done:    (o) => o.status === 'paid'
 };
+
+// ── Waiting time, and what counts as late ───────────────────────────────────
+//
+// The clock starts when the order ENTERED its current status, not when it was
+// created: a table that has been served and is waiting to pay is not "40 minutes
+// late in the kitchen". `status_changed_at` carries that; orders written before
+// the field existed fall back to `opened_at`, which over-states the wait rather
+// than under-stating it — the safe direction for a queue.
+function statusSince(o) {
+    const t = o.status_changed_at && typeof o.status_changed_at.toDate === 'function'
+        ? o.status_changed_at.toDate()
+        : (o.opened_at && typeof o.opened_at.toDate === 'function' ? o.opened_at.toDate() : null);
+    return t;
+}
+
+function waitMs(o, now = Date.now()) {
+    const t = statusSince(o);
+    return t ? Math.max(0, now - t.getTime()) : 0;
+}
+
+// Minutes before a status is "slow" and then "late". These are per-status
+// because the same number means different things: four minutes holding a bill a
+// customer has asked for is worse service than four minutes of cooking.
+//
+// A terminal status has no clock — a paid order is not waiting for anybody, and
+// a permanently amber board teaches staff to ignore the colour.
+const SLA = {
+    open:             { warn: 3,  late: 6 },
+    submitted:        { warn: 2,  late: 5 },
+    sent:             { warn: 10, late: 18 },
+    served:           { warn: 15, late: 30 },
+    awaiting_payment: { warn: 4,  late: 8 },
+    paid: null,
+    void: null
+};
+
+/** 'ok' | 'warn' | 'late' | null (null = not waiting on anyone). */
+function waitLevel(o, now = Date.now()) {
+    const sla = SLA[o.status];
+    if (!sla) return null;
+    const mins = waitMs(o, now) / 60000;
+    if (mins >= sla.late) return 'late';
+    if (mins >= sla.warn) return 'warn';
+    return 'ok';
+}
+
+function fmtWait(ms) {
+    const m = Math.floor(ms / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    return `${h}h ${m % 60}m`;
+}
+
+// How overdue an order is, as a MULTIPLE of its own late threshold. Comparing
+// raw minutes would always float the kitchen above the till, because cooking
+// legitimately takes longer than sending — so a 12-minute dish would outrank a
+// bill the customer asked for 7 minutes ago and is still sitting with.
+function urgency(o, now = Date.now()) {
+    const sla = SLA[o.status];
+    if (!sla) return -1;
+    return (waitMs(o, now) / 60000) / sla.late;
+}
+
+const ORDER_SORTS = {
+    waiting:    (a, b, now) => urgency(b, now) - urgency(a, now) || waitMs(b, now) - waitMs(a, now),
+    newest:     (a, b) => openedMs(b) - openedMs(a),
+    oldest:     (a, b) => openedMs(a) - openedMs(b),
+    time_early: (a, b) => timeOfDay(a) - timeOfDay(b),
+    time_late:  (a, b) => timeOfDay(b) - timeOfDay(a)
+};
+
+function openedMs(o) {
+    const t = o.opened_at && typeof o.opened_at.toDate === 'function' ? o.opened_at.toDate() : null;
+    return t ? t.getTime() : 0;
+}
+
+// Minutes since midnight, so "earliest time" means time-of-day rather than
+// date. On a board showing one day it agrees with oldest-first; across several
+// days it is the different question it sounds like.
+function timeOfDay(o) {
+    const t = o.opened_at && typeof o.opened_at.toDate === 'function' ? o.opened_at.toDate() : null;
+    return t ? t.getHours() * 60 + t.getMinutes() : 0;
+}
+
+function inDateWindow(o, mode) {
+    if (mode === 'all') return true;
+    const t = openedMs(o);
+    if (!t) return mode === 'all';
+    const d = new Date(); d.setHours(0, 0, 0, 0);
+    const startToday = d.getTime();
+    if (mode === 'today') return t >= startToday;
+    if (mode === 'yesterday') return t >= startToday - 86400000 && t < startToday;
+    if (mode === 'week') return t >= startToday - 6 * 86400000;
+    return true;
+}
 
 function visibleOrders() {
     const ov = state.overview || {};
     const all = (ov.activeOrders || []).concat(ov.paidToday || []);
     const pass = ORDER_TABS[state.orderTab] || ORDER_TABS.all;
     const q = (state.orderQuery || '').trim().toLowerCase();
+    // One `now` for the whole pass. Reading Date.now() inside the comparator
+    // gives the sort a moving target, which is a genuine way to get an unstable
+    // (and briefly wrong) order out of Array.sort.
+    const now = Date.now();
     return all.filter((o) => {
         if (!pass(o)) return false;
+        if (!inDateWindow(o, state.orderDate)) return false;
+        if (state.orderService === 'dine_in' && !o.table_id) return false;
+        if (state.orderService === 'takeaway' && o.table_id) return false;
         if (!q) return true;
         // Name, order, table — plus the item names, because "who ordered the
         // waffles" is how a cashier actually finds a bill.
@@ -873,9 +990,21 @@ function visibleOrders() {
             || (o.table_label ? false : 'takeaway'.includes(q))
             || (o.lines || []).some((l) => String(l.item_name || '').toLowerCase().includes(q));
     }).sort((a, b) => {
-        const ta = a.opened_at?.toDate ? a.opened_at.toDate().getTime() : 0;
-        const tb = b.opened_at?.toDate ? b.opened_at.toDate().getTime() : 0;
-        return tb - ta;
+        // Terminal orders never outrank live ones, whatever the sort. A paid
+        // bill is not competing for anybody's attention, and letting it sit at
+        // the top of a kitchen screen because it happens to be newest is the
+        // exact failure this board exists to avoid.
+        const liveA = SLA[a.status] ? 1 : 0;
+        const liveB = SLA[b.status] ? 1 : 0;
+        if (liveA !== liveB) return liveB - liveA;
+        // "Longest waiting" is meaningless once BOTH orders are settled — nobody
+        // is waiting on either. Left to the urgency comparator they fell through
+        // to its raw-elapsed tiebreak, which put the OLDEST paid order first and
+        // turned the Completed tab back to front. Newest-first is what someone
+        // reviewing completed sales wants, and it is what the tab did before.
+        if (!liveA && !liveB && state.orderSort === 'waiting') return openedMs(b) - openedMs(a);
+        const cmp = ORDER_SORTS[state.orderSort] || ORDER_SORTS.waiting;
+        return cmp(a, b, now) || openedMs(b) - openedMs(a);
     });
 }
 
@@ -894,6 +1023,284 @@ function orderShort(o) {
     return seq ? `#${seq}` : 'Order';
 }
 
+// The number the kitchen actually scans for.
+//
+// Text first, colour second — "18m · late" is legible to a colour-blind cook and
+// on a screen washed out by service-line lighting, and the DESIGN_SYSTEM rule is
+// that status is never colour-alone. `data-wait-*` lets the ticker refresh the
+// figure in place every few seconds without re-rendering the grid and stealing
+// focus out of the search box.
+function waitChip(o, now = Date.now()) {
+    const lvl = waitLevel(o, now);
+    if (!lvl) return '';                       // paid or void: waiting on nobody
+    const since = statusSince(o);
+    return `<span class="pos-wait is-${lvl}" data-wait-since="${since ? since.getTime() : ''}"
+                  data-wait-status="${esc(o.status || '')}"
+                  title="Waiting in this status since ${since ? esc(since.toLocaleTimeString(window.FluxyMoney.baseLocale(), { hour: '2-digit', minute: '2-digit' })) : ''}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <span class="pos-wait-num">${esc(fmtWait(waitMs(o, now)))}</span>
+        ${lvl === 'ok' ? '' : `<span class="pos-wait-tag">${lvl === 'late' ? 'late' : 'slow'}</span>`}
+    </span>`;
+}
+
+// Keep the clock honest without repainting the board.
+//
+// Two cadences on purpose. The FIGURES tick every 15s in place, because a chip
+// reading "9m" on a screen that has been open for half an hour is a lie the
+// kitchen would act on. The SORT is only re-run every 60s, and only when nobody
+// is typing — re-ordering cards under a cook's finger mid-tap is how the wrong
+// order gets opened.
+let waitTicker = null;
+let lastResort = 0;
+
+function tickWaits() {
+    const view = document.querySelector('.pos-view[data-view="orders"]');
+    if (!view || view.classList.contains('hidden')) return;
+
+    const now = Date.now();
+    document.querySelectorAll('.pos-wait[data-wait-since]').forEach((el) => {
+        const since = Number(el.dataset.waitSince);
+        if (!since) return;
+        const status = el.dataset.waitStatus;
+        const sla = SLA[status];
+        if (!sla) return;
+        const ms = Math.max(0, now - since);
+        const mins = ms / 60000;
+        const lvl = mins >= sla.late ? 'late' : (mins >= sla.warn ? 'warn' : 'ok');
+        const num = el.querySelector('.pos-wait-num');
+        if (num) num.textContent = fmtWait(ms);
+        el.classList.remove('is-ok', 'is-warn', 'is-late');
+        el.classList.add(`is-${lvl}`);
+        const tag = el.querySelector('.pos-wait-tag');
+        if (lvl === 'ok') { if (tag) tag.remove(); }
+        else if (tag) { tag.textContent = lvl === 'late' ? 'late' : 'slow'; }
+        else {
+            const span = document.createElement('span');
+            span.className = 'pos-wait-tag';
+            span.textContent = lvl === 'late' ? 'late' : 'slow';
+            el.appendChild(span);
+        }
+        el.closest('.pos-ocard')?.classList.toggle('is-late', lvl === 'late');
+    });
+
+    const typing = document.activeElement
+        && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+    if (!typing && state.orderSort === 'waiting' && now - lastResort > 60000) {
+        lastResort = now;
+        renderOrderLists();
+    }
+}
+
+function startWaitTicker() {
+    if (waitTicker) return;
+    waitTicker = setInterval(tickWaits, 15000);
+}
+
+// ── Sort & filter panel ─────────────────────────────────────────────────────
+//
+// The dashboard's filter component, driven by the same shape the Ledger uses: a
+// rail of groups on the left, single-select options on the right, a live result
+// count, Reset and Apply. Reusing the CSS rather than re-styling means a cashier
+// who has filtered the Ledger already knows this control.
+//
+// Every group is single-select here. The Ledger has multi-select groups because
+// "Income AND Expense" is a real question; "sorted by newest AND by longest
+// waiting" is not.
+const POS_FILTER_GROUPS = [
+    {
+        key: 'orderSort', label: 'Sort', default: 'waiting',
+        icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h13M3 12h9M3 17h5M17 8v9m0 0 3-3m-3 3-3-3"/>',
+        options: [
+            // First because it is the board's whole argument: what needs
+            // attention next, not what happened last.
+            { value: 'waiting',    label: 'Longest waiting' },
+            { value: 'newest',     label: 'Newest to oldest' },
+            { value: 'oldest',     label: 'Oldest to newest' },
+            { value: 'time_early', label: 'Earliest time' },
+            { value: 'time_late',  label: 'Latest time' }
+        ]
+    },
+    {
+        key: 'orderDate', label: 'Date', default: 'today',
+        icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0V11.25h18v7.5"/>',
+        options: [
+            { value: 'today',     label: 'Today' },
+            { value: 'yesterday', label: 'Yesterday' },
+            { value: 'week',      label: 'Last 7 days' },
+            { value: 'all',       label: 'All dates' }
+        ]
+    },
+    {
+        key: 'orderService', label: 'Service', default: 'all',
+        icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M5 10V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3M6 10v9m12-9v9"/>',
+        options: [
+            { value: 'all',      label: 'All orders' },
+            { value: 'dine_in',  label: 'Dine in' },
+            { value: 'takeaway', label: 'Take away' }
+        ]
+    }
+];
+
+let posPendingFilters = null;
+let posActiveGroup = POS_FILTER_GROUPS[0].key;
+
+const posFilterIsDefault = (g, st) => (st[g.key] ?? g.default) === g.default;
+
+function posCountApplied(st) {
+    return POS_FILTER_GROUPS.reduce((n, g) => (posFilterIsDefault(g, st) ? n : n + 1), 0);
+}
+
+function renderPosFilterRail() {
+    const rail = $('pos-filter-rail');
+    if (!rail) return;
+    rail.innerHTML = POS_FILTER_GROUPS.map((g) => `
+        <button type="button" class="fluxy-filter-rail-item" role="tab" data-group="${esc(g.key)}" aria-selected="${g.key === posActiveGroup}">
+            <svg class="fluxy-filter-rail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">${g.icon}</svg>
+            <span class="fluxy-filter-rail-label">${esc(g.label)}</span>
+            <span class="fluxy-filter-rail-dot${posFilterIsDefault(g, posPendingFilters) ? ' hidden' : ''}" aria-hidden="true"></span>
+        </button>`).join('');
+}
+
+function renderPosFilterOptions() {
+    const host = $('pos-filter-options');
+    const title = $('pos-filter-detail-title');
+    const g = POS_FILTER_GROUPS.find((x) => x.key === posActiveGroup);
+    if (!host || !g) return;
+    if (title) title.textContent = g.key === 'orderSort' ? 'Sort by' : `Show only · ${g.label}`;
+    const chosen = posPendingFilters[g.key] ?? g.default;
+    host.innerHTML = g.options.map((o) => `
+        <button type="button" class="fluxy-filter-option${o.value === chosen ? ' is-selected' : ''}" role="radio"
+                aria-checked="${o.value === chosen}" data-value="${esc(o.value)}">
+            <span class="fluxy-filter-radio" aria-hidden="true"></span>
+            <span>${esc(o.label)}</span>
+        </button>`).join('');
+}
+
+function updatePosFilterPreview() {
+    // Counts against the PENDING selection, so Apply is never a surprise.
+    const committed = { orderSort: state.orderSort, orderDate: state.orderDate, orderService: state.orderService };
+    Object.assign(state, posPendingFilters);
+    const n = visibleOrders().length;
+    Object.assign(state, committed);
+
+    const res = $('pos-filter-result-count');
+    if (res) res.textContent = `Results: ${n.toLocaleString(window.FluxyMoney.baseLocale())}`;
+    const applied = posCountApplied(posPendingFilters);
+    const badge = $('pos-filter-applied-badge');
+    if (badge) {
+        badge.textContent = `${applied} applied`;
+        badge.classList.toggle('hidden', applied === 0);
+    }
+}
+
+function syncPosFilterTrigger() {
+    const applied = posCountApplied(state);
+    const count = $('pos-filter-count');
+    if (count) {
+        count.textContent = String(applied);
+        count.classList.toggle('hidden', applied === 0);
+    }
+}
+
+function positionPosFilterPanel() {
+    const trigger = $('pos-orders-filter');
+    const panel = $('pos-filter-panel');
+    if (!trigger || !panel) return;
+    const rect = trigger.getBoundingClientRect();
+    const gap = 12;
+    const width = panel.offsetWidth || 520;
+    // Right-aligned to the trigger, but clamped to the CONTENT's left edge, not
+    // the window's. The till has a fixed sidebar the Ledger does not, and a
+    // 520px panel hung off a trigger two-thirds across the board reached back
+    // under it — the panel appeared to float over the navigation.
+    const canvas = document.querySelector('.fluxy-page-canvas') || document.body;
+    const minLeft = Math.max(gap, Math.round(canvas.getBoundingClientRect().left));
+    const maxLeft = Math.max(minLeft, window.innerWidth - width - gap);
+    const left = Math.min(Math.max(minLeft, rect.right - width), maxLeft);
+    panel.style.setProperty('--fluxy-filter-panel-top', `${Math.round(rect.bottom + 6)}px`);
+    panel.style.setProperty('--fluxy-filter-panel-left', `${Math.round(left)}px`);
+}
+
+function openPosFilterPanel() {
+    const panel = $('pos-filter-panel');
+    if (!panel) return;
+    posPendingFilters = {
+        orderSort: state.orderSort, orderDate: state.orderDate, orderService: state.orderService
+    };
+    posActiveGroup = POS_FILTER_GROUPS[0].key;
+    renderPosFilterRail();
+    renderPosFilterOptions();
+    updatePosFilterPreview();
+    panel.hidden = false;
+    $('pos-orders-filter')?.setAttribute('aria-expanded', 'true');
+    positionPosFilterPanel();
+    requestAnimationFrame(positionPosFilterPanel);
+}
+
+function closePosFilterPanel() {
+    const panel = $('pos-filter-panel');
+    if (!panel) return;
+    panel.hidden = true;
+    $('pos-orders-filter')?.setAttribute('aria-expanded', 'false');
+}
+
+// Per-tab counts, and whether anything inside a tab is LATE.
+//
+// The count answers "how much work is in the kitchen"; the red mark answers
+// "and is any of it in trouble" — without which a cook has to open all six tabs
+// to find out. Counts respect the date and service filters, so the number on a
+// tab always equals what pressing it will show.
+// TEST SEAM — paints supplied rows through the real render path.
+//
+// The board's whole argument is about order AGE, and every threshold here is
+// minutes long. Proving the 18-minute kitchen rule by waiting 18 minutes is not
+// a test anyone runs twice, and manufacturing genuinely old orders means writing
+// junk into a live workspace. This takes rows with known timestamps and repaints
+// with them.
+//
+// Deliberately narrow: it does not expose `state`, it writes nothing, and it
+// touches only this tab's DOM. Everything it can do, devtools could already do.
+// Returns what it painted, so a caller can seed and read in ONE step. The live
+// watcher repaints from real data whenever a QR order or another till writes, so
+// seeding and asserting in two round-trips is a race the assertion loses — it
+// reads the real board and reports a confusing failure about sort order.
+window.__posSeedBoard = (rows) => {
+    const all = (rows || []).map((o) => ({ ...o }));
+    state.overview = {
+        ...(state.overview || {}),
+        activeOrders: all.filter((o) => o.status !== 'paid'),
+        paidToday: all.filter((o) => o.status === 'paid'),
+        tables: (state.overview || {}).tables || []
+    };
+    renderOrderLists();
+    return [...document.querySelectorAll('.pos-ocard')].map((c) => {
+        const w = c.querySelector('.pos-wait');
+        return {
+            status: c.dataset.status,
+            level: w ? (String(w.className).match(/is-(ok|warn|late)/) || [])[1] || null : null,
+            text: w ? w.textContent.replace(/\s+/g, ' ').trim() : null,
+            flagged: c.classList.contains('is-late')
+        };
+    });
+};
+
+function renderTabCounts() {
+    const ov = state.overview || {};
+    const all = (ov.activeOrders || []).concat(ov.paidToday || []);
+    const now = Date.now();
+    const scoped = all.filter((o) => inDateWindow(o, state.orderDate)
+        && !(state.orderService === 'dine_in' && !o.table_id)
+        && !(state.orderService === 'takeaway' && o.table_id));
+
+    Object.keys(ORDER_TABS).forEach((key) => {
+        const el = document.querySelector(`[data-otab-count="${key}"]`);
+        if (!el) return;
+        const rows = scoped.filter(ORDER_TABS[key]);
+        el.textContent = rows.length ? String(rows.length) : '';
+        el.classList.toggle('is-late', rows.some((o) => waitLevel(o, now) === 'late'));
+    });
+}
+
 function renderOrderLists() {
     const grid = $('pos-orders-grid');
     const empty = $('pos-orders-empty');
@@ -904,6 +1311,8 @@ function renderOrderLists() {
         dateEl.textContent = new Date().toLocaleDateString(window.FluxyMoney.baseLocale(),
             { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
     }
+
+    renderTabCounts();
 
     const rows = visibleOrders();
     if (!rows.length) {
@@ -925,8 +1334,10 @@ function renderOrderLists() {
     // below the fold of the card.
     const MAX_LINES = 3;
 
+    const now = Date.now();
     grid.innerHTML = rows.map((o) => {
         const st = STATUS[o.status] || STATUS.open;
+        const lvl = waitLevel(o, now);
         const when = o.opened_at?.toDate ? o.opened_at.toDate() : null;
         const lines = o.lines || [];
         const shown = lines.slice(0, MAX_LINES);
@@ -934,7 +1345,7 @@ function renderOrderLists() {
         const payable = ['served', 'awaiting_payment'].includes(o.status)
             || (o.status !== 'paid' && o.status !== 'void' && Number(o.total_amount) > 0);
 
-        return `<article class="pos-ocard${state.orderId === o.id ? ' is-open' : ''}" data-order-card="${esc(o.id)}" data-status="${esc(o.status || '')}" tabindex="0" role="button"
+        return `<article class="pos-ocard${state.orderId === o.id ? ' is-open' : ''}${lvl === 'late' ? ' is-late' : ''}" data-order-card="${esc(o.id)}" data-status="${esc(o.status || '')}" tabindex="0" role="button"
                     aria-label="Order ${esc(o.order_number || '')}, ${esc(orderTag(o))}">
             <div class="pos-ocard-head">
                 <span class="pos-otag">${esc(orderTag(o))}</span>
@@ -952,6 +1363,7 @@ function renderOrderLists() {
                         <span class="fluxy-table-status ${st.cls} pos-ocard-status">${esc(st.label)}</span>
                     </div>
                 </div>
+                ${waitChip(o, now)}
             </div>
 
             <table class="pos-ocard-items">
@@ -2921,6 +3333,9 @@ function bindOutlet() {
 }
 
 function wire() {
+    // One interval for the life of the page. It no-ops unless the Orders view is
+    // the one on screen.
+    startWaitTicker();
     $('pos-primary').addEventListener('click', () => {
         // With no order open this button is not "advance" — there is nothing to
         // advance. It is whatever the empty panel needs: a table to exist, or a
@@ -3001,20 +3416,65 @@ function wire() {
         state.orderQuery = e.target.value || '';
         renderOrderLists();
     });
-    // The reference's filter button. It scopes to THIS outlet's open orders —
-    // the one filter the board does not already offer as a tab — rather than
-    // opening a panel of controls that duplicate the tabs beside it.
+    // ── Sort & filter panel ─────────────────────────────────────────────
+    // The button used to be a second, hidden way to set the "In Process" tab —
+    // a control that silently moved another control. It now opens the panel.
     $('pos-orders-filter').addEventListener('click', (e) => {
-        const on = state.orderTab !== 'process';
-        state.orderTab = on ? 'process' : 'all';
-        e.currentTarget.setAttribute('aria-expanded', String(on));
-        e.currentTarget.classList.toggle('is-on', on);
-        document.querySelectorAll('[data-otab]').forEach((x) => {
-            const active = x.dataset.otab === state.orderTab;
-            x.classList.toggle('is-active', active);
-            x.setAttribute('aria-selected', String(active));
-        });
+        e.stopPropagation();
+        if ($('pos-filter-panel')?.hidden === false) closePosFilterPanel();
+        else openPosFilterPanel();
+    });
+    $('pos-filter-close')?.addEventListener('click', closePosFilterPanel);
+
+    $('pos-filter-rail')?.addEventListener('click', (e) => {
+        const item = e.target.closest('.fluxy-filter-rail-item');
+        if (!item) return;
+        // Re-rendering the rail detaches this node, so the outside-click handler
+        // below would otherwise read a target that is no longer inside the panel
+        // and close it. Same reason the Ledger stops the event here.
+        e.stopPropagation();
+        posActiveGroup = item.dataset.group;
+        renderPosFilterRail();
+        renderPosFilterOptions();
+    });
+
+    $('pos-filter-options')?.addEventListener('click', (e) => {
+        const opt = e.target.closest('.fluxy-filter-option');
+        if (!opt) return;
+        e.stopPropagation();
+        posPendingFilters[posActiveGroup] = opt.dataset.value;
+        renderPosFilterOptions();
+        renderPosFilterRail();
+        updatePosFilterPreview();
+    });
+
+    $('pos-filter-reset')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        POS_FILTER_GROUPS.forEach((g) => { posPendingFilters[g.key] = g.default; });
+        renderPosFilterRail();
+        renderPosFilterOptions();
+        updatePosFilterPreview();
+    });
+
+    $('pos-filter-apply')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        Object.assign(state, posPendingFilters);
+        syncPosFilterTrigger();
+        closePosFilterPanel();
         renderOrderLists();
+    });
+
+    document.addEventListener('click', (e) => {
+        const panel = $('pos-filter-panel');
+        if (!panel || panel.hidden) return;
+        if (e.target.closest('#pos-filter-popover')) return;
+        closePosFilterPanel();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && $('pos-filter-panel')?.hidden === false) closePosFilterPanel();
+    });
+    window.addEventListener('resize', () => {
+        if ($('pos-filter-panel')?.hidden === false) positionPosFilterPanel();
     });
 
     // Notifications. Everything that used to stack above the catalogue lives

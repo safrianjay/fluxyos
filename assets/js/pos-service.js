@@ -337,6 +337,9 @@ export const POS_METHODS = {
             shift_id: shiftId || null,
             version: 1,
             opened_at: Timestamp.fromDate(now),
+            // Equal to opened_at at birth: an order is "waiting" from the moment
+            // it exists, not from its first transition.
+            status_changed_at: Timestamp.fromDate(now),
             paid_at: null, voided_at: null, void_reason: null,
             transaction_id: null, stock_adjustment_id: null,
             refund_transaction_id: null, refund_reason: null, refunded_at: null,
@@ -372,9 +375,24 @@ export const POS_METHODS = {
                 updated_at: serverTimestamp(),
                 updated_by: this.actorUid || userId
             };
+            // The clock the Orders board runs on. Stamped ONLY when the status
+            // actually moves, which is what separates it from `updated_at`:
+            // every edit bumps that one, so a waiter adding a drink to a table
+            // that had been waiting 40 minutes would reset the kitchen's timer
+            // to zero. Silent, plausible, and backwards — the order most in need
+            // of attention would drop to the bottom of the queue.
+            const moved = changes.status && changes.status !== current.status;
+            if (moved) patch.status_changed_at = serverTimestamp();
             delete patch.id;
             tx.update(ref, patch);
-            return { ...merged, ...totals, version: patch.version };
+            // The returned copy carries a CLIENT time for the same field: the
+            // server sentinel is unreadable until the next read, and the board
+            // repaints immediately after a transition. It is replaced by the
+            // authoritative value on the next refresh.
+            return {
+                ...merged, ...totals, version: patch.version,
+                ...(moved ? { status_changed_at: Timestamp.fromDate(new Date()) } : {})
+            };
         });
     },
 

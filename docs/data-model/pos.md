@@ -98,6 +98,7 @@ nothing would report it.
 | `customer_name` | string ≤80 \| null | Taken in the Create Order dialog. Optional |
 | `customer_phone` | string ≤32 \| null | How to call a takeaway back. Optional |
 | `guest_count` | int 0–999 \| null | Covers, for a dine-in. Whole people — rules refuse a fractional count |
+| `status_changed_at` | Timestamp | When the order ENTERED its current status. Stamped by the DAL **only on a real transition** — see below |
 | `version` | integer | Bumped on every write — the concurrency guard |
 | `transaction_id` / `stock_adjustment_id` | string \| null | What this order emitted. **The idempotency key** |
 | `refund_transaction_id` / `refund_reason` / `refunded_at` | | The refund trail |
@@ -198,6 +199,38 @@ They are scalars, so unlike `lines[]`/`payments[]` they are bounded in rules as
 well as in the DAL: nine expressions, which the lean POS validators afford, and
 worth spending because they are the only fields on this document a customer's
 own words reach.
+
+### `status_changed_at`, and why `updated_at` could not do this job
+
+The Orders board is a kitchen screen as much as a cashier's, and its rule is
+*prioritise what needs attention next, not what happened last*. That needs one
+number: how long this order has been sitting in the state it is in.
+
+`updated_at` looks like that number and is not. Every write bumps it — a line
+added, a note typed, a discount applied — so a waiter adding one drink to a table
+that had been waiting forty minutes would reset the kitchen's timer to **zero**.
+The order most in need of attention would drop to the BOTTOM of a longest-waiting
+sort, silently, and the board would look entirely plausible while doing it.
+
+So the DAL stamps `status_changed_at` inside `updatePosOrder`, guarded by
+`changes.status !== current.status`. `createPosOrder` seeds it equal to
+`opened_at`: an order is waiting from the moment it exists, not from its first
+transition. Orders written before the field existed fall back to `opened_at` in
+the UI, which OVER-states the wait rather than under-stating it — the safe
+direction for a queue.
+
+`pos_orders` has a `hasOnly`, so this required a rules change and a deploy
+(2026-09-01, stamped). The frozen-paid paths are unaffected:
+`wsValidPosOrderStamp` and `wsValidPosOrderRefund` check named fields rather than
+the key set, so adding a key cannot loosen them.
+
+**Lateness is per-status, and that is the point.** The board compares
+minutes ÷ that status's own late threshold, never raw minutes. Cooking
+legitimately takes longer than sending, so ranking by minutes floats every dish
+above a bill the customer has already asked for and is still sitting with.
+Thresholds live in `SLA` in `assets/js/pos.js`; a terminal status (`paid`,
+`void`) has none, because a settled order is waiting on nobody and a permanently
+amber board teaches staff to ignore the colour.
 
 ### `channel` is the connector seam
 
