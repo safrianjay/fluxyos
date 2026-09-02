@@ -31,6 +31,12 @@ const PRODUCTION_ORIGINS = [
     // The till. Firebase auth is keyed by origin, so a cashier signs in here and
     // every API call they make carries this Origin header.
     'https://pos.fluxyos.com',
+    // The diner's surface. Unlike every other origin here, NOBODY SIGNS IN ON
+    // IT — there is no Firebase SDK on the page and no session to carry. It
+    // reaches exactly three functions (qr-menu, qr-menu-image, qr-order), all
+    // of which authenticate the TABLE by its token rather than the caller, so
+    // listing it grants no credentialed access to anything.
+    'https://order.fluxyos.com',
 ];
 
 // Local development and the Playwright static server. Kept in the same list

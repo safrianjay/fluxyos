@@ -42,7 +42,10 @@ const ROOT = path.join(__dirname, '..');
 const MARKETING_ORIGIN = 'https://fluxyos.com';
 const APP_ORIGIN = 'https://dashboard.fluxyos.com';
 const TILL_ORIGIN = 'https://pos.fluxyos.com';
-const ORIGIN = { marketing: MARKETING_ORIGIN, app: APP_ORIGIN, till: TILL_ORIGIN };
+const ORDER_ORIGIN = 'https://order.fluxyos.com';
+const ORIGIN = {
+    marketing: MARKETING_ORIGIN, app: APP_ORIGIN, till: TILL_ORIGIN, order: ORDER_ORIGIN
+};
 
 // ---------------------------------------------------------------------------
 // Page classification — single source of truth for the split.
@@ -128,17 +131,26 @@ const PAGE_ROLES = {
     'settings-whatsapp.html': ['app'],
     'subscription.html': ['app'],
     'tax-center.html': ['app'],
+
+    // ── order (order.fluxyos.com) ──────────────────────────────────
+    // The diner's surface, reached by scanning the QR on a table. Its own
+    // origin and nothing else on it: this is the only page in the product
+    // loaded by someone who is not a customer OF FluxyOS, and giving it a
+    // separate host is what keeps a bug there from reaching a session on the
+    // dashboard. It carries no Firebase SDK and signs nobody in.
+    'order.html': ['order'],
 };
 
 // Derived views. Nothing below re-lists a page, so the map is the only place a
 // page is classified.
-const ROLES = ['marketing', 'app', 'till'];
+const ROLES = ['marketing', 'app', 'till', 'order'];
 const pagesFor = (role) => Object.keys(PAGE_ROLES).filter((f) => PAGE_ROLES[f].includes(role));
 const canonicalRole = (file) => PAGE_ROLES[file][0];
 
 const MARKETING_PAGES = pagesFor('marketing');
 const APP_PAGES = pagesFor('app');
 const TILL_PAGES = pagesFor('till');
+const ORDER_PAGES = pagesFor('order');
 
 // Marketing-only directories, pruned from app deploys. includes/ and assets/
 // stay on both sites (footer partials are only fetched by marketing pages;
@@ -343,6 +355,29 @@ function prepareTill() {
     installRedirects('till', '# {{FOREIGN_PAGE_REDIRECTS}}', foreignPageRedirects('till'));
 }
 
+// The diner's surface. The narrowest deploy in the product: one page, no
+// Firebase SDK, no session, nobody signed in.
+//
+// The scheduled-function prune is the load-bearing line, for the same reason it
+// is on the till and on marketing — every site deploys the same functions
+// directory, so a FOURTH site that keeps them registers every cron a fourth
+// time. A quadruple nightly digest is invisible until it has already mailed
+// customers.
+function prepareOrder() {
+    pruneForeignPages('order');
+    MARKETING_DIRS.forEach(rm);
+    rm('sitemap.xml');
+    rm('llms.txt');
+    SCHEDULED_FUNCTIONS.forEach((f) => rm(path.join('netlify', 'functions', f)));
+
+    fs.writeFileSync(path.join(ROOT, 'robots.txt'), 'User-agent: *\nDisallow: /\n');
+    console.log('[prepare-deploy]   wrote disallow-all robots.txt');
+    fs.writeFileSync(path.join(ROOT, '_headers'), '/*\n  X-Robots-Tag: noindex, nofollow\n');
+    console.log('[prepare-deploy]   wrote _headers (X-Robots-Tag: noindex)');
+
+    installRedirects('order', '# {{FOREIGN_PAGE_REDIRECTS}}', foreignPageRedirects('order'));
+}
+
 function prepareApp() {
     pruneForeignPages('app');
     MARKETING_DIRS.forEach(rm);
@@ -387,6 +422,7 @@ function main() {
 
     if (role === 'marketing') prepareMarketing();
     else if (role === 'till') prepareTill();
+    else if (role === 'order') prepareOrder();
     else prepareApp();
 
     // Templates must not ship as public files (publish dir is the repo root).
@@ -414,4 +450,5 @@ module.exports = {
     MARKETING_PAGES,
     APP_PAGES,
     TILL_PAGES,
+    ORDER_PAGES,
 };

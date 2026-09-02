@@ -38,6 +38,7 @@
     "check:pos-availability": "node tests/pos-availability.check.js",
     "report:grni": "node scripts/grni-match-report.js",
     "check:qr-image": "node tests/qr-menu-image.check.js",
+    "check:qr-order": "node tests/qr-order.check.js",
     "check:rate-limit": "node tests/rate-limit.check.js",
     "check:modifier-cogs": "node tests/modifier-cogs.check.js",
     "sync:table-directory": "node scripts/sync-pos-table-directory.js",

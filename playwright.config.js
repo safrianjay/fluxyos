@@ -79,7 +79,13 @@ module.exports = defineConfig({
         // Add a spec here when it is guarding exactly that.
         {
             name: 'webkit',
-            testMatch: /budget-assignment-drawer\.spec\.js$/,
+            // Two files, both guarding the same class of bug. The customer
+            // ordering page earns its place outright: it is mobile-Safari-first
+            // by definition (a diner scans a QR with the phone in their hand),
+            // and its central interactions are injected bottom sheets — exactly
+            // the combination that rendered a 1440px dialog in a 420px frame on
+            // /bill.html while every Chromium check stayed green.
+            testMatch: /(budget-assignment-drawer|customer-ordering)\.spec\.js$/,
             use: {
                 ...devices['Desktop Safari'],
                 storageState: 'tests/.auth/storageState.json',

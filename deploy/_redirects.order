@@ -1,0 +1,42 @@
+# GENERATED SOURCE — installed as _redirects by scripts/prepare-deploy.js when
+# SITE_ROLE=order (the order.fluxyos.com site). Never ships as-is.
+#
+# _redirects rules are processed by Netlify BEFORE netlify.toml [[redirects]],
+# so the rules below shadow the monolith rules that would misbehave here
+# (most importantly netlify.toml's forced "/" -> /fluxyos.html rewrite).
+#
+# This site serves ONE page: the menu a diner reaches by scanning the QR on
+# their table. No dashboard, no till, no login — a customer has no account and
+# this origin must never be able to sign anyone in.
+
+# --- Host canonicalization: never serve the raw netlify.app subdomain ---
+# NOTE: update the hostname below to the actual Netlify site name chosen when
+# the order site is created (assumed fluxyos-order).
+https://fluxyos-order.netlify.app/*   https://order.fluxyos.com/:splat   301!
+
+# --- The table QR target ---
+# `/t/<token>` is the printed form: short enough to keep the QR's module count
+# low, so it still scans from a laminated card in low restaurant light. A 200
+# rewrite, NOT a redirect — the token must stay in the address bar, because the
+# page reads it from the path and a customer who reloads must land back at their
+# own table rather than at a bare menu with no table context.
+/t/*                              /order.html                                   200
+
+# --- API function routes ---
+# The same shared functions directory is deployed to every site, routed by path.
+# Only the two public endpoints are reachable here by design: everything else in
+# /api/v1 expects a Firebase ID token that a diner does not have and must not be
+# invited to acquire on this origin.
+/.netlify/functions/qr-menu        /.netlify/functions/qr-menu        200
+/.netlify/functions/qr-menu-image  /.netlify/functions/qr-menu-image  200
+/.netlify/functions/qr-order       /.netlify/functions/qr-order       200
+
+# --- Everything this site does not serve ---
+# {{FOREIGN_PAGE_REDIRECTS}}
+
+# --- Root: a bare visit has no table ---
+# order.fluxyos.com with no token cannot show a menu — it does not know which
+# restaurant is being asked about. The page says so itself rather than 404ing,
+# because the likeliest visitor is someone who typed the domain off a card and
+# needs telling to scan the code instead.
+/                                 /order.html                                   200

@@ -176,6 +176,60 @@ console.log('SITE_ROLE=till (pos.fluxyos.com):');
     fs.rmSync(dir, { recursive: true, force: true });
 }
 
+// --- order role ---------------------------------------------------------------
+console.log('SITE_ROLE=order (order.fluxyos.com):');
+{
+    const dir = makeFixture('order');
+    run(dir, 'order');
+
+    // ONE page. This origin is loaded by people who are not FluxyOS customers,
+    // reached by scanning a laminated card, and the narrowness IS the security
+    // posture: what is not deployed cannot be found.
+    assert(exists(dir, 'order.html'), 'order.html kept');
+    assert(!exists(dir, 'pos.html'), 'the till is pruned — a diner must not reach the cashier surface');
+    assert(!exists(dir, 'login.html'),
+        'login.html pruned — a customer has no account, and this origin must never sign anyone in');
+    assert(!exists(dir, 'dashboard.html') && !exists(dir, 'ledger.html') && !exists(dir, 'settings-billing.html'),
+        'dashboard pages pruned');
+    assert(!exists(dir, 'fluxyos.html') && !exists(dir, 'pricing.html') && !exists(dir, 'use-cases') && !exists(dir, 'id'),
+        'marketing pages pruned');
+    assert(exists(dir, 'assets'), 'shared assets kept — the page loads money-format.js');
+
+    assert(read(dir, 'robots.txt').trim() === 'User-agent: *\nDisallow: /', 'disallow-all robots');
+    assert(read(dir, '_headers').includes('X-Robots-Tag: noindex, nofollow'), 'noindex _headers written');
+    // The fourth site keeping the scheduled functions would register every cron
+    // a FOURTH time. Silent until it has already mailed customers four digests.
+    assert(!exists(dir, 'netlify/functions/notify-sweep.js') && !exists(dir, 'netlify/functions/weekly-digest.js'),
+        'scheduled functions pruned — a fourth cron host would quadruple every send');
+    assert(exists(dir, 'netlify/functions/qr-menu.js')
+        && exists(dir, 'netlify/functions/qr-order.js')
+        && exists(dir, 'netlify/functions/qr-menu-image.js'),
+        'the three public QR endpoints are deployed here');
+    assert(!exists(dir, 'sitemap.xml') && !exists(dir, 'llms.txt'), 'sitemap/llms pruned');
+    assert(!exists(dir, 'deploy'), 'deploy/ templates removed');
+    assertSourceTreePruned(dir, 'order');
+
+    const r = read(dir, '_redirects');
+    assert(!r.includes('{{'), 'marker fully expanded');
+    // The token must survive in the address bar: a 200 rewrite, never a 301,
+    // or a customer who reloads lands at a menu that has forgotten their table.
+    assert(/^\/t\/\*\s+\/order\.html\s+200/m.test(r), '/t/<token> is a 200 rewrite, not a redirect');
+    assert(!/\/t\/\*.*30[12]/.test(r), '/t/* never redirects — that would drop the token');
+    assert(r.includes('/dashboard       https://dashboard.fluxyos.com/dashboard  301!'),
+        'app-path 301 to the dashboard origin');
+    assert(r.includes('/pricing       https://fluxyos.com/pricing  301!'), 'marketing-path 301 to the apex');
+    assert(r.includes('/pos       https://dashboard.fluxyos.com/pos  301!'),
+        'the till path 301s away to its canonical origin');
+    // Deliberately ABSENT. Every other role proxies the Firebase auth handler
+    // because a user signs in there. Nobody signs in here, and shipping the
+    // proxy would hand an anonymous origin a working auth surface.
+    assert(!r.includes('/__/auth/*'),
+        'no auth proxy — this origin signs nobody in, so it must not host the handler');
+    assert(!/^\/api\/v1\/\*/m.test(r),
+        'no /api/v1 catch-all — only the three public QR endpoints are reachable');
+    fs.rmSync(dir, { recursive: true, force: true });
+}
+
 // --- dual-serve invariant -----------------------------------------------------
 // pos.html is served by BOTH app and till during the migration. The app site
 // must therefore keep serving it rather than 301ing to a till that has not

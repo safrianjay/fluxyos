@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0B0F19">
+<title>Pesan — FluxyOS</title>
+<link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!--
+  FluxyOS — the surface a diner sees after scanning the QR on their table.
+
+  NO TAILWIND, DELIBERATELY. Every other app page loads the Tailwind Play CDN,
+  and on 2026-09-02 that produced a WebKit-only failure: utilities are not
+  generated in time for DOM injected at runtime, measured at 420px on Chromium
+  against 1440px on WebKit for the same dialog with the CDN fully available.
+  This page is mobile-Safari-first and its central interactions ARE injected
+  bottom sheets, which is precisely that failure combination
+  (docs/CUSTOMER_ORDERING_PLAN_REVIEW.md §1.5). It also removes a render-blocking
+  script from the one page in the product loaded on a stranger's phone, on
+  restaurant wifi, while they are hungry.
+
+  NO FIREBASE SDK. A customer has no account and never signs in. Everything the
+  page needs comes from two public endpoints — `qr-menu` and `qr-order` — which
+  resolve the table's token with the Admin SDK. A browser holding a Firestore
+  handle would need rules admitting an anonymous reader into a workspace, and
+  there is no such rule that stays narrow.
+
+  Amounts render through `window.FluxyMoney.formatBase`, never a local
+  formatter: the workspace's base currency may be PHP, where amounts are stored
+  in cents and a hardcoded id-ID + Rp renders 100x the money with no error.
+-->
+
+<script src="assets/js/money-format.js"></script>
+<style>
+/* ==========================================================================
+   Tokens — the subset of the design system this page needs, inlined. It cannot
+   import shared-dashboard.css: that file is 6k lines of app chrome and this
+   page must paint on a phone in one round trip.
+   ========================================================================== */
+:root {
+    --ink:          #0B0F19;   /* brand dark navy — primary surfaces and CTAs */
+    --ink-70:       #4B5563;
+    --ink-50:       #6B7280;
+    --ink-30:       #9CA3AF;
+    --line:         #E5E7EB;
+    --line-soft:    #F3F4F6;
+    --surface:      #FFFFFF;
+    --canvas:       #F9FAFB;
+    --accent:       #EA580C;   /* ACCENT ONLY — never a background (CLAUDE.md) */
+    --accent-soft:  rgba(234, 88, 12, 0.10);
+    --ok:           #047857;
+    --danger:       #B91C1C;
+
+    --r-sm: 8px;
+    --r-md: 12px;
+    --r-lg: 16px;
+    --r-xl: 20px;
+
+    --shadow-sheet: 0 -8px 40px -12px rgba(11, 15, 25, 0.22);
+    --shadow-bar:   0 -2px 16px -8px rgba(11, 15, 25, 0.18);
+
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    /* iOS Safari zooms a page when an input's font-size is under 16px. Every
+       input below is 16px for that reason and not for emphasis. */
+    -webkit-text-size-adjust: 100%;
+}
+
+/* Numbers are Inter with tabular figures and a plain zero. A monospace face is
+   banned project-wide — it renders a slashed zero (DESIGN_SYSTEM.md). */
+.num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1, 'zero' 0;
+}
+
+button { font: inherit; color: inherit; cursor: pointer; }
+img { max-width: 100%; display: block; }
+
+.hidden { display: none !important; }
+
+/* ==========================================================================
+   App frame
+   ========================================================================== */
+#app {
+    max-width: 640px;
+    margin: 0 auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: var(--canvas);
+    position: relative;
+}
+
+/* ---- Full-screen states (loading / error / confirmation) ---------------- */
+.state {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 32px 24px;
+    gap: 12px;
+}
+.state h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; margin: 0; }
+.state p  { font-size: 14px; color: var(--ink-50); margin: 0; max-width: 34ch; }
+
+.spinner {
+    width: 28px; height: 28px;
+    border: 2px solid var(--line);
+    border-top-color: var(--ink);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .spinner { animation-duration: 2s; }
+    * { transition-duration: 0.01ms !important; }
+}
+
+/* ==========================================================================
+   Header — outlet identity and the table the diner is sitting at
+   ========================================================================== */
+.masthead {
+    background: var(--ink);
+    color: #fff;
+    padding: 20px 20px 22px;
+    border-radius: 0 0 var(--r-xl) var(--r-xl);
+}
+.masthead .brandline {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.55);
+    font-weight: 500;
+}
+.masthead h1 {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    margin: 6px 0 0;
+}
+.table-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 5px 11px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    font-size: 12px;
+    font-weight: 500;
+}
+.table-chip .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+}
+
+/* ==========================================================================
+   Sticky search + category rail
+   ========================================================================== */
+.rail {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--canvas);
+    padding: 12px 0 8px;
+    border-bottom: 1px solid var(--line);
+}
+.searchwrap { padding: 0 20px 10px; }
+.search {
+    width: 100%;
+    height: 42px;
+    padding: 0 14px;
+    font-size: 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--ink);
+    outline: none;
+}
+.search::placeholder { color: var(--ink-30); }
+.search:focus { border-color: var(--ink-30); }
+
+.chips {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 0 20px 2px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+    flex: 0 0 auto;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink-70);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+/* The selected chip inverts to the brand navy. Orange stays an accent —
+   an orange background is prohibited project-wide. */
+.chip[aria-pressed="true"] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: #fff;
+}
+
+/* ==========================================================================
+   Menu
+   ========================================================================== */
+.menu { padding: 4px 0 0; }
+
+.group-head {
+    padding: 20px 20px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-50);
+}
+
+.row {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 14px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line-soft);
+}
+.row:last-child { border-bottom: none; }
+
+.row-body { flex: 1 1 auto; min-width: 0; }
+.row-name {
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin: 0 0 4px;
+    /* Two lines then ellipsis — a long name must not push the price off the
+       card, and there is no description field on `items` to fill the gap. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.row-price { font-size: 14px; font-weight: 600; }
+.row-opts {
+    font-size: 12px;
+    color: var(--ink-50);
+    margin-top: 3px;
+}
+
+/* The photo tile. FIXED 4:3 with `contain`, matching the till exactly — the
+   same image appears on both surfaces, and `cover` crops the part of a dish
+   that identifies it (docs/CUSTOMER_ORDERING_PLAN_REVIEW.md §4). */
+.thumb {
+    flex: 0 0 auto;
+    width: 84px;
+    aspect-ratio: 4 / 3;
+    border-radius: var(--r-md);
+    background: var(--line-soft);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+/* A broken or missing photo must leave a calm tile, never a torn icon. */
+.thumb img.failed { display: none; }
+
+.row-action { flex: 0 0 auto; align-self: center; }
+
+.add-btn {
+    min-width: 72px;
+    height: 34px;
+    padding: 0 14px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--ink);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+.add-btn:active { background: var(--line-soft); }
+
+.stepper {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--ink);
+    border-radius: var(--r-sm);
+    overflow: hidden;
+    height: 34px;
+}
+.stepper button {
+    width: 30px; height: 100%;
+    border: none;
+    background: var(--surface);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+}
+.stepper button:active { background: var(--line-soft); }
+.stepper .qty {
+    min-width: 26px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    background: var(--surface);
+}
+
+.empty {
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--ink-50);
+    font-size: 14px;
+}
+
+/* ==========================================================================
+   Cart bar — the persistent bottom affordance
+   ========================================================================== */
+.cartbar {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 40;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 12px 20px calc(12px + var(--safe-bottom));
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    box-shadow: var(--shadow-bar);
+    transform: translateY(110%);
+    transition: transform 0.22s ease;
+}
+.cartbar.is-open { transform: translateY(0); }
+
+.cartbar button {
+    width: 100%;
+    height: 50px;
+    border: none;
+    border-radius: var(--r-md);
+    background: var(--ink);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+}
+.cartbar button:disabled { opacity: 0.55; }
+.cartbar .cb-left { display: flex; align-items: center; gap: 10px; }
+.cartbar .cb-count {
+    min-width: 22px; height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+
+/* ==========================================================================
+   Bottom sheets
+   ---------------------------------------------------------------------------
+   THE STRUCTURE IS REAL CSS, opened by a class, not by injected utilities.
+   This is the specific pattern that failed on WebKit when it depended on the
+   Tailwind Play CDN generating classes for runtime DOM.
+   ========================================================================== */
+.scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(11, 15, 25, 0.44);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+.scrim.is-open { opacity: 1; pointer-events: auto; }
+
+.sheet {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 60;
+    max-width: 640px;
+    margin: 0 auto;
+    background: var(--surface);
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    box-shadow: var(--shadow-sheet);
+    transform: translateY(100%);
+    transition: transform 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+    display: flex;
+    flex-direction: column;
+    max-height: 88vh;
+    max-height: 88dvh;
+}
+.sheet.is-open { transform: translateY(0); }
+
+.sheet-grip {
+    width: 36px; height: 4px;
+    border-radius: 999px;
+    background: var(--line);
+    margin: 10px auto 4px;
+    flex: 0 0 auto;
+}
+.sheet-head {
+    padding: 8px 20px 12px;
+    border-bottom: 1px solid var(--line-soft);
+    flex: 0 0 auto;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+.sheet-title {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin: 0;
+}
+.sheet-sub { font-size: 13px; color: var(--ink-50); margin: 2px 0 0; }
+.sheet-close {
+    flex: 0 0 auto;
+    width: 30px; height: 30px;
+    border: none;
+    border-radius: 50%;
+    background: var(--line-soft);
+    color: var(--ink-70);
+    font-size: 16px;
+    line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+}
+.sheet-body {
+    padding: 4px 20px 16px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    flex: 1 1 auto;
+}
+.sheet-foot {
+    padding: 12px 20px calc(14px + var(--safe-bottom));
+    border-top: 1px solid var(--line-soft);
+    flex: 0 0 auto;
+    background: var(--surface);
+}
+
+.primary {
+    width: 100%;
+    height: 50px;
+    border: none;
+    border-radius: var(--r-md);
+    background: var(--ink);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.primary:disabled { opacity: 0.5; }
+.ghost {
+    width: 100%;
+    height: 46px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--ink-70);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* ---- Modifier groups --------------------------------------------------- */
+.detail-hero {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: var(--r-md);
+    background: var(--line-soft);
+    overflow: hidden;
+    margin: 12px 0 4px;
+    display: flex; align-items: center; justify-content: center;
+}
+.detail-hero img { width: 100%; height: 100%; object-fit: contain; }
+
+.optgroup { padding: 16px 0 4px; border-bottom: 1px solid var(--line-soft); }
+.optgroup:last-of-type { border-bottom: none; }
+.optgroup-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 10px; margin-bottom: 8px;
+}
+.optgroup-name { font-size: 14px; font-weight: 600; }
+.optgroup-rule {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.optgroup-rule.optional { color: var(--ink-30); }
+
+.opt {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--line-soft);
+}
+.opt:last-child { border-bottom: none; }
+.opt input { width: 20px; height: 20px; accent-color: var(--ink); flex: 0 0 auto; margin: 0; }
+.opt-name { flex: 1 1 auto; font-size: 14px; }
+.opt-delta { font-size: 13px; font-weight: 500; color: var(--ink-50); }
+
+.note-input {
+    width: 100%;
+    min-height: 44px;
+    padding: 11px 12px;
+    font-family: inherit;
+    font-size: 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    resize: none;
+    outline: none;
+    color: var(--ink);
+}
+.note-input:focus { border-color: var(--ink-30); }
+
+.field { margin-bottom: 14px; }
+.field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-70);
+    margin-bottom: 6px;
+}
+.field .hint { font-weight: 400; color: var(--ink-30); }
+.field input {
+    width: 100%;
+    height: 46px;
+    padding: 0 12px;
+    font-size: 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    outline: none;
+    color: var(--ink);
+    background: var(--surface);
+}
+.field input:focus { border-color: var(--ink-30); }
+
+/* ---- Cart lines -------------------------------------------------------- */
+.cartline {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--line-soft);
+}
+.cartline-body { flex: 1 1 auto; min-width: 0; }
+.cartline-name { font-size: 14px; font-weight: 500; }
+.cartline-meta { font-size: 12px; color: var(--ink-50); margin-top: 2px; }
+.cartline-price { font-size: 14px; font-weight: 600; margin-left: auto; align-self: center; }
+
+.totals { padding: 14px 0 2px; }
+.totals .line {
+    display: flex; justify-content: space-between;
+    font-size: 14px; padding: 4px 0; color: var(--ink-70);
+}
+.totals .line.grand {
+    font-size: 16px; font-weight: 600; color: var(--ink);
+    border-top: 1px solid var(--line);
+    margin-top: 8px; padding-top: 12px;
+}
+
+.notice {
+    padding: 11px 13px;
+    border-radius: var(--r-md);
+    font-size: 13px;
+    line-height: 1.4;
+    margin: 12px 0 0;
+    border: 1px solid var(--line);
+    background: var(--canvas);
+    color: var(--ink-70);
+}
+.notice.bad { border-color: rgba(185, 28, 28, 0.28); color: var(--danger); }
+
+/* ---- Confirmation ------------------------------------------------------ */
+.tick {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    border: 2px solid var(--ok);
+    color: var(--ok);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    margin-bottom: 4px;
+}
+.order-no {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin: 2px 0 0;
+}
+.state .actions { margin-top: 22px; width: 100%; max-width: 320px; display: grid; gap: 10px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+    <!-- Boot ------------------------------------------------------------- -->
+    <section id="view-loading" class="state">
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Memuat menu…</p>
+    </section>
+
+    <!-- Dead / revoked / unknown token ----------------------------------- -->
+    <section id="view-error" class="state hidden">
+        <h1 id="error-title">Kode ini tidak aktif</h1>
+        <p id="error-body">Minta staf untuk memindai ulang atau memberikan kode meja yang baru.</p>
+    </section>
+
+    <!-- The menu --------------------------------------------------------- -->
+    <section id="view-menu" class="hidden">
+        <header class="masthead">
+            <div class="brandline">Pesan dari meja Anda</div>
+            <h1 id="outlet-name">—</h1>
+            <div class="table-chip"><span class="dot"></span><span id="table-label">—</span></div>
+        </header>
+
+        <div class="rail">
+            <div class="searchwrap">
+                <input id="search" class="search" type="search" inputmode="search"
+                       autocomplete="off" placeholder="Cari menu…" aria-label="Cari menu">
+            </div>
+            <div id="chips" class="chips" role="group" aria-label="Kategori"></div>
+        </div>
+
+        <div id="menu" class="menu"></div>
+        <!-- Clears the fixed cart bar so the last row is never trapped under it. -->
+        <div style="height: 96px"></div>
+    </section>
+
+    <!-- Order placed ----------------------------------------------------- -->
+    <section id="view-done" class="state hidden">
+        <div class="tick" aria-hidden="true">✓</div>
+        <h1>Pesanan diterima</h1>
+        <p id="done-sub">Dapur sudah menerima pesanan Anda.</p>
+        <div class="order-no num" id="done-number">—</div>
+        <div class="actions">
+            <button class="primary" id="done-more">Pesan lagi</button>
+        </div>
+    </section>
+
+</div>
+
+<!-- Cart bar ------------------------------------------------------------- -->
+<div id="cartbar" class="cartbar">
+    <button id="cart-open" type="button">
+        <span class="cb-left">
+            <span class="cb-count num" id="cart-count">0</span>
+            <span>Lihat pesanan</span>
+        </span>
+        <span class="num" id="cart-total">—</span>
+    </button>
+</div>
+
+<div id="scrim" class="scrim"></div>
+
+<!-- Item detail sheet ---------------------------------------------------- -->
+<div id="sheet-item" class="sheet" role="dialog" aria-modal="true" aria-labelledby="item-title">
+    <div class="sheet-grip"></div>
+    <div class="sheet-head">
+        <div>
+            <h2 class="sheet-title" id="item-title">—</h2>
+            <p class="sheet-sub num" id="item-price">—</p>
+        </div>
+        <button class="sheet-close" type="button" data-close aria-label="Tutup">✕</button>
+    </div>
+    <div class="sheet-body" id="item-body"></div>
+    <div class="sheet-foot">
+        <button class="primary" id="item-add" type="button">
+            <span>Tambah</span><span class="num" id="item-add-total"></span>
+        </button>
+    </div>
+</div>
+
+<!-- Cart sheet ----------------------------------------------------------- -->
+<div id="sheet-cart" class="sheet" role="dialog" aria-modal="true" aria-labelledby="cart-title">
+    <div class="sheet-grip"></div>
+    <div class="sheet-head">
+        <div>
+            <h2 class="sheet-title" id="cart-title">Pesanan Anda</h2>
+            <p class="sheet-sub" id="cart-sub">—</p>
+        </div>
+        <button class="sheet-close" type="button" data-close aria-label="Tutup">✕</button>
+    </div>
+    <div class="sheet-body" id="cart-body"></div>
+    <div class="sheet-foot">
+        <button class="primary" id="cart-submit" type="button">
+            <span>Kirim ke dapur</span><span class="num" id="cart-submit-total"></span>
+        </button>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    // =====================================================================
+    // Endpoints. Relative, never absolute: this page is served from the order
+    // origin AND from the monolith (SITE_ROLE unset) for local dev and
+    // Playwright, and a hardcoded host would break one of them.
+    // =====================================================================
+    var FN = '/.netlify/functions/';
+    var TOKEN = readToken();
+
+    var menu = null;         // the endpoint's payload
+    var cart = [];           // [{ item_id, name, unit_price, options:[], modAmount, note, qty, key }]
+    var activeCategory = null;
+    var searchTerm = '';
+    var detail = null;       // the item currently open in the detail sheet
+    var submitting = false;
+
+    // A stable id for this browser's ordering session, so a retried POST is
+    // recognised as the same order rather than becoming a second kitchen
+    // ticket. Regenerated after every successful submit.
+    var clientRef = newRef();
+
+    var $ = function (id) { return document.getElementById(id); };
+    var money = function (minor) {
+        return window.FluxyMoney ? window.FluxyMoney.formatBase(minor) : String(minor);
+    };
+    var esc = function (s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    };
+
+    /**
+     * The table token. `/t/<token>` is the printed form — short enough to be a
+     * legible QR — and `?t=` is accepted so a link can be pasted or forwarded.
+     */
+    function readToken() {
+        var m = window.location.pathname.match(/\/t\/([A-Za-z0-9_-]{8,128})/);
+        if (m) return m[1];
+        var q = new URLSearchParams(window.location.search);
+        var t = q.get('t') || q.get('token') || '';
+        return /^[A-Za-z0-9_-]{8,128}$/.test(t) ? t : '';
+    }
+
+    function newRef() {
+        var a = new Uint8Array(12);
+        (window.crypto || {}).getRandomValues
+            ? window.crypto.getRandomValues(a)
+            : a.forEach(function (_, i) { a[i] = Math.floor(Math.random() * 256); });
+        return Array.prototype.map.call(a, function (b) {
+            return ('0' + b.toString(16)).slice(-2);
+        }).join('');
+    }
+
+    function show(view) {
+        ['loading', 'error', 'menu', 'done'].forEach(function (v) {
+            $('view-' + v).classList.toggle('hidden', v !== view);
+        });
+        // The cart bar belongs to the menu view only — it must not hover over
+        // the confirmation screen offering to re-send an order already sent.
+        if (view !== 'menu') $('cartbar').classList.remove('is-open');
+    }
+
+    function die(title, body) {
+        $('error-title').textContent = title;
+        if (body) $('error-body').textContent = body;
+        show('error');
+    }
+
+    // =====================================================================
+    // Boot
+    // =====================================================================
+    if (!TOKEN) {
+        die('Kode meja tidak ditemukan', 'Pindai ulang kode QR di meja Anda.');
+        return;
+    }
+
+    fetch(FN + 'qr-menu?token=' + encodeURIComponent(TOKEN))
+        .then(function (r) {
+            if (r.status === 429) throw new Error('busy');
+            if (!r.ok) throw new Error('gone');
+            return r.json();
+        })
+        .then(function (data) {
+            menu = data;
+            if (window.FluxyMoney) window.FluxyMoney.setBaseCurrency(data.currency || 'IDR');
+            if (!Array.isArray(data.items) || !data.items.length) {
+                die('Menu belum tersedia', 'Silakan panggil staf untuk memesan.');
+                return;
+            }
+            paintHeader();
+            paintChips();
+            paintMenu();
+            show('menu');
+        })
+        .catch(function (err) {
+            if (err && err.message === 'busy') {
+                die('Terlalu banyak permintaan', 'Tunggu sebentar lalu muat ulang halaman ini.');
+            } else {
+                die('Kode ini tidak aktif',
+                    'Minta staf untuk memindai ulang atau memberikan kode meja yang baru.');
+            }
+        });
+
+    function paintHeader() {
+        $('outlet-name').textContent = menu.outlet || 'Menu';
+        $('table-label').textContent = menu.table ? ('Meja ' + menu.table) : 'Meja';
+        document.title = (menu.outlet || 'Pesan') + ' — FluxyOS';
+    }
+
+    // =====================================================================
+    // Category rail. Categories are `items.pos_category` — a free string on the
+    // item, the same taxonomy the till builds its chips from. There is no
+    // category entity and this page must not invent a second one.
+    // =====================================================================
+    function paintChips() {
+        var cats = menu.categories || [];
+        var html = '<button class="chip" type="button" data-cat="" aria-pressed="true">Semua</button>';
+        cats.forEach(function (c) {
+            html += '<button class="chip" type="button" data-cat="' + esc(c) + '" aria-pressed="false">'
+                + esc(c) + '</button>';
+        });
+        $('chips').innerHTML = html;
+    }
+
+    $('chips').addEventListener('click', function (e) {
+        var chip = e.target.closest('.chip');
+        if (!chip) return;
+        activeCategory = chip.dataset.cat || null;
+        Array.prototype.forEach.call($('chips').children, function (c) {
+            c.setAttribute('aria-pressed', String(c === chip));
+        });
+        paintMenu();
+    });
+
+    $('search').addEventListener('input', function (e) {
+        searchTerm = String(e.target.value || '').trim().toLowerCase();
+        paintMenu();
+    });
+
+    function visibleItems() {
+        return menu.items.filter(function (i) {
+            if (activeCategory && i.category !== activeCategory) return false;
+            if (searchTerm && i.name.toLowerCase().indexOf(searchTerm) === -1) return false;
+            return true;
+        });
+    }
+
+    // How many of this item are in the cart, across every option combination —
+    // the number the row's stepper shows.
+    function qtyInCart(itemId) {
+        return cart.reduce(function (s, l) {
+            return s + (l.item_id === itemId ? l.qty : 0);
+        }, 0);
+    }
+
+    function paintMenu() {
+        var items = visibleItems();
+        var host = $('menu');
+        if (!items.length) {
+            host.innerHTML = '<div class="empty">Tidak ada menu yang cocok.</div>';
+            return;
+        }
+
+        var html = '';
+        var lastGroup = null;
+        items.forEach(function (i) {
+            var group = i.category || 'Lainnya';
+            // Headings only make sense in the ungrouped view; inside one
+            // category they would repeat the chip already selected above.
+            if (!activeCategory && group !== lastGroup) {
+                html += '<div class="group-head">' + esc(group) + '</div>';
+                lastGroup = group;
+            }
+
+            var qty = qtyInCart(i.id);
+            var hasOptions = (i.modifier_groups || []).length > 0;
+
+            html += '<article class="row" data-item="' + esc(i.id) + '">';
+            if (i.has_image) {
+                html += '<div class="thumb"><img loading="lazy" decoding="async" alt="" src="'
+                    + FN + 'qr-menu-image?token=' + encodeURIComponent(TOKEN)
+                    + '&item=' + encodeURIComponent(i.id) + '"></div>';
+            }
+            html += '<div class="row-body">'
+                + '<h3 class="row-name">' + esc(i.name) + '</h3>'
+                + '<div class="row-price num">' + esc(money(i.price)) + '</div>'
+                + (hasOptions ? '<div class="row-opts">Bisa disesuaikan</div>' : '')
+                + '</div>';
+
+            html += '<div class="row-action">';
+            if (qty > 0 && !hasOptions) {
+                html += stepperHtml(i.id, qty);
+            } else if (qty > 0) {
+                // An item with options can be in the cart several ways, so the
+                // row cannot decrement one of them unambiguously. It shows the
+                // count and reopens the chooser instead.
+                html += '<button class="add-btn" type="button" data-open="' + esc(i.id) + '">'
+                    + qty + ' • Tambah</button>';
+            } else {
+                html += '<button class="add-btn" type="button" data-open="' + esc(i.id) + '">Tambah</button>';
+            }
+            html += '</div></article>';
+        });
+        host.innerHTML = html;
+
+        // A photo that 404s (revoked token, deleted file) leaves the tile empty
+        // rather than showing a torn-image icon.
+        Array.prototype.forEach.call(host.querySelectorAll('.thumb img'), function (img) {
+            img.addEventListener('error', function () { img.classList.add('failed'); });
+        });
+    }
+
+    function stepperHtml(itemId, qty) {
+        return '<div class="stepper">'
+            + '<button type="button" data-dec="' + esc(itemId) + '" aria-label="Kurangi">−</button>'
+            + '<span class="qty num">' + qty + '</span>'
+            + '<button type="button" data-inc="' + esc(itemId) + '" aria-label="Tambah">+</button>'
+            + '</div>';
+    }
+
+    $('menu').addEventListener('click', function (e) {
+        var open = e.target.closest('[data-open]');
+        if (open) return openDetail(open.dataset.open);
+        var inc = e.target.closest('[data-inc]');
+        if (inc) return bump(inc.dataset.inc, 1);
+        var dec = e.target.closest('[data-dec]');
+        if (dec) return bump(dec.dataset.dec, -1);
+    });
+
+    // Increment the plain (no-options) line for an item.
+    function bump(itemId, delta) {
+        var at = cart.findIndex(function (l) {
+            return l.item_id === itemId && !l.options.length && !l.note;
+        });
+        if (at === -1) {
+            if (delta > 0) addToCart(itemById(itemId), [], '', 1);
+        } else {
+            cart[at].qty += delta;
+            if (cart[at].qty <= 0) cart.splice(at, 1);
+        }
+        paintMenu();
+        paintCart();
+    }
+
+    function itemById(id) {
+        return menu.items.filter(function (i) { return i.id === id; })[0] || null;
+    }
+
+    // =====================================================================
+    // Item detail sheet
+    // =====================================================================
+    function openDetail(itemId) {
+        var item = itemById(itemId);
+        if (!item) return;
+
+        // No modifiers and nothing to say: adding is one tap, not a sheet.
+        if (!(item.modifier_groups || []).length) {
+            addToCart(item, [], '', 1);
+            paintMenu();
+            paintCart();
+            return;
+        }
+
+        detail = { item: item, chosen: {}, note: '' };
+        $('item-title').textContent = item.name;
+        $('item-price').textContent = money(item.price);
+
+        var html = '';
+        if (item.has_image) {
+            html += '<div class="detail-hero"><img alt="" src="'
+                + FN + 'qr-menu-image?token=' + encodeURIComponent(TOKEN)
+                + '&item=' + encodeURIComponent(item.id) + '"></div>';
+        }
+
+        item.modifier_groups.forEach(function (g) {
+            var required = g.select === 'one_required';
+            var multi = g.select === 'many';
+            html += '<div class="optgroup" data-group="' + esc(g.id) + '" data-select="' + esc(g.select) + '">'
+                + '<div class="optgroup-head">'
+                + '<span class="optgroup-name">' + esc(g.name) + '</span>'
+                + '<span class="optgroup-rule' + (required ? '' : ' optional') + '">'
+                + (required ? 'Wajib pilih 1' : (multi ? 'Pilih beberapa' : 'Opsional')) + '</span>'
+                + '</div>';
+            g.options.forEach(function (o) {
+                html += '<label class="opt">'
+                    + '<input type="' + (multi ? 'checkbox' : 'radio') + '"'
+                    + ' name="g_' + esc(g.id) + '" value="' + esc(o.id) + '">'
+                    + '<span class="opt-name">' + esc(o.name) + '</span>'
+                    + (o.price_delta
+                        ? '<span class="opt-delta num">+' + esc(money(o.price_delta)) + '</span>'
+                        : '')
+                    + '</label>';
+            });
+            html += '</div>';
+        });
+
+        html += '<div class="optgroup"><div class="optgroup-head">'
+            + '<span class="optgroup-name">Catatan</span>'
+            + '<span class="optgroup-rule optional">Opsional</span></div>'
+            + '<textarea class="note-input" id="item-note" maxlength="120" rows="2"'
+            + ' placeholder="Contoh: tidak pedas"></textarea></div>';
+
+        $('item-body').innerHTML = html;
+        $('item-body').addEventListener('change', onDetailChange);
+        $('item-body').addEventListener('input', onDetailChange);
+        refreshDetailTotal();
+        openSheet('sheet-item');
+    }
+
+    function onDetailChange() {
+        if (!detail) return;
+        detail.chosen = {};
+        Array.prototype.forEach.call(
+            $('item-body').querySelectorAll('input:checked'),
+            function (input) {
+                var group = input.closest('.optgroup').dataset.group;
+                (detail.chosen[group] = detail.chosen[group] || []).push(input.value);
+            }
+        );
+        var note = $('item-note');
+        detail.note = note ? String(note.value || '').trim() : '';
+        refreshDetailTotal();
+    }
+
+    function chosenOptions() {
+        if (!detail) return [];
+        var out = [];
+        Object.keys(detail.chosen).forEach(function (g) {
+            detail.chosen[g].forEach(function (id) { out.push(id); });
+        });
+        return out;
+    }
+
+    function optionsMeta(item, optionIds) {
+        var set = {};
+        optionIds.forEach(function (id) { set[id] = true; });
+        var meta = [];
+        (item.modifier_groups || []).forEach(function (g) {
+            g.options.forEach(function (o) {
+                if (set[o.id]) meta.push({ id: o.id, name: o.name, price_delta: o.price_delta });
+            });
+        });
+        return meta;
+    }
+
+    /**
+     * Write to the DOM only when the value actually changed.
+     *
+     * NOT a micro-optimisation — it fixes a WebKit-only bug that cost a
+     * reproduction to find. Typing in the note textarea and then tapping
+     * "Tambah" did nothing on Safari: the tap blurs the textarea, the blur
+     * fires `change`, `change` re-ran this function, and mutating the button's
+     * contents between mousedown and mouseup made WebKit drop the click
+     * entirely. The diner taps, nothing happens, and they tap again.
+     *
+     * Chromium dispatches the click regardless, so this is invisible in a
+     * Chromium-only pass — which is exactly why `customer-ordering.spec.js`
+     * also runs on WebKit, and why the note is typed there before the tap.
+     */
+    function setText(el, value) {
+        if (el && el.textContent !== value) el.textContent = value;
+    }
+    function setDisabled(el, value) {
+        if (el && el.disabled !== value) el.disabled = value;
+    }
+
+    function refreshDetailTotal() {
+        if (!detail) return;
+        var meta = optionsMeta(detail.item, chosenOptions());
+        var delta = meta.reduce(function (s, o) { return s + o.price_delta; }, 0);
+        setText($('item-add-total'), money(detail.item.price + delta));
+
+        // A required group with nothing chosen blocks the add — the same rule
+        // the till applies, enforced here so the kitchen never receives a
+        // half-specified line.
+        var missing = (detail.item.modifier_groups || []).some(function (g) {
+            return g.select === 'one_required' && !(detail.chosen[g.id] || []).length;
+        });
+        setDisabled($('item-add'), missing);
+    }
+
+    $('item-add').addEventListener('click', function () {
+        if (!detail || $('item-add').disabled) return;
+        addToCart(detail.item, chosenOptions(), detail.note, 1);
+        closeSheets();
+        paintMenu();
+        paintCart();
+    });
+
+    // =====================================================================
+    // Cart
+    //
+    // The cart holds ITEM AND OPTION IDS with a display price, never a price
+    // the server will trust. `qr-order` re-reads every amount from the menu;
+    // these numbers exist so the customer sees a total before they commit.
+    // =====================================================================
+    function cartKey(itemId, optionIds, note) {
+        return [itemId, optionIds.slice().sort().join(','), note || ''].join('|');
+    }
+
+    function addToCart(item, optionIds, note, qty) {
+        if (!item) return;
+        var meta = optionsMeta(item, optionIds);
+        var key = cartKey(item.id, optionIds, note);
+        var line = cart.filter(function (l) { return l.key === key; })[0];
+        if (line) {
+            line.qty += qty;
+            return;
+        }
+        cart.push({
+            key: key,
+            item_id: item.id,
+            name: item.name,
+            unit_price: item.price,
+            options: optionIds,
+            optionNames: meta.map(function (o) { return o.name; }),
+            modAmount: meta.reduce(function (s, o) { return s + o.price_delta; }, 0),
+            note: note || '',
+            qty: qty
+        });
+    }
+
+    function cartCount() {
+        return cart.reduce(function (s, l) { return s + l.qty; }, 0);
+    }
+    function cartTotal() {
+        return cart.reduce(function (s, l) { return s + l.qty * (l.unit_price + l.modAmount); }, 0);
+    }
+
+    function paintCart() {
+        var count = cartCount();
+        var total = cartTotal();
+        setText($('cart-count'), String(count));
+        setText($('cart-total'), money(total));
+        $('cartbar').classList.toggle('is-open', count > 0);
+
+        setText($('cart-sub'), menu && menu.table ? ('Meja ' + menu.table) : '');
+        // Same guard as the detail sheet, for the same reason: this is a span
+        // inside a button, and the button is tapped right after typing a name.
+        setText($('cart-submit-total'), money(total));
+        setDisabled($('cart-submit'), count === 0 || submitting);
+
+        if (!count) {
+            $('cart-body').innerHTML = '<div class="empty">Belum ada pesanan.</div>';
+            return;
+        }
+
+        var html = '';
+        cart.forEach(function (l, idx) {
+            var meta = [];
+            if (l.optionNames.length) meta.push(l.optionNames.join(', '));
+            if (l.note) meta.push('“' + l.note + '”');
+            html += '<div class="cartline">'
+                + '<div class="cartline-body">'
+                + '<div class="cartline-name">' + esc(l.name) + '</div>'
+                + (meta.length ? '<div class="cartline-meta">' + esc(meta.join(' • ')) + '</div>' : '')
+                + '<div style="margin-top:8px">' + cartStepper(idx, l.qty) + '</div>'
+                + '</div>'
+                + '<div class="cartline-price num">'
+                + esc(money(l.qty * (l.unit_price + l.modAmount))) + '</div>'
+                + '</div>';
+        });
+
+        html += '<div class="totals">'
+            + '<div class="line grand"><span>Total</span>'
+            + '<span class="num">' + esc(money(total)) + '</span></div>'
+            + '</div>';
+
+        // Optional, and said so. A queue does not wait while someone types a
+        // phone number, and `pos_orders` accepts an order with neither.
+        html += '<div class="field" style="margin-top:18px">'
+            + '<label for="cust-name">Nama <span class="hint">— opsional</span></label>'
+            + '<input id="cust-name" type="text" maxlength="80" autocomplete="name"'
+            + ' placeholder="Untuk dipanggil saat pesanan siap"></div>'
+            + '<div class="field">'
+            + '<label for="cust-phone">Nomor WhatsApp <span class="hint">— opsional</span></label>'
+            + '<input id="cust-phone" type="tel" maxlength="32" inputmode="tel"'
+            + ' autocomplete="tel" placeholder="08…"></div>'
+            + '<div id="cart-notice"></div>';
+
+        $('cart-body').innerHTML = html;
+    }
+
+    function cartStepper(idx, qty) {
+        return '<div class="stepper">'
+            + '<button type="button" data-cdec="' + idx + '" aria-label="Kurangi">−</button>'
+            + '<span class="qty num">' + qty + '</span>'
+            + '<button type="button" data-cinc="' + idx + '" aria-label="Tambah">+</button>'
+            + '</div>';
+    }
+
+    $('cart-body').addEventListener('click', function (e) {
+        var inc = e.target.closest('[data-cinc]');
+        var dec = e.target.closest('[data-cdec]');
+        if (!inc && !dec) return;
+        var idx = Number((inc || dec).dataset.cinc || (inc || dec).dataset.cdec);
+        if (!cart[idx]) return;
+        cart[idx].qty += inc ? 1 : -1;
+        if (cart[idx].qty <= 0) cart.splice(idx, 1);
+        paintCart();
+        paintMenu();
+        if (!cart.length) closeSheets();
+    });
+
+    // =====================================================================
+    // Sheets
+    // =====================================================================
+    function openSheet(id) {
+        $('scrim').classList.add('is-open');
+        $(id).classList.add('is-open');
+        // The page behind a sheet must not scroll under the customer's finger.
+        document.body.style.overflow = 'hidden';
+    }
+    function closeSheets() {
+        $('scrim').classList.remove('is-open');
+        $('sheet-item').classList.remove('is-open');
+        $('sheet-cart').classList.remove('is-open');
+        document.body.style.overflow = '';
+        detail = null;
+    }
+    $('scrim').addEventListener('click', closeSheets);
+    Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) {
+        b.addEventListener('click', closeSheets);
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeSheets();
+    });
+
+    $('cart-open').addEventListener('click', function () {
+        paintCart();
+        openSheet('sheet-cart');
+    });
+
+    // =====================================================================
+    // Submit
+    // =====================================================================
+    $('cart-submit').addEventListener('click', function () {
+        if (submitting || !cart.length) return;
+        submitting = true;
+        $('cart-submit').disabled = true;
+        $('cart-submit').querySelector('span').textContent = 'Mengirim…';
+
+        var nameEl = $('cust-name');
+        var phoneEl = $('cust-phone');
+
+        fetch(FN + 'qr-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                token: TOKEN,
+                client_ref: clientRef,
+                customer_name: nameEl ? nameEl.value : '',
+                customer_phone: phoneEl ? phoneEl.value : '',
+                lines: cart.map(function (l) {
+                    return {
+                        item_id: l.item_id,
+                        quantity: l.qty,
+                        options: l.options,
+                        note: l.note
+                    };
+                })
+            })
+        })
+            .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+            .then(function (res) {
+                if (!res.ok || !res.body.ok) throw res.body || {};
+                $('done-number').textContent = res.body.order_number || '';
+                $('done-sub').textContent = res.body.rejected_lines
+                    ? 'Beberapa item sudah tidak tersedia dan tidak dimasukkan.'
+                    : 'Dapur sudah menerima pesanan Anda.';
+                cart = [];
+                // A new ref for the next order, or a second round would be
+                // deduplicated against the first and silently do nothing.
+                clientRef = newRef();
+                closeSheets();
+                paintCart();
+                paintMenu();
+                show('done');
+            })
+            .catch(function (err) {
+                var msg = 'Gagal mengirim pesanan. Coba lagi.';
+                if (err && err.error === 'order_closed') {
+                    msg = 'Tagihan meja ini baru saja ditutup. Panggil staf untuk membuka pesanan baru.';
+                } else if (err && err.error === 'nothing_orderable') {
+                    msg = 'Item yang Anda pilih sudah tidak tersedia.';
+                }
+                var host = $('cart-notice');
+                if (host) host.innerHTML = '<div class="notice bad">' + esc(msg) + '</div>';
+            })
+            .then(function () {
+                submitting = false;
+                $('cart-submit').querySelector('span').textContent = 'Kirim ke dapur';
+                $('cart-submit').disabled = cart.length === 0;
+            });
+    });
+
+    $('done-more').addEventListener('click', function () { show('menu'); });
+})();
+</script>
+</body>
+</html>

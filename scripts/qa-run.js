@@ -236,6 +236,13 @@ function laneBE(changed) {
   // can be broken by an edit anywhere in the file, and the consequence is a
   // permanent public URL to a customer's menu that cannot be revoked.
   ok = record('be', run('check:qr-image (no public URL, refuses before Firebase)', 'node', ['tests/qr-menu-image.check.js'])) && ok;
+  // Unconditional, and the sharpest of the three. `wsPosOrderKeys` is a
+  // `hasOnly`, so a key qr-order writes that the rules do not allow succeeds
+  // when written (Admin SDK bypasses rules) and then fails EVERY later till
+  // update to that order — the exact shape that kept a day of till sales out of
+  // the ledger on 2026-08-31. Nothing about it is visible until a cashier
+  // touches the order.
+  ok = record('be', run('check:qr-order (rules-shaped doc, server-resolved price)', 'node', ['tests/qr-order.check.js'])) && ok;
   // Unconditional, for the same reason. An off-by-one in a limiter is either a
   // public endpoint with no ceiling or a restaurant whose customers are refused
   // their own menu, and neither states itself at runtime.

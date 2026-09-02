@@ -70,11 +70,34 @@ if (!failures) ok('unknown and empty origins are refused');
 // (`gsutil cors set`). A production origin missing here fails only on upload
 // and download — receipts, KYC documents — which is exactly the kind of thing
 // nobody exercises until a customer does.
+// ORIGINS THAT MUST NOT BE IN cors.json. An origin belongs in the CORS list
+// only if a BROWSER on it talks to Firebase Storage directly. order.fluxyos.com
+// deliberately never does: the diner's page carries no Firebase SDK and reaches
+// menu photos through `qr-menu-image`, which mints a short-lived signed URL
+// server-side and 302s to it — an <img> follows that with no CORS check at all.
+// Listing it here would hand an anonymous, unauthenticated origin direct
+// browser access to the bucket, which is the exact thing the endpoint exists to
+// avoid. So this is an assertion in BOTH directions, not an exemption.
+const NO_STORAGE_ORIGINS = ['https://order.fluxyos.com'];
+
 const corsPath = path.join(ROOT, 'cors.json');
 if (fs.existsSync(corsPath)) {
     const cors = JSON.parse(fs.readFileSync(corsPath, 'utf8'));
     const listed = new Set((cors[0] && cors[0].origin) || []);
-    const missing = PRODUCTION_ORIGINS.filter((o) => !listed.has(o));
+
+    const wrongly = NO_STORAGE_ORIGINS.filter((o) => listed.has(o));
+    if (wrongly.length) {
+        fail(`cors.json grants Storage access to origin(s) that must not have it: ${wrongly.join(', ')}\n`
+            + '      These origins serve unauthenticated pages with no Firebase SDK. Menu\n'
+            + '      photos go through qr-menu-image (signed URL + 302), so direct bucket\n'
+            + '      access from the browser is not needed and must not be granted.');
+    } else {
+        ok('cors.json does not grant Storage access to the anonymous order origin');
+    }
+
+    const missing = PRODUCTION_ORIGINS
+        .filter((o) => !NO_STORAGE_ORIGINS.includes(o))
+        .filter((o) => !listed.has(o));
     if (missing.length) {
         fail(`cors.json is missing production origin(s): ${missing.join(', ')}\n`
             + '      Storage uploads/downloads from there will fail. Remember it deploys\n'
