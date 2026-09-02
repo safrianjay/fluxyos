@@ -40,8 +40,18 @@ async function pickTransactions(page) {
         const user = authMod.getAuth(app).currentUser;
         if (!app || !user) return { error: 'no-auth' };
         const db = fsMod.getFirestore(app);
+        // The scope the app itself reads through. `DataService._scope` returns
+        // `workspaces/{id}` in workspace mode and `users/{uid}` otherwise, so
+        // asking it is the only way a spec stays correct for both.
+        const dsMod = await import('/assets/js/db-service.js');
+        const scopePath = new dsMod.default(app)._scope(user.uid);
         const q = fsMod.query(
-            fsMod.collection(db, `users/${user.uid}/transactions`),
+            // WORKSPACE-scoped, not `users/{uid}` — the pre-migration path is a
+            // frozen rollback copy, and reading it is the exact bug
+            // PROJECT_BACKGROUND §4 exists to prevent. It read as
+            // permission-denied here rather than as stale data, so this spec had
+            // been failing rather than lying, which is the luckier outcome.
+            fsMod.collection(db, `${scopePath}/transactions`),
             fsMod.orderBy('timestamp', 'desc'),
             fsMod.limit(400)
         );
