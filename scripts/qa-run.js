@@ -243,6 +243,13 @@ function laneBE(changed) {
   // the ledger on 2026-08-31. Nothing about it is visible until a cashier
   // touches the order.
   ok = record('be', run('check:qr-order (rules-shaped doc, server-resolved price)', 'node', ['tests/qr-order.check.js'])) && ok;
+  // Unconditional, and the one with the least forgiving failure mode in the
+  // product. A wrong QR looks exactly like a right one: it is discovered by a
+  // customer, at a table, holding a laminated card that does nothing, with no
+  // error raised anywhere. The check encodes a card and decodes it back with
+  // Apple's Vision framework — a DIFFERENT implementation than the one that
+  // wrote it, which is the only round trip that proves a phone can read it.
+  ok = record('be', run('check:pos-table-qr (the printed card actually scans)', 'node', ['tests/pos-table-qr.check.js'])) && ok;
   // Unconditional, for the same reason. An off-by-one in a limiter is either a
   // public endpoint with no ceiling or a restaurant whose customers are refused
   // their own menu, and neither states itself at runtime.

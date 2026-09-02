@@ -225,8 +225,13 @@ console.log('SITE_ROLE=order (order.fluxyos.com):');
     // proxy would hand an anonymous origin a working auth surface.
     assert(!r.includes('/__/auth/*'),
         'no auth proxy — this origin signs nobody in, so it must not host the handler');
+    // NOT a boundary — Netlify serves every deployed function at its raw
+    // /.netlify/functions/<name> path regardless of _redirects. What this
+    // asserts is that the order origin does not install the friendly /api/v1
+    // alias, so nothing here advertises an authenticated surface. The actual
+    // boundary is per-function auth.
     assert(!/^\/api\/v1\/\*/m.test(r),
-        'no /api/v1 catch-all — only the three public QR endpoints are reachable');
+        'no /api/v1 alias — this origin advertises no authenticated surface');
     fs.rmSync(dir, { recursive: true, force: true });
 }
 

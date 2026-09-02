@@ -667,6 +667,9 @@ function renderTables() {
     const ws = (typeof window !== 'undefined' && window.FluxyWorkspace) || null;
     const mayArrange = !!(ws && typeof ws.can === 'function' && ws.can('pos.manage'));
     $('pos-arrange-btn')?.classList.toggle('hidden', !mayArrange);
+    // Printing the room's cards is the same capability as re-laying it: a
+    // cashier operates the till, they do not mint table cards.
+    $('pos-qr-btn')?.classList.toggle('hidden', !mayArrange);
 
     const byTable = {};
     (o.activeOrders || []).forEach((ord) => { if (ord.table_id) byTable[ord.table_id] = ord; });
@@ -4991,6 +4994,9 @@ function wire() {
     });
     $('pos-tables-btn').addEventListener('click', openTableSheet);
     $('pos-manage-tables')?.addEventListener('click', openTableDrawer);
+    $('pos-qr-btn')?.addEventListener('click', openTableQrSheet);
+    $('pos-qr-close')?.addEventListener('click', closeTableQrSheet);
+    $('pos-qr-print')?.addEventListener('click', () => window.print());
     $('pos-arrange-btn')?.addEventListener('click', () => {
         state.arranging = !state.arranging;
         // Leaving by the toggle discards, exactly like Cancel — there is no
@@ -5177,6 +5183,112 @@ function wire() {
     window.addEventListener('online', setOnline);
     window.addEventListener('offline', setOnline);
     setOnline();
+}
+
+// ---------------------------------------------------------------------------
+// TABLE QR CODES
+//
+// The missing half of customer ordering. `pos_tables.qr_token` has been minted
+// since the POS shipped and `order.fluxyos.com` has rendered the menu it points
+// at — but nothing ever DISPLAYED it, so a restaurant had no way to obtain the
+// link, let alone a card for the table. The feature was complete and
+// unreachable.
+//
+// The symbols are rendered server-side by `netlify/functions/pos-table-qr.js`:
+// the CSP allows scripts only from 'self' plus four Google hosts, so a
+// client-side encoder would mean vendoring a QR library into assets/ and owning
+// its correctness forever. The function reuses the `qrcode` dependency already
+// here, and its output is decoded back by Apple's Vision framework in
+// `tests/pos-table-qr.check.js` — a different implementation than the one that
+// wrote it, which is the only round trip that proves a phone can read the card.
+// ---------------------------------------------------------------------------
+
+let qrCards = null;   // cached per open; tokens do not change while the sheet is up
+
+async function openTableQrSheet() {
+    const sheet = $('pos-qr-sheet');
+    const body = $('pos-qr-body');
+    if (!sheet || !body) return;
+
+    const ws = (typeof window !== 'undefined' && window.FluxyWorkspace) || null;
+    const workspaceId = ws && ws.id;
+    if (!workspaceId) { toast('Workspace is still loading. Try again in a moment.'); return; }
+
+    const outlet = state.outlets.find((o) => o.id === state.outletId);
+    $('pos-qr-sub').textContent = outlet ? outlet.name : '';
+    body.innerHTML = '<p class="text-[13px] text-slate-500 text-center py-10">Building the cards…</p>';
+    sheet.classList.remove('hidden');
+
+    try {
+        const user = auth.currentUser;
+        if (!user) throw new Error('Not signed in.');
+        const token = await user.getIdToken();
+        // Only THIS outlet's tables: a card sheet for the whole company is not
+        // what someone standing in one room is asking for.
+        //
+        // Read from `state.overview.tables`, which is what renderTables() paints
+        // from — NOT `state.tables`. They can differ, and taking the other one
+        // would print a sheet that disagrees with the floor plan the person is
+        // looking at while they press the button.
+        const tableIds = ((state.overview && state.overview.tables) || [])
+            .filter((t) => !state.outletId || t.dimension_id === state.outletId)
+            .map((t) => t.id);
+
+        const res = await fetch('/.netlify/functions/pos-table-qr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ workspaceId, tableIds })
+        });
+        if (!res.ok) {
+            let reason = '';
+            try { reason = (await res.json())?.error || ''; } catch (_) { /* non-JSON body */ }
+            throw new Error(reason === 'forbidden'
+                ? 'You do not have permission to print table cards.'
+                : `Could not build the cards (${res.status}).`);
+        }
+        const data = await res.json();
+        qrCards = data.cards || [];
+        renderQrCards(data, outlet);
+    } catch (err) {
+        body.innerHTML = `<p class="text-[13px] text-rose-600 text-center py-10">${esc(err.message || 'Something went wrong.')}</p>`;
+    }
+}
+
+function renderQrCards(data, outlet) {
+    const body = $('pos-qr-body');
+    const cards = data.cards || [];
+
+    if (!cards.length) {
+        body.innerHTML = '<p class="text-[13px] text-slate-500 text-center py-10">'
+            + 'No tables at this outlet have a QR code yet.</p>';
+        return;
+    }
+
+    // Tables created before `qr_token` existed carry none. Said out loud rather
+    // than quietly printing a short sheet — a restaurant counting cards against
+    // tables will find the gap at the worst possible moment otherwise.
+    const missing = Number(data.missing_token) || 0;
+    const note = missing
+        ? `<div class="pos-qr-note"><strong>${missing} table${missing === 1 ? '' : 's'}</strong> `
+            + 'in this outlet ha' + (missing === 1 ? 's' : 've') + ' no QR code yet and '
+            + (missing === 1 ? 'is' : 'are') + ' not on this sheet. '
+            + 'They were created before QR ordering existed — re-create them to get a code.</div>'
+        : '';
+
+    const outletName = (outlet && outlet.name) || '';
+    body.innerHTML = note + '<div class="pos-qr-grid">' + cards.map((c) => `
+        <div class="pos-qr-card">
+            <div class="pos-qr-outlet">${esc(outletName)}</div>
+            <div class="pos-qr-label">${esc(c.label)}</div>
+            <div class="pos-qr-img">${c.svg}</div>
+            <div class="pos-qr-cta">Scan untuk memesan</div>
+            ${c.zone ? `<div class="pos-qr-zone">${esc(c.zone)}</div>` : ''}
+        </div>`).join('') + '</div>';
+}
+
+function closeTableQrSheet() {
+    $('pos-qr-sheet')?.classList.add('hidden');
+    qrCards = null;
 }
 
 onAuthStateChanged(auth, async (user) => {

@@ -23,10 +23,18 @@ https://fluxyos-order.netlify.app/*   https://order.fluxyos.com/:splat   301!
 /t/*                              /order.html                                   200
 
 # --- API function routes ---
-# The same shared functions directory is deployed to every site, routed by path.
-# Only the two public endpoints are reachable here by design: everything else in
-# /api/v1 expects a Firebase ID token that a diner does not have and must not be
-# invited to acquire on this origin.
+# The same shared functions directory is deployed to every site.
+#
+# ⚠️ THESE RULES DO NOT GRANT ACCESS, AND ABSENT ONES DO NOT DENY IT. Netlify
+# always serves every deployed function at its raw /.netlify/functions/<name>
+# path, whatever _redirects says. So the three lines below are documentation of
+# what this origin is FOR, not a boundary — and the real boundary is that each
+# function authenticates independently: the three public ones resolve the
+# TABLE by its token, and every other function on the site requires a Firebase
+# ID token that a diner does not have.
+#
+# What IS withheld here is the friendly /api/v1/* alias the other roles install,
+# so nothing on this origin advertises an authenticated surface.
 /.netlify/functions/qr-menu        /.netlify/functions/qr-menu        200
 /.netlify/functions/qr-menu-image  /.netlify/functions/qr-menu-image  200
 /.netlify/functions/qr-order       /.netlify/functions/qr-order       200

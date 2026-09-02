@@ -39,6 +39,7 @@
     "report:grni": "node scripts/grni-match-report.js",
     "check:qr-image": "node tests/qr-menu-image.check.js",
     "check:qr-order": "node tests/qr-order.check.js",
+    "check:pos-table-qr": "node tests/pos-table-qr.check.js",
     "check:rate-limit": "node tests/rate-limit.check.js",
     "check:modifier-cogs": "node tests/modifier-cogs.check.js",
     "sync:table-directory": "node scripts/sync-pos-table-directory.js",
@@ -55,13 +56,13 @@
     "firebase-admin": "^13.10.0",
     "pdfjs-dist": "^4.10.38",
     "puppeteer-core": "^22.15.0",
+    "qrcode": "^1.5.4",
     "resend": "^4.0.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "playwright": "^1.60.0",
-    "qrcode": "^1.5.4",
     "tailwindcss": "^3.4.19"
   }
 }
