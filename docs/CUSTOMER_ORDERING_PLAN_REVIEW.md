@@ -305,15 +305,41 @@ Code cannot do these; they need Netlify and Cloudflare access.
 5. Verify: `curl -sI https://order.fluxyos.com/t/<a real token>` → 200, and the
    menu renders on a phone.
 
-### 7.5 The gap this does not close
+### 7.5 ~~The gap this does not close~~ — closed 2026-09-03
 
-**Nothing prints the QR.** `pos_tables.qr_token` is minted on table creation
-(`pos-service.js:184`) and synced into `pos_table_directory`, but no UI in the
-product ever displays it — so a restaurant has no way to obtain the link, let
-alone a card for the table. The customer surface is complete and unreachable by
-a real diner until that exists.
+**The till prints the cards.** Floor plan → *Table QR codes* → a sheet of cards,
+one per table in the outlet, laid out for A4 with cut lines. Gated on
+`pos.manage`: a cashier operates the till, they do not mint table cards.
 
-It is a till-side surface, not a customer-side one, which is why it is not in
-this change. It needs a QR renderer, and the CSP allows scripts only from
-`'self'` plus four Google hosts — so the library must be vendored into
-`assets/`, not pulled from a CDN.
+`netlify/functions/pos-table-qr.js` renders the symbols server-side. The CSP
+allows scripts only from `'self'` plus four Google hosts, so a client-side
+encoder would mean vendoring a QR library into `assets/` and owning its
+correctness forever; `qrcode` was already a dependency here.
+
+**A QR is the one artefact whose failure is total and invisible** — it looks
+exactly like a working one, and it is discovered by a customer holding a
+laminated card that does nothing. So `check:pos-table-qr` encodes a card,
+rasterises it in a real browser, and decodes it back with **Apple's Vision
+framework** — the decoder an iPhone camera actually uses, and a different
+implementation from the one that wrote it. Round-tripping through `qrcode` would
+prove only that it agrees with itself.
+
+Two things this taught, both worth keeping:
+
+1. **`scripts/verify-qr.sh` never existed.** `scripts/make-qr.js` has claimed
+   since it was written that its output is "verified by decoding it back with
+   macOS Vision (scripts/verify-qr.sh)". Someone verified it once, by hand, and
+   nothing re-checked it after. `scripts/qr/decode-qr.swift` now does.
+2. **The decode leg must compare against an independently built URL.** Anchored
+   to `cardUrl()`'s own output, it agreed with any bug in `cardUrl` — a token
+   truncated by one character encoded, rasterised and decoded perfectly, and the
+   card resolved to nothing. Confirmed by re-running the negative control.
+
+Error correction is **Q, not the H** used for the event poster: H is there to
+survive a logo over the centre, a table card has no logo, and H's redundancy
+would be paid for in module density. On a real 43-char token at a 40mm card, H
+gives 0.70mm modules and Q gives 0.82mm. The 40mm box is asserted in the browser
+— shrinking it silently makes every printed card harder to scan.
+
+Verified against production: all 11 live tokens in `pos_table_directory`, across
+3 workspaces, decode back to the exact URL.
