@@ -291,19 +291,57 @@ oversight:
 
 ### 7.4 Still manual — the domain half
 
-Code cannot do these; they need Netlify and Cloudflare access.
+Code cannot do these; they need Netlify and Cloudflare access. Values below were
+read from the live account on 2026-09-03, not assumed.
 
-1. Create the Netlify site from this repo (assumed name `fluxyos-order` — if it
-   differs, update the host-canonicalization line in `deploy/_redirects.order`).
-2. Set `SITE_ROLE=order` on it, **Production context only**. Unset elsewhere.
-3. Set `FIREBASE_SERVICE_ACCOUNT` on it. ⚠️ This is per-site, and its absence is
-   exactly why the photo endpoint returned 404 on `pos.fluxyos.com` while
-   working on the dashboard. Verify with `netlify api getEnvVars` and the
-   account UUID — `env:set --site` ignores the flag and writes to the LINKED
-   site.
-4. Cloudflare CNAME `order` → the Netlify site, **DNS only (grey cloud)**.
-5. Verify: `curl -sI https://order.fluxyos.com/t/<a real token>` → 200, and the
-   menu renders on a phone.
+| | |
+|---|---|
+| Netlify account | `safrian` / `5c780d713be94a71b66ac2eb` |
+| Repo | `https://github.com/safrianjay/fluxyos`, branch `main` |
+| Build command | `npm run build:css && node scripts/prepare-deploy.js` |
+| Publish directory | `.` |
+| Assumed site name | `fluxyos-order` — if it differs, update the host-canonicalization line in `deploy/_redirects.order` |
+
+**⚠️ DO NOT USE `netlify env:set` FROM THIS DIRECTORY.** The linked project here
+is `fluxyos` — the **apex marketing site**. `env:set --site` ignores its flag and
+writes to the LINKED site, which has already nearly turned fluxyos.com into the
+till once. Set the variables in the Netlify UI during the import flow, or use
+`netlify api createEnvVars` with an explicit `account_id` + `site_id`, and read
+them back with `netlify api getEnvVars` before trusting either.
+
+1. Create the site from the repo with the settings above. **Set the environment
+   variables before the first build completes** — a build with no `SITE_ROLE`
+   produces the full monolith, which serves every app page and an allow-all
+   `robots.txt` on the `*.netlify.app` subdomain.
+2. `SITE_ROLE=order`, **Production context only**.
+3. `FIREBASE_SERVICE_ACCOUNT`, all contexts. Copy the value already on
+   `fluxyos-dashboard`. ⚠️ It is **per-site** and account-level env is empty:
+   `fluxyos-pos` does not have it, which is exactly why `qr-menu-image` returns
+   404 on `pos.fluxyos.com` and 200 on the dashboard.
+4. Cloudflare CNAME `order` → the site's `*.netlify.app`, **DNS only (grey
+   cloud)**. Then add `order.fluxyos.com` as the custom domain in Netlify.
+5. Verify: `curl -sI https://order.fluxyos.com/t/<a real token>` → 200, then
+   open it on a phone and place an order.
+
+**This makes four sites building from one repo.** Every push now costs four
+builds, not three — worth knowing against the 306-of-300 build minutes spent in
+August 2026. `npm run ship` reports the live quota before you push.
+
+### 7.4a Verified in production, 2026-09-03
+
+After pushing, with all three existing sites deployed at `54bcc06`:
+
+- `qr-menu` with a live token → **200**, real menu (27 items, 4 categories, IDR,
+  5 with photos). An unknown token → **404**, identical shape.
+- `qr-menu-image` → **302** to `storage.googleapis.com` → **200 image/png**.
+- `order.html` served locally against the **production** endpoints and real
+  data: every photo loaded, no console errors, no failed requests, prices
+  rendering `Rp18.000` with no space.
+
+One trap worth recording, because it cost a wrong conclusion: proxying the
+image request with a `Content-Type: application/json` header returns **403**.
+The signed Storage URL's signature covers the request headers, so an unsolicited
+Content-Type on a GET breaks it — and it looks exactly like a broken endpoint.
 
 ### 7.5 ~~The gap this does not close~~ — closed 2026-09-03
 
