@@ -236,6 +236,10 @@ function laneBE(changed) {
   // can be broken by an edit anywhere in the file, and the consequence is a
   // permanent public URL to a customer's menu that cannot be revoked.
   ok = record('be', run('check:qr-image (no public URL, refuses before Firebase)', 'node', ['tests/qr-menu-image.check.js'])) && ok;
+  // Unconditional, for the same reason. An off-by-one in a limiter is either a
+  // public endpoint with no ceiling or a restaurant whose customers are refused
+  // their own menu, and neither states itself at runtime.
+  ok = record('be', run('check:rate-limit (counts, refuses, fails open)', 'node', ['tests/rate-limit.check.js'])) && ok;
   // Unconditional. The offending call can live in ANY module — the first
   // Firestore touch on a page decides the transport for all of it — so the file
   // that breaks this is rarely the file being edited. Same reasoning as

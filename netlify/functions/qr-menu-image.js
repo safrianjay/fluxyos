@@ -1,6 +1,7 @@
 'use strict';
 
 const { allowOriginHeader } = require('./lib/allowed-origins');
+const { consume, ipKey, clientIp, tooManyRequests } = require('./lib/rate-limit');
 
 // =============================================================================
 // FluxyOS — menu photos for a QR customer, who is not signed in.
@@ -63,6 +64,29 @@ const URL_TTL_MS = 15 * 60 * 1000;
 // so a cached response can never outlive the credential inside it.
 const CACHE_SECONDS = 300;
 
+// ── What this endpoint can afford to check ──────────────────────────────────
+//
+// Every rate-limit dimension is one Firestore transaction, and this is the
+// cheapest request in the product — one per photo on a menu. Checking token, IP
+// and workspace on each would triple the cost of loading a menu.
+//
+// So it checks ONE dimension: the table token, daily. A token is a physical
+// table, and no table's menu is legitimately fetched thousands of times a day.
+// That is the cap that stops a scanned QR being turned into a cost attack,
+// which is the actual exposure here — the token is 256 bits and item ids are
+// unguessable, so this endpoint leaks nothing without a code somebody scanned.
+//
+// An ORDER endpoint is the opposite shape — a handful of calls per sitting,
+// each a write — and §18.10 requires all three dimensions there. Do not copy
+// this endpoint's single check into one that writes.
+const TOKEN_DAILY_LIMIT = 5000;
+const DAY_SECONDS = 24 * 60 * 60;
+// A second, much shorter window on the IP. A menu is ~30 photos and a browser
+// re-requests on navigation, so this has to sit well above a real page load
+// while still stopping a loop. Keyed on the hash, never the address itself.
+const IP_BURST_LIMIT = 300;
+const IP_BURST_SECONDS = 60;
+
 let _initialized = false;
 function initAdmin() {
     if (!_initialized) {
@@ -114,6 +138,22 @@ exports.handler = async (event) => {
 
     try {
         const db = initAdmin().firestore();
+
+        // 0. Throttle before doing any work. Both checks fail OPEN — this
+        //    protects against cost and noise, not against a breach, and a
+        //    limiter that fails closed turns a database blip into a restaurant
+        //    whose customers cannot see the menu.
+        const burst = await consume(db, {
+            key: ipKey(clientIp(event.headers || {})),
+            limit: IP_BURST_LIMIT,
+            windowSeconds: IP_BURST_SECONDS
+        });
+        if (!burst.allowed) return tooManyRequests(burst, cors);
+
+        const daily = await consume(db, {
+            key: `tok_${token}`, limit: TOKEN_DAILY_LIMIT, windowSeconds: DAY_SECONDS
+        });
+        if (!daily.allowed) return tooManyRequests(daily, cors);
 
         // 1. The token names a table, and the table names a workspace. Deny-all
         //    to clients, so this mapping only exists server-side.

@@ -1165,16 +1165,61 @@ accept reprinting and say so), rotatable on a schedule, and useless once revoked
 Never derive a token from a table id, a sequence, or a timestamp — 256 bits of
 CSPRNG output, base64url.
 
-### 18.10 No rate limiting exists anywhere
+### 18.10 Rate limiting — BUILT 2026-09-02
 
-`grep` across `netlify/` returns nothing for rate limiting. Today that is
-acceptable because every write path is authenticated. **A public order endpoint
-changes that**: an unthrottled `POST` that writes a Firestore document is a direct
-cost-and-noise attack on a customer's workspace.
+> Originally: *"`grep` across `netlify/` returns nothing for rate limiting. Today
+> that is acceptable because every write path is authenticated."*
 
-Per-token, per-IP, and per-workspace daily caps must exist **before** Phase 2
-ships. This is new infrastructure the plan requires and the codebase does not have
-— call it out in the Phase 2 estimate rather than discovering it in review.
+That premise expired before the order endpoint was written:
+`netlify/functions/qr-menu-image.js` is a public READ endpoint, so "every path is
+authenticated" stopped being true when menu photos shipped.
+
+**`netlify/functions/lib/rate-limit.js`** is the primitive. Fixed window,
+Firestore-backed, one transaction per dimension.
+
+- **Firestore, because it is the only durable store available.** Netlify
+  Functions are stateless and a per-instance counter is theatre — each
+  invocation may be a fresh container, so an in-memory limiter answers "0 so
+  far" as fast as an attacker opens connections. `@netlify/blobs` is not
+  installed; `firebase-admin` is, and every function already holds a handle.
+- **Fixed window, not a token bucket.** A bucket needs elapsed time, a stored
+  timestamp and float arithmetic on a shared document. A window is one integer
+  and one transaction, and its known weakness — up to 2× the limit across a
+  boundary — does not matter for caps meant to stop enumeration and cost
+  attacks rather than to shape traffic.
+- **The window start is in the document id**, so a new window is a new document
+  and there is nothing to reset or race over.
+- **It FAILS OPEN**, deliberately. This protects against cost and noise, not
+  against a breach; a limiter that failed closed would turn a database blip into
+  a restaurant whose customers cannot see the menu. Every failure is logged and
+  the result carries `degraded: true`.
+- **The IP is hashed with a salt**, never stored — a rate-limit key does not need
+  to be reversible, and the collection should not be minable for who visited
+  which restaurant. Only the FIRST `x-forwarded-for` entry is the client; the
+  rest are hops, and keying on the chain would let a caller mint a fresh budget
+  per request.
+
+**Each dimension costs a transaction, so the endpoint chooses.** `qr-menu-image`
+checks two — a 60-second IP burst and a per-token daily cap — because it is the
+cheapest request in the product (one per photo) and checking all three would
+triple the cost of loading a menu. Its real exposure is a scanned QR turned into
+a cost attack, which the token cap answers; it leaks nothing without a code
+somebody physically scanned.
+
+**An order endpoint is the opposite shape** — a handful of calls per sitting,
+each a write — and must check all three, including the per-workspace daily cap
+this section originally called for. Do not copy the image endpoint's choice into
+one that writes.
+
+⚠️ **No `firestore.rules` block is needed.** The ruleset ends with
+`match /{document=**} { allow read, write: if false; }`, so `rate_limits` is
+denied to every client by default and only the Admin SDK can touch it.
+
+⚠️ **Set a Firestore TTL policy on `rate_limits.expires_at`** before this carries
+real traffic. Nothing deletes these documents; the field is written for a policy
+that is a project setting, not a rules change.
+
+Guard: `tests/rate-limit.check.js` (28 assertions, unconditional in the BE lane).
 
 ### 18.11 Rules ceiling and evaluation budget
 
