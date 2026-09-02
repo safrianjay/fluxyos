@@ -230,6 +230,12 @@ function laneBE(changed) {
   // can fall out of sync without a function file being in the diff, and the
   // symptom is an opaque CORS error from ONE origin.
   ok = record('be', run('check:origins (one CORS allowlist, mirrors agree)', 'node', ['tests/allowed-origins.check.js'])) && ok;
+  // Unconditional. This is the ONLY endpoint that serves workspace data to a
+  // caller with no account, and both its inputs come from a stranger's URL bar.
+  // The guard that matters most — that it never mints a getDownloadURL link —
+  // can be broken by an edit anywhere in the file, and the consequence is a
+  // permanent public URL to a customer's menu that cannot be revoked.
+  ok = record('be', run('check:qr-image (no public URL, refuses before Firebase)', 'node', ['tests/qr-menu-image.check.js'])) && ok;
   // Unconditional. The offending call can live in ANY module — the first
   // Firestore touch on a page decides the transport for all of it — so the file
   // that breaks this is rarely the file being edited. Same reasoning as
