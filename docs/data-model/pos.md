@@ -638,7 +638,38 @@ for every client including the owner.
 A verbatim copy of `commerce_shop_directory`: the QR ordering function resolves
 tokens Admin-SDK-side, so a guessed token cannot even confirm a workspace exists,
 and **the customer surface costs zero rules budget because it never touches
-Firestore.** Unused until Phase 2 ships.
+Firestore.**
+
+### It is populated by a reconcile (2026-09-02)
+
+It shipped with rules and a design and **nothing ever wrote it**, so every QR
+endpoint resolved through an empty collection — correct and unreachable.
+
+`npm run sync:table-directory` (`scripts/sync-pos-table-directory.js`) projects
+it from `pos_tables`. Dry-run by default; `--commit` writes.
+
+| Table state | Directory |
+|---|---|
+| active, has `qr_token` | upsert `{ workspace_id, table_id, dimension_id, revoked: false }` |
+| archived | **revoke** — the printed card stops resolving |
+| token rotated | revoke the old entry, upsert the new one |
+| active, no `qr_token` | mint one (`--commit`), or its QR can never exist |
+
+Because it is a projection it is idempotent and can be rebuilt at any time.
+
+**REVOKED, NEVER DELETED.** A deleted entry and a token that was never issued
+are indistinguishable, so a re-issued token could silently resurrect a card
+somebody printed and threw away. `revoked: true` is a fact the resolver can
+refuse on, and `netlify/functions/qr-menu-image.js` does — pinned by
+`check:qr-image`.
+
+⚠️ **The reconcile is not the intended long-term mechanism.** The entry should be
+written **when the QR is generated**: a code cannot exist in the world before
+somebody generates and prints it, and that is a deliberate action which can call
+an authenticated function. Registering there means no sync window and a
+directory holding only tables whose codes are actually out there. Firestore
+triggers are not an option — they are Cloud Functions, and this backend is
+Netlify Functions, which are HTTP and cannot watch a collection.
 
 ## 6. Tax is deliberately absent
 

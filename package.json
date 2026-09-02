@@ -38,6 +38,7 @@
     "check:pos-availability": "node tests/pos-availability.check.js",
     "report:grni": "node scripts/grni-match-report.js",
     "check:qr-image": "node tests/qr-menu-image.check.js",
+    "sync:table-directory": "node scripts/sync-pos-table-directory.js",
     "check:origins": "node tests/allowed-origins.check.js",
     "check:firestore-transport": "node tests/firestore-transport.check.js",
     "verify:till": "playwright test tests/till-origin-live.spec.js --project=chromium",

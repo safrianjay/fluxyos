@@ -105,6 +105,11 @@ const is = (actual, expected, label) => {
         'resolves the table token through the deny-all directory');
     is(/pos_visible\s*!==\s*true/.test(src), true,
         'refuses an item that is not on the menu');
+    // A revoked token is a printed card that must stop working — an archived
+    // table, or a rotated token. The directory keeps the entry rather than
+    // deleting it so this check can exist at all.
+    is(/revoked\s*===\s*true/.test(src), true,
+        'refuses a revoked table token');
     is(/path\.startsWith\(`workspaces\/\$\{workspaceId\}\/items\/\$\{itemId\}\//.test(src), true,
         'refuses an image_path outside this item\'s own tree');
 

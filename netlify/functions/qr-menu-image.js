@@ -119,7 +119,15 @@ exports.handler = async (event) => {
         //    to clients, so this mapping only exists server-side.
         const dirSnap = await db.doc(`pos_table_directory/${token}`).get();
         if (!dirSnap.exists) return notFound;
-        const { workspace_id: workspaceId } = dirSnap.data() || {};
+        const dir = dirSnap.data() || {};
+        // A REVOKED entry is a token whose card is out in the world and must
+        // stop working: the table was archived, or the token was rotated. The
+        // entry is kept rather than deleted precisely so this check exists — a
+        // deleted entry and a token that was never issued look identical, so a
+        // re-issued token could silently resurrect a card somebody printed and
+        // threw away. See scripts/sync-pos-table-directory.js.
+        if (dir.revoked === true) return notFound;
+        const workspaceId = dir.workspace_id;
         if (!workspaceId) return notFound;
 
         // 2. The item, IN THAT WORKSPACE. This is the check a Storage rule
