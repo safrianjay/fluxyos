@@ -663,6 +663,22 @@ somebody printed and threw away. `revoked: true` is a fact the resolver can
 refuse on, and `netlify/functions/qr-menu-image.js` does — pinned by
 `check:qr-image`.
 
+### Verified in production 2026-09-02
+
+11 entries written across 23 workspaces (all tables already carried a token;
+nothing to mint or revoke). The photo endpoint then resolved a real token end to
+end: `HTTP 200 · image/png`, with an unknown item, a garbage token and a
+traversal attempt each answering `404`.
+
+⚠️ **`FIREBASE_SERVICE_ACCOUNT` is a PER-SITE Netlify variable, and the till does
+not have it.** The same URL returns `302` on `dashboard.fluxyos.com` and
+`fluxyos.com` and `404` on `pos.fluxyos.com` — `initAdmin()` throws, the catch
+swallows it, and the refusal is indistinguishable from a bad token. When the
+`order` site is created it MUST carry this variable or every menu photo will be
+silently missing. It is deliberately not added to the till: that origin has no
+use for this endpoint, and a service-account credential should not be on a site
+that does not need one.
+
 ⚠️ **The reconcile is not the intended long-term mechanism.** The entry should be
 written **when the QR is generated**: a code cannot exist in the world before
 somebody generates and prints it, and that is a deliberate action which can call
