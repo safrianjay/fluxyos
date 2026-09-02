@@ -240,6 +240,11 @@ function laneBE(changed) {
   // public endpoint with no ceiling or a restaurant whose customers are refused
   // their own menu, and neither states itself at runtime.
   ok = record('be', run('check:rate-limit (counts, refuses, fails open)', 'node', ['tests/rate-limit.check.js'])) && ok;
+  // Unconditional. The arithmetic is invisible at runtime: relieving too little
+  // inflates gross margin, relieving too much invents cost, and neither raises
+  // anything. It also crosses FOUR explicit field lists between the item and the
+  // stock movement, any one of which can drop `consumes` silently.
+  ok = record('be', run('check:modifier-cogs (a priced option moves stock)', 'node', ['tests/modifier-cogs.check.js'])) && ok;
   // Unconditional. The offending call can live in ANY module — the first
   // Firestore touch on a page decides the transport for all of it — so the file
   // that breaks this is rarely the file being edited. Same reasoning as

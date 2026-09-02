@@ -172,7 +172,31 @@ function normalizeModifierGroups(groups) {
             name: clean(o && o.name, 40),
             // May be negative — a smaller size costs less. Raw integer, like
             // every other amount in this file.
-            price_delta: Math.round(Number(o && o.price_delta) || 0)
+            price_delta: Math.round(Number(o && o.price_delta) || 0),
+            // WHAT THIS OPTION TAKES OUT OF STOCK, per unit of the line.
+            //
+            // Without it a priced modifier moved revenue and never moved COGS:
+            // "extra shot +Rp5.000" billed the customer and relieved no coffee,
+            // so a heavily-modified menu reported a gross margin flattered by
+            // exactly the cost of the extras. The same defect CM-ORDER-COGS was
+            // built to close for marketplace sales, arriving by a second route.
+            //
+            // Quantities are integers in the COMPONENT's own base unit, the same
+            // rule `components` follows (items.md §2) — cost flows through
+            // quantity x unit_cost into a journal amount, and a float quantity
+            // puts binary rounding error straight into the ledger.
+            //
+            // Empty is the normal case and stays free: a sugar level or a spice
+            // preference consumes nothing measurable, and forcing every option
+            // to name an ingredient would make the common case pay for the rare
+            // one.
+            consumes: (Array.isArray(o && o.consumes) ? o.consumes : [])
+                .slice(0, 5)
+                .map((c) => ({
+                    item_id: clean(c && c.item_id, 60),
+                    quantity: Math.round(Number(c && c.quantity) || 0)
+                }))
+                .filter((c) => c.item_id && Number.isInteger(c.quantity) && c.quantity > 0)
         })).filter((o) => o.name)
     })).filter((g) => g.name && g.options.length);
 }
@@ -5993,18 +6017,59 @@ class DataService {
             const qty = Number(l.quantity) || 0;
             if (qty <= 0) return;
 
-            // A recipe is relieved as the ingredients it consumes, never as
-            // itself — the same reason a composite cannot be received.
+            // What one sold line takes off the shelf: the dish, plus whatever
+            // its chosen modifiers add.
             //
             // ⚠️ `explodeRecipe` returns an OBJECT keyed by item id
             // ({ riceId: 300, oilId: 15 }), NOT an array. Treating it as one
             // throws `consumed.forEach is not a function`, which is exactly
             // what shipped in relieveCommerceCogs — see the note there.
-            const consumed = item.type === 'composite'
-                ? Object.entries(explodeRecipe(byId, item.id, qty)).map(([id, q]) => ({ item_id: id, quantity: q }))
-                : [{ item_id: item.id, quantity: qty }];
+            //
+            // A recipe is relieved as the ingredients it consumes, never as
+            // itself — the same reason a composite cannot be received.
+            const demand = (id, q) => (byId[id] && byId[id].type === 'composite'
+                ? Object.entries(explodeRecipe(byId, id, q)).map(([cid, cq]) => ({ item_id: cid, quantity: cq }))
+                : [{ item_id: id, quantity: q }]);
 
+            const consumed = demand(item.id, qty);
+
+            // MODIFIERS MOVE STOCK TOO. A priced option billed the customer and
+            // relieved nothing, so "extra shot +Rp5.000" was pure margin: the
+            // revenue moved and the coffee did not. Gross margin was overstated
+            // by exactly the cost of the extras, silently, on every modified
+            // sale.
+            //
+            // `consumes` is snapshotted onto the LINE, so relief uses what the
+            // option consumed when it was rung up rather than what the recipe
+            // says today. Quantities are per unit of the line, so an option is
+            // multiplied by the line quantity — two lattes with an extra shot
+            // each take two shots, not one.
+            //
+            // A modifier component may itself be a composite (an "extra sauce"
+            // that is a recipe), so it goes through the same explosion.
+            (Array.isArray(l.modifiers) ? l.modifiers : []).forEach((m) => {
+                (Array.isArray(m && m.consumes) ? m.consumes : []).forEach((c) => {
+                    const cq = (Number(c && c.quantity) || 0) * qty;
+                    if (!c || !c.item_id || cq <= 0) return;
+                    demand(c.item_id, cq).forEach((d) => consumed.push(d));
+                });
+            });
+
+            // MERGE BEFORE EMITTING. A shot reached through the recipe and again
+            // through "extra shot" is ONE movement of 2, not two movements of 1
+            // — the same rule `explodeRecipe` already applies inside a single
+            // explosion (items.md §3, "shared ingredients merge"). The arithmetic
+            // is identical either way (the weighted-average rate is invariant
+            // under proportional relief), but a subledger listing the same item
+            // twice on one sale reads as a bug and makes the movements harder to
+            // tie back to the line that caused them.
+            const merged = new Map();
             consumed.forEach((c) => {
+                if (!c || !c.item_id) return;
+                merged.set(c.item_id, (merged.get(c.item_id) || 0) + (Number(c.quantity) || 0));
+            });
+
+            [...merged.entries()].map(([item_id, quantity]) => ({ item_id, quantity })).forEach((c) => {
                 const target = byId[c.item_id];
                 if (!target) return;
                 const stock = onHand[c.item_id] || { quantity: 0, value: 0 };

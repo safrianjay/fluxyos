@@ -2085,7 +2085,13 @@ function posModifierGroups(item) {
                 .map((o) => ({
                     id: String(o.id || ''),
                     name: String(o.name || '').trim(),
-                    price_delta: Math.round(Number(o.price_delta) || 0)
+                    price_delta: Math.round(Number(o.price_delta) || 0),
+                    // ⚠️ THIS MAP IS A WHITELIST. A field left out of it reaches
+                    // the till as undefined and the feature silently does
+                    // nothing — the same trap that cost pos_modifier_groups,
+                    // barcode and image_path a cut each. `consumes` has to be
+                    // here or a modifier's stock relief never reaches the line.
+                    consumes: Array.isArray(o.consumes) ? o.consumes : []
                 }))
                 .filter((o) => o.id && o.name)
         }))
@@ -2127,7 +2133,12 @@ function openModifierDrawer(item) {
                     const o = g.options.find((x) => x.id === optId);
                     if (o) picked.push({
                         group_id: g.id, group_name: g.name,
-                        option_id: o.id, option_name: o.name, price_delta: o.price_delta
+                        option_id: o.id, option_name: o.name, price_delta: o.price_delta,
+                        // Carried onto the chosen modifier so the line can
+                        // snapshot it. Left out here, the option's stock relief
+                        // dies one step before the order — the same silent drop
+                        // as the projection above.
+                        consumes: Array.isArray(o.consumes) ? o.consumes : []
                     });
                 });
             });

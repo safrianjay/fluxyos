@@ -140,10 +140,51 @@ validation therefore lives entirely in `db-service.saveItem`
 silently does nothing — which is exactly what happened to `pos_modifier_groups`
 on the first cut.
 
-**Not built:** per-outlet modifier pricing, and modifier→recipe stock relief (an
-extra shot consuming beans). The second one matters: a priced modifier moves
-revenue today but not COGS, so a heavily-modified menu overstates gross margin
-by the cost of the extras.
+**Not built:** per-outlet modifier pricing.
+
+### Modifier stock relief — BUILT 2026-09-03
+
+> Previously: *"a priced modifier moves revenue today but not COGS, so a
+> heavily-modified menu overstates gross margin by the cost of the extras."*
+
+An option now declares what it takes off the shelf:
+
+```
+options: [{ id, name, price_delta, consumes: [{ item_id, quantity }] }]
+```
+
+`quantity` is an **integer in the component's own base unit** — the same rule
+`components` follows (items.md §2), because cost flows through
+`quantity × unit_cost` into a journal amount and a fraction puts binary rounding
+error straight into the ledger. Up to five components; the item drawer edits the
+first and carries the rest through untouched.
+
+**Empty is the normal case and stays free.** A sugar level or a spice preference
+consumes nothing measurable, and forcing every option to name an ingredient
+would make the common case pay for the rare one.
+
+**Snapshotted onto the LINE, not looked up at relief time.** What the sale
+consumed is copied the way `unit_price` and `item_name` are: editing the recipe
+next week must not retroactively change what left the shelf on Tuesday.
+
+`_resolveSaleConsumption` multiplies each option by the LINE quantity — two
+lattes with an extra shot each take two shots — explodes a component that is
+itself a composite, and **merges** an item reached twice into one movement (a
+shot from the recipe plus a shot from the modifier is one movement of 2, not two
+of 1). The arithmetic is identical either way, but a subledger listing the same
+item twice on one sale reads as a bug.
+
+⚠️ **`consumes` crosses FOUR explicit field lists** between the item and the
+stock movement — `normalizeModifierGroups`, `getPosMenu`, `posModifierGroups` in
+`pos.js`, and the `soldLines` map in `_emitPosSale`. Every one of them is a
+whitelist, and a field missing from any is `undefined` at the far end with the
+feature silently doing nothing. The last of the four was found only by tracing
+the path: `_emitPosSale` mapped lines to `{ item_id, quantity }` and dropped
+`modifiers` entirely, so the resolver would never have seen them.
+
+No rules change: `items` has no `hasOnly` and `pos_orders.lines[]` is
+DAL-validated (§7). Guard: `tests/modifier-cogs.check.js` — 16 assertions,
+pure, unconditional in the BE lane.
 
 ### Stock on the till warns, and never blocks (2026-08-31)
 

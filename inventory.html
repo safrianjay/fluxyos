@@ -182,6 +182,17 @@
         .inv-qty-unit { color: #94A3B8; font-weight: 400; margin-left: 3px; }
         .inv-muted { color: #94A3B8; }
 
+        /* What a modifier option takes off the shelf. Its own row under the
+           option, not a fourth column: the option row is a fixed three-column
+           grid and a fourth control crushed the price field on a phone. */
+        .mod-opt-uses {
+            display: grid; grid-template-columns: 1fr 92px; gap: 8px;
+            margin: 6px 0 10px; padding-left: 10px;
+            border-left: 2px solid #E2E8F0;
+        }
+        .mod-opt-uses select, .mod-opt-uses input { min-height: 36px; font-size: 13px; }
+        .mod-opt-uses input:disabled { background: #F8FAFC; color: #94A3B8; }
+
         /* ── Product photo control ──────────────────────────────────────────
            The preview keeps a fixed 4:3 tile and shows the image with
            `object-fit: contain` — the SAME treatment as the POS card, so what is
@@ -1942,7 +1953,13 @@
 
         function newModifierOption() {
             modifierUid += 1;
-            return { uid: `mo${modifierUid}`, id: `o${modifierUid}${Date.now().toString(36)}`, name: '', price: '' };
+            // `usesItem` / `usesQty`: what ONE of this option takes off the shelf.
+            // Optional, and empty is the common case — a sugar level consumes
+            // nothing measurable.
+            return {
+                uid: `mo${modifierUid}`, id: `o${modifierUid}${Date.now().toString(36)}`,
+                name: '', price: '', usesItem: '', usesQty: ''
+            };
         }
         function newModifierGroup() {
             modifierUid += 1;
@@ -1973,6 +1990,25 @@
                                    placeholder="+5.000" value="${esc(o.price)}" aria-label="Extra charge">
                             <button type="button" class="mod-opt-del" data-mfield="opt-remove"
                                     aria-label="Remove this option"${g.options.length === 1 ? ' disabled' : ''}>×</button>
+                        </div>
+                        <!-- ── What this option takes off the shelf ───────────
+                             Without it a priced option moved revenue and never
+                             moved COGS: "extra shot +Rp5.000" billed the
+                             customer and relieved no coffee, so gross margin was
+                             overstated by exactly the cost of the extras.
+                             Optional on purpose. A sugar level or a spice
+                             preference consumes nothing measurable, and making
+                             every option name an ingredient would charge the
+                             common case for the rare one. -->
+                        <div class="mod-opt-uses" data-mopt-uses="${o.uid}">
+                            <select class="fluxy-drawer-select" data-mfield="opt-item" aria-label="Ingredient this option uses">
+                                ${['<option value="">Uses no extra stock</option>'].concat(
+                                    ingredientCandidates().map((i) => `<option value="${esc(i.id)}"${i.id === o.usesItem ? ' selected' : ''}>${esc(i.name)}${i.type === 'composite' ? ' (recipe)' : ''}</option>`)
+                                ).join('')}
+                            </select>
+                            <input class="fluxy-drawer-input" data-mfield="opt-qty" inputmode="numeric"
+                                   placeholder="1" value="${esc(o.usesQty)}"
+                                   aria-label="How much of it, in its own stock unit"${o.usesItem ? '' : ' disabled'}>
                         </div>`).join('')}
                     <div class="inv-line-foot">
                         <button type="button" class="inv-line-remove" data-mfield="opt-add">Add an option</button>
@@ -2003,6 +2039,20 @@
                             const neg = raw.startsWith('-') || raw.startsWith('−');
                             const n = Number(raw.replace(/\D/g, '')) || 0;
                             return neg ? -n : n;
+                        })(),
+                        // Quantities are INTEGERS in the component's own base
+                        // unit, the same rule recipe components follow: cost
+                        // flows through quantity x unit_cost into a journal
+                        // amount, and a fraction puts binary rounding error
+                        // straight into the ledger. A blank or zero simply means
+                        // this option consumes nothing.
+                        consumes: (() => {
+                            const id = String(o.usesItem || '').trim();
+                            const q = Math.round(Number(String(o.usesQty || '').replace(/[^\d]/g, '')) || 0);
+                            const first = (id && q > 0) ? [{ item_id: id, quantity: q }] : [];
+                            // Components beyond the first are not editable here
+                            // and are carried through rather than dropped.
+                            return first.concat(Array.isArray(o.extraConsumes) ? o.extraConsumes : []);
                         })()
                     }))
                     .filter((o) => o.name)
@@ -2549,7 +2599,23 @@
                                 name: o.name || '',
                                 // Rendered back as the user typed it: a raw
                                 // integer, with the minus kept for a cheaper size.
-                                price: o.price_delta ? String(o.price_delta) : ''
+                                price: o.price_delta ? String(o.price_delta) : '',
+                                // MUST round-trip. `resolvedModifierGroups`
+                                // always emits `consumes`, so an edit that
+                                // opened without seeding these would silently
+                                // erase what the option consumes — the same trap
+                                // barcode and image_path each documented. The
+                                // editor exposes ONE component; the schema
+                                // stores up to five, so the first is shown and
+                                // any beyond it are preserved by not being
+                                // editable here rather than being dropped.
+                                usesItem: (Array.isArray(o.consumes) && o.consumes[0]) ? String(o.consumes[0].item_id || '') : '',
+                                usesQty: (Array.isArray(o.consumes) && o.consumes[0] && o.consumes[0].quantity)
+                                    ? String(o.consumes[0].quantity) : '',
+                                // Everything past the first, carried through
+                                // untouched so a multi-component option authored
+                                // by import is not truncated by a drawer save.
+                                extraConsumes: (Array.isArray(o.consumes) ? o.consumes.slice(1) : [])
                             };
                         })
                     };
@@ -3229,6 +3295,15 @@
                     if (!o) return;
                     o.name = row.querySelector('[data-mfield="opt-name"]').value;
                     o.price = row.querySelector('[data-mfield="opt-price"]').value;
+                    // The consumption row is a SIBLING of the option row, keyed
+                    // by the same uid — the option row is a fixed three-column
+                    // grid and a fourth control would have crushed the price
+                    // field on a phone.
+                    const uses = el.querySelector(`[data-mopt-uses="${row.dataset.mopt}"]`);
+                    if (uses) {
+                        o.usesItem = uses.querySelector('[data-mfield="opt-item"]').value;
+                        o.usesQty = uses.querySelector('[data-mfield="opt-qty"]').value;
+                    }
                 });
             });
         }
@@ -3268,6 +3343,19 @@
             e.target.value = digits
                 ? (neg ? '-' : '') + digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
                 : (neg ? '-' : '');
+        });
+
+        // Choosing an ingredient enables the quantity beside it, and clearing it
+        // clears the quantity. A quantity against no ingredient is a number that
+        // relieves nothing, and leaving it on screen suggests otherwise.
+        document.getElementById('item-modifier-groups').addEventListener('change', (e) => {
+            if (e.target.dataset.mfield !== 'opt-item') return;
+            const qty = e.target.closest('[data-mopt-uses]')?.querySelector('[data-mfield="opt-qty"]');
+            if (!qty) return;
+            qty.disabled = !e.target.value;
+            if (!e.target.value) qty.value = '';
+            else if (!qty.value) qty.value = '1';
+            readModifiersFromForm();
         });
 
         document.getElementById('recipe-add-line').addEventListener('click', () => {

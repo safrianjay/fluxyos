@@ -39,6 +39,7 @@
     "report:grni": "node scripts/grni-match-report.js",
     "check:qr-image": "node tests/qr-menu-image.check.js",
     "check:rate-limit": "node tests/rate-limit.check.js",
+    "check:modifier-cogs": "node tests/modifier-cogs.check.js",
     "sync:table-directory": "node scripts/sync-pos-table-directory.js",
     "check:origins": "node tests/allowed-origins.check.js",
     "check:firestore-transport": "node tests/firestore-transport.check.js",

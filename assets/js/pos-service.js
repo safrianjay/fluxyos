@@ -738,7 +738,24 @@ export const POS_METHODS = {
             group_name: this._nullableString(m.group_name, 40),
             option_id: String(m.option_id || ''),
             option_name: this._nullableString(m.option_name, 40),
-            price_delta: Math.round(Number(m.price_delta) || 0)
+            price_delta: Math.round(Number(m.price_delta) || 0),
+            // SNAPSHOT, not a reference. What this option consumed is copied
+            // onto the line the way `unit_price` and `item_name` are, because
+            // the sale consumed what it consumed at the time: editing the recipe
+            // next week must not retroactively change what left the shelf on
+            // Tuesday. Looking it up at relief time would do exactly that.
+            //
+            // `pos_orders.lines[]` has no `hasOnly` in firestore.rules
+            // (pos.md §7), so this needed no rules change and no deploy — and
+            // therefore nothing downstream would refuse a malformed one, which
+            // is why it is normalised here.
+            consumes: (Array.isArray(m.consumes) ? m.consumes : [])
+                .slice(0, 5)
+                .map((c) => ({
+                    item_id: String((c && c.item_id) || ''),
+                    quantity: Math.round(Number(c && c.quantity) || 0)
+                }))
+                .filter((c) => c.item_id && c.quantity > 0)
         })).filter((m) => m.option_id && m.option_name);
     },
 
@@ -1356,7 +1373,18 @@ export const POS_METHODS = {
             // an oversell relieves anyway at the last known cost so the gap shows
             // as negative stock rather than a flattering margin.
             const { lines } = this._resolveSaleConsumption({
-                soldLines: (order.lines || []).map((l) => ({ item_id: l.item_id, quantity: Number(l.quantity) || 0 })),
+                // ⚠️ `modifiers` HAS to be passed through. This map is the
+                // fourth explicit field list on the POS path, and the fourth
+                // place a dropped field fails in silence: without it the
+                // resolver never sees what an option consumed, so a priced
+                // modifier bills the customer and relieves nothing, and gross
+                // margin is overstated by exactly the cost of the extras.
+                // Adding a field to a line means checking every one of these.
+                soldLines: (order.lines || []).map((l) => ({
+                    item_id: l.item_id,
+                    quantity: Number(l.quantity) || 0,
+                    modifiers: Array.isArray(l.modifiers) ? l.modifiers : []
+                })),
                 byId, bySku, onHand
             });
             const cogs = lines.reduce((s, l) => s + Math.abs(l.amount), 0);
