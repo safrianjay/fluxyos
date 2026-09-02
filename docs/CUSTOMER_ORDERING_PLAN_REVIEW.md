@@ -216,12 +216,10 @@ It redirects rather than proxying the bytes: streaming every tile would put a
 serverless invocation on the critical path of a menu scroll and pay for the
 bytes twice.
 
-⚠️ **`pos_table_directory` is still empty**, so this cannot resolve a token yet.
-It has rules and a design and nothing writes it — and it cannot be written from
-a browser, because the collection is deny-all to every client. Populating it is
-the QR entry point's job and is the next thing this feature needs. Until then
-the endpoint is correct and unreachable, which is the honest state to leave it
-in rather than inventing a second resolution path that would have to be removed.
+~~⚠️ `pos_table_directory` is still empty~~ — **resolved 2026-09-02.**
+`scripts/sync-pos-table-directory.js` reconciles it from `pos_tables` (Admin
+SDK; the collection is deny-all to every client). Production run: 11 entries,
+0 minted, 0 revoked.
 
 ## 6a. Unchanged and correct
 
@@ -229,3 +227,93 @@ Worth stating so it is not re-litigated: §28 (never trust the browser), §29
 (price integrity), §24/§25 (request bill is not payment), §40 Decisions 1, 2, 5,
 6 and 7, the empty/error states in §31, and the responsive targets in §32 are
 all right and consistent with how this codebase already works.
+
+
+---
+
+## 7. What was built from this review (2026-09-03)
+
+The page itself, its two remaining endpoints, and a fourth site role.
+
+| Piece | Where |
+|---|---|
+| The diner's page | `order.html` — one page, no Tailwind, no Firebase SDK |
+| What to render | `netlify/functions/qr-menu.js` |
+| Placing the order | `netlify/functions/qr-order.js` |
+| The fourth role | `ROLES`/`PAGE_ROLES` in `scripts/prepare-deploy.js`, `deploy/_redirects.order` |
+| Proof | `tests/qr-order.check.js`, `tests/customer-ordering.spec.js` (Chromium **and** WebKit) |
+
+### 7.1 The WebKit prediction in §1.5 was correct, and specifically so
+
+§1.5 argued the Tailwind Play CDN was the wrong tool for a mobile-Safari-first
+page whose central interactions are injected bottom sheets. The page therefore
+ships real CSS and no Tailwind, and its spec runs on WebKit.
+
+That immediately caught a *different* Safari-only defect in the same family:
+**typing a note and tapping "Tambah" did nothing.** The tap blurs the textarea,
+the blur fires `change`, and mutating the button's contents inside that handler
+made WebKit drop the click. Chromium dispatches it either way, so a
+Chromium-only pass is green while a diner taps a dead button.
+
+Fixed by writing to the DOM only when the value actually changed (`setText` /
+`setDisabled` in `order.html`). Reproduced first, in a four-case probe — no
+note fill passed, note fill failed, blur-first passed, direct dispatch passed —
+so the fix is known to address the cause rather than to have moved the symptom.
+The spec now types the note immediately before the tap for that reason.
+
+### 7.2 The document shape is the sharpest edge
+
+`wsPosOrderKeys` is a `hasOnly`, and the cashier's **next** update sends the
+whole document back. A key `qr-order` writes that the rules refuse succeeds when
+written — the Admin SDK bypasses rules — and then fails **every later till
+write** to that order. That is the exact shape of the 2026-08-31 incident where
+a day of till sales never reached the ledger.
+
+`check:qr-order` diffs the written keys against the rules **in both
+directions** (an extra key and a missing one are different defects), and both
+negative controls were verified to fire before the check was trusted.
+
+### 7.3 What is deliberately absent from the order origin
+
+Each of these is an assertion in `tests/prepare-deploy.check.js`, not an
+oversight:
+
+- **No `/__/auth/*` proxy.** Every other role has one because a user signs in
+  there. Nobody signs in here, so it must not host a working auth surface.
+- **No `/api/v1/*` catch-all.** Only the three public QR endpoints are routed.
+- **Not in `cors.json`** — asserted *out* of it by `tests/allowed-origins.check.js`.
+  Listing it would hand an anonymous origin direct browser access to the Storage
+  bucket, which is the precise thing `qr-menu-image` exists to avoid.
+- **No scheduled functions.** A fourth site keeping them registers every cron a
+  fourth time — invisible until it has already mailed customers.
+- **`/t/*` is a 200 rewrite, never a 301.** A redirect drops the token, and a
+  diner who reloads lands at a menu that has forgotten their table.
+
+### 7.4 Still manual — the domain half
+
+Code cannot do these; they need Netlify and Cloudflare access.
+
+1. Create the Netlify site from this repo (assumed name `fluxyos-order` — if it
+   differs, update the host-canonicalization line in `deploy/_redirects.order`).
+2. Set `SITE_ROLE=order` on it, **Production context only**. Unset elsewhere.
+3. Set `FIREBASE_SERVICE_ACCOUNT` on it. ⚠️ This is per-site, and its absence is
+   exactly why the photo endpoint returned 404 on `pos.fluxyos.com` while
+   working on the dashboard. Verify with `netlify api getEnvVars` and the
+   account UUID — `env:set --site` ignores the flag and writes to the LINKED
+   site.
+4. Cloudflare CNAME `order` → the Netlify site, **DNS only (grey cloud)**.
+5. Verify: `curl -sI https://order.fluxyos.com/t/<a real token>` → 200, and the
+   menu renders on a phone.
+
+### 7.5 The gap this does not close
+
+**Nothing prints the QR.** `pos_tables.qr_token` is minted on table creation
+(`pos-service.js:184`) and synced into `pos_table_directory`, but no UI in the
+product ever displays it — so a restaurant has no way to obtain the link, let
+alone a card for the table. The customer surface is complete and unreachable by
+a real diner until that exists.
+
+It is a till-side surface, not a customer-side one, which is why it is not in
+this change. It needs a QR renderer, and the CSP allows scripts only from
+`'self'` plus four Google hosts — so the library must be vendored into
+`assets/`, not pulled from a CDN.
