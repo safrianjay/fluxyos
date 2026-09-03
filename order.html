@@ -2129,6 +2129,14 @@ img { max-width: 100%; display: block; }
     // =====================================================================
     $('cart-submit').addEventListener('click', function () {
         if (submitting || !cart.length) return;
+        // READ THE FIELD, not the cached copy. `cartNote` is refreshed by
+        // paintCart(), which runs on cart edits — so a note typed and then
+        // submitted without touching anything else was still '' at this point
+        // and the request went out without it. Silently: the order posted fine,
+        // the kitchen just never saw the request.
+        var noteEl = $('cart-note');
+        if (noteEl) cartNote = String(noteEl.value || '');
+
         submitting = true;
         var btn = $('cart-submit');
         btn.disabled = true;

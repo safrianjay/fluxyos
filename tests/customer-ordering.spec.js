@@ -641,6 +641,11 @@ test.describe('QR customer ordering', () => {
         // The name is no longer typed here — the gate collected it before the
         // first tap, and the cart only confirms who the order goes out under.
         await expect(page.locator('#sheet-cart')).toContainText('Sinta');
+        // TYPED AND SUBMITTED WITH NOTHING IN BETWEEN. The note used to be read
+        // only when paintCart() re-ran, so a note written just before tapping
+        // was dropped and the order posted without it — no error, the kitchen
+        // simply never saw the request.
+        await page.locator('#cart-note').fill('sendok garpu 2');
         await expect(page.locator('#cart-submit')).toContainText('Order Sekarang');
         await page.locator('#cart-submit').click();
         await expect(page.locator('#view-done')).toBeVisible();
@@ -648,6 +653,7 @@ test.describe('QR customer ordering', () => {
         const body = capture.body;
         expect(body.token).toBe(TOKEN);
         expect(body.customer_name).toBe('Sinta');
+        expect(body.note, 'the order note never reached the request').toBe('sendok garpu 2');
         expect(body.lines).toHaveLength(2);
 
         // The whole point. A price anywhere in this payload means the server has
