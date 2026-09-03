@@ -78,7 +78,18 @@ async function stub(page, { menuStatus = 200, capture = {} } = {}) {
     });
 }
 
-const open = (page) => page.goto(`/order.html?t=${TOKEN}`);
+// ⚠️ THE PRINTED ROUTE, NOT `/order.html?t=`.
+//
+// This spec used the query form until 2026-09-03 and that is exactly how a
+// silent money bug reached production: under `/t/<token>` a RELATIVE
+// `assets/js/money-format.js` resolves to `/t/assets/js/money-format.js`, the
+// `/t/*` rule rewrites it to this same page, the browser gets 200-with-HTML
+// instead of a script, `window.FluxyMoney` is undefined, and every price on
+// the menu renders `20000` instead of `Rp20.000`. No error, no crash, a
+// plausible wrong number on a diner's phone.
+//
+// The query form exercised none of that. Drive what is printed on the card.
+const open = (page) => page.goto(`/t/${TOKEN}`);
 
 test.describe('QR customer ordering', () => {
     test.use({ viewport: { width: 390, height: 844 } });   // iPhone-sized, the real case
@@ -107,6 +118,45 @@ test.describe('QR customer ordering', () => {
         expect(family).toContain('inter');
         expect(family).not.toContain('mono');
         expect(family).not.toContain('fira');
+    });
+
+    test('THE MONEY SEAM LOADS UNDER THE PRINTED /t/ ROUTE', async ({ page }) => {
+        await stub(page);
+        await open(page);
+
+        // The regression this exists for. A relative asset path under /t/ is
+        // swallowed by the /t/* rewrite and comes back as HTML with a 200, so
+        // the failure is not a 404 and not an exception — it is FluxyMoney
+        // quietly missing and every amount rendering as a bare integer.
+        const hasMoney = await page.evaluate(() => typeof window.FluxyMoney === 'object'
+            && typeof window.FluxyMoney.formatBase === 'function');
+        expect(hasMoney, 'window.FluxyMoney did not load under /t/<token>').toBe(true);
+
+        // Stated twice on purpose: the seam being present, and a rendered price
+        // actually carrying the symbol. A future page could load the script and
+        // still forget to route an amount through it.
+        await expect(page.locator('.row', { hasText: 'Americano' }).locator('.row-price'))
+            .toHaveText('Rp22.000');
+        const anyBare = await page.evaluate(() => [...document.querySelectorAll('.row-price')]
+            .some((el) => /^\s*\d+\s*$/.test(el.textContent)));
+        expect(anyBare, 'a price rendered as a bare integer — the money seam is missing').toBe(false);
+    });
+
+    test('every asset the page loads is reachable under /t/', async ({ page }) => {
+        // The general form of the same defect: any relative src/href on this
+        // page resolves under /t/ and silently returns the page itself.
+        const wrong = [];
+        page.on('response', (r) => {
+            const u = new URL(r.url());
+            if (!/\.(js|css|svg|png|woff2?)$/.test(u.pathname)) return;
+            const type = r.headers()['content-type'] || '';
+            if (type.includes('text/html')) wrong.push(`${u.pathname} -> ${type}`);
+        });
+        await stub(page);
+        await open(page);
+        await expect(page.locator('.row').first()).toBeVisible();
+        expect(wrong, `asset(s) served as HTML by the /t/* rewrite:\n  ${wrong.join('\n  ')}`)
+            .toEqual([]);
     });
 
     test('a photo loads and keeps its aspect ratio', async ({ page }) => {
@@ -302,6 +352,8 @@ test.describe('QR customer ordering', () => {
 
     test('no token at all is a clear instruction, not a broken page', async ({ page }) => {
         await stub(page);
+        // Reached by typing the bare domain off a card, which serves order.html
+        // with no token segment at all.
         await page.goto('/order.html');
         await expect(page.locator('#error-title')).toHaveText('Kode meja tidak ditemukan');
     });

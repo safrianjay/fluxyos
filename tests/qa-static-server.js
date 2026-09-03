@@ -56,6 +56,19 @@ function resolveFile(reqPath) {
     if (/^\/budget-allocation\/[^/]+\/?$/.test(decoded)) {
         return path.join(ROOT, 'budget-allocation.html');
     }
+    // The QR customer entry point, mirroring deploy/_redirects.order:
+    //     /t/*   /order.html   200
+    //
+    // ⚠️ THIS MUST STAY A CATCH-ALL, matching Netlify. It is deliberately NOT
+    // narrowed to token-shaped paths, because the whole point is that the spec
+    // meets the same trap production has: `/t/assets/js/money-format.js`
+    // resolves HERE too, returns this HTML with a 200, and FluxyMoney never
+    // loads — so every price renders as a raw integer. That shipped once
+    // precisely because the spec used `/order.html?t=` and never walked this
+    // path. A "helpful" exclusion for /t/assets/** would hide it again.
+    if (/^\/t\/.+/.test(decoded)) {
+        return path.join(ROOT, 'order.html');
+    }
     const direct = safeJoin(ROOT, decoded);
     if (!direct) return null;
     let stat = tryStat(direct);

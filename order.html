@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#0B0F19">
 <title>Pesan — FluxyOS</title>
-<link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+<link rel="icon" type="image/svg+xml" href="/assets/images/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -35,7 +35,19 @@
   in cents and a hardcoded id-ID + Rp renders 100x the money with no error.
 -->
 
-<script src="assets/js/money-format.js"></script>
+<!-- ⚠️ ABSOLUTE, NOT RELATIVE. The printed entry point is `/t/<token>`, so a
+     relative `assets/...` resolves to `/t/assets/...` — and the `/t/*` rule
+     rewrites EVERYTHING under /t/ to this page, so that request returns **200
+     with this HTML**, not a 404. The browser then refuses to run HTML as a
+     script, `window.FluxyMoney` is undefined, and `money()` silently falls back
+     to the raw integer: every price on the menu renders as a bare number with
+     no currency symbol and no thousands separators.
+
+     No error, no crash, a plausible wrong number on a customer's phone — the
+     exact failure mode CLAUDE.md opens with. It reached production because the
+     spec loaded `/order.html?t=…` rather than the route a diner actually uses;
+     `customer-ordering.spec.js` now drives `/t/<token>`. -->
+<script src="/assets/js/money-format.js"></script>
 <style>
 /* ==========================================================================
    Tokens — the subset of the design system this page needs, inlined. It cannot
