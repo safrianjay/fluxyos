@@ -65,6 +65,11 @@ async function stub(page, { menuStatus = 200, capture = {} } = {}) {
     await page.route('**/qr-menu-image?**', (route) => route.fulfill({
         status: 200, contentType: 'image/png', body: PNG
     }));
+    await page.route('**/qr-order-status?**', (route) => route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(capture.status || { has_order: false, lines: [] })
+    }));
     await page.route('**/qr-order', async (route) => {
         capture.body = JSON.parse(route.request().postData() || '{}');
         await route.fulfill({
@@ -181,6 +186,10 @@ test.describe('QR customer ordering', () => {
         // Asked AFTER the menu paints. A form on a blank screen gives the diner
         // nothing to judge the request against.
         await expect(page.locator('.card').first()).toBeVisible();
+        // Two fields and a button — no explanatory paragraph. The labels say
+        // what is wanted and the sheet title says why.
+        await expect(page.locator('.welcome-lead')).toHaveCount(0);
+        await expect(gate).not.toContainText('Isi data Anda sekali saja');
 
         // It is not dismissible by any of the usual routes.
         await page.locator('#scrim').click({ position: { x: 10, y: 10 } });
@@ -286,30 +295,79 @@ test.describe('QR customer ordering', () => {
         // where iOS puts its home indicator, so a bar flush to it collects
         // accidental taps.
         expect(vh - (box.y + box.height)).toBeGreaterThan(6);
-        expect(await page.locator('.tab').count()).toBe(4);
 
-        // The cart badge counts, and only appears when there is something in it.
-        await expect(page.locator('#tab-cart-badge')).not.toHaveClass(/on/);
-        await page.locator('.card', { hasText: 'Americano' }).getByRole('button', { name: 'Tambah' }).click();
-        await expect(page.locator('#tab-cart-badge')).toHaveClass(/on/);
-        await expect(page.locator('#tab-cart-badge')).toHaveText('1');
+        // TWO tabs. A "Keranjang" tab used to sit here opening the same sheet
+        // the floating cart bar opens — one action behind two controls, which
+        // made the prominent one compete with itself.
+        await expect(page.locator('.tab')).toHaveCount(2);
+        await expect(page.locator('.tab[data-tab="cart"]')).toHaveCount(0);
+        await expect(page.locator('.tab[data-tab="help"]')).toHaveCount(0);
+
+        // The active tab is ORANGE — the brand accent, as a colour and a 10%
+        // wash, never a filled orange background.
+        const active = page.locator('.tab[aria-current="true"]');
+        await expect(active).toHaveCSS('color', 'rgb(234, 88, 12)');
+        const bg = await active.evaluate((el) => getComputedStyle(el).backgroundColor);
+        expect(bg).toContain('rgba(234, 88, 12');
 
         // The cart bar floats ABOVE the tab bar — they must never overlap.
-        // Polled, because it SLIDES in over 240ms: measured immediately it is
-        // still below the fold and reports an overlap that is really a
-        // stopwatch reading.
+        // Polled, because it SLIDES in over 240ms.
+        await page.locator('.card', { hasText: 'Americano' }).getByRole('button', { name: 'Tambah' }).click();
         await expect.poll(async () => {
             const c = await page.locator('#cartbar button').boundingBox();
             return Math.round((c.y + c.height) - box.y);
         }, { timeout: 3_000 }).toBeLessThanOrEqual(1);
+    });
 
-        // Keranjang opens the cart; the two informational tabs answer honestly
-        // rather than opening an empty screen.
-        await page.locator('.tab[data-tab="cart"]').click();
-        await expect(page.locator('#sheet-cart')).toHaveClass(/is-open/);
-        await page.locator('#scrim').click({ position: { x: 10, y: 10 } });
-        await page.locator('.tab[data-tab="help"]').click();
-        await expect(page.locator('#toast')).toHaveClass(/is-open/);
+    test('Pesanan shows what the table has actually ordered', async ({ page }) => {
+        const capture = {
+            status: {
+                has_order: true,
+                order_number: '2026-09-03-004',
+                status: 'sent', stage: 2, stage_label: 'Sedang disiapkan',
+                lines: [
+                    { item_name: 'Kentang Goreng', quantity: 2, gross_amount: 40000,
+                      note: 'tidak asin', modifiers: [] },
+                    { item_name: 'Es Kopi Susu', quantity: 1, gross_amount: 28000,
+                      note: null, modifiers: ['Large'] }
+                ],
+                note: 'Sendok garpu 2',
+                subtotal: 68000, service_charge_amount: 0, tax_amount: 0,
+                discount_total: 0, total_amount: 68000, paid_amount: 0
+            }
+        };
+        await stub(page, { capture });
+        await open(page);
+
+        // The badge counts what is already on the table, before anything is
+        // tapped — someone else may have ordered, or this is a second round.
+        await expect(page.locator('#tab-orders-badge')).toHaveClass(/on/);
+        await expect(page.locator('#tab-orders-badge')).toHaveText('3');
+
+        await page.locator('.tab[data-tab="orders"]').click();
+        const sheet = page.locator('#sheet-orders');
+        await expect(sheet).toHaveClass(/is-open/);
+
+        await expect(sheet).toContainText('2026-09-03-004');
+        await expect(sheet).toContainText('Sedang disiapkan');
+        await expect(sheet).toContainText('Kentang Goreng');
+        await expect(sheet).toContainText('tidak asin');       // the line note
+        await expect(sheet).toContainText('Large');            // the modifier
+        await expect(sheet).toContainText('Sendok garpu 2');   // the order note
+        await expect(sheet.locator('.totals .grand .num')).toHaveText('Rp68.000');
+
+        // Four steps, two of them reached. The till's ladder has seven and uses
+        // words a diner has no reason to know.
+        await expect(sheet.locator('.track-step')).toHaveCount(4);
+        await expect(sheet.locator('.track-step.done')).toHaveCount(2);
+    });
+
+    test('an empty table says so rather than showing a blank sheet', async ({ page }) => {
+        await stub(page);
+        await open(page);
+        await expect(page.locator('#tab-orders-badge')).not.toHaveClass(/on/);
+        await page.locator('.tab[data-tab="orders"]').click();
+        await expect(page.locator('#sheet-orders .empty')).toContainText('Belum ada pesanan');
     });
 
     test('the header is the business and the table, on one line', async ({ page }) => {

@@ -247,6 +247,22 @@ exports.handler = async (event) => {
         if (!lines.length) return json(409, { error: 'nothing_orderable' });
 
         const now = new Date();
+        // An order-level request from the diner ("sendok garpu 2"), distinct
+        // from the per-line notes above.
+        //
+        // ⚠️ IT SHARES `pos_orders.note` WITH THE TILL'S PARK LABEL. That field
+        // is written by `setPosOrderLabel` when a cashier holds an order, and
+        // `docs/data-model/pos.md` already records the collision: "if an
+        // order-level note is ever wanted for its own sake it collides with
+        // this and one of the two needs a new field." A new field means
+        // widening `wsPosOrderKeys` and a rules deploy.
+        //
+        // Taking the collision knowingly, because the blast radius is small and
+        // one-directional: parking a QR order would overwrite the note AFTER
+        // the kitchen has already read the ticket, and a customer request has
+        // no downstream reader that a stale value could corrupt. Revisit if
+        // parking QR orders ever becomes routine.
+        const orderNote = str(body.note, 200);
         const customerName = str(body.customer_name, 80);
         const customerPhone = str(body.customer_phone, 32);
         const guestRaw = Number(body.guest_count);
@@ -317,6 +333,16 @@ exports.handler = async (event) => {
                     updated_at: admin.firestore.FieldValue.serverTimestamp(),
                     updated_by: 'qr'
                 };
+                // A second round's note is APPENDED, not substituted. Someone
+                // ordering more food does not retract the request they made
+                // with the first round, and silently dropping it is worse than
+                // a slightly long note.
+                if (orderNote) {
+                    const prior = typeof o.note === 'string' ? o.note.trim() : '';
+                    patch.note = (prior && prior !== orderNote)
+                        ? (prior + ' · ' + orderNote).slice(0, 200)
+                        : orderNote;
+                }
                 // A customer who identified themselves fills in blanks; it never
                 // overwrites what the cashier already recorded.
                 if (customerName && !o.customer_name) patch.customer_name = customerName;
@@ -370,7 +396,7 @@ exports.handler = async (event) => {
                     total_amount: subtotal,
                     payments: [],
                     paid_amount: 0,
-                    note: null,
+                    note: orderNote,
                     customer_name: customerName,
                     customer_phone: customerPhone,
                     guest_count: guestCount,

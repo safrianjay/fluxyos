@@ -79,7 +79,10 @@
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     /* How much room the floating tab bar occupies at the bottom. Read by the
        cart bar and by the menu's trailing spacer, so the three can never
-       disagree about where the bottom of the page is. */
+       disagree about where the bottom of the page is.
+       MEASURED AT RUNTIME by syncTabbarSpace() — this value is only the
+       pre-paint fallback. Hard-coding it means every restyle of the bar
+       silently re-introduces an overlap, which is what happened. */
     --tabbar-space: calc(66px + var(--safe-bottom));
 }
 
@@ -219,13 +222,19 @@ img { max-width: 100%; display: block; }
    headline is prohibited (CLAUDE.md). Dropping it also reclaims the vertical
    space the header was wasting above the menu. */
 .masthead {
-    background: var(--ink);
+    /* Navy into the brand purple, with a warm bloom top-right. The orange lives
+       ONLY inside the gradient — an orange background is prohibited
+       project-wide, and gradients are the documented exception. */
+    background:
+        radial-gradient(120% 140% at 88% 0%, rgba(234, 88, 12, 0.28) 0%, transparent 55%),
+        linear-gradient(135deg, #0B0F19 0%, #171334 52%, #2A1B4A 100%);
     color: #fff;
-    padding: 16px 20px 18px;
+    padding: 18px 20px 20px;
     border-radius: 0 0 var(--r-xl) var(--r-xl);
     display: flex;
     align-items: center;
     gap: 10px;
+    position: relative;
 }
 .masthead h1 {
     font-size: 21px;
@@ -273,7 +282,7 @@ img { max-width: 100%; display: block; }
     top: 0;
     z-index: 20;
     background: var(--canvas);
-    padding: 12px 0 8px;
+    padding: 12px 0 0;
     border-bottom: 1px solid var(--line);
 }
 .searchwrap { padding: 0 20px 10px; }
@@ -292,48 +301,54 @@ img { max-width: 100%; display: block; }
 .search:focus { border-color: var(--ink-30); }
 
 /* ── Category tabs ─────────────────────────────────────────────────────────
-   Icon above label, the shape food apps use, because a diner scanning a rail
-   of words has to read all of them and a rail of pictures they do not.
+   The connected-tab strip from the reference: rounded-top tabs sharing one
+   baseline, the active one lifted forward in the page surface while the rest
+   sit back in a tinted trough. Icon over label, because a rail of words has to
+   be read and a rail of pictures does not.
 
-   SVG, NOT EMOJI. The reference designs use emoji, and emoji are a per-device
-   font lottery — the same category is a flat glyph on one Android and a 3D
-   sticker on an iPhone, and some render as a blank box. These are drawn here,
-   so the menu looks the same on every phone that scans the card, and they cost
-   no request on restaurant wifi. */
+   SVG, NOT EMOJI. The reference uses emoji and emoji are a per-device font
+   lottery — the same category is a flat glyph on one Android, a 3D sticker on
+   an iPhone, and a blank box on some. These are drawn here, so the menu looks
+   the same on every phone that scans the card, and they cost no request. */
 .chips {
     display: flex;
-    gap: 10px;
+    align-items: flex-end;
+    gap: 0;
     overflow-x: auto;
-    padding: 2px 20px 4px;
+    padding: 8px 14px 0;
+    margin-top: 2px;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
+    /* The trough the inactive tabs sit in. */
+    background: linear-gradient(180deg, var(--canvas) 0%, #EEF1F6 100%);
 }
 .chips::-webkit-scrollbar { display: none; }
+
 .chip {
     flex: 0 0 auto;
-    width: 72px;
-    padding: 0;
+    width: 84px;
+    padding: 9px 6px 10px;
     border: none;
-    background: none;
+    background: #E4E9F0;
     color: var(--ink-50);
+    border-radius: 16px 16px 0 0;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
-    font-size: 11px;
+    gap: 5px;
+    font-size: 11.5px;
     font-weight: 500;
     line-height: 1.2;
     text-align: center;
+    /* Tabs overlap slightly so the strip reads as one connected object rather
+       than as separate pills. */
+    margin-right: -6px;
+    position: relative;
+    transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
 }
-.chip .cat-ico {
-    width: 52px; height: 52px;
-    border-radius: 18px;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    display: flex; align-items: center; justify-content: center;
-    transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
-}
-.chip .cat-ico svg { width: 26px; height: 26px; color: var(--ink-70); }
+.chip:last-child { margin-right: 0; }
+.chip .cat-ico { display: flex; align-items: center; justify-content: center; height: 30px; }
+.chip .cat-ico svg { width: 26px; height: 26px; color: var(--ink-50); transition: color 0.16s ease; }
 .chip .cat-name {
     display: block;
     max-width: 72px;
@@ -341,15 +356,20 @@ img { max-width: 100%; display: block; }
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-/* The selected tab inverts to the brand navy. Orange stays an accent —
-   an orange background is prohibited project-wide. */
-.chip[aria-pressed="true"] { color: var(--ink); font-weight: 600; }
-.chip[aria-pressed="true"] .cat-ico {
-    background: var(--ink);
-    border-color: var(--ink);
-    transform: translateY(-1px);
+
+/* The active tab comes FORWARD: page-surface background, raised above its
+   neighbours, and taller so it visually joins the menu below it. Orange stays
+   an accent on the icon and the label — never a background. */
+.chip[aria-pressed="true"] {
+    background: var(--surface);
+    color: var(--ink);
+    font-weight: 700;
+    z-index: 2;
+    padding-bottom: 14px;
+    margin-bottom: -4px;
+    box-shadow: 0 -2px 10px -4px rgba(11, 15, 25, 0.18);
 }
-.chip[aria-pressed="true"] .cat-ico svg { color: #fff; }
+.chip[aria-pressed="true"] .cat-ico svg { color: var(--accent); }
 
 /* ==========================================================================
    Menu — a two-column grid
@@ -383,8 +403,8 @@ img { max-width: 100%; display: block; }
 
 .card {
     background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--r-lg);
+    border: 1px solid var(--line-soft);
+    border-radius: 18px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -392,8 +412,15 @@ img { max-width: 100%; display: block; }
     text-align: left;
     padding: 0;
     color: inherit;
+    /* Depth instead of an outline. A grid of hairline boxes reads as a
+       wireframe; a soft shadow makes each card an object on a surface. */
+    box-shadow: 0 2px 10px -4px rgba(11, 15, 25, 0.10), 0 1px 2px rgba(11, 15, 25, 0.04);
+    transition: transform 0.14s ease, box-shadow 0.14s ease;
 }
-.card:active { background: var(--line-soft); }
+.card:active {
+    transform: scale(0.985);
+    box-shadow: 0 1px 4px -2px rgba(11, 15, 25, 0.12);
+}
 
 /* FIXED 4:3 with `contain`, matching the till exactly — the same image appears
    on both surfaces, and `cover` crops the part of a dish that identifies it
@@ -405,6 +432,14 @@ img { max-width: 100%; display: block; }
     display: flex; align-items: center; justify-content: center;
     position: relative;
 }
+/* MOST MENUS ARE MOSTLY UNPHOTOGRAPHED, so the placeholder is what the grid
+   actually looks like — and a field of identical grey rectangles reads as a
+   broken page rather than a menu. Each tile takes a warm tint keyed to the
+   category, so the grid has colour and the eye can tell sections apart while
+   scrolling. Kept low-saturation: it must sit behind a real photo without
+   competing when one arrives. */
+.card-media.is-placeholder { background: var(--tint, linear-gradient(150deg, #FFF3E9, #FDE9DA)); }
+.card-media.is-placeholder svg { color: rgba(11, 15, 25, 0.28); }
 /* ABSOLUTELY POSITIONED, and it has to be. With `height: 100%` in a box sized
    only by `aspect-ratio`, the height resolves against an indefinite container —
    so it falls back to `auto` and a SQUARE source image makes the tile square,
@@ -418,7 +453,7 @@ img { max-width: 100%; display: block; }
     object-fit: contain;
 }
 .card-media img.failed { display: none; }
-.card-media.is-placeholder svg { width: 34px; height: 34px; color: var(--ink-30); }
+.card-media.is-placeholder svg { width: 36px; height: 36px; }
 
 .card-body {
     padding: 10px 11px 12px;
@@ -440,49 +475,52 @@ img { max-width: 100%; display: block; }
     overflow: hidden;
     min-height: 2.4em;
 }
-.card-price { font-size: 14px; font-weight: 600; }
+.card-price { font-size: 15px; font-weight: 700; letter-spacing: -0.015em; }
 .card-opts { font-size: 11px; color: var(--ink-50); }
 
 .card-foot { margin-top: auto; padding-top: 8px; }
 
 .add-btn {
     width: 100%;
-    height: 32px;
+    height: 34px;
     padding: 0 10px;
-    border-radius: var(--r-sm);
-    border: 1px solid var(--ink);
-    background: var(--surface);
-    color: var(--ink);
-    font-size: 12px;
-    font-weight: 600;
+    border-radius: 10px;
+    /* Orange as an ACCENT — the border, the label, a whisper of tint. Never as
+       a filled background (CLAUDE.md). */
+    border: 1px solid rgba(234, 88, 12, 0.42);
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 12.5px;
+    font-weight: 700;
     letter-spacing: -0.01em;
 }
-.add-btn:active { background: var(--line-soft); }
+.add-btn:active { background: rgba(234, 88, 12, 0.18); }
 
 .stepper {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border: 1px solid var(--ink);
-    border-radius: var(--r-sm);
+    border: 1px solid rgba(234, 88, 12, 0.42);
+    border-radius: 10px;
     overflow: hidden;
-    height: 32px;
+    height: 34px;
 }
 .stepper button {
-    width: 32px; height: 100%;
+    width: 34px; height: 100%;
     border: none;
-    background: var(--surface);
-    font-size: 16px;
-    font-weight: 600;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 17px;
+    font-weight: 700;
     line-height: 1;
     display: flex; align-items: center; justify-content: center;
 }
-.stepper button:active { background: var(--line-soft); }
+.stepper button:active { background: rgba(234, 88, 12, 0.18); }
 .stepper .qty {
     flex: 1 1 auto;
     text-align: center;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 700;
     background: var(--surface);
 }
 
@@ -514,10 +552,14 @@ img { max-width: 100%; display: block; }
 
 .cartbar button {
     width: 100%;
-    height: 52px;
+    height: 56px;
     border: none;
-    border-radius: 16px;
-    box-shadow: 0 12px 28px -10px rgba(11, 15, 25, 0.45);
+    border-radius: 18px;
+    /* THE primary action on the page now that the cart tab is gone. Sized and
+       lifted to say so. */
+    box-shadow:
+        0 2px 6px rgba(11, 15, 25, 0.10),
+        0 16px 34px -12px rgba(11, 15, 25, 0.55);
     background: var(--ink);
     color: #fff;
     font-size: 15px;
@@ -565,46 +607,64 @@ img { max-width: 100%; display: block; }
     pointer-events: auto;
     display: flex;
     align-items: stretch;
-    justify-content: space-around;
-    gap: 4px;
-    background: rgba(255, 255, 255, 0.92);
-    -webkit-backdrop-filter: blur(14px);
-    backdrop-filter: blur(14px);
-    border: 1px solid var(--line);
+    justify-content: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.86);
+    -webkit-backdrop-filter: saturate(180%) blur(18px);
+    backdrop-filter: saturate(180%) blur(18px);
+    border: 1px solid rgba(255, 255, 255, 0.7);
     border-radius: 999px;
-    padding: 6px;
-    box-shadow: 0 10px 30px -12px rgba(11, 15, 25, 0.30);
+    padding: 7px;
+    /* Two shadows: a tight contact edge and a wide soft lift. One alone reads
+       as either a sticker or a smudge. */
+    box-shadow:
+        0 1px 2px rgba(11, 15, 25, 0.06),
+        0 14px 34px -14px rgba(11, 15, 25, 0.38);
 }
 .tab {
     flex: 1 1 0;
+    max-width: 132px;
     border: none;
     background: none;
     border-radius: 999px;
-    padding: 7px 4px 6px;
+    padding: 8px 12px 7px;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 3px;
     color: var(--ink-50);
-    font-size: 10px;
+    font-size: 10.5px;
     font-weight: 600;
     letter-spacing: 0.01em;
+    position: relative;
+    transition: color 0.16s ease, background 0.16s ease;
 }
-.tab svg { width: 20px; height: 20px; }
-.tab[aria-current="true"] { color: var(--ink); background: var(--line-soft); }
+.tab svg { width: 21px; height: 21px; }
+
+/* ACTIVE IS ORANGE — icon, label, and a soft tint behind it. Orange is the
+   brand accent and this is an accent use: the tint is a 10%-alpha wash, not an
+   orange background (CLAUDE.md prohibits the latter project-wide). */
+.tab[aria-current="true"] {
+    color: var(--accent);
+    background: var(--accent-soft);
+}
+.tab[aria-current="true"] svg { stroke-width: 2.1; }
+
 .tab .tab-badge {
     position: absolute;
-    transform: translate(11px, -4px);
-    min-width: 15px; height: 15px;
+    top: 3px;
+    left: 50%;
+    transform: translateX(3px);
+    min-width: 16px; height: 16px;
     padding: 0 4px;
     border-radius: 999px;
-    /* Orange as an ACCENT on a count, never as a page background. */
     background: var(--accent);
     color: #fff;
     font-size: 9px;
     font-weight: 700;
     display: none;
     align-items: center; justify-content: center;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
 }
 .tab .tab-badge.on { display: inline-flex; }
 
@@ -704,6 +764,71 @@ img { max-width: 100%; display: block; }
     display: flex; align-items: center; justify-content: center; gap: 8px;
 }
 .primary:disabled { opacity: 0.5; }
+
+/* The submit button's loading state. */
+.primary.is-busy::before {
+    content: "";
+    width: 15px; height: 15px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #fff;
+    animation: btnSpin 0.7s linear infinite;
+    flex: 0 0 auto;
+}
+@keyframes btnSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+    .primary.is-busy::before { animation-duration: 2.4s; }
+}
+
+/* ---- Order status ------------------------------------------------------ */
+.orders-loading {
+    font-size: 13px;
+    color: var(--ink-50);
+    text-align: center;
+    padding: 18px 0 4px;
+    margin: 0;
+    line-height: 1.5;
+}
+.orders-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; padding: 12px 0 4px;
+}
+.orders-no { font-size: 13px; font-weight: 700; letter-spacing: -0.01em; }
+.orders-stage {
+    font-size: 11px; font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 4px 10px; border-radius: 999px;
+}
+
+/* Four steps, not the till's seven — a diner has no reason to know the
+   operational vocabulary, only whether to keep waiting. */
+.track {
+    display: flex;
+    gap: 4px;
+    margin: 12px 0 16px;
+}
+.track-step {
+    flex: 1 1 0;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    font-size: 10px; font-weight: 600;
+    color: var(--ink-30);
+    text-align: center;
+    position: relative;
+}
+.track-step::before {
+    content: "";
+    position: absolute; top: 4px; left: -50%; right: 50%;
+    height: 2px; background: var(--line);
+}
+.track-step:first-child::before { display: none; }
+.track-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--line); position: relative; z-index: 1;
+}
+.track-step.done { color: var(--accent); }
+.track-step.done .track-dot { background: var(--accent); }
+.track-step.done::before { background: var(--accent); }
 .ghost {
     width: 100%;
     height: 46px;
@@ -726,7 +851,10 @@ img { max-width: 100%; display: block; }
     display: flex; align-items: center; justify-content: center;
 }
 .detail-hero img { width: 100%; height: 100%; object-fit: contain; }
-.detail-hero.is-placeholder svg { width: 56px; height: 56px; color: var(--ink-30); }
+.detail-hero.is-placeholder {
+    background: var(--tint, linear-gradient(150deg, #FFF1E4, #FDE3CE));
+}
+.detail-hero.is-placeholder svg { width: 56px; height: 56px; color: rgba(11, 15, 25, 0.28); }
 
 .optgroup { padding: 16px 0 4px; border-bottom: 1px solid var(--line-soft); }
 .optgroup:last-of-type { border-bottom: none; }
@@ -793,12 +921,6 @@ img { max-width: 100%; display: block; }
 .field input:focus { border-color: var(--ink-30); }
 .field input.invalid { border-color: var(--danger); }
 
-.welcome-lead {
-    font-size: 13px;
-    color: var(--ink-50);
-    line-height: 1.5;
-    margin: 10px 0 18px;
-}
 .welcome-note {
     font-size: 11px;
     color: var(--ink-30);
@@ -974,24 +1096,22 @@ img { max-width: 100%; display: block; }
 
 <!-- Floating tab bar. Menu and Cart are real destinations; Pesanan and Bantuan
      answer the two questions a seated diner actually asks after ordering. -->
+<!-- Floating tab bar — TWO destinations, deliberately.
+     "Keranjang" used to live here and did exactly what the floating cart bar
+     below already does: open the cart. Two controls for one action means the
+     prominent one is competing with itself, so the tab went and the cart bar
+     is now unambiguously the primary action. "Bantuan" went too — it opened a
+     sentence, not a screen. -->
 <nav class="tabbar" aria-label="Navigasi">
     <div class="tabbar-inner">
         <button class="tab" type="button" data-tab="menu" aria-current="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h12"/></svg>
             <span>Menu</span>
         </button>
-        <button class="tab" type="button" data-tab="cart">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6 5 3H3"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
-            <span class="tab-badge" id="tab-cart-badge">0</span>
-            <span>Keranjang</span>
-        </button>
-        <button class="tab" type="button" data-tab="orders">
+        <button class="tab" type="button" data-tab="orders" aria-current="false">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1z"/><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M9 11h6M9 15h4"/></svg>
+            <span class="tab-badge" id="tab-orders-badge">0</span>
             <span>Pesanan</span>
-        </button>
-        <button class="tab" type="button" data-tab="help">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.2 2.4c-.6.2-.7.7-.7 1.1v.5"/><circle cx="12" cy="17" r="0.6" fill="currentColor"/></svg>
-            <span>Bantuan</span>
         </button>
     </div>
 </nav>
@@ -999,6 +1119,21 @@ img { max-width: 100%; display: block; }
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <div id="scrim" class="scrim"></div>
+
+<!-- Order status. Read from the server, never from what this phone remembers:
+     a cashier can void a line and the kitchen can mark a ticket ready, and a
+     remembered list would be a confident lie about both. -->
+<div id="sheet-orders" class="sheet" role="dialog" aria-modal="true" aria-labelledby="orders-title">
+    <div class="sheet-grip"></div>
+    <div class="sheet-head">
+        <div>
+            <h2 class="sheet-title" id="orders-title">Pesanan Anda</h2>
+            <p class="sheet-sub" id="orders-sub">—</p>
+        </div>
+        <button class="sheet-close" type="button" data-close aria-label="Tutup">✕</button>
+    </div>
+    <div class="sheet-body" id="orders-body"></div>
+</div>
 
 <!-- ── Identity gate ─────────────────────────────────────────────────────────
      Shown before the first order and dismissible ONLY by completing it: the
@@ -1016,9 +1151,7 @@ img { max-width: 100%; display: block; }
             <p class="sheet-sub" id="welcome-sub">—</p>
         </div>
     </div>
-    <div class="sheet-body">
-        <p class="welcome-lead">Isi data Anda sekali saja. Kami pakai untuk memanggil Anda saat pesanan siap
-            dan menghubungi meja kalau ada menu yang habis.</p>
+    <div class="sheet-body" style="padding-top: 16px">
         <div class="field">
             <label for="welcome-name">Nama</label>
             <input id="welcome-name" type="text" maxlength="80" autocomplete="name"
@@ -1147,6 +1280,25 @@ img { max-width: 100%; display: block; }
         ['snack',  ['cemilan', 'camilan', 'snack', 'gorengan', 'appetizer', 'pembuka', 'side']],
         ['drink',  ['minum', 'drink', 'beverage', 'juice', 'jus', 'tea', 'teh', 'soda', 'smoothie', 'milk', 'susu']]
     ];
+
+    // A small, low-saturation palette for placeholder tiles. Keyed to the
+    // category so sections are visually distinct while scrolling, and muted
+    // enough that a real photo dropped into the same grid still wins the eye.
+    var TINTS = [
+        'linear-gradient(150deg, #FFF1E4, #FDE3CE)',   // peach
+        'linear-gradient(150deg, #E9F5EF, #D7ECE0)',   // mint
+        'linear-gradient(150deg, #FEF6E0, #FAEBC4)',   // butter
+        'linear-gradient(150deg, #FDECEF, #F8D9DF)',   // blush
+        'linear-gradient(150deg, #EDEDFB, #DEDEF6)',   // lavender
+        'linear-gradient(150deg, #E7F1FA, #D4E6F6)'    // sky
+    ];
+
+    function categoryTint(name) {
+        var key = String(name || 'lainnya').toLowerCase();
+        var h = 0;
+        for (var i = 0; i < key.length; i += 1) h = ((h << 5) - h + key.charCodeAt(i)) | 0;
+        return TINTS[Math.abs(h) % TINTS.length];
+    }
 
     function categoryIcon(name) {
         if (name === null) return ICON.all;
@@ -1307,6 +1459,14 @@ img { max-width: 100%; display: block; }
             // the menu behind the sheet is what makes the request make sense.
             customer = readSession();
             if (!customer) openWelcome();
+
+            // Someone else at this table may have ordered already, or this is a
+            // second round. Fetched quietly so the Pesanan badge is right
+            // before it is tapped rather than after.
+            fetch(FN + 'qr-order-status?token=' + encodeURIComponent(TOKEN))
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (d) { if (d) paintOrdersBadge(d); })
+                .catch(function () { /* the badge is a nicety, not the page */ });
         })
         .catch(function (err) {
             if (err && err.message === 'busy') {
@@ -1407,7 +1567,8 @@ img { max-width: 100%; display: block; }
                     + FN + 'qr-menu-image?token=' + encodeURIComponent(TOKEN)
                     + '&item=' + encodeURIComponent(i.id) + '"></div>';
             } else {
-                html += '<div class="card-media is-placeholder">' + PLACEHOLDER + '</div>';
+                html += '<div class="card-media is-placeholder" style="--tint:'
+                    + categoryTint(i.category) + '">' + PLACEHOLDER + '</div>';
             }
 
             html += '<div class="card-body">'
@@ -1503,7 +1664,8 @@ img { max-width: 100%; display: block; }
                 + FN + 'qr-menu-image?token=' + encodeURIComponent(TOKEN)
                 + '&item=' + encodeURIComponent(item.id) + '"></div>';
         } else {
-            html += '<div class="detail-hero is-placeholder">' + PLACEHOLDER + '</div>';
+            html += '<div class="detail-hero is-placeholder" style="--tint:'
+                + categoryTint(item.category) + '">' + PLACEHOLDER + '</div>';
         }
 
         item.modifier_groups.forEach(function (g) {
@@ -1661,15 +1823,20 @@ img { max-width: 100%; display: block; }
         return cart.reduce(function (s, l) { return s + l.qty * (l.unit_price + l.modAmount); }, 0);
     }
 
+    var cartNote = '';
+
     function paintCart() {
+        // Read back before the repaint wipes the field. A "+" tap re-renders
+        // this whole sheet, and losing what someone typed mid-sentence is the
+        // kind of thing nobody reports and everybody notices.
+        var noteEl = $('cart-note');
+        if (noteEl) cartNote = String(noteEl.value || '');
+
         var count = cartCount();
         var total = cartTotal();
         setText($('cart-count'), String(count));
         setText($('cart-total'), money(total));
         $('cartbar').classList.toggle('is-open', count > 0);
-        var badge = $('tab-cart-badge');
-        badge.textContent = String(count);
-        badge.classList.toggle('on', count > 0);
 
         setText($('cart-sub'), menu && menu.table ? ('Meja ' + menu.table) : '');
         // Same guard as the detail sheet, for the same reason: this is a span
@@ -1713,6 +1880,13 @@ img { max-width: 100%; display: block; }
                 + (customer.phone ? '<span class="num">' + esc(customer.phone) + '</span>' : '')
                 + '</div>';
         }
+        // An order-level request. Line notes already exist ("tidak pedas" on one
+        // dish); this is the one that applies to the whole ticket.
+        html += '<div class="field" style="margin-top:16px">'
+            + '<label for="cart-note">Catatan untuk dapur <span class="hint">— opsional</span></label>'
+            + '<textarea id="cart-note" class="note-input" maxlength="200" rows="2"'
+            + ' placeholder="Contoh: sendok garpu 2, jangan pakai es">'
+            + esc(cartNote) + '</textarea></div>';
         html += '<div id="cart-notice"></div>';
 
         $('cart-body').innerHTML = html;
@@ -1756,6 +1930,7 @@ img { max-width: 100%; display: block; }
         $('sheet-item').classList.remove('is-open');
         $('sheet-cart').classList.remove('is-open');
         $('sheet-welcome').classList.remove('is-open');
+        $('sheet-orders').classList.remove('is-open');
         document.body.style.overflow = '';
         detail = null;
         setActiveTab('menu');
@@ -1783,31 +1958,46 @@ img { max-width: 100%; display: block; }
 
     // ── Floating tab bar ──────────────────────────────────────────────────
     //
-    // Menu and Keranjang are real destinations. Pesanan and Bantuan answer the
-    // two questions a seated diner asks after ordering, and both are answered
-    // honestly rather than opening an empty screen: this page has no order
-    // history (one open order per table IS the session) and no way to summon a
-    // waiter, so they say so instead of pretending.
+    // Two destinations. "Keranjang" used to sit here and opened the same sheet
+    // the floating cart bar opens — one action behind two controls, which made
+    // the prominent one compete with itself. The cart bar is the primary now.
     document.querySelector('.tabbar').addEventListener('click', function (e) {
         var tab = e.target.closest('.tab');
         if (!tab || welcomeOpen()) return;
-        var which = tab.dataset.tab;
-
-        if (which === 'menu') {
+        if (tab.dataset.tab === 'menu') {
             closeSheets();
             window.scrollTo({ top: 0, behavior: 'smooth' });
-        } else if (which === 'cart') {
-            paintCart();
-            openSheet('sheet-cart');
-        } else if (which === 'orders') {
-            toast(cart.length
-                ? 'Pesanan Anda dikirim setelah Anda menekan Order Sekarang.'
-                : 'Belum ada pesanan. Pilih menu dulu, ya.');
+            setActiveTab('menu');
         } else {
-            toast('Panggil staf kami kalau butuh bantuan — mereka ada di dekat meja Anda.');
+            openOrders();
         }
-        setActiveTab(which === 'cart' ? 'cart' : 'menu');
     });
+
+    /**
+     * Measure the tab bar and publish its real footprint.
+     *
+     * The cart bar and the page's bottom spacer both position against
+     * `--tabbar-space`, and a hard-coded guess is wrong the moment the bar is
+     * restyled — a padding change put the cart bar 6px on top of it, which no
+     * static value would have caught. Measuring makes the overlap impossible
+     * rather than merely currently-absent.
+     */
+    function syncTabbarSpace() {
+        var el = document.querySelector('.tabbar-inner');
+        if (!el) return;
+        var h = Math.ceil(el.getBoundingClientRect().height);
+        if (!h) return;
+        // The bar's own 10px offset from the bottom edge, plus the safe area,
+        // are already outside the measured box.
+        document.documentElement.style.setProperty(
+            '--tabbar-space', 'calc(' + (h + 10) + 'px + var(--safe-bottom))');
+    }
+    syncTabbarSpace();
+    window.addEventListener('resize', syncTabbarSpace);
+    // Web fonts land after first paint and change the label height with them.
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(syncTabbarSpace).catch(function () {});
+    }
 
     function setActiveTab(which) {
         Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) {
@@ -1815,6 +2005,101 @@ img { max-width: 100%; display: block; }
         });
     }
 
+    // ── Order status ──────────────────────────────────────────────────────
+    //
+    // Read from the server every time it is opened, never from what this phone
+    // remembers. A remembered list cannot know that a cashier voided a line or
+    // that the kitchen marked the ticket ready, and it would state both
+    // confidently. It is the TABLE's order — a QR order appends to the one open
+    // document, so four people sharing a bill see the same thing, which is the
+    // correct answer for a shared bill.
+    function openOrders() {
+        setActiveTab('orders');
+        $('orders-sub').textContent = menu && menu.table ? ('Meja ' + menu.table) : '';
+        $('orders-body').innerHTML = '<p class="orders-loading">Memuat pesanan…</p>';
+        openSheet('sheet-orders');
+        refreshOrders();
+    }
+
+    function refreshOrders() {
+        return fetch(FN + 'qr-order-status?token=' + encodeURIComponent(TOKEN))
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (data) {
+                if (!data) throw new Error('gone');
+                paintOrders(data);
+                paintOrdersBadge(data);
+            })
+            .catch(function () {
+                $('orders-body').innerHTML =
+                    '<p class="orders-loading">Tidak bisa memuat pesanan. Coba lagi sebentar.</p>';
+            });
+    }
+
+    var STAGES = ['Diterima', 'Disiapkan', 'Siap', 'Diantar'];
+
+    function paintOrders(d) {
+        if (!d.has_order || !(d.lines || []).length) {
+            $('orders-body').innerHTML = '<div class="empty">Belum ada pesanan di meja ini.</div>';
+            return;
+        }
+
+        // Where the ticket is, as four steps. The till's own ladder has seven
+        // and uses words a diner has no reason to know.
+        var step = Math.min(4, Math.max(1, Number(d.stage) || 1));
+        var track = '<div class="track">' + STAGES.map(function (label, i) {
+            var n = i + 1;
+            return '<div class="track-step' + (n <= step ? ' done' : '') + '">'
+                + '<span class="track-dot"></span><span>' + esc(label) + '</span></div>';
+        }).join('') + '</div>';
+
+        var lines = (d.lines || []).map(function (l) {
+            var meta = [];
+            if (l.modifiers && l.modifiers.length) meta.push(l.modifiers.join(', '));
+            if (l.note) meta.push('“' + l.note + '”');
+            return '<div class="cartline">'
+                + '<div class="cartline-body">'
+                + '<div class="cartline-name"><span class="num">' + l.quantity + '×</span> '
+                + esc(l.item_name) + '</div>'
+                + (meta.length ? '<div class="cartline-meta">' + esc(meta.join(' • ')) + '</div>' : '')
+                + '</div>'
+                + '<div class="cartline-price num">' + esc(money(l.gross_amount)) + '</div>'
+                + '</div>';
+        }).join('');
+
+        var rows = '';
+        if (d.discount_total) rows += totalRow('Diskon', -d.discount_total);
+        if (d.service_charge_amount) rows += totalRow('Layanan', d.service_charge_amount);
+        if (d.tax_amount) rows += totalRow('Pajak', d.tax_amount);
+
+        $('orders-body').innerHTML =
+            '<div class="orders-head">'
+            + '<span class="orders-no num">' + esc(d.order_number || '') + '</span>'
+            + '<span class="orders-stage">' + esc(d.stage_label || '') + '</span>'
+            + '</div>'
+            + track
+            + lines
+            + (d.note ? '<div class="notice">Catatan: ' + esc(d.note) + '</div>' : '')
+            + '<div class="totals">' + rows
+            + '<div class="line grand"><span>Total</span><span class="num">'
+            + esc(money(d.total_amount)) + '</span></div></div>'
+            + '<p class="orders-loading">Tagihan dibayar di kasir. Panggil staf kalau sudah selesai.</p>';
+    }
+
+    function totalRow(label, amount) {
+        return '<div class="line"><span>' + esc(label) + '</span>'
+            + '<span class="num">' + esc(money(amount)) + '</span></div>';
+    }
+
+    function paintOrdersBadge(d) {
+        var n = d && d.has_order
+            ? (d.lines || []).reduce(function (s, l) { return s + (Number(l.quantity) || 0); }, 0)
+            : 0;
+        var badge = $('tab-orders-badge');
+        badge.textContent = String(n);
+        badge.classList.toggle('on', n > 0);
+    }
+
+    // A lightweight toast, because two of the four tabs answer with words.
     // A lightweight toast, because two of the four tabs answer with words.
     var toastTimer = null;
     function toast(msg) {
@@ -1831,8 +2116,15 @@ img { max-width: 100%; display: block; }
     $('cart-submit').addEventListener('click', function () {
         if (submitting || !cart.length) return;
         submitting = true;
-        $('cart-submit').disabled = true;
-        $('cart-submit').querySelector('span').textContent = 'Mengirim…';
+        var btn = $('cart-submit');
+        btn.disabled = true;
+        // A SPINNER, not just a word swap. The request can take a couple of
+        // seconds on restaurant wifi, and a button that only changes its label
+        // reads as stuck — which is how a diner ends up tapping again. The
+        // idempotency ref makes a double tap harmless, but this is what stops
+        // it happening.
+        btn.classList.add('is-busy');
+        btn.querySelector('span').textContent = 'Mengirim pesanan…';
 
         fetch(FN + 'qr-order', {
             method: 'POST',
@@ -1842,6 +2134,7 @@ img { max-width: 100%; display: block; }
                 client_ref: clientRef,
                 customer_name: customer ? customer.name : '',
                 customer_phone: customer ? customer.phone : '',
+                note: cartNote,
                 lines: cart.map(function (l) {
                     return {
                         item_id: l.item_id,
@@ -1860,9 +2153,12 @@ img { max-width: 100%; display: block; }
                     ? 'Beberapa item sudah tidak tersedia dan tidak dimasukkan.'
                     : 'Dapur sudah menerima pesanan Anda.';
                 cart = [];
+                cartNote = '';
                 // A new ref for the next order, or a second round would be
                 // deduplicated against the first and silently do nothing.
                 clientRef = newRef();
+                // The Pesanan badge is now wrong by exactly what was just sent.
+                refreshOrders().catch(function () {});
                 closeSheets();
                 paintCart();
                 paintMenu();
@@ -1880,8 +2176,9 @@ img { max-width: 100%; display: block; }
             })
             .then(function () {
                 submitting = false;
-                $('cart-submit').querySelector('span').textContent = 'Order Sekarang';
-                $('cart-submit').disabled = cart.length === 0;
+                btn.classList.remove('is-busy');
+                btn.querySelector('span').textContent = 'Order Sekarang';
+                btn.disabled = cart.length === 0;
             });
     });
 
