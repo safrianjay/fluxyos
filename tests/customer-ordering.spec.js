@@ -436,6 +436,69 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('#tab-orders-badge')).toHaveClass(/on/);
     });
 
+    test('ASKING FOR THE BILL TAKES TWO TAPS AND ENDS THE SITTING', async ({ page }) => {
+        const capture = {
+            status: {
+                has_order: true, order_number: '2026-09-03-011', status: 'served',
+                stage: 4, stage_label: 'Sudah diantar',
+                lines: [{ item_id: 'i_americano', item_name: 'Americano', quantity: 1,
+                          gross_amount: 22000, note: null, modifiers: [] }],
+                note: null, subtotal: 22000, service_charge_amount: 0, tax_amount: 0,
+                discount_total: 0, total_amount: 22000, paid_amount: 0,
+                placed_at: Date.now() - 20 * 60 * 1000
+            }
+        };
+        let billCalls = 0;
+        await stub(page, { capture });
+        await page.route('**/qr-request-bill', async (route) => {
+            billCalls += 1;
+            // The server is the source of truth for the new state, so the page
+            // repaints from a fresh status rather than assuming.
+            capture.status = { ...capture.status, status: 'awaiting_payment',
+                stage: 5, stage_label: 'Menunggu pembayaran' };
+            await route.fulfill({ status: 200, contentType: 'application/json',
+                body: JSON.stringify({ ok: true, already: false, order_number: '2026-09-03-011' }) });
+        });
+        await open(page);
+        await page.locator('.tab[data-tab="orders"]').click();
+        await expect(page.locator('.ostat')).toBeVisible();
+
+        const btn = page.locator('#bill-btn');
+        await expect(btn).toBeVisible();
+
+        // ONE tap only arms it. Ending the sitting by brushing a button while
+        // scrolling is not a thing that should be possible.
+        await btn.click();
+        expect(billCalls, 'the first tap must not call the server').toBe(0);
+        await expect(btn).toContainText('konfirmasi');
+        await expect(page.locator('#bill-hint')).toContainText('pindai QR lagi');
+
+        await btn.click();
+        await expect(page.locator('.bill-called')).toBeVisible();
+        expect(billCalls).toBe(1);
+
+        // Once asked for, there is nothing left to press.
+        await expect(btn).toBeHidden();
+        await expect(page.locator('.ostat-now')).toHaveText('Menunggu pembayaran');
+        await expect(page.locator('.ostat-hint')).toContainText('Kasir');
+        // And the page says what happens next: paying frees the table, and
+        // ordering again means scanning again.
+        await expect(page.locator('.orders-foot')).toContainText('Pindai QR');
+    });
+
+    test('a paid sitting is not shown to the next diner', async ({ page }) => {
+        // The endpoint excludes paid orders, so a fresh scan sees the empty
+        // state rather than the previous party's settled bill. Measured on the
+        // live directory before the fix: 8 of 9 tables would have shown one,
+        // up to Rp51.281.667 and 69 hours old.
+        await stub(page, { capture: { status: { has_order: false, lines: [] } } });
+        await open(page);
+        await page.locator('.tab[data-tab="orders"]').click();
+        await expect(page.locator('#sheet-orders .orders-empty')).toBeVisible();
+        // No bill button either: there is no sitting to end.
+        await expect(page.locator('#orders-foot')).toBeHidden();
+    });
+
     test('an empty table says so rather than showing a blank sheet', async ({ page }) => {
         await stub(page);
         await open(page);

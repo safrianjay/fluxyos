@@ -39,6 +39,7 @@ https://fluxyos-order.netlify.app/*   https://order.fluxyos.com/:splat   301!
 /.netlify/functions/qr-menu-image  /.netlify/functions/qr-menu-image  200
 /.netlify/functions/qr-order       /.netlify/functions/qr-order       200
 /.netlify/functions/qr-order-status /.netlify/functions/qr-order-status 200
+/.netlify/functions/qr-request-bill /.netlify/functions/qr-request-bill 200
 
 # --- Everything this site does not serve ---
 # {{FOREIGN_PAGE_REDIRECTS}}
