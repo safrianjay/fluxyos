@@ -96,6 +96,18 @@ async function stub(page, { menuStatus = 200, capture = {} } = {}) {
 // The query form exercised none of that. Drive what is printed on the card.
 const goTo = (page) => page.goto(`/t/${TOKEN}`);
 
+// Adding is a two-step interaction now — every item opens the sheet, even one
+// with nothing to choose, so that a note is always reachable. Tests that care
+// about the CART rather than the sheet go through this.
+async function addPlain(page, name, note) {
+    await page.locator('.card', { hasText: name })
+        .getByRole('button', { name: /Tambah/ }).click();
+    await expect(page.locator('#sheet-item')).toHaveClass(/is-open/);
+    if (note) await page.locator('#item-note').fill(note);
+    await page.locator('#item-add').click();
+    await expect(page.locator('#sheet-item')).not.toHaveClass(/is-open/);
+}
+
 // Load AND clear the identity gate. Almost every test needs the menu, and the
 // gate is deliberately not dismissible any other way — see the dedicated tests
 // below for the gate's own behaviour.
@@ -227,7 +239,7 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('#sheet-welcome')).not.toHaveClass(/is-open/);
 
         // And the identity still rides on the order.
-        await page.locator('.card', { hasText: 'Americano' }).getByRole('button', { name: 'Tambah' }).click();
+        await addPlain(page, 'Americano');
         await page.locator('#cart-open').click();
         await expect(page.locator('#sheet-cart')).toContainText('Sinta');
     });
@@ -303,16 +315,16 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('.tab[data-tab="cart"]')).toHaveCount(0);
         await expect(page.locator('.tab[data-tab="help"]')).toHaveCount(0);
 
-        // The active tab is ORANGE — the brand accent, as a colour and a 10%
-        // wash, never a filled orange background.
+        // The active tab is a solid navy pill with white content — the same ink
+        // as the cart bar, so the two primary surfaces read as one system. An
+        // orange wash was tried here and looked muddy at this size.
         const active = page.locator('.tab[aria-current="true"]');
-        await expect(active).toHaveCSS('color', 'rgb(234, 88, 12)');
-        const bg = await active.evaluate((el) => getComputedStyle(el).backgroundColor);
-        expect(bg).toContain('rgba(234, 88, 12');
+        await expect(active).toHaveCSS('color', 'rgb(255, 255, 255)');
+        await expect(active).toHaveCSS('background-color', 'rgb(11, 15, 25)');
 
         // The cart bar floats ABOVE the tab bar — they must never overlap.
         // Polled, because it SLIDES in over 240ms.
-        await page.locator('.card', { hasText: 'Americano' }).getByRole('button', { name: 'Tambah' }).click();
+        await addPlain(page, 'Americano');
         await expect.poll(async () => {
             const c = await page.locator('#cartbar button').boundingBox();
             return Math.round((c.y + c.height) - box.y);
@@ -534,21 +546,58 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('#menu .empty')).toBeVisible();
     });
 
-    test('an item with no options adds in one tap', async ({ page }) => {
+    test('EVERY item opens the sheet, even with nothing to choose', async ({ page }) => {
         await stub(page);
         await open(page);
 
+        // Americano has no modifier groups. It used to add straight to the cart
+        // — one tap faster, and it quietly removed the only place a diner can
+        // say "no ice". A plain item is the one most likely to need a note
+        // precisely because it has no options to express it.
         await page.locator('.card', { hasText: 'Americano' }).getByRole('button', { name: 'Tambah' }).click();
+        const sheet = page.locator('#sheet-item');
+        await expect(sheet).toHaveClass(/is-open/);
+        await expect(page.locator('#item-title')).toHaveText('Americano');
 
-        await expect(page.locator('#cartbar')).toHaveClass(/is-open/);
+        // Nothing to choose, so the sheet is the note and says so.
+        await expect(sheet.locator('.opt-hint')).toBeVisible();
+        await expect(page.locator('#item-note')).toBeVisible();
+        await expect(page.locator('#item-add')).toBeEnabled();
+
+        // Nothing lands in the cart until the sheet is confirmed.
+        await expect(page.locator('#cartbar')).not.toHaveClass(/is-open/);
+        await page.locator('#item-note').fill('tanpa es');
+        await page.locator('#item-add').click();
         await expect(page.locator('#cart-count')).toHaveText('1');
         await expect(page.locator('#cart-total')).toHaveText('Rp22.000');
 
-        // The row becomes a stepper, so a second one does not need the sheet.
-        await page.locator('.card', { hasText: 'Americano' }).locator('[data-inc]').click();
-        await expect(page.locator('#cart-total')).toHaveText('Rp44.000');
-        await page.locator('.card', { hasText: 'Americano' }).locator('[data-dec]').click();
-        await expect(page.locator('#cart-total')).toHaveText('Rp22.000');
+        // The note rides on the line.
+        await page.locator('#cart-open').click();
+        await expect(page.locator('#sheet-cart')).toContainText('tanpa es');
+    });
+
+    test('the card has no stepper — quantity is edited in the cart', async ({ page }) => {
+        await stub(page);
+        await open(page);
+        await page.locator('.card', { hasText: 'Americano' }).getByRole('button', { name: 'Tambah' }).click();
+        await page.locator('#item-note').fill('tanpa es');
+        await page.locator('#item-add').click();
+        await expect(page.locator('#cart-count')).toHaveText('1');
+
+        // A "+" on the card could only ever bump ONE of the ways this item can
+        // now sit in the cart — the plain, note-less line — so tapping it on a
+        // card reading "1" would silently create a SECOND line without the note.
+        const card = page.locator('.card', { hasText: 'Americano' });
+        await expect(card.locator('[data-inc]')).toHaveCount(0);
+        await expect(card.locator('[data-dec]')).toHaveCount(0);
+        // It shows the count and reopens the sheet instead.
+        await expect(card.getByRole('button')).toContainText('1 • Tambah lagi');
+
+        // Quantity lives in the cart, where each line is visible.
+        await page.locator('#cart-open').click();
+        await page.locator('#sheet-cart [data-cinc]').first().click();
+        await expect(page.locator('#cart-count')).toHaveText('2');
+        await expect(page.locator('#sheet-cart .cartline')).toHaveCount(1);
     });
 
     test('the option sheet is laid out correctly and priced live', async ({ page }) => {
@@ -600,8 +649,8 @@ test.describe('QR customer ordering', () => {
         await stub(page);
         await open(page);
 
-        await page.locator('.card', { hasText: 'Americano' }).getByRole('button', { name: 'Tambah' }).click();
-        await page.locator('.card', { hasText: 'Nasi Goreng' }).getByRole('button', { name: 'Tambah' }).click();
+        await addPlain(page, 'Americano');
+        await addPlain(page, 'Nasi Goreng');
         await page.locator('#cart-open').click();
 
         const cart = page.locator('#sheet-cart');
@@ -623,8 +672,9 @@ test.describe('QR customer ordering', () => {
         await open(page);
 
         // One plain item and one with two options, so the payload covers both.
-        await page.locator('.card', { hasText: 'Americano' }).getByRole('button', { name: 'Tambah' }).click();
-        await page.locator('.card', { hasText: 'Es Kopi Susu' }).getByRole('button', { name: 'Tambah' }).click();
+        await addPlain(page, 'Americano');
+        await page.locator('.card', { hasText: 'Es Kopi Susu' })
+            .getByRole('button', { name: /Tambah/ }).click();
         await page.locator('.opt', { hasText: 'Large' }).locator('input').check();
         await page.locator('.opt', { hasText: 'Extra shot' }).locator('input').check();
         // TYPING THE NOTE BEFORE THE TAP IS THE POINT, not incidental colour.
@@ -678,7 +728,7 @@ test.describe('QR customer ordering', () => {
         await stub(page);
         await open(page);
 
-        await page.locator('.card', { hasText: 'Americano' }).getByRole('button', { name: 'Tambah' }).click();
+        await addPlain(page, 'Americano');
         await page.locator('#cart-open').click();
         await page.locator('#cart-submit').click();
 
