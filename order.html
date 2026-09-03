@@ -214,91 +214,108 @@ img { max-width: 100%; display: block; }
 }
 
 /* ==========================================================================
-   Header — outlet identity and the table the diner is sitting at
-   ========================================================================== */
-/* One line: the business, and which table you are sitting at. There was an
-   eyebrow above this reading "Pesan dari meja Anda" — removed, because the H1
-   and the table chip already say exactly that, and a label restating the
-   headline is prohibited (CLAUDE.md). Dropping it also reclaims the vertical
-   space the header was wasting above the menu. */
+   Header — who you are ordering from, and from which table
+   ==========================================================================
+   One zone rather than three. It was a thin gradient band, then search floating
+   on the page background, then the tab strip — the search belonging to neither
+   surface above nor below it. Now the header owns identity AND search, and the
+   tabs sit directly under it where they attach to the menu they filter. */
 .masthead {
     /* Navy into the brand purple, with a warm bloom top-right. The orange lives
        ONLY inside the gradient — an orange background is prohibited
        project-wide, and gradients are the documented exception. */
     background:
-        radial-gradient(120% 140% at 88% 0%, rgba(234, 88, 12, 0.28) 0%, transparent 55%),
-        linear-gradient(135deg, #0B0F19 0%, #171334 52%, #2A1B4A 100%);
+        radial-gradient(120% 130% at 88% -10%, rgba(234, 88, 12, 0.30) 0%, transparent 58%),
+        radial-gradient(90% 120% at 0% 100%, rgba(124, 58, 237, 0.28) 0%, transparent 60%),
+        linear-gradient(135deg, #0B0F19 0%, #171334 55%, #2A1B4A 100%);
     color: #fff;
-    padding: 18px 20px 20px;
-    border-radius: 0 0 var(--r-xl) var(--r-xl);
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    padding: 16px 20px 18px;
+    border-radius: 0 0 24px 24px;
     position: relative;
 }
-.masthead h1 {
-    font-size: 21px;
-    font-weight: 600;
+
+.mast-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* The outlet's initials. A picture would be better and there is no field for
+   one, so this is the honest substitute — and it makes two restaurants on the
+   same phone instantly distinguishable. */
+.mast-mark {
+    flex: 0 0 auto;
+    width: 42px; height: 42px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.20);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 700; letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.mast-id { min-width: 0; flex: 1 1 auto; }
+.mast-id h1 {
+    font-size: 19px;
+    font-weight: 700;
     letter-spacing: -0.025em;
     margin: 0;
-    /* THE TABLE CHIP MUST ALWAYS SIT BESIDE THE NAME, so the name truncates
-       rather than wrapping and pushing the chip onto a second line. `min-width:
-       0` is what actually permits it: a flex item will not shrink below its
-       content without it, and the ellipsis silently never appears.
-
-       Truncating is the right trade here. The diner is sitting IN the business
-       and does not need its full legal name read back to them; they do need to
-       know which table the order is going to, and a real name like "Kopi Senja
-       Kemang" fits whole anyway. Only a long one clips. */
-    flex: 1 1 auto;
-    min-width: 0;
+    /* Truncates rather than wrapping: the table line below must stay put, and a
+       diner sitting IN the business does not need its full legal name read
+       back to them. */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.table-chip {
-    display: inline-flex;
+.mast-meta {
+    display: flex;
     align-items: center;
     gap: 6px;
-    flex: 0 0 auto;
-    padding: 5px 11px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.10);
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    font-size: 12px;
+    margin: 3px 0 0;
+    font-size: 12.5px;
     font-weight: 500;
-    white-space: nowrap;
+    color: rgba(255, 255, 255, 0.72);
 }
-.table-chip .dot {
+.mast-meta .dot {
     width: 6px; height: 6px; border-radius: 50%;
     background: var(--accent);
+    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.22);
 }
 
+.mast-search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+    padding: 0 14px;
+    height: 46px;
+    border-radius: 14px;
+    background: var(--surface);
+    box-shadow: 0 6px 18px -8px rgba(11, 15, 25, 0.45);
+}
+.mast-search svg { width: 18px; height: 18px; color: var(--ink-30); flex: 0 0 auto; }
+.search {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: none;
+    background: none;
+    font-size: 16px;   /* iOS zooms an input under 16px */
+    color: var(--ink);
+    outline: none;
+}
+.search::placeholder { color: var(--ink-30); }
+
 /* ==========================================================================
-   Sticky search + category rail
+   Sticky category rail
    ========================================================================== */
 .rail {
     position: sticky;
     top: 0;
     z-index: 20;
     background: var(--canvas);
-    padding: 12px 0 0;
+    padding: 0;
     border-bottom: 1px solid var(--line);
 }
-.searchwrap { padding: 0 20px 10px; }
-.search {
-    width: 100%;
-    height: 42px;
-    padding: 0 14px;
-    font-size: 16px;
-    border: 1px solid var(--line);
-    border-radius: var(--r-md);
-    background: var(--surface);
-    color: var(--ink);
-    outline: none;
-}
-.search::placeholder { color: var(--ink-30); }
-.search:focus { border-color: var(--ink-30); }
 
 /* ── Category tabs ─────────────────────────────────────────────────────────
    The connected-tab strip from the reference: rounded-top tabs sharing one
@@ -981,152 +998,147 @@ img { max-width: 100%; display: block; }
     font-size: 13px;
     color: var(--ink-50);
     text-align: center;
-    padding: 18px 0 4px;
+    padding: 26px 0 8px;
     margin: 0;
     line-height: 1.5;
 }
-.orders-head {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 12px; padding: 12px 0 4px;
+
+/* The one thing the sheet was opened to answer, given room to be read at a
+   glance instead of squeezed into a chip beside an order number. */
+.ostat {
+    margin: 14px 0 4px;
+    padding: 16px 18px 18px;
+    border-radius: 18px;
+    color: #fff;
+    background:
+        radial-gradient(110% 130% at 92% 0%, rgba(234, 88, 12, 0.34) 0%, transparent 60%),
+        linear-gradient(135deg, #0B0F19 0%, #1A1638 58%, #2E1E50 100%);
 }
-.orders-no { font-size: 13px; font-weight: 700; letter-spacing: -0.01em; }
-.orders-stage {
-    font-size: 11px; font-weight: 700;
-    color: var(--accent);
-    background: var(--accent-soft);
-    padding: 4px 10px; border-radius: 999px;
+.ostat-top {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px;
+    font-size: 11.5px;
+    color: rgba(255, 255, 255, 0.62);
+    font-weight: 600;
+}
+.ostat-no { letter-spacing: 0.02em; }
+.ostat-now {
+    font-size: 21px; font-weight: 700; letter-spacing: -0.025em;
+    margin-top: 8px;
+}
+.ostat-hint {
+    font-size: 12.5px;
+    color: rgba(255, 255, 255, 0.66);
+    margin-top: 4px;
+    line-height: 1.45;
 }
 
-/* Four steps, not the till's seven — a diner has no reason to know the
-   operational vocabulary, only whether to keep waiting. */
+/* Four steps with their own glyphs. The connecting rule is drawn behind the
+   dots so a completed run reads as one continuous line. */
 .track {
     display: flex;
-    gap: 4px;
-    margin: 12px 0 16px;
+    gap: 2px;
+    margin: 18px 0 16px;
 }
 .track-step {
     flex: 1 1 0;
-    display: flex; flex-direction: column; align-items: center; gap: 6px;
-    font-size: 10px; font-weight: 600;
+    display: flex; flex-direction: column; align-items: center; gap: 7px;
+    font-size: 10.5px; font-weight: 600;
     color: var(--ink-30);
     text-align: center;
     position: relative;
 }
 .track-step::before {
     content: "";
-    position: absolute; top: 4px; left: -50%; right: 50%;
+    position: absolute; top: 15px; left: -50%; right: 50%;
     height: 2px; background: var(--line);
 }
 .track-step:first-child::before { display: none; }
 .track-dot {
-    width: 10px; height: 10px; border-radius: 50%;
-    background: var(--line); position: relative; z-index: 1;
-}
-.track-step.done { color: var(--accent); }
-.track-step.done .track-dot { background: var(--accent); }
-.track-step.done::before { background: var(--accent); }
-.ghost {
-    width: 100%;
-    height: 46px;
-    border: 1px solid var(--line);
-    border-radius: var(--r-md);
-    background: var(--surface);
-    color: var(--ink-70);
-    font-size: 14px;
-    font-weight: 500;
-}
-
-/* ---- Modifier groups --------------------------------------------------- */
-.detail-hero {
-    width: 100%;
-    aspect-ratio: 4 / 3;
-    /* Capped. At full sheet width a 4:3 hero is ~290px on a phone, which pushed
-       the note field — the whole point of opening this sheet for an item with
-       no options — below the fold. */
-    max-height: 190px;
-    border-radius: var(--r-md);
+    width: 30px; height: 30px;
+    border-radius: 50%;
     background: var(--line-soft);
-    overflow: hidden;
-    margin: 12px 0 4px;
+    border: 1px solid var(--line);
+    color: var(--ink-30);
     display: flex; align-items: center; justify-content: center;
+    position: relative; z-index: 1;
+    transition: background 0.2s ease, color 0.2s ease;
 }
-.detail-hero img { width: 100%; height: 100%; object-fit: contain; }
-.detail-hero.is-placeholder {
-    background: var(--tint, linear-gradient(150deg, #FFF1E4, #FDE3CE));
-}
-.detail-hero.is-placeholder svg { width: 56px; height: 56px; color: rgba(11, 15, 25, 0.28); }
+.track-dot svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.track-label { max-width: 68px; }
 
-.optgroup { padding: 16px 0 4px; border-bottom: 1px solid var(--line-soft); }
-.optgroup:last-of-type { border-bottom: none; }
-.optgroup-head {
-    display: flex; align-items: baseline; justify-content: space-between;
-    gap: 10px; margin-bottom: 8px;
-}
-.optgroup-name { font-size: 14px; font-weight: 600; }
-.optgroup-rule {
-    font-size: 11px;
-    font-weight: 500;
+.track-step.done { color: var(--ink); }
+.track-step.done .track-dot {
+    background: var(--accent-soft);
+    border-color: rgba(234, 88, 12, 0.42);
     color: var(--accent);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
 }
-.optgroup-rule.optional { color: var(--ink-30); }
-.opt-hint { font-size: 12px; color: var(--ink-50); margin: 0 0 8px; }
+.track-step.done::before { background: rgba(234, 88, 12, 0.42); }
+/* The step it is on RIGHT NOW is the only filled one — everything else is
+   history or future, and three identical orange dots say neither. */
+.track-step.now .track-dot {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.16);
+}
 
-.opt {
+.opanel {
+    background: var(--surface);
+    border: 1px solid var(--line-soft);
+    border-radius: 16px;
+    padding: 4px 14px;
+    margin-bottom: 10px;
+}
+.opanel.totals { padding: 12px 14px; }
+
+.oline {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 11px 0;
+    padding: 12px 0;
     border-bottom: 1px solid var(--line-soft);
 }
-.opt:last-child { border-bottom: none; }
-.opt input { width: 20px; height: 20px; accent-color: var(--ink); flex: 0 0 auto; margin: 0; }
-.opt-name { flex: 1 1 auto; font-size: 14px; }
-.opt-delta { font-size: 13px; font-weight: 500; color: var(--ink-50); }
+.oline:last-child { border-bottom: none; }
+.oline-body { flex: 1 1 auto; min-width: 0; }
+.oline-name { font-size: 14px; font-weight: 500; }
+.oline-right { text-align: right; flex: 0 0 auto; }
+.oline-qty { display: block; font-size: 11px; color: var(--ink-50); font-weight: 600; }
+.oline-price { font-size: 14px; font-weight: 700; }
 
-.note-input {
-    width: 100%;
-    min-height: 44px;
-    padding: 11px 12px;
-    font-family: inherit;
-    font-size: 16px;
+.onote {
+    background: var(--canvas);
     border: 1px solid var(--line);
-    border-radius: var(--r-md);
-    resize: none;
-    outline: none;
-    color: var(--ink);
+    border-radius: 14px;
+    padding: 11px 14px;
+    margin-bottom: 10px;
 }
-.note-input:focus { border-color: var(--ink-30); }
+.onote span {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--ink-30);
+}
+.onote p { margin: 3px 0 0; font-size: 13px; color: var(--ink-70); line-height: 1.45; }
 
-.field { margin-bottom: 14px; }
-.field label {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--ink-70);
-    margin-bottom: 6px;
+.orders-foot {
+    font-size: 12px; color: var(--ink-30);
+    text-align: center; line-height: 1.5;
+    margin: 14px 0 4px;
 }
-.field .hint { font-weight: 400; color: var(--ink-30); }
-.field input {
-    width: 100%;
-    height: 46px;
-    padding: 0 12px;
-    font-size: 16px;
-    border: 1px solid var(--line);
-    border-radius: var(--r-md);
-    outline: none;
-    color: var(--ink);
-    background: var(--surface);
-}
-.field input:focus { border-color: var(--ink-30); }
-.field input.invalid { border-color: var(--danger); }
 
-.welcome-note {
-    font-size: 11px;
-    color: var(--ink-30);
-    text-align: center;
-    margin: 10px 0 0;
+/* Nothing ordered yet — a state, not a blank panel. */
+.orders-empty { text-align: center; padding: 34px 20px 26px; }
+.orders-empty-mark {
+    width: 68px; height: 68px;
+    margin: 0 auto 14px;
+    border-radius: 22px;
+    background: var(--line-soft);
+    display: flex; align-items: center; justify-content: center;
+}
+.orders-empty-mark svg { width: 38px; height: 38px; opacity: 0.5; }
+.orders-empty-title { font-size: 15px; font-weight: 600; margin: 0; }
+.orders-empty-sub {
+    font-size: 13px; color: var(--ink-50); margin: 5px 0 0;
+    line-height: 1.5; max-width: 30ch; margin-left: auto; margin-right: auto;
 }
 
 /* ---- Cart lines -------------------------------------------------------- */
@@ -1250,15 +1262,30 @@ img { max-width: 100%; display: block; }
     <!-- The menu --------------------------------------------------------- -->
     <section id="view-menu" class="hidden">
         <header class="masthead">
-            <h1 id="outlet-name">—</h1>
-            <div class="table-chip"><span class="dot"></span><span id="table-label">—</span></div>
-        </header>
-
-        <div class="rail">
-            <div class="searchwrap">
+            <div class="mast-row">
+                <!-- The RESTAURANT's monogram, not the FluxyOS mark. This is
+                     their surface; branding a diner's table with ours would be
+                     as odd here as it would be on the printed card. -->
+                <div class="mast-mark" id="outlet-mark" aria-hidden="true"></div>
+                <div class="mast-id">
+                    <h1 id="outlet-name">—</h1>
+                    <p class="mast-meta">
+                        <span class="dot"></span><span id="table-label">—</span>
+                    </p>
+                </div>
+            </div>
+            <!-- Search lives INSIDE the header, sitting on its bottom edge. It
+                 was floating on the page background below, which left the
+                 header a thin band with nothing to do and the search belonging
+                 to neither zone. -->
+            <div class="mast-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
                 <input id="search" class="search" type="search" inputmode="search"
                        autocomplete="off" placeholder="Cari menu…" aria-label="Cari menu">
             </div>
+        </header>
+
+        <div class="rail">
             <div id="chips" class="chips" role="group" aria-label="Kategori"></div>
         </div>
 
@@ -1852,9 +1879,27 @@ img { max-width: 100%; display: block; }
         });
 
     function paintHeader() {
-        $('outlet-name').textContent = menu.outlet || 'Menu';
+        var name = menu.outlet || 'Menu';
+        $('outlet-name').textContent = name;
         $('table-label').textContent = menu.table ? ('Meja ' + menu.table) : 'Meja';
-        document.title = (menu.outlet || 'Pesan') + ' — FluxyOS';
+        $('outlet-mark').textContent = monogram(name);
+        document.title = name + ' — FluxyOS';
+    }
+
+    /**
+     * Up to two initials from the outlet name.
+     *
+     * Words only — a name like "QA-CNT-1786886530917 Outlet" would otherwise
+     * produce "Q1", and digits in a monogram read as a serial number rather
+     * than a restaurant.
+     */
+    function monogram(name) {
+        var words = String(name || '').split(/[\s\-_]+/)
+            .map(function (w) { return w.replace(/[^A-Za-z\u00C0-\u024F]/g, ''); })
+            .filter(Boolean);
+        if (!words.length) return '•';
+        if (words.length === 1) return words[0].slice(0, 2);
+        return (words[0][0] + words[1][0]);
     }
 
     // =====================================================================
@@ -2512,35 +2557,84 @@ img { max-width: 100%; display: block; }
             });
     }
 
-    var STAGES = ['Diterima', 'Disiapkan', 'Siap', 'Diantar'];
+    // Four steps a diner can act on. The till's ladder has seven and uses
+    // operational words — `sent`, `awaiting_payment` — that answer a question
+    // nobody at a table is asking.
+    var STAGES = [
+        { label: 'Diterima',  icon: '<path d="M20 6 9 17l-5-5"/>' },
+        { label: 'Disiapkan', icon: '<path d="M6 3v7M10 3v7M8 10v11"/><path d="M17 3c-1.5 3-2 5-2 8h4c0-3-.5-5-2-8z"/><path d="M17 11v10"/>' },
+        { label: 'Siap',      icon: '<path d="M3 17h18"/><path d="M5 17a7 7 0 0 1 14 0"/><path d="M12 7V5"/>' },
+        { label: 'Diantar',   icon: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>' }
+    ];
+
+    function timeAgo(ms) {
+        if (!ms) return '';
+        var mins = Math.max(0, Math.round((Date.now() - ms) / 60000));
+        if (mins < 1) return 'Baru saja';
+        if (mins < 60) return mins + ' menit lalu';
+        var hrs = Math.floor(mins / 60);
+        return hrs + ' jam lalu';
+    }
 
     function paintOrders(d) {
         if (!d.has_order || !(d.lines || []).length) {
-            $('orders-body').innerHTML = '<div class="empty">Belum ada pesanan di meja ini.</div>';
+            $('orders-body').innerHTML =
+                '<div class="orders-empty">'
+                + '<div class="orders-empty-mark">' + svg(ICON.plate) + '</div>'
+                + '<p class="orders-empty-title">Belum ada pesanan</p>'
+                + '<p class="orders-empty-sub">Pesanan di meja ini akan muncul di sini begitu dikirim.</p>'
+                + '</div>';
             return;
         }
 
-        // Where the ticket is, as four steps. The till's own ladder has seven
-        // and uses words a diner has no reason to know.
         var step = Math.min(4, Math.max(1, Number(d.stage) || 1));
-        var track = '<div class="track">' + STAGES.map(function (label, i) {
+
+        // ── Status hero ─────────────────────────────────────────────────────
+        // The one thing a diner opened this sheet to find out, given the room
+        // to be read at a glance rather than as a chip beside a number.
+        var hero = '<div class="ostat">'
+            + '<div class="ostat-top">'
+            + '<span class="ostat-no num">' + esc(d.order_number || '') + '</span>'
+            + '<span class="ostat-time">' + esc(timeAgo(d.placed_at)) + '</span>'
+            + '</div>'
+            + '<div class="ostat-now">' + esc(d.stage_label || '') + '</div>'
+            + '<div class="ostat-hint">' + esc(step >= 4
+                ? 'Selamat menikmati.'
+                : (step === 3 ? 'Pesanan Anda sedang diantar ke meja.'
+                              : 'Kami kabari lewat WhatsApp kalau ada perubahan.')) + '</div>'
+            + '</div>';
+
+        // ── Track ───────────────────────────────────────────────────────────
+        var track = '<div class="track">' + STAGES.map(function (st, i) {
             var n = i + 1;
-            return '<div class="track-step' + (n <= step ? ' done' : '') + '">'
-                + '<span class="track-dot"></span><span>' + esc(label) + '</span></div>';
+            var cls = n < step ? ' done' : (n === step ? ' done now' : '');
+            return '<div class="track-step' + cls + '">'
+                + '<span class="track-dot">' + svg(st.icon) + '</span>'
+                + '<span class="track-label">' + esc(st.label) + '</span>'
+                + '</div>';
         }).join('') + '</div>';
 
+        // ── Lines ───────────────────────────────────────────────────────────
         var lines = (d.lines || []).map(function (l) {
+            var it = itemById(l.item_id);
+            var media = (it && it.has_image)
+                ? '<img loading="lazy" decoding="async" alt="" src="' + FN + 'qr-menu-image?token='
+                    + encodeURIComponent(TOKEN) + '&item=' + encodeURIComponent(l.item_id) + '">'
+                : PLACEHOLDER;
             var meta = [];
             if (l.modifiers && l.modifiers.length) meta.push(l.modifiers.join(', '));
             if (l.note) meta.push('“' + l.note + '”');
-            return '<div class="cartline">'
-                + '<div class="cartline-body">'
-                + '<div class="cartline-name"><span class="num">' + l.quantity + '×</span> '
-                + esc(l.item_name) + '</div>'
+            return '<div class="oline">'
+                + '<div class="cartline-thumb" style="--tint:'
+                + categoryTint(it && it.category) + '">' + media + '</div>'
+                + '<div class="oline-body">'
+                + '<div class="oline-name">' + esc(l.item_name) + '</div>'
                 + (meta.length ? '<div class="cartline-meta">' + esc(meta.join(' • ')) + '</div>' : '')
                 + '</div>'
-                + '<div class="cartline-price num">' + esc(money(l.gross_amount)) + '</div>'
-                + '</div>';
+                + '<div class="oline-right">'
+                + '<span class="oline-qty num">×' + l.quantity + '</span>'
+                + '<span class="oline-price num">' + esc(money(l.gross_amount)) + '</span>'
+                + '</div></div>';
         }).join('');
 
         var rows = '';
@@ -2548,18 +2642,13 @@ img { max-width: 100%; display: block; }
         if (d.service_charge_amount) rows += totalRow('Layanan', d.service_charge_amount);
         if (d.tax_amount) rows += totalRow('Pajak', d.tax_amount);
 
-        $('orders-body').innerHTML =
-            '<div class="orders-head">'
-            + '<span class="orders-no num">' + esc(d.order_number || '') + '</span>'
-            + '<span class="orders-stage">' + esc(d.stage_label || '') + '</span>'
-            + '</div>'
-            + track
-            + lines
-            + (d.note ? '<div class="notice">Catatan: ' + esc(d.note) + '</div>' : '')
-            + '<div class="totals">' + rows
+        $('orders-body').innerHTML = hero + track
+            + '<div class="opanel">' + lines + '</div>'
+            + (d.note ? '<div class="onote"><span>Catatan</span><p>' + esc(d.note) + '</p></div>' : '')
+            + '<div class="opanel totals">' + rows
             + '<div class="line grand"><span>Total</span><span class="num">'
             + esc(money(d.total_amount)) + '</span></div></div>'
-            + '<p class="orders-loading">Tagihan dibayar di kasir. Panggil staf kalau sudah selesai.</p>';
+            + '<p class="orders-foot">Tagihan dibayar di kasir. Panggil staf kalau sudah selesai.</p>';
     }
 
     function totalRow(label, amount) {

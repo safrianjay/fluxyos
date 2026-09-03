@@ -139,6 +139,10 @@ exports.handler = async (event) => {
             // Line-level detail, because "is my food coming" is usually really
             // "did the extra shot make it onto the ticket".
             lines: (Array.isArray(o.lines) ? o.lines : []).map((l) => ({
+                // The id, so the sheet can show the same photo the menu does.
+                // No new exposure: the diner already received every visible
+                // item id from `qr-menu` to be able to order at all.
+                item_id: String(l.item_id || ''),
                 item_name: String(l.item_name || '').slice(0, 120),
                 quantity: Number(l.quantity) || 0,
                 gross_amount: Number(l.gross_amount) || 0,

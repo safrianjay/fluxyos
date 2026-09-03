@@ -352,7 +352,11 @@ test.describe('QR customer ordering', () => {
                 ],
                 note: 'Sendok garpu 2',
                 subtotal: 68000, service_charge_amount: 0, tax_amount: 0,
-                discount_total: 0, total_amount: 68000, paid_amount: 0
+                discount_total: 0, total_amount: 68000, paid_amount: 0,
+                // The real endpoint always returns this; the hero shows how
+                // long the order has been in, which is half of what a waiting
+                // diner opened the sheet to learn.
+                placed_at: Date.now() - 14 * 60 * 1000
             }
         };
         await stub(page, { capture });
@@ -379,6 +383,19 @@ test.describe('QR customer ordering', () => {
         // words a diner has no reason to know.
         await expect(sheet.locator('.track-step')).toHaveCount(4);
         await expect(sheet.locator('.track-step.done')).toHaveCount(2);
+        // Exactly ONE step is the current one. Three identical filled dots
+        // would say "done, done, done" rather than "you are here".
+        await expect(sheet.locator('.track-step.now')).toHaveCount(1);
+
+        // The status hero carries the answer the sheet was opened for, plus how
+        // long it has been.
+        await expect(sheet.locator('.ostat-now')).toHaveText('Sedang disiapkan');
+        await expect(sheet.locator('.ostat-no')).toHaveText('2026-09-03-004');
+        await expect(sheet.locator('.ostat-time')).not.toHaveText('');
+
+        // Lines carry the same thumbnail treatment as the order page, so a
+        // diner recognises a dish rather than re-reading its name.
+        await expect(sheet.locator('.oline .cartline-thumb')).toHaveCount(2);
     });
 
     test('a slow stale response never overwrites a newer one', async ({ page }) => {
@@ -424,52 +441,53 @@ test.describe('QR customer ordering', () => {
         await open(page);
         await expect(page.locator('#tab-orders-badge')).not.toHaveClass(/on/);
         await page.locator('.tab[data-tab="orders"]').click();
-        await expect(page.locator('#sheet-orders .empty')).toContainText('Belum ada pesanan');
+        await expect(page.locator('#sheet-orders .orders-empty')).toContainText('Belum ada pesanan');
     });
 
-    test('the header is the business and the table, on one line', async ({ page }) => {
+    test('the header owns identity AND search, in one zone', async ({ page }) => {
         await stub(page);
         await open(page);
 
         const head = page.locator('.masthead');
         await expect(head.locator('h1')).toHaveText('Kopi Senja Kemang');
-        await expect(head.locator('.table-chip')).toContainText('Meja A04');
+        await expect(head.locator('#table-label')).toHaveText('Meja A04');
 
-        // The eyebrow that used to sit above this said "Pesan dari meja Anda" —
-        // exactly what the headline and the chip already say. A label restating
-        // the headline is prohibited (CLAUDE.md), and removing it gave the menu
-        // back the vertical space the header was spending on it.
+        // The outlet's own initials, not the FluxyOS mark: this is the
+        // restaurant's surface, and branding a diner's table with ours would be
+        // as odd here as on the printed card. Letters only — a name like
+        // "QA-CNT-1786886530917" would otherwise monogram as a serial number.
+        await expect(page.locator('#outlet-mark')).toHaveText('KS');
+
+        // SEARCH IS INSIDE THE HEADER. It used to float on the page background
+        // between the header and the tabs, belonging to neither.
+        await expect(head.locator('#search')).toHaveCount(1);
+        const headBox = await head.boundingBox();
+        const searchBox = await page.locator('.mast-search').boundingBox();
+        expect(searchBox.y + searchBox.height).toBeLessThanOrEqual(headBox.y + headBox.height + 1);
+
+        // And the tabs attach directly to it — they filter the menu below, so
+        // there is nothing to sit between.
+        const chips = await page.locator('#chips').boundingBox();
+        expect(chips.y - (headBox.y + headBox.height)).toBeLessThan(8);
+
+        // The eyebrow that once sat above the name said "Pesan dari meja Anda"
+        // — exactly what the headline and the table line already say. A label
+        // restating the headline is prohibited (CLAUDE.md).
         await expect(page.locator('.brandline')).toHaveCount(0);
         await expect(head).not.toContainText('Pesan dari meja');
 
-        // Side by side, not stacked: same vertical band.
-        const h1 = await head.locator('h1').boundingBox();
-        const chip = await head.locator('.table-chip').boundingBox();
-        const overlap = Math.min(h1.y + h1.height, chip.y + chip.height) - Math.max(h1.y, chip.y);
-        expect(overlap, 'the table chip is not on the same line as the name').toBeGreaterThan(0);
-
-        // AND IT MUST HOLD FOR A LONG NAME, which is the case that broke it in
-        // production: a real outlet called "QA-CNT-1786886530917 Outlet" wrapped
-        // the chip onto a second line. The name truncates now; the chip never
-        // moves. `min-width: 0` on the flex item is what makes that work.
+        // The name and the table stay on their own lines, and the name
+        // truncates rather than wrapping — a long one must not push the table
+        // line around. This is the case that broke it in production: a real
+        // outlet called "QA-CNT-1786886530917 Outlet".
         await page.evaluate(() => {
             document.getElementById('outlet-name').textContent =
                 'Restoran Padang Sederhana Bintang Lima Cabang Kemang Selatan Raya';
         });
-        const longH1 = await head.locator('h1').boundingBox();
-        const longChip = await head.locator('.table-chip').boundingBox();
-        const stillOverlap = Math.min(longH1.y + longH1.height, longChip.y + longChip.height)
-            - Math.max(longH1.y, longChip.y);
-        expect(stillOverlap, 'a long business name pushed the table chip onto its own line')
-            .toBeGreaterThan(0);
-        // The chip keeps its full width — it is the thing that must stay legible.
-        expect(Math.abs(longChip.width - chip.width)).toBeLessThan(1);
         const clipped = await head.locator('h1').evaluate((el) => el.scrollWidth > el.clientWidth);
         expect(clipped, 'the long name should be truncated, not overflowing').toBe(true);
-
-        // And the header must not hog the screen — the menu is what the diner
-        // came for. It sat at ~104px with the eyebrow.
-        expect(h1.y + h1.height).toBeLessThan(90);
+        const after = await page.locator('#table-label').boundingBox();
+        expect(after.width).toBeGreaterThan(0);
     });
 
     test('the splash shows the FluxyOS loader, not a bare spinner', async ({ page }) => {
