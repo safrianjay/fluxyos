@@ -132,6 +132,7 @@ const state = {
         // like country/base_currency so the KYC reviewer sees the claim beside
         // the registration documents. assets/js/business-category.js.
         business_category: '',
+        holds_stock: '',
         // Device/UI language. Mirrored to the profile so the KYC reviewer knows
         // which language this business operates in; the live switch itself is
         // localStorage via FluxyI18n. Empty by default ON PURPOSE — bindLanguageSelect
@@ -234,6 +235,7 @@ async function hydrateSavedState(userId, progress) {
             Object.entries({
                 business_name: profile.business_name,
                 business_category: profile.business_category,
+                holds_stock: profile.holds_stock === true ? 'yes' : (profile.holds_stock === false ? 'no' : ''),
                 language: profile.language,
                 country: profile.country,
                 base_currency: profile.base_currency,
@@ -300,6 +302,7 @@ function initUI() {
     // Live-bind form fields
     bindInput('#f-business-name', 'business_name');
     bindInput('#f-business-category', 'business_category');
+    bindInput('#f-holds-stock', 'holds_stock');
     bindLanguageSelect();
     bindInput('#f-country', 'country');
     bindInput('#f-base-currency', 'base_currency');
@@ -420,6 +423,7 @@ function syncFormFromState() {
     const legal = document.querySelector('#f-legal-name');
     if (legal) legal.value = state.fields.legal_full_name || '';
     syncCustomSelectFromState('#f-business-category', '#f-business-category-custom', state.fields.business_category);
+    syncCustomSelectFromState('#f-holds-stock', '#f-holds-stock-custom', state.fields.holds_stock);
     syncCustomSelectFromState('#f-role', '#f-role-custom', state.fields.role);
     syncCustomSelectFromState('#f-main-goal', '#f-main-goal-custom', state.fields.main_goal);
     syncCustomSelectFromState('#f-revenue', '#f-revenue-custom', state.fields.monthly_revenue_range);
@@ -1077,6 +1081,11 @@ async function onContinue() {
             await data.saveOnboardingProfile(state.user.uid, {
                 business_name: state.fields.business_name,
                 business_category: state.fields.business_category,
+                // '' (unanswered) stays undefined so ensureWorkspace omits the
+                // key entirely — an absent field falls back to the category,
+                // which is exactly the pre-existing behaviour.
+                holdsStock: state.fields.holds_stock === 'yes' ? true
+                    : (state.fields.holds_stock === 'no' ? false : undefined),
                 country: state.fields.country,
                 base_currency: state.fields.base_currency,
                 role: state.fields.role,

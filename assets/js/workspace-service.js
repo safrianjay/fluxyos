@@ -38,6 +38,9 @@ const state = {
     // fails closed (a module is hidden, nothing is mis-rendered) and self-corrects
     // on the next resolve, whereas a stale currency renders wrong money.
     businessCategory: null,
+    // The direct answer to "do you hold stock". null = unanswered, which
+    // falls back to the category — NOT the same as false.
+    holdsStock: null,
 };
 
 /**
@@ -112,6 +115,7 @@ function publish() {
         baseCurrency: state.baseCurrency,
         country: state.country,
         businessCategory: state.businessCategory,
+        holdsStock: state.holdsStock,
         isOwner: state.role === 'owner',
         can: (capability) => (state.status === 'active' ? permCan(state.role, capability) : false),
     };
@@ -302,7 +306,7 @@ async function resolveWorkspace(app, user) {
 async function _resolveWorkspace(app, user) {
     if (!user || !user.uid) {
         try { sessionStorage.removeItem('fluxy_ws'); } catch (_) {}
-        Object.assign(state, { id: null, role: null, status: null, uid: null, ready: false, name: null, plan: null, baseCurrency: null, country: null, businessCategory: null });
+        Object.assign(state, { id: null, role: null, status: null, uid: null, ready: false, name: null, plan: null, baseCurrency: null, country: null, businessCategory: null, holdsStock: null });
         applyBaseCurrency(null);
         return publish();
     }
@@ -490,6 +494,8 @@ async function _resolveWorkspace(app, user) {
                 // cached copy could hide a module the business is entitled to
                 // with nothing able to invalidate it while the channel is blocked.
                 state.businessCategory = d.business_category || null;
+                // `?? null` not `|| null`: a stored `false` is an answer.
+                state.holdsStock = typeof d.holds_stock === 'boolean' ? d.holds_stock : null;
                 applyBaseCurrency(state.baseCurrency);
                 writeCachedCurrency(user.uid, state.baseCurrency, state.country);
                 state.plan = (d.plan_id || d.plan_name || d.subscription_status) ? {

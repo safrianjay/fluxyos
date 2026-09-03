@@ -144,6 +144,27 @@
                             <span class="onboarding-error" id="f-business-category-error" aria-live="polite"></span>
                         </label>
 
+                        <!-- The question the Inventory module actually depends on,
+                             asked DIRECTLY rather than inferred from the category
+                             above. Industry is only a proxy for it: a D2C startup
+                             that holds stock picks `startup` and silently loses
+                             Inventory, and an email allowlist entry is the only way
+                             back — which is how one paying customer came to be
+                             hand-listed. feature-access.js prefers this answer over
+                             the category. Optional: an unanswered workspace falls
+                             back to its category exactly as before. -->
+                        <label class="onboarding-field">
+                            <span class="onboarding-label">Do you hold stock?</span>
+                            <select name="holds_stock" id="f-holds-stock" class="onboarding-native-select" aria-describedby="f-holds-stock-error">
+                                <option value="" disabled selected>Select an answer</option>
+                                <option value="yes">Yes — we buy or make goods we keep</option>
+                                <option value="no">No — we sell time, services or software</option>
+                            </select>
+                            <span id="f-holds-stock-custom" class="onboarding-custom-select" data-source-select="f-holds-stock" data-aria-label="Do you hold stock"></span>
+                            <span class="onboarding-helper">Decides whether you get Inventory. Ingredients, materials and goods for resale all count.</span>
+                            <span class="onboarding-error" id="f-holds-stock-error" aria-live="polite"></span>
+                        </label>
+
                         <label class="onboarding-field">
                             <span class="onboarding-label">Your role</span>
                             <select name="role" id="f-role" class="onboarding-native-select" required aria-describedby="f-role-error">

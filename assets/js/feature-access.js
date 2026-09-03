@@ -82,7 +82,10 @@ export const FEATURE_RULES = {
         // `manufacturing` added 2026-08-30: raw materials, WIP and finished
         // goods are inventory by definition. NOT given POS in the same move — a
         // factory sells B2B on invoices, not over a counter.
-        allowCategories: ['fnb', 'retail', 'manufacturing']
+        allowCategories: ['fnb', 'retail', 'manufacturing'],
+        // Asked directly at onboarding. Beats the category above in both
+        // directions when answered; falls through to it when not.
+        requiresStock: true
     },
     // Outlet P&L compares outlets to each other. Its precondition is therefore
     // not an industry but a COUNT — and that count is a fact already in the
@@ -161,14 +164,47 @@ function matches(rule, email) {
     //
     // Absent category = NO match. Unlike country, there is no sensible default
     // line of business, and guessing one would hand a till to an agency.
+    // The DIRECT answer, where the module has one and the workspace gave one.
+    //
+    // `requiresStock` names the thing Inventory actually depends on, and
+    // `holds_stock` is the workspace's own answer to it. Industry is a proxy for
+    // the same question and a lossy one — a D2C startup holding stock picks
+    // `startup` and loses the module, which is how one paying customer came to
+    // be hand-listed on allowEmails.
+    //
+    // It OVERRIDES the category in BOTH directions, which is the whole point of
+    // asking: "yes" grants Inventory to a workspace whose category would refuse
+    // it, and "no" withholds it from an `fnb` workspace that genuinely holds no
+    // stock (a catering agency that subcontracts every kitchen). A signal you
+    // only honour when it agrees with your guess is not a signal.
+    //
+    // null = unanswered, which is NOT false: it falls through to the category
+    // below, so every workspace predating the question keeps exactly what it
+    // had. The allowlist is evaluated ABOVE this, so a "no" answer can never
+    // take a module off an allowlisted workspace mid-shift.
+    //
+    // The allowlist is checked FIRST, because `requiresStock` can answer NO and
+    // a hand-listed workspace must never lose a module to it. That includes the
+    // QA account, whose pattern every inventory spec depends on.
+    const allowlisted = !!email && (
+        (rule.allowEmails || []).some((e) => norm(e) === email)
+        || (rule.allowEmailPatterns || []).some((re) => re.test(email))
+    );
+    if (allowlisted) return true;
+
+    if (rule.requiresStock) {
+        const holds = (typeof window !== 'undefined' && window.FluxyWorkspace)
+            ? window.FluxyWorkspace.holdsStock : null;
+        if (holds === true) return true;
+        if (holds === false) return false;
+    }
     if (rule.allowCategories) {
         const category = (typeof window !== 'undefined' && window.FluxyWorkspace
             && window.FluxyWorkspace.businessCategory) || null;
         if (category && rule.allowCategories.includes(category)) return true;
     }
-    if (!email) return false;
-    if ((rule.allowEmails || []).some((e) => norm(e) === email)) return true;
-    return (rule.allowEmailPatterns || []).some((re) => re.test(email));
+    // The allowlist was already evaluated above, before requiresStock.
+    return false;
 }
 
 // The owner's email, resolved once per page load. Both the sidebar and the page

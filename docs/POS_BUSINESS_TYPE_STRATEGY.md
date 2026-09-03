@@ -458,3 +458,64 @@ hand-listed.
 The fix is not a longer industry list — it is asking the question the module
 actually depends on. See the `holds_stock` work: industry is a guess at "do you
 hold stock", and the question is the thing itself.
+
+---
+
+## `holds_stock` — asking the question instead of guessing it
+
+The matrix above closes the *policy* gap. It does not close the one underneath
+it: **industry is a proxy for what a module depends on, and a lossy one.** A D2C
+startup that holds stock picks `startup`, loses Inventory, and the email
+allowlist is the only way back — which needs a human and is how TB Bangun Utama
+came to be hand-listed.
+
+So onboarding now asks the question the module actually depends on:
+
+> **Do you hold stock?**
+> Yes — we buy or make goods we keep · No — we sell time, services or software
+
+Stored as `holds_stock` (bool) on `workspaces/{id}`, beside `business_category`.
+
+### It overrides the category in BOTH directions
+
+`feature-access.js` reads `requiresStock` on the rule and prefers the direct
+answer:
+
+| `holds_stock` | Result |
+|---|---|
+| `true` | Inventory granted, **even if the category would refuse** (D2C startup) |
+| `false` | Inventory withheld, **even if the category would grant** (a catering agency that subcontracts every kitchen is `fnb` and holds nothing) |
+| `null` — unanswered | Falls through to the category, unchanged |
+
+A signal only honoured when it agrees with the guess is not a signal. But the
+third row is what makes this safe to ship: every workspace predating the question
+keeps exactly what it had.
+
+### The allowlist is evaluated FIRST
+
+`matches()` checks `allowEmails` / `allowEmailPatterns` **before**
+`requiresStock`, deliberately. A `false` answer must never revoke a module from a
+hand-listed customer — or from the QA account, whose pattern every inventory
+spec depends on. That ordering is the difference between a safe rollout and
+taking Inventory off a paying workspace mid-shift, and it is asserted directly.
+
+### ⚠️ The rules deploy is the gate
+
+`isValidWorkspaceProfile` uses `keys().hasOnly([...])`. Until the new key is in
+that list **in the deployed ruleset**, a write carrying `holds_stock` is rejected
+**in its entirety** — not the field, the whole workspace document. Onboarding
+would fail outright.
+
+`firestore.rules` does not ship with `git push`. So the order is not negotiable:
+
+```
+npm run rules:deploy     # 1. deploy — the client is now safe to ship
+                         # 2. VERIFY against the deployed ruleset
+npm run deploy:stamp     # 3. record what is live
+git push                 # 4. only now
+```
+
+Coverage: `tests/base-currency-rules-emulator-test.mjs` (accepts true, accepts
+**false** — a real answer, not an absent one — rejects a string, and permits a
+later change, because a consultancy that opens a shop genuinely changes answer).
+`tests/feature-access-category.check.js` covers the precedence.

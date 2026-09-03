@@ -32,9 +32,16 @@ function check(label, fn) {
 
 // `matches()` reads window.FluxyWorkspace at call time, so the stub is just a
 // global the module can see.
-function withCategory(category, fn) {
-    global.window = { FluxyWorkspace: category ? { businessCategory: category } : {} };
+// One stub for the whole workspace snapshot. `withCategory` used to replace
+// global.window outright, so nesting two of these clobbered the outer one —
+// which would have made every combined case silently test the wrong thing.
+function withWorkspace(props, fn) {
+    global.window = { FluxyWorkspace: { ...props } };
     try { return fn(); } finally { delete global.window; }
+}
+
+function withCategory(category, fn) {
+    return withWorkspace(category ? { businessCategory: category } : {}, fn);
 }
 
 (async () => {
@@ -164,6 +171,51 @@ function withCategory(category, fn) {
         withCategory('retail', () => {
             assert.strictEqual(matches(FEATURE_RULES.outlet_pnl, STRANGER), false);
             assert.strictEqual(matches(FEATURE_RULES.outlet_pnl, QA_EMAIL), true);
+        });
+    });
+
+    check('a direct YES beats a category that would refuse', () => {
+        // The whole reason for asking: a D2C startup that holds stock picks
+        // `startup` and would otherwise lose Inventory.
+        withWorkspace({ businessCategory: 'startup', holdsStock: true }, () => {
+            assert.strictEqual(matches(FEATURE_RULES.inventory, STRANGER), true);
+        });
+    });
+
+    check('a direct NO beats a category that would grant', () => {
+        // A signal you only honour when it agrees with your guess is not a
+        // signal. A catering agency that subcontracts every kitchen is `fnb` and
+        // holds nothing.
+        withWorkspace({ businessCategory: 'fnb', holdsStock: false }, () => {
+            assert.strictEqual(matches(FEATURE_RULES.inventory, STRANGER), false);
+        });
+    });
+
+    check('a direct NO never revokes an ALLOWLISTED workspace', () => {
+        // The allowlist is evaluated first, deliberately. Otherwise a "no"
+        // answer would take Inventory off a hand-listed customer — and off the
+        // QA account, which every inventory spec depends on.
+        withWorkspace({ businessCategory: 'services', holdsStock: false }, () => {
+            assert.strictEqual(matches(FEATURE_RULES.inventory, QA_EMAIL), true);
+            assert.strictEqual(matches(FEATURE_RULES.inventory, 'tbbangunutama@gmail.com'), true);
+        });
+    });
+
+    check('unanswered falls through to the category, unchanged', () => {
+        // Every workspace predating the question keeps exactly what it had.
+        withWorkspace({ businessCategory: 'retail', holdsStock: null }, () => {
+            assert.strictEqual(matches(FEATURE_RULES.inventory, STRANGER), true);
+        });
+        withWorkspace({ businessCategory: 'services', holdsStock: null }, () => {
+            assert.strictEqual(matches(FEATURE_RULES.inventory, STRANGER), false);
+        });
+    });
+
+    check('the stock answer does not leak into POS', () => {
+        // Only Inventory declares requiresStock. Holding stock says nothing
+        // about whether you sell over a counter.
+        withWorkspace({ businessCategory: 'manufacturing', holdsStock: true }, () => {
+            assert.strictEqual(matches(FEATURE_RULES.pos, STRANGER), false);
         });
     });
 

@@ -119,6 +119,39 @@ async function main() {
             created_at: serverTimestamp(), updated_at: serverTimestamp()
         }));
 
+    // ---- holds_stock -------------------------------------------------------
+    //
+    // The direct answer to "do you hold stock", asked at onboarding and read by
+    // feature-access.js ahead of the business category. `hasOnly` on
+    // isValidWorkspaceProfile means an UNDEPLOYED rules file rejects the whole
+    // workspace write, not just the field — so onboarding breaks entirely if the
+    // client ships first. That is what these assert.
+    //
+    // Exercised through UPDATE rather than create: `allow create` requires
+    // workspaceId == uid, so a signed-in user gets exactly one create and the
+    // currency case above already spent it. Both paths call the same validator.
+    console.log('\n— holds_stock —');
+    const WS_STOCK = 'ws_stock_answer';
+    await seedWorkspace(WS_STOCK, uid);
+
+    await expectOutcome('holds_stock true is accepted', true, () =>
+        updateDoc(doc(db, `workspaces/${WS_STOCK}`), { holds_stock: true, updated_at: serverTimestamp() }));
+
+    // FALSE is a real answer, not an absent one. If the validator only accepted
+    // truthy values the "no" branch would be unwritable and every such workspace
+    // would silently fall back to its category.
+    await expectOutcome('holds_stock false is accepted', true, () =>
+        updateDoc(doc(db, `workspaces/${WS_STOCK}`), { holds_stock: false, updated_at: serverTimestamp() }));
+
+    // NOT set-once, unlike country/base_currency: a consultancy that opens a
+    // shop genuinely changes answer, and nothing already recorded is re-read
+    // because of it.
+    await expectOutcome('the owner may change the answer later', true, () =>
+        updateDoc(doc(db, `workspaces/${WS_STOCK}`), { holds_stock: true, updated_at: serverTimestamp() }));
+
+    await expectOutcome('holds_stock must be a boolean, not a string', false, () =>
+        updateDoc(doc(db, `workspaces/${WS_STOCK}`), { holds_stock: 'yes', updated_at: serverTimestamp() }));
+
     // ---- a non-IDR workspace can actually operate ------------------------
     //
     // Before D3 these validators asserted `data.currency == 'IDR'`, so a

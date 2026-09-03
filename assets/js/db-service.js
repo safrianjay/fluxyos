@@ -2596,6 +2596,11 @@ class DataService {
         // genuinely changed category, and refusing that forever would be wrong.
         const category = ['fnb', 'startup', 'technology', 'manufacturing', 'retail', 'services', 'other']
             .includes(opts.businessCategory) ? opts.businessCategory : null;
+        // Does the business hold stock? THREE states, not two: true, false, and
+        // unanswered. `false` is a real answer and must be stored, so this can
+        // never be a truthiness check — `holdsStock === false` would be dropped
+        // by one and the workspace would silently fall back to its category.
+        const holdsStock = typeof opts.holdsStock === 'boolean' ? opts.holdsStock : null;
         if (!wsExists) {
             await setDoc(wsRef, {
                 owner_uid: uid,
@@ -2603,10 +2608,11 @@ class DataService {
                 ...(country ? { country } : {}),
                 ...(ccy ? { base_currency: ccy } : {}),
                 ...(category ? { business_category: category } : {}),
+                ...(holdsStock === null ? {} : { holds_stock: holdsStock }),
                 created_at: serverTimestamp(),
                 updated_at: serverTimestamp()
             });
-        } else if (ccy || country || category) {
+        } else if (ccy || country || category || holdsStock !== null) {
             // Stamp an existing workspace that predates this field. Rules enforce
             // set-once, so a second attempt with a DIFFERENT value is rejected —
             // only write when the field is genuinely absent, so an ordinary
@@ -2620,6 +2626,10 @@ class DataService {
             // corrected in Settings. Deliberate edits go through
             // saveWorkspaceBusinessCategory.
             if (category && !cur.business_category) patch.business_category = category;
+            // Same rule, but the absence test is `undefined` rather than falsy:
+            // a stored `false` IS an answer, and `!cur.holds_stock` would treat
+            // it as unanswered and overwrite it on every resubmit.
+            if (holdsStock !== null && cur.holds_stock === undefined) patch.holds_stock = holdsStock;
             if (Object.keys(patch).length) {
                 patch.updated_at = serverTimestamp();
                 try { await setDoc(wsRef, patch, { merge: true }); }
