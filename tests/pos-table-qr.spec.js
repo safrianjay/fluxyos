@@ -21,16 +21,20 @@ const { execFileSync } = require('child_process');
 const path = require('path');
 
 const CARD_URL = 'https://order.fluxyos.com/t/qeawOAYXbotmBvtICayrt0g-3mvPaBekO8-Ifj5wwm8';
+// The fixture is generated the way the function generates it — ECC H with the
+// F-logo composited — so the geometry measured below is the real artefact.
 const SVG = execFileSync('node', ['-e', `
     const QRCode = require('${path.join(__dirname, '..', 'node_modules/qrcode')}');
+    const { withLogo, LOGO_ECC } = require('${path.join(__dirname, '..', 'netlify/functions/lib/qr-logo.js')}');
     QRCode.toString(${JSON.stringify(CARD_URL)}, {
-        type: 'svg', errorCorrectionLevel: 'Q', margin: 4,
+        type: 'svg', errorCorrectionLevel: LOGO_ECC, margin: 4,
         color: { dark: '#0B0F19', light: '#FFFFFF' }
-    }).then((s) => process.stdout.write(s));
+    }).then((s) => process.stdout.write(withLogo(s)));
 `], { encoding: 'utf8' });
 
 const RESPONSE = {
-    error_correction: 'Q',
+    error_correction: 'H',
+    card_mm: 47,
     missing_token: 0,
     cards: [
         { table_id: 't1', label: 'A01', zone: 'Teras', url: CARD_URL, svg: SVG },
@@ -81,6 +85,11 @@ test.describe('POS table QR codes', () => {
         // The symbol is inlined as SVG, not an <img> — nothing to 404, nothing
         // to load, and it prints at whatever resolution the printer has.
         await expect(cards.first().locator('.pos-qr-img svg')).toBeVisible();
+        // The F-logo is knocked into the centre of every symbol. Asserted in
+        // the DOM because a card that quietly lost its logo still scans, so
+        // nothing else here would catch it.
+        const logoPaths = await cards.first().locator('.pos-qr-img svg path').count();
+        expect(logoPaths, 'the F-logo is missing from the card').toBeGreaterThanOrEqual(2);
         await expect(cards.nth(1).locator('.pos-qr-label')).toHaveText('A02');
         // The zone is shown when there is one and omitted when there is not.
         await expect(cards.first().locator('.pos-qr-zone')).toHaveText('Teras');
@@ -90,15 +99,18 @@ test.describe('POS table QR codes', () => {
     test('THE CARD IS THE PHYSICAL SIZE THE SYMBOL WAS DESIGNED FOR', async ({ page }) => {
         await openSheet(page);
 
-        // 40mm at 96dpi is ~151px. The error-correction level (Q, not H) was
-        // chosen against a 40mm card: 41x41 modules is 0.82mm per module, which
-        // a phone reads at arm's length in restaurant lighting. Shrinking this
-        // box silently makes every printed card harder to scan, and nothing
-        // else in the system would notice.
+        // 47mm, and the number carries the whole scan budget. The card has the
+        // F-logo, which knocks out the centre and deletes data, so error
+        // correction is H — 49x49 modules plus an 8-module quiet zone = 57
+        // across. At 47mm that is 0.82mm per module, the same pitch the
+        // logo-less version had at 40mm. Shrink this box and every printed card
+        // silently becomes harder to scan; nothing else would notice.
         const box = await page.locator('.pos-qr-img').first().boundingBox();
         const mm = box.width / (96 / 25.4);
-        expect(mm).toBeGreaterThan(38);
-        expect(mm).toBeLessThan(42);
+        expect(mm).toBeGreaterThan(45);
+        expect(mm).toBeLessThan(49);
+        // Stated as the thing that actually matters: pitch, not width.
+        expect(mm / 57).toBeGreaterThan(0.8);
         // Square, or the symbol is distorted and stops decoding.
         expect(Math.abs(box.width - box.height)).toBeLessThan(2);
     });

@@ -34,7 +34,7 @@ const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 const QRCode = require(path.join(ROOT, 'node_modules/qrcode'));
 const fn = require(path.join(ROOT, 'netlify/functions/pos-table-qr.js'));
-const { cardUrl, ECC, MARGIN, ORDER_ORIGIN, MAY_MANAGE } = fn.__test;
+const { cardUrl, ECC, MARGIN, ORDER_ORIGIN, MAY_MANAGE, CARD_MM, withLogo, logoPercent } = fn.__test;
 
 let failures = 0;
 const fail = (m) => { failures += 1; console.error(`  ✗ ${m}`); };
@@ -72,18 +72,22 @@ const realToken = () => require('crypto').randomBytes(32).toString('base64url');
         'every role holding pos.manage can');
 
     // --- 3. The symbol is readable at the size it is printed ---------------
-    is(ECC, 'Q', 'error correction is Q — 25% recoverable, no logo to absorb');
+    // H, and it is REQUIRED, not preferred: the logo knocks out the centre and
+    // deletes data. Q survived a clean raster in testing, but that proves
+    // nothing about margin left for glare and wear on a laminated card.
+    is(ECC, 'H', 'error correction is H — the logo knockout demands it');
     is(MARGIN, 4, 'the quiet zone is the spec minimum of 4 modules');
+    is(logoPercent(), 24, 'the logo is 24% of the symbol side');
 
     const sym = QRCode.create(cardUrl(tok), { errorCorrectionLevel: ECC });
     const modules = sym.modules.size;
-    // At a 40mm printed card the module pitch must stay comfortably readable by
-    // a phone at arm's length in restaurant lighting. Q on a 71-char URL is
-    // 41x41 -> 0.82mm. H would be 49x49 -> 0.70mm, which is why H is not used
-    // where there is no logo to justify it.
-    const pitchMm = 40 / (modules + MARGIN * 2);
-    is(modules <= 45, true, `the symbol is ${modules}x${modules} modules (<= 45)`);
-    is(pitchMm >= 0.7, true, `modules are ${pitchMm.toFixed(2)}mm at a 40mm card (>= 0.70mm)`);
+    // The pitch is what a phone actually has to resolve. H costs modules; the
+    // print size pays it back. 49x49 + 8 quiet = 57 across 47mm = 0.82mm — the
+    // same geometry the logo-less Q version had at 40mm.
+    const pitchMm = CARD_MM / (modules + MARGIN * 2);
+    is(modules <= 53, true, `the symbol is ${modules}x${modules} modules (<= 53)`);
+    is(pitchMm >= 0.8, true,
+        `modules are ${pitchMm.toFixed(2)}mm at a ${CARD_MM}mm card (>= 0.80mm)`);
 
     // --- 4. THE ROUND TRIP --------------------------------------------------
     const canDecode = os.platform() === 'darwin' && (() => {
@@ -119,10 +123,13 @@ const realToken = () => require('crypto').randomBytes(32).toString('base64url');
                 // character, this assertion now fails and previously did not.
                 const url = `https://order.fluxyos.com/t/${c.token}`;
                 is(cardUrl(c.token), url, `cardUrl agrees for ${c.name}`);
-                const svg = await QRCode.toString(url, {
+                // THE LOGO IS COMPOSITED BEFORE DECODING. Verifying a bare
+                // symbol would verify an artefact that is never printed, and
+                // the knockout is precisely the thing that can break it.
+                const svg = withLogo(await QRCode.toString(url, {
                     type: 'svg', errorCorrectionLevel: ECC, margin: MARGIN,
                     color: { dark: '#0B0F19', light: '#FFFFFF' }
-                });
+                }));
                 const png = path.join(tmp, `${c.token.slice(0, 8)}.png`);
 
                 // Rasterised in a real browser, at a real print-ish resolution,
@@ -142,7 +149,7 @@ const realToken = () => require('crypto').randomBytes(32).toString('base64url');
                         { encoding: 'utf8' }).trim();
                 } catch (_) { decoded = ''; }
 
-                is(decoded, url, `Vision decodes ${c.name} back to the exact URL`);
+                is(decoded, url, `Vision decodes ${c.name} back to the exact URL, logo and all`);
             }
         } finally {
             await browser.close();

@@ -3,6 +3,7 @@
 const admin = require('firebase-admin');
 const QRCode = require('qrcode');
 const { allowOriginHeader } = require('./lib/allowed-origins');
+const { withLogo, logoPercent, LOGO_ECC } = require('./lib/qr-logo');
 
 // =============================================================================
 // FluxyOS — the QR codes a restaurant prints and puts on its tables.
@@ -38,17 +39,27 @@ const { allowOriginHeader } = require('./lib/allowed-origins');
 // stopped existing when the preview expired.
 const ORDER_ORIGIN = process.env.ORDER_BASE_URL || 'https://order.fluxyos.com';
 
-// ERROR CORRECTION Q (25%), not the H used for the event poster.
+// ERROR CORRECTION H (30%), because the card carries the F-logo.
 //
-// H exists there to survive a logo covering the centre. A table card has no
-// logo — branding someone else's table with ours would be odd, and the code
-// scans better without it — so there is no knockout to absorb, and H's extra
-// redundancy would be paid for in module DENSITY. Measured for a real 43-char
-// token at a 40mm printed card: H gives 0.70mm modules, Q gives 0.82mm. Q keeps
-// a quarter of the symbol recoverable for the things that actually happen to a
-// restaurant table — glare, smudges, a corner worn off — while keeping the
-// modules large enough to read at arm's length in low light.
-const ECC = 'Q';
+// This was Q while the card had no logo. A centre knockout DELETES DATA, and
+// the only reason the symbol still reads is Reed-Solomon recovery — so a logo
+// forces H, the same reasoning `scripts/make-qr.js` applies to the event
+// poster. Q survived a clean 600px raster in testing, but that proves nothing
+// about margin left over: the knockout has already spent part of the budget
+// that is supposed to absorb glare, smudges and a worn corner on a laminated
+// card. Measured with Apple's Vision framework, M+logo failed outright.
+//
+// H'S ONLY COST IS MODULE DENSITY, AND IT IS CANCELLED IN THE PRINT SIZE. For a
+// real 43-char token H is 49x49 (plus the 4-module quiet zone each side = 57).
+// At the old 40mm card that would be 0.70mm per module; the card is 47mm
+// instead, which puts it back at 0.82mm — identical scan geometry to the
+// logo-less Q version, with 30% recovery and the logo on top. See CARD_MM.
+const ECC = LOGO_ECC;
+
+// The printed width of the symbol, in millimetres, mirrored by `.pos-qr-img` in
+// pos.html and asserted in tests/pos-table-qr.spec.js. Shrink it and every card
+// silently becomes harder to scan; nothing else in the system would notice.
+const CARD_MM = 47;
 
 // Spec-minimum quiet zone. Below 4 modules, scanners struggle.
 const MARGIN = 4;
@@ -156,12 +167,12 @@ exports.handler = async (event) => {
             // is produced — so a bad token is an error here rather than a card
             // that prints and does not scan.
             QRCode.create(url, { errorCorrectionLevel: ECC });
-            const svg = await QRCode.toString(url, {
+            const svg = withLogo(await QRCode.toString(url, {
                 type: 'svg',
                 errorCorrectionLevel: ECC,
                 margin: MARGIN,
                 color: { dark: '#0B0F19', light: '#FFFFFF' }
-            });
+            }));
             cards.push({
                 table_id: t.id,
                 label: str(t.label, 40),
@@ -175,7 +186,8 @@ exports.handler = async (event) => {
             cards,
             // How many tables were asked about but have no card. The UI says so.
             missing_token: Math.max(0, total - cards.length),
-            error_correction: ECC
+            error_correction: ECC,
+            card_mm: CARD_MM
         });
     } catch (err) {
         const code = err && err.code;
@@ -191,4 +203,4 @@ exports.handler = async (event) => {
 // exact constants, rasterises the SVG and decodes it back with Apple's Vision
 // framework. Testing a COPY of these values would prove only that the copy
 // agrees with itself — the point is to verify what actually ships.
-exports.__test = { cardUrl, ECC, MARGIN, ORDER_ORIGIN, MAY_MANAGE };
+exports.__test = { cardUrl, ECC, MARGIN, ORDER_ORIGIN, MAY_MANAGE, CARD_MM, withLogo, logoPercent };

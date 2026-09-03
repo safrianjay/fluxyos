@@ -20,39 +20,25 @@
 // Usage: node scripts/make-qr.js [url] > assets/images/qr-event.svg
 // =============================================================================
 const QRCode = require('qrcode');
+// The logo overlay lives in one place now — netlify/functions/pos-table-qr.js
+// needed the identical knockout for table cards, and the thing that drifts
+// between two copies is the ratio between the knockout and the error-correction
+// budget. That is not a style value: it is the difference between a card that
+// scans and one that does not.
+const { withLogo, logoPercent, LOGO_ECC } = require('../netlify/functions/lib/qr-logo.js');
 
 const URL = process.argv[2] || 'https://fluxyos.com/event';
 
-QRCode.create(URL, { errorCorrectionLevel: 'H' });   // throws early on bad input
+QRCode.create(URL, { errorCorrectionLevel: LOGO_ECC });   // throws early on bad input
 
 QRCode.toString(URL, {
     type: 'svg',
-    errorCorrectionLevel: 'H',
+    errorCorrectionLevel: LOGO_ECC,
     margin: 4,                 // spec-minimum quiet zone; below this, scanners struggle
     color: { dark: '#0B0F19', light: '#FFFFFF' },
 }).then((svg) => {
-    // qrcode emits a viewBox in module units — read it so the logo is sized
-    // relative to the symbol rather than to a hardcoded pixel guess.
-    const vb = svg.match(/viewBox="0 0 (\d+(?:\.\d+)?) /);
-    const dim = vb ? parseFloat(vb[1]) : 41;
-
-    // ~14% of the symbol area. Comfortably inside H's budget.
-    const box = dim * 0.24;
-    const pos = (dim - box) / 2;
-    const pad = box * 0.14;
-    const logo = box - pad * 2;
-    const s = logo / 40;        // favicon.svg is a 40x40 artboard
-
-    const overlay =
-`  <rect x="${(pos - box * 0.06).toFixed(3)}" y="${(pos - box * 0.06).toFixed(3)}" width="${(box * 1.12).toFixed(3)}" height="${(box * 1.12).toFixed(3)}" rx="${(box * 0.22).toFixed(3)}" fill="#FFFFFF"/>
-  <g transform="translate(${(pos + pad).toFixed(3)} ${(pos + pad).toFixed(3)}) scale(${s.toFixed(5)})">
-    <rect width="40" height="40" rx="8" fill="#0B0F19"/>
-    <g transform="translate(1.5, 0)">
-      <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF"/>
-      <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF"/>
-    </g>
-  </g>
-`;
-    process.stdout.write(svg.replace('</svg>', overlay + '</svg>'));
-    process.stderr.write(`  ${URL}  ${dim}x${dim} modules  ecc H  logo ${(box / dim * 100).toFixed(1)}% of side\n`);
+    const out = withLogo(svg);
+    const dim = parseFloat(out.match(/viewBox="0 0 (\d+(?:\.\d+)?) /)[1]);
+    process.stdout.write(out);
+    process.stderr.write(`  ${URL}  ${dim}x${dim} modules  ecc ${LOGO_ECC}  logo ${logoPercent().toFixed(1)}% of side\n`);
 }).catch((e) => { console.error('qr generation failed:', e.message); process.exit(1); });
