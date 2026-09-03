@@ -235,6 +235,11 @@ function laneBE(changed) {
   // The guard that matters most — that it never mints a getDownloadURL link —
   // can be broken by an edit anywhere in the file, and the consequence is a
   // permanent public URL to a customer's menu that cannot be revoked.
+  // Unconditional. The cashier-facing symptom (a spinner with a customer
+  // waiting) is invisible to every other check, and the guarantee it rests on —
+  // that the money is recorded BEFORE emission, so emission need not be waited
+  // for — is exactly the kind of thing a later refactor re-couples by accident.
+  ok = record('be', run('check:pos-payment-latency (payment does not wait on the ledger)', 'node', ['tests/pos-payment-latency.check.js'])) && ok;
   ok = record('be', run('check:qr-image (no public URL, refuses before Firebase)', 'node', ['tests/qr-menu-image.check.js'])) && ok;
   // Unconditional, and the sharpest of the three. `wsPosOrderKeys` is a
   // `hasOnly`, so a key qr-order writes that the rules do not allow succeeds

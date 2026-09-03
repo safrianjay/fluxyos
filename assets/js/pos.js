@@ -2946,6 +2946,14 @@ function openPaymentModal() {
             submit.disabled = true;
             try {
                 const order = await ds.recordPosPayment(state.uid, state.orderId, {
+                    // Do NOT wait for the ledger emission before closing this
+                    // modal. The money is recorded by the order write; emission
+                    // reads every item and up to 1000 stock movements to
+                    // rebuild the cost basis, and making the cashier watch a
+                    // spinner through all of it — with a customer standing
+                    // there — is the whole complaint. It is awaited below,
+                    // after the receipt is on screen.
+                    awaitEmit: false,
                     method,
                     // What is APPLIED to the bill is capped at what is owed; the
                     // rest is change, not revenue and not money in the drawer.
@@ -2983,6 +2991,11 @@ function openPaymentModal() {
                     toast(`${rp(received)} recorded. ${rp(Number(order.total_amount) - Number(order.paid_amount))} still due.`);
                 }
                 renderOrder(); renderMenu();
+                // NOW wait for the emission, with the receipt already up. The
+                // refresh has to come after it or the overview would read the
+                // sale as unposted and flash the "post to ledger" nudge at a
+                // cashier who has done nothing wrong.
+                if (order.emitting) await order.emitting;
                 await refresh({ keepOrder: true });
             } catch (err) {
                 submit.disabled = false;

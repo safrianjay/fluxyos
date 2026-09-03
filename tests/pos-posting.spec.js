@@ -295,26 +295,36 @@ test('settlement apportionment: non-cash is exact, cash absorbs the change', asy
         };
     });
 
-    expect(r.allCash).toEqual({ cash: 200000, clearing: 0 });
-    expect(r.allQris).toEqual({ cash: 0, clearing: 200000 });
-    expect(r.exactSplit).toEqual({ cash: 120000, clearing: 80000 });
+    // ⚠️ THE KEYS ARE THE TRANSACTION FIELD NAMES, not `cash`/`clearing`. Both
+    // call sites SPREAD this straight into the transaction payload
+    // (`...this._posSettlementAmounts(order, net)`), which is why the function
+    // returns them already named. This spec asserted the old shape and had been
+    // failing on `main` — the function was right and the expectations were
+    // stale, so a real posting rule was being checked against a name nothing
+    // uses.
+    const split = (cash, clearing) => ({ pos_cash_amount: cash, pos_clearing_amount: clearing });
+
+    expect(r.allCash).toEqual(split(200000, 0));
+    expect(r.allQris).toEqual(split(0, 200000));
+    expect(r.exactSplit).toEqual(split(120000, 80000));
 
     // The case a proportional split would get wrong (it would say 64.000).
     expect(r.withChange, 'non-cash tender is exact; change comes out of cash')
-        .toEqual({ cash: 120000, clearing: 80000 });
+        .toEqual(split(120000, 80000));
 
-    expect(r.cardAndQris).toEqual({ cash: 120000, clearing: 80000 });
+    expect(r.cardAndQris).toEqual(split(120000, 80000));
     expect(r.transferIsCash, 'a bank transfer is already in the account, not with an acquirer')
-        .toEqual({ cash: 200000, clearing: 0 });
+        .toEqual(split(200000, 0));
     expect(r.unsettled, 'an unsettled payment has not arrived and must not split')
-        .toEqual({ cash: 120000, clearing: 0 });
-    expect(r.overClearing).toEqual({ cash: 0, clearing: 200000 });
-    expect(r.noPayments).toEqual({ cash: 200000, clearing: 0 });
+        .toEqual(split(120000, 0));
+    expect(r.overClearing).toEqual(split(0, 200000));
+    expect(r.noPayments).toEqual(split(200000, 0));
 
     // The invariant the posting rule depends on: the two sides always sum to the
     // amount exactly, so an unbalanced POS journal is not reachable from here.
     for (const [name, v] of Object.entries(r)) {
-        expect(v.cash + v.clearing, `${name} must sum to the amount`).toBe(200000 - (name === 'unsettled' ? 80000 : 0));
+        expect(v.pos_cash_amount + v.pos_clearing_amount, `${name} must sum to the amount`)
+            .toBe(200000 - (name === 'unsettled' ? 80000 : 0));
     }
 });
 

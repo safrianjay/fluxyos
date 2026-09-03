@@ -36,6 +36,7 @@
     "check:kyc-alerts": "node tests/kyc-alert-backfill.check.js",
     "check:pos-boundary": "node tests/pos-service-boundary.check.js",
     "check:pos-availability": "node tests/pos-availability.check.js",
+    "check:pos-payment-latency": "node tests/pos-payment-latency.check.js",
     "report:grni": "node scripts/grni-match-report.js",
     "check:qr-image": "node tests/qr-menu-image.check.js",
     "check:qr-order": "node tests/qr-order.check.js",

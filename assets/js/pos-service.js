@@ -1001,7 +1001,21 @@ export const POS_METHODS = {
     // `payments[]` has no `hasOnly` in firestore.rules (pos.md §7), so the three
     // new fields needed no rules change and no deploy.
     async recordPosPayment(userId, orderId, {
-        method = 'cash', amount, amountReceived = null, reference = null
+        method = 'cash', amount, amountReceived = null, reference = null,
+        // Wait for the ledger emission before returning?
+        //
+        // The money is recorded by the order write ABOVE the emission, and the
+        // emission is already best-effort with `emitUnpostedPosSales` as its
+        // retry — so waiting for it buys immediacy, not correctness. It is not
+        // cheap immediacy: emission reads every item and up to 1000 stock
+        // movements to rebuild the cost basis (measured 1.6s of reads on a
+        // 467-item workspace from a SERVER; a browser on restaurant wifi is
+        // several times that), and the cashier stares at a spinner for all of
+        // it with a customer waiting.
+        //
+        // Callers that can show the receipt first pass false and await
+        // `order.emitting` when they are ready.
+        awaitEmit = true
     } = {}) {
         const amt = Math.round(Number(amount) || 0);
         if (amt <= 0) throw new Error('Enter how much was received.');
@@ -1050,14 +1064,18 @@ export const POS_METHODS = {
         // Only a PAID order emits. An open or partially-paid one has produced no
         // financial event yet, and a voided one never will.
         if (order.status === 'paid') {
-            try {
-                await this._emitPosSale(userId, order);
-            } catch (err) {
+            const emitting = this._emitPosSale(userId, order).catch((err) => {
                 // The money is recorded either way. Emission is retried by
                 // `emitUnpostedPosSales`, and the POS overview surfaces the
                 // backlog rather than letting it sit silently.
                 console.error('[pos] sale recorded but not yet emitted to the ledger:', err && err.message);
-            }
+            });
+            if (awaitEmit) await emitting;
+            // A PROMISE, not data. Non-enumerable so it can never reach
+            // Firestore, JSON, or a spread that rebuilds the document — this
+            // object is the in-memory return value, and the payload written to
+            // the collection was built separately above.
+            else Object.defineProperty(order, 'emitting', { value: emitting, enumerable: false });
         }
         return order;
     },
