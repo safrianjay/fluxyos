@@ -113,7 +113,7 @@ function withCategory(category, fn) {
     check('inventory serves the categories that actually hold stock', () => {
         // Widened 2026-08-30. A shop holds stock, so a retail workspace gets the
         // stock behind the till it already had, rather than one without the other.
-        assert.deepStrictEqual(FEATURE_RULES.inventory.allowCategories, ['fnb', 'retail']);
+        assert.deepStrictEqual(FEATURE_RULES.inventory.allowCategories, ['fnb', 'retail', 'manufacturing']);
         withCategory('retail', () => {
             assert.strictEqual(matches(FEATURE_RULES.inventory, STRANGER), true);
         });
@@ -141,11 +141,27 @@ function withCategory(category, fn) {
         });
     });
 
-    check('rules with no category clause are untouched by this change', () => {
+    check('inventory serves manufacturing too', () => {
+        // Raw materials, WIP and finished goods are inventory by definition.
+        assert.deepStrictEqual(
+            FEATURE_RULES.inventory.allowCategories, ['fnb', 'retail', 'manufacturing']);
+        withCategory('manufacturing', () => {
+            assert.strictEqual(matches(FEATURE_RULES.inventory, STRANGER), true);
+            // …but NOT the till. A factory sells B2B on invoices, not over a
+            // counter, so widening one must not widen the other.
+            assert.strictEqual(matches(FEATURE_RULES.pos, STRANGER), false);
+        });
+    });
+
+    check('outlet p&l is gated on a COUNT, not a category', () => {
+        // Its precondition is having outlets to compare, which is a fact in the
+        // data. A one-store shop and a forty-store chain are both `retail`.
+        assert.strictEqual(FEATURE_RULES.outlet_pnl.allowCategories, null);
+        assert.deepStrictEqual(
+            FEATURE_RULES.outlet_pnl.minDimensions, { types: ['outlet', 'branch'], count: 2 });
+        // `matches` covers email/category/country only — the count is evaluated
+        // in canUseFeature, so category alone must still refuse here.
         withCategory('retail', () => {
-            // Outlet P&L stays allowlist-only: a single-store retailer has no
-            // outlets to compare, so a category alone must not switch it on.
-            assert.strictEqual(FEATURE_RULES.outlet_pnl.allowCategories, null);
             assert.strictEqual(matches(FEATURE_RULES.outlet_pnl, STRANGER), false);
             assert.strictEqual(matches(FEATURE_RULES.outlet_pnl, QA_EMAIL), true);
         });

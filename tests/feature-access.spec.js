@@ -35,7 +35,13 @@ async function makeIneligible(page, features) {
             `if (FEATURE_RULES[${JSON.stringify(f)}]) {`
             + ` FEATURE_RULES[${JSON.stringify(f)}].allowEmails = [];`
             + ` FEATURE_RULES[${JSON.stringify(f)}].allowEmailPatterns = [];`
-            + ` FEATURE_RULES[${JSON.stringify(f)}].allowCategories = null; }`
+            + ` FEATURE_RULES[${JSON.stringify(f)}].allowCategories = null;`
+            // Outlet P&L is granted by a COUNT of outlets, which is a fact in the
+            // workspace's data and not something an allowlist can revoke. The QA
+            // workspace really does have several, so stripping only the email
+            // signals leaves it eligible — correctly. Removing the count clause
+            // too is what makes "ineligible" expressible at all here.
+            + ` delete FEATURE_RULES[${JSON.stringify(f)}].minDimensions; }`
         ).join('\n');
         await route.fulfill({
             status: 200,

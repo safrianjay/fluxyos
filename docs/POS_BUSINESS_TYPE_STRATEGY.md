@@ -399,3 +399,62 @@ Guard: `tests/feature-access-category.check.js`, which asserts retail qualifies
 with no allowlisted email, that a non-stock category (`services`) is still
 refused, that an unstamped workspace keeps access through the allowlist, and
 that TB Bangun Utama resolves even when unstamped.
+
+---
+
+## The eligibility matrix (2026-08-30)
+
+Category is a **proxy**. What each module actually depends on is narrower, and
+naming that is what decides the row:
+
+| Module | The question it depends on | Gate |
+|---|---|---|
+| Inventory | Do you hold physical goods you buy or make? | category |
+| Point of Sale | Do you sell face-to-face, at a counter? | category |
+| Outlet P&L | Do you have more than one location? | **count** |
+
+| Category | Inventory | POS | Outlet P&L |
+|---|:---:|:---:|:---:|
+| Food & Beverage | ✅ | ✅ | *count* |
+| Retail | ✅ | ✅ | *count* |
+| Manufacturing | ✅ | ❌ | *count* |
+| Startup | ❌ | ❌ | *count* |
+| Technology | ❌ | ❌ | *count* |
+| Services | ❌ | ❌ | *count* |
+| Other | ❌ | ❌ | *count* |
+
+Tax Center and PPN/PPh stay **country**-gated (`ID`) — a different axis entirely.
+
+**Manufacturing gets Inventory, not POS.** Raw materials, WIP and finished goods
+are inventory by definition; a factory sells B2B on invoices, not over a counter.
+
+**Outlet P&L is not a category question.** It compares outlets to each other, so
+its precondition is a COUNT — and the count is a fact already in `dimensions`,
+not a guess from industry. A one-store shop and a forty-store chain are both
+`retail`, and only one has anything to compare. `minDimensions: { types:
+['outlet','branch'], count: 2 }`; two rather than one, because one outlet is what
+every workspace has by default once it records anything.
+
+The count is **OR'd** with the email and category signals, like everything else
+here, and evaluated in `canUseFeature` rather than `matches()` — `matches` is
+synchronous and shared with the sync path, and a count is a Firestore read. The
+email/category branch runs first so an allowlisted workspace never pays for it.
+The read fails **open** (`Infinity`), matching every other signal in the file:
+showing a module to a business that does not need it is untidy, hiding one from a
+business mid-shift is a broken product.
+
+⚠️ **A count rule cannot be revoked by an allowlist**, which is what it means for
+the count to be the gate. `tests/feature-access.spec.js` therefore has to delete
+`minDimensions` as well as the email clauses to express "ineligible" — the QA
+workspace really does have several outlets.
+
+### The gap this does not close
+
+**Miscategorisation is invisible and unrecoverable.** A D2C startup that holds
+stock picks `startup` and silently loses Inventory; the email allowlist is the
+only way back and it needs a human. That is how TB Bangun Utama came to be
+hand-listed.
+
+The fix is not a longer industry list — it is asking the question the module
+actually depends on. See the `holds_stock` work: industry is a guess at "do you
+hold stock", and the question is the thing itself.

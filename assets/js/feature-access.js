@@ -79,11 +79,20 @@ export const FEATURE_RULES = {
         // follows it, so a retail workspace now gets the till AND the stock
         // behind it rather than one without the other.
         //
-        // `manufacturing` is the obvious next candidate and is deliberately NOT
-        // here: it grants a live module to a different set of businesses, which
-        // is its own decision rather than a consequence of this one.
-        allowCategories: ['fnb', 'retail']
+        // `manufacturing` added 2026-08-30: raw materials, WIP and finished
+        // goods are inventory by definition. NOT given POS in the same move — a
+        // factory sells B2B on invoices, not over a counter.
+        allowCategories: ['fnb', 'retail', 'manufacturing']
     },
+    // Outlet P&L compares outlets to each other. Its precondition is therefore
+    // not an industry but a COUNT — and that count is a fact already in the
+    // data, not a guess. A one-store shop and a forty-store chain are both
+    // `retail`, and only one of them has anything to compare; gating this on
+    // category would show the smaller one a page comparing an outlet to nothing.
+    //
+    // `minDimensions` is read from `dimensions` (type outlet/branch). Two,
+    // not one: a single outlet is what every workspace has by default once it
+    // records anything, so one would gate on nothing at all.
     outlet_pnl: {
         label: 'Outlet P&L',
         allowEmails: [
@@ -92,7 +101,8 @@ export const FEATURE_RULES = {
             'safrianjayadi77@gmail.com'
         ],
         allowEmailPatterns: [/^fluxyos\.qa\+.*@example\.com$/i],
-        allowCategories: null
+        allowCategories: null,
+        minDimensions: { types: ['outlet', 'branch'], count: 2 }
     },
     // Point of sale. Same eligibility shape as Inventory, and for the same
     // reason: an agency has nothing to ring up.
@@ -230,18 +240,66 @@ export function canUseFeatureSync(feature) {
     return rule.allowCountries.includes(country || 'ID');
 }
 
+/*
+ * How many dimensions of the given types this workspace has.
+ *
+ * Cached per page load like the owner email, for the same reason: the sidebar
+ * and the page guard both ask, and this must stay one read.
+ *
+ * Fails OPEN (returns Infinity) on any error. Every other signal in this file
+ * fails open too, and the consequence of guessing wrong is asymmetric: showing a
+ * module to a business that does not need it is untidy, while hiding one from a
+ * business that is mid-shift is a broken product.
+ */
+let dimensionCountPromise = null;
+
+async function countDimensions(app, user, types) {
+    if (!dimensionCountPromise) {
+        dimensionCountPromise = (async () => {
+            const [{ collection, getDocs }, { resolveDb }] = await Promise.all([
+                import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js'),
+                // Same reason as resolveOwnerEmail below: the FIRST Firestore
+                // touch on a page decides the transport for everything after it,
+                // so this must not be a bare getFirestore().
+                import('./firestore-db.js')
+            ]);
+            const ws = (typeof window !== 'undefined' && window.FluxyWorkspace) || {};
+            const scope = ws.id ? `workspaces/${ws.id}` : `users/${user && user.uid}`;
+            const snap = await getDocs(collection(resolveDb(app), `${scope}/dimensions`));
+            return snap.docs.map((d) => d.data());
+        })();
+    }
+    try {
+        const dims = await dimensionCountPromise;
+        return dims.filter((d) => !types || types.includes(d && d.type)).length;
+    } catch (_) {
+        dimensionCountPromise = null;
+        return Infinity;               // fail open
+    }
+}
+
 export async function canUseFeature(app, user, feature) {
     const rule = FEATURE_RULES[feature];
     if (!rule) return true;            // unknown feature: never gate by accident
     try {
-        return matches(rule, await ownerEmail(app, user));
+        // Email / category / country first — they are free once resolved, and an
+        // allowlisted workspace should never pay for a collection read.
+        if (matches(rule, await ownerEmail(app, user))) return true;
+        // A count rule is OR'd with the rest, exactly like category: having two
+        // outlets grants the module on its own, and an allowlisted workspace
+        // keeps it whether or not it has any.
+        if (rule.minDimensions) {
+            const n = await countDimensions(app, user, rule.minDimensions.types);
+            return n >= rule.minDimensions.count;
+        }
+        return false;
     } catch (_) {
         return true;                   // fail open
     }
 }
 
 // Reset point for tests, which stub FEATURE_RULES to prove the negative case.
-export function _resetFeatureAccessCache() { ownerEmailPromise = null; }
+export function _resetFeatureAccessCache() { ownerEmailPromise = null; dimensionCountPromise = null; }
 
 // Exported for `tests/feature-access-category.check.js`, which asserts the
 // category/allowlist precedence directly. Worth exporting: the branch that
