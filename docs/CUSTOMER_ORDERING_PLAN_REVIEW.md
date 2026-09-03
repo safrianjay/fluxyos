@@ -289,43 +289,64 @@ oversight:
 - **`/t/*` is a 200 rewrite, never a 301.** A redirect drops the token, and a
   diner who reloads lands at a menu that has forgotten their table.
 
-### 7.4 Still manual — the domain half
+### 7.4 The order site — built 2026-09-03, waiting on ONE DNS record
 
-Code cannot do these; they need Netlify and Cloudflare access. Values below were
-read from the live account on 2026-09-03, not assumed.
+The Netlify side is done. **The only remaining step is a Cloudflare record**,
+which needs the Cloudflare dashboard.
 
 | | |
 |---|---|
-| Netlify account | `safrian` / `5c780d713be94a71b66ac2eb` |
-| Repo | `https://github.com/safrianjay/fluxyos`, branch `main` |
-| Build command | `npm run build:css && node scripts/prepare-deploy.js` |
-| Publish directory | `.` |
-| Assumed site name | `fluxyos-order` — if it differs, update the host-canonicalization line in `deploy/_redirects.order` |
+| Site | `fluxyos-order` · `0c9df9af-538f-4b55-b1ed-079dea1d352a` |
+| Account | `safrian` · `5c780d713be94a71b66ac2eb` |
+| Repo | `safrianjay/fluxyos`, branch `main` only |
+| Build | `npm run build:css && node scripts/prepare-deploy.js`, publish `.` |
+| Env | `SITE_ROLE=order` (production only), `FIREBASE_SERVICE_ACCOUNT` (all contexts) |
+| Custom domain | `order.fluxyos.com` attached, awaiting DNS for its certificate |
 
-**⚠️ DO NOT USE `netlify env:set` FROM THIS DIRECTORY.** The linked project here
-is `fluxyos` — the **apex marketing site**. `env:set --site` ignores its flag and
-writes to the LINKED site, which has already nearly turned fluxyos.com into the
-till once. Set the variables in the Netlify UI during the import flow, or use
-`netlify api createEnvVars` with an explicit `account_id` + `site_id`, and read
-them back with `netlify api getEnvVars` before trusting either.
+**THE REMAINING STEP.** In Cloudflare, on the `fluxyos.com` zone:
 
-1. Create the site from the repo with the settings above. **Set the environment
-   variables before the first build completes** — a build with no `SITE_ROLE`
-   produces the full monolith, which serves every app page and an allow-all
-   `robots.txt` on the `*.netlify.app` subdomain.
-2. `SITE_ROLE=order`, **Production context only**.
-3. `FIREBASE_SERVICE_ACCOUNT`, all contexts. Copy the value already on
-   `fluxyos-dashboard`. ⚠️ It is **per-site** and account-level env is empty:
-   `fluxyos-pos` does not have it, which is exactly why `qr-menu-image` returns
-   404 on `pos.fluxyos.com` and 200 on the dashboard.
-4. Cloudflare CNAME `order` → the site's `*.netlify.app`, **DNS only (grey
-   cloud)**. Then add `order.fluxyos.com` as the custom domain in Netlify.
-5. Verify: `curl -sI https://order.fluxyos.com/t/<a real token>` → 200, then
-   open it on a phone and place an order.
+```
+CNAME   order   fluxyos-order.netlify.app   DNS only (grey cloud)
+```
 
-**This makes four sites building from one repo.** Every push now costs four
-builds, not three — worth knowing against the 306-of-300 build minutes spent in
-August 2026. `npm run ship` reports the live quota before you push.
+Grey cloud, not orange. `pos.fluxyos.com` is configured exactly this way and
+resolves to Netlify's own addresses; proxying it through Cloudflare would break
+Netlify's certificate provisioning. Netlify issues the certificate on its own
+once the record resolves, and `force_ssl` can be set only after that exists —
+setting it earlier returns a 422, which is what happened here.
+
+#### Two traps worth keeping
+
+**Do not use `netlify env:set` from this directory.** The linked project is
+`fluxyos` — the **apex marketing site** — and `env:set` ignores its `--site`
+flag, which has already nearly turned fluxyos.com into the till. Both variables
+above were written with `netlify api createEnvVars` against an explicit
+`site_id`, then read back per site to prove nothing had leaked: apex stayed
+`marketing`, dashboard `app`, till `till`.
+
+**`FIREBASE_SERVICE_ACCOUNT` is per-site and account-level env is empty.**
+`fluxyos-pos` still does not have it, which is exactly why `qr-menu-image`
+returns 404 on `pos.fluxyos.com` and 200 on the dashboard.
+
+**This is now four sites building from one repo** — every push costs four
+builds, against the 306-of-300 minutes spent in August 2026. `npm run ship`
+reports the live quota before you push.
+
+#### Verified on the new site, before DNS
+
+- Build **ready in 70s** at `f07ba79`.
+- The deploy contains **exactly one root page**, `order.html`. `dashboard.html`,
+  `pos.html`, `login.html`, `fluxyos.html`, `pricing.html`, `settings-billing.html`
+  and `internal.html` are all pruned, with no `docs/`, `tests/`, `scripts/`,
+  `firestore.rules` or `CLAUDE.md` leaking into the 210 published files.
+- **19 functions, none scheduled** — a fourth cron host would quadruple every
+  send.
+- `qr-menu` on `fluxyos-order.netlify.app` with a live token → **200** with real
+  menu data; an unknown token → **404**.
+- Every *page* path on the raw `*.netlify.app` host 301s to `order.fluxyos.com`,
+  which is the host-canonicalization rule in `deploy/_redirects.order` working.
+  Function paths are exempt: Netlify serves `/.netlify/functions/*` ahead of
+  `_redirects`, which is why the checks above were reachable at all.
 
 ### 7.4a Verified in production, 2026-09-03
 
