@@ -104,6 +104,13 @@ async function addPlain(page, name, note) {
         .getByRole('button', { name: /Tambah/ }).click();
     await expect(page.locator('#sheet-item')).toHaveClass(/is-open/);
     if (note) await page.locator('#item-note').fill(note);
+    // Satisfy any REQUIRED group by taking its first option. Without this the
+    // helper hangs on an item like "Es Kopi Susu" whose size is mandatory —
+    // #item-add stays disabled and the click waits forever.
+    const required = page.locator('.optgroup[data-select="one_required"]');
+    for (let i = 0; i < await required.count(); i += 1) {
+        await required.nth(i).locator('input').first().check();
+    }
     await page.locator('#item-add').click();
     await expect(page.locator('#sheet-item')).not.toHaveClass(/is-open/);
 }
@@ -635,6 +642,79 @@ test.describe('QR customer ordering', () => {
         // strips it on any non-menu view and only paintCart() puts it back.
         await expect(page.locator('#cartbar')).toHaveClass(/is-open/);
         await expect(page.locator('#cart-count')).toHaveText('2');
+    });
+
+    test('THE ORDER BUTTON IS STICKY ON A LONG ORDER', async ({ page }) => {
+        await stub(page);
+        await open(page);
+        // Enough lines to push the page well past one screen.
+        for (const n of ['Es Kopi Susu', 'Americano', 'Nasi Goreng']) await addPlain(page, n);
+        await page.locator('#cart-open').click();
+        await expect(page.locator('#view-cart')).toBeVisible();
+
+        const vh = page.viewportSize().height;
+        const visible = async () => {
+            const b = await page.locator('.page-foot').boundingBox();
+            return b.y + b.height <= vh + 2 && b.y + b.height > 0;
+        };
+        // On arrival…
+        expect(await visible(), 'the CTA is not on screen when the page opens').toBe(true);
+        // …and after scrolling. It used to sit 566px below the fold: the view
+        // was a `min-height: 100dvh` flex column, so it GREW instead of letting
+        // its body scroll, and the whole document scrolled the footer away.
+        await page.evaluate(() => window.scrollTo(0, 4000));
+        await page.waitForTimeout(250);
+        expect(await visible(), 'the CTA scrolled off the screen').toBe(true);
+        await expect(page.locator('.page-foot')).toHaveCSS('position', 'sticky');
+    });
+
+    test('every order line shows what it is', async ({ page }) => {
+        await stub(page);
+        await open(page);
+        await addPlain(page, 'Es Kopi Susu');   // has_image: true in the fixture
+        await addPlain(page, 'Americano');      // has_image: false
+        await page.locator('#cart-open').click();
+
+        const thumbs = page.locator('.cartline-thumb');
+        await expect(thumbs).toHaveCount(2);
+        // A photo where there is one, the placeholder where there is not —
+        // every line gets a tile, so the column never goes ragged.
+        await expect(thumbs.nth(0).locator('img')).toHaveCount(1);
+        await expect(thumbs.nth(1).locator('img')).toHaveCount(0);
+        await expect(thumbs.nth(1).locator('svg')).toBeVisible();
+
+        // Small enough to stay a review screen rather than becoming a menu.
+        const box = await thumbs.first().boundingBox();
+        expect(box.width).toBeGreaterThan(40);
+        expect(box.width).toBeLessThan(70);
+    });
+
+    test('QUANTITY IS SET IN THE SHEET, BEFORE ADDING', async ({ page }) => {
+        await stub(page);
+        await open(page);
+
+        await page.locator('.card', { hasText: 'Es Kopi Susu' })
+            .getByRole('button', { name: /Tambah/ }).click();
+        await page.locator('.opt', { hasText: 'Large' }).locator('input').check();
+
+        // Starts at one, and cannot go below it.
+        await expect(page.locator('#item-qty')).toHaveText('1');
+        await expect(page.locator('#item-qty-dec')).toBeDisabled();
+        await expect(page.locator('#item-add-total')).toHaveText('Rp34.000');
+
+        await page.locator('#item-qty-inc').click();
+        await expect(page.locator('#item-qty')).toHaveText('2');
+        await expect(page.locator('#item-qty-dec')).toBeEnabled();
+        // The button shows what will actually be added — unit price INCLUDING
+        // the option, times the quantity — so no arithmetic is left to the diner.
+        await expect(page.locator('#item-add-total')).toHaveText('Rp68.000');
+
+        await page.locator('#item-add').click();
+        // Two of the same thing is ONE line of two, not two lines.
+        await expect(page.locator('#cart-count')).toHaveText('2');
+        await page.locator('#cart-open').click();
+        await expect(page.locator('#cart-lines .cartline')).toHaveCount(1);
+        await expect(page.locator('#cart-totals .grand .num')).toHaveText('Rp68.000');
     });
 
     test('the order page carries the extras a review screen needs', async ({ page }) => {

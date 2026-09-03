@@ -550,8 +550,6 @@ img { max-width: 100%; display: block; }
 #view-cart {
     min-height: 100vh;
     min-height: 100dvh;
-    display: flex;
-    flex-direction: column;
     background: var(--canvas);
 }
 
@@ -584,11 +582,13 @@ img { max-width: 100%; display: block; }
 }
 .page-title p { font-size: 12px; color: var(--ink-50); margin: 1px 0 0; }
 
+/* The DOCUMENT scrolls, not an inner region. The previous version made this a
+   flex child with `overflow-y: auto` inside a `min-height: 100dvh` column — and
+   `min-height` lets the column GROW, so the inner scroll never engaged and the
+   whole page scrolled instead, taking the footer with it. Measured: the CTA sat
+   566px below the fold on a six-line order. */
 .page-body {
-    flex: 1 1 auto;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding: 14px 16px 24px;
+    padding: 14px 16px 16px;
 }
 
 .panel {
@@ -701,12 +701,16 @@ img { max-width: 100%; display: block; }
 }
 .who strong { color: var(--ink); font-weight: 600; }
 
+/* STICKY, so the primary action is always reachable. On a long order the
+   commit button must not be something you scroll to find. */
 .page-foot {
-    flex: 0 0 auto;
+    position: sticky;
+    bottom: 0;
+    z-index: 15;
     padding: 12px 16px calc(14px + var(--safe-bottom));
     background: var(--surface);
     border-top: 1px solid var(--line);
-    box-shadow: 0 -6px 20px -14px rgba(11, 15, 25, 0.35);
+    box-shadow: 0 -8px 24px -14px rgba(11, 15, 25, 0.35);
 }
 
 /* ==========================================================================
@@ -927,6 +931,15 @@ img { max-width: 100%; display: block; }
     -webkit-overflow-scrolling: touch;
     flex: 1 1 auto;
 }
+.sheet-foot-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.sheet-foot-row .stepper { flex: 0 0 auto; height: 50px; min-width: 116px; }
+.sheet-foot-row .stepper button { width: 38px; font-size: 19px; }
+.sheet-foot-row .primary { flex: 1 1 auto; }
+
 .sheet-foot {
     padding: 12px 20px calc(14px + var(--safe-bottom));
     border-top: 1px solid var(--line-soft);
@@ -1124,6 +1137,19 @@ img { max-width: 100%; display: block; }
     padding: 13px 0;
     border-bottom: 1px solid var(--line-soft);
 }
+/* Small on purpose: enough to recognise a dish at a glance while checking the
+   order, not enough to turn a review screen back into a menu. */
+.cartline-thumb {
+    flex: 0 0 auto;
+    width: 52px; height: 52px;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    background: var(--tint, var(--line-soft));
+    display: flex; align-items: center; justify-content: center;
+}
+.cartline-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.cartline-thumb svg { width: 22px; height: 22px; color: rgba(11, 15, 25, 0.28); }
 .cartline-body { flex: 1 1 auto; min-width: 0; }
 .cartline-name { font-size: 14px; font-weight: 500; }
 .cartline-meta { font-size: 12px; color: var(--ink-50); margin-top: 2px; }
@@ -1414,7 +1440,15 @@ img { max-width: 100%; display: block; }
         <button class="sheet-close" type="button" data-close aria-label="Tutup">✕</button>
     </div>
     <div class="sheet-body" id="item-body"></div>
-    <div class="sheet-foot">
+    <!-- Quantity lives HERE, beside the confirm button, so someone ordering
+         three of something sets it once instead of adding, reviewing, stepping
+         up, and coming back. -->
+    <div class="sheet-foot sheet-foot-row">
+        <div class="stepper" id="item-qty-wrap">
+            <button type="button" id="item-qty-dec" aria-label="Kurangi jumlah">−</button>
+            <span class="qty num" id="item-qty">1</span>
+            <button type="button" id="item-qty-inc" aria-label="Tambah jumlah">+</button>
+        </div>
         <button class="primary" id="item-add" type="button">
             <span>Tambah</span><span class="num" id="item-add-total"></span>
         </button>
@@ -1961,7 +1995,8 @@ img { max-width: 100%; display: block; }
         // to need a note precisely because it has no options to express it, and
         // the two-tap path is what a customer expects after tapping the first
         // item that DID open a sheet.
-        detail = { item: item, chosen: {}, note: '' };
+        detail = { item: item, chosen: {}, note: '', qty: 1 };
+        setText($('item-qty'), '1');
         $('item-title').textContent = item.name;
         $('item-price').textContent = money(item.price);
 
@@ -2073,7 +2108,11 @@ img { max-width: 100%; display: block; }
         if (!detail) return;
         var meta = optionsMeta(detail.item, chosenOptions());
         var delta = meta.reduce(function (s, o) { return s + o.price_delta; }, 0);
-        setText($('item-add-total'), money(detail.item.price + delta));
+        // The button shows what will actually be added — unit price times the
+        // chosen quantity — so there is no arithmetic left to the diner.
+        setText($('item-add-total'), money((detail.item.price + delta) * detail.qty));
+        setText($('item-qty'), String(detail.qty));
+        setDisabled($('item-qty-dec'), detail.qty <= 1);
 
         // A required group with nothing chosen blocks the add — the same rule
         // the till applies, enforced here so the kitchen never receives a
@@ -2084,9 +2123,19 @@ img { max-width: 100%; display: block; }
         setDisabled($('item-add'), missing);
     }
 
+    function bumpDetailQty(delta) {
+        if (!detail) return;
+        // Capped at 99: `qr-order` refuses more per line, and a diner who wants
+        // a hundred of something is talking to staff, not tapping a stepper.
+        detail.qty = Math.min(99, Math.max(1, detail.qty + delta));
+        refreshDetailTotal();
+    }
+    $('item-qty-inc').addEventListener('click', function () { bumpDetailQty(1); });
+    $('item-qty-dec').addEventListener('click', function () { bumpDetailQty(-1); });
+
     $('item-add').addEventListener('click', function () {
         if (!detail || $('item-add').disabled) return;
-        addToCart(detail.item, chosenOptions(), detail.note, 1);
+        addToCart(detail.item, chosenOptions(), detail.note, detail.qty);
         closeSheets();
         paintMenu();
         paintCart();
@@ -2168,7 +2217,14 @@ img { max-width: 100%; display: block; }
             var meta = [];
             if (l.optionNames.length) meta.push(l.optionNames.join(', '));
             if (l.note) meta.push('“' + l.note + '”');
+            var it = itemById(l.item_id);
+            var media = (it && it.has_image)
+                ? '<img loading="lazy" decoding="async" alt="" src="' + FN + 'qr-menu-image?token='
+                    + encodeURIComponent(TOKEN) + '&item=' + encodeURIComponent(l.item_id) + '">'
+                : PLACEHOLDER;
             return '<div class="cartline">'
+                + '<div class="cartline-thumb" style="--tint:'
+                + categoryTint(it && it.category) + '">' + media + '</div>'
                 + '<div class="cartline-body">'
                 + '<div class="cartline-name">' + esc(l.name) + '</div>'
                 + (meta.length ? '<div class="cartline-meta">' + esc(meta.join(' • ')) + '</div>' : '')
