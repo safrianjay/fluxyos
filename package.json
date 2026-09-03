@@ -40,6 +40,7 @@
     "report:grni": "node scripts/grni-match-report.js",
     "check:qr-image": "node tests/qr-menu-image.check.js",
     "check:qr-order": "node tests/qr-order.check.js",
+    "check:order-page": "node tests/order-page.check.js",
     "check:pos-table-qr": "node tests/pos-table-qr.check.js",
     "check:rate-limit": "node tests/rate-limit.check.js",
     "check:modifier-cogs": "node tests/modifier-cogs.check.js",

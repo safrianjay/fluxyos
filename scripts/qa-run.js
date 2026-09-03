@@ -248,6 +248,12 @@ function laneBE(changed) {
   // the ledger on 2026-08-31. Nothing about it is visible until a cashier
   // touches the order.
   ok = record('be', run('check:qr-order (rules-shaped doc, server-resolved price)', 'node', ['tests/qr-order.check.js'])) && ok;
+  // Unconditional. A string-slice edit to order.html deleted a whole CSS
+  // section TWICE in one day and shipped the second time — every input in every
+  // sheet rendered unstyled, and a customer found it before any check did. The
+  // page still parsed, the specs still passed (they assert behaviour, not the
+  // existence of rules), and the design linter only reads changed lines.
+  ok = record('be', run('check:order-page (every class has a rule, no orphans)', 'node', ['tests/order-page.check.js'])) && ok;
   // Unconditional, and the one with the least forgiving failure mode in the
   // product. A wrong QR looks exactly like a right one: it is discovered by a
   // customer, at a table, holding a laminated card that does nothing, with no

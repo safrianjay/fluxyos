@@ -113,15 +113,32 @@ exports.handler = async (event) => {
         const recent = await db.collection(`workspaces/${workspaceId}/pos_orders`)
             .orderBy('created_at', 'desc').limit(50).get();
 
+        // A SITTING, not a table's whole history.
+        //
+        // This used to skip only voided orders, so a fresh scanner was shown the
+        // PREVIOUS party's paid bill — measured across the live directory: 8 of
+        // 9 tables, some 40-69 hours old, one for Rp51.281.667. Someone sits
+        // down, scans, and is told they already owe fifty million rupiah.
+        //
+        // Three exclusions, each for its own reason:
+        //   voided — a correction, not history; showing it only prompts "what
+        //            happened?" at a table with nobody to answer
+        //   paid   — the sitting is OVER. The bill was settled and the table
+        //            cleared; it belongs to whoever was here before.
+        //   stale  — an order left open for days is abandoned, not yours. A
+        //            restaurant service does not span half a day, so anything
+        //            older than that is a table nobody closed out.
+        const STALE_MS = 12 * 60 * 60 * 1000;
+        const now = Date.now();
         let doc = null;
         recent.forEach((d) => {
             if (doc) return;
             const o = d.data() || {};
             if (o.table_id !== tableId) return;
-            // Voided orders are not history a diner needs; they are a
-            // correction, and showing one would only prompt "what happened?"
-            // at a table with nobody to answer.
             if (o.voided_at) return;
+            if (o.status === 'paid' || o.paid_at) return;
+            const opened = msOf(o.opened_at) || msOf(o.created_at);
+            if (opened && (now - opened) > STALE_MS) return;
             doc = d;
         });
 
