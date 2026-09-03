@@ -221,7 +221,6 @@ img { max-width: 100%; display: block; }
     border-radius: 0 0 var(--r-xl) var(--r-xl);
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
     gap: 10px;
 }
 .masthead h1 {
@@ -229,10 +228,20 @@ img { max-width: 100%; display: block; }
     font-weight: 600;
     letter-spacing: -0.025em;
     margin: 0;
+    /* THE TABLE CHIP MUST ALWAYS SIT BESIDE THE NAME, so the name truncates
+       rather than wrapping and pushing the chip onto a second line. `min-width:
+       0` is what actually permits it: a flex item will not shrink below its
+       content without it, and the ellipsis silently never appears.
+
+       Truncating is the right trade here. The diner is sitting IN the business
+       and does not need its full legal name read back to them; they do need to
+       know which table the order is going to, and a real name like "Kopi Senja
+       Kemang" fits whole anyway. Only a long one clips. */
+    flex: 1 1 auto;
     min-width: 0;
-    /* A long business name takes the line and pushes the chip below it rather
-       than truncating the thing the diner uses to recognise where they are. */
-    overflow-wrap: anywhere;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .table-chip {
     display: inline-flex;

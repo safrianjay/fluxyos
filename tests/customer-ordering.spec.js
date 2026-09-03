@@ -180,6 +180,25 @@ test.describe('QR customer ordering', () => {
         const overlap = Math.min(h1.y + h1.height, chip.y + chip.height) - Math.max(h1.y, chip.y);
         expect(overlap, 'the table chip is not on the same line as the name').toBeGreaterThan(0);
 
+        // AND IT MUST HOLD FOR A LONG NAME, which is the case that broke it in
+        // production: a real outlet called "QA-CNT-1786886530917 Outlet" wrapped
+        // the chip onto a second line. The name truncates now; the chip never
+        // moves. `min-width: 0` on the flex item is what makes that work.
+        await page.evaluate(() => {
+            document.getElementById('outlet-name').textContent =
+                'Restoran Padang Sederhana Bintang Lima Cabang Kemang Selatan Raya';
+        });
+        const longH1 = await head.locator('h1').boundingBox();
+        const longChip = await head.locator('.table-chip').boundingBox();
+        const stillOverlap = Math.min(longH1.y + longH1.height, longChip.y + longChip.height)
+            - Math.max(longH1.y, longChip.y);
+        expect(stillOverlap, 'a long business name pushed the table chip onto its own line')
+            .toBeGreaterThan(0);
+        // The chip keeps its full width — it is the thing that must stay legible.
+        expect(Math.abs(longChip.width - chip.width)).toBeLessThan(1);
+        const clipped = await head.locator('h1').evaluate((el) => el.scrollWidth > el.clientWidth);
+        expect(clipped, 'the long name should be truncated, not overflowing').toBe(true);
+
         // And the header must not hog the screen — the menu is what the diner
         // came for. It sat at ~104px with the eyebrow.
         expect(h1.y + h1.height).toBeLessThan(90);
