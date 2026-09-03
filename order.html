@@ -134,53 +134,118 @@ img { max-width: 100%; display: block; }
 .state h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; margin: 0; }
 .state p  { font-size: 14px; color: var(--ink-50); margin: 0; max-width: 34ch; }
 
-.spinner {
-    width: 28px; height: 28px;
-    border: 2px solid var(--line);
-    border-top-color: var(--ink);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
+/* ── The FluxyOS loading animation ──────────────────────────────────────────
+   The same one the app uses while reading a statement or a receipt
+   (`.scan-loader-*` in shared-dashboard.css): a pulsing white card holding the
+   slowly-spinning F, inside a purple halo, with twinkling stars around it.
+
+   REBUILT IN PLAIN CSS RATHER THAN IMPORTED. The originals are Tailwind-class
+   compositions and this page deliberately carries no Tailwind — and pulling in
+   shared-dashboard.css for a splash screen would put 6k lines of app chrome in
+   front of a hungry diner on restaurant wifi. The keyframes and the palette are
+   copied so the motion is recognisably the same. */
+.loader {
+    position: relative;
+    width: 132px; height: 132px;
+    display: flex; align-items: center; justify-content: center;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+.loader-halo {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6D28D9 0%, #7C3AED 25%, #A78BFA 50%, #C4B5FD 70%, #7C3AED 100%);
+    background-size: 300% 300%;
+    animation: scanBgPan 6s ease-in-out infinite;
+    opacity: 0.55;
+    filter: blur(26px);
+}
+.loader-halo.inner { inset: 14px; filter: blur(10px); opacity: 0.45; }
+.loader-card {
+    position: relative;
+    width: 76px; height: 76px;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 12px 28px -10px rgba(11, 15, 25, 0.35);
+    display: flex; align-items: center; justify-content: center;
+    animation: scanLogoPulse 2.4s ease-in-out infinite;
+    will-change: transform;
+}
+.loader-card img { width: 44px; height: 44px; animation: scanLogoSpin 7s linear infinite; }
+
+.loader-star {
+    position: absolute;
+    width: 6px; height: 6px;
+    border-radius: 999px;
+    background: radial-gradient(circle, #DDD6FE 0%, #7C3AED 55%, transparent 100%);
+    box-shadow: 0 0 8px rgba(124, 58, 237, 0.55);
+    animation: scanStarTwinkle 2.6s ease-in-out infinite;
+    pointer-events: none;
+}
+.loader-star.sm { width: 4px; height: 4px; }
+.loader-star.lg { width: 8px; height: 8px; box-shadow: 0 0 12px rgba(124, 58, 237, 0.6); }
+
+@keyframes scanBgPan {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+@keyframes scanLogoPulse {
+    0%, 100% { transform: scale(0.86); }
+    50%      { transform: scale(1.16); }
+}
+@keyframes scanLogoSpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+@keyframes scanStarTwinkle {
+    0%, 100% { opacity: 0.15; transform: scale(0.7); }
+    50%      { opacity: 1;    transform: scale(1.35); }
+}
 
 @media (prefers-reduced-motion: reduce) {
-    .spinner { animation-duration: 2s; }
+    .loader-halo, .loader-card, .loader-card img, .loader-star { animation: none; }
     * { transition-duration: 0.01ms !important; }
 }
 
 /* ==========================================================================
    Header — outlet identity and the table the diner is sitting at
    ========================================================================== */
+/* One line: the business, and which table you are sitting at. There was an
+   eyebrow above this reading "Pesan dari meja Anda" — removed, because the H1
+   and the table chip already say exactly that, and a label restating the
+   headline is prohibited (CLAUDE.md). Dropping it also reclaims the vertical
+   space the header was wasting above the menu. */
 .masthead {
     background: var(--ink);
     color: #fff;
-    padding: 20px 20px 22px;
+    padding: 16px 20px 18px;
     border-radius: 0 0 var(--r-xl) var(--r-xl);
-}
-.masthead .brandline {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: rgba(255, 255, 255, 0.55);
-    font-weight: 500;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 .masthead h1 {
-    font-size: 22px;
+    font-size: 21px;
     font-weight: 600;
     letter-spacing: -0.025em;
-    margin: 6px 0 0;
+    margin: 0;
+    min-width: 0;
+    /* A long business name takes the line and pushes the chip below it rather
+       than truncating the thing the diner uses to recognise where they are. */
+    overflow-wrap: anywhere;
 }
 .table-chip {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    margin-top: 12px;
+    flex: 0 0 auto;
     padding: 5px 11px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.10);
     border: 1px solid rgba(255, 255, 255, 0.16);
     font-size: 12px;
     font-weight: 500;
+    white-space: nowrap;
 }
 .table-chip .dot {
     width: 6px; height: 6px; border-radius: 50%;
@@ -306,6 +371,18 @@ img { max-width: 100%; display: block; }
 }
 /* A broken or missing photo must leave a calm tile, never a torn icon. */
 .thumb img.failed { display: none; }
+
+/* ── The placeholder ───────────────────────────────────────────────────────
+   Most menus are only partly photographed, and a list where some rows have a
+   tile and others do not reads as broken rather than as incomplete — the names
+   stop aligning and the eye loses the column. So EVERY row gets a tile, and an
+   item with no photo gets this mark instead of nothing.
+
+   Deliberately quiet: a muted plate glyph on the same surface the real tile
+   uses, so it recedes next to a genuine photo rather than competing with it.
+   Inline SVG, so it costs no request on restaurant wifi. */
+.thumb.is-placeholder { background: var(--line-soft); }
+.thumb.is-placeholder svg { width: 30px; height: 30px; color: var(--ink-30); }
 
 .row-action { flex: 0 0 auto; align-self: center; }
 
@@ -519,6 +596,7 @@ img { max-width: 100%; display: block; }
     display: flex; align-items: center; justify-content: center;
 }
 .detail-hero img { width: 100%; height: 100%; object-fit: contain; }
+.detail-hero.is-placeholder svg { width: 56px; height: 56px; color: var(--ink-30); }
 
 .optgroup { padding: 16px 0 4px; border-bottom: 1px solid var(--line-soft); }
 .optgroup:last-of-type { border-bottom: none; }
@@ -645,7 +723,18 @@ img { max-width: 100%; display: block; }
 
     <!-- Boot ------------------------------------------------------------- -->
     <section id="view-loading" class="state">
-        <div class="spinner" aria-hidden="true"></div>
+        <div class="loader" aria-hidden="true">
+            <span class="loader-star lg" style="top:2%;  left:12%; animation-delay:0.2s"></span>
+            <span class="loader-star sm" style="top:16%; right:6%; animation-delay:1.1s"></span>
+            <span class="loader-star"    style="bottom:12%; right:14%; animation-delay:0.5s"></span>
+            <span class="loader-star sm" style="bottom:4%; left:28%; animation-delay:1.7s"></span>
+            <span class="loader-star sm" style="top:46%; left:0%; animation-delay:0.9s"></span>
+            <div class="loader-halo"></div>
+            <div class="loader-halo inner"></div>
+            <div class="loader-card">
+                <img src="/assets/images/favicon.svg" alt="" onerror="this.style.display='none'">
+            </div>
+        </div>
         <p>Memuat menu…</p>
     </section>
 
@@ -658,7 +747,6 @@ img { max-width: 100%; display: block; }
     <!-- The menu --------------------------------------------------------- -->
     <section id="view-menu" class="hidden">
         <header class="masthead">
-            <div class="brandline">Pesan dari meja Anda</div>
             <h1 id="outlet-name">—</h1>
             <div class="table-chip"><span class="dot"></span><span id="table-label">—</span></div>
         </header>
@@ -733,7 +821,7 @@ img { max-width: 100%; display: block; }
     <div class="sheet-body" id="cart-body"></div>
     <div class="sheet-foot">
         <button class="primary" id="cart-submit" type="button">
-            <span>Kirim ke dapur</span><span class="num" id="cart-submit-total"></span>
+            <span>Order Sekarang</span><span class="num" id="cart-submit-total"></span>
         </button>
     </div>
 </div>
@@ -761,6 +849,13 @@ img { max-width: 100%; display: block; }
     // recognised as the same order rather than becoming a second kitchen
     // ticket. Regenerated after every successful submit.
     var clientRef = newRef();
+
+    // A plate and cover. Neutral enough for a drink or a dessert, which a
+    // knife-and-fork glyph is not.
+    var PLACEHOLDER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"'
+        + ' stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        + '<path d="M3 17h18"/><path d="M5 17a7 7 0 0 1 14 0"/>'
+        + '<path d="M12 7V5"/><circle cx="12" cy="4" r="1"/></svg>';
 
     var $ = function (id) { return document.getElementById(id); };
     var money = function (minor) {
@@ -919,10 +1014,14 @@ img { max-width: 100%; display: block; }
             var hasOptions = (i.modifier_groups || []).length > 0;
 
             html += '<article class="row" data-item="' + esc(i.id) + '">';
+            // Every row gets a tile. See `.thumb.is-placeholder`: a list where
+            // only some rows have one reads as broken, not as incomplete.
             if (i.has_image) {
                 html += '<div class="thumb"><img loading="lazy" decoding="async" alt="" src="'
                     + FN + 'qr-menu-image?token=' + encodeURIComponent(TOKEN)
                     + '&item=' + encodeURIComponent(i.id) + '"></div>';
+            } else {
+                html += '<div class="thumb is-placeholder">' + PLACEHOLDER + '</div>';
             }
             html += '<div class="row-body">'
                 + '<h3 class="row-name">' + esc(i.name) + '</h3>'
@@ -1013,6 +1112,8 @@ img { max-width: 100%; display: block; }
             html += '<div class="detail-hero"><img alt="" src="'
                 + FN + 'qr-menu-image?token=' + encodeURIComponent(TOKEN)
                 + '&item=' + encodeURIComponent(item.id) + '"></div>';
+        } else {
+            html += '<div class="detail-hero is-placeholder">' + PLACEHOLDER + '</div>';
         }
 
         item.modifier_groups.forEach(function (g) {
@@ -1332,7 +1433,7 @@ img { max-width: 100%; display: block; }
             })
             .then(function () {
                 submitting = false;
-                $('cart-submit').querySelector('span').textContent = 'Kirim ke dapur';
+                $('cart-submit').querySelector('span').textContent = 'Order Sekarang';
                 $('cart-submit').disabled = cart.length === 0;
             });
     });

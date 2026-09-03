@@ -159,6 +159,65 @@ test.describe('QR customer ordering', () => {
             .toEqual([]);
     });
 
+    test('the header is the business and the table, on one line', async ({ page }) => {
+        await stub(page);
+        await open(page);
+
+        const head = page.locator('.masthead');
+        await expect(head.locator('h1')).toHaveText('Kopi Senja Kemang');
+        await expect(head.locator('.table-chip')).toContainText('Meja A04');
+
+        // The eyebrow that used to sit above this said "Pesan dari meja Anda" —
+        // exactly what the headline and the chip already say. A label restating
+        // the headline is prohibited (CLAUDE.md), and removing it gave the menu
+        // back the vertical space the header was spending on it.
+        await expect(page.locator('.brandline')).toHaveCount(0);
+        await expect(head).not.toContainText('Pesan dari meja');
+
+        // Side by side, not stacked: same vertical band.
+        const h1 = await head.locator('h1').boundingBox();
+        const chip = await head.locator('.table-chip').boundingBox();
+        const overlap = Math.min(h1.y + h1.height, chip.y + chip.height) - Math.max(h1.y, chip.y);
+        expect(overlap, 'the table chip is not on the same line as the name').toBeGreaterThan(0);
+
+        // And the header must not hog the screen — the menu is what the diner
+        // came for. It sat at ~104px with the eyebrow.
+        expect(h1.y + h1.height).toBeLessThan(90);
+    });
+
+    test('the splash shows the FluxyOS loader, not a bare spinner', async ({ page }) => {
+        // Held open by stalling the menu response, because the loader is only
+        // on screen until the first paint otherwise.
+        let release;
+        await page.route('**/qr-menu?**', async (route) => {
+            await new Promise((r) => { release = r; });
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MENU) });
+        });
+        await page.route('**/qr-menu-image?**', (r) => r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+        page.goto(`/t/${TOKEN}`).catch(() => {});
+
+        await expect(page.locator('#view-loading .loader-card')).toBeVisible({ timeout: 15_000 });
+        await expect(page.locator('#view-loading .loader-card img')).toBeVisible();
+        await expect(page.locator('#view-loading .loader-halo')).toHaveCount(2);
+        expect(await page.locator('#view-loading .loader-star').count()).toBeGreaterThan(3);
+        // The F itself, not a generic glyph.
+        await expect(page.locator('#view-loading .loader-card img'))
+            .toHaveAttribute('src', '/assets/images/favicon.svg');
+
+        if (release) release();
+        await expect(page.locator('.row').first()).toBeVisible({ timeout: 15_000 });
+        await expect(page.locator('#view-loading')).toBeHidden();
+    });
+
+    test('nothing sits between the categories and the menu', async ({ page }) => {
+        await stub(page);
+        await open(page);
+        // No promo banner, no interstitial: chips, then food.
+        const chips = await page.locator('#chips').boundingBox();
+        const firstRow = await page.locator('.row, .group-head').first().boundingBox();
+        expect(firstRow.y - (chips.y + chips.height)).toBeLessThan(60);
+    });
+
     test('a photo loads and keeps its aspect ratio', async ({ page }) => {
         await stub(page);
         await open(page);
@@ -170,8 +229,21 @@ test.describe('QR customer ordering', () => {
         // of them would be wrong and nobody could tell which.
         await expect(img).toHaveCSS('object-fit', 'contain');
 
-        // An item with no photo gets no tile at all, not an empty box.
-        await expect(page.locator('.row', { hasText: 'Americano' }).locator('.thumb')).toHaveCount(0);
+        // An item with no photo gets a PLACEHOLDER tile, not nothing. A list
+        // where only some rows have a tile reads as broken rather than as
+        // incomplete: the names stop aligning and the eye loses the column.
+        const bare = page.locator('.row', { hasText: 'Americano' }).locator('.thumb');
+        await expect(bare).toHaveCount(1);
+        await expect(bare).toHaveClass(/is-placeholder/);
+        await expect(bare.locator('svg')).toBeVisible();
+        await expect(bare.locator('img')).toHaveCount(0);
+
+        // Both tiles are the same size, which is the entire point of the
+        // placeholder — a ragged left edge is what it exists to prevent.
+        const a = await img.locator('xpath=..').boundingBox();
+        const b = await bare.boundingBox();
+        expect(Math.abs(a.width - b.width)).toBeLessThan(1);
+        expect(Math.abs(a.height - b.height)).toBeLessThan(1);
     });
 
     test('category chips and search narrow the menu', async ({ page }) => {
@@ -297,6 +369,7 @@ test.describe('QR customer ordering', () => {
 
         await page.locator('#cart-open').click();
         await page.locator('#cust-name').fill('Sinta');
+        await expect(page.locator('#cart-submit')).toContainText('Order Sekarang');
         await page.locator('#cart-submit').click();
         await expect(page.locator('#view-done')).toBeVisible();
 
