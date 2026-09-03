@@ -362,6 +362,44 @@ test.describe('QR customer ordering', () => {
         await expect(sheet.locator('.track-step.done')).toHaveCount(2);
     });
 
+    test('a slow stale response never overwrites a newer one', async ({ page }) => {
+        // The exact failure seen in production: the boot fetch is taken before
+        // any order exists, so it answers "no orders" — and if it lands AFTER
+        // the refresh that follows placing an order, it blanks the sheet and
+        // the badge seconds after the diner watched their order go through.
+        const empty = { has_order: false, lines: [] };
+        const full = {
+            has_order: true, order_number: '2026-09-03-009', status: 'sent',
+            stage: 2, stage_label: 'Sedang disiapkan',
+            lines: [{ item_name: 'Kentang Goreng', quantity: 2, gross_amount: 40000, note: null, modifiers: [] }],
+            note: null, subtotal: 40000, service_charge_amount: 0, tax_amount: 0,
+            discount_total: 0, total_amount: 40000, paid_amount: 0
+        };
+
+        let call = 0;
+        await page.route('**/qr-menu?**', (r) => r.fulfill({
+            status: 200, contentType: 'application/json', body: JSON.stringify(MENU) }));
+        await page.route('**/qr-menu-image?**', (r) => r.fulfill({
+            status: 200, contentType: 'image/png', body: PNG }));
+        await page.route('**/qr-order-status?**', async (route) => {
+            call += 1;
+            // The FIRST request is the slow, stale one.
+            const body = call === 1 ? empty : full;
+            if (call === 1) await new Promise((r) => setTimeout(r, 2500));
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+        });
+
+        await open(page);
+        await page.locator('.tab[data-tab="orders"]').click();
+        // The newer response paints…
+        await expect(page.locator('#sheet-orders')).toContainText('2026-09-03-009', { timeout: 10_000 });
+        // …and the stale one, landing later, must not undo it.
+        await page.waitForTimeout(2500);
+        await expect(page.locator('#sheet-orders')).toContainText('2026-09-03-009');
+        await expect(page.locator('#tab-orders-badge')).toHaveText('2');
+        await expect(page.locator('#tab-orders-badge')).toHaveClass(/on/);
+    });
+
     test('an empty table says so rather than showing a blank sheet', async ({ page }) => {
         await stub(page);
         await open(page);
@@ -491,7 +529,9 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('.card')).toHaveCount(1);
 
         await page.locator('#search').fill('zzz');
-        await expect(page.locator('.empty')).toBeVisible();
+        // Scoped to the menu: the orders sheet is pre-painted on boot and has
+        // its own empty state, so a bare `.empty` matches two elements.
+        await expect(page.locator('#menu .empty')).toBeVisible();
     });
 
     test('an item with no options adds in one tap', async ({ page }) => {

@@ -1461,12 +1461,12 @@ img { max-width: 100%; display: block; }
             if (!customer) openWelcome();
 
             // Someone else at this table may have ordered already, or this is a
-            // second round. Fetched quietly so the Pesanan badge is right
-            // before it is tapped rather than after.
-            fetch(FN + 'qr-order-status?token=' + encodeURIComponent(TOKEN))
-                .then(function (r) { return r.ok ? r.json() : null; })
-                .then(function (d) { if (d) paintOrdersBadge(d); })
-                .catch(function () { /* the badge is a nicety, not the page */ });
+            // second round. Routed through refreshOrders() rather than its own
+            // fetch so it takes a sequence ticket — this is the request that
+            // used to overtake the post-submit refresh and blank the badge.
+            // It also pre-paints the sheet, so the first tap on Pesanan shows
+            // content rather than a spinner.
+            refreshOrders().catch(function () { /* the badge is a nicety */ });
         })
         .catch(function (err) {
             if (err && err.message === 'busy') {
@@ -2021,15 +2021,29 @@ img { max-width: 100%; display: block; }
         refreshOrders();
     }
 
+    // Three things fetch this: the boot badge, opening the sheet, and the
+    // refresh after placing an order. They can be in flight together, and
+    // fetch gives no ordering guarantee — so a STALE response can land last and
+    // overwrite a newer one. That is not hypothetical: the boot fetch (taken
+    // before any order existed, so `has_order: false`) landed after the
+    // post-submit refresh and blanked both the sheet and the badge, seconds
+    // after the diner had watched their order go through.
+    //
+    // Each request takes a ticket; only the newest one is allowed to paint.
+    var ordersSeq = 0;
+
     function refreshOrders() {
+        var seq = ++ordersSeq;
         return fetch(FN + 'qr-order-status?token=' + encodeURIComponent(TOKEN))
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (data) {
+                if (seq !== ordersSeq) return;      // a newer request has overtaken this one
                 if (!data) throw new Error('gone');
                 paintOrders(data);
                 paintOrdersBadge(data);
             })
             .catch(function () {
+                if (seq !== ordersSeq) return;
                 $('orders-body').innerHTML =
                     '<p class="orders-loading">Tidak bisa memuat pesanan. Coba lagi sebentar.</p>';
             });
