@@ -110,13 +110,53 @@ function withCategory(category, fn) {
         } finally { delete global.window; }
     });
 
-    check('rules with no category clause are untouched by this change', () => {
+    check('inventory serves the categories that actually hold stock', () => {
+        // Widened 2026-08-30. A shop holds stock, so a retail workspace gets the
+        // stock behind the till it already had, rather than one without the other.
+        assert.deepStrictEqual(FEATURE_RULES.inventory.allowCategories, ['fnb', 'retail']);
+        withCategory('retail', () => {
+            assert.strictEqual(matches(FEATURE_RULES.inventory, STRANGER), true);
+        });
         withCategory('fnb', () => {
-            // Inventory is still allowlist-only; an F&B category alone must not
-            // silently switch it on for everyone.
-            assert.strictEqual(FEATURE_RULES.inventory.allowCategories, null);
+            assert.strictEqual(matches(FEATURE_RULES.inventory, STRANGER), true);
+        });
+    });
+
+    check('a category that does not hold stock is still refused inventory', () => {
+        // The point of a category gate is that it EXCLUDES. An agency has no
+        // stock, and widening to retail must not quietly widen to everyone.
+        withCategory('services', () => {
             assert.strictEqual(matches(FEATURE_RULES.inventory, STRANGER), false);
+            // …while an allowlisted workspace keeps access regardless of category.
             assert.strictEqual(matches(FEATURE_RULES.inventory, QA_EMAIL), true);
+        });
+    });
+
+    check('an unstamped workspace keeps inventory through the allowlist', () => {
+        // The backfill-safety property, now that inventory has a category clause:
+        // a workspace predating the field must not lose a live module.
+        withCategory(null, () => {
+            assert.strictEqual(matches(FEATURE_RULES.inventory, QA_EMAIL), true);
+            assert.strictEqual(matches(FEATURE_RULES.inventory, STRANGER), false);
+        });
+    });
+
+    check('rules with no category clause are untouched by this change', () => {
+        withCategory('retail', () => {
+            // Outlet P&L stays allowlist-only: a single-store retailer has no
+            // outlets to compare, so a category alone must not switch it on.
+            assert.strictEqual(FEATURE_RULES.outlet_pnl.allowCategories, null);
+            assert.strictEqual(matches(FEATURE_RULES.outlet_pnl, STRANGER), false);
+            assert.strictEqual(matches(FEATURE_RULES.outlet_pnl, QA_EMAIL), true);
+        });
+    });
+
+    check('TB Bangun Utama can reach inventory even if unstamped', () => {
+        // Listed as well as covered by `retail`, because whether that workspace's
+        // doc actually carries the category is a data question this file cannot
+        // answer. The email is what makes it certain today.
+        withCategory(null, () => {
+            assert.strictEqual(matches(FEATURE_RULES.inventory, 'tbbangunutama@gmail.com'), true);
         });
     });
 

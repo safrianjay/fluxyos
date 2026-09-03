@@ -57,7 +57,14 @@ export const FEATURE_RULES = {
         allowEmails: [
             'renatakurniawan1501@gmail.com',
             'randikaisraj07@gmail.com',
-            'safrianjayadi77@gmail.com'
+            'safrianjayadi77@gmail.com',
+            // TB Bangun Utama — building supplies, already running the till.
+            // Listed as well as covered by `retail` below, deliberately: the
+            // category only grants access once THIS workspace's doc actually
+            // carries `business_category: 'retail'`, and whether it does is a
+            // data question this file cannot answer. The email makes it certain
+            // today; the category is what makes the email removable later.
+            'tbbangunutama@gmail.com'
         ],
         // The QA account lives in .qa/firebase-test-account.md, which is
         // GITIGNORED and rotatable — its address must not be hard-coded here.
@@ -66,8 +73,16 @@ export const FEATURE_RULES = {
         // fails the moment eligibility ships, which is the intended tripwire if
         // the pattern is ever wrong.
         allowEmailPatterns: [/^fluxyos\.qa\+.*@example\.com$/i],
-        // Later: allowCategories: ['fnb', 'retail', 'manufacturing']
-        allowCategories: null
+        // Retail added 2026-08-30. A shop holds stock — that was never in
+        // question; the module was simply still on the allowlist while the
+        // category field bedded in. POS made the same move first and this
+        // follows it, so a retail workspace now gets the till AND the stock
+        // behind it rather than one without the other.
+        //
+        // `manufacturing` is the obvious next candidate and is deliberately NOT
+        // here: it grants a live module to a different set of businesses, which
+        // is its own decision rather than a consequence of this one.
+        allowCategories: ['fnb', 'retail']
     },
     outlet_pnl: {
         label: 'Outlet P&L',

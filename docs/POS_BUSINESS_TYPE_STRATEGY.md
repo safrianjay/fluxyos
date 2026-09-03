@@ -364,3 +364,38 @@ hold label and one of them needs a new field — which, on this collection, mean
 a rules deploy.
 
 Everything else is `pos.js`.
+
+---
+
+## Inventory follows the till (2026-08-30)
+
+`inventory.allowCategories` was `null` — allowlist-only — while POS already
+served `['fnb', 'retail']`. That left a retail workspace with the till and not
+the stock behind it, which is the wrong half: a shop that rings up a sale is
+exactly the business that needs to know what it has left.
+
+Widened to `['fnb', 'retail']`, mirroring POS.
+
+**`manufacturing` was deliberately NOT added.** It is the obvious next candidate
+and it genuinely holds stock, but granting a live module to another set of
+businesses is its own decision, not a consequence of this one.
+
+**`outlet_pnl` stays allowlist-only.** A single-store retailer has no outlets to
+compare, so a category alone must not switch it on.
+
+### TB Bangun Utama is listed *and* covered
+
+`tbbangunutama@gmail.com` was added to `inventory.allowEmails` as well as being
+covered by `retail`. That is not redundancy: the category only grants access once
+**that workspace's own doc** carries `business_category: 'retail'`, and whether
+it does is a data question `feature-access.js` cannot answer. The email makes it
+certain today; the category is what makes the email removable later.
+
+Removing it needs the same proof the POS allowlist needs — that every workspace
+on the list carries a category that covers it. That is a query against
+production, not a code change.
+
+Guard: `tests/feature-access-category.check.js`, which asserts retail qualifies
+with no allowlisted email, that a non-stock category (`services`) is still
+refused, that an unstamped workspace keeps access through the allowlist, and
+that TB Bangun Utama resolves even when unstamped.
