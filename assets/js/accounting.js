@@ -1994,12 +1994,34 @@ function renderMapping(data) {
                 <span class="acct-pill ${mappingPillClass(m.status)}">${mappingPillLabel(m.status)}</span>
                 <select class="acct-btn acct-btn-secondary" data-mapping-select="${idx}" style="min-width:200px;">${options}</select>
                 <button type="button" class="acct-btn acct-btn-ghost" data-mapping-save="${idx}">Save</button>
-            </div>`;
+            </div>
+            ${m.recommended_account_code ? `
+            <div class="acct-mapping-rec" data-mapping-rec="${idx}">
+                <div class="acct-mapping-rec-body">
+                    <span class="acct-mapping-rec-head">Recommended for your business</span>
+                    <span class="acct-mapping-rec-target">${escapeHtml(m.recommended_account_code)} · ${escapeHtml(m.recommended_account_name || '')}</span>
+                    <span class="acct-mapping-rec-why">${escapeHtml(m.recommended_why || '')}</span>
+                </div>
+                <button type="button" class="acct-btn acct-btn-secondary" data-mapping-apply="${idx}">Use this</button>
+            </div>` : ''}`;
     }).join('');
     wrap.innerHTML = `<div style="min-width:560px;">${rows}</div>`;
 
     wrap.querySelectorAll('[data-mapping-save]').forEach(btn => {
         btn.addEventListener('click', () => handleMappingSave(Number(btn.getAttribute('data-mapping-save'))));
+    });
+    // "Use this" points the row's select at the recommendation and saves through
+    // the SAME path as the manual Save — one writer, so a recommendation can
+    // never be applied in a way a hand-picked mapping could not.
+    wrap.querySelectorAll('[data-mapping-apply]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const idx = Number(btn.getAttribute('data-mapping-apply'));
+            const m = state.data?.readiness?.mappingPreview?.[idx];
+            const select = document.querySelector(`[data-mapping-select="${idx}"]`);
+            if (!m || !select) return;
+            select.value = m.recommended_account_code;
+            handleMappingSave(idx);
+        });
     });
 }
 

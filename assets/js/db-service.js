@@ -1,6 +1,7 @@
 import { getFirestore, initializeFirestore, collection, query, where, getDocs, getDoc, getDocFromServer, setDoc, addDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, orderBy, limit, startAfter, writeBatch, runTransaction, doc, Timestamp, arrayUnion, arrayRemove, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { resolveDb } from "/assets/js/firestore-db.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
+import { recommendationFor } from "./mapping-suggestions.js";
 import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, assertManualJournalPolicy, GL, glError, CHART_OF_ACCOUNTS_SEED, CHART_SEED_VERSION, accountPolicy, SYSTEM_ACCOUNT_CODES, validateAccountDraft, signedBalance, suggestCategorizingAccount, periodKey as acctPeriodKey, chartForCountry} from "./accounting-engine.js";
 import { POS_METHODS, POS_PAYMENT_METHODS } from "./pos-service.js";
 import { buildTaxAppendix, billWithheldAmount, TAX_RATES } from "./tax-engine.js";
@@ -8152,13 +8153,34 @@ class DataService {
             const savedMap = saved
                 ? savedMappings.find(m => m.source_type === sourceType && String(m.source_value).trim() === String(sourceValue).trim())
                 : null;
+            const targetCode = savedMap ? savedMap.target_account_code : account.code;
+            // A better answer for THIS business, where one exists and differs
+            // from where the row currently lands. It never changes the default —
+            // applying it writes an accounting_mappings row, which
+            // resolveExpenseAccount consults ahead of the defaults. Existing
+            // journals are untouched; only later postings follow it.
+            const rec = recommendationFor({
+                // Same source `country` and the currency seam read from — the
+                // resolved workspace snapshot, which every app page populates
+                // via applyToPage() before its first finance read.
+                businessCategory: (typeof window !== 'undefined' && window.FluxyWorkspace
+                    && window.FluxyWorkspace.businessCategory) || null,
+                sourceType, sourceValue, currentCode: targetCode
+            });
+            const recAccount = rec ? this._accountInfo(rec.code) : null;
             mappingPreview.push({
                 source_type: sourceType,
                 source_value: sourceValue,
-                target_account_code: savedMap ? savedMap.target_account_code : account.code,
+                target_account_code: targetCode,
                 target_account_name: savedMap ? savedMap.target_account_name : account.name,
                 target_account_type: savedMap ? savedMap.target_account_type : account.type,
-                status: saved ? 'saved' : (defaultMapped ? 'suggested' : 'unmapped')
+                status: saved ? 'saved' : (defaultMapped ? 'suggested' : 'unmapped'),
+                ...(rec ? {
+                    recommended_account_code: rec.code,
+                    recommended_account_name: recAccount ? recAccount.name : null,
+                    recommended_account_type: recAccount ? recAccount.type : null,
+                    recommended_why: rec.why
+                } : {})
             });
         };
         transactions.forEach(tx => {

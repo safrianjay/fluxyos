@@ -784,3 +784,31 @@
     .acct-records-footer > div:last-child { display: flex; width: 100%; gap: 8px; }
     .acct-records-footer .acct-btn { flex: 1; justify-content: center; }
 }
+
+/* Account-mapping recommendation.
+   Sits UNDER its row rather than inside it: the row is already a four-column
+   grid at 560px minimum, and a fifth element would push the account select
+   off-screen on the narrowest supported width. Reads as an aside to the row
+   above, which is what it is. */
+.acct-mapping-rec {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin: -4px 0 10px;
+    padding: 10px 14px;
+    border: 1px solid #FED7AA;
+    border-radius: 10px;
+    background: #FFF7ED;
+}
+.acct-mapping-rec-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.acct-mapping-rec-head {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #C2410C;
+}
+.acct-mapping-rec-target { font-size: 13px; font-weight: 600; color: #7C2D12; }
+.acct-mapping-rec-why { font-size: 12px; line-height: 1.45; color: #9A3412; }
+.acct-mapping-rec .acct-btn { flex-shrink: 0; }

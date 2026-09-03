@@ -509,3 +509,61 @@ Center → Journals tab shows a pending banner + "Post pending entries" button
 (same `_correctSourceJournal` pattern as transactions) — note bills/subscriptions
 have no edit/void path in the app today, so this is only relevant once they become
 editable.
+
+## Account-mapping recommendations by business category
+
+`assets/js/mapping-suggestions.js` (pure). Flow tab row 5: *"kasih suggestion
+based on dia startup/UMKM/any other business karena kalau startup biasa mereka
+care about CM-based report"*.
+
+The platform default maps a spend category the same way for every business —
+`Operations → 6400`, `Infrastructure → 6300`. Safe, and a poor answer, because
+the same category means different things:
+
+| Business | Category | Recommended | Why |
+|---|---|---|---|
+| F&B | Operations | `5100` | Ingredients are cost of revenue |
+| Retail | Operations | `5100` | Goods bought for resale |
+| Manufacturing | Operations | `5100` | Raw materials and production |
+| Startup / Technology | Infrastructure | `5100` | Hosting scales with customers — the contribution-margin case |
+
+`services` and `other` have **none**, deliberately. An agency's delivery cost is
+often subcontractors and genuinely cost of revenue, but "Operations" is far too
+broad to assume that from — and a recommendation that is wrong half the time
+teaches people to dismiss the feature. No guess beats a coin flip wearing a
+reason.
+
+### Why it matters more than it looks
+
+Gross margin is computed from accounts whose `sak_category` is `cogs`
+(`_incomeStatementCogsKeys`). A workspace with nothing mapped to cost of revenue
+has no COGS to subtract, so the Overview renders a **setup state** rather than a
+number (PROJECT_BACKGROUND §3a). For a restaurant whose every cost sits in 6400,
+the product cannot show gross margin at all — not because data is missing, but
+because the default filed it as overhead.
+
+### These RECOMMEND. They never post.
+
+The default map is mirrored in two places — `ACCOUNTING_CATEGORY_DEFAULTS`
+(db-service, drives the preview) and `CATEGORY_DEFAULTS` (accounting-engine,
+drives **posting**). Making either business-aware would silently move costs
+between overhead and cost of revenue on books that already exist, and restate
+every gross margin ever shown. **Neither is touched.**
+
+A recommendation becomes real only when the user saves it as an
+`accounting_mappings` row, which `resolveExpenseAccount` consults *ahead of* the
+defaults. Explicit, opt-in, and applying only to postings made after it —
+existing journals never move. "Use this" routes through the same
+`handleMappingSave` (and the same confirm dialog) as a hand-picked mapping, so a
+recommendation can never be applied in a way a manual choice could not.
+
+A recommendation is withheld when it already matches where the row lands, so
+"Use this" never appears next to something already applied.
+
+⚠️ **`tests/mapping-suggestions.spec.js` writes shared workspace state**, so it
+archives the Operations mapping both **before** and **after**: before, because a
+recommendation only exists while the row is not already mapped and a second run
+would otherwise find nothing to click; after, because `suggestAccountForEntry`
+reads live mappings and leaving it saved breaks
+`tests/keyword-account-rule.spec.js`, which asserts Operations falls back to the
+6400 default.

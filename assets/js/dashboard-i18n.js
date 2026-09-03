@@ -4930,6 +4930,15 @@
         "Map columns": "Petakan kolom",
         "We matched what we recognised. Point us at the rest.": "Kami mencocokkan yang kami kenali. Tunjukkan sisanya.",
         "Not in this file": "Tidak ada di berkas ini",
+        // ── Account-mapping recommendations (mapping-suggestions.js) ──────
+        // Not caught by the i18n audit — it does not scan this module — so these
+        // are added by hand. They are user-facing copy in a Bahasa-first app.
+        "Recommended for your business": "Disarankan untuk bisnis Anda",
+        "Use this": "Pakai ini",
+        "Ingredients are the cost of what you sell, not overhead. Filed here, gross margin can be read; under Operations Expense it cannot.": "Bahan baku adalah harga pokok dari yang Anda jual, bukan biaya overhead. Dicatat di sini, laba kotor bisa dibaca; di bawah Beban Operasional tidak bisa.",
+        "Goods bought for resale are the cost of what you sell. Filed here, gross margin can be read; under Operations Expense it cannot.": "Barang yang dibeli untuk dijual kembali adalah harga pokok penjualan. Dicatat di sini, laba kotor bisa dibaca; di bawah Beban Operasional tidak bisa.",
+        "Raw materials and production spend are the cost of what you make. Filed here, gross margin can be read; under Operations Expense it cannot.": "Bahan baku dan biaya produksi adalah harga pokok dari yang Anda buat. Dicatat di sini, laba kotor bisa dibaca; di bawah Beban Operasional tidak bisa.",
+        "Hosting that serves your customers scales with them, so it is a cost of revenue rather than overhead. This is what makes a contribution-margin read possible.": "Hosting yang melayani pelanggan Anda ikut naik seiring jumlah pelanggan, jadi itu harga pokok pendapatan, bukan overhead. Inilah yang membuat contribution margin bisa dibaca.",
         // ── Chart of Accounts import (assets/js/accounting.js) ────────────
         "Import accounts": "Impor akun",
         "The account code is the identity. A code you already have is updated; a new one is created.": "Kode akun adalah identitasnya. Kode yang sudah Anda punya akan diperbarui; kode baru akan dibuat.",
