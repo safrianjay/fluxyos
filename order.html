@@ -77,6 +77,10 @@
     --shadow-bar:   0 -2px 16px -8px rgba(11, 15, 25, 0.18);
 
     --safe-bottom: env(safe-area-inset-bottom, 0px);
+    /* How much room the floating tab bar occupies at the bottom. Read by the
+       cart bar and by the menu's trailing spacer, so the three can never
+       disagree about where the bottom of the page is. */
+    --tabbar-space: calc(66px + var(--safe-bottom));
 }
 
 * { box-sizing: border-box; }
@@ -287,41 +291,77 @@ img { max-width: 100%; display: block; }
 .search::placeholder { color: var(--ink-30); }
 .search:focus { border-color: var(--ink-30); }
 
+/* ── Category tabs ─────────────────────────────────────────────────────────
+   Icon above label, the shape food apps use, because a diner scanning a rail
+   of words has to read all of them and a rail of pictures they do not.
+
+   SVG, NOT EMOJI. The reference designs use emoji, and emoji are a per-device
+   font lottery — the same category is a flat glyph on one Android and a 3D
+   sticker on an iPhone, and some render as a blank box. These are drawn here,
+   so the menu looks the same on every phone that scans the card, and they cost
+   no request on restaurant wifi. */
 .chips {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     overflow-x: auto;
-    padding: 0 20px 2px;
+    padding: 2px 20px 4px;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
 }
 .chips::-webkit-scrollbar { display: none; }
 .chip {
     flex: 0 0 auto;
-    padding: 7px 14px;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    background: var(--surface);
-    color: var(--ink-70);
-    font-size: 13px;
+    width: 72px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--ink-50);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
     font-weight: 500;
+    line-height: 1.2;
+    text-align: center;
+}
+.chip .cat-ico {
+    width: 52px; height: 52px;
+    border-radius: 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.chip .cat-ico svg { width: 26px; height: 26px; color: var(--ink-70); }
+.chip .cat-name {
+    display: block;
+    max-width: 72px;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
-/* The selected chip inverts to the brand navy. Orange stays an accent —
+/* The selected tab inverts to the brand navy. Orange stays an accent —
    an orange background is prohibited project-wide. */
-.chip[aria-pressed="true"] {
+.chip[aria-pressed="true"] { color: var(--ink); font-weight: 600; }
+.chip[aria-pressed="true"] .cat-ico {
     background: var(--ink);
     border-color: var(--ink);
-    color: #fff;
+    transform: translateY(-1px);
 }
+.chip[aria-pressed="true"] .cat-ico svg { color: #fff; }
 
 /* ==========================================================================
-   Menu
-   ========================================================================== */
+   Menu — a two-column grid
+   ==========================================================================
+   Was a full-width list. A grid shows roughly twice as many dishes per screen,
+   which matters on a phone held over a table, and it gives the photo real
+   estate a list row cannot: a 4:3 tile the width of the card rather than an
+   84px thumbnail. */
 .menu { padding: 4px 0 0; }
 
 .group-head {
-    padding: 20px 20px 8px;
+    padding: 18px 20px 8px;
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
@@ -329,96 +369,107 @@ img { max-width: 100%; display: block; }
     color: var(--ink-50);
 }
 
-.row {
-    display: flex;
-    gap: 14px;
-    align-items: flex-start;
-    padding: 14px 20px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--line-soft);
+.grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 0 20px;
 }
-.row:last-child { border-bottom: none; }
+/* Roomier phones and the 640px desktop frame get a third column rather than
+   two very wide cards. */
+@media (min-width: 520px) {
+    .grid { grid-template-columns: repeat(3, 1fr); }
+}
 
-.row-body { flex: 1 1 auto; min-width: 0; }
-.row-name {
-    font-size: 15px;
+.card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    /* The whole card is the tap target, not just the button. */
+    text-align: left;
+    padding: 0;
+    color: inherit;
+}
+.card:active { background: var(--line-soft); }
+
+/* FIXED 4:3 with `contain`, matching the till exactly — the same image appears
+   on both surfaces, and `cover` crops the part of a dish that identifies it
+   (docs/CUSTOMER_ORDERING_PLAN_REVIEW.md §4). */
+.card-media {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: var(--line-soft);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+}
+/* ABSOLUTELY POSITIONED, and it has to be. With `height: 100%` in a box sized
+   only by `aspect-ratio`, the height resolves against an indefinite container —
+   so it falls back to `auto` and a SQUARE source image makes the tile square,
+   overriding the 4:3 and leaving the grid ragged. That is the exact defect the
+   placeholder exists to prevent, arriving from the other direction. Taking the
+   image out of flow makes the aspect-ratio the only thing setting the height. */
+.card-media img {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+}
+.card-media img.failed { display: none; }
+.card-media.is-placeholder svg { width: 34px; height: 34px; color: var(--ink-30); }
+
+.card-body {
+    padding: 10px 11px 12px;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    gap: 4px;
+}
+.card-name {
+    font-size: 13px;
     font-weight: 500;
     letter-spacing: -0.01em;
-    margin: 0 0 4px;
-    /* Two lines then ellipsis — a long name must not push the price off the
-       card, and there is no description field on `items` to fill the gap. */
+    margin: 0;
+    /* Two lines then ellipsis. A grid cell has no room to grow sideways, and a
+       ragged card height breaks the row. */
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    min-height: 2.4em;
 }
-.row-price { font-size: 14px; font-weight: 600; }
-.row-opts {
-    font-size: 12px;
-    color: var(--ink-50);
-    margin-top: 3px;
-}
+.card-price { font-size: 14px; font-weight: 600; }
+.card-opts { font-size: 11px; color: var(--ink-50); }
 
-/* The photo tile. FIXED 4:3 with `contain`, matching the till exactly — the
-   same image appears on both surfaces, and `cover` crops the part of a dish
-   that identifies it (docs/CUSTOMER_ORDERING_PLAN_REVIEW.md §4). */
-.thumb {
-    flex: 0 0 auto;
-    width: 84px;
-    aspect-ratio: 4 / 3;
-    border-radius: var(--r-md);
-    background: var(--line-soft);
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.thumb img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-}
-/* A broken or missing photo must leave a calm tile, never a torn icon. */
-.thumb img.failed { display: none; }
-
-/* ── The placeholder ───────────────────────────────────────────────────────
-   Most menus are only partly photographed, and a list where some rows have a
-   tile and others do not reads as broken rather than as incomplete — the names
-   stop aligning and the eye loses the column. So EVERY row gets a tile, and an
-   item with no photo gets this mark instead of nothing.
-
-   Deliberately quiet: a muted plate glyph on the same surface the real tile
-   uses, so it recedes next to a genuine photo rather than competing with it.
-   Inline SVG, so it costs no request on restaurant wifi. */
-.thumb.is-placeholder { background: var(--line-soft); }
-.thumb.is-placeholder svg { width: 30px; height: 30px; color: var(--ink-30); }
-
-.row-action { flex: 0 0 auto; align-self: center; }
+.card-foot { margin-top: auto; padding-top: 8px; }
 
 .add-btn {
-    min-width: 72px;
-    height: 34px;
-    padding: 0 14px;
+    width: 100%;
+    height: 32px;
+    padding: 0 10px;
     border-radius: var(--r-sm);
     border: 1px solid var(--ink);
     background: var(--surface);
     color: var(--ink);
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     letter-spacing: -0.01em;
 }
 .add-btn:active { background: var(--line-soft); }
 
 .stepper {
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    justify-content: space-between;
     border: 1px solid var(--ink);
     border-radius: var(--r-sm);
     overflow: hidden;
-    height: 34px;
+    height: 32px;
 }
 .stepper button {
-    width: 30px; height: 100%;
+    width: 32px; height: 100%;
     border: none;
     background: var(--surface);
     font-size: 16px;
@@ -428,9 +479,9 @@ img { max-width: 100%; display: block; }
 }
 .stepper button:active { background: var(--line-soft); }
 .stepper .qty {
-    min-width: 26px;
+    flex: 1 1 auto;
     text-align: center;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     background: var(--surface);
 }
@@ -445,26 +496,28 @@ img { max-width: 100%; display: block; }
 /* ==========================================================================
    Cart bar — the persistent bottom affordance
    ========================================================================== */
+/* Floats ABOVE the tab bar rather than replacing it — the cart is a state, the
+   nav is always there. `--tabbar-space` keeps the two from ever overlapping and
+   is the single number both this and the page's bottom padding read. */
 .cartbar {
     position: fixed;
-    left: 0; right: 0; bottom: 0;
+    left: 0; right: 0;
+    bottom: calc(var(--tabbar-space) + 8px);
     z-index: 40;
     max-width: 640px;
     margin: 0 auto;
-    padding: 12px 20px calc(12px + var(--safe-bottom));
-    background: var(--surface);
-    border-top: 1px solid var(--line);
-    box-shadow: var(--shadow-bar);
-    transform: translateY(110%);
-    transition: transform 0.22s ease;
+    padding: 0 16px;
+    transform: translateY(calc(100% + var(--tabbar-space) + 16px));
+    transition: transform 0.24s cubic-bezier(0.32, 0.72, 0, 1);
 }
 .cartbar.is-open { transform: translateY(0); }
 
 .cartbar button {
     width: 100%;
-    height: 50px;
+    height: 52px;
     border: none;
-    border-radius: var(--r-md);
+    border-radius: 16px;
+    box-shadow: 0 12px 28px -10px rgba(11, 15, 25, 0.45);
     background: var(--ink);
     color: #fff;
     font-size: 15px;
@@ -486,6 +539,74 @@ img { max-width: 100%; display: block; }
     font-weight: 600;
     display: inline-flex; align-items: center; justify-content: center;
 }
+
+/* ==========================================================================
+   Floating tab bar
+   ==========================================================================
+   A detached pill rather than an edge-to-edge bar. On a phone held one-handed
+   over a table the bottom edge is where the thumb rests and where iOS puts its
+   home indicator, so a bar pinned to it collects accidental taps; floating it
+   clear of both is the Airbnb pattern and it is a usability choice, not a
+   decorative one.
+
+   It sits UNDER the sheets (z-index 60) and under the scrim, so an open sheet
+   is never competing with navigation. */
+.tabbar {
+    position: fixed;
+    left: 0; right: 0;
+    bottom: calc(10px + var(--safe-bottom));
+    z-index: 35;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 0 16px;
+    pointer-events: none;
+}
+.tabbar-inner {
+    pointer-events: auto;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-around;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.92);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 6px;
+    box-shadow: 0 10px 30px -12px rgba(11, 15, 25, 0.30);
+}
+.tab {
+    flex: 1 1 0;
+    border: none;
+    background: none;
+    border-radius: 999px;
+    padding: 7px 4px 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    color: var(--ink-50);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+.tab svg { width: 20px; height: 20px; }
+.tab[aria-current="true"] { color: var(--ink); background: var(--line-soft); }
+.tab .tab-badge {
+    position: absolute;
+    transform: translate(11px, -4px);
+    min-width: 15px; height: 15px;
+    padding: 0 4px;
+    border-radius: 999px;
+    /* Orange as an ACCENT on a count, never as a page background. */
+    background: var(--accent);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    display: none;
+    align-items: center; justify-content: center;
+}
+.tab .tab-badge.on { display: inline-flex; }
 
 /* ==========================================================================
    Bottom sheets
@@ -670,6 +791,20 @@ img { max-width: 100%; display: block; }
     background: var(--surface);
 }
 .field input:focus { border-color: var(--ink-30); }
+.field input.invalid { border-color: var(--danger); }
+
+.welcome-lead {
+    font-size: 13px;
+    color: var(--ink-50);
+    line-height: 1.5;
+    margin: 10px 0 18px;
+}
+.welcome-note {
+    font-size: 11px;
+    color: var(--ink-30);
+    text-align: center;
+    margin: 10px 0 0;
+}
 
 /* ---- Cart lines -------------------------------------------------------- */
 .cartline {
@@ -694,6 +829,44 @@ img { max-width: 100%; display: block; }
     border-top: 1px solid var(--line);
     margin-top: 8px; padding-top: 12px;
 }
+
+/* Sits above the tab bar and the cart bar, because it is a reply to tapping
+   one of them. */
+.toast {
+    position: fixed;
+    left: 16px; right: 16px;
+    bottom: calc(var(--tabbar-space) + 74px);
+    z-index: 45;
+    max-width: 608px;
+    margin: 0 auto;
+    background: var(--ink);
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.4;
+    padding: 11px 14px;
+    border-radius: var(--r-md);
+    box-shadow: 0 12px 28px -12px rgba(11, 15, 25, 0.5);
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.toast.is-open { opacity: 1; transform: translateY(0); }
+
+.cart-who {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+    padding: 11px 13px;
+    border-radius: var(--r-md);
+    background: var(--canvas);
+    border: 1px solid var(--line);
+    font-size: 13px;
+    color: var(--ink-50);
+}
+.cart-who strong { color: var(--ink); font-weight: 600; }
 
 .notice {
     padding: 11px 13px;
@@ -769,8 +942,10 @@ img { max-width: 100%; display: block; }
         </div>
 
         <div id="menu" class="menu"></div>
-        <!-- Clears the fixed cart bar so the last row is never trapped under it. -->
-        <div style="height: 96px"></div>
+        <!-- Clears the floating tab bar AND the cart bar above it, so the last
+             card is never trapped under either. Derived from --tabbar-space so
+             the three cannot disagree about where the page ends. -->
+        <div style="height: calc(var(--tabbar-space) + 78px)"></div>
     </section>
 
     <!-- Order placed ----------------------------------------------------- -->
@@ -797,7 +972,70 @@ img { max-width: 100%; display: block; }
     </button>
 </div>
 
+<!-- Floating tab bar. Menu and Cart are real destinations; Pesanan and Bantuan
+     answer the two questions a seated diner actually asks after ordering. -->
+<nav class="tabbar" aria-label="Navigasi">
+    <div class="tabbar-inner">
+        <button class="tab" type="button" data-tab="menu" aria-current="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h12"/></svg>
+            <span>Menu</span>
+        </button>
+        <button class="tab" type="button" data-tab="cart">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6 5 3H3"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
+            <span class="tab-badge" id="tab-cart-badge">0</span>
+            <span>Keranjang</span>
+        </button>
+        <button class="tab" type="button" data-tab="orders">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1z"/><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M9 11h6M9 15h4"/></svg>
+            <span>Pesanan</span>
+        </button>
+        <button class="tab" type="button" data-tab="help">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.2 2.4c-.6.2-.7.7-.7 1.1v.5"/><circle cx="12" cy="17" r="0.6" fill="currentColor"/></svg>
+            <span>Bantuan</span>
+        </button>
+    </div>
+</nav>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
 <div id="scrim" class="scrim"></div>
+
+<!-- ── Identity gate ─────────────────────────────────────────────────────────
+     Shown before the first order and dismissible ONLY by completing it: the
+     kitchen needs a name to call when the food is ready, and a number to reach
+     the table if something is out of stock. Persisted per browser, so a diner
+     is asked once and not again on their second round.
+
+     Deliberately NOT the scrim-dismissible pattern the other sheets use — the
+     scrim click handler skips this one. -->
+<div id="sheet-welcome" class="sheet" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+    <div class="sheet-grip"></div>
+    <div class="sheet-head">
+        <div>
+            <h2 class="sheet-title" id="welcome-title">Selamat datang</h2>
+            <p class="sheet-sub" id="welcome-sub">—</p>
+        </div>
+    </div>
+    <div class="sheet-body">
+        <p class="welcome-lead">Isi data Anda sekali saja. Kami pakai untuk memanggil Anda saat pesanan siap
+            dan menghubungi meja kalau ada menu yang habis.</p>
+        <div class="field">
+            <label for="welcome-name">Nama</label>
+            <input id="welcome-name" type="text" maxlength="80" autocomplete="name"
+                   inputmode="text" placeholder="Nama Anda">
+        </div>
+        <div class="field">
+            <label for="welcome-phone">Nomor WhatsApp</label>
+            <input id="welcome-phone" type="tel" maxlength="32" inputmode="tel"
+                   autocomplete="tel" placeholder="08…">
+        </div>
+        <div id="welcome-error"></div>
+    </div>
+    <div class="sheet-foot">
+        <button class="primary" id="welcome-go" type="button">Mulai pesan</button>
+        <p class="welcome-note">Tidak perlu membuat akun. Meja Anda sudah terhubung lewat QR.</p>
+    </div>
+</div>
 
 <!-- Item detail sheet ---------------------------------------------------- -->
 <div id="sheet-item" class="sheet" role="dialog" aria-modal="true" aria-labelledby="item-title">
@@ -859,6 +1097,74 @@ img { max-width: 100%; display: block; }
     // ticket. Regenerated after every successful submit.
     var clientRef = newRef();
 
+    // Who is ordering. Captured once, before the first order, and remembered
+    // per browser so a second round does not ask again. Held in a variable as
+    // well as storage because a private-mode browser throws on both read and
+    // write, and the sheet has to work there too.
+    var SESSION_KEY = 'fluxyos_customer_session';
+    var customer = null;
+
+    // ── Category icons ────────────────────────────────────────────────────
+    //
+    // `items.pos_category` is a FREE STRING typed by whoever set up the menu —
+    // there is no category entity and no id to key an icon off. So the icon is
+    // matched on keywords, in Indonesian and English, and anything unmatched
+    // falls back to a plate. A wrong-looking icon is a cosmetic miss; a missing
+    // one would leave a hole in the rail.
+    //
+    // Drawn here rather than taken from an emoji font: the same emoji is a flat
+    // glyph on one Android and a 3D sticker on an iPhone, and some render as a
+    // blank box. These look identical on every phone that scans the card.
+    var ICON = {
+        coffee: '<path d="M4 8h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M16 9h2.5a2.5 2.5 0 0 1 0 5H16"/><path d="M6 3v2M10 2v3M14 3v2"/>',
+        drink:  '<path d="M5 4h14l-2 4H7z"/><path d="M7 8l1.5 12h7L17 8"/><path d="M8 13h8"/>',
+        rice:   '<path d="M3 15h18"/><path d="M5 15a7 7 0 0 1 14 0"/><path d="M12 5V3"/><path d="M8.5 8.5 7 7M15.5 8.5 17 7"/><path d="M3 19h18"/>',
+        noodle: '<path d="M4 9h16"/><path d="M5 9c0 6 3 9 7 9s7-3 7-9"/><path d="M8 4v5M12 3v6M16 4v5"/>',
+        snack:  '<path d="M5 8h14l-1.2 11.2a1 1 0 0 1-1 .8H7.2a1 1 0 0 1-1-.8z"/><path d="M9 8V5a3 3 0 0 1 6 0v3"/>',
+        cake:   '<path d="M4 20h16v-6a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3z"/><path d="M4 15c2 1.5 3 1.5 5 0s3-1.5 5 0 3 1.5 5 0"/><path d="M12 8V5"/><circle cx="12" cy="4" r="0.8"/>',
+        bread:  '<path d="M4 11a4 4 0 0 1 4-4h8a4 4 0 0 1 0 8v4a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-4"/><path d="M8 11h8"/>',
+        grill:  '<path d="M6 3v7M10 3v7M14 3v7"/><path d="M4 10h12a6 6 0 0 1-12 0z"/><path d="M8 16l-2 5M12 16l2 5"/>',
+        sea:    '<path d="M3 12c3-4 7-6 11-6 3 0 5 1.5 7 4-2 4-6 8-11 8-3 0-5-1.5-7-4z"/><circle cx="8" cy="11" r="0.8" fill="currentColor"/><path d="M18 8l3-3v10l-3-3"/>',
+        veg:    '<path d="M12 21c-4 0-7-3-7-7 0-3 2-5 5-5 1.5 0 2 .5 2 .5S13 8 15 8c3 0 4 2 4 5 0 4-3 8-7 8z"/><path d="M12 9V5c0-1.5 1.5-3 3-3"/>',
+        pizza:  '<path d="M12 3 3 20l9-2 9 2z"/><circle cx="10" cy="13" r="1" fill="currentColor"/><circle cx="14" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="17" r="1" fill="currentColor"/>',
+        burger: '<path d="M4 9a8 5 0 0 1 16 0z"/><path d="M4 12h16"/><path d="M4 15h16a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z"/>',
+        all:    '<circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><circle cx="8" cy="16" r="3"/><circle cx="16" cy="16" r="3"/>',
+        plate:  '<path d="M3 17h18"/><path d="M5 17a7 7 0 0 1 14 0"/><path d="M12 7V5"/><circle cx="12" cy="4" r="1"/>'
+    };
+
+    // First match wins, so put the specific words before the general ones.
+    var ICON_WORDS = [
+        ['coffee', ['kopi', 'coffee', 'espresso', 'latte', 'americano', 'cappu']],
+        ['cake',   ['dessert', 'pencuci mulut', 'manis', 'cake', 'kue', 'pudding', 'es krim', 'ice cream', 'sweet']],
+        ['bread',  ['roti', 'bread', 'bakery', 'pastry', 'sandwich', 'toast']],
+        ['pizza',  ['pizza']],
+        ['burger', ['burger', 'sandwich']],
+        ['noodle', ['mie', 'mi ', 'noodle', 'pasta', 'ramen', 'bakso', 'soto']],
+        ['rice',   ['nasi', 'rice', 'makanan', 'main', 'food', 'meal', 'hidangan']],
+        ['grill',  ['sate', 'satay', 'grill', 'bakar', 'bbq', 'ayam', 'daging', 'steak', 'meat']],
+        ['sea',    ['seafood', 'ikan', 'fish', 'udang', 'cumi']],
+        ['veg',    ['sayur', 'veg', 'salad', 'vegan', 'vegetarian']],
+        ['snack',  ['cemilan', 'camilan', 'snack', 'gorengan', 'appetizer', 'pembuka', 'side']],
+        ['drink',  ['minum', 'drink', 'beverage', 'juice', 'jus', 'tea', 'teh', 'soda', 'smoothie', 'milk', 'susu']]
+    ];
+
+    function categoryIcon(name) {
+        if (name === null) return ICON.all;
+        var n = String(name).toLowerCase();
+        for (var i = 0; i < ICON_WORDS.length; i += 1) {
+            var words = ICON_WORDS[i][1];
+            for (var j = 0; j < words.length; j += 1) {
+                if (n.indexOf(words[j]) !== -1) return ICON[ICON_WORDS[i][0]];
+            }
+        }
+        return ICON.plate;
+    }
+
+    function svg(body) {
+        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"'
+            + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + body + '</svg>';
+    }
+
     // A plate and cover. Neutral enough for a drink or a dessert, which a
     // knife-and-fork glyph is not.
     var PLACEHOLDER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"'
@@ -896,6 +1202,63 @@ img { max-width: 100%; display: block; }
         return Array.prototype.map.call(a, function (b) {
             return ('0' + b.toString(16)).slice(-2);
         }).join('');
+    }
+
+    function readSession() {
+        try {
+            var raw = window.localStorage.getItem(SESSION_KEY);
+            if (!raw) return null;
+            var v = JSON.parse(raw);
+            return (v && v.name) ? { name: String(v.name), phone: String(v.phone || '') } : null;
+        } catch (_) { return null; }   // private mode throws on read, not just write
+    }
+
+    function writeSession(v) {
+        customer = v;
+        try { window.localStorage.setItem(SESSION_KEY, JSON.stringify(v)); } catch (_) { /* in-memory only */ }
+    }
+
+    /**
+     * The identity gate. Opened before the diner can order and closable only by
+     * completing it — the kitchen needs a name to call when the food is ready,
+     * and a number to reach the table when something is out of stock.
+     *
+     * Deliberately not scrim-dismissible: `closeSheets()` skips this one, and
+     * the scrim's own click handler ignores it while it is open.
+     */
+    function openWelcome() {
+        $('welcome-sub').textContent = menu && menu.table ? ('Meja ' + menu.table) : '';
+        $('welcome-error').innerHTML = '';
+        openSheet('sheet-welcome');
+        // Not autofocused: on iOS that opens the keyboard over the sheet before
+        // the diner has seen what is being asked of them.
+    }
+
+    function welcomeOpen() { return $('sheet-welcome').classList.contains('is-open'); }
+
+    function submitWelcome() {
+        var name = String($('welcome-name').value || '').trim();
+        var phone = String($('welcome-phone').value || '').trim();
+        var digits = phone.replace(/\D/g, '');
+        var bad = null;
+        $('welcome-name').classList.remove('invalid');
+        $('welcome-phone').classList.remove('invalid');
+
+        if (!name) { bad = 'Masukkan nama Anda dulu.'; $('welcome-name').classList.add('invalid'); }
+        // Nine digits is the shortest real Indonesian mobile number. Checking
+        // DIGITS rather than length lets someone type +62 812-3456-7890 with
+        // whatever spacing their keyboard gives them.
+        else if (digits.length < 9) {
+            bad = 'Nomor WhatsApp belum lengkap.';
+            $('welcome-phone').classList.add('invalid');
+        }
+
+        if (bad) {
+            $('welcome-error').innerHTML = '<div class="notice bad">' + esc(bad) + '</div>';
+            return;
+        }
+        writeSession({ name: name.slice(0, 80), phone: phone.slice(0, 32) });
+        closeSheets({ force: true });
     }
 
     function show(view) {
@@ -938,6 +1301,12 @@ img { max-width: 100%; display: block; }
             paintChips();
             paintMenu();
             show('menu');
+
+            // Asked AFTER the menu paints, not before: a diner who sees a form
+            // on a blank screen has no idea what they are signing up for, and
+            // the menu behind the sheet is what makes the request make sense.
+            customer = readSession();
+            if (!customer) openWelcome();
         })
         .catch(function (err) {
             if (err && err.message === 'busy') {
@@ -961,11 +1330,14 @@ img { max-width: 100%; display: block; }
     // =====================================================================
     function paintChips() {
         var cats = menu.categories || [];
-        var html = '<button class="chip" type="button" data-cat="" aria-pressed="true">Semua</button>';
-        cats.forEach(function (c) {
-            html += '<button class="chip" type="button" data-cat="' + esc(c) + '" aria-pressed="false">'
-                + esc(c) + '</button>';
-        });
+        var tab = function (value, label, iconBody, pressed) {
+            return '<button class="chip" type="button" data-cat="' + esc(value) + '"'
+                + ' aria-pressed="' + (pressed ? 'true' : 'false') + '">'
+                + '<span class="cat-ico">' + svg(iconBody) + '</span>'
+                + '<span class="cat-name">' + esc(label) + '</span></button>';
+        };
+        var html = tab('', 'Semua', categoryIcon(null), true);
+        cats.forEach(function (c) { html += tab(c, c, categoryIcon(c), false); });
         $('chips').innerHTML = html;
     }
 
@@ -1010,53 +1382,59 @@ img { max-width: 100%; display: block; }
 
         var html = '';
         var lastGroup = null;
+        var gridOpen = false;
         items.forEach(function (i) {
             var group = i.category || 'Lainnya';
             // Headings only make sense in the ungrouped view; inside one
-            // category they would repeat the chip already selected above.
+            // category they would repeat the tab already selected above.
             if (!activeCategory && group !== lastGroup) {
+                if (gridOpen) { html += '</div>'; gridOpen = false; }
                 html += '<div class="group-head">' + esc(group) + '</div>';
                 lastGroup = group;
             }
+            if (!gridOpen) { html += '<div class="grid">'; gridOpen = true; }
 
             var qty = qtyInCart(i.id);
             var hasOptions = (i.modifier_groups || []).length > 0;
 
-            html += '<article class="row" data-item="' + esc(i.id) + '">';
-            // Every row gets a tile. See `.thumb.is-placeholder`: a list where
-            // only some rows have one reads as broken, not as incomplete.
+            html += '<article class="card" data-item="' + esc(i.id) + '" data-open="' + esc(i.id) + '">';
+
+            // Every card gets a tile. A grid where only some cells carry an
+            // image collapses into a ragged mess — worse than in a list, where
+            // at least the text still lines up.
             if (i.has_image) {
-                html += '<div class="thumb"><img loading="lazy" decoding="async" alt="" src="'
+                html += '<div class="card-media"><img loading="lazy" decoding="async" alt="" src="'
                     + FN + 'qr-menu-image?token=' + encodeURIComponent(TOKEN)
                     + '&item=' + encodeURIComponent(i.id) + '"></div>';
             } else {
-                html += '<div class="thumb is-placeholder">' + PLACEHOLDER + '</div>';
+                html += '<div class="card-media is-placeholder">' + PLACEHOLDER + '</div>';
             }
-            html += '<div class="row-body">'
-                + '<h3 class="row-name">' + esc(i.name) + '</h3>'
-                + '<div class="row-price num">' + esc(money(i.price)) + '</div>'
-                + (hasOptions ? '<div class="row-opts">Bisa disesuaikan</div>' : '')
-                + '</div>';
 
-            html += '<div class="row-action">';
+            html += '<div class="card-body">'
+                + '<h3 class="card-name">' + esc(i.name) + '</h3>'
+                + '<div class="card-price num">' + esc(money(i.price)) + '</div>'
+                + (hasOptions ? '<div class="card-opts">Bisa disesuaikan</div>' : '')
+                + '<div class="card-foot">';
+
             if (qty > 0 && !hasOptions) {
                 html += stepperHtml(i.id, qty);
             } else if (qty > 0) {
                 // An item with options can be in the cart several ways, so the
-                // row cannot decrement one of them unambiguously. It shows the
+                // card cannot decrement one of them unambiguously. It shows the
                 // count and reopens the chooser instead.
                 html += '<button class="add-btn" type="button" data-open="' + esc(i.id) + '">'
                     + qty + ' • Tambah</button>';
             } else {
                 html += '<button class="add-btn" type="button" data-open="' + esc(i.id) + '">Tambah</button>';
             }
-            html += '</div></article>';
+            html += '</div></div></article>';
         });
+        if (gridOpen) html += '</div>';
         host.innerHTML = html;
 
         // A photo that 404s (revoked token, deleted file) leaves the tile empty
         // rather than showing a torn-image icon.
-        Array.prototype.forEach.call(host.querySelectorAll('.thumb img'), function (img) {
+        Array.prototype.forEach.call(host.querySelectorAll('.card-media img'), function (img) {
             img.addEventListener('error', function () { img.classList.add('failed'); });
         });
     }
@@ -1070,12 +1448,15 @@ img { max-width: 100%; display: block; }
     }
 
     $('menu').addEventListener('click', function (e) {
-        var open = e.target.closest('[data-open]');
-        if (open) return openDetail(open.dataset.open);
+        // ORDER MATTERS. `data-open` is on the CARD, which is an ancestor of the
+        // stepper — testing it first would make every "+" tap open the detail
+        // sheet instead of adding one.
         var inc = e.target.closest('[data-inc]');
         if (inc) return bump(inc.dataset.inc, 1);
         var dec = e.target.closest('[data-dec]');
         if (dec) return bump(dec.dataset.dec, -1);
+        var open = e.target.closest('[data-open]');
+        if (open) return openDetail(open.dataset.open);
     });
 
     // Increment the plain (no-options) line for an item.
@@ -1286,6 +1667,9 @@ img { max-width: 100%; display: block; }
         setText($('cart-count'), String(count));
         setText($('cart-total'), money(total));
         $('cartbar').classList.toggle('is-open', count > 0);
+        var badge = $('tab-cart-badge');
+        badge.textContent = String(count);
+        badge.classList.toggle('on', count > 0);
 
         setText($('cart-sub'), menu && menu.table ? ('Meja ' + menu.table) : '');
         // Same guard as the detail sheet, for the same reason: this is a span
@@ -1319,17 +1703,17 @@ img { max-width: 100%; display: block; }
             + '<span class="num">' + esc(money(total)) + '</span></div>'
             + '</div>';
 
-        // Optional, and said so. A queue does not wait while someone types a
-        // phone number, and `pos_orders` accepts an order with neither.
-        html += '<div class="field" style="margin-top:18px">'
-            + '<label for="cust-name">Nama <span class="hint">— opsional</span></label>'
-            + '<input id="cust-name" type="text" maxlength="80" autocomplete="name"'
-            + ' placeholder="Untuk dipanggil saat pesanan siap"></div>'
-            + '<div class="field">'
-            + '<label for="cust-phone">Nomor WhatsApp <span class="hint">— opsional</span></label>'
-            + '<input id="cust-phone" type="tel" maxlength="32" inputmode="tel"'
-            + ' autocomplete="tel" placeholder="08…"></div>'
-            + '<div id="cart-notice"></div>';
+        // Identity is captured once by the gate before the first order, so this
+        // sheet no longer asks for it — it just shows who the order is going
+        // out under, which is the part worth confirming before committing.
+        if (customer) {
+            html += '<div class="cart-who">'
+                + '<span>Pesanan atas nama</span>'
+                + '<strong>' + esc(customer.name) + '</strong>'
+                + (customer.phone ? '<span class="num">' + esc(customer.phone) + '</span>' : '')
+                + '</div>';
+        }
+        html += '<div id="cart-notice"></div>';
 
         $('cart-body').innerHTML = html;
     }
@@ -1364,16 +1748,29 @@ img { max-width: 100%; display: block; }
         // The page behind a sheet must not scroll under the customer's finger.
         document.body.style.overflow = 'hidden';
     }
-    function closeSheets() {
+    function closeSheets(opts) {
+        // The identity gate closes only when it has been completed. Every other
+        // path — scrim, Escape, the close button — leaves it up.
+        if (welcomeOpen() && !(opts && opts.force)) return;
         $('scrim').classList.remove('is-open');
         $('sheet-item').classList.remove('is-open');
         $('sheet-cart').classList.remove('is-open');
+        $('sheet-welcome').classList.remove('is-open');
         document.body.style.overflow = '';
         detail = null;
+        setActiveTab('menu');
     }
-    $('scrim').addEventListener('click', closeSheets);
+    $('scrim').addEventListener('click', function () { closeSheets(); });
+    $('welcome-go').addEventListener('click', submitWelcome);
+    // Enter on either field submits, the way a one-question form should.
+    ['welcome-name', 'welcome-phone'].forEach(function (id) {
+        $(id).addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); submitWelcome(); }
+        });
+        $(id).addEventListener('input', function () { $(id).classList.remove('invalid'); });
+    });
     Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) {
-        b.addEventListener('click', closeSheets);
+        b.addEventListener('click', function () { closeSheets(); });
     });
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') closeSheets();
@@ -1384,6 +1781,50 @@ img { max-width: 100%; display: block; }
         openSheet('sheet-cart');
     });
 
+    // ── Floating tab bar ──────────────────────────────────────────────────
+    //
+    // Menu and Keranjang are real destinations. Pesanan and Bantuan answer the
+    // two questions a seated diner asks after ordering, and both are answered
+    // honestly rather than opening an empty screen: this page has no order
+    // history (one open order per table IS the session) and no way to summon a
+    // waiter, so they say so instead of pretending.
+    document.querySelector('.tabbar').addEventListener('click', function (e) {
+        var tab = e.target.closest('.tab');
+        if (!tab || welcomeOpen()) return;
+        var which = tab.dataset.tab;
+
+        if (which === 'menu') {
+            closeSheets();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else if (which === 'cart') {
+            paintCart();
+            openSheet('sheet-cart');
+        } else if (which === 'orders') {
+            toast(cart.length
+                ? 'Pesanan Anda dikirim setelah Anda menekan Order Sekarang.'
+                : 'Belum ada pesanan. Pilih menu dulu, ya.');
+        } else {
+            toast('Panggil staf kami kalau butuh bantuan — mereka ada di dekat meja Anda.');
+        }
+        setActiveTab(which === 'cart' ? 'cart' : 'menu');
+    });
+
+    function setActiveTab(which) {
+        Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) {
+            t.setAttribute('aria-current', String(t.dataset.tab === which));
+        });
+    }
+
+    // A lightweight toast, because two of the four tabs answer with words.
+    var toastTimer = null;
+    function toast(msg) {
+        var el = $('toast');
+        el.textContent = msg;
+        el.classList.add('is-open');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { el.classList.remove('is-open'); }, 2600);
+    }
+
     // =====================================================================
     // Submit
     // =====================================================================
@@ -1393,17 +1834,14 @@ img { max-width: 100%; display: block; }
         $('cart-submit').disabled = true;
         $('cart-submit').querySelector('span').textContent = 'Mengirim…';
 
-        var nameEl = $('cust-name');
-        var phoneEl = $('cust-phone');
-
         fetch(FN + 'qr-order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 token: TOKEN,
                 client_ref: clientRef,
-                customer_name: nameEl ? nameEl.value : '',
-                customer_phone: phoneEl ? phoneEl.value : '',
+                customer_name: customer ? customer.name : '',
+                customer_phone: customer ? customer.phone : '',
                 lines: cart.map(function (l) {
                     return {
                         item_id: l.item_id,

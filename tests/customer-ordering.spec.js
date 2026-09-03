@@ -89,7 +89,20 @@ async function stub(page, { menuStatus = 200, capture = {} } = {}) {
 // plausible wrong number on a diner's phone.
 //
 // The query form exercised none of that. Drive what is printed on the card.
-const open = (page) => page.goto(`/t/${TOKEN}`);
+const goTo = (page) => page.goto(`/t/${TOKEN}`);
+
+// Load AND clear the identity gate. Almost every test needs the menu, and the
+// gate is deliberately not dismissible any other way — see the dedicated tests
+// below for the gate's own behaviour.
+async function open(page) {
+    await goTo(page);
+    const gate = page.locator('#sheet-welcome');
+    await expect(gate).toHaveClass(/is-open/, { timeout: 15_000 });
+    await page.locator('#welcome-name').fill('Sinta');
+    await page.locator('#welcome-phone').fill('0812 3456 7890');
+    await page.locator('#welcome-go').click();
+    await expect(gate).not.toHaveClass(/is-open/);
+}
 
 test.describe('QR customer ordering', () => {
     test.use({ viewport: { width: 390, height: 844 } });   // iPhone-sized, the real case
@@ -103,17 +116,17 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('#outlet-name')).toHaveText('Kopi Senja Kemang');
         await expect(page.locator('#table-label')).toHaveText('Meja A04');
 
-        await expect(page.locator('.row')).toHaveCount(3);
-        await expect(page.locator('.row-name').first()).toBeVisible();
+        await expect(page.locator('.card')).toHaveCount(3);
+        await expect(page.locator('.card-name').first()).toBeVisible();
 
         // Rp with NO space, dot thousands. The rule is stated in three docs and
         // the prototype this page came from got it wrong throughout.
-        await expect(page.locator('.row', { hasText: 'Americano' }).locator('.row-price'))
+        await expect(page.locator('.card', { hasText: 'Americano' }).locator('.card-price'))
             .toHaveText('Rp22.000');
 
         // Numbers must not be monospace — a monospace face renders a slashed
         // zero and is banned project-wide.
-        const family = await page.locator('.row-price').first()
+        const family = await page.locator('.card-price').first()
             .evaluate((el) => getComputedStyle(el).fontFamily.toLowerCase());
         expect(family).toContain('inter');
         expect(family).not.toContain('mono');
@@ -135,9 +148,9 @@ test.describe('QR customer ordering', () => {
         // Stated twice on purpose: the seam being present, and a rendered price
         // actually carrying the symbol. A future page could load the script and
         // still forget to route an amount through it.
-        await expect(page.locator('.row', { hasText: 'Americano' }).locator('.row-price'))
+        await expect(page.locator('.card', { hasText: 'Americano' }).locator('.card-price'))
             .toHaveText('Rp22.000');
-        const anyBare = await page.evaluate(() => [...document.querySelectorAll('.row-price')]
+        const anyBare = await page.evaluate(() => [...document.querySelectorAll('.card-price')]
             .some((el) => /^\s*\d+\s*$/.test(el.textContent)));
         expect(anyBare, 'a price rendered as a bare integer — the money seam is missing').toBe(false);
     });
@@ -154,9 +167,149 @@ test.describe('QR customer ordering', () => {
         });
         await stub(page);
         await open(page);
-        await expect(page.locator('.row').first()).toBeVisible();
+        await expect(page.locator('.card').first()).toBeVisible();
         expect(wrong, `asset(s) served as HTML by the /t/* rewrite:\n  ${wrong.join('\n  ')}`)
             .toEqual([]);
+    });
+
+    test('THE IDENTITY GATE BLOCKS ORDERING UNTIL IT IS FILLED', async ({ page }) => {
+        await stub(page);
+        await goTo(page);
+
+        const gate = page.locator('#sheet-welcome');
+        await expect(gate).toHaveClass(/is-open/, { timeout: 15_000 });
+        // Asked AFTER the menu paints. A form on a blank screen gives the diner
+        // nothing to judge the request against.
+        await expect(page.locator('.card').first()).toBeVisible();
+
+        // It is not dismissible by any of the usual routes.
+        await page.locator('#scrim').click({ position: { x: 10, y: 10 } });
+        await expect(gate).toHaveClass(/is-open/);
+        await page.keyboard.press('Escape');
+        await expect(gate).toHaveClass(/is-open/);
+
+        // Empty is refused, and says which field.
+        await page.locator('#welcome-go').click();
+        await expect(gate).toHaveClass(/is-open/);
+        await expect(page.locator('#welcome-error')).toContainText('nama');
+        await expect(page.locator('#welcome-name')).toHaveClass(/invalid/);
+
+        // A short number is refused too — nine digits is the shortest real
+        // Indonesian mobile.
+        await page.locator('#welcome-name').fill('Sinta');
+        await page.locator('#welcome-phone').fill('0812');
+        await page.locator('#welcome-go').click();
+        await expect(gate).toHaveClass(/is-open/);
+        await expect(page.locator('#welcome-phone')).toHaveClass(/invalid/);
+
+        // Digits are counted, not characters, so a formatted number passes.
+        await page.locator('#welcome-phone').fill('+62 812-3456-7890');
+        await page.locator('#welcome-go').click();
+        await expect(gate).not.toHaveClass(/is-open/);
+        await expect(page.locator('#cartbar')).not.toHaveClass(/is-open/);
+    });
+
+    test('a returning diner is not asked twice', async ({ page }) => {
+        await stub(page);
+        await open(page);                       // fills the gate
+        await page.reload();
+        await expect(page.locator('.card').first()).toBeVisible({ timeout: 15_000 });
+        // Same browser, same person — the second round goes straight to food.
+        await expect(page.locator('#sheet-welcome')).not.toHaveClass(/is-open/);
+
+        // And the identity still rides on the order.
+        await page.locator('.card', { hasText: 'Americano' }).getByRole('button', { name: 'Tambah' }).click();
+        await page.locator('#cart-open').click();
+        await expect(page.locator('#sheet-cart')).toContainText('Sinta');
+    });
+
+    test('the menu is a two-column grid', async ({ page }) => {
+        await stub(page);
+        await open(page);
+
+        const grid = page.locator('.grid').first();
+        await expect(grid).toBeVisible();
+        expect(await grid.evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length))
+            .toBe(2);
+
+        // Two cards per row means two cards sharing a top edge.
+        const boxes = await page.locator('.card').evaluateAll((els) =>
+            els.slice(0, 2).map((e) => Math.round(e.getBoundingClientRect().top)));
+        expect(boxes[0]).toBe(boxes[1]);
+
+        // Every media tile is 4:3 and identical, photo or placeholder. A square
+        // source image once stretched its tile and left the grid ragged —
+        // `height: 100%` in an aspect-ratio box resolves to auto.
+        const tiles = await page.locator('.card-media').evaluateAll((els) => els.map((e) => {
+            const r = e.getBoundingClientRect();
+            return { ratio: +(r.width / r.height).toFixed(2), h: Math.round(r.height) };
+        }));
+        tiles.forEach((t) => expect(t.ratio).toBeCloseTo(1.33, 1));
+        expect(new Set(tiles.map((t) => t.h)).size,
+            'media tiles are not all the same height — the grid will look ragged').toBe(1);
+    });
+
+    test('category tabs carry drawn icons, not emoji', async ({ page }) => {
+        await stub(page);
+        await open(page);
+
+        const tabs = page.locator('#chips .chip');
+        await expect(tabs).toHaveCount(3);                 // Semua + two categories
+        await expect(tabs.first()).toHaveAttribute('aria-pressed', 'true');
+
+        // Every tab has an inline SVG. Emoji are a per-device font lottery: the
+        // same category renders as a flat glyph on one Android, a 3D sticker on
+        // an iPhone, and a blank box on some.
+        for (let i = 0; i < 3; i += 1) {
+            await expect(tabs.nth(i).locator('.cat-ico svg')).toBeVisible();
+        }
+        const text = await page.locator('#chips').innerText();
+        expect(/\p{Extended_Pictographic}/u.test(text), 'an emoji reached the category rail').toBe(false);
+
+        // The icon is matched on keywords in the free-string category name —
+        // there is no category entity to key off. Kopi must not get the same
+        // glyph as Makanan.
+        const paths = await tabs.evaluateAll((els) =>
+            els.map((e) => e.querySelector('.cat-ico svg').innerHTML));
+        expect(new Set(paths).size, 'every category drew the same icon').toBe(3);
+    });
+
+    test('the floating tab bar sits clear of the bottom edge', async ({ page }) => {
+        await stub(page);
+        await open(page);
+
+        const bar = page.locator('.tabbar-inner');
+        await expect(bar).toBeVisible();
+        const box = await bar.boundingBox();
+        const vh = page.viewportSize().height;
+        // Detached, not pinned: the bottom edge is where the thumb rests and
+        // where iOS puts its home indicator, so a bar flush to it collects
+        // accidental taps.
+        expect(vh - (box.y + box.height)).toBeGreaterThan(6);
+        expect(await page.locator('.tab').count()).toBe(4);
+
+        // The cart badge counts, and only appears when there is something in it.
+        await expect(page.locator('#tab-cart-badge')).not.toHaveClass(/on/);
+        await page.locator('.card', { hasText: 'Americano' }).getByRole('button', { name: 'Tambah' }).click();
+        await expect(page.locator('#tab-cart-badge')).toHaveClass(/on/);
+        await expect(page.locator('#tab-cart-badge')).toHaveText('1');
+
+        // The cart bar floats ABOVE the tab bar — they must never overlap.
+        // Polled, because it SLIDES in over 240ms: measured immediately it is
+        // still below the fold and reports an overlap that is really a
+        // stopwatch reading.
+        await expect.poll(async () => {
+            const c = await page.locator('#cartbar button').boundingBox();
+            return Math.round((c.y + c.height) - box.y);
+        }, { timeout: 3_000 }).toBeLessThanOrEqual(1);
+
+        // Keranjang opens the cart; the two informational tabs answer honestly
+        // rather than opening an empty screen.
+        await page.locator('.tab[data-tab="cart"]').click();
+        await expect(page.locator('#sheet-cart')).toHaveClass(/is-open/);
+        await page.locator('#scrim').click({ position: { x: 10, y: 10 } });
+        await page.locator('.tab[data-tab="help"]').click();
+        await expect(page.locator('#toast')).toHaveClass(/is-open/);
     });
 
     test('the header is the business and the table, on one line', async ({ page }) => {
@@ -224,7 +377,7 @@ test.describe('QR customer ordering', () => {
             .toHaveAttribute('src', '/assets/images/favicon.svg');
 
         if (release) release();
-        await expect(page.locator('.row').first()).toBeVisible({ timeout: 15_000 });
+        await expect(page.locator('.card').first()).toBeVisible({ timeout: 15_000 });
         await expect(page.locator('#view-loading')).toBeHidden();
     });
 
@@ -233,7 +386,7 @@ test.describe('QR customer ordering', () => {
         await open(page);
         // No promo banner, no interstitial: chips, then food.
         const chips = await page.locator('#chips').boundingBox();
-        const firstRow = await page.locator('.row, .group-head').first().boundingBox();
+        const firstRow = await page.locator('.card, .group-head').first().boundingBox();
         expect(firstRow.y - (chips.y + chips.height)).toBeLessThan(60);
     });
 
@@ -241,7 +394,7 @@ test.describe('QR customer ordering', () => {
         await stub(page);
         await open(page);
 
-        const img = page.locator('.row', { hasText: 'Es Kopi Susu' }).locator('.thumb img');
+        const img = page.locator('.card', { hasText: 'Es Kopi Susu' }).locator('.card-media img');
         await expect(img).toBeVisible();
         // `contain`, matching the till exactly. `cover` crops the part of a dish
         // that identifies it, and the SAME photo appears on both surfaces — one
@@ -251,7 +404,7 @@ test.describe('QR customer ordering', () => {
         // An item with no photo gets a PLACEHOLDER tile, not nothing. A list
         // where only some rows have a tile reads as broken rather than as
         // incomplete: the names stop aligning and the eye loses the column.
-        const bare = page.locator('.row', { hasText: 'Americano' }).locator('.thumb');
+        const bare = page.locator('.card', { hasText: 'Americano' }).locator('.card-media');
         await expect(bare).toHaveCount(1);
         await expect(bare).toHaveClass(/is-placeholder/);
         await expect(bare.locator('svg')).toBeVisible();
@@ -270,14 +423,14 @@ test.describe('QR customer ordering', () => {
         await open(page);
 
         await page.locator('.chip', { hasText: 'Makanan' }).click();
-        await expect(page.locator('.row')).toHaveCount(1);
-        await expect(page.locator('.row-name')).toHaveText('Nasi Goreng Kampung');
+        await expect(page.locator('.card')).toHaveCount(1);
+        await expect(page.locator('.card-name')).toHaveText('Nasi Goreng Kampung');
 
         await page.locator('.chip', { hasText: 'Semua' }).click();
-        await expect(page.locator('.row')).toHaveCount(3);
+        await expect(page.locator('.card')).toHaveCount(3);
 
         await page.locator('#search').fill('nasi');
-        await expect(page.locator('.row')).toHaveCount(1);
+        await expect(page.locator('.card')).toHaveCount(1);
 
         await page.locator('#search').fill('zzz');
         await expect(page.locator('.empty')).toBeVisible();
@@ -287,16 +440,16 @@ test.describe('QR customer ordering', () => {
         await stub(page);
         await open(page);
 
-        await page.locator('.row', { hasText: 'Americano' }).getByRole('button', { name: 'Tambah' }).click();
+        await page.locator('.card', { hasText: 'Americano' }).getByRole('button', { name: 'Tambah' }).click();
 
         await expect(page.locator('#cartbar')).toHaveClass(/is-open/);
         await expect(page.locator('#cart-count')).toHaveText('1');
         await expect(page.locator('#cart-total')).toHaveText('Rp22.000');
 
         // The row becomes a stepper, so a second one does not need the sheet.
-        await page.locator('.row', { hasText: 'Americano' }).locator('[data-inc]').click();
+        await page.locator('.card', { hasText: 'Americano' }).locator('[data-inc]').click();
         await expect(page.locator('#cart-total')).toHaveText('Rp44.000');
-        await page.locator('.row', { hasText: 'Americano' }).locator('[data-dec]').click();
+        await page.locator('.card', { hasText: 'Americano' }).locator('[data-dec]').click();
         await expect(page.locator('#cart-total')).toHaveText('Rp22.000');
     });
 
@@ -304,7 +457,7 @@ test.describe('QR customer ordering', () => {
         await stub(page);
         await open(page);
 
-        await page.locator('.row', { hasText: 'Es Kopi Susu' }).getByRole('button', { name: 'Tambah' }).click();
+        await page.locator('.card', { hasText: 'Es Kopi Susu' }).getByRole('button', { name: 'Tambah' }).click();
         const sheet = page.locator('#sheet-item');
         await expect(sheet).toHaveClass(/is-open/);
 
@@ -349,8 +502,8 @@ test.describe('QR customer ordering', () => {
         await stub(page);
         await open(page);
 
-        await page.locator('.row', { hasText: 'Americano' }).getByRole('button', { name: 'Tambah' }).click();
-        await page.locator('.row', { hasText: 'Nasi Goreng' }).getByRole('button', { name: 'Tambah' }).click();
+        await page.locator('.card', { hasText: 'Americano' }).getByRole('button', { name: 'Tambah' }).click();
+        await page.locator('.card', { hasText: 'Nasi Goreng' }).getByRole('button', { name: 'Tambah' }).click();
         await page.locator('#cart-open').click();
 
         const cart = page.locator('#sheet-cart');
@@ -372,8 +525,8 @@ test.describe('QR customer ordering', () => {
         await open(page);
 
         // One plain item and one with two options, so the payload covers both.
-        await page.locator('.row', { hasText: 'Americano' }).getByRole('button', { name: 'Tambah' }).click();
-        await page.locator('.row', { hasText: 'Es Kopi Susu' }).getByRole('button', { name: 'Tambah' }).click();
+        await page.locator('.card', { hasText: 'Americano' }).getByRole('button', { name: 'Tambah' }).click();
+        await page.locator('.card', { hasText: 'Es Kopi Susu' }).getByRole('button', { name: 'Tambah' }).click();
         await page.locator('.opt', { hasText: 'Large' }).locator('input').check();
         await page.locator('.opt', { hasText: 'Extra shot' }).locator('input').check();
         // TYPING THE NOTE BEFORE THE TAP IS THE POINT, not incidental colour.
@@ -387,7 +540,9 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('#cart-count')).toHaveText('2');
 
         await page.locator('#cart-open').click();
-        await page.locator('#cust-name').fill('Sinta');
+        // The name is no longer typed here — the gate collected it before the
+        // first tap, and the cart only confirms who the order goes out under.
+        await expect(page.locator('#sheet-cart')).toContainText('Sinta');
         await expect(page.locator('#cart-submit')).toContainText('Order Sekarang');
         await page.locator('#cart-submit').click();
         await expect(page.locator('#view-done')).toBeVisible();
@@ -419,7 +574,7 @@ test.describe('QR customer ordering', () => {
         await stub(page);
         await open(page);
 
-        await page.locator('.row', { hasText: 'Americano' }).getByRole('button', { name: 'Tambah' }).click();
+        await page.locator('.card', { hasText: 'Americano' }).getByRole('button', { name: 'Tambah' }).click();
         await page.locator('#cart-open').click();
         await page.locator('#cart-submit').click();
 
@@ -435,9 +590,12 @@ test.describe('QR customer ordering', () => {
 
     test('a dead token says so instead of showing an empty menu', async ({ page }) => {
         await stub(page, { menuStatus: 404 });
-        await open(page);
+        // `goTo`, not `open` — a dead token never reaches a menu, so the
+        // identity gate correctly never opens and there is nothing to fill.
+        await goTo(page);
 
         await expect(page.locator('#view-error')).toBeVisible();
+        await expect(page.locator('#sheet-welcome')).not.toHaveClass(/is-open/);
         await expect(page.locator('#view-menu')).toBeHidden();
         await expect(page.locator('#error-title')).toHaveText('Kode ini tidak aktif');
     });
@@ -455,7 +613,7 @@ test.describe('QR customer ordering', () => {
         page.on('request', (r) => requested.push(r.url()));
         await stub(page);
         await open(page);
-        await expect(page.locator('.row').first()).toBeVisible();
+        await expect(page.locator('.card').first()).toBeVisible();
 
         // Both are deliberate absences with a documented reason, and both are
         // the kind of thing a later "just add the SDK" edit would reintroduce
@@ -472,7 +630,7 @@ test.describe('QR customer ordering', () => {
 
         await stub(page);
         await open(page);
-        await page.locator('.row', { hasText: 'Es Kopi Susu' }).getByRole('button', { name: 'Tambah' }).click();
+        await page.locator('.card', { hasText: 'Es Kopi Susu' }).getByRole('button', { name: 'Tambah' }).click();
         await page.locator('.opt', { hasText: 'Large' }).locator('input').check();
         await page.locator('#item-add').click();
         await page.locator('#cart-open').click();
