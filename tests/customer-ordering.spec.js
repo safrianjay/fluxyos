@@ -241,7 +241,7 @@ test.describe('QR customer ordering', () => {
         // And the identity still rides on the order.
         await addPlain(page, 'Americano');
         await page.locator('#cart-open').click();
-        await expect(page.locator('#sheet-cart')).toContainText('Sinta');
+        await expect(page.locator('#view-cart')).toContainText('Sinta');
     });
 
     test('the menu is a two-column grid', async ({ page }) => {
@@ -573,7 +573,7 @@ test.describe('QR customer ordering', () => {
 
         // The note rides on the line.
         await page.locator('#cart-open').click();
-        await expect(page.locator('#sheet-cart')).toContainText('tanpa es');
+        await expect(page.locator('#view-cart')).toContainText('tanpa es');
     });
 
     test('the card has no stepper — quantity is edited in the cart', async ({ page }) => {
@@ -595,9 +595,90 @@ test.describe('QR customer ordering', () => {
 
         // Quantity lives in the cart, where each line is visible.
         await page.locator('#cart-open').click();
-        await page.locator('#sheet-cart [data-cinc]').first().click();
+        await page.locator('#cart-lines [data-cinc]').first().click();
         await expect(page.locator('#cart-count')).toHaveText('2');
-        await expect(page.locator('#sheet-cart .cartline')).toHaveCount(1);
+        await expect(page.locator('#cart-lines .cartline')).toHaveCount(1);
+    });
+
+    test('LIHAT PESANAN OPENS A PAGE, NOT A BOTTOM SHEET', async ({ page }) => {
+        await stub(page);
+        await open(page);
+        await addPlain(page, 'Americano');
+        await addPlain(page, 'Nasi Goreng');
+
+        await page.locator('#cart-open').click();
+        await expect(page.locator('#view-cart')).toBeVisible();
+        // The sheet it replaced is gone from the document entirely.
+        await expect(page.locator('#sheet-cart')).toHaveCount(0);
+        // A real screen: the menu behind it is not showing through.
+        await expect(page.locator('#view-menu')).toBeHidden();
+
+        // Its own header, with a way back.
+        await expect(page.locator('#cart-outlet')).toHaveText('Kopi Senja Kemang');
+        await expect(page.locator('#cart-table')).toHaveText('Meja A04');
+
+        // Floating chrome stands down: the CTA is already pinned to the bottom,
+        // and a cart bar over it would be the same action twice.
+        await expect(page.locator('.tabbar')).toBeHidden();
+        await expect(page.locator('#cartbar')).not.toHaveClass(/is-open/);
+
+        await expect(page.locator('#cart-lines .cartline')).toHaveCount(2);
+        await expect(page.locator('#cart-totals .grand .num')).toHaveText('Rp67.000');
+        await expect(page.locator('#cart-who')).toContainText('Sinta');
+
+        // It has a history entry, so the phone's own back gesture returns to
+        // the menu instead of leaving the restaurant's page altogether.
+        expect(new URL(page.url()).hash).toBe('#pesanan');
+        await page.goBack();
+        await expect(page.locator('#view-menu')).toBeVisible();
+        // …and the cart bar is still there, with the cart still in it. show()
+        // strips it on any non-menu view and only paintCart() puts it back.
+        await expect(page.locator('#cartbar')).toHaveClass(/is-open/);
+        await expect(page.locator('#cart-count')).toHaveText('2');
+    });
+
+    test('the order page carries the extras a review screen needs', async ({ page }) => {
+        const capture = {};
+        await stub(page, { capture });
+        await open(page);
+        await addPlain(page, 'Nasi Goreng');
+        await page.locator('#cart-open').click();
+
+        // "Lengkapi pesanan Anda" suggests from categories the cart does NOT
+        // already contain — a drink to someone who ordered food, rather than a
+        // fourth variation of what they just picked.
+        const rail = page.locator('#cart-suggest .suggest');
+        expect(await rail.count()).toBeGreaterThan(0);
+        await expect(rail.first()).not.toContainText('Nasi Goreng');
+        await rail.first().click();
+        await expect(page.locator('#cart-lines .cartline')).toHaveCount(2);
+
+        // The note is behind a toggle rather than occupying the panel with an
+        // empty box most orders never use.
+        await expect(page.locator('#cart-note')).toBeHidden();
+        await page.locator('#cart-note-toggle').click();
+        await expect(page.locator('#cart-note')).toBeVisible();
+        await page.locator('#cart-note').fill('pedas sedang');
+
+        // Cutlery is folded into the note on submit — pos_orders has no cutlery
+        // field, and the note is the only thing the kitchen reads.
+        await page.locator('#cart-cutlery').check();
+        await page.locator('#cart-submit').click();
+        await expect(page.locator('#view-done')).toBeVisible();
+        expect(capture.body.note).toBe('pedas sedang · Tanpa sendok garpu');
+    });
+
+    test('emptying the cart returns to the menu', async ({ page }) => {
+        await stub(page);
+        await open(page);
+        await addPlain(page, 'Americano');
+        await page.locator('#cart-open').click();
+        await expect(page.locator('#view-cart')).toBeVisible();
+        await page.locator('#cart-lines [data-cdec]').first().click();
+        // There is nothing left to review, so the page steps aside rather than
+        // sitting there empty.
+        await expect(page.locator('#view-menu')).toBeVisible();
+        await expect(page.locator('#cartbar')).not.toHaveClass(/is-open/);
     });
 
     test('the option sheet is laid out correctly and priced live', async ({ page }) => {
@@ -653,17 +734,17 @@ test.describe('QR customer ordering', () => {
         await addPlain(page, 'Nasi Goreng');
         await page.locator('#cart-open').click();
 
-        const cart = page.locator('#sheet-cart');
-        await expect(cart).toHaveClass(/is-open/);
-        await expect(cart.locator('.cartline')).toHaveCount(2);
-        await expect(cart.locator('.totals .grand .num')).toHaveText('Rp67.000');
+        const cart = page.locator('#view-cart');
+        await expect(cart).toBeVisible();
+        await expect(cart.locator('#cart-lines .cartline')).toHaveCount(2);
+        await expect(page.locator('#cart-totals .grand .num')).toHaveText('Rp67.000');
 
-        await cart.locator('[data-cinc]').first().click();
-        await expect(cart.locator('.totals .grand .num')).toHaveText('Rp89.000');
-        await cart.locator('[data-cdec]').first().click();
-        await cart.locator('[data-cdec]').first().click();
-        await expect(cart.locator('.cartline')).toHaveCount(1);
-        await expect(cart.locator('.totals .grand .num')).toHaveText('Rp45.000');
+        await page.locator('#cart-lines [data-cinc]').first().click();
+        await expect(page.locator('#cart-totals .grand .num')).toHaveText('Rp89.000');
+        await page.locator('#cart-lines [data-cdec]').first().click();
+        await page.locator('#cart-lines [data-cdec]').first().click();
+        await expect(cart.locator('#cart-lines .cartline')).toHaveCount(1);
+        await expect(page.locator('#cart-totals .grand .num')).toHaveText('Rp45.000');
     });
 
     test('THE BROWSER SENDS NO PRICES — only ids and quantities', async ({ page }) => {
@@ -690,11 +771,12 @@ test.describe('QR customer ordering', () => {
         await page.locator('#cart-open').click();
         // The name is no longer typed here — the gate collected it before the
         // first tap, and the cart only confirms who the order goes out under.
-        await expect(page.locator('#sheet-cart')).toContainText('Sinta');
+        await expect(page.locator('#view-cart')).toContainText('Sinta');
         // TYPED AND SUBMITTED WITH NOTHING IN BETWEEN. The note used to be read
         // only when paintCart() re-ran, so a note written just before tapping
         // was dropped and the order posted without it — no error, the kitchen
         // simply never saw the request.
+        await page.locator('#cart-note-toggle').click();
         await page.locator('#cart-note').fill('sendok garpu 2');
         await expect(page.locator('#cart-submit')).toContainText('Order Sekarang');
         await page.locator('#cart-submit').click();

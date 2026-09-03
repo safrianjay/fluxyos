@@ -505,13 +505,14 @@ img { max-width: 100%; display: block; }
 .add-btn:active { background: var(--line-soft); }
 
 .stepper {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: space-between;
     border: 1px solid var(--ink);
     border-radius: 10px;
     overflow: hidden;
     height: 34px;
+    min-width: 108px;
 }
 .stepper button {
     width: 34px; height: 100%;
@@ -537,6 +538,175 @@ img { max-width: 100%; display: block; }
     text-align: center;
     color: var(--ink-50);
     font-size: 14px;
+}
+
+/* ==========================================================================
+   Order detail page
+   ==========================================================================
+   Its own view, with the shape of a real screen: a header with a back control,
+   a scrolling body of panels, and a CTA pinned to the bottom. Modelled on the
+   reference cart screen — line items and their actions in one card, an upsell
+   rail in the next, totals in the last. */
+#view-cart {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    background: var(--canvas);
+}
+
+.page-head {
+    flex: 0 0 auto;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+}
+.page-back {
+    flex: 0 0 auto;
+    width: 36px; height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: var(--line-soft);
+    color: var(--ink);
+    display: flex; align-items: center; justify-content: center;
+}
+.page-back svg { width: 20px; height: 20px; }
+.page-title { min-width: 0; }
+.page-title h1 {
+    font-size: 17px; font-weight: 700; letter-spacing: -0.02em; margin: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.page-title p { font-size: 12px; color: var(--ink-50); margin: 1px 0 0; }
+
+.page-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 14px 16px 24px;
+}
+
+.panel {
+    background: var(--surface);
+    border: 1px solid var(--line-soft);
+    border-radius: 18px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 10px -6px rgba(11, 15, 25, 0.10);
+}
+.panel-title {
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink-50);
+    margin: 0 0 12px;
+}
+
+/* The action row under the lines: add more, leave a note, skip the cutlery —
+   the three things someone does on a review screen that are not "change the
+   quantity". */
+.panel-actions {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-top: 12px;
+    margin-top: 4px;
+    border-top: 1px solid var(--line-soft);
+}
+.panel-actions::-webkit-scrollbar { display: none; }
+.chip-action {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 13px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink-70);
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.chip-action svg { width: 15px; height: 15px; }
+.chip-action input { width: 16px; height: 16px; accent-color: var(--ink); margin: 0; }
+.chip-action.is-on { border-color: var(--ink); color: var(--ink); }
+#cart-note-wrap { padding-top: 12px; }
+
+/* ---- Upsell rail ------------------------------------------------------- */
+.suggest-rail {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+}
+.suggest-rail::-webkit-scrollbar { display: none; }
+.suggest {
+    flex: 0 0 auto;
+    width: 108px;
+    border: none;
+    background: none;
+    padding: 0;
+    text-align: left;
+    color: inherit;
+}
+.suggest-media {
+    width: 108px;
+    aspect-ratio: 1 / 1;
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+    background: var(--tint, var(--line-soft));
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 7px;
+}
+.suggest-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.suggest-media svg { width: 26px; height: 26px; color: rgba(11, 15, 25, 0.28); }
+.suggest-add {
+    position: absolute;
+    right: 5px; top: 5px;
+    width: 26px; height: 26px;
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 700; line-height: 1;
+    box-shadow: 0 2px 6px -2px rgba(11, 15, 25, 0.25);
+}
+.suggest-name {
+    font-size: 12px; font-weight: 500; line-height: 1.3;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; min-height: 2.6em;
+}
+.suggest-price { font-size: 12.5px; font-weight: 700; margin-top: 2px; }
+
+.who {
+    display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+    padding: 11px 14px;
+    border-radius: var(--r-md);
+    background: var(--surface);
+    border: 1px solid var(--line-soft);
+    font-size: 13px;
+    color: var(--ink-50);
+}
+.who strong { color: var(--ink); font-weight: 600; }
+
+.page-foot {
+    flex: 0 0 auto;
+    padding: 12px 16px calc(14px + var(--safe-bottom));
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -6px 20px -14px rgba(11, 15, 25, 0.35);
 }
 
 /* ==========================================================================
@@ -993,21 +1163,6 @@ img { max-width: 100%; display: block; }
 }
 .toast.is-open { opacity: 1; transform: translateY(0); }
 
-.cart-who {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-top: 16px;
-    padding: 11px 13px;
-    border-radius: var(--r-md);
-    background: var(--canvas);
-    border: 1px solid var(--line);
-    font-size: 13px;
-    color: var(--ink-50);
-}
-.cart-who strong { color: var(--ink); font-weight: 600; }
-
 .notice {
     padding: 11px 13px;
     border-radius: var(--r-md);
@@ -1086,6 +1241,66 @@ img { max-width: 100%; display: block; }
              card is never trapped under either. Derived from --tabbar-space so
              the three cannot disagree about where the page ends. -->
         <div style="height: calc(var(--tabbar-space) + 78px)"></div>
+    </section>
+
+    <!-- ── Order detail ──────────────────────────────────────────────────
+         A PAGE, not a bottom sheet. Reviewing an order is not a glance — it is
+         where quantities change, a request gets typed and a total gets checked
+         before committing, and a sheet covering the menu it was built from is
+         the wrong container for that. It also gives the back gesture something
+         real to return to. -->
+    <section id="view-cart" class="hidden">
+        <header class="page-head">
+            <button class="page-back" type="button" id="cart-back" aria-label="Kembali ke menu">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <div class="page-title">
+                <h1 id="cart-outlet">—</h1>
+                <p id="cart-table">—</p>
+            </div>
+        </header>
+
+        <div class="page-body">
+            <div class="panel">
+                <div id="cart-lines"></div>
+                <div class="panel-actions">
+                    <button type="button" class="chip-action" id="cart-add-more">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                        Tambah menu
+                    </button>
+                    <button type="button" class="chip-action" id="cart-note-toggle">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                        Catatan dapur
+                    </button>
+                    <label class="chip-action" id="cart-cutlery-wrap">
+                        <input type="checkbox" id="cart-cutlery">
+                        Tanpa sendok garpu
+                    </label>
+                </div>
+                <div id="cart-note-wrap" hidden>
+                    <textarea id="cart-note" class="note-input" maxlength="200" rows="2"
+                        placeholder="Contoh: jangan pakai es, pedas sedang"></textarea>
+                </div>
+            </div>
+
+            <div class="panel" id="cart-suggest-panel" hidden>
+                <h2 class="panel-title">Lengkapi pesanan Anda</h2>
+                <div class="suggest-rail" id="cart-suggest"></div>
+            </div>
+
+            <div class="panel">
+                <div class="totals" id="cart-totals"></div>
+            </div>
+
+            <div class="who" id="cart-who"></div>
+            <div id="cart-notice"></div>
+        </div>
+
+        <div class="page-foot">
+            <button class="primary" id="cart-submit" type="button">
+                <span>Order Sekarang</span><span class="num" id="cart-submit-total"></span>
+            </button>
+        </div>
     </section>
 
     <!-- Order placed ----------------------------------------------------- -->
@@ -1202,24 +1417,6 @@ img { max-width: 100%; display: block; }
     <div class="sheet-foot">
         <button class="primary" id="item-add" type="button">
             <span>Tambah</span><span class="num" id="item-add-total"></span>
-        </button>
-    </div>
-</div>
-
-<!-- Cart sheet ----------------------------------------------------------- -->
-<div id="sheet-cart" class="sheet" role="dialog" aria-modal="true" aria-labelledby="cart-title">
-    <div class="sheet-grip"></div>
-    <div class="sheet-head">
-        <div>
-            <h2 class="sheet-title" id="cart-title">Pesanan Anda</h2>
-            <p class="sheet-sub" id="cart-sub">—</p>
-        </div>
-        <button class="sheet-close" type="button" data-close aria-label="Tutup">✕</button>
-    </div>
-    <div class="sheet-body" id="cart-body"></div>
-    <div class="sheet-foot">
-        <button class="primary" id="cart-submit" type="button">
-            <span>Order Sekarang</span><span class="num" id="cart-submit-total"></span>
         </button>
     </div>
 </div>
@@ -1553,12 +1750,16 @@ img { max-width: 100%; display: block; }
     }
 
     function show(view) {
-        ['loading', 'error', 'menu', 'done'].forEach(function (v) {
+        ['loading', 'error', 'menu', 'cart', 'done'].forEach(function (v) {
             $('view-' + v).classList.toggle('hidden', v !== view);
         });
-        // The cart bar belongs to the menu view only — it must not hover over
-        // the confirmation screen offering to re-send an order already sent.
+        // The floating chrome belongs to the menu only. On the order page the
+        // CTA is already pinned to the bottom, and a cart bar hovering over it
+        // would be the same action twice; on the confirmation screen it would
+        // offer to re-send an order that has already gone.
         if (view !== 'menu') $('cartbar').classList.remove('is-open');
+        document.querySelector('.tabbar').hidden = (view !== 'menu');
+        if (view === 'cart' || view === 'menu') window.scrollTo(0, 0);
     }
 
     function die(title, body) {
@@ -1932,37 +2133,42 @@ img { max-width: 100%; display: block; }
     }
 
     var cartNote = '';
+    var noCutlery = false;
 
     function paintCart() {
-        // Read back before the repaint wipes the field. A "+" tap re-renders
-        // this whole sheet, and losing what someone typed mid-sentence is the
-        // kind of thing nobody reports and everybody notices.
+        // Read the field back before a repaint wipes it. A "+" tap re-renders
+        // the lines, and losing what someone typed mid-sentence is the kind of
+        // thing nobody reports and everybody notices.
         var noteEl = $('cart-note');
         if (noteEl) cartNote = String(noteEl.value || '');
 
         var count = cartCount();
         var total = cartTotal();
+
+        // The floating bar on the MENU still summarises; the page it opens is
+        // where the detail lives.
         setText($('cart-count'), String(count));
         setText($('cart-total'), money(total));
-        $('cartbar').classList.toggle('is-open', count > 0);
+        $('cartbar').classList.toggle('is-open', count > 0 && !$('view-menu').classList.contains('hidden'));
 
-        setText($('cart-sub'), menu && menu.table ? ('Meja ' + menu.table) : '');
-        // Same guard as the detail sheet, for the same reason: this is a span
-        // inside a button, and the button is tapped right after typing a name.
+        setText($('cart-outlet'), (menu && menu.outlet) || '');
+        setText($('cart-table'), menu && menu.table ? ('Meja ' + menu.table) : '');
         setText($('cart-submit-total'), money(total));
         setDisabled($('cart-submit'), count === 0 || submitting);
 
         if (!count) {
-            $('cart-body').innerHTML = '<div class="empty">Belum ada pesanan.</div>';
+            $('cart-lines').innerHTML = '<div class="empty">Belum ada pesanan.</div>';
+            $('cart-totals').innerHTML = '';
+            $('cart-who').innerHTML = '';
+            $('cart-suggest-panel').hidden = true;
             return;
         }
 
-        var html = '';
-        cart.forEach(function (l, idx) {
+        $('cart-lines').innerHTML = cart.map(function (l, idx) {
             var meta = [];
             if (l.optionNames.length) meta.push(l.optionNames.join(', '));
             if (l.note) meta.push('“' + l.note + '”');
-            html += '<div class="cartline">'
+            return '<div class="cartline">'
                 + '<div class="cartline-body">'
                 + '<div class="cartline-name">' + esc(l.name) + '</div>'
                 + (meta.length ? '<div class="cartline-meta">' + esc(meta.join(' • ')) + '</div>' : '')
@@ -1971,35 +2177,26 @@ img { max-width: 100%; display: block; }
                 + '<div class="cartline-price num">'
                 + esc(money(l.qty * (l.unit_price + l.modAmount))) + '</div>'
                 + '</div>';
-        });
+        }).join('');
 
-        html += '<div class="totals">'
-            + '<div class="line grand"><span>Total</span>'
-            + '<span class="num">' + esc(money(total)) + '</span></div>'
-            + '</div>';
+        $('cart-totals').innerHTML =
+            '<div class="line"><span>Subtotal</span><span class="num">' + esc(money(total)) + '</span></div>'
+            + '<div class="line grand"><span>Total</span><span class="num">' + esc(money(total)) + '</span></div>';
 
-        // Identity is captured once by the gate before the first order, so this
-        // sheet no longer asks for it — it just shows who the order is going
-        // out under, which is the part worth confirming before committing.
-        if (customer) {
-            html += '<div class="cart-who">'
-                + '<span>Pesanan atas nama</span>'
-                + '<strong>' + esc(customer.name) + '</strong>'
+        // Identity was captured once by the gate; this confirms who the order
+        // goes out under rather than asking again.
+        $('cart-who').innerHTML = customer
+            ? '<span>Pesanan atas nama</span><strong>' + esc(customer.name) + '</strong>'
                 + (customer.phone ? '<span class="num">' + esc(customer.phone) + '</span>' : '')
-                + '</div>';
-        }
-        // An order-level request. Line notes already exist ("tidak pedas" on one
-        // dish); this is the one that applies to the whole ticket.
-        html += '<div class="field" style="margin-top:16px">'
-            + '<label for="cart-note">Catatan untuk dapur <span class="hint">— opsional</span></label>'
-            + '<textarea id="cart-note" class="note-input" maxlength="200" rows="2"'
-            + ' placeholder="Contoh: sendok garpu 2, jangan pakai es">'
-            + esc(cartNote) + '</textarea></div>';
-        html += '<div id="cart-notice"></div>';
+            : '';
 
-        $('cart-body').innerHTML = html;
+        paintSuggestions();
     }
 
+    // The only stepper left in the product. It was removed from the menu cards
+    // when items gained notes — the same product can sit in the cart several
+    // ways, and a card "+" could only ever bump one of them. Here each line is
+    // addressed by index, so there is nothing to guess.
     function cartStepper(idx, qty) {
         return '<div class="stepper">'
             + '<button type="button" data-cdec="' + idx + '" aria-label="Kurangi">−</button>'
@@ -2008,7 +2205,45 @@ img { max-width: 100%; display: block; }
             + '</div>';
     }
 
-    $('cart-body').addEventListener('click', function (e) {
+    /**
+     * "Lengkapi pesanan Anda" — the upsell rail from the reference.
+     *
+     * Drawn from categories the cart does NOT already contain, so it suggests a
+     * drink to someone who ordered food rather than a fourth variation of what
+     * they just picked. Falls back to anything not in the cart when that turns
+     * up nothing.
+     */
+    function paintSuggestions() {
+        var inCart = {};
+        cart.forEach(function (l) { inCart[l.item_id] = true; });
+        var cartCats = {};
+        cart.forEach(function (l) {
+            var it = itemById(l.item_id);
+            if (it && it.category) cartCats[it.category] = true;
+        });
+
+        var pool = menu.items.filter(function (i) { return !inCart[i.id]; });
+        var other = pool.filter(function (i) { return !i.category || !cartCats[i.category]; });
+        var picks = (other.length ? other : pool).slice(0, 8);
+
+        $('cart-suggest-panel').hidden = picks.length === 0;
+        if (!picks.length) return;
+
+        $('cart-suggest').innerHTML = picks.map(function (i) {
+            var media = i.has_image
+                ? '<img loading="lazy" decoding="async" alt="" src="' + FN + 'qr-menu-image?token='
+                    + encodeURIComponent(TOKEN) + '&item=' + encodeURIComponent(i.id) + '">'
+                : PLACEHOLDER;
+            return '<button class="suggest" type="button" data-suggest="' + esc(i.id) + '">'
+                + '<span class="suggest-media" style="--tint:' + categoryTint(i.category) + '">'
+                + media + '<span class="suggest-add">+</span></span>'
+                + '<span class="suggest-name">' + esc(i.name) + '</span>'
+                + '<span class="suggest-price num">' + esc(money(i.price)) + '</span>'
+                + '</button>';
+        }).join('');
+    }
+
+    $('cart-lines').addEventListener('click', function (e) {
         var inc = e.target.closest('[data-cinc]');
         var dec = e.target.closest('[data-cdec]');
         if (!inc && !dec) return;
@@ -2018,7 +2253,19 @@ img { max-width: 100%; display: block; }
         if (cart[idx].qty <= 0) cart.splice(idx, 1);
         paintCart();
         paintMenu();
-        if (!cart.length) closeSheets();
+        // An emptied cart has nothing left to review.
+        if (!cart.length) goMenu();
+    });
+
+    $('cart-suggest').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-suggest]');
+        if (!b) return;
+        // Straight into the cart, no sheet: the rail is a one-tap add by
+        // design, and the item is already visible with its price. A note can
+        // still be added from the menu card.
+        addToCart(itemById(b.dataset.suggest), [], '', 1);
+        paintCart();
+        paintMenu();
     });
 
     // =====================================================================
@@ -2036,7 +2283,6 @@ img { max-width: 100%; display: block; }
         if (welcomeOpen() && !(opts && opts.force)) return;
         $('scrim').classList.remove('is-open');
         $('sheet-item').classList.remove('is-open');
-        $('sheet-cart').classList.remove('is-open');
         $('sheet-welcome').classList.remove('is-open');
         $('sheet-orders').classList.remove('is-open');
         document.body.style.overflow = '';
@@ -2059,9 +2305,62 @@ img { max-width: 100%; display: block; }
         if (e.key === 'Escape') closeSheets();
     });
 
-    $('cart-open').addEventListener('click', function () {
+    // ── Navigating to and from the order page ─────────────────────────────
+    //
+    // A hash, so the phone's own back gesture returns to the menu instead of
+    // leaving the restaurant's page entirely — which is what a full-screen view
+    // with no history entry would have done.
+    function goCart() {
+        closeSheets();
         paintCart();
-        openSheet('sheet-cart');
+        show('cart');
+        if (window.location.hash !== '#pesanan') {
+            try { window.history.pushState(null, '', '#pesanan'); } catch (_) { /* file:// */ }
+        }
+    }
+
+    function goMenu() {
+        show('menu');
+        paintCart();
+        if (window.location.hash === '#pesanan') {
+            try { window.history.back(); } catch (_) { window.location.hash = ''; }
+        }
+    }
+
+    window.addEventListener('popstate', function () {
+        // Only meaningful once the menu is up; during boot the gate owns the
+        // screen and there is nothing to navigate between.
+        if ($('view-menu').classList.contains('hidden')
+            && $('view-cart').classList.contains('hidden')) return;
+        if (window.location.hash === '#pesanan') { paintCart(); show('cart'); }
+        else {
+            // paintCart() AFTER show(), because show() strips the cart bar on
+            // any non-menu view and only paintCart() puts it back. Without this
+            // the hardware back gesture returned to a menu with a full cart and
+            // no way to reach it.
+            show('menu');
+            paintCart();
+        }
+    });
+
+    $('cart-open').addEventListener('click', goCart);
+    $('cart-back').addEventListener('click', goMenu);
+    $('cart-add-more').addEventListener('click', goMenu);
+
+    // "Catatan dapur" reveals the field rather than occupying the panel with an
+    // empty box most orders never use.
+    $('cart-note-toggle').addEventListener('click', function () {
+        var wrap = $('cart-note-wrap');
+        wrap.hidden = !wrap.hidden;
+        $('cart-note-toggle').classList.toggle('is-on', !wrap.hidden);
+        if (!wrap.hidden) $('cart-note').focus();
+    });
+
+    // Cutlery is a request, not a field of its own: it is folded into the note
+    // on submit, because that is the only thing the kitchen actually reads.
+    $('cart-cutlery').addEventListener('change', function (e) {
+        noCutlery = !!e.target.checked;
+        $('cart-cutlery-wrap').classList.toggle('is-on', noCutlery);
     });
 
     // ── Floating tab bar ──────────────────────────────────────────────────
@@ -2074,7 +2373,7 @@ img { max-width: 100%; display: block; }
         if (!tab || welcomeOpen()) return;
         if (tab.dataset.tab === 'menu') {
             closeSheets();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            goMenu();
             setActiveTab('menu');
         } else {
             openOrders();
@@ -2244,6 +2543,11 @@ img { max-width: 100%; display: block; }
         // the kitchen just never saw the request.
         var noteEl = $('cart-note');
         if (noteEl) cartNote = String(noteEl.value || '');
+        // Folded in here rather than carried as its own field: `pos_orders` has
+        // no cutlery flag, and the note is the only thing the kitchen reads.
+        var outgoingNote = noCutlery
+            ? (cartNote ? cartNote + ' · Tanpa sendok garpu' : 'Tanpa sendok garpu').slice(0, 200)
+            : cartNote;
 
         submitting = true;
         var btn = $('cart-submit');
@@ -2264,7 +2568,7 @@ img { max-width: 100%; display: block; }
                 client_ref: clientRef,
                 customer_name: customer ? customer.name : '',
                 customer_phone: customer ? customer.phone : '',
-                note: cartNote,
+                note: outgoingNote,
                 lines: cart.map(function (l) {
                     return {
                         item_id: l.item_id,
@@ -2284,6 +2588,11 @@ img { max-width: 100%; display: block; }
                     : 'Dapur sudah menerima pesanan Anda.';
                 cart = [];
                 cartNote = '';
+                noCutlery = false;
+                $('cart-cutlery').checked = false;
+                $('cart-cutlery-wrap').classList.remove('is-on');
+                $('cart-note-wrap').hidden = true;
+                $('cart-note-toggle').classList.remove('is-on');
                 // A new ref for the next order, or a second round would be
                 // deduplicated against the first and silently do nothing.
                 clientRef = newRef();
