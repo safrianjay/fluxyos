@@ -1399,7 +1399,10 @@ img { max-width: 100%; display: block; }
 .welcome-art.has-asset img {
     width: 100%;
     max-width: 300px;
-    max-height: 170px;
+    /* 200, not 170: the artwork is 3:2, so a 170px cap letterboxed it to 255px
+       wide and left the slot's last 45px empty. The hero is hidden while the
+       keyboard is up, so the extra 30px never competes with the fields. */
+    max-height: 200px;
     height: auto;
     object-fit: contain;
 }
@@ -1907,8 +1910,11 @@ html.kb-open .welcome-art { display: none; }
          categories and hidden when it has too few to compose with — an empty
          118px stage is a hole, not a hero. -->
     <!-- data-src: the supplied illustration, ABSOLUTE path, empty until one
-         ships. Set it and the artwork replaces the card stack below. -->
-    <div class="welcome-art" id="welcome-art" data-src="" aria-hidden="true" hidden></div>
+         ships. Set it and the artwork replaces the card stack below.
+         WebP at 768x512 / 36KB — the source was a 1.4MB 1536x1024 PNG, which
+         is ~40x what this page can spend on a picture over restaurant wifi. -->
+    <div class="welcome-art" id="welcome-art"
+         data-src="/assets/images/order-welcome.webp" aria-hidden="true" hidden></div>
     <div class="sheet-body">
         <div class="field" id="welcome-name-field">
             <label for="welcome-name">Nama</label>
@@ -2356,15 +2362,27 @@ html.kb-open .welcome-art { display: none; }
      * host's `prefers-reduced-motion`, so an animated asset can quiet itself.
      * A GIF or APNG cannot.
      */
+    var welcomeAssetFailed = false;
+
     function paintWelcomeArt() {
         var host = $('welcome-art');
         if (!host) return;
 
         var asset = String(host.dataset.src || '').trim();
-        if (asset) {
+        if (asset && !welcomeAssetFailed) {
             host.classList.add('has-asset');
             host.innerHTML = '<img alt="" decoding="async" src="' + esc(asset) + '">';
             host.hidden = false;
+            // ⚠️ A DECLARED ASSET THAT DOES NOT DECODE MUST FALL BACK. A typo
+            // in the path, a format the browser will not read, a file that
+            // never deployed — any of them would otherwise leave a broken-image
+            // box where the hero should be, and say nothing about why. One
+            // attempt, then the card stack, which was always a complete design
+            // rather than a placeholder.
+            host.querySelector('img').addEventListener('error', function () {
+                welcomeAssetFailed = true;
+                paintWelcomeArt();
+            });
             return;
         }
         host.classList.remove('has-asset');

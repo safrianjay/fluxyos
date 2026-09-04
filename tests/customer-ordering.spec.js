@@ -279,6 +279,14 @@ test.describe('QR customer ordering', () => {
         // wifi, and it cannot look like stock art. A hand-drawn SVG food scene
         // was tried here and cut for looking exactly like stock art.
         await stub(page);
+        // Artwork ships for this outlet, so undeclare it — the card stack is
+        // what every outlet without one gets, and it has to stand on its own.
+        await page.addInitScript(() => {
+            document.addEventListener('DOMContentLoaded', () => {
+                const el = document.getElementById('welcome-art');
+                if (el) el.dataset.src = '';
+            });
+        });
         await goTo(page);
         await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/, { timeout: 15_000 });
 
@@ -330,6 +338,15 @@ test.describe('QR customer ordering', () => {
             asked.push(new URL(route.request().url()).pathname);
             return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: ART_SVG });
         });
+        // Artwork now ships, so undeclare it — this test is about the outlet
+        // that has none, which is what every other outlet is until one is made
+        // for it.
+        await page.addInitScript(() => {
+            document.addEventListener('DOMContentLoaded', () => {
+                const el = document.getElementById('welcome-art');
+                if (el) el.dataset.src = '';
+            });
+        });
         await goTo(page);
         await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/, { timeout: 15_000 });
 
@@ -339,25 +356,13 @@ test.describe('QR customer ordering', () => {
             .toEqual([]);
     });
 
-    test('a declared illustration takes the stage from the card stack', async ({ page }) => {
-        // Shipping one is a single edit: the file in assets/images/, and its
-        // ABSOLUTE path on `#welcome-art[data-src]`. Set here the way the
-        // markup would, before the gate paints.
+    test('THE SHIPPED ILLUSTRATION TAKES THE STAGE, AND IS NOT HEAVY', async ({ page }) => {
         await stub(page);
-        await page.route('**/assets/images/order-welcome.svg', (route) =>
-            route.fulfill({ status: 200, contentType: 'image/svg+xml', body: ART_SVG }));
-        await page.addInitScript(() => {
-            document.addEventListener('DOMContentLoaded', () => {
-                const el = document.getElementById('welcome-art');
-                if (el) el.dataset.src = '/assets/images/order-welcome.svg';
-            });
-        });
         await goTo(page);
         await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/, { timeout: 15_000 });
 
         const art = page.locator('#welcome-art');
         await expect(art).toHaveClass(/has-asset/);
-        await expect(art.locator('img')).toHaveAttribute('src', '/assets/images/order-welcome.svg');
         // It REPLACES the fallback rather than stacking on top of it.
         await expect(art.locator('.welcome-note')).toHaveCount(0);
         // Artwork brings its own composition, so the stage drops the mask and
@@ -365,9 +370,39 @@ test.describe('QR customer ordering', () => {
         // not a treatment, it is damage.
         expect(await art.evaluate((el) => getComputedStyle(el).maskImage
             || getComputedStyle(el).webkitMaskImage)).toBe('none');
-        // And it decodes to a real picture, not a broken-image box.
-        expect(await art.locator('img').evaluate((el) => el.naturalWidth))
-            .toBeGreaterThan(0);
+        // It DECODES — a broken-image box passes every assertion above.
+        await expect.poll(async () => art.locator('img').evaluate((el) => el.naturalWidth),
+            { timeout: 10_000 }).toBeGreaterThan(0);
+
+        // ⚠️ WEIGHT IS A FEATURE HERE. This is a diner's phone on restaurant
+        // wifi, and the page's whole design is one fast round trip. The
+        // supplied source was a 1.4MB PNG; anything near that must not creep
+        // back in through a re-export.
+        const res = await page.request.get('/assets/images/order-welcome.webp');
+        expect(res.ok()).toBeTruthy();
+        const bytes = (await res.body()).length;
+        expect(bytes, `the hero illustration is ${Math.round(bytes / 1024)}KB`)
+            .toBeLessThan(120 * 1024);
+    });
+
+    test('a declared illustration that will not decode falls back, not to a broken box', async ({ page }) => {
+        // A typo in the path, a format the browser will not read, a file that
+        // never deployed. Any of them would otherwise leave a broken-image box
+        // where the hero should be, saying nothing about why.
+        await stub(page);
+        await page.route('**/assets/images/order-welcome.webp', (route) =>
+            route.fulfill({ status: 404, contentType: 'text/plain', body: 'gone' }));
+        await goTo(page);
+        await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/, { timeout: 15_000 });
+
+        const art = page.locator('#welcome-art');
+        await expect(art).not.toHaveClass(/has-asset/);
+        // The card stack was always a complete design, not a placeholder.
+        await expect(art.locator('.welcome-note')).toHaveCount(3);
+        await expect(art.locator('img')).toHaveCount(0);
+        // And the sheet is still usable, which is the point.
+        await expect(page.locator('#welcome-name')).toBeVisible();
+        await expect(page.locator('#welcome-go')).toBeVisible();
     });
 
     test('THE HEADER IS THE RESTAURANT, WITH A SCRIM THAT KEEPS IT LEGIBLE', async ({ page }) => {
@@ -434,9 +469,12 @@ test.describe('QR customer ordering', () => {
         const gate = page.locator('#sheet-welcome');
         await expect(gate).toHaveClass(/is-open/, { timeout: 15_000 });
 
+        // UNROUNDED. Rounding each endpoint separately lets the delta below
+        // land a pixel out on fractional layout — which is measurement noise
+        // reported as a design failure. Round the delta once instead.
         const geometry = () => gate.evaluate((el) => {
             const r = el.getBoundingClientRect();
-            return { liftedBy: Math.round(window.innerHeight - r.bottom), height: Math.round(r.height) };
+            return { liftedBy: window.innerHeight - r.bottom, height: r.height };
         });
 
         // A few pixels of viewport jitter is NOT a keyboard, and treating it as
@@ -461,7 +499,7 @@ test.describe('QR customer ordering', () => {
         await page.evaluate(() =>
             document.documentElement.style.setProperty('--kb-inset', '300px'));
         const lifted = await geometry();
-        expect(lifted.liftedBy - resting.liftedBy).toBe(300);
+        expect(Math.round(lifted.liftedBy - resting.liftedBy)).toBe(300);
         expect(lifted.height).toBeLessThanOrEqual(844 - 300 - 12 + 1);
         expect(lifted.height).toBeLessThanOrEqual(resting.height);
 
