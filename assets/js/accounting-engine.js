@@ -132,6 +132,22 @@ export const CHART_OF_ACCOUNTS_SEED = [
     { code: '3900', name: 'Opening Balance Equity', name_id: 'Ekuitas Saldo Awal', type: 'equity', sak_category: 'equity', is_system: true, mappable: false, allow_manual_journal: false, allow_direct_transaction: false },
     // --- Revenue
     { code: '4000', name: 'Revenue', name_id: 'Pendapatan', type: 'revenue', sak_category: 'revenue', is_system: true },
+    // Service charge collected on a till bill. REVENUE, and its own account
+    // rather than folded into 4000, for the reason 5150 is kept out of COGS: a
+    // service charge is not what the menu earned, and a gross-margin figure that
+    // absorbs it is one an owner cannot act on. Separating it is also what makes
+    // "are we distributing what we collected" answerable later.
+    //
+    // ⚠️ THE OTHER TREATMENT IS A LIABILITY, and it is the right one wherever the
+    // charge is passed to staff rather than kept. That is a payroll arrangement
+    // this product does not model, so the default is the one that is true for a
+    // business that keeps it. If a workspace distributes it, the distribution is
+    // an expense against this account, not a reason to book the collection as a
+    // payable it has no subledger for.
+    //
+    // is_system: the posting engine addresses it by literal code, so it must not
+    // be archived out from under POS-SALE.
+    { code: '4100', name: 'Service Charge', name_id: 'Biaya Layanan', type: 'revenue', sak_category: 'revenue', parent_code: '4000', is_system: true },
     { code: '4900', name: 'Sales Discounts & Returns', name_id: 'Diskon & Retur Penjualan', type: 'revenue', sak_category: 'revenue', parent_code: '4000', normal_balance: 'debit' },
     // --- Cost of Goods Sold
     { code: '5100', name: 'Cost of Goods Sold', name_id: 'Harga Pokok Penjualan', type: 'expense', sak_category: 'cogs' },
@@ -313,7 +329,12 @@ const OPENING_EQUITY = '3900';
 const DEPRECIATION_EXPENSE = '6470';
 const ACCUMULATED_DEPRECIATION = '1590';
 const REVENUE = '4000';
+const SERVICE_CHARGE = '4100'; // service charge collected on a till bill
 const SALES_RETURNS = '4900';  // contra-revenue (debit normal) — refunds/returns
+// Output VAT. Seeded dormant with the rest of the Tax Center accounts and woken
+// up by the till: tax on a bill is money collected FOR the government, so it is
+// a liability from the moment the customer pays it, never revenue.
+const OUTPUT_TAX = '2100';
 const FEE_EXPENSE = '6600';
 const TAX_EXPENSE = '6500';
 const UNMAPPED_EXPENSE = '6999';
@@ -832,18 +853,35 @@ const RULES = {
     // revenue. The rate and liability vary by regency; the number needs an
     // Indonesian tax practitioner before it reaches a journal, and the account does
     // not exist in the seed yet. See docs/POS_IMPLEMENTATION_PLAN.md §18.7.
+    //
+    // ⚠️ `amount` IS NET REVENUE, AND TAX AND SERVICE RIDE BESIDE IT. The customer
+    // hands over the whole bill, so the CASH side is net + service + tax, while
+    // the revenue credit stays the menu's own gross. Getting that wrong is silent
+    // in the direction that matters: booking the tax as revenue overstates income
+    // by the whole PPN and hands the owner a margin they never earned, and
+    // debiting cash for the net alone leaves every drawer short by the tax the
+    // till actually took.
     'POS-SALE': (doc) => {
         const net = requireAmount(doc.amount, 'POS sale');
         const discount = Math.max(0, toInt(doc.pos_discount_amount));
+        const tax = Math.max(0, toInt(doc.pos_tax_amount));
+        const service = Math.max(0, toInt(doc.pos_service_amount));
         const acct = explicitAccount(doc, 'revenue') || REVENUE;
+        // What actually crossed the counter, which is what the drawer must
+        // reconcile to — not the revenue share of it.
+        const collected = net + tax + service;
         // One debit line per settlement destination. A single-tender sale still
         // produces exactly one, so nothing about the common case changes shape.
-        const { cash, clearing } = posSettlementSplit(doc, net);
+        const { cash, clearing } = posSettlementSplit(doc, collected);
         const lines = [];
         if (cash > 0) lines.push(line(CASH, cash, 0, 'Cash received'));
         if (clearing > 0) lines.push(line(CLEARING, clearing, 0, 'Awaiting payout'));
         if (discount > 0) lines.push(line(SALES_RETURNS, discount, 0, doc.pos_discount_reason || 'Discount given'));
         lines.push(line(acct, 0, net + discount, doc.category || 'Sales'));
+        if (service > 0) lines.push(line(SERVICE_CHARGE, 0, service, 'Service charge'));
+        // A LIABILITY, never revenue: this is the government's money, held until
+        // it is remitted.
+        if (tax > 0) lines.push(line(OUTPUT_TAX, 0, tax, 'Tax collected'));
         return lines;
     },
     // Money handed back for a till sale. Contra-revenue rather than negative
@@ -868,10 +906,20 @@ const RULES = {
     // permanently — which is what happened for every non-cash refund until
     // 2026-08-30, because refundPosOrder hardcoded `pos_settlement: 'cash'`.
     // Unconditional, not just on split bills.
+    //
+    // Tax and service go back the same way they came in. A refund that returns
+    // the whole bill to the customer but only reverses the revenue share leaves
+    // the workspace holding a PPN liability for a sale that no longer exists —
+    // and it would be remitted to the government out of the owner's pocket.
     'POS-REFUND': (doc) => {
         const amt = requireAmount(doc.amount, 'POS refund');
-        const { cash, clearing } = posSettlementSplit(doc, amt);
+        const tax = Math.max(0, toInt(doc.pos_tax_amount));
+        const service = Math.max(0, toInt(doc.pos_service_amount));
+        const collected = amt + tax + service;
+        const { cash, clearing } = posSettlementSplit(doc, collected);
         const lines = [line(SALES_RETURNS, amt, 0, doc.pos_refund_reason || 'Sale refunded')];
+        if (service > 0) lines.push(line(SERVICE_CHARGE, service, 0, 'Service charge returned'));
+        if (tax > 0) lines.push(line(OUTPUT_TAX, tax, 0, 'Tax returned'));
         if (cash > 0) lines.push(line(CASH, 0, cash, 'Cash refunded'));
         if (clearing > 0) lines.push(line(CLEARING, 0, clearing, 'Deducted from payout'));
         return lines;

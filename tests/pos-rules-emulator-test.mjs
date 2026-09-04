@@ -261,6 +261,18 @@ async function main() {
         setDoc(doc(db, `workspaces/${WS}/transactions/pos-tx-split`),
             posTx({ pos_cash_amount: 50000, pos_clearing_amount: 30000 })));
 
+    // Tax and service charge (2026-09-05). Same shape of trap as the split
+    // tender above and the `cash`/`clearing` incident of 2026-08-31: POS-SALE
+    // credits 2100 PPN Keluaran and 4100 Service Charge from these two keys, and
+    // a validator that does not list them refuses the ENTIRE sale — silently,
+    // with the order marked paid and no revenue posted.
+    await expectOutcome('cashier appends a row carrying TAX and SERVICE', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/transactions/pos-tx-tax`),
+            posTx({
+                pos_cash_amount: 96000, pos_clearing_amount: 0,
+                pos_tax_amount: 11000, pos_service_amount: 5000
+            })));
+
     // hasRole() is true for an owner, so `||` short-circuits into the
     // wsValidTxCreate clause and the lean cashier validator is never reached.
     // Both must therefore accept an IDENTICAL payload — this is exactly how a
@@ -271,6 +283,12 @@ async function main() {
     await expectOutcome('OWNER writes the same split-tender row', true, () =>
         setDoc(doc(db, `workspaces/${WS}/transactions/owner-tx-split`),
             posTx({ pos_cash_amount: 50000, pos_clearing_amount: 30000, icon: '💰' })));
+    await expectOutcome('OWNER writes the same TAX + SERVICE row', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/transactions/owner-tx-tax`),
+            posTx({
+                pos_cash_amount: 96000, pos_clearing_amount: 0,
+                pos_tax_amount: 11000, pos_service_amount: 5000, icon: '💰'
+            })));
     await setMemberRole(uid, 'cashier');
 
     console.log('  · what a cashier must NEVER do');
@@ -418,6 +436,12 @@ async function main() {
         pos_order_id: 'o1', pos_discount_amount: 0, pos_discount_reason: null,
         pos_settlement: 'cash', pos_refund_reason: 'Salah pesan', ...extra
     });
+    await expectOutcome('a refund carrying tax and service is allowed', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/transactions/refund-tax`),
+            settleTx({
+                pos_cash_amount: 20000, pos_clearing_amount: 0,
+                pos_tax_amount: 2200, pos_service_amount: 1000
+            })));
     await expectOutcome('a refund carrying pos_cash_amount / pos_clearing_amount is allowed', true, () =>
         setDoc(doc(db, `workspaces/${WS}/transactions/tx-split-ok`),
             settleTx({ pos_cash_amount: 20000, pos_clearing_amount: 0 })));

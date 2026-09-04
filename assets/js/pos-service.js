@@ -1327,10 +1327,13 @@ export const POS_METHODS = {
         // revenue surface sums transaction amounts — the dashboard KPI, the
         // income statement, /outlet-pnl. The gross price is recovered inside
         // POS-SALE from pos_discount_amount.
-        const net = Math.round(Number(order.total_amount) || 0)
-            - Math.round(Number(order.service_charge_amount) || 0)
-            - Math.round(Number(order.tax_amount) || 0);
+        const service = Math.max(0, Math.round(Number(order.service_charge_amount) || 0));
+        const tax = Math.max(0, Math.round(Number(order.tax_amount) || 0));
+        const net = Math.round(Number(order.total_amount) || 0) - service - tax;
         if (net <= 0) return null;
+        // What crossed the counter. The settlement split must cover THIS, not the
+        // revenue share of it, or the drawer is short by the tax on every sale.
+        const collected = net + service + tax;
 
         const txRef = doc(collection(this.db, `${scope}/transactions`));
         const tx = {
@@ -1353,9 +1356,15 @@ export const POS_METHODS = {
             pos_discount_amount: Math.round(Number(order.discount_total) || 0),
             pos_discount_reason: this._nullableString(order.discount_reason, 80),
             pos_settlement: this._posRefundDominant(order),
+            // Beside `amount`, never inside it. POS-SALE credits 2100 PPN
+            // Keluaran and 4100 Service Charge from these; folding either into
+            // `amount` would book the government's money as this workspace's
+            // revenue, and every revenue surface sums `amount`.
+            pos_tax_amount: tax,
+            pos_service_amount: service,
             // How the money ACTUALLY split. A half-cash/half-QRIS bill used to
             // post entirely to whichever side was larger.
-            ...this._posSettlementAmounts(order, net),
+            ...this._posSettlementAmounts(order, collected),
             pos_refund_reason: null
         };
 
@@ -1538,7 +1547,14 @@ export const POS_METHODS = {
         if (order.refund_transaction_id) throw new Error('This order has already been refunded.');
 
         const when = new Date();
-        const net = Math.round(Number(order.total_amount) || 0);
+        // Split the same way the SALE was, and for the same reason: `amount` is
+        // the revenue being reversed, while the customer gets the whole bill
+        // back. A refund that returns the tax to the customer without reversing
+        // 2100 leaves the workspace owing PPN on a sale that no longer exists.
+        const refundService = Math.max(0, Math.round(Number(order.service_charge_amount) || 0));
+        const refundTax = Math.max(0, Math.round(Number(order.tax_amount) || 0));
+        const collected = Math.round(Number(order.total_amount) || 0);
+        const net = collected - refundService - refundTax;
         const txRef = doc(collection(this.db, `${scope}/transactions`));
         const tx = {
             amount: net,
@@ -1555,7 +1571,9 @@ export const POS_METHODS = {
             // forever. Derived from the ORDER's own payments, so a refund mirrors
             // the tender that paid for it.
             pos_settlement: this._posRefundDominant(order),
-            ...this._posSettlementAmounts(order, net),
+            pos_tax_amount: refundTax,
+            pos_service_amount: refundService,
+            ...this._posSettlementAmounts(order, collected),
             pos_refund_reason: why
         };
 

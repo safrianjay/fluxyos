@@ -270,6 +270,10 @@ function laneBE(changed) {
   // anything. It also crosses FOUR explicit field lists between the item and the
   // stock movement, any one of which can drop `consumes` silently.
   ok = record('be', run('check:modifier-cogs (a priced option moves stock)', 'node', ['tests/modifier-cogs.check.js'])) && ok;
+  // Unconditional for the same reason: a POS journal that balances while
+  // booking the government's PPN as revenue is indistinguishable from one
+  // that does not, and the file that breaks it is rarely the one just edited.
+  ok = record('be', run('check:pos-tax (tax and service post to 2100/4100, not revenue)', 'node', ['tests/pos-tax-service.check.js'])) && ok;
   // Unconditional. The offending call can live in ANY module — the first
   // Firestore touch on a page decides the transport for all of it — so the file
   // that breaks this is rarely the file being edited. Same reasoning as

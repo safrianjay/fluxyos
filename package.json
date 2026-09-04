@@ -44,6 +44,7 @@
     "check:pos-table-qr": "node tests/pos-table-qr.check.js",
     "check:rate-limit": "node tests/rate-limit.check.js",
     "check:modifier-cogs": "node tests/modifier-cogs.check.js",
+    "check:pos-tax": "node tests/pos-tax-service.check.js",
     "sync:table-directory": "node scripts/sync-pos-table-directory.js",
     "check:origins": "node tests/allowed-origins.check.js",
     "check:firestore-transport": "node tests/firestore-transport.check.js",

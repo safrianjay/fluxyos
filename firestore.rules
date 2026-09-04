@@ -2586,7 +2586,7 @@ service cloud.firestore {
           'amount', 'vendor_name', 'category', 'type', 'status', 'icon', 'timestamp', 'created_at',
           'source', 'accounting_status', 'dimension_id',
           'pos_order_id', 'pos_discount_amount', 'pos_discount_reason', 'pos_settlement', 'pos_refund_reason',
-          'pos_cash_amount', 'pos_clearing_amount'
+          'pos_cash_amount', 'pos_clearing_amount', 'pos_tax_amount', 'pos_service_amount'
         ])
         && data.source == 'pos'
         && data.accounting_status == 'pending'
@@ -3044,6 +3044,12 @@ service cloud.firestore {
           // the discount to 4900; folded into the price it is lost forever.
           'pos_order_id', 'pos_discount_amount', 'pos_discount_reason', 'pos_settlement', 'pos_refund_reason',
           'pos_cash_amount', 'pos_clearing_amount',
+          // Tax and service ride BESIDE `amount`, never inside it: POS-SALE
+          // credits 2100 PPN Keluaran and 4100 Service Charge from these, and
+          // every revenue surface sums `amount`. `pos_tax_amount` is distinct
+          // from the Tax Center's own `tax_amount` below on purpose — they are
+          // different claims about different things.
+          'pos_tax_amount', 'pos_service_amount',
           'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number',
           'withholding_rate', 'withholding_type', 'withholding_code', 'bukti_potong_no',
           'customer_npwp', 'customer_withholding_amount', 'customer_withholding_rate',
@@ -3086,6 +3092,12 @@ service cloud.firestore {
           // the discount to 4900; folded into the price it is lost forever.
           'pos_order_id', 'pos_discount_amount', 'pos_discount_reason', 'pos_settlement', 'pos_refund_reason',
           'pos_cash_amount', 'pos_clearing_amount',
+          // Tax and service ride BESIDE `amount`, never inside it: POS-SALE
+          // credits 2100 PPN Keluaran and 4100 Service Charge from these, and
+          // every revenue surface sums `amount`. `pos_tax_amount` is distinct
+          // from the Tax Center's own `tax_amount` below on purpose — they are
+          // different claims about different things.
+          'pos_tax_amount', 'pos_service_amount',
           'tax_code', 'tax_rate_percent', 'tax_amount', 'taxable_base', 'vendor_npwp', 'faktur_number',
           'withholding_rate', 'withholding_type', 'withholding_code', 'bukti_potong_no',
           'customer_npwp', 'customer_withholding_amount', 'customer_withholding_rate',
