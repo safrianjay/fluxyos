@@ -208,3 +208,52 @@ toggle switches the Users view; archived users are excluded from the active User
 list, the KYC and Payment review queues, the Overview KPIs/action list, and the
 KYC/Payment tab-count badges. All historical records (transactions, subscriptions,
 KYC, payments, audit logs) are preserved — archive never deletes.
+
+## First-load glitches after approval (fixed 2026-09-04)
+
+Two separate bugs, same shape — something painted before the thing that sizes or
+decides it had run.
+
+### The review screen flashed on a freshly approved account
+
+`kyc-gate.applyToPage()` has **two callers**: `onboarding-gate.applyToPage()`,
+which every app page awaits before its data load, and `sidebar-loader.js`, the
+catch-all for the fifteen pages (all of Settings, all of Reports) that never call
+the first one. On the dashboard **both run**, so the gate decided twice from two
+independent pairs of Firestore reads — and two decisions can disagree.
+
+That is the flash: the first verdict opens the page, the dashboard paints, the
+second transiently reads a pre-approval status and drops a lock over it, then
+`watchForApproval` sees `approved` and reloads. Appear, vanish.
+
+**Fixed by memoising the verdict per page load and per uid.** A second caller
+reuses the first decision rather than deriving another, which also halves the
+reads.
+
+`watchForApproval` still calls `location.reload()`, deliberately. Lifting the
+overlay in place was tried and reverted: every caller SKIPS its data load on a
+truthy return, so the page behind the lock is an empty shell — unlocking it
+without a reload reveals a dashboard with nothing in it.
+
+⚠️ The boot mask (`FluxyBoot.hold('kyc-gate')`) was believed to prevent this. It
+does not: `.fluxy-booting` greys **money values only**, it does not hide the
+page. It is still worth holding, for the rupiah flash it does prevent.
+
+### A 163px dropdown chevron in the sidebar
+
+App pages load Tailwind from the **CDN, which generates its CSS at runtime**.
+Until it does, `w-3 h-3` styles nothing — and an SVG with no `width`/`height`
+attribute paints at its intrinsic replaced size. The entity-switcher chevron
+measured **163×163** instead of 12×12.
+
+The nav icons escaped it only by accident: they are replaced at runtime by
+`dashboardLucideIcons`, whose markup carries explicit dimensions and is styled
+from a real stylesheet.
+
+**Fixed by giving all 21 sized sidebar SVGs `width`/`height` attributes.**
+Attributes are immune to CSS load order. The logo is left fluid on purpose.
+
+Guard: `tests/kyc-gate-first-load.spec.js`, which blocks the Tailwind CDN to
+reproduce that window deterministically, asserts all three gate callers get one
+verdict, and polls across the whole boot for a lock screen — a single check
+after load would miss a flash by definition.

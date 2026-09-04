@@ -373,6 +373,18 @@ export function renderKycScreen(state, options = {}) {
 // Live unlock: a reviewer approving in the Internal Operations Console should
 // open the product in the tab the user is already staring at.
 let watching = false;
+/*
+ * Reload when approval lands.
+ *
+ * A reload rather than removing the overlay in place, and that is deliberate:
+ * every caller SKIPS its data load on a truthy return from applyToPage, so the
+ * page behind the lock is an empty shell. Lifting the overlay would reveal a
+ * dashboard with nothing in it. The reload is doing real work.
+ *
+ * The visible glitch this was blamed for came from somewhere else — the gate
+ * deciding twice per page load and the second verdict disagreeing with the
+ * first. See applyToPage.
+ */
 function watchForApproval(userId) {
     if (watching || !userId) return;
     watching = true;
@@ -427,7 +439,36 @@ function confirmBlockedStatus(userId, timeoutMs = 2500) {
     });
 }
 
+/*
+ * One verdict per page load.
+ *
+ * `applyToPage` has TWO callers on most pages: `onboarding-gate.applyToPage()`,
+ * which every app page awaits before its data load, and `sidebar-loader.js`,
+ * the catch-all for the fifteen pages that never call the first one. On the
+ * dashboard both run, so the gate decided TWICE from two independent pairs of
+ * Firestore reads — and two decisions can disagree.
+ *
+ * That is the flash: the first decision opens the page, the dashboard paints,
+ * and a second decision moments later transiently reads a pre-approval status
+ * and drops a lock screen over it. `watchForApproval` then sees 'approved' and
+ * reloads, so a freshly approved user watches a review screen appear and vanish
+ * on their very first load.
+ *
+ * Memoised per page load and per uid. A second caller reuses the first verdict
+ * instead of re-deriving one, which also halves the reads.
+ */
+let verdictPromise = null;
+let verdictUid = null;
+
 export async function applyToPage(authUser) {
+    const uid = authUser && authUser.uid;
+    if (verdictPromise && verdictUid === uid) return verdictPromise;
+    verdictUid = uid;
+    verdictPromise = decideAndApply(authUser);
+    return verdictPromise;
+}
+
+async function decideAndApply(authUser) {
     const state = await resolveKycState(authUser);
     if (!state.blocked) return false;
     if (document.querySelector('[data-fluxy-kyc]')) return true;
