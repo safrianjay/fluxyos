@@ -258,6 +258,8 @@ function wireStaticControls() {
     el('journals-post-pending')?.addEventListener('click', () => onPostPending());
     el('coa-new-account')?.addEventListener('click', () => openCreateAccountDrawer());
     el('coa-import')?.addEventListener('click', () => openCoaImportDrawer());
+    el('fa-new')?.addEventListener('click', () => openFixedAssetDrawer());
+    el('fa-run')?.addEventListener('click', () => handleRunDepreciation());
     el('balance-sheet-export')?.addEventListener('click', () => exportBalanceSheet());
     el('acct-export-package')?.addEventListener('click', () => runAccountingExport('csv'));
     el('acct-export-workbook')?.addEventListener('click', () => runAccountingExport('xlsx'));
@@ -397,7 +399,7 @@ const KERNEL_TABS = new Set(['journals', 'ledger', 'trial', 'coa', 'close']);
 const TAB_GROUPS = [
     { id: 'reports', tabs: ['income', 'balance', 'cashflow', 'aging'] },
     { id: 'ledger', tabs: ['journals', 'trial', 'ledger'] },
-    { id: 'setup', tabs: ['coa', 'mapping', 'vendors'] },
+    { id: 'setup', tabs: ['coa', 'mapping', 'vendors', 'assets'] },
     { id: 'close', tabs: ['close', 'cleanup'] }
 ];
 const GROUP_OF_TAB = TAB_GROUPS.reduce((map, g) => {
@@ -478,6 +480,8 @@ function setTab(tab, { updateUrl = true } = {}) {
     if (tab === 'cleanup') loadDuplicates();
     // Vendor master loads lazily on first open.
     if (tab === 'vendors') renderVendors();
+    // The register loads lazily on first open, like the vendor master.
+    if (tab === 'assets') renderFixedAssets();
 
     if (updateUrl) syncTabUrl(tab);
 }
@@ -3141,6 +3145,312 @@ function openCoaImportDrawer() {
             feedback((err && err.message) || 'The import could not be completed.', 'error');
             confirmBtn.disabled = false;
             confirmBtn.textContent = 'Import accounts';
+        }
+    });
+
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(() => {
+        panel.classList.remove('translate-x-full');
+        overlay.classList.remove('opacity-0');
+    });
+}
+
+// ── Fixed assets ────────────────────────────────────────────────────────────
+//
+// The register depreciation runs over. Schedule arithmetic lives entirely in
+// `depreciation-engine.js`; this file shows it and asks before posting.
+
+const FA_METHOD_LABEL = 'Straight line';
+
+function faMoney(minor) {
+    try { return window.FluxyMoney.formatBase(Number(minor) || 0); }
+    catch (_) { return String(minor); }
+}
+
+// The period depreciation is run THROUGH: the month just ended, in the
+// workspace's reporting timezone. Not "today's month" — running mid-month would
+// post a full month's charge for a month that is not over.
+function faThroughPeriod() {
+    const now = new Date();
+    const jkt = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+    jkt.setDate(1);
+    jkt.setMonth(jkt.getMonth() - 1);
+    return `${jkt.getFullYear()}-${String(jkt.getMonth() + 1).padStart(2, '0')}`;
+}
+
+async function renderFixedAssets() {
+    const wrap = el('fa-content');
+    if (!wrap) return;
+    const canManage = !window.FluxyWorkspace || typeof window.FluxyWorkspace.can !== 'function'
+        || window.FluxyWorkspace.can('accounting.post');
+    el('fa-new')?.classList.toggle('hidden', !canManage);
+
+    wrap.innerHTML = '<div class="acct-loading">Loading the register…</div>';
+    let assets = [];
+    try {
+        assets = await state.ds.listFixedAssets(state.user.uid);
+    } catch (e) {
+        wrap.innerHTML = emptyInline('Could not load the register', 'Try again in a moment.');
+        return;
+    }
+
+    if (!assets.length) {
+        el('fa-run')?.classList.add('hidden');
+        el('fa-due')?.classList.add('hidden');
+        // No action offered: registering an asset is the New button above, and a
+        // second one here would be the same promise twice.
+        wrap.innerHTML = emptyInline('No assets registered yet',
+            'Add what you own — equipment, vehicles, fit-out — and FluxyOS depreciates it each month.');
+        return;
+    }
+
+    const mod = await import('/assets/js/depreciation-engine.js');
+    const through = faThroughPeriod();
+
+    wrap.innerHTML = `
+        <table class="fluxy-table">
+            <thead><tr class="fluxy-table-header">
+                <th>Asset</th><th>In service</th><th>Life</th>
+                <th class="fluxy-table-money">Cost</th>
+                <th class="fluxy-table-money">Depreciated</th>
+                <th class="fluxy-table-money">Book value</th>
+                <th>Status</th>
+            </tr></thead>
+            <tbody>${assets.map((a) => {
+                const taken = Math.round(Number(a.accumulated_depreciation) || 0);
+                const done = mod.isFullyDepreciated(a, through);
+                const status = a.status === 'disposed' ? 'Disposed' : (done ? 'Fully depreciated' : 'Active');
+                const tone = a.status === 'disposed' ? 'fluxy-status-neutral'
+                    : (done ? 'fluxy-status-info' : 'fluxy-status-success');
+                return `<tr class="fluxy-table-row">
+                    <td class="fluxy-table-cell">
+                        <span class="fluxy-table-cell-primary">${escapeHtml(a.name)}</span>
+                        <span class="fluxy-table-cell-meta">${escapeHtml(a.asset_account_code)} · ${FA_METHOD_LABEL}</span>
+                    </td>
+                    <td class="fluxy-table-cell">${escapeHtml(a.in_service_date || '—')}</td>
+                    <td class="fluxy-table-cell">${escapeHtml(String(a.useful_life_months))} mo</td>
+                    <td class="fluxy-table-cell fluxy-table-money">${escapeHtml(faMoney(a.cost))}</td>
+                    <td class="fluxy-table-cell fluxy-table-money">${escapeHtml(faMoney(taken))}</td>
+                    <td class="fluxy-table-cell fluxy-table-money">${escapeHtml(faMoney(Math.round(Number(a.cost) || 0) - taken))}</td>
+                    <td class="fluxy-table-cell"><span class="fluxy-table-status ${tone}">${status}</span></td>
+                </tr>`;
+            }).join('')}</tbody>
+        </table>`;
+
+    // What is owed, shown BEFORE anything posts — the figure approved is the
+    // figure that posts, same contract as every other confirm in the app.
+    const due = el('fa-due');
+    if (!due) return;
+    let preview = null;
+    try { preview = await state.ds.previewDepreciation(state.user.uid, through); }
+    catch (_) { preview = null; }
+
+    const owed = preview && preview.total > 0;
+    el('fa-run')?.classList.toggle('hidden', !owed || !canManage);
+    due.classList.toggle('hidden', !preview);
+    if (!preview) return;
+
+    due.innerHTML = owed
+        ? `<div class="acct-mapping-rec" style="margin:0 0 12px;">
+               <div class="acct-mapping-rec-body">
+                   <span class="acct-mapping-rec-head">Depreciation due through ${escapeHtml(through)}</span>
+                   <span class="acct-mapping-rec-target">${escapeHtml(faMoney(preview.total))} across ${preview.periods.length} month${preview.periods.length === 1 ? '' : 's'}</span>
+                   <span class="acct-mapping-rec-why">Posts to 6470 Depreciation &amp; Amortisation against 1590 Accumulated Depreciation — one journal per month, each into its own period.</span>
+               </div>
+           </div>`
+        : `<p class="fluxy-meta" style="margin:0 0 12px;">Depreciation is up to date through ${escapeHtml(through)}.</p>`;
+}
+
+async function handleRunDepreciation() {
+    const through = faThroughPeriod();
+    let preview;
+    try { preview = await state.ds.previewDepreciation(state.user.uid, through); }
+    catch (e) { window.showToast?.('Could not work out what is due.', 'error'); return; }
+    if (!preview || !preview.total) { window.showToast?.('Nothing to depreciate.', 'info'); return; }
+
+    // Names the months as well as the total: "post Rp4,2 juta" hides that it is
+    // six separate journals into six separate periods, which is the part that
+    // matters if any of them is closed.
+    const months = preview.periods.map((p) => p.period_key).join(', ');
+    const ok = await window.showConfirmDialog?.({
+        title: 'Post depreciation?',
+        body: `<strong>${escapeHtml(faMoney(preview.total))}</strong> across <strong>${preview.periods.length}</strong> month${preview.periods.length === 1 ? '' : 's'} (${escapeHtml(months)}).<br><br>`
+            + 'Each month posts its own journal, into its own period — Dr 6470 Depreciation &amp; Amortisation, Cr 1590 Accumulated Depreciation. '
+            + 'Reverse a journal in Journals if you need to undo one.',
+        confirmLabel: 'Post depreciation',
+        cancelLabel: 'Not yet',
+        tone: 'default'
+    });
+    if (ok === false) return;
+
+    const btn = el('fa-run');
+    if (btn) { btn.disabled = true; btn.textContent = 'Posting…'; }
+    try {
+        const res = await state.ds.runDepreciation(state.user.uid, through);
+        window.showToast?.(`${res.posted.length} month${res.posted.length === 1 ? '' : 's'} posted.`, 'success');
+        await renderFixedAssets();
+        // The kernel caches journals and balances per period; both just moved.
+        await loadKernel(true);
+    } catch (e) {
+        window.showToast?.(e?.message || 'Depreciation could not be posted.', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Run depreciation'; }
+    }
+}
+
+function openFixedAssetDrawer() {
+    if (window.FluxyWorkspace && typeof window.FluxyWorkspace.can === 'function'
+        && !window.FluxyWorkspace.can('accounting.post')) {
+        window.showToast?.('You do not have permission to manage assets.', 'error');
+        return;
+    }
+    document.getElementById('fa-drawer-root')?.remove();
+
+    // Only accounts the charge can legitimately run over: `fixed_asset`, never
+    // `accumulated_depreciation` — 1590 is the contra account the charge credits,
+    // and an asset filed there would depreciate the record of depreciation.
+    const assetAccounts = (state.kernel?.coa || [])
+        .filter((a) => a.is_active !== false && a.sak_category === 'fixed_asset')
+        .sort((a, b) => String(a.code).localeCompare(String(b.code)));
+
+    const html = `
+    <div id="fa-drawer-root" class="fluxy-drawer-root">
+        <div id="fa-drawer-overlay" class="fluxy-drawer-overlay opacity-0 transition-opacity duration-300 ease-out"></div>
+        <div id="fa-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="fa-drawer-title" class="fluxy-drawer-panel fluxy-drawer-panel--md translate-x-full">
+            <div class="fluxy-drawer-header">
+                <div>
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Fixed Assets</p>
+                    <h2 id="fa-drawer-title" class="fluxy-drawer-title">Add an asset</h2>
+                    <p class="fluxy-drawer-desc">Its cost spreads evenly over its useful life, one month at a time.</p>
+                </div>
+                <button type="button" class="fluxy-drawer-close" aria-label="Close" data-fa-close>
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="fluxy-drawer-body">
+                <div class="fluxy-drawer-field">
+                    <label class="fluxy-drawer-label" for="fa-name">Name</label>
+                    <input id="fa-name" class="fluxy-drawer-input" maxlength="120" placeholder="Oven Rational SCC" autocomplete="off">
+                </div>
+                <div class="fluxy-drawer-field">
+                    <label class="fluxy-drawer-label" for="fa-account">Asset account</label>
+                    <select id="fa-account" class="fluxy-drawer-select">
+                        ${assetAccounts.map((a) => `<option value="${escapeHtml(a.code)}">${escapeHtml(a.code)} · ${escapeHtml(a.name)}</option>`).join('')}
+                    </select>
+                    ${assetAccounts.length ? '' : '<p class="fluxy-drawer-hint">No fixed-asset accounts in your chart yet. Add one under Chart of Accounts first.</p>'}
+                </div>
+                <div class="fluxy-drawer-field-grid">
+                    <div class="fluxy-drawer-field">
+                        <label class="fluxy-drawer-label" for="fa-cost">Cost</label>
+                        <input id="fa-cost" class="fluxy-drawer-input tabular-nums" inputmode="numeric" placeholder="10.000.000" autocomplete="off">
+                    </div>
+                    <div class="fluxy-drawer-field">
+                        <label class="fluxy-drawer-label" for="fa-salvage">Residual value <span class="text-gray-400 font-medium">(optional)</span></label>
+                        <input id="fa-salvage" class="fluxy-drawer-input tabular-nums" inputmode="numeric" placeholder="0" autocomplete="off">
+                    </div>
+                </div>
+                <div class="fluxy-drawer-field-grid">
+                    <div class="fluxy-drawer-field">
+                        <label class="fluxy-drawer-label" for="fa-life">Useful life (months)</label>
+                        <input id="fa-life" class="fluxy-drawer-input tabular-nums" inputmode="numeric" placeholder="36" autocomplete="off">
+                    </div>
+                    <div class="fluxy-drawer-field">
+                        <label class="fluxy-drawer-label">In service from</label>
+                        <!-- The shared picker in single-date mode. DESIGN_SYSTEM
+                             mandates it for every date in the app — a free-text
+                             box accepts "15/01/26" and silently means nothing. -->
+                        <div id="fa-date-picker"></div>
+                    </div>
+                </div>
+                <div id="fa-preview" class="hidden rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[12px] text-gray-700"></div>
+                <div id="fa-error" class="fluxy-drawer-callout fluxy-drawer-callout--warning hidden"></div>
+            </div>
+            <div class="fluxy-drawer-footer">
+                <button type="button" class="fluxy-drawer-btn fluxy-drawer-btn--secondary" data-fa-close>Cancel</button>
+                <button type="button" id="fa-save" class="fluxy-drawer-btn fluxy-drawer-btn--primary">Add asset</button>
+            </div>
+        </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', html);
+    const root = document.getElementById('fa-drawer-root');
+    const panel = document.getElementById('fa-drawer-panel');
+    const overlay = document.getElementById('fa-drawer-overlay');
+
+    const close = () => {
+        panel.classList.add('translate-x-full');
+        overlay.classList.add('opacity-0');
+        document.body.style.overflow = '';
+        setTimeout(() => root.remove(), 300);
+    };
+    root.querySelectorAll('[data-fa-close]').forEach((b) => b.addEventListener('click', close));
+    overlay.addEventListener('click', close);
+
+    // Through the money seam, never a bare digit strip: on a 2-decimal currency
+    // `toMinor` is what turns "10.000,50" into 1000050 rather than 1000050000.
+    const readAmount = (id) => {
+        try { return window.FluxyMoney.toMinor(document.getElementById(id).value, window.FluxyMoney.baseCurrency()); }
+        catch (_) { return 0; }
+    };
+    const draft = () => ({
+        name: document.getElementById('fa-name').value.trim(),
+        asset_account_code: document.getElementById('fa-account').value,
+        cost: readAmount('fa-cost'),
+        salvage_value: readAmount('fa-salvage'),
+        useful_life_months: Number(document.getElementById('fa-life').value.replace(/\D/g, '')) || 0,
+        in_service_date: faDate
+    });
+
+    // The monthly charge, shown while they type. A useful life is an abstraction;
+    // "Rp277.778 a month for 36 months" is the thing they can sanity-check.
+    const refresh = async () => {
+        const mod = await import('/assets/js/depreciation-engine.js');
+        const d = draft();
+        const box = document.getElementById('fa-preview');
+        const schedule = mod.depreciationSchedule(d);
+        if (!schedule.length) { box.classList.add('hidden'); return; }
+        box.classList.remove('hidden');
+        box.innerHTML = `<div><strong>${escapeHtml(faMoney(schedule[0].amount))}</strong> a month for ${schedule.length} months</div>`
+            + `<div style="margin-top:4px;">${escapeHtml(schedule[0].period_key)} through ${escapeHtml(schedule[schedule.length - 1].period_key)}`
+            + (d.salvage_value > 0 ? `, leaving ${escapeHtml(faMoney(d.salvage_value))} on the books` : '') + '</div>';
+    };
+    ['fa-cost', 'fa-salvage'].forEach((id) => {
+        const input = document.getElementById(id);
+        // Same as-you-type grouping every other amount field uses. Raw
+        // "10000000" is exactly the illegible-number defect DESIGN_SYSTEM 3b
+        // is about.
+        input.addEventListener('input', () => { window.FluxyAmountInput.format(input); refresh(); });
+    });
+    document.getElementById('fa-life').addEventListener('input', refresh);
+
+    let faDate = '';
+    try {
+        window.FluxyDateRangePicker?.mount('#fa-date-picker', {
+            mode: 'single',
+            // No default: an in-service date is a fact about the asset, and
+            // pre-filling today would be a guess that posts a schedule.
+            onChange: ({ start }) => { faDate = start || ''; refresh(); }
+        });
+    } catch (_) { /* the field degrades to unset, which validation catches */ }
+
+    document.getElementById('fa-save').addEventListener('click', async () => {
+        const err = document.getElementById('fa-error');
+        err.classList.add('hidden');
+        const btn = document.getElementById('fa-save');
+        btn.disabled = true;
+        btn.textContent = 'Saving…';
+        try {
+            await state.ds.saveFixedAsset(state.user.uid, draft(), { create: true });
+            window.showToast?.('Asset registered.', 'success');
+            close();
+            await renderFixedAssets();
+        } catch (e) {
+            // Engine errors arrive as FA_* codes; the message is already written
+            // for a person, so it is shown as-is.
+            err.textContent = e?.message || 'Could not save this asset.';
+            err.classList.remove('hidden');
+            btn.disabled = false;
+            btn.textContent = 'Add asset';
         }
     });
 

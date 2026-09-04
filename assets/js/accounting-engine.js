@@ -307,6 +307,11 @@ const GRNI = '2050';
 const INVENTORY = '1200';
 const RETAINED_EARNINGS = '3000';
 const OPENING_EQUITY = '3900';
+// Depreciation: the expense it lands in, and the contra-asset it credits.
+// Cost and accumulated wear stay separately visible on the balance sheet,
+// which is why the credit is 1590 rather than the asset account itself.
+const DEPRECIATION_EXPENSE = '6470';
+const ACCUMULATED_DEPRECIATION = '1590';
 const REVENUE = '4000';
 const SALES_RETURNS = '4900';  // contra-revenue (debit normal) — refunds/returns
 const FEE_EXPENSE = '6600';
@@ -997,6 +1002,7 @@ const RULE_DESCRIPTIONS = {
     'POS-REFUND': 'Till refund',
     'POS-SHIFT-VARIANCE': 'Cash drawer count',
     'OPENING': 'Opening balance',
+    'DEPRECIATION': 'Depreciation',
     'CLOSE': 'Period close'
 };
 
@@ -1091,6 +1097,41 @@ export function buildOpeningJournal({ entries = [], date } = {}) {
         period_key: periodKey(date || new Date()),
         status: 'posted',
         memo: 'Opening balance'
+    });
+}
+
+// Depreciation journal for ONE period.
+//
+//   Dr 6470 Depreciation & Amortisation   (one line per asset)
+//   Cr 1590 Accumulated Depreciation      (the total)
+//
+// A dedicated builder rather than a posting RULE, for the same reason
+// buildOpeningJournal and buildClosingJournal are: this is a period-end entry
+// somebody runs, not something a source document triggers on create.
+//
+// One line per asset on the debit side, because "depreciation was Rp4.2 juta"
+// is not an answer anybody can check. The credit is a single line — 1590 is a
+// contra-asset pool and splitting it per asset would imply a per-asset balance
+// the balance sheet does not carry.
+//
+// PER PERIOD, never a catch-up lump. Six months of arrears posted as one entry
+// dated today puts half a year of cost into one month's P&L and breaks every
+// month-on-month comparison after it. The caller loops periods; this builds one.
+export function buildDepreciationJournal({ lines = [], periodKey: pk, date } = {}) {
+    const rows = (lines || []).filter((l) => toInt(l.amount) > 0);
+    if (!rows.length) return null;
+    const total = rows.reduce((sum, l) => sum + toInt(l.amount), 0);
+    const out = rows.map((l) => line(DEPRECIATION_EXPENSE, toInt(l.amount), 0, l.description || 'Depreciation'));
+    out.push(line(ACCUMULATED_DEPRECIATION, 0, total, 'Accumulated depreciation'));
+    return finalize(out, {
+        posting_rule_id: 'DEPRECIATION',
+        journal_type: 'system',
+        generated_by: 'posting_engine',
+        description: 'Depreciation',
+        source: { collection: null, id: null },
+        period_key: pk || periodKey(date || new Date()),
+        status: 'posted',
+        memo: `Depreciation for ${rows.length} asset${rows.length === 1 ? '' : 's'}`
     });
 }
 

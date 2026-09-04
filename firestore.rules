@@ -3793,6 +3793,31 @@ service cloud.firestore {
           && request.resource.data.status in ['posted', 'reversed'];
         allow delete: if false;
       }
+      // Fixed-asset register. Depreciation runs OVER this: without a register
+      // there is nothing to depreciate, which is why the accounts existed for a
+      // week before the feature did.
+      //
+      // Never deleted. An asset is referenced by every depreciation journal it
+      // ever generated, and those are immutable — deleting one would leave
+      // 1590 Accumulated Depreciation carrying a balance nothing explains.
+      // Disposal is a status, not a delete.
+      //
+      // Six inline checks, no helper calls: this is master data written from a
+      // form, and the schedule arithmetic lives in depreciation-engine.js where
+      // it can be tested. Rules cannot compute a schedule cheaply and the
+      // evaluation budget is real.
+      match /fixed_assets/{assetId} {
+        allow read: if wsRead(workspaceId);
+        allow create, update: if wsWrite(workspaceId)
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 120
+          && request.resource.data.cost is number
+          && request.resource.data.cost >= 0
+          && request.resource.data.useful_life_months is number
+          && request.resource.data.status in ['active', 'disposed', 'fully_depreciated'];
+        allow delete: if false;
+      }
       // Stock movements — the subledger 1200 Inventory must tie to.
       // `quantity` is SIGNED: positive in, negative out, so a sum over the
       // collection is the balance. Written in the same batch as the journal that

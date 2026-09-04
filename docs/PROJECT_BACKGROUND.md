@@ -403,6 +403,7 @@ FluxyOS design language.
 >    `chart_of_accounts`, `business_categories`, `journals`, `counters`,
 >    `ledger_balances`, `ledger_balances_by_dim`, `periods`, `vendors`,
 >    `dimensions`, `items`, `goods_receipts`, `stock_movements`, `stock_adjustments`,
+>    `fixed_assets`,
 >    `pos_tables`, `pos_orders`, `pos_shifts`, `pos_reservations`,
 >    **(Tax Center, §4o)** `company_tax_profile`, `tax_mappings`,
 >    `tax_transactions`, `tax_periods`, `tax_filings`, and
@@ -439,7 +440,7 @@ FluxyOS design language.
 >    directly in the HTML (`collection(ds.db, …)`) instead of calling a
 >    DataService method — these bypass the seam and are the easiest place to
 >    reintroduce the bug. Grep guard:
->    `grep -rnE 'users/\$\{[a-zA-Z_.]+\}/(transactions|bills|subscriptions|budgets|budget_allocations|invoices|bank_accounts|bank_balance_snapshots|bank_statement_imports|documents|report_exports|accounting_mappings|chart_of_accounts|business_categories|journals|counters|ledger_balances|ledger_balances_by_dim|periods|vendors|dimensions|items|goods_receipts|stock_movements|stock_adjustments|pos_tables|pos_orders|pos_shifts|pos_reservations|audit_logs|company_tax_profile|tax_mappings|tax_transactions|tax_periods|tax_filings|commerce_accounts|commerce_orders|commerce_transactions|commerce_refunds|commerce_settlements|commerce_payouts|commerce_sync_jobs|commerce_sync_errors|commerce_webhook_logs)' *.html assets/js/*.js | grep -v db-service.js`
+>    `grep -rnE 'users/\$\{[a-zA-Z_.]+\}/(transactions|bills|subscriptions|budgets|budget_allocations|invoices|bank_accounts|bank_balance_snapshots|bank_statement_imports|documents|report_exports|accounting_mappings|chart_of_accounts|business_categories|journals|counters|ledger_balances|ledger_balances_by_dim|periods|vendors|dimensions|items|goods_receipts|stock_movements|stock_adjustments|fixed_assets|pos_tables|pos_orders|pos_shifts|pos_reservations|audit_logs|company_tax_profile|tax_mappings|tax_transactions|tax_periods|tax_filings|commerce_accounts|commerce_orders|commerce_transactions|commerce_refunds|commerce_settlements|commerce_payouts|commerce_sync_jobs|commerce_sync_errors|commerce_webhook_logs)' *.html assets/js/*.js | grep -v db-service.js`
 >    must return nothing.
 >
 > ### 💱 BASE CURRENCY — the workspace's immutable financial configuration
@@ -588,6 +589,7 @@ maps changed files to the shard it requires.
 | [`data-model/dimensions.md`](data-model/dimensions.md) | `dimensions`, `ledger_balances_by_dim` |
 | [`data-model/items.md`](data-model/items.md) | `items` |
 | [`data-model/stock.md`](data-model/stock.md) | `goods_receipts`, `stock_movements`, `stock_adjustments` |
+| [`data-model/fixed-assets.md`](data-model/fixed-assets.md) | `fixed_assets` |
 | [`data-model/pos.md`](data-model/pos.md) | `pos_tables`, `pos_orders`, `pos_shifts`, `pos_reservations`, `pos_table_directory` |
 | [`data-model/invoices.md`](data-model/invoices.md) | `invoices` |
 | [`data-model/tax-center.md`](data-model/tax-center.md) | `company_tax_profile`, `tax_mappings`, `tax_transactions`, `tax_periods`, `tax_filings` |

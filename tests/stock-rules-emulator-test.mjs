@@ -72,6 +72,18 @@ function movement(overrides = {}) {
     };
 }
 
+function asset(overrides = {}) {
+    return {
+        name: 'Oven Rational', asset_account_code: '1500',
+        cost: 10000000, salvage_value: 0, useful_life_months: 36,
+        in_service_date: '2026-01-15', method: 'straight_line',
+        dimension_id: null, notes: null, status: 'active',
+        accumulated_depreciation: 0, last_depreciated_period: null,
+        created_by: 'qa', created_at: serverTimestamp(), updated_at: serverTimestamp(),
+        ...overrides
+    };
+}
+
 async function setMemberRole(uid, role) {
     await adminDb.doc(`workspaces/${WS}/members/${uid}`).set({ role, status: 'active', uid });
 }
@@ -116,12 +128,36 @@ async function main() {
     await expectOutcome('DELETING a movement is denied', false, () =>
         deleteDoc(doc(db, `workspaces/${WS}/stock_movements/m1`)));
 
+    console.log('\n— fixed_assets: the register depreciation runs over —');
+    await setMemberRole(uid, 'finance');
+    await expectOutcome('finance registers an asset', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/fixed_assets/fa1`), asset()));
+    await expectOutcome('renaming it is allowed', true, () =>
+        updateDoc(doc(db, `workspaces/${WS}/fixed_assets/fa1`), { name: 'Oven Rational SCC' }));
+    // Disposal is a STATUS, never a delete: the asset is referenced by every
+    // depreciation journal it generated, and those are immutable.
+    await expectOutcome('disposing it is a status change', true, () =>
+        updateDoc(doc(db, `workspaces/${WS}/fixed_assets/fa1`), { status: 'disposed' }));
+    await expectOutcome('an unknown status is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/fixed_assets/fa-bad`), asset({ status: 'pending' })));
+    await expectOutcome('a negative cost is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/fixed_assets/fa-neg`), asset({ cost: -1 })));
+    await expectOutcome('a non-numeric life is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/fixed_assets/fa-life`), asset({ useful_life_months: 'three years' })));
+    await expectOutcome('an empty name is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/fixed_assets/fa-noname`), asset({ name: '' })));
+    // Deleting one would leave 1590 carrying a balance nothing explains.
+    await expectOutcome('deleting an asset is denied', false, () =>
+        deleteDoc(doc(db, `workspaces/${WS}/fixed_assets/fa1`)));
+
     console.log('\n— viewer is read-only —');
     await setMemberRole(uid, 'viewer');
     await expectOutcome('viewer receipt create is denied', false, () =>
         setDoc(doc(db, `workspaces/${WS}/goods_receipts/gr-viewer`), receipt()));
     await expectOutcome('viewer movement create is denied', false, () =>
         setDoc(doc(db, `workspaces/${WS}/stock_movements/m-viewer`), movement()));
+    await expectOutcome('viewer asset create is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/fixed_assets/fa-viewer`), asset()));
 
     console.log(`\n${passed} passed, ${failed} failed`);
     process.exit(failed ? 1 : 0);

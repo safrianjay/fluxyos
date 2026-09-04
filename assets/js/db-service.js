@@ -2,7 +2,8 @@ import { getFirestore, initializeFirestore, collection, query, where, getDocs, g
 import { resolveDb } from "/assets/js/firestore-db.js";
 import { BILLING_PLANS, calculateBilling, normalizeBillingFrequency, normalizePaymentMethod, normalizePlanId, getPlanLimits, resolveCheckoutPlanId, PLAN_DISPLAY_NAMES } from "./billing-config.js";
 import { recommendationFor } from "./mapping-suggestions.js";
-import { buildJournal, buildOpeningJournal, buildClosingJournal, buildReversalJournal, buildManualJournal, assertManualJournalPolicy, GL, glError, CHART_OF_ACCOUNTS_SEED, CHART_SEED_VERSION, accountPolicy, SYSTEM_ACCOUNT_CODES, validateAccountDraft, signedBalance, suggestCategorizingAccount, periodKey as acctPeriodKey, chartForCountry} from "./accounting-engine.js";
+import { validateAssetDraft, depreciationDue, faError } from "./depreciation-engine.js";
+import { buildJournal, buildOpeningJournal, buildClosingJournal, buildDepreciationJournal, buildReversalJournal, buildManualJournal, assertManualJournalPolicy, GL, glError, CHART_OF_ACCOUNTS_SEED, CHART_SEED_VERSION, accountPolicy, SYSTEM_ACCOUNT_CODES, validateAccountDraft, signedBalance, suggestCategorizingAccount, periodKey as acctPeriodKey, chartForCountry} from "./accounting-engine.js";
 import { POS_METHODS, POS_PAYMENT_METHODS } from "./pos-service.js";
 import { buildTaxAppendix, billWithheldAmount, TAX_RATES } from "./tax-engine.js";
 import { computeAging } from "./aging-engine.js";
@@ -5397,6 +5398,170 @@ class DataService {
         });
 
         return { created, updated, failed, totals: { created: created.length, updated: updated.length, failed: failed.length } };
+    }
+
+    // ── Fixed assets ────────────────────────────────────────────────────
+    //
+    // The register depreciation runs over. Schedule arithmetic is entirely in
+    // `depreciation-engine.js` (pure) — nothing here computes an amount.
+
+    async listFixedAssets(userId, { includeDisposed = false } = {}) {
+        if (!userId) return [];
+        try {
+            const snap = await getDocs(collection(this.db, `${this._scope(userId)}/fixed_assets`));
+            return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+                .filter((a) => includeDisposed || a.status !== 'disposed')
+                .sort((a, b) => String(a.in_service_date || '').localeCompare(String(b.in_service_date || '')));
+        } catch (_) { return []; }
+    }
+
+    async saveFixedAsset(userId, data = {}, { create = false, assetId = null } = {}) {
+        if (!userId) throw new Error('userId required');
+        const check = validateAssetDraft(data);
+        if (!check.ok) throw faError(check.errors[0].code, check.errors[0].message);
+
+        const scope = this._scope(userId);
+        const fields = {
+            name: String(data.name).trim(),
+            asset_account_code: String(data.asset_account_code).trim(),
+            // Raw integer minor units, like every other amount in the app.
+            cost: Math.round(Number(data.cost) || 0),
+            salvage_value: Math.round(Number(data.salvage_value) || 0),
+            useful_life_months: Number(data.useful_life_months),
+            in_service_date: String(data.in_service_date),
+            // One method today. See depreciation-engine.js for why adding a
+            // second is a promise about every future period, not a formula.
+            method: 'straight_line',
+            dimension_id: this._nullableString(data.dimension_id, 60),
+            notes: this._nullableString(data.notes, 500),
+            updated_at: serverTimestamp()
+        };
+
+        if (create) {
+            const ref = doc(collection(this.db, `${scope}/fixed_assets`));
+            const payload = {
+                ...fields,
+                status: 'active',
+                // What the register has actually POSTED — never derived from the
+                // schedule. A schedule says what is owed; only these two say what
+                // reached the ledger, and the difference is the whole point of
+                // having them.
+                accumulated_depreciation: 0,
+                last_depreciated_period: null,
+                created_by: this.actorUid || userId,
+                created_at: serverTimestamp()
+            };
+            await setDoc(ref, payload);
+            await this._auditCreateBestEffort(userId, 'fixed_asset.created', 'fixed_assets', ref.id, {
+                name: payload.name, cost: payload.cost, useful_life_months: payload.useful_life_months
+            });
+            return { id: ref.id, ...payload };
+        }
+
+        if (!assetId) throw new Error('assetId required');
+        const ref = doc(this.db, `${scope}/fixed_assets/${assetId}`);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) throw new Error('Asset not found.');
+        const prev = snap.data();
+        // Cost and life are frozen once depreciation has posted. Changing either
+        // restates periods already in the ledger, and there is no UI for that
+        // conversation — dispose the asset and register the replacement.
+        if (Number(prev.accumulated_depreciation) > 0) {
+            if (fields.cost !== prev.cost || fields.useful_life_months !== prev.useful_life_months
+                || fields.in_service_date !== prev.in_service_date) {
+                throw new Error('This asset has posted depreciation, so its cost, life and in-service date are locked. You can still rename it.');
+            }
+        }
+        await updateDoc(ref, fields);
+        await this._auditCreateBestEffort(userId, 'fixed_asset.updated', 'fixed_assets', assetId, { name: fields.name });
+        return { id: assetId, ...prev, ...fields };
+    }
+
+    /*
+     * What depreciation is owed across the whole register, up to `throughPeriod`.
+     *
+     * Read-only: this is what the Run screen previews BEFORE anything posts, so
+     * the number a person approves is the number that posts.
+     */
+    async previewDepreciation(userId, throughPeriod) {
+        const assets = await this.listFixedAssets(userId);
+        const byPeriod = new Map();
+        assets.forEach((asset) => {
+            const due = depreciationDue(asset, throughPeriod, { postedThrough: asset.last_depreciated_period || null });
+            due.periods.forEach((row) => {
+                if (!byPeriod.has(row.period_key)) byPeriod.set(row.period_key, []);
+                byPeriod.get(row.period_key).push({ asset, amount: row.amount });
+            });
+        });
+        const periods = [...byPeriod.keys()].sort().map((pk) => ({
+            period_key: pk,
+            lines: byPeriod.get(pk),
+            total: byPeriod.get(pk).reduce((sum, l) => sum + l.amount, 0)
+        }));
+        return { periods, total: periods.reduce((sum, p) => sum + p.total, 0), assetCount: assets.length };
+    }
+
+    /*
+     * Post depreciation, ONE JOURNAL PER PERIOD.
+     *
+     * Not one catch-up entry: six months of arrears dated today would put half a
+     * year of cost into one month's P&L and break every month-on-month
+     * comparison after it. Each period posts into its own period, or not at all.
+     *
+     * Each period is its own batch, for the reason `_payBillOnce` documents —
+     * two journals in one batch write the same ledger_balances doc twice, which
+     * Firestore forbids. A mid-run failure therefore leaves earlier periods
+     * posted, which is correct: they are real and independently valid.
+     */
+    async runDepreciation(userId, throughPeriod) {
+        if (!userId) throw new Error('userId required');
+        const preview = await this.previewDepreciation(userId, throughPeriod);
+        if (!preview.periods.length) return { posted: [], total: 0 };
+
+        const scope = this._scope(userId);
+        const entityId = this._resolvedScopeId(userId);
+        const posted = [];
+
+        for (const period of preview.periods) {
+            // A closed period refuses here rather than surfacing as an opaque
+            // permission error from the journals rule.
+            await this._assertOpenPostingPeriod(userId, new Date(`${period.period_key}-01T12:00:00`));
+
+            const journal = buildDepreciationJournal({
+                lines: period.lines.map((l) => ({ amount: l.amount, description: l.asset.name })),
+                periodKey: period.period_key
+            });
+            if (!journal) continue;
+
+            this._assignJournalNumbers([journal],
+                await this._reserveJournalNumbers(userId, { [period.period_key.slice(0, 4)]: 1 }));
+
+            const batch = writeBatch(this.db);
+            const acc = {};
+            const jr = this._attachJournalToBatch(batch, scope, journal, { entityId, balanceAcc: acc });
+            this._flushBalanceAcc(batch, scope, entityId, acc);
+
+            // Stamp each asset in the SAME batch as the journal that moved it.
+            // A stamp that lands without its journal double-charges the period on
+            // the next run; a journal without its stamp never stops.
+            period.lines.forEach((l) => {
+                batch.update(doc(this.db, `${scope}/fixed_assets/${l.asset.id}`), {
+                    accumulated_depreciation: Math.round(Number(l.asset.accumulated_depreciation) || 0) + l.amount,
+                    last_depreciated_period: period.period_key,
+                    updated_at: serverTimestamp()
+                });
+            });
+
+            await batch.commit();
+            posted.push({ period_key: period.period_key, journal_ref: jr.id, total: period.total, assets: period.lines.length });
+        }
+
+        await this._auditCreateBestEffort(userId, 'depreciation.run', 'journals', 'depreciation', {
+            through_period: throughPeriod,
+            periods_posted: posted.length,
+            total: posted.reduce((sum, p) => sum + p.total, 0)
+        });
+        return { posted, total: posted.reduce((sum, p) => sum + p.total, 0) };
     }
 
     async archiveAccount(userId, code) {
