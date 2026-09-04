@@ -205,10 +205,15 @@ test.describe('QR customer ordering', () => {
         // Asked AFTER the menu paints. A form on a blank screen gives the diner
         // nothing to judge the request against.
         await expect(page.locator('.card').first()).toBeVisible();
-        // Two fields and a button — no explanatory paragraph. The labels say
-        // what is wanted and the sheet title says why.
-        await expect(page.locator('.welcome-lead')).toHaveCount(0);
+        // Two fields and a button — no explanatory paragraph ABOVE them. The
+        // labels say what is wanted; the reason the number is wanted rides with
+        // the button, where it is read at the moment of committing.
+        await expect(page.locator('.welcome-lead, .welcome-lede')).toHaveCount(0);
         await expect(gate).not.toContainText('Isi data Anda sekali saja');
+        await expect(page.locator('.welcome-fine')).toContainText('habis');
+        expect(await page.locator('.welcome-fine').evaluate((el) =>
+            el.compareDocumentPosition(document.getElementById('welcome-name'))
+            & Node.DOCUMENT_POSITION_PRECEDING), 'the fine print follows the fields').toBeTruthy();
 
         // It is not dismissible by any of the usual routes.
         await page.locator('#scrim').click({ position: { x: 10, y: 10 } });
@@ -220,7 +225,9 @@ test.describe('QR customer ordering', () => {
         await page.locator('#welcome-go').click();
         await expect(gate).toHaveClass(/is-open/);
         await expect(page.locator('#welcome-error')).toContainText('nama');
-        await expect(page.locator('#welcome-name')).toHaveClass(/invalid/);
+        // The border lives on the `.field-input` wrapper, so the flag does too —
+        // on the input it would style an element that draws no border.
+        await expect(page.locator('#welcome-name').locator('xpath=..')).toHaveClass(/invalid/);
 
         // A short number is refused too — nine digits is the shortest real
         // Indonesian mobile.
@@ -228,13 +235,90 @@ test.describe('QR customer ordering', () => {
         await page.locator('#welcome-phone').fill('0812');
         await page.locator('#welcome-go').click();
         await expect(gate).toHaveClass(/is-open/);
-        await expect(page.locator('#welcome-phone')).toHaveClass(/invalid/);
+        await expect(page.locator('#welcome-phone').locator('xpath=..')).toHaveClass(/invalid/);
 
         // Digits are counted, not characters, so a formatted number passes.
         await page.locator('#welcome-phone').fill('+62 812-3456-7890');
         await page.locator('#welcome-go').click();
         await expect(gate).not.toHaveClass(/is-open/);
         await expect(page.locator('#cartbar')).not.toHaveClass(/is-open/);
+    });
+
+    test('A SHEET SITS ON THE KEYBOARD, AND THE PAGE BEHIND IT CANNOT SCROLL', async ({ page }) => {
+        // Both halves of one iOS defect, reported as "a gap appears between the
+        // bottom sheet and the background when I fill in the name".
+        //
+        // A `position: fixed` sheet is anchored to the LAYOUT viewport, which the
+        // software keyboard does not shrink — and `overflow: hidden` on body does
+        // not hold on iOS, so Safari scrolled the document to reveal the focused
+        // input and dragged the sheet with it. The menu then showed through the
+        // strip underneath.
+        //
+        // No headless browser raises a software keyboard, so this drives the
+        // mechanism: `--kb-inset` is what syncKeyboardInset() writes, and the
+        // sheet must be positioned and sized off it.
+        await stub(page);
+        await goTo(page);
+        const gate = page.locator('#sheet-welcome');
+        await expect(gate).toHaveClass(/is-open/, { timeout: 15_000 });
+
+        const geometry = () => gate.evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            return { liftedBy: Math.round(window.innerHeight - r.bottom), height: Math.round(r.height) };
+        });
+
+        // A few pixels of viewport jitter is NOT a keyboard, and treating it as
+        // one would nudge every sheet by a hairline — WebKit reported 5px on a
+        // cold load and left exactly the seam this fix removes.
+        expect(await page.evaluate(() => getComputedStyle(document.documentElement)
+            .getPropertyValue('--kb-inset').trim())).toBe('0px');
+
+        // Flush against the bottom with no keyboard up. Compared with a 1px
+        // tolerance because fractional layout puts WebKit a sub-pixel out.
+        const resting = await geometry();
+        expect(Math.abs(resting.liftedBy)).toBeLessThanOrEqual(1);
+
+        // A 300px keyboard lifts the sheet by exactly 300px — not "somewhere
+        // above it" — and takes that much off the room it has to be tall in.
+        // The DELTA is the claim, and it cancels the sub-pixel above.
+        await page.evaluate(() =>
+            document.documentElement.style.setProperty('--kb-inset', '300px'));
+        const lifted = await geometry();
+        expect(lifted.liftedBy - resting.liftedBy).toBe(300);
+        expect(lifted.height).toBeLessThanOrEqual(844 - 300 - 12 + 1);
+        expect(lifted.height).toBeLessThanOrEqual(resting.height);
+
+        // And the page behind is out of flow at its offset, not merely
+        // `overflow: hidden` — which iOS ignores.
+        expect(await page.evaluate(() => getComputedStyle(document.body).position))
+            .toBe('fixed');
+    });
+
+    test('closing a sheet returns the menu to where it was, not to the top', async ({ page }) => {
+        // The scroll lock takes the body out of flow, so releasing it has to put
+        // the offset back — otherwise every sheet a diner opens halfway down a
+        // long menu spits them out at the top of it.
+        await stub(page);
+        await open(page);
+        await page.evaluate(() => window.scrollTo(0, 400));
+        const before = await page.evaluate(() => Math.round(window.pageYOffset));
+        expect(before).toBeGreaterThan(0);
+
+        // Opened from the FIXED tab bar. Clicking a menu card would make
+        // Playwright scroll it into view first, changing the offset the lock
+        // records — the test would then be about Playwright, not about the lock,
+        // and it passed or failed depending on how far images had loaded.
+        await page.locator('.tab[data-tab="orders"]').click();
+        await expect(page.locator('#sheet-orders')).toHaveClass(/is-open/);
+        expect(await page.evaluate(() => getComputedStyle(document.body).position))
+            .toBe('fixed');
+
+        await page.locator('#scrim').click({ position: { x: 10, y: 10 } });
+        await expect(page.locator('#sheet-orders')).not.toHaveClass(/is-open/);
+
+        expect(await page.evaluate(() => Math.round(window.pageYOffset))).toBe(before);
+        expect(await page.evaluate(() => getComputedStyle(document.body).position))
+            .not.toBe('fixed');
     });
 
     test('a returning diner mid-sitting is not asked twice', async ({ page }) => {
@@ -261,11 +345,17 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('#sheet-welcome')).not.toHaveClass(/is-open/);
     });
 
-    test('THE SESSION DIES WITH THE SITTING', async ({ page }) => {
-        // The fraud shape: pay, leave, reopen the saved link the next day and
-        // keep ordering to a table you have already settled. The session used to
-        // be one global key holding only a name, so the page had no way to know
-        // its sitting was long since paid and cleared.
+    test('THE SITTING DIES; THE DINER IS NOT MADE A STRANGER AGAIN', async ({ page }) => {
+        // The fraud shape this guards: pay, leave, reopen the saved link the
+        // next day and keep ordering to a table you have already settled. The
+        // session used to be one global key holding only a name, so the page had
+        // no way to know its sitting was long since paid and cleared.
+        //
+        // What it must NOT do is treat "the sitting ended" as "we have never met
+        // you". Re-asking the name protected nothing — the server accepts a
+        // sitting-less order from any caller, because a printed QR makes a fresh
+        // scan and a reopened link byte-identical — while charging the diner
+        // their name, their number and their whole cart for a second round.
         const capture = {};
         await stub(page, { capture });
         await open(page);
@@ -274,22 +364,56 @@ test.describe('QR customer ordering', () => {
         await page.locator('#cart-submit').click();
         await expect(page.locator('#sheet-done')).toHaveClass(/is-open/);
         expect(capture.body.sitting, 'the first order starts a sitting').toBeFalsy();
+        expect(capture.body.customer_name).toBe('Sinta');
 
         // The cashier settles the bill. `qr-order-status` stops returning it,
         // so the table reads clear.
         capture.status = { has_order: false, lines: [] };
+        // The toast self-dismisses after 2.6s, which is shorter than a cold
+        // WebKit boot — latch what it said instead of racing it.
+        await page.addInitScript(() => {
+            window.__toastLog = [];
+            document.addEventListener('DOMContentLoaded', () => {
+                const el = document.getElementById('toast');
+                if (!el) return;
+                new MutationObserver(() => {
+                    if (el.classList.contains('is-open')) window.__toastLog.push(el.textContent);
+                }).observe(el, { attributes: true, attributeFilter: ['class'] });
+            });
+        });
         await page.reload();
         await expect(page.locator('.card').first()).toBeVisible({ timeout: 15_000 });
 
-        // The stored identity is gone with the sitting, and the page says so.
-        await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/, { timeout: 15_000 });
-        await expect(page.locator('#welcome-title')).toHaveText('Mulai pesanan baru');
-        await expect(page.locator('#welcome-sub')).toContainText('sudah selesai');
-        // And nothing carried over.
+        // The sitting is gone — said, not asked.
+        await expect
+            .poll(() => page.evaluate(() => (window.__toastLog || []).join(' ')), { timeout: 15_000 })
+            .toContain('sudah selesai');
+        await expect(page.locator('#sheet-welcome')).not.toHaveClass(/is-open/);
+        // Nothing carried over from the settled round.
         await expect(page.locator('#cartbar')).not.toHaveClass(/is-open/);
+
+        // The next order opens a NEW sitting rather than continuing the dead
+        // one, and still carries who it is for.
+        capture.body = null;
+        await addPlain(page, 'Nasi Goreng');
+        await page.locator('#cart-open').click();
+        await page.locator('#cart-submit').click();
+        await expect(page.locator('#sheet-done')).toHaveClass(/is-open/, { timeout: 15_000 });
+        expect(capture.body.sitting, 'the dead sitting is not resent').toBeFalsy();
+        expect(capture.body.customer_name, 'identity survived the settled bill').toBe('Sinta');
     });
 
-    test('an order into a settled sitting is refused, not silently reopened', async ({ page }) => {
+    test('AN ORDER INTO A SETTLED SITTING OPENS A NEW ONE, IN ONE TAP', async ({ page }) => {
+        // The bill is settled at the till while this page is still open, so the
+        // next order carries a sitting the table is no longer in and the server
+        // refuses it with `sitting_ended`.
+        //
+        // That refusal only ever meant "you cannot APPEND to that". It used to
+        // be handled as a teardown — cart emptied, identity forgotten, the
+        // identity gate back over the menu, and the notice explaining why
+        // written into the cart the diner had just been navigated away from. The
+        // diner's second attempt then worked, which is what made it read as the
+        // page randomly asking for their name again.
         const capture = {};
         await stub(page, { capture });
         await open(page);
@@ -299,19 +423,48 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('#sheet-done')).toHaveClass(/is-open/);
         await page.locator('#done-more').click();
 
-        // The bill is settled while this page is still open, so the NEXT order
-        // carries a sitting the table is no longer in.
-        await page.route('**/qr-order', (route) => route.fulfill({
-            status: 409, contentType: 'application/json',
-            body: JSON.stringify({ error: 'sitting_ended' })
-        }));
+        // Refuse ONLY an order that claims the dead sitting. An order that
+        // claims none is a new sitting and is accepted — which is exactly what
+        // the server does, and what makes the retry legitimate rather than a
+        // way of talking a refusal into a yes.
+        const sent = [];
+        await page.route('**/qr-order', async (route) => {
+            const body = JSON.parse(route.request().postData() || '{}');
+            sent.push(body);
+            if (body.sitting) {
+                return route.fulfill({
+                    status: 409, contentType: 'application/json',
+                    body: JSON.stringify({ error: 'sitting_ended' })
+                });
+            }
+            return route.fulfill({
+                status: 200, contentType: 'application/json',
+                body: JSON.stringify({
+                    ok: true, order_id: 'ord_2', order_number: '2026-09-03-008',
+                    total_amount: 45000, rejected_lines: 0
+                })
+            });
+        });
+
         await addPlain(page, 'Nasi Goreng');
         await page.locator('#cart-open').click();
         await page.locator('#cart-submit').click();
 
-        // Start over rather than quietly opening a new sitting on a paid table.
-        await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/, { timeout: 15_000 });
-        await expect(page.locator('#welcome-title')).toHaveText('Mulai pesanan baru');
+        // ONE tap lands on the confirmation, not on the identity gate.
+        await expect(page.locator('#sheet-done')).toHaveClass(/is-open/, { timeout: 15_000 });
+        await expect(page.locator('#done-number')).toHaveText('2026-09-03-008');
+        await expect(page.locator('#sheet-welcome')).not.toHaveClass(/is-open/);
+
+        // Two requests: the refused one carrying the dead sitting, then the same
+        // order as a new sitting. Same `client_ref` both times — the refusal
+        // happens before the idempotency ref is written, so this stays one order
+        // however it lands.
+        expect(sent).toHaveLength(2);
+        expect(sent[0].sitting, 'the first attempt claims the dead sitting').toBeTruthy();
+        expect(sent[1].sitting, 'the retry opens a new sitting').toBeFalsy();
+        expect(sent[1].client_ref).toBe(sent[0].client_ref);
+        expect(sent[1].customer_name, 'identity was never torn down').toBe('Sinta');
+        expect(sent[1].lines, 'the cart survived the refusal').toEqual(sent[0].lines);
     });
 
     test('the menu is a two-column grid', async ({ page }) => {

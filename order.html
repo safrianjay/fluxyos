@@ -77,6 +77,11 @@
     --shadow-bar:   0 -2px 16px -8px rgba(11, 15, 25, 0.18);
 
     --safe-bottom: env(safe-area-inset-bottom, 0px);
+    /* How much of the layout viewport the software keyboard is covering.
+       MEASURED AT RUNTIME by syncKeyboardInset(); 0 whenever no keyboard is up,
+       so every rule reading it is a no-op on desktop. See the function for why
+       a bottom sheet cannot just sit at `bottom: 0` on iOS. */
+    --kb-inset: 0px;
     /* How much room the floating tab bar occupies at the bottom. Read by the
        cart bar and by the menu's trailing spacer, so the three can never
        disagree about where the bottom of the page is.
@@ -900,7 +905,14 @@ img { max-width: 100%; display: block; }
 
 .sheet {
     position: fixed;
-    left: 0; right: 0; bottom: 0;
+    left: 0; right: 0;
+    /* NOT `bottom: 0`. A fixed element is anchored to the LAYOUT viewport, and
+       the iOS software keyboard does not shrink that — it shrinks the VISUAL
+       viewport and scrolls it. The sheet therefore ends up somewhere other
+       than "on top of the keyboard", which is the gap of page background that
+       appeared under the sheet the moment the name field was focused.
+       syncKeyboardInset() measures the covered strip; it is 0px otherwise. */
+    bottom: var(--kb-inset);
     z-index: 60;
     max-width: 640px;
     margin: 0 auto;
@@ -908,11 +920,16 @@ img { max-width: 100%; display: block; }
     border-radius: var(--r-xl) var(--r-xl) 0 0;
     box-shadow: var(--shadow-sheet);
     transform: translateY(100%);
+    /* Transform only. `bottom` must track the keyboard frame-for-frame — an
+       eased 260ms lag there reads as the sheet sliding around. */
     transition: transform 0.26s cubic-bezier(0.32, 0.72, 0, 1);
     display: flex;
     flex-direction: column;
     max-height: 88vh;
     max-height: 88dvh;
+    /* Lifted off the keyboard, the sheet also has less room to be tall in.
+       Without this it keeps its full height and the top runs off screen. */
+    max-height: min(88dvh, calc(100dvh - var(--kb-inset) - 12px));
 }
 .sheet.is-open { transform: translateY(0); }
 
@@ -1265,6 +1282,126 @@ img { max-width: 100%; display: block; }
 }
 .field input:focus { border-color: var(--ink-30); }
 .field input.invalid { border-color: var(--danger); }
+
+/* ---- Identity gate -----------------------------------------------------
+   The one sheet a diner cannot dismiss, so it does not get the plain
+   head/body/foot the dismissible sheets share. It gets the page's hero
+   treatment — the same navy → purple gradient with the warm bloom as
+   `.masthead` and `.ostat` — so the first thing a diner meets reads as the
+   restaurant greeting them rather than as a form standing in the way.
+
+   The orange lives ONLY inside the gradient; an orange background is
+   prohibited project-wide (CLAUDE.md), and this page's gradient is the
+   documented exception it already uses twice. */
+.sheet-welcome { overflow: hidden; }        /* clips the hero to the sheet's radius */
+
+.welcome-hero {
+    flex: 0 0 auto;
+    padding: 0 24px 22px;
+    text-align: center;
+    color: #fff;
+    background:
+        radial-gradient(120% 130% at 88% -10%, rgba(234, 88, 12, 0.32) 0%, transparent 58%),
+        radial-gradient(95% 120% at 0% 100%, rgba(124, 58, 237, 0.30) 0%, transparent 62%),
+        linear-gradient(135deg, #0B0F19 0%, #171334 55%, #2A1B4A 100%);
+}
+/* The grip moves INSIDE the hero — on the dark ground the shared `--line`
+   grey is nearly invisible, and a white strip above the gradient would read
+   as a seam between two sheets. */
+.welcome-hero .sheet-grip {
+    background: rgba(255, 255, 255, 0.30);
+    margin: 10px auto 18px;
+}
+.welcome-mark {
+    width: 54px; height: 54px;
+    margin: 0 auto 14px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.13);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    display: flex; align-items: center; justify-content: center;
+}
+.welcome-mark svg { width: 26px; height: 26px; }
+.welcome-title {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+    margin: 0;
+}
+/* A chip, not a caption. "Meja 6" is the one fact that makes this sheet
+   trustworthy — it proves the page knows which table the QR came from. */
+.welcome-table {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin: 12px 0 0;
+    padding: 5px 12px 5px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.20);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.90);
+}
+.welcome-table svg { width: 14px; height: 14px; opacity: 0.8; }
+
+/* No explanatory paragraph above the fields — two labels and a button are the
+   whole ask, and a lede here would be the third thing to read before the first
+   thing to do. The reason the number is wanted rides with the button instead,
+   as `.welcome-fine`, where it is read at the moment of committing. */
+.welcome-body { padding: 20px 24px 4px; }
+
+/* The border moves from the input to a wrapper so the leading icon sits
+   INSIDE the control rather than beside it. `invalid` therefore has to be
+   toggled on the wrapper too — see submitWelcome(). */
+.welcome-body .field { margin-bottom: 12px; }
+.welcome-body .field label { margin-bottom: 7px; }
+.field-input {
+    display: flex; align-items: center; gap: 10px;
+    height: 52px;
+    padding: 0 14px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--canvas);
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.field-input:focus-within {
+    border-color: rgba(11, 15, 25, 0.40);
+    background: var(--surface);
+    box-shadow: 0 0 0 4px rgba(11, 15, 25, 0.05);
+}
+.field-input.invalid {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 4px rgba(185, 28, 28, 0.07);
+}
+.field-ico { flex: 0 0 auto; display: flex; color: var(--ink-30); }
+.field-ico svg { width: 18px; height: 18px; }
+.field-input:focus-within .field-ico { color: var(--ink-70); }
+.welcome-body .field-input input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: none;
+    font-size: 16px;                 /* iOS zoom guard — not emphasis */
+}
+
+.welcome-foot { border-top: none; padding-top: 4px; }
+.welcome-foot .primary { height: 54px; border-radius: 14px; font-size: 16px; }
+.welcome-foot .primary svg { width: 18px; height: 18px; }
+/* The error notice sits between the fields and the button, so it matches the
+   fields' radius rather than the sheet-wide 12px. */
+.welcome-body .notice { border-radius: 14px; }
+
+/* Says what the number is for, where the question is asked. Without it the
+   phone field reads as a marketing capture and gets a fake number. */
+.welcome-fine {
+    margin: 12px 0 0;
+    font-size: 11.5px;
+    line-height: 1.45;
+    color: var(--ink-30);
+    text-align: center;
+}
 
 
 /* ---- Cart lines -------------------------------------------------------- */
@@ -1641,29 +1778,55 @@ img { max-width: 100%; display: block; }
 
      Deliberately NOT the scrim-dismissible pattern the other sheets use — the
      scrim click handler skips this one. -->
-<div id="sheet-welcome" class="sheet" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
-    <div class="sheet-grip"></div>
-    <div class="sheet-head">
-        <div>
-            <h2 class="sheet-title" id="welcome-title">Selamat datang</h2>
-            <p class="sheet-sub" id="welcome-sub">—</p>
+<div id="sheet-welcome" class="sheet sheet-welcome" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+    <div class="welcome-hero">
+        <div class="sheet-grip"></div>
+        <div class="welcome-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 18h18"/><path d="M5 18a7 7 0 0 1 14 0"/><path d="M12 8V6"/><circle cx="12" cy="5" r="1.2"/>
+            </svg>
         </div>
+        <h2 class="welcome-title" id="welcome-title">Selamat datang</h2>
+        <p class="welcome-table" id="welcome-sub" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 21s-7-4.4-7-9.7A7 7 0 0 1 19 11.3C19 16.6 12 21 12 21z"/><circle cx="12" cy="11" r="2.4"/>
+            </svg>
+            <span id="welcome-sub-text">—</span>
+        </p>
     </div>
-    <div class="sheet-body" style="padding-top: 16px">
+    <div class="sheet-body welcome-body">
         <div class="field">
             <label for="welcome-name">Nama</label>
-            <input id="welcome-name" type="text" maxlength="80" autocomplete="name"
-                   inputmode="text" placeholder="Nama Anda">
+            <div class="field-input">
+                <span class="field-ico" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                    </svg>
+                </span>
+                <input id="welcome-name" type="text" maxlength="80" autocomplete="name"
+                       inputmode="text" placeholder="Nama Anda">
+            </div>
         </div>
         <div class="field">
             <label for="welcome-phone">Nomor WhatsApp</label>
-            <input id="welcome-phone" type="tel" maxlength="32" inputmode="tel"
-                   autocomplete="tel" placeholder="08…">
+            <div class="field-input">
+                <span class="field-ico" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/>
+                    </svg>
+                </span>
+                <input id="welcome-phone" type="tel" maxlength="32" inputmode="tel"
+                       autocomplete="tel" placeholder="08…">
+            </div>
         </div>
         <div id="welcome-error"></div>
     </div>
-    <div class="sheet-foot">
-        <button class="primary" id="welcome-go" type="button">Mulai pesan</button>
+    <div class="sheet-foot welcome-foot">
+        <button class="primary" id="welcome-go" type="button">
+            <span>Mulai pesan</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+        </button>
+        <p class="welcome-fine">Untuk memanggil pesanan Anda dan mengabari kalau ada item yang habis. Bukan untuk promosi.</p>
     </div>
 </div>
 
@@ -2008,17 +2171,56 @@ img { max-width: 100%; display: block; }
      * End the sitting on this device.
      *
      * Called when the server says the table has moved on — the bill was settled
-     * and the table cleared. Identity goes with it: the next order from this
-     * phone is a NEW sitting and has to say who it is for, which is the only
-     * thing standing between a saved link and a silent re-order on a table
-     * somebody has already paid for and left.
+     * and the table cleared.
+     *
+     * @param {{keepIdentity?: boolean}} [opts]
+     *
+     * ⚠️ IDENTITY IS NOT PART OF THE SITTING, and treating it as one is what
+     * made a second round feel broken. This used to clear the name and number
+     * along with the order id, on the theory that re-asking was what stood
+     * between a saved link and a silent re-order. It is not: the server accepts
+     * `sitting: null` from ANY caller — that is a fresh scan, and a printed QR
+     * makes "scanned just now" and "reopened a saved link" byte-identical
+     * requests. So the form protected nothing, while charging the diner who is
+     * sitting right there their name, their number and their whole cart for the
+     * crime of ordering a second round after the first was paid.
+     *
+     * What actually closes the silent path is the server's `sitting_ended`
+     * refusal, which stops a stale tab CONTINUING a dead sitting. That is
+     * untouched.
      */
-    function endSitting() {
-        customer = null;
+    function endSitting(opts) {
+        var keepIdentity = !!(opts && opts.keepIdentity) && !!customer;
         sitting = null;
-        cart = [];
-        cartNote = '';
-        try { window.localStorage.removeItem(SESSION_KEY); } catch (_) { /* nothing to clear */ }
+        if (!keepIdentity) {
+            customer = null;
+            cart = [];
+            cartNote = '';
+        }
+        try {
+            if (keepIdentity) {
+                window.localStorage.setItem(SESSION_KEY, JSON.stringify({
+                    name: customer.name, phone: customer.phone, sitting: null
+                }));
+            } else {
+                window.localStorage.removeItem(SESSION_KEY);
+            }
+        } catch (_) { /* in-memory only */ }
+    }
+
+    /**
+     * Set the gate's heading and its table chip.
+     *
+     * The chip is HIDDEN rather than emptied when there is no table — an empty
+     * pill is a visible border around nothing, which reads as a loading state
+     * that never resolves.
+     */
+    function welcomeCopy(title, sub) {
+        setText($('welcome-title'), title);
+        var chip = $('welcome-sub');
+        var text = String(sub || '');
+        setText($('welcome-sub-text'), text);
+        chip.hidden = !text;
     }
 
     /**
@@ -2030,11 +2232,19 @@ img { max-width: 100%; display: block; }
      * the scrim's own click handler ignores it while it is open.
      */
     function openWelcome() {
-        $('welcome-sub').textContent = menu && menu.table ? ('Meja ' + menu.table) : '';
+        welcomeCopy('Selamat datang', menu && menu.table ? ('Meja ' + menu.table) : '');
         $('welcome-error').innerHTML = '';
+        clearWelcomeInvalid();
         openSheet('sheet-welcome');
         // Not autofocused: on iOS that opens the keyboard over the sheet before
         // the diner has seen what is being asked of them.
+    }
+
+    function clearWelcomeInvalid() {
+        ['welcome-name', 'welcome-phone'].forEach(function (id) {
+            var wrap = $(id).closest('.field-input');
+            if (wrap) wrap.classList.remove('invalid');
+        });
     }
 
     function welcomeOpen() { return $('sheet-welcome').classList.contains('is-open'); }
@@ -2044,16 +2254,18 @@ img { max-width: 100%; display: block; }
         var phone = String($('welcome-phone').value || '').trim();
         var digits = phone.replace(/\D/g, '');
         var bad = null;
-        $('welcome-name').classList.remove('invalid');
-        $('welcome-phone').classList.remove('invalid');
+        // The border lives on `.field-input` now, so the flag goes there — on
+        // the input it would style an element that no longer draws one.
+        var flag = function (id) { $(id).closest('.field-input').classList.add('invalid'); };
+        clearWelcomeInvalid();
 
-        if (!name) { bad = 'Masukkan nama Anda dulu.'; $('welcome-name').classList.add('invalid'); }
+        if (!name) { bad = 'Masukkan nama Anda dulu.'; flag('welcome-name'); }
         // Nine digits is the shortest real Indonesian mobile number. Checking
         // DIGITS rather than length lets someone type +62 812-3456-7890 with
         // whatever spacing their keyboard gives them.
         else if (digits.length < 9) {
             bad = 'Nomor WhatsApp belum lengkap.';
-            $('welcome-phone').classList.add('invalid');
+            flag('welcome-phone');
         }
 
         if (bad) {
@@ -2633,11 +2845,92 @@ img { max-width: 100%; display: block; }
     // =====================================================================
     // Sheets
     // =====================================================================
+    /**
+     * Freeze the page behind a sheet.
+     *
+     * ⚠️ `overflow: hidden` ON BODY DOES NOT HOLD ON iOS. It was what this used,
+     * and it is why focusing the name field tore the layout apart: Safari
+     * scrolled the document anyway to bring the input above the keyboard, the
+     * fixed sheet went with it, and the menu appeared in the strip underneath.
+     * Taking the body out of flow at its current offset is the lock that
+     * actually works there. The offset is restored on release, or every sheet
+     * would bounce the diner back to the top of the menu.
+     */
+    var scrollLockY = 0;
+    var scrollLocked = false;
+    function lockScroll() {
+        if (scrollLocked) return;
+        scrollLocked = true;
+        scrollLockY = window.pageYOffset || document.documentElement.scrollTop || 0;
+        document.body.style.position = 'fixed';
+        document.body.style.top = (-scrollLockY) + 'px';
+        document.body.style.left = '0';
+        document.body.style.right = '0';
+        document.body.style.width = '100%';
+        document.body.style.overflow = 'hidden';
+    }
+    function unlockScroll() {
+        if (!scrollLocked) return;
+        scrollLocked = false;
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, scrollLockY);
+    }
+
+    /**
+     * How much of the layout viewport the software keyboard is covering.
+     *
+     * A `position: fixed` sheet is anchored to the LAYOUT viewport, and the iOS
+     * keyboard does not shrink that — it shrinks the VISUAL viewport and scrolls
+     * it. So `bottom: 0` lands the sheet at a bottom edge nobody can see, and
+     * with the page frozen above it the difference shows as a band of menu
+     * between the sheet and the keyboard. `--kb-inset` is that difference; the
+     * sheet reads it as its `bottom` and lands exactly on the keyboard.
+     *
+     * Zero without a visualViewport, and zero whenever no keyboard is up, so
+     * every rule that reads it is inert on desktop.
+     */
+    // A software keyboard is never a few pixels tall. Anything under this is
+    // measurement noise — fractional layout, a URL bar mid-transition, rubber
+    // band scrolling — and acting on it would nudge every sheet up and down by
+    // a hairline for no reason. WebKit reported 5px on a cold load and left a
+    // visible seam under the sheet, which is the defect this file is fixing.
+    var KEYBOARD_MIN_PX = 60;
+
+    function syncKeyboardInset() {
+        var vv = window.visualViewport;
+        if (!vv) return;
+        var covered = window.innerHeight - vv.height - vv.offsetTop;
+        // Rounded, because writing a new value repaints every fixed element.
+        var next = (covered >= KEYBOARD_MIN_PX ? Math.round(covered) : 0) + 'px';
+        if (next !== keyboardInset) {
+            keyboardInset = next;
+            document.documentElement.style.setProperty('--kb-inset', next);
+        }
+    }
+    var keyboardInset = '0px';
+    if (window.visualViewport) {
+        var insetFrame = 0;
+        var scheduleInset = function () {
+            if (insetFrame) return;
+            insetFrame = window.requestAnimationFrame(function () {
+                insetFrame = 0;
+                syncKeyboardInset();
+            });
+        };
+        window.visualViewport.addEventListener('resize', scheduleInset);
+        window.visualViewport.addEventListener('scroll', scheduleInset);
+    }
+
     function openSheet(id) {
         $('scrim').classList.add('is-open');
         $(id).classList.add('is-open');
         // The page behind a sheet must not scroll under the customer's finger.
-        document.body.style.overflow = 'hidden';
+        lockScroll();
     }
     function closeSheets(opts) {
         // The identity gate closes only when it has been completed. Every other
@@ -2648,7 +2941,7 @@ img { max-width: 100%; display: block; }
         $('sheet-welcome').classList.remove('is-open');
         $('sheet-orders').classList.remove('is-open');
         $('sheet-done').classList.remove('is-open');
-        document.body.style.overflow = '';
+        unlockScroll();
         detail = null;
         setActiveTab('menu');
     }
@@ -2659,7 +2952,9 @@ img { max-width: 100%; display: block; }
         $(id).addEventListener('keydown', function (e) {
             if (e.key === 'Enter') { e.preventDefault(); submitWelcome(); }
         });
-        $(id).addEventListener('input', function () { $(id).classList.remove('invalid'); });
+        $(id).addEventListener('input', function () {
+            $(id).closest('.field-input').classList.remove('invalid');
+        });
     });
     Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) {
         b.addEventListener('click', function () { closeSheets(); });
@@ -3030,14 +3325,23 @@ img { max-width: 100%; display: block; }
         }
         if (live && live === sitting) return;      // still the same sitting
 
-        // The table has moved on.
-        endSitting();
+        // The table has moved on. The sitting is over; who this phone belongs
+        // to is not, so the identity survives and the next order simply opens a
+        // new sitting — see endSitting() for why re-asking bought nothing.
+        var known = !!customer;
+        endSitting({ keepIdentity: true });
         paintCart();
         paintMenu();
-        if (!welcomeOpen()) {
+        if (known) {
+            // Said, not asked. The diner needs to know the previous round is
+            // settled so a new one does not surprise them on the bill; they do
+            // not need a form to acknowledge it.
+            toast('Pesanan sebelumnya sudah selesai. Pesanan berikutnya jadi pesanan baru.');
+        } else if (!welcomeOpen()) {
+            // Genuinely a first-time diner on this phone — the gate is the only
+            // place the kitchen gets a name to call.
             openWelcome();
-            setText($('welcome-title'), 'Mulai pesanan baru');
-            setText($('welcome-sub'), menu && menu.table
+            welcomeCopy('Mulai pesanan baru', menu && menu.table
                 ? ('Meja ' + menu.table + ' · pesanan sebelumnya sudah selesai')
                 : 'Pesanan sebelumnya sudah selesai');
         }
@@ -3066,41 +3370,25 @@ img { max-width: 100%; display: block; }
     // =====================================================================
     // Submit
     // =====================================================================
-    $('cart-submit').addEventListener('click', function () {
-        if (submitting || !cart.length) return;
-        // READ THE FIELD, not the cached copy. `cartNote` is refreshed by
-        // paintCart(), which runs on cart edits — so a note typed and then
-        // submitted without touching anything else was still '' at this point
-        // and the request went out without it. Silently: the order posted fine,
-        // the kitchen just never saw the request.
-        var noteEl = $('cart-note');
-        if (noteEl) cartNote = String(noteEl.value || '');
-        // Folded in here rather than carried as its own field: `pos_orders` has
-        // no cutlery flag, and the note is the only thing the kitchen reads.
-        var outgoingNote = noCutlery
-            ? (cartNote ? cartNote + ' · Tanpa sendok garpu' : 'Tanpa sendok garpu').slice(0, 200)
-            : cartNote;
 
-        submitting = true;
-        var btn = $('cart-submit');
-        btn.disabled = true;
-        // A SPINNER, not just a word swap. The request can take a couple of
-        // seconds on restaurant wifi, and a button that only changes its label
-        // reads as stuck — which is how a diner ends up tapping again. The
-        // idempotency ref makes a double tap harmless, but this is what stops
-        // it happening.
-        btn.classList.add('is-busy');
-        btn.querySelector('span').textContent = 'Mengirim pesanan…';
-
-        fetch(FN + 'qr-order', {
+    /**
+     * One POST of the current cart, resolving with the response body and
+     * rejecting with it — so a caller can read `err.error` and decide.
+     *
+     * Split out of the click handler purely so the `sitting_ended` path can
+     * send it a second time as a new sitting without duplicating the payload.
+     */
+    function postOrder(outgoingNote) {
+        return fetch(FN + 'qr-order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 token: TOKEN,
                 client_ref: clientRef,
                 // What this device believes it is part of. The server refuses
-                // the order if the table has moved on, rather than opening a
-                // new sitting on a table already paid for.
+                // the order if the table has moved on, rather than appending to
+                // a sitting already paid for. Read at call time, not closed
+                // over, because the retry clears it first.
                 sitting: sitting,
                 customer_name: customer ? customer.name : '',
                 customer_phone: customer ? customer.phone : '',
@@ -3118,11 +3406,72 @@ img { max-width: 100%; display: block; }
             .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
             .then(function (res) {
                 if (!res.ok || !res.body.ok) throw res.body || {};
+                return res.body;
+            });
+    }
+
+    $('cart-submit').addEventListener('click', function () {
+        if (submitting || !cart.length) return;
+        // READ THE FIELD, not the cached copy. `cartNote` is refreshed by
+        // paintCart(), which runs on cart edits — so a note typed and then
+        // submitted without touching anything else was still '' at this point
+        // and the request went out without it. Silently: the order posted fine,
+        // the kitchen just never saw the request.
+        var noteEl = $('cart-note');
+        if (noteEl) cartNote = String(noteEl.value || '');
+        // Folded in here rather than carried as its own field: `pos_orders` has
+        // no cutlery flag, and the note is the only thing the kitchen reads.
+        var outgoingNote = noCutlery
+            ? (cartNote ? cartNote + ' · Tanpa sendok garpu' : 'Tanpa sendok garpu').slice(0, 200)
+            : cartNote;
+
+        submitting = true;
+        // Clear last attempt's failure before making a new one, or a succeeded
+        // retry leaves "Gagal mengirim pesanan" sitting under a placed order.
+        var notice = $('cart-notice');
+        if (notice) notice.innerHTML = '';
+        var btn = $('cart-submit');
+        btn.disabled = true;
+        // A SPINNER, not just a word swap. The request can take a couple of
+        // seconds on restaurant wifi, and a button that only changes its label
+        // reads as stuck — which is how a diner ends up tapping again. The
+        // idempotency ref makes a double tap harmless, but this is what stops
+        // it happening.
+        btn.classList.add('is-busy');
+        btn.querySelector('span').textContent = 'Mengirim pesanan…';
+
+        postOrder(outgoingNote)
+            .catch(function (err) {
+                if (!err || err.error !== 'sitting_ended') throw err;
+                // ── The previous round was PAID while this page was open ─────
+                //
+                // This is the ordinary second-round path, not an error: the
+                // diner ate, the cashier settled the bill, and now they want
+                // dessert. What used to happen here was a teardown — cart
+                // emptied, identity forgotten, the welcome sheet back over a
+                // menu with no explanation of why, and the notice explaining it
+                // written into the cart the user had just been navigated away
+                // from. The diner's second attempt then worked, which is what
+                // made it read as random.
+                //
+                // The refusal only ever meant "you cannot APPEND to that
+                // sitting". Opening a new one is allowed from any caller, so
+                // drop the dead id, keep the cart and the identity, and send
+                // the same order again as a new sitting. `clientRef` is reused
+                // deliberately: the refusal happens before the idempotency ref
+                // is written, so this stays one order however it lands.
+                sitting = null;
+                if (customer) {
+                    writeSession({ name: customer.name, phone: customer.phone, sitting: null });
+                }
+                return postOrder(outgoingNote);
+            })
+            .then(function (res) {
                 // From here on this device is part of THIS sitting.
-                sitting = res.body.order_id || sitting;
+                sitting = res.order_id || sitting;
                 if (customer) writeSession({ name: customer.name, phone: customer.phone, sitting: sitting });
-                setText($('done-number'), res.body.order_number || '');
-                setText($('done-sub'), res.body.rejected_lines
+                setText($('done-number'), res.order_number || '');
+                setText($('done-sub'), res.rejected_lines
                     ? 'Beberapa item sudah tidak tersedia dan tidak dimasukkan.'
                     : 'Dapur sudah menerima pesanan Anda.');
                 cart = [];
@@ -3149,15 +3498,12 @@ img { max-width: 100%; display: block; }
             .catch(function (err) {
                 var msg = 'Gagal mengirim pesanan. Coba lagi.';
                 if (err && err.error === 'sitting_ended') {
-                    // The bill was settled while this page was open. Start over
-                    // rather than quietly opening a new sitting.
-                    msg = 'Pesanan sebelumnya sudah dibayar. Mulai pesanan baru untuk melanjutkan.';
-                    endSitting();
-                    paintCart();
-                    paintMenu();
-                    goMenu();
-                    openWelcome();
-                    setText($('welcome-title'), 'Mulai pesanan baru');
+                    // Unreachable via the retry above, which sends no sitting at
+                    // all — kept so a future caller that skips it still says
+                    // something true. The cart is NOT torn down: the diner stays
+                    // on it, which is where this notice renders.
+                    msg = 'Pesanan sebelumnya sudah selesai. Coba kirim lagi untuk membuka pesanan baru.';
+                    sitting = null;
                 } else if (err && err.error === 'order_closed') {
                     msg = 'Tagihan meja ini baru saja ditutup. Panggil staf untuk membuka pesanan baru.';
                 } else if (err && err.error === 'nothing_orderable') {
