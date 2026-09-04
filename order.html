@@ -986,6 +986,19 @@ img { max-width: 100%; display: block; }
 }
 .primary:disabled { opacity: 0.5; }
 
+.ghost {
+    width: 100%;
+    height: 46px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+}
+.ghost:active { background: var(--line-soft); }
+.ghost + .primary { margin-top: 8px; }
+
 /* The submit button's loading state. */
 .primary.is-busy::before {
     content: "";
@@ -1327,22 +1340,87 @@ img { max-width: 100%; display: block; }
 .notice.bad { border-color: rgba(185, 28, 28, 0.28); color: var(--danger); }
 
 /* ---- Confirmation ------------------------------------------------------ */
-.tick {
-    width: 56px; height: 56px;
+/* A short sheet: it is an acknowledgement, not a destination. */
+.sheet-done { text-align: center; }
+.done-body { padding: 4px 24px 20px; }
+
+.done-mark {
+    width: 66px; height: 66px;
+    margin: 6px auto 16px;
     border-radius: 50%;
-    border: 2px solid var(--ok);
+    background: rgba(4, 120, 87, 0.10);
+    border: 1px solid rgba(4, 120, 87, 0.22);
     color: var(--ok);
     display: flex; align-items: center; justify-content: center;
-    font-size: 26px;
-    margin-bottom: 4px;
+    animation: donePop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
-.order-no {
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: -0.03em;
-    margin: 2px 0 0;
+.done-mark svg { width: 30px; height: 30px; }
+@keyframes donePop {
+    0%   { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1);   opacity: 1; }
 }
-.state .actions { margin-top: 22px; width: 100%; max-width: 320px; display: grid; gap: 10px; }
+
+.done-title {
+    font-size: 21px; font-weight: 700; letter-spacing: -0.025em;
+    margin: 0;
+}
+.done-sub {
+    font-size: 13.5px; color: var(--ink-50);
+    margin: 6px auto 0; line-height: 1.5; max-width: 32ch;
+}
+
+/* The number staff will call out, given the weight that implies. */
+.done-ticket {
+    margin: 18px 0 2px;
+    padding: 12px 16px;
+    border-radius: var(--r-md);
+    background: var(--canvas);
+    border: 1px dashed var(--line);
+}
+.done-ticket-label {
+    display: block;
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.09em; color: var(--ink-30);
+}
+.done-ticket-no {
+    display: block;
+    font-size: 22px; font-weight: 700; letter-spacing: -0.02em;
+    margin-top: 3px;
+}
+
+/* ---- Confetti ----------------------------------------------------------
+   Hand-rolled: the CSP allows scripts from 'self' and four Google hosts, so a
+   library would mean vendoring one for a few seconds of celebration. Only
+   transform and opacity are animated, so it runs on the compositor and cannot
+   make the sheet behind it janky. */
+.confetti {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    overflow: hidden;
+    pointer-events: none;   /* must never intercept a tap */
+    display: none;
+}
+.confetti.is-on { display: block; }
+.confetti i {
+    position: absolute;
+    top: -24px;
+    display: block;
+    border-radius: 2px;
+    animation-name: confettiFall;
+    animation-timing-function: cubic-bezier(0.25, 0.6, 0.4, 1);
+    animation-fill-mode: forwards;
+    will-change: transform, opacity;
+}
+@keyframes confettiFall {
+    0%   { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 1; }
+    75%  { opacity: 1; }
+    100% { transform: translate3d(var(--drift), 108vh, 0) rotate(var(--spin)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .confetti { display: none !important; }
+    .done-mark { animation: none; }
+}
 </style>
 </head>
 <body>
@@ -1469,19 +1547,9 @@ img { max-width: 100%; display: block; }
         </div>
     </section>
 
-    <!-- Order placed ----------------------------------------------------- -->
-    <section id="view-done" class="state hidden">
-        <div class="tick" aria-hidden="true">✓</div>
-        <h1>Pesanan diterima</h1>
-        <p id="done-sub">Dapur sudah menerima pesanan Anda.</p>
-        <div class="order-no num" id="done-number">—</div>
-        <div class="actions">
-            <button class="primary" id="done-more">Pesan lagi</button>
-        </div>
-    </section>
-
 </div>
 
+     answer the two questions a seated diner actually asks after ordering. -->
 <!-- Cart bar ------------------------------------------------------------- -->
 <div id="cartbar" class="cartbar">
     <button id="cart-open" type="button">
@@ -1493,8 +1561,7 @@ img { max-width: 100%; display: block; }
     </button>
 </div>
 
-<!-- Floating tab bar. Menu and Cart are real destinations; Pesanan and Bantuan
-     answer the two questions a seated diner actually asks after ordering. -->
+
 <!-- Floating tab bar — TWO destinations, deliberately.
      "Keranjang" used to live here and did exactly what the floating cart bar
      below already does: open the cart. Two controls for one action means the
@@ -1515,6 +1582,10 @@ img { max-width: 100%; display: block; }
     </div>
 </nav>
 
+<!-- Confetti layer. Above the sheet so pieces fall in front of it, and
+     pointer-events:none so it can never intercept a tap. -->
+<div id="confetti" class="confetti" aria-hidden="true"></div>
+
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <div id="scrim" class="scrim"></div>
@@ -1533,8 +1604,33 @@ img { max-width: 100%; display: block; }
     </div>
     <div class="sheet-body" id="orders-body"></div>
     <div class="sheet-foot" id="orders-foot" hidden>
-        <button class="primary" id="bill-btn" type="button">Minta bill &amp; bayar</button>
-        <p class="bill-hint" id="bill-hint">Kasir akan datang ke meja Anda.</p>
+        <button class="ghost" id="orders-add" type="button">Tambah pesanan</button>
+        <button class="primary" id="bill-btn" type="button" hidden>Minta bill &amp; bayar</button>
+        <p class="bill-hint" id="bill-hint" hidden>Kasir akan datang ke meja Anda.</p>
+    </div>
+</div>
+
+<!-- ── Order placed ──────────────────────────────────────────────────────────
+     A SHEET, not a full screen. The order is confirmed, not concluded: the menu
+     is still what the diner wants to be looking at, and taking the whole screen
+     away to say "done" made a two-second acknowledgement feel like leaving the
+     restaurant. -->
+<div id="sheet-done" class="sheet sheet-done" role="dialog" aria-modal="true" aria-labelledby="done-title">
+    <div class="sheet-grip"></div>
+    <div class="sheet-body done-body">
+        <div class="done-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        </div>
+        <h2 class="done-title" id="done-title">Pesanan terkirim</h2>
+        <p class="done-sub" id="done-sub">Dapur sudah menerima pesanan Anda.</p>
+        <div class="done-ticket">
+            <span class="done-ticket-label">Nomor pesanan</span>
+            <span class="done-ticket-no num" id="done-number">—</span>
+        </div>
+    </div>
+    <div class="sheet-foot">
+        <button class="ghost" id="done-status" type="button">Lihat status pesanan</button>
+        <button class="primary" id="done-more" type="button">Pesan lagi</button>
     </div>
 </div>
 
@@ -1826,8 +1922,18 @@ img { max-width: 100%; display: block; }
         return ICON.plate;
     }
 
+    // The illustrated category icons are drawn in a 48-unit space.
     function svg(body) {
         return '<svg viewBox="0 0 48 48" aria-hidden="true">' + body + '</svg>';
+    }
+
+    // Line icons are drawn in a 24-unit space, and passing one to svg() renders
+    // it at quarter scale in the top-left corner — which is exactly what
+    // happened to the four progress icons when svg() moved to 48 for the
+    // category rail. Two spaces, two helpers, so a path can only be wrong by
+    // being wrong rather than by being in the other one's box.
+    function icon24(body) {
+        return '<svg viewBox="0 0 24 24" aria-hidden="true">' + body + '</svg>';
     }
 
     // A plate and cover. Neutral enough for a drink or a dessert, which a
@@ -1927,7 +2033,7 @@ img { max-width: 100%; display: block; }
     }
 
     function show(view) {
-        ['loading', 'error', 'menu', 'cart', 'done'].forEach(function (v) {
+        ['loading', 'error', 'menu', 'cart'].forEach(function (v) {
             $('view-' + v).classList.toggle('hidden', v !== view);
         });
         // The floating chrome belongs to the menu only. On the order page the
@@ -2707,11 +2813,18 @@ img { max-width: 100%; display: block; }
         var step = Math.min(4, Math.max(1, Number(d.stage) || 1));
         var billed = d.status === 'awaiting_payment';
 
-        // The footer only offers what is actually available: a bill to request
-        // while the sitting is live, nothing once it has been asked for.
+        // ── What the footer offers, and when ────────────────────────────────
+        //
+        // ADDING is always available; asking for the bill is not. A bill
+        // requested before the food arrives summons a cashier to a table that
+        // is still waiting on its order — so the button appears only once the
+        // kitchen has SERVED it (stage 4). Before that the honest action is
+        // "order something else".
+        var servedYet = step >= 4 || billed;
         $('orders-foot').hidden = false;
-        $('bill-btn').hidden = billed;
-        $('bill-hint').hidden = billed;
+        $('bill-btn').hidden = !servedYet || billed;
+        $('bill-hint').hidden = !servedYet || billed;
+        $('orders-add').hidden = billed;
         setText($('bill-btn'), 'Minta bill & bayar');
         $('bill-btn').classList.remove('is-busy');
         setDisabled($('bill-btn'), false);
@@ -2738,7 +2851,7 @@ img { max-width: 100%; display: block; }
             var n = i + 1;
             var cls = n < step ? ' done' : (n === step ? ' done now' : '');
             return '<div class="track-step' + cls + '">'
-                + '<span class="track-dot">' + svg(st.icon) + '</span>'
+                + '<span class="track-dot">' + icon24(st.icon) + '</span>'
                 + '<span class="track-label">' + esc(st.label) + '</span>'
                 + '</div>';
         }).join('') + '</div>';
@@ -2798,6 +2911,14 @@ img { max-width: 100%; display: block; }
     // again means scanning again. That is not something to do by brushing a
     // button while scrolling.
     var billConfirm = false;
+
+    // Ordering more is always the available action, so it closes the sheet and
+    // puts the menu back rather than explaining where to find it.
+    $('orders-add').addEventListener('click', function () {
+        closeSheets();
+        goMenu();
+        setActiveTab('menu');
+    });
 
     $('bill-btn').addEventListener('click', function () {
         var btn = $('bill-btn');
@@ -2905,10 +3026,10 @@ img { max-width: 100%; display: block; }
             .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
             .then(function (res) {
                 if (!res.ok || !res.body.ok) throw res.body || {};
-                $('done-number').textContent = res.body.order_number || '';
-                $('done-sub').textContent = res.body.rejected_lines
+                setText($('done-number'), res.body.order_number || '');
+                setText($('done-sub'), res.body.rejected_lines
                     ? 'Beberapa item sudah tidak tersedia dan tidak dimasukkan.'
-                    : 'Dapur sudah menerima pesanan Anda.';
+                    : 'Dapur sudah menerima pesanan Anda.');
                 cart = [];
                 cartNote = '';
                 noCutlery = false;
@@ -2924,7 +3045,11 @@ img { max-width: 100%; display: block; }
                 closeSheets();
                 paintCart();
                 paintMenu();
-                show('done');
+                // Back to the menu UNDERNEATH, then the confirmation over it —
+                // the order is confirmed, not concluded.
+                show('menu');
+                openSheet('sheet-done');
+                confetti();
             })
             .catch(function (err) {
                 var msg = 'Gagal mengirim pesanan. Coba lagi.';
@@ -2944,7 +3069,47 @@ img { max-width: 100%; display: block; }
             });
     });
 
-    $('done-more').addEventListener('click', function () { show('menu'); });
+    $('done-more').addEventListener('click', function () { closeSheets(); });
+    $('done-status').addEventListener('click', function () { closeSheets(); openOrders(); });
+
+    // ── Confetti ──────────────────────────────────────────────────────────
+    //
+    // Hand-rolled because the CSP allows scripts from 'self' and four Google
+    // hosts, so a library would mean vendoring one into assets/ for six seconds
+    // of celebration. Plain absolutely-positioned pieces on a fixed layer,
+    // animated by the compositor (transform + opacity only) and removed when
+    // they finish — nothing left running behind the sheet.
+    function confetti() {
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        var host = $('confetti');
+        host.innerHTML = '';
+        var colors = ['#EA580C', '#F59E0B', '#7C3AED', '#16A34A', '#3B82F6', '#EC4899'];
+        var pieces = 42;
+        for (var i = 0; i < pieces; i += 1) {
+            var el = document.createElement('i');
+            var left = Math.random() * 100;
+            var delay = Math.random() * 0.5;
+            var dur = 1.9 + Math.random() * 1.4;
+            var drift = (Math.random() * 160 - 80).toFixed(0);
+            var spin = (Math.random() * 900 - 450).toFixed(0);
+            el.style.cssText = 'left:' + left.toFixed(2) + '%;'
+                + 'background:' + colors[i % colors.length] + ';'
+                + 'animation-delay:' + delay.toFixed(2) + 's;'
+                + 'animation-duration:' + dur.toFixed(2) + 's;'
+                + '--drift:' + drift + 'px;--spin:' + spin + 'deg;'
+                + (i % 3 === 0 ? 'border-radius:50%;' : '')
+                + 'width:' + (6 + Math.round(Math.random() * 5)) + 'px;'
+                + 'height:' + (9 + Math.round(Math.random() * 6)) + 'px;';
+            host.appendChild(el);
+        }
+        host.classList.add('is-on');
+        clearTimeout(confettiTimer);
+        confettiTimer = setTimeout(function () {
+            host.classList.remove('is-on');
+            host.innerHTML = '';
+        }, 3600);
+    }
+    var confettiTimer = null;
 })();
 </script>
 </body>

@@ -486,6 +486,69 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('.orders-foot')).toContainText('Pindai QR');
     });
 
+    test('the bill cannot be asked for before the food arrives', async ({ page }) => {
+        // A bill requested while the kitchen is still cooking summons a cashier
+        // to a table that is waiting on its order. Before it is served the
+        // honest action is "order something else".
+        const capture = {
+            status: {
+                has_order: true, order_number: '2026-09-04-002', status: 'sent',
+                stage: 2, stage_label: 'Sedang disiapkan',
+                lines: [{ item_id: 'i_americano', item_name: 'Americano', quantity: 1,
+                          gross_amount: 22000, note: null, modifiers: [] }],
+                note: null, subtotal: 22000, service_charge_amount: 0, tax_amount: 0,
+                discount_total: 0, total_amount: 22000, paid_amount: 0,
+                placed_at: Date.now() - 5 * 60 * 1000
+            }
+        };
+        await stub(page, { capture });
+        await open(page);
+        await page.locator('.tab[data-tab="orders"]').click();
+        await expect(page.locator('.ostat')).toBeVisible();
+
+        await expect(page.locator('#bill-btn')).toBeHidden();
+        await expect(page.locator('#bill-hint')).toBeHidden();
+        // Adding more is always available, and it puts the menu back.
+        await expect(page.locator('#orders-add')).toBeVisible();
+        await page.locator('#orders-add').click();
+        await expect(page.locator('#sheet-orders')).not.toHaveClass(/is-open/);
+        await expect(page.locator('#view-menu')).toBeVisible();
+    });
+
+    test('the progress icons are drawn at full size, not a quarter of it', async ({ page }) => {
+        // They render in a 24-unit box. Passing one to the 48-unit helper the
+        // category rail uses put each glyph in the top-left corner at quarter
+        // scale — which is exactly what shipped.
+        const capture = {
+            status: {
+                has_order: true, order_number: '2026-09-04-003', status: 'sent',
+                stage: 2, stage_label: 'Sedang disiapkan',
+                lines: [{ item_id: 'i_americano', item_name: 'Americano', quantity: 1,
+                          gross_amount: 22000, note: null, modifiers: [] }],
+                note: null, subtotal: 22000, service_charge_amount: 0, tax_amount: 0,
+                discount_total: 0, total_amount: 22000, paid_amount: 0, placed_at: Date.now()
+            }
+        };
+        await stub(page, { capture });
+        await open(page);
+        await page.locator('.tab[data-tab="orders"]').click();
+        await expect(page.locator('.ostat')).toBeVisible();
+
+        const boxes = await page.locator('.track-dot svg').evaluateAll((els) =>
+            els.map((e) => ({ vb: e.getAttribute('viewBox'), w: Math.round(e.getBoundingClientRect().width) })));
+        expect(boxes).toHaveLength(4);
+        boxes.forEach((b) => {
+            expect(b.vb, 'a line icon in the 48-unit box renders at quarter scale').toBe('0 0 24 24');
+            expect(b.w).toBeGreaterThan(12);
+        });
+        // The glyph must actually fill its dot rather than hiding in a corner.
+        const filled = await page.locator('.track-dot').first().evaluate((dot) => {
+            const d = dot.getBoundingClientRect(), g = dot.querySelector('svg').getBoundingClientRect();
+            return (g.width / d.width) > 0.4;
+        });
+        expect(filled).toBe(true);
+    });
+
     test('a paid sitting is not shown to the next diner', async ({ page }) => {
         // The endpoint excludes paid orders, so a fresh scan sees the empty
         // state rather than the previous party's settled bill. Measured on the
@@ -825,7 +888,7 @@ test.describe('QR customer ordering', () => {
         // field, and the note is the only thing the kitchen reads.
         await page.locator('#cart-cutlery').check();
         await page.locator('#cart-submit').click();
-        await expect(page.locator('#view-done')).toBeVisible();
+        await expect(page.locator('#sheet-done')).toHaveClass(/is-open/);
         expect(capture.body.note).toBe('pedas sedang · Tanpa sendok garpu');
     });
 
@@ -941,7 +1004,7 @@ test.describe('QR customer ordering', () => {
         await page.locator('#cart-note').fill('sendok garpu 2');
         await expect(page.locator('#cart-submit')).toContainText('Order Sekarang');
         await page.locator('#cart-submit').click();
-        await expect(page.locator('#view-done')).toBeVisible();
+        await expect(page.locator('#sheet-done')).toHaveClass(/is-open/);
 
         const body = capture.body;
         expect(body.token).toBe(TOKEN);
@@ -965,6 +1028,35 @@ test.describe('QR customer ordering', () => {
         // becomes a second kitchen ticket and a double bill.
         expect(typeof body.client_ref).toBe('string');
         expect(body.client_ref.length).toBeGreaterThan(8);
+    });
+
+    test('the confirmation is a SHEET over the menu, with confetti', async ({ page }) => {
+        await stub(page);
+        await open(page);
+        await addPlain(page, 'Americano');
+        await page.locator('#cart-open').click();
+        await page.locator('#cart-submit').click();
+
+        const done = page.locator('#sheet-done');
+        await expect(done).toHaveClass(/is-open/);
+        // A sheet, not a takeover: the menu is what the diner wants to be
+        // looking at, and the order is confirmed rather than concluded.
+        await expect(page.locator('#view-menu')).toBeVisible();
+        await expect(page.locator('#view-cart')).toBeHidden();
+
+        // Hierarchy: mark, then what happened, then the number staff call out.
+        await expect(done.locator('.done-mark svg')).toBeVisible();
+        await expect(done.locator('.done-title')).toHaveText('Pesanan terkirim');
+        await expect(done.locator('#done-number')).toHaveText('2026-09-03-007');
+
+        // Confetti runs and then cleans up after itself — nothing left
+        // animating behind the sheet.
+        await expect(page.locator('#confetti')).toHaveClass(/is-on/);
+        expect(await page.locator('#confetti i').count()).toBeGreaterThan(20);
+        // …and it can never intercept a tap.
+        await expect(page.locator('#confetti')).toHaveCSS('pointer-events', 'none');
+        await expect(page.locator('#confetti')).not.toHaveClass(/is-on/, { timeout: 8_000 });
+        expect(await page.locator('#confetti i').count()).toBe(0);
     });
 
     test('the confirmation shows the order number and clears the cart', async ({ page }) => {
