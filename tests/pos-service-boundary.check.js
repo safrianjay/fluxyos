@@ -39,7 +39,16 @@ const ALLOWED = new Set([
     '_resolveSaleConsumption', // ← inventory costing, shared with commerce
     'getItems',                // ← inventory read
     'getStockMovements',       // ← inventory read
-    'addTransaction'           // ← transaction write path
+    'addTransaction',          // ← transaction write path
+    // Added 2026-09-05 with the outlet cover photo (POS Settings). Both are
+    // genuinely needed rather than convenient:
+    //   assertCanUseStorage — the storage quota is a PLAN LIMIT, and a POS
+    //     upload that skipped it would be a hole in billing, not a shortcut.
+    //   _uploadMetadata     — cache headers on stored objects. Inlining a second
+    //     copy is how the two drift, and a stale Cache-Control on a customer's
+    //     header photo is invisible until someone changes it and nothing moves.
+    'assertCanUseStorage',     // ← plan/billing limit
+    '_uploadMetadata'          // ← storage upload headers
 ]);
 
 let failures = 0;

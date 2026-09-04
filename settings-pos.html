@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en" class="fluxy-booting">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxyOS | Point of Sale Settings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/shared-dashboard.css">
+    <link rel="stylesheet" href="assets/css/dashboard.css">
+    <style>
+        /* Page-scoped, matching the settings-cash.html idiom: shared classes for
+           anything the design system owns, page CSS only for the two layouts
+           nothing else in the product has (a week of hours, a bill preview). */
+        .pos-set-card { background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px; }
+        .pos-set-head { padding: 16px 20px; border-bottom: 1px solid #F1F5F9; }
+        .pos-set-title { font-size: 14px; font-weight: 700; color: #0F172A; }
+        .pos-set-sub { margin-top: 3px; font-size: 12px; color: #64748B; line-height: 1.45; }
+        .pos-set-body { padding: 20px; }
+
+        .pos-field-label { display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px; }
+        .pos-input {
+            width: 100%; height: 40px; padding: 0 12px; font-size: 14px;
+            border: 1px solid #E2E8F0; border-radius: 8px; background: #FFFFFF; color: #0F172A; outline: none;
+        }
+        .pos-input:focus { border-color: #94A3B8; }
+        textarea.pos-input { height: auto; padding: 10px 12px; resize: vertical; }
+
+        /* A week, one row per day. Grid rather than a table so the "closed" row
+           can collapse its two time inputs without the columns jumping. */
+        .pos-hours-row {
+            display: grid; grid-template-columns: 92px auto 1fr; align-items: center;
+            gap: 12px; padding: 10px 0; border-top: 1px solid #F1F5F9;
+        }
+        .pos-hours-row:first-child { border-top: 0; }
+        .pos-hours-day { font-size: 13px; font-weight: 600; color: #0F172A; }
+        .pos-hours-times { display: flex; align-items: center; gap: 8px; }
+        .pos-hours-times .pos-input { width: 110px; }
+        .pos-hours-row.is-closed .pos-hours-times { opacity: 0.35; pointer-events: none; }
+        .pos-hours-note { font-size: 11px; color: #94A3B8; }
+
+        /* The cover photo, shown at the shape the diner actually sees it in. */
+        .pos-cover-frame {
+            position: relative; width: 100%; max-width: 420px; aspect-ratio: 16 / 7;
+            border-radius: 12px; overflow: hidden; border: 1px solid #E2E8F0;
+            background: linear-gradient(135deg, #0B0F19 0%, #171334 55%, #2A1B4A 100%);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .pos-cover-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .pos-cover-empty { color: rgba(255,255,255,0.72); font-size: 12px; font-weight: 600; text-align: center; padding: 0 20px; line-height: 1.5; }
+
+        /* The bill preview. Deliberately looks like a receipt rather than a form
+           readout: the owner is being shown what a customer will be handed. */
+        .pos-preview { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px 16px; }
+        .pos-preview-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; padding: 4px 0; color: #475569; }
+        .pos-preview-row.is-total { border-top: 1px solid #E2E8F0; margin-top: 6px; padding-top: 10px; font-size: 15px; font-weight: 700; color: #0F172A; }
+        .pos-preview-row .num { font-variant-numeric: tabular-nums; }
+        .pos-preview-note { margin-top: 10px; font-size: 11px; color: #94A3B8; line-height: 1.5; }
+
+        .pos-preset-row {
+            display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid #F1F5F9;
+        }
+        .pos-preset-row:first-child { border-top: 0; }
+        .pos-preset-main { flex: 1 1 auto; min-width: 0; }
+        .pos-preset-name { font-size: 14px; font-weight: 600; color: #0F172A; }
+        .pos-preset-meta { margin-top: 2px; font-size: 12px; color: #64748B; }
+        .pos-preset-value { font-size: 14px; font-weight: 700; color: #0F172A; font-variant-numeric: tabular-nums; }
+        .pos-mini-btn {
+            font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px;
+            border: 1px solid #E2E8F0; background: #FFFFFF; color: #0F172A; cursor: pointer;
+        }
+        .pos-mini-btn:hover { background: #F8FAFC; }
+        .pos-mini-btn.is-danger { color: #B91C1C; border-color: #FECACA; }
+        .pos-mini-btn.is-danger:hover { background: #FEF2F2; }
+
+        /* One save bar for the outlet document. The photo and the presets write
+           immediately — a file and a list item are their own actions — but the
+           five text/rate sections are one document and one decision. */
+        .pos-savebar {
+            position: sticky; bottom: 0; z-index: 10;
+            background: rgba(255,255,255,0.94); backdrop-filter: blur(8px);
+            border: 1px solid #E5E7EB; border-radius: 12px;
+            padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+        }
+        .pos-savebar-note { font-size: 12px; color: #64748B; }
+        [hidden] { display: none !important; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
+
+    <aside id="sidebar" class="hidden w-[220px] bg-white text-[#1E2F4A] flex-col flex-shrink-0 z-20 md:flex border-r border-slate-200 rounded-tl-[8px] overflow-hidden">
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen relative overflow-hidden">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0 z-30 sticky top-0 shadow-sm gap-6">
+            <div class="flex items-center gap-4 min-w-0 flex-1">
+                <button class="md:hidden text-gray-500 hover:text-gray-900" aria-label="Open menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <h1 class="text-lg font-bold text-gray-900">Point of Sale Settings</h1>
+            </div>
+            <!-- The classes here are vestigial: shared-dashboard.js enhances every
+                 `button[onclick*="toggleFluxyAI"]` into the `.fluxy-ai-btn` pill, which
+                 is the ONE documented gradient exception in the app. Older pages carry
+                 an orange tint utility inline here and it never renders; copying it
+                 forward would trip the project-wide ban for a colour nobody sees. -->
+            <button onclick="window.toggleFluxyAI()" class="fluxy-ai-btn flex items-center gap-2 px-3 py-1.5 rounded-lg text-[14px] font-bold transition-all group">
+                <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                Fluxy AI
+            </button>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10">
+            <div class="max-w-5xl mx-auto space-y-6">
+
+                <section class="flex items-end justify-between gap-4 flex-wrap">
+                    <div>
+                        <a href="/settings" class="text-[12px] font-bold text-[#EA580C] hover:underline">Settings / Operations</a>
+                        <h1 class="mt-2 text-2xl font-bold text-gray-900 tracking-tight">Point of Sale Settings</h1>
+                        <p class="mt-1 text-[14px] text-gray-500">What each outlet charges, when it opens, and what its customers see.</p>
+                    </div>
+                    <!-- EVERY setting on this page belongs to ONE outlet: rates vary by
+                         regency, hours vary by site, and the photo is that shop's own.
+                         So the outlet is picked first and the whole page follows it. -->
+                    <div class="min-w-[220px]">
+                        <label class="pos-field-label" for="pos-outlet">Outlet</label>
+                        <select id="pos-outlet" class="pos-input"></select>
+                    </div>
+                </section>
+
+                <div id="pos-load-state" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-medium text-gray-500 shadow-sm" aria-live="polite">
+                    <span class="h-2 w-2 rounded-full bg-gray-300"></span>
+                    Loading outlets
+                </div>
+
+                <!-- No outlet at all. A dropdown with nothing in it explains nothing,
+                     and the fix is on a different page. -->
+                <section id="pos-no-outlet" class="pos-set-card" hidden>
+                    <div class="pos-set-body">
+                        <p class="pos-set-title">No outlet to configure yet</p>
+                        <p class="pos-set-sub">
+                            These settings belong to an outlet — rates, opening hours and the customer
+                            photo are all that shop's own. Create one under Inventory → Outlets, then
+                            come back.
+                        </p>
+                    </div>
+                </section>
+
+                <div id="pos-settings-body" hidden class="space-y-6">
+
+                    <!-- 1. OUTLET INFORMATION -->
+                    <section class="pos-set-card">
+                        <div class="pos-set-head">
+                            <h2 class="pos-set-title">Outlet information</h2>
+                            <p class="pos-set-sub">Shown to diners on the page their QR code opens.</p>
+                        </div>
+                        <div class="pos-set-body grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="sm:col-span-2">
+                                <label class="pos-field-label" for="pos-address">Address</label>
+                                <textarea id="pos-address" class="pos-input" rows="2" maxlength="200"
+                                          placeholder="Jl. Kemang Raya No. 1, Jakarta Selatan"></textarea>
+                            </div>
+                            <div>
+                                <label class="pos-field-label" for="pos-phone">Phone</label>
+                                <input id="pos-phone" class="pos-input" type="tel" maxlength="32" placeholder="021 555 0000">
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 2. OPENING & CLOSING HOURS -->
+                    <section class="pos-set-card">
+                        <div class="pos-set-head">
+                            <h2 class="pos-set-title">Opening &amp; closing hours</h2>
+                            <p class="pos-set-sub">
+                                A closing time earlier than the opening time is read as crossing midnight,
+                                so a bar closing at 02:00 is not a typo.
+                            </p>
+                        </div>
+                        <div class="pos-set-body">
+                            <div id="pos-hours"></div>
+                        </div>
+                    </section>
+
+                    <!-- 3. HOMEPAGE IMAGE -->
+                    <section class="pos-set-card">
+                        <div class="pos-set-head">
+                            <h2 class="pos-set-title">Homepage image</h2>
+                            <p class="pos-set-sub">
+                                The header photo on the customer's ordering page. Without one they see the
+                                gradient, or the outlet's first food photo.
+                            </p>
+                        </div>
+                        <div class="pos-set-body">
+                            <div class="flex flex-wrap items-start gap-5">
+                                <div class="pos-cover-frame" id="pos-cover-frame">
+                                    <span class="pos-cover-empty" id="pos-cover-empty">No image set</span>
+                                </div>
+                                <div class="flex-1 min-w-[220px]">
+                                    <!-- Saved on upload, not on the save bar: a file is its own action,
+                                         and a photo that only lands when a form is submitted somewhere
+                                         else is the kind of thing people lose. -->
+                                    <p class="text-[12px] text-gray-500 leading-relaxed">
+                                        JPEG, PNG or WebP, up to 2&nbsp;MB. Wide images work best — it is a
+                                        header, and it is loaded on a phone over restaurant wifi.
+                                        Uploading saves straight away.
+                                    </p>
+                                    <div class="mt-3 flex items-center gap-2 flex-wrap">
+                                        <input id="pos-cover-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+                                        <button type="button" id="pos-cover-pick" class="pos-mini-btn">Upload image</button>
+                                        <button type="button" id="pos-cover-clear" class="pos-mini-btn is-danger" hidden>Remove</button>
+                                    </div>
+                                    <p id="pos-cover-status" class="mt-2 text-[12px] text-gray-500" aria-live="polite"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 4. VAT & SERVICE FEE -->
+                    <section class="pos-set-card">
+                        <div class="pos-set-head">
+                            <h2 class="pos-set-title">VAT &amp; service fee</h2>
+                            <p class="pos-set-sub">
+                                Applied to every bill this outlet rings up, on the till and on the customer's
+                                phone. Orders already open keep the rates they were opened with.
+                            </p>
+                        </div>
+                        <div class="pos-set-body space-y-5">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div class="sm:col-span-3">
+                                    <label class="flex items-center gap-2 text-[14px] font-semibold text-gray-900">
+                                        <input id="pos-tax-enabled" type="checkbox" class="h-4 w-4"> Charge tax
+                                    </label>
+                                </div>
+                                <div>
+                                    <label class="pos-field-label" for="pos-tax-label">Label on the bill</label>
+                                    <input id="pos-tax-label" class="pos-input" maxlength="24" placeholder="PPN">
+                                </div>
+                                <div>
+                                    <label class="pos-field-label" for="pos-tax-rate">Rate (%)</label>
+                                    <input id="pos-tax-rate" class="pos-input" type="number" min="0" max="100" step="0.01" placeholder="11">
+                                </div>
+                                <div>
+                                    <label class="pos-field-label" for="pos-tax-inclusive">Menu prices</label>
+                                    <select id="pos-tax-inclusive" class="pos-input">
+                                        <option value="false">Exclude tax — add it to the bill</option>
+                                        <option value="true">Include tax — already in the price</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1 border-t border-gray-100">
+                                <div class="sm:col-span-3 pt-4">
+                                    <label class="flex items-center gap-2 text-[14px] font-semibold text-gray-900">
+                                        <input id="pos-service-enabled" type="checkbox" class="h-4 w-4"> Charge a service fee
+                                    </label>
+                                </div>
+                                <div>
+                                    <label class="pos-field-label" for="pos-service-rate">Rate (%)</label>
+                                    <input id="pos-service-rate" class="pos-input" type="number" min="0" max="100" step="0.01" placeholder="5">
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <label class="pos-field-label" for="pos-service-taxable">Tax the service fee?</label>
+                                    <select id="pos-service-taxable" class="pos-input">
+                                        <option value="true">Yes — tax is charged on the fee too</option>
+                                        <option value="false">No — tax the food and drink only</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- ⚠️ THE PREVIEW RUNS THE REAL PRICING MODULE, not a copy of the
+                                 arithmetic. An owner setting a rate is entitled to see the bill it
+                                 produces, and a preview that agreed with the form but not with the
+                                 till would be worse than no preview at all. -->
+                            <div>
+                                <p class="pos-field-label">What a <span class="num" id="pos-preview-basis"></span> order comes to</p>
+                                <div class="pos-preview" id="pos-preview"></div>
+                                <p class="pos-preview-note" id="pos-preview-note"></p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 5. DISCOUNT RULES -->
+                    <section class="pos-set-card">
+                        <div class="pos-set-head flex items-start justify-between gap-4">
+                            <div>
+                                <h2 class="pos-set-title">Discount rules</h2>
+                                <p class="pos-set-sub">
+                                    Named discounts a cashier taps instead of typing an amount and a reason
+                                    with a customer waiting. Each carries its own reason, which is what
+                                    lands on the order.
+                                </p>
+                            </div>
+                            <button type="button" id="pos-preset-add" class="pos-mini-btn">Add discount</button>
+                        </div>
+                        <div class="pos-set-body">
+                            <div id="pos-presets"></div>
+
+                            <form id="pos-preset-form" hidden class="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-4 gap-4">
+                                <input type="hidden" id="pos-preset-id">
+                                <div class="sm:col-span-2">
+                                    <label class="pos-field-label" for="pos-preset-name">Name</label>
+                                    <input id="pos-preset-name" class="pos-input" maxlength="40" placeholder="Staff discount" required>
+                                </div>
+                                <div>
+                                    <label class="pos-field-label" for="pos-preset-kind">Type</label>
+                                    <select id="pos-preset-kind" class="pos-input">
+                                        <option value="percent">Percent off</option>
+                                        <option value="amount">Fixed amount</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="pos-field-label" for="pos-preset-value">Value</label>
+                                    <input id="pos-preset-value" class="pos-input" type="number" min="1" step="1" required>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <label class="pos-field-label" for="pos-preset-reason">Reason recorded on the order</label>
+                                    <input id="pos-preset-reason" class="pos-input" maxlength="80" placeholder="Defaults to the name">
+                                </div>
+                                <div>
+                                    <label class="pos-field-label" for="pos-preset-scope">Applies to</label>
+                                    <select id="pos-preset-scope" class="pos-input">
+                                        <option value="order">The whole order</option>
+                                        <option value="line">One line</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="pos-field-label" for="pos-preset-outlet">Outlet</label>
+                                    <select id="pos-preset-outlet" class="pos-input"></select>
+                                </div>
+                                <div class="sm:col-span-4 flex items-center gap-2">
+                                    <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-[14px] font-bold text-white hover:bg-gray-800">Save discount</button>
+                                    <button type="button" id="pos-preset-cancel" class="pos-mini-btn">Cancel</button>
+                                    <span id="pos-preset-error" class="text-[12px] font-semibold text-red-700"></span>
+                                </div>
+                            </form>
+                        </div>
+                    </section>
+
+                    <div class="pos-savebar">
+                        <span class="pos-savebar-note" id="pos-save-note">Information, hours and rates save together.</span>
+                        <button type="button" id="pos-save" class="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-[14px] font-bold text-white hover:bg-gray-800 disabled:opacity-50">
+                            Save changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="assets/js/money-format.js"></script>
+    <script src="assets/js/pos-pricing.js"></script>
+    <script src="assets/js/sidebar-loader.js"></script>
+    <script src="assets/js/shared-dashboard.js"></script>
+    <script src="assets/js/duplicate-guard.js"></script>
+    <script src="assets/js/dashboard-i18n.js"></script>
+    <script src="assets/js/fluxy-select.js"></script>
+
+    <script type="module">
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import DataService from './assets/js/db-service.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
+            authDomain: "fluxyos.com",
+            projectId: "fluxyos",
+            storageBucket: "fluxyos.firebasestorage.app",
+            messagingSenderId: "1084252368929",
+            appId: "1:1084252368929:web:da73dc0db83fe592c7f360",
+            measurementId: "G-ZN7J6DRD2L"
+        };
+        const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+        const auth = getAuth(app);
+        const ds = new DataService(app);
+
+        const $ = (id) => document.getElementById(id);
+        const DAYS = [
+            ['mon', 'Monday'], ['tue', 'Tuesday'], ['wed', 'Wednesday'], ['thu', 'Thursday'],
+            ['fri', 'Friday'], ['sat', 'Saturday'], ['sun', 'Sunday']
+        ];
+        // The figure the preview prices. A round number, so the rate is legible in
+        // the result rather than buried in the arithmetic.
+        const PREVIEW_BASIS = 100000;
+
+        let uid = null;
+        let outlets = [];
+        let currentOutlet = null;
+        let settings = null;
+        let presets = [];
+        let coverObjectUrl = null;
+
+        const authTimeout = setTimeout(() => window.location.replace('/login'), 2000);
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) return;
+            clearTimeout(authTimeout);
+            uid = user.uid;
+            // Money cannot render before the base currency is known, and this page
+            // renders a bill preview. resolveWorkspace de-duplicates with
+            // sidebar-loader's own call rather than issuing a second set of reads.
+            try {
+                const { resolveWorkspace } = await import('/assets/js/workspace-service.js');
+                await resolveWorkspace(app, user);
+            } catch (_) { /* the seam falls back to IDR; never strand the page */ }
+            await boot();
+        });
+
+        function setLoadState(kind, text) {
+            const el = $('pos-load-state');
+            el.hidden = kind === 'ready';
+            el.querySelector('span').className =
+                'h-2 w-2 rounded-full ' + (kind === 'error' ? 'bg-red-500' : 'bg-gray-300');
+            el.lastChild.textContent = ' ' + text;
+        }
+
+        async function boot() {
+            try {
+                outlets = (await ds.getDimensions(uid))
+                    .filter((d) => d.type === 'outlet' && d.status !== 'archived');
+            } catch (e) {
+                setLoadState('error', 'Could not load outlets');
+                return;
+            }
+            if (!outlets.length) {
+                setLoadState('ready', '');
+                $('pos-no-outlet').hidden = false;
+                return;
+            }
+            const sel = $('pos-outlet');
+            sel.innerHTML = outlets
+                .map((o) => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('');
+            sel.addEventListener('change', () => selectOutlet(sel.value));
+            wire();
+            await selectOutlet(outlets[0].id);
+        }
+
+        async function selectOutlet(dimensionId) {
+            currentOutlet = dimensionId;
+            setLoadState('loading', 'Loading settings');
+            try {
+                const [s, p] = await Promise.all([
+                    ds.getPosOutletSettings(uid, dimensionId),
+                    ds.getPosDiscountPresets(uid, { includeArchived: false })
+                ]);
+                settings = s;
+                presets = p;
+            } catch (e) {
+                setLoadState('error', 'Could not load settings for that outlet');
+                return;
+            }
+            renderAll();
+            setLoadState('ready', '');
+            $('pos-settings-body').hidden = false;
+        }
+
+        function renderAll() {
+            $('pos-address').value = settings.address || '';
+            $('pos-phone').value = settings.phone || '';
+            $('pos-tax-enabled').checked = settings.tax_enabled === true;
+            $('pos-tax-label').value = settings.tax_label || 'PPN';
+            $('pos-tax-rate').value = settings.tax_rate_percent || 0;
+            $('pos-tax-inclusive').value = settings.tax_inclusive === true ? 'true' : 'false';
+            $('pos-service-enabled').checked = settings.service_enabled === true;
+            $('pos-service-rate').value = settings.service_rate_percent || 0;
+            $('pos-service-taxable').value = settings.service_taxable === false ? 'false' : 'true';
+            renderHours();
+            renderCover();
+            renderPresets();
+            renderPreview();
+        }
+
+        function renderHours() {
+            const byDay = {};
+            (settings.hours || []).forEach((h) => { if (h && h.day) byDay[h.day] = h; });
+            $('pos-hours').innerHTML = DAYS.map(([key, label]) => {
+                const h = byDay[key] || { closed: true };
+                const closed = h.closed === true || !h.open || !h.close;
+                return `
+                    <div class="pos-hours-row ${closed ? 'is-closed' : ''}" data-day="${key}">
+                        <span class="pos-hours-day">${label}</span>
+                        <label class="flex items-center gap-2 text-[12px] font-semibold text-gray-600">
+                            <input type="checkbox" class="h-4 w-4" data-open-toggle ${closed ? '' : 'checked'}>
+                            Open
+                        </label>
+                        <div class="pos-hours-times">
+                            <input class="pos-input" type="time" data-open value="${esc(h.open || '09:00')}">
+                            <span class="pos-hours-note">to</span>
+                            <input class="pos-input" type="time" data-close value="${esc(h.close || '22:00')}">
+                        </div>
+                    </div>`;
+            }).join('');
+            $('pos-hours').querySelectorAll('[data-open-toggle]').forEach((cb) => {
+                cb.addEventListener('change', () => {
+                    cb.closest('.pos-hours-row').classList.toggle('is-closed', !cb.checked);
+                });
+            });
+        }
+
+        function readHours() {
+            return [...$('pos-hours').querySelectorAll('.pos-hours-row')].map((row) => ({
+                day: row.dataset.day,
+                closed: !row.querySelector('[data-open-toggle]').checked,
+                open: row.querySelector('[data-open]').value,
+                close: row.querySelector('[data-close]').value
+            }));
+        }
+
+        // ⚠️ RUNS THE REAL PRICING MODULE. An owner setting a rate is entitled to
+        // see the bill it produces, and a preview that agreed with this form but
+        // not with the till would be worse than no preview at all — it would be a
+        // confident wrong number, which is this codebase's whole failure mode.
+        function renderPreview() {
+            const money = (n) => (window.FluxyMoney ? window.FluxyMoney.formatBase(n) : String(n));
+            const s = readRateForm();
+            const r = window.FluxyPosPricing.computeBillTotals({
+                subtotal: PREVIEW_BASIS, discountTotal: 0, settings: s
+            });
+            $('pos-preview-basis').textContent = money(PREVIEW_BASIS);
+            const rows = [`<div class="pos-preview-row"><span>Food &amp; drink</span><span class="num">${esc(money(r.base))}</span></div>`];
+            if (r.service > 0) {
+                rows.push(`<div class="pos-preview-row"><span>Service ${s.service_rate_percent}%</span><span class="num">${esc(money(r.service))}</span></div>`);
+            }
+            if (r.tax > 0) {
+                rows.push(`<div class="pos-preview-row"><span>${esc(s.tax_label)} ${s.tax_rate_percent}%${r.taxInclusive ? ' (included)' : ''}</span><span class="num">${esc(money(r.tax))}</span></div>`);
+            }
+            rows.push(`<div class="pos-preview-row is-total"><span>Customer pays</span><span class="num">${esc(money(r.total))}</span></div>`);
+            $('pos-preview').innerHTML = rows.join('');
+
+            // The part an owner has to understand, stated rather than implied:
+            // inclusive pricing does not raise the bill, it lowers what they keep.
+            $('pos-preview-note').textContent = r.tax > 0 && r.taxInclusive
+                ? `Prices already include ${s.tax_label}, so the customer still pays ${money(r.total)} — ${money(r.tax)} of it is tax you collect and remit, and ${money(r.revenue)} is yours.`
+                : (r.tax > 0 || r.service > 0)
+                    ? `${money(r.revenue)} is revenue. Tax is recorded as money you owe, not income.`
+                    : 'Nothing is added to the bill.';
+        }
+
+        function readRateForm() {
+            return {
+                tax_enabled: $('pos-tax-enabled').checked,
+                tax_label: $('pos-tax-label').value.trim() || 'PPN',
+                tax_rate_percent: Number($('pos-tax-rate').value) || 0,
+                tax_inclusive: $('pos-tax-inclusive').value === 'true',
+                service_enabled: $('pos-service-enabled').checked,
+                service_rate_percent: Number($('pos-service-rate').value) || 0,
+                service_taxable: $('pos-service-taxable').value === 'true'
+            };
+        }
+
+        async function renderCover() {
+            const frame = $('pos-cover-frame');
+            const empty = $('pos-cover-empty');
+            frame.querySelectorAll('img').forEach((n) => n.remove());
+            if (coverObjectUrl) { URL.revokeObjectURL(coverObjectUrl); coverObjectUrl = null; }
+            $('pos-cover-clear').hidden = !settings.cover_image_path;
+            if (!settings.cover_image_path) { empty.hidden = false; return; }
+            try {
+                coverObjectUrl = await ds.getPosOutletCoverObjectURL(uid, settings.cover_image_path);
+                const img = document.createElement('img');
+                img.alt = '';
+                img.src = coverObjectUrl;
+                frame.appendChild(img);
+                empty.hidden = true;
+            } catch (e) {
+                // A stored path that will not resolve is a real state, and saying so
+                // beats a black rectangle the owner cannot explain.
+                empty.hidden = false;
+                empty.textContent = 'The saved image could not be loaded';
+            }
+        }
+
+        function renderPresets() {
+            const money = (n) => (window.FluxyMoney ? window.FluxyMoney.formatBase(n) : String(n));
+            const host = $('pos-presets');
+            if (!presets.length) {
+                host.innerHTML = '<p class="text-[13px] text-gray-500">No discounts yet. A cashier can still type one by hand at the till.</p>';
+                return;
+            }
+            const outletName = (id) => (outlets.find((o) => o.id === id) || {}).name || 'Unknown outlet';
+            host.innerHTML = presets.map((p) => `
+                <div class="pos-preset-row" data-preset="${esc(p.id)}">
+                    <div class="pos-preset-main">
+                        <div class="pos-preset-name">${esc(p.name)}</div>
+                        <div class="pos-preset-meta">${esc(p.reason)} · ${p.scope === 'line' ? 'One line' : 'Whole order'} · ${p.dimension_id ? esc(outletName(p.dimension_id)) : 'All outlets'}</div>
+                    </div>
+                    <span class="pos-preset-value">${p.kind === 'percent' ? esc(p.value + '%') : esc(money(p.value))}</span>
+                    <button type="button" class="pos-mini-btn" data-edit>Edit</button>
+                    <button type="button" class="pos-mini-btn is-danger" data-archive>Archive</button>
+                </div>`).join('');
+        }
+
+        function wire() {
+            ['pos-tax-enabled', 'pos-tax-label', 'pos-tax-rate', 'pos-tax-inclusive',
+             'pos-service-enabled', 'pos-service-rate', 'pos-service-taxable'].forEach((id) => {
+                $(id).addEventListener('input', renderPreview);
+                $(id).addEventListener('change', renderPreview);
+            });
+
+            $('pos-save').addEventListener('click', save);
+
+            $('pos-cover-pick').addEventListener('click', () => $('pos-cover-input').click());
+            $('pos-cover-input').addEventListener('change', uploadCover);
+            $('pos-cover-clear').addEventListener('click', async () => {
+                const ok = await window.showConfirmDialog({
+                    title: 'Remove the homepage image?',
+                    body: 'Diners will see the gradient, or this outlet\\u2019s first food photo, instead.',
+                    confirmLabel: 'Remove image', tone: 'danger'
+                });
+                if (!ok) return;
+                settings.cover_image_path = null;
+                await persist('Image removed');
+                renderCover();
+            });
+
+            $('pos-preset-add').addEventListener('click', () => openPresetForm(null));
+            $('pos-preset-cancel').addEventListener('click', () => { $('pos-preset-form').hidden = true; });
+            $('pos-preset-form').addEventListener('submit', savePreset);
+            $('pos-presets').addEventListener('click', onPresetAction);
+        }
+
+        async function uploadCover(e) {
+            const file = e.target.files && e.target.files[0];
+            e.target.value = '';
+            if (!file) return;
+            const status = $('pos-cover-status');
+            status.textContent = 'Uploading…';
+            try {
+                const { storagePath } = await ds.uploadPosOutletCover(uid, currentOutlet, file);
+                settings.cover_image_path = storagePath;
+                // Saved with the upload rather than on the save bar: a photo that
+                // only lands when a form somewhere else is submitted is the kind of
+                // thing people lose.
+                await persist(null);
+                await renderCover();
+                status.textContent = 'Image saved.';
+            } catch (err) {
+                status.textContent = (err && err.message) || 'Could not upload that image.';
+            }
+        }
+
+        async function persist(toast) {
+            const saved = await ds.savePosOutletSettings(uid, currentOutlet, {
+                ...settings,
+                address: $('pos-address').value,
+                phone: $('pos-phone').value,
+                hours: readHours(),
+                ...readRateForm()
+            });
+            settings = { ...settings, ...saved };
+            if (toast) window.showToast(toast, 'success');
+            return saved;
+        }
+
+        async function save() {
+            const btn = $('pos-save');
+            btn.disabled = true;
+            try {
+                await persist('Settings saved');
+                $('pos-save-note').textContent = 'Saved. Orders already open keep the rates they were opened with.';
+            } catch (e) {
+                window.showToast((e && e.message) || 'Could not save these settings.', 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function openPresetForm(preset) {
+            const f = $('pos-preset-form');
+            f.hidden = false;
+            $('pos-preset-error').textContent = '';
+            $('pos-preset-id').value = preset ? preset.id : '';
+            $('pos-preset-name').value = preset ? preset.name : '';
+            $('pos-preset-kind').value = preset ? preset.kind : 'percent';
+            $('pos-preset-value').value = preset ? preset.value : '';
+            $('pos-preset-reason').value = preset ? preset.reason : '';
+            $('pos-preset-scope').value = preset ? preset.scope : 'order';
+            $('pos-preset-outlet').innerHTML =
+                '<option value="">All outlets</option>'
+                + outlets.map((o) => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('');
+            $('pos-preset-outlet').value = preset && preset.dimension_id ? preset.dimension_id : '';
+            $('pos-preset-name').focus();
+        }
+
+        async function savePreset(e) {
+            e.preventDefault();
+            const err = $('pos-preset-error');
+            err.textContent = '';
+            try {
+                await ds.savePosDiscountPreset(uid, $('pos-preset-id').value || null, {
+                    name: $('pos-preset-name').value,
+                    kind: $('pos-preset-kind').value,
+                    value: Number($('pos-preset-value').value),
+                    reason: $('pos-preset-reason').value,
+                    scope: $('pos-preset-scope').value,
+                    dimension_id: $('pos-preset-outlet').value || null
+                });
+                presets = await ds.getPosDiscountPresets(uid, {});
+                renderPresets();
+                $('pos-preset-form').hidden = true;
+                window.showToast('Discount saved', 'success');
+            } catch (ex) {
+                err.textContent = (ex && ex.message) || 'Could not save that discount.';
+            }
+        }
+
+        async function onPresetAction(e) {
+            const row = e.target.closest('[data-preset]');
+            if (!row) return;
+            const preset = presets.find((p) => p.id === row.dataset.preset);
+            if (!preset) return;
+            if (e.target.hasAttribute('data-edit')) { openPresetForm(preset); return; }
+            if (!e.target.hasAttribute('data-archive')) return;
+            const ok = await window.showConfirmDialog({
+                title: `Archive “${preset.name}”?`,
+                body: 'It stops being offered at the till. Sales it was already applied to keep their discount and their reason.',
+                confirmLabel: 'Archive', tone: 'danger'
+            });
+            if (!ok) return;
+            try {
+                await ds.archivePosDiscountPreset(uid, preset.id);
+                presets = await ds.getPosDiscountPresets(uid, {});
+                renderPresets();
+                window.showToast('Discount archived', 'success');
+            } catch (ex) {
+                window.showToast((ex && ex.message) || 'Could not archive that discount.', 'error');
+            }
+        }
+
+        function esc(v) {
+            return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => (
+                { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+    </script>
+</body>
+</html>

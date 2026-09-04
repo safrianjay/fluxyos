@@ -667,6 +667,57 @@ export const POS_METHODS = {
         });
     },
 
+    /**
+     * The outlet's customer-facing header photo.
+     *
+     * ⚠️ A PATH IS STORED, NEVER A URL. A download URL is a permanent public
+     * link to the workspace's own imagery, and `items.image_path` made the same
+     * call for the same reason. The dashboard resolves it through an
+     * authenticated read; the DINER gets it from a Netlify function, because
+     * `order.html` holds no Firebase handle by design.
+     *
+     * Each upload is a NEW object rather than an overwrite, so a mis-click stays
+     * recoverable and an already-loaded page cannot be showing stale bytes from
+     * its blob cache with no way to know.
+     */
+    async uploadPosOutletCover(userId, dimensionId, file) {
+        if (!userId || !dimensionId) throw new Error('userId and dimensionId required');
+        if (!file) throw new Error('Pick an image first.');
+        // Refused here with a sentence, before the person has waited for a 5 MB
+        // upload to fail with an opaque rules error.
+        const MAX = 2 * 1024 * 1024;
+        if (file.size > MAX) throw new Error('That image is larger than 2 MB. Use a smaller one.');
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(String(file.type))) {
+            throw new Error('Use a JPEG, PNG or WebP image.');
+        }
+        await this.assertCanUseStorage(userId, file.size || 0, { source: 'pos_outlet_cover' });
+
+        const { getStorage, ref, uploadBytes } =
+            await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
+        if (!this._storage) this._storage = getStorage(this.app);
+
+        const safeName = String(file.name || 'cover').replace(/[^\w.\-]+/g, '_').slice(0, 120) || 'cover';
+        const storagePath = `${this._scope(userId)}/pos_outlets/${dimensionId}/${Date.now()}_${safeName}`;
+        await uploadBytes(ref(this._storage, storagePath), file, this._uploadMetadata(file.type));
+        this._auditCreateBestEffort(userId, {
+            action: 'pos_outlet_settings.cover_uploaded',
+            target_collection: 'pos_outlet_settings',
+            target_id: dimensionId
+        });
+        return { storagePath, fileName: safeName, fileSize: file.size || 0 };
+    },
+
+    // A blob: URL for the dashboard preview. Origin-bound and dead when the tab
+    // closes, exactly like the item-photo one.
+    async getPosOutletCoverObjectURL(userId, storagePath) {
+        if (!storagePath) throw new Error('storagePath required');
+        const { getStorage, ref, getBlob } =
+            await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
+        if (!this._storage) this._storage = getStorage(this.app);
+        const blob = await getBlob(ref(this._storage, storagePath));
+        return URL.createObjectURL(blob);
+    },
+
     // ── Discount presets ───────────────────────────────────────────────────
     //
     // Named, reusable discounts so a cashier taps instead of typing an amount

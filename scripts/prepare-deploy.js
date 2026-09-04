@@ -126,6 +126,7 @@ const PAGE_ROLES = {
     'settings-language.html': ['app'],
     'settings-notifications.html': ['app'],
     'settings-personal.html': ['app'],
+    'settings-pos.html': ['app'],
     'settings-security.html': ['app'],
     'settings-team.html': ['app'],
     'settings-whatsapp.html': ['app'],

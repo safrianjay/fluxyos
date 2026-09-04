@@ -120,6 +120,27 @@ service firebase.storage {
                     && request.resource.contentType in ['image/jpeg', 'image/png', 'image/webp'];
       allow delete: if false;
     }
+    // The customer-facing header photo for ONE outlet, set in POS Settings.
+    //
+    // ⚠️ READ IS FOR THE DASHBOARD PREVIEW ONLY. The diner never reads Storage —
+    // `order.html` holds no Firebase handle by design (docs/data-model/pos.md
+    // §5: the customer surface costs zero rules budget because it never touches
+    // Firestore), so an anonymous read rule here would be the thing that broke
+    // that. The photo reaches a phone through a Netlify function using the Admin
+    // SDK, the way `qr-menu-image` already serves menu photos.
+    //
+    // 2 MB, matching item photos. This one is rendered wider — it is a header,
+    // not a thumbnail — but it is still loaded on a diner's phone over
+    // restaurant wifi, which is the constraint that decides the ceiling.
+    match /workspaces/{workspaceId}/pos_outlets/{dimensionId}/{fileName} {
+      allow read:   if isWorkspaceMember(workspaceId);
+      allow write:  if isWorkspaceMember(workspaceId)
+                    && respectsTrialStorageSingleFileLimit(workspaceId)
+                    && request.resource.size <= 2 * 1024 * 1024
+                    && request.resource.contentType in ['image/jpeg', 'image/png', 'image/webp'];
+      // Replacing writes a NEW object, so a mis-click stays recoverable.
+      allow delete: if false;
+    }
     match /workspaces/{workspaceId}/bank_statement_imports/{importId}/{fileName} {
       allow read:   if isWorkspaceMember(workspaceId);
       allow write:  if isWorkspaceMember(workspaceId)

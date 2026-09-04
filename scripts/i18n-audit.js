@@ -58,6 +58,7 @@ const APP_PAGES = [
     'settings.html', 'settings-personal.html', 'settings-business.html', 'settings-finance.html',
     'settings-language.html', 'settings-notifications.html', 'settings-security.html', 'settings-team.html',
     'settings-ai.html', 'settings-billing.html', 'settings-budget.html', 'settings-cash.html',
+    'settings-pos.html',
     'settings-import-rules.html', 'settings-whatsapp.html',
     'onboarding.html', 'checkout.html', 'payment-pending.html',
     'internal.html',
