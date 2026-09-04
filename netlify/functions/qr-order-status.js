@@ -149,6 +149,10 @@ exports.handler = async (event) => {
 
         return json(200, {
             has_order: true,
+            // The SITTING this table is currently in. The page holds it and
+            // sends it back with each order, so a browser carrying yesterday's
+            // session cannot silently continue into today's.
+            order_id: doc.id,
             order_number: String(o.order_number || ''),
             status: o.status,
             stage: stage.step,

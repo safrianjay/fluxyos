@@ -1549,7 +1549,6 @@ img { max-width: 100%; display: block; }
 
 </div>
 
-     answer the two questions a seated diner actually asks after ordering. -->
 <!-- Cart bar ------------------------------------------------------------- -->
 <div id="cartbar" class="cartbar">
     <button id="cart-open" type="button">
@@ -1722,8 +1721,15 @@ img { max-width: 100%; display: block; }
     // per browser so a second round does not ask again. Held in a variable as
     // well as storage because a private-mode browser throws on both read and
     // write, and the sheet has to work there too.
-    var SESSION_KEY = 'fluxyos_customer_session';
+    // KEYED PER TABLE, and carrying the SITTING it belongs to.
+    //
+    // It used to be one global key holding only a name and a number, which is
+    // why a diner who ordered yesterday was never asked again — the page had no
+    // way to tell that the sitting those details belonged to was long since
+    // paid and cleared. A session now dies with its sitting.
+    var SESSION_KEY = 'fluxyos_customer_session_' + TOKEN;
     var customer = null;
+    var sitting = null;   // the order id this browser is participating in
 
     // ── Category icons ────────────────────────────────────────────────────
     //
@@ -1980,13 +1986,39 @@ img { max-width: 100%; display: block; }
             var raw = window.localStorage.getItem(SESSION_KEY);
             if (!raw) return null;
             var v = JSON.parse(raw);
-            return (v && v.name) ? { name: String(v.name), phone: String(v.phone || '') } : null;
+            if (!v || !v.name) return null;
+            return {
+                name: String(v.name),
+                phone: String(v.phone || ''),
+                sitting: v.sitting ? String(v.sitting) : null
+            };
         } catch (_) { return null; }   // private mode throws on read, not just write
     }
 
     function writeSession(v) {
-        customer = v;
-        try { window.localStorage.setItem(SESSION_KEY, JSON.stringify(v)); } catch (_) { /* in-memory only */ }
+        customer = { name: v.name, phone: v.phone };
+        if (v.sitting !== undefined) sitting = v.sitting;
+        try {
+            window.localStorage.setItem(SESSION_KEY,
+                JSON.stringify({ name: v.name, phone: v.phone, sitting: sitting }));
+        } catch (_) { /* in-memory only */ }
+    }
+
+    /**
+     * End the sitting on this device.
+     *
+     * Called when the server says the table has moved on — the bill was settled
+     * and the table cleared. Identity goes with it: the next order from this
+     * phone is a NEW sitting and has to say who it is for, which is the only
+     * thing standing between a saved link and a silent re-order on a table
+     * somebody has already paid for and left.
+     */
+    function endSitting() {
+        customer = null;
+        sitting = null;
+        cart = [];
+        cartNote = '';
+        try { window.localStorage.removeItem(SESSION_KEY); } catch (_) { /* nothing to clear */ }
     }
 
     /**
@@ -2028,7 +2060,7 @@ img { max-width: 100%; display: block; }
             $('welcome-error').innerHTML = '<div class="notice bad">' + esc(bad) + '</div>';
             return;
         }
-        writeSession({ name: name.slice(0, 80), phone: phone.slice(0, 32) });
+        writeSession({ name: name.slice(0, 80), phone: phone.slice(0, 32), sitting: sitting });
         closeSheets({ force: true });
     }
 
@@ -2080,7 +2112,12 @@ img { max-width: 100%; display: block; }
             // Asked AFTER the menu paints, not before: a diner who sees a form
             // on a blank screen has no idea what they are signing up for, and
             // the menu behind the sheet is what makes the request make sense.
-            customer = readSession();
+            var saved = readSession();
+            customer = saved ? { name: saved.name, phone: saved.phone } : null;
+            sitting = saved ? saved.sitting : null;
+
+            // No stored session at all — a fresh scan. Ask immediately rather
+            // than waiting on the network; there is nothing to validate.
             if (!customer) openWelcome();
 
             // Someone else at this table may have ordered already, or this is a
@@ -2088,8 +2125,10 @@ img { max-width: 100%; display: block; }
             // fetch so it takes a sequence ticket — this is the request that
             // used to overtake the post-submit refresh and blank the badge.
             // It also pre-paints the sheet, so the first tap on Pesanan shows
-            // content rather than a spinner.
-            refreshOrders().catch(function () { /* the badge is a nicety */ });
+            // content rather than a spinner, AND it is what decides whether a
+            // stored session is still valid.
+            refreshOrders({ reconcile: true })
+                .catch(function () { /* the badge is a nicety */ });
         })
         .catch(function (err) {
             if (err && err.message === 'busy') {
@@ -2608,6 +2647,7 @@ img { max-width: 100%; display: block; }
         $('sheet-item').classList.remove('is-open');
         $('sheet-welcome').classList.remove('is-open');
         $('sheet-orders').classList.remove('is-open');
+        $('sheet-done').classList.remove('is-open');
         document.body.style.overflow = '';
         detail = null;
         setActiveTab('menu');
@@ -2762,7 +2802,20 @@ img { max-width: 100%; display: block; }
     // Each request takes a ticket; only the newest one is allowed to paint.
     var ordersSeq = 0;
 
-    function refreshOrders() {
+    /**
+     * @param {{reconcile?: boolean}} [opts]
+     *
+     * ⚠️ RECONCILE ONLY ON A FRESH LOAD. This ran on every refresh at first,
+     * including the one fired immediately after placing an order — and the
+     * status endpoint had not caught up yet, so it read "no live order",
+     * concluded the sitting was over, and tore the session down one second
+     * after the diner successfully ordered. The dangerous case is a link opened
+     * tomorrow, which is a page load; a mid-session refresh has nothing to
+     * decide. The bill being settled while the page is open is handled by
+     * `qr-order` refusing with `sitting_ended`, which does not race anything.
+     */
+    function refreshOrders(opts) {
+        var reconcile = !!(opts && opts.reconcile);
         var seq = ++ordersSeq;
         return fetch(FN + 'qr-order-status?token=' + encodeURIComponent(TOKEN))
             .then(function (r) { return r.ok ? r.json() : null; })
@@ -2771,6 +2824,7 @@ img { max-width: 100%; display: block; }
                 if (!data) throw new Error('gone');
                 paintOrders(data);
                 paintOrdersBadge(data);
+                if (reconcile) reconcileSitting(data);
             })
             .catch(function () {
                 if (seq !== ordersSeq) return;
@@ -2955,6 +3009,40 @@ img { max-width: 100%; display: block; }
             });
     });
 
+    /**
+     * Reconcile this device's sitting with the table's.
+     *
+     * The server is the authority. If the table has no live order, or is in a
+     * DIFFERENT one, then whatever this browser was participating in is over —
+     * the bill was settled and the table cleared — and the stored identity goes
+     * with it. That is what stops a link opened the next day from silently
+     * continuing yesterday's sitting.
+     */
+    function reconcileSitting(d) {
+        var live = d && d.has_order ? (d.order_id || null) : null;
+
+        if (!sitting) {
+            // Not participating yet. Joining a sitting already in progress is
+            // fine — a table shares one order — so just adopt it.
+            sitting = live;
+            if (customer) writeSession({ name: customer.name, phone: customer.phone, sitting: sitting });
+            return;
+        }
+        if (live && live === sitting) return;      // still the same sitting
+
+        // The table has moved on.
+        endSitting();
+        paintCart();
+        paintMenu();
+        if (!welcomeOpen()) {
+            openWelcome();
+            setText($('welcome-title'), 'Mulai pesanan baru');
+            setText($('welcome-sub'), menu && menu.table
+                ? ('Meja ' + menu.table + ' · pesanan sebelumnya sudah selesai')
+                : 'Pesanan sebelumnya sudah selesai');
+        }
+    }
+
     function paintOrdersBadge(d) {
         var n = d && d.has_order
             ? (d.lines || []).reduce(function (s, l) { return s + (Number(l.quantity) || 0); }, 0)
@@ -3010,6 +3098,10 @@ img { max-width: 100%; display: block; }
             body: JSON.stringify({
                 token: TOKEN,
                 client_ref: clientRef,
+                // What this device believes it is part of. The server refuses
+                // the order if the table has moved on, rather than opening a
+                // new sitting on a table already paid for.
+                sitting: sitting,
                 customer_name: customer ? customer.name : '',
                 customer_phone: customer ? customer.phone : '',
                 note: outgoingNote,
@@ -3026,6 +3118,9 @@ img { max-width: 100%; display: block; }
             .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
             .then(function (res) {
                 if (!res.ok || !res.body.ok) throw res.body || {};
+                // From here on this device is part of THIS sitting.
+                sitting = res.body.order_id || sitting;
+                if (customer) writeSession({ name: customer.name, phone: customer.phone, sitting: sitting });
                 setText($('done-number'), res.body.order_number || '');
                 setText($('done-sub'), res.body.rejected_lines
                     ? 'Beberapa item sudah tidak tersedia dan tidak dimasukkan.'
@@ -3053,7 +3148,17 @@ img { max-width: 100%; display: block; }
             })
             .catch(function (err) {
                 var msg = 'Gagal mengirim pesanan. Coba lagi.';
-                if (err && err.error === 'order_closed') {
+                if (err && err.error === 'sitting_ended') {
+                    // The bill was settled while this page was open. Start over
+                    // rather than quietly opening a new sitting.
+                    msg = 'Pesanan sebelumnya sudah dibayar. Mulai pesanan baru untuk melanjutkan.';
+                    endSitting();
+                    paintCart();
+                    paintMenu();
+                    goMenu();
+                    openWelcome();
+                    setText($('welcome-title'), 'Mulai pesanan baru');
+                } else if (err && err.error === 'order_closed') {
                     msg = 'Tagihan meja ini baru saja ditutup. Panggil staf untuk membuka pesanan baru.';
                 } else if (err && err.error === 'nothing_orderable') {
                     msg = 'Item yang Anda pilih sudah tidak tersedia.';

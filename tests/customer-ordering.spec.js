@@ -237,18 +237,81 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('#cartbar')).not.toHaveClass(/is-open/);
     });
 
-    test('a returning diner is not asked twice', async ({ page }) => {
-        await stub(page);
+    test('a returning diner mid-sitting is not asked twice', async ({ page }) => {
+        const capture = {};
+        await stub(page, { capture });
         await open(page);                       // fills the gate
-        await page.reload();
-        await expect(page.locator('.card').first()).toBeVisible({ timeout: 15_000 });
-        // Same browser, same person — the second round goes straight to food.
-        await expect(page.locator('#sheet-welcome')).not.toHaveClass(/is-open/);
-
-        // And the identity still rides on the order.
         await addPlain(page, 'Americano');
         await page.locator('#cart-open').click();
-        await expect(page.locator('#view-cart')).toContainText('Sinta');
+        await page.locator('#cart-submit').click();
+        await expect(page.locator('#sheet-done')).toHaveClass(/is-open/);
+
+        // The table is now IN the sitting this device just started.
+        capture.status = {
+            has_order: true, order_id: 'ord_1', order_number: '2026-09-03-007',
+            status: 'sent', stage: 2, stage_label: 'Sedang disiapkan',
+            lines: [{ item_id: 'i_americano', item_name: 'Americano', quantity: 1,
+                      gross_amount: 22000, note: null, modifiers: [] }],
+            note: null, subtotal: 22000, service_charge_amount: 0, tax_amount: 0,
+            discount_total: 0, total_amount: 22000, paid_amount: 0, placed_at: Date.now()
+        };
+        await page.reload();
+        await expect(page.locator('.card').first()).toBeVisible({ timeout: 15_000 });
+        // Same sitting, same person — straight to the food.
+        await expect(page.locator('#sheet-welcome')).not.toHaveClass(/is-open/);
+    });
+
+    test('THE SESSION DIES WITH THE SITTING', async ({ page }) => {
+        // The fraud shape: pay, leave, reopen the saved link the next day and
+        // keep ordering to a table you have already settled. The session used to
+        // be one global key holding only a name, so the page had no way to know
+        // its sitting was long since paid and cleared.
+        const capture = {};
+        await stub(page, { capture });
+        await open(page);
+        await addPlain(page, 'Americano');
+        await page.locator('#cart-open').click();
+        await page.locator('#cart-submit').click();
+        await expect(page.locator('#sheet-done')).toHaveClass(/is-open/);
+        expect(capture.body.sitting, 'the first order starts a sitting').toBeFalsy();
+
+        // The cashier settles the bill. `qr-order-status` stops returning it,
+        // so the table reads clear.
+        capture.status = { has_order: false, lines: [] };
+        await page.reload();
+        await expect(page.locator('.card').first()).toBeVisible({ timeout: 15_000 });
+
+        // The stored identity is gone with the sitting, and the page says so.
+        await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/, { timeout: 15_000 });
+        await expect(page.locator('#welcome-title')).toHaveText('Mulai pesanan baru');
+        await expect(page.locator('#welcome-sub')).toContainText('sudah selesai');
+        // And nothing carried over.
+        await expect(page.locator('#cartbar')).not.toHaveClass(/is-open/);
+    });
+
+    test('an order into a settled sitting is refused, not silently reopened', async ({ page }) => {
+        const capture = {};
+        await stub(page, { capture });
+        await open(page);
+        await addPlain(page, 'Americano');
+        await page.locator('#cart-open').click();
+        await page.locator('#cart-submit').click();
+        await expect(page.locator('#sheet-done')).toHaveClass(/is-open/);
+        await page.locator('#done-more').click();
+
+        // The bill is settled while this page is still open, so the NEXT order
+        // carries a sitting the table is no longer in.
+        await page.route('**/qr-order', (route) => route.fulfill({
+            status: 409, contentType: 'application/json',
+            body: JSON.stringify({ error: 'sitting_ended' })
+        }));
+        await addPlain(page, 'Nasi Goreng');
+        await page.locator('#cart-open').click();
+        await page.locator('#cart-submit').click();
+
+        // Start over rather than quietly opening a new sitting on a paid table.
+        await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/, { timeout: 15_000 });
+        await expect(page.locator('#welcome-title')).toHaveText('Mulai pesanan baru');
     });
 
     test('the menu is a two-column grid', async ({ page }) => {
@@ -1057,6 +1120,42 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('#confetti')).toHaveCSS('pointer-events', 'none');
         await expect(page.locator('#confetti')).not.toHaveClass(/is-on/, { timeout: 8_000 });
         expect(await page.locator('#confetti i').count()).toBe(0);
+    });
+
+    test('the confirmation sheet can be dismissed', async ({ page }) => {
+        // It could not: `closeSheets` never knew about it, so the CTA removed
+        // the scrim and left the sheet on screen with nothing behind it.
+        await stub(page);
+        await open(page);
+        await addPlain(page, 'Americano');
+        await page.locator('#cart-open').click();
+        await page.locator('#cart-submit').click();
+        const done = page.locator('#sheet-done');
+        await expect(done).toHaveClass(/is-open/);
+        // The overlay is there while it is up.
+        await expect(page.locator('#scrim')).toHaveClass(/is-open/);
+
+        await page.locator('#done-more').click();
+        await expect(done).not.toHaveClass(/is-open/);
+        await expect(page.locator('#scrim')).not.toHaveClass(/is-open/);
+        await expect(page.locator('#view-menu')).toBeVisible();
+    });
+
+    test('no stray markup renders below the page', async ({ page }) => {
+        // Removing a two-line HTML comment left its second line orphaned, so
+        // `answer the two questions … -->` rendered as visible page text under
+        // everything else.
+        await stub(page);
+        await open(page);
+        const stray = await page.evaluate(() => {
+            const junk = [];
+            document.body.childNodes.forEach((n) => {
+                if (n.nodeType === 3 && n.textContent.trim()) junk.push(n.textContent.trim().slice(0, 60));
+            });
+            return junk;
+        });
+        expect(stray, 'loose text nodes directly in <body>').toEqual([]);
+        expect(await page.locator('body').innerText()).not.toContain('seated diner');
     });
 
     test('the confirmation shows the order number and clears the cart', async ({ page }) => {

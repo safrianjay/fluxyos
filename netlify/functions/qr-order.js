@@ -262,6 +262,21 @@ exports.handler = async (event) => {
         // the kitchen has already read the ticket, and a customer request has
         // no downstream reader that a stale value could corrupt. Revisit if
         // parking QR orders ever becomes routine.
+        // THE SITTING THE CLIENT BELIEVES IT IS IN.
+        //
+        // A page that has already ordered sends the order id it was given. If
+        // the table has moved on since — the bill was settled and the table
+        // cleared — that id no longer matches anything live, and the request is
+        // refused rather than quietly opening a NEW sitting on a table the
+        // customer has already paid for and left.
+        //
+        // ⚠️ WHAT THIS CANNOT DO, stated plainly: the printed QR is a static
+        // URL, so "scanned the card just now" and "reopened a saved link" are
+        // byte-identical requests. A client sending NO sitting is starting a
+        // fresh one and must be allowed to — that is indistinguishable from the
+        // next diner sitting down. What this closes is the SILENT path: a stale
+        // tab continuing, or resuming, a sitting that is over.
+        const sitting = SAFE.test(String(body.sitting || '')) ? String(body.sitting) : null;
         const orderNote = str(body.note, 200);
         const customerName = str(body.customer_name, 80);
         const customerPhone = str(body.customer_phone, 32);
@@ -282,6 +297,12 @@ exports.handler = async (event) => {
         });
 
         let orderId; let orderNumber; let totalAmount;
+
+        // The client claims to be mid-sitting. If the table is not in that
+        // sitting any more, say so instead of starting a new one.
+        if (sitting && (!openDoc || openDoc.id !== sitting)) {
+            return json(409, { error: 'sitting_ended' });
+        }
 
         if (openDoc) {
             // ── APPEND to the sitting's order ───────────────────────────────
@@ -441,6 +462,7 @@ exports.handler = async (event) => {
 
         return json(200, {
             ok: true,
+            // The page stores this and sends it back as `sitting`.
             order_id: orderId,
             order_number: orderNumber,
             total_amount: totalAmount,
