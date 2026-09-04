@@ -1376,6 +1376,40 @@ img { max-width: 100%; display: block; }
     background-size: 15px 15px;
 }
 
+/* ---- A SUPPLIED illustration ------------------------------------------
+   Drop a file at one of the paths in `WELCOME_ART` (script) and it replaces
+   the card stack entirely. Artwork brings its own composition, so the stage
+   drops the mask and the dot field with it — fading someone's illustration
+   out at its edges is not a treatment, it is damage.
+
+   ⚠️ THE SRC MUST BE ABSOLUTE. Under the printed route `/t/<token>` a relative
+   `assets/…` resolves to `/t/assets/…`, which the catch-all rewrite serves as
+   200-with-HTML rather than 404 — so a relative asset does not merely fail, it
+   fails while LOOKING like it loaded. Same trap that once made every price on
+   the menu render as a bare integer. */
+.welcome-art.has-asset {
+    height: auto;
+    padding: 6px 8px 0;
+    display: flex;
+    justify-content: center;
+    -webkit-mask-image: none;
+            mask-image: none;
+}
+.welcome-art.has-asset::before { display: none; }
+.welcome-art.has-asset img {
+    width: 100%;
+    max-width: 300px;
+    max-height: 170px;
+    height: auto;
+    object-fit: contain;
+}
+
+/* ⚠️ THE HERO IS HIDDEN WHILE THE KEYBOARD IS UP. On a 375px phone the sheet
+   has ~530px to live in once iOS takes its third of the screen, and a picture
+   is not what the diner is looking at while typing their name. `--kb-inset`
+   already knows; syncKeyboardInset() sets the class from it. */
+html.kb-open .welcome-art { display: none; }
+
 .welcome-note {
     position: absolute;
     left: 50%;
@@ -1872,7 +1906,9 @@ img { max-width: 100%; display: block; }
     <!-- Hero cluster. Filled by paintWelcomeArt() from the outlet's own
          categories and hidden when it has too few to compose with — an empty
          118px stage is a hole, not a hero. -->
-    <div class="welcome-art" id="welcome-art" aria-hidden="true" hidden></div>
+    <!-- data-src: the supplied illustration, ABSOLUTE path, empty until one
+         ships. Set it and the artwork replaces the card stack below. -->
+    <div class="welcome-art" id="welcome-art" data-src="" aria-hidden="true" hidden></div>
     <div class="sheet-body">
         <div class="field" id="welcome-name-field">
             <label for="welcome-name">Nama</label>
@@ -2300,9 +2336,39 @@ img { max-width: 100%; display: block; }
      * shows, so the vocabulary matches. Never dress them as a push or a
      * WhatsApp message the product does not send.
      */
+    /**
+     * A SUPPLIED illustration, if one has been shipped.
+     *
+     * ⚠️ DECLARED, NOT PROBED. The obvious build — try `order-welcome.svg`,
+     * then `.png`, then `.webp` — costs every diner four 404s on restaurant
+     * wifi at every outlet that has not shipped one, and Chromium logs each as
+     * a console error, which the console-clean spec rightly fails on. So the
+     * path is stated once in the markup and the browser fetches exactly what
+     * exists, or nothing.
+     *
+     * TO SHIP ONE: put the file in `assets/images/` and set `data-src` on
+     * `#welcome-art` to its ABSOLUTE path. Absolute matters — under the
+     * printed route `/t/<token>` a relative `assets/…` resolves to
+     * `/t/assets/…`, which the catch-all rewrite serves as 200-with-HTML
+     * rather than 404, so it fails while LOOKING like it loaded.
+     *
+     * SVG is the format to prefer: loaded through <img> it still sees the
+     * host's `prefers-reduced-motion`, so an animated asset can quiet itself.
+     * A GIF or APNG cannot.
+     */
     function paintWelcomeArt() {
         var host = $('welcome-art');
         if (!host) return;
+
+        var asset = String(host.dataset.src || '').trim();
+        if (asset) {
+            host.classList.add('has-asset');
+            host.innerHTML = '<img alt="" decoding="async" src="' + esc(asset) + '">';
+            host.hidden = false;
+            return;
+        }
+        host.classList.remove('has-asset');
+
         var table = menu && menu.table ? ('Meja ' + menu.table) : '';
         var cards = [
             { i: 0, title: STAGES[0].label, sub: 'Dapur menerima pesanan Anda.', time: '' },

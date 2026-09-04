@@ -314,6 +314,62 @@ test.describe('QR customer ordering', () => {
             .toBeGreaterThanOrEqual(12);
     });
 
+    // A stand-in for the shipped file, so the branch is exercised without a
+    // binary in the repo.
+    const ART_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 160">'
+        + '<rect width="300" height="160" fill="#CDE8DA"/></svg>';
+
+    test('THE GATE NEVER GOES LOOKING FOR ARTWORK THAT WAS NOT DECLARED', async ({ page }) => {
+        // ⚠️ DECLARED, NOT PROBED. The obvious build — try `.svg`, then `.png`,
+        // then `.webp` — costs every diner three or four 404s on restaurant
+        // wifi at every outlet that ships none, and Chromium logs each as a
+        // console error. This is the guard against reintroducing that.
+        const asked = [];
+        await stub(page);
+        await page.route('**/assets/images/order-welcome.*', (route) => {
+            asked.push(new URL(route.request().url()).pathname);
+            return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: ART_SVG });
+        });
+        await goTo(page);
+        await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/, { timeout: 15_000 });
+
+        await expect(page.locator('#welcome-art .welcome-note')).toHaveCount(3);
+        await expect(page.locator('#welcome-art')).not.toHaveClass(/has-asset/);
+        expect(asked, 'the page went looking for artwork that was never declared')
+            .toEqual([]);
+    });
+
+    test('a declared illustration takes the stage from the card stack', async ({ page }) => {
+        // Shipping one is a single edit: the file in assets/images/, and its
+        // ABSOLUTE path on `#welcome-art[data-src]`. Set here the way the
+        // markup would, before the gate paints.
+        await stub(page);
+        await page.route('**/assets/images/order-welcome.svg', (route) =>
+            route.fulfill({ status: 200, contentType: 'image/svg+xml', body: ART_SVG }));
+        await page.addInitScript(() => {
+            document.addEventListener('DOMContentLoaded', () => {
+                const el = document.getElementById('welcome-art');
+                if (el) el.dataset.src = '/assets/images/order-welcome.svg';
+            });
+        });
+        await goTo(page);
+        await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/, { timeout: 15_000 });
+
+        const art = page.locator('#welcome-art');
+        await expect(art).toHaveClass(/has-asset/);
+        await expect(art.locator('img')).toHaveAttribute('src', '/assets/images/order-welcome.svg');
+        // It REPLACES the fallback rather than stacking on top of it.
+        await expect(art.locator('.welcome-note')).toHaveCount(0);
+        // Artwork brings its own composition, so the stage drops the mask and
+        // the dot field — fading someone's illustration out at its edges is
+        // not a treatment, it is damage.
+        expect(await art.evaluate((el) => getComputedStyle(el).maskImage
+            || getComputedStyle(el).webkitMaskImage)).toBe('none');
+        // And it decodes to a real picture, not a broken-image box.
+        expect(await art.locator('img').evaluate((el) => el.naturalWidth))
+            .toBeGreaterThan(0);
+    });
+
     test('THE HEADER IS THE RESTAURANT, WITH A SCRIM THAT KEEPS IT LEGIBLE', async ({ page }) => {
         // The gradient is the FALLBACK, not the intended look. A cover photo
         // belongs here, and the owner-facing control (POS settings) is not
