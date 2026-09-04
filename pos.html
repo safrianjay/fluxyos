@@ -2006,6 +2006,11 @@
     </div>
 
     <script src="assets/js/money-format.js"></script>
+    <!-- The same pricing file the diner's phone and the order endpoints run.
+         `_posTotals` reaches it through `_pricing()`, and the discount drawer
+         resolves presets with it so a percentage rounds identically on every
+         surface that can apply one. -->
+    <script src="assets/js/pos-pricing.js"></script>
     <script src="assets/js/sidebar-loader.js"></script>
     <script src="assets/js/fluxy-select.js"></script>
     <!-- The SHARED date picker. The reservation dialog uses it in single-date

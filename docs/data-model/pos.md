@@ -1003,6 +1003,35 @@ lands as contra-revenue in 4900 (§4).
 | `sort` | int | |
 | `auto` | map \| null | **The seam for automatic rules** — happy hour, minimum spend. Null on every preset today, and deliberately unvalidated in rules so adding conditions later needs no rules change and no deploy |
 
+### At the till
+
+The discount drawer offers the applicable presets as buttons, filtered by
+`scope` — an order-wide "Staff 20%" against a single latte would be a button
+that does not do what its name says.
+
+⚠️ **Tapping one FILLS the form; it does not submit it.** One tap is the point,
+but that dialog already has an Apply button, and a preset that skipped it would
+make that button a lie AND turn a mis-tap at a busy counter into money out of
+the door under a reason nobody chose. It fills the amount (resolved through
+`presetDiscountAmount`, so a percentage rounds identically on every surface) and
+the **reason** — which is the actual point of a preset. A discount's reason is
+the only record of why money was given away, and composing one with a customer
+waiting is how "promo" ends up on a third of them.
+
+Presets are cached per outlet (`state.presetsFor`), not re-read on every
+`refresh()` — that runs on every snapshot from the live watcher.
+
+### The total has to foot
+
+Once an outlet charges tax or a service fee, `total_amount` moves away from the
+subtotal. Both the till's totals stack and the printed receipt now show the
+service and tax lines, labelled from the ORDER's own `pos_pricing` snapshot — so
+a bill opened at 10% still says 10% after the rate is changed.
+
+**Inclusive tax is stated AFTER the total, never as a line above it.** It is
+already inside the prices, and adding it as a row would make the arithmetic look
+wrong to the one person guaranteed to check: the customer holding the receipt.
+
 ### Rules for both
 
 Read = all member roles **plus `cashier`**: the till must be able to price a bill

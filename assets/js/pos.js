@@ -63,6 +63,12 @@ const state = {
     order: null,
     overview: null,
     shift: null,
+    // Discount presets for the CURRENT outlet, and which outlet they are for.
+    // Cached by outlet rather than re-read on every refresh: `refresh()` runs on
+    // every snapshot from the live watcher, and a list that changes when someone
+    // edits Settings does not need re-fetching every time a line is added.
+    presets: [],
+    presetsFor: null,
     unwatch: null,
     busy: false,
     // Catalogue filters. Client-side on purpose: the menu is already fully
@@ -2470,7 +2476,30 @@ function renderOrder() {
     bits.push(`<div class="pos-total-row${extraDisc > 0 ? ' is-discount' : ''}">
         <span>Extra discount${canEdit ? `<button type="button" class="pos-total-edit" id="pos-edit-extra" aria-label="Edit extra discount" title="Edit">${pencil}</button>` : ''}</span>
         <span>${extraDisc > 0 ? `−${rp(extraDisc)}` : rp(0)}</span></div>`);
+    // ⚠️ A TOTAL MUST FOOT AGAINST THE LINES ABOVE IT. Once an outlet charges a
+    // service fee or tax, `total_amount` jumps away from the subtotal and the
+    // stack silently stops adding up — the cashier reads a number they cannot
+    // explain to the customer standing in front of them, and the customer is the
+    // one who notices. The labels come from the ORDER's own snapshot, so a bill
+    // opened at 10% still says 10% after the rate is changed.
+    const svc = Math.max(0, Number(o.service_charge_amount) || 0);
+    const txAmt = Math.max(0, Number(o.tax_amount) || 0);
+    const pricing = o.pos_pricing || {};
+    if (svc > 0) {
+        const pct = Number(pricing.service_rate_percent) || 0;
+        bits.push(`<div class="pos-total-row"><span>Service${pct ? ` ${pct}%` : ''}</span><span>${rp(svc)}</span></div>`);
+    }
+    // Inclusive tax is already inside the line prices, so adding it as a row
+    // would make the arithmetic look wrong. It is stated after the total instead.
+    if (txAmt > 0 && !pricing.tax_inclusive) {
+        const pct = Number(pricing.tax_rate_percent) || 0;
+        const label = esc(pricing.tax_label || 'Tax');
+        bits.push(`<div class="pos-total-row"><span>${label}${pct ? ` ${pct}%` : ''}</span><span>${rp(txAmt)}</span></div>`);
+    }
     bits.push(`<div class="pos-total-row is-grand"><span>Total</span><span>${rp(o.total_amount)}</span></div>`);
+    if (txAmt > 0 && pricing.tax_inclusive) {
+        bits.push(`<div class="pos-total-row"><span>Incl. ${esc(pricing.tax_label || 'tax')}</span><span>${rp(txAmt)}</span></div>`);
+    }
     if (Number(o.paid_amount) > 0 && o.status !== 'paid') {
         bits.push(`<div class="pos-total-row"><span>Paid so far</span><span>${rp(o.paid_amount)}</span></div>`);
         bits.push(`<div class="pos-total-row is-grand"><span>Balance</span><span>${rp(Number(o.total_amount) - Number(o.paid_amount))}</span></div>`);
@@ -3020,11 +3049,31 @@ function openDiscountDrawer(lineId = null) {
     // against a base that can still move.
     let mode = 'amount';
 
+    // The presets that apply HERE. A line discount and an order discount are
+    // different decisions, so a preset declares which it is — offering an
+    // order-wide "Staff 20%" against a single latte would be a button that does
+    // not do what its name says.
+    const applicable = (state.presets || []).filter((p) => p.scope === (line ? 'line' : 'order'));
+
+    // ⚠️ THEY FILL THE FORM; THEY DO NOT SUBMIT IT. One tap is the point, but
+    // this dialog already has an Apply button, and a preset that skipped it
+    // would make that button a lie AND make a mis-tap at a busy counter into
+    // money out of the door under a reason nobody chose. Tapping fills the
+    // amount and the reason — which is the typing and the wording the cashier
+    // was doing by hand — and the preview says exactly what will happen.
+    const presetHtml = applicable.length ? `
+            <div>
+                <label class="block text-[12px] font-semibold text-slate-700 mb-2">Saved discounts</label>
+                <div class="pos-methods" id="pos-disc-presets" style="flex-wrap:wrap">
+                    ${applicable.map((p) => `<button type="button" class="pos-method" data-preset="${esc(p.id)}">${esc(p.name)}</button>`).join('')}
+                </div>
+            </div>` : '';
+
     drawer({
         title: line ? `Discount ${line.item_name}` : 'Add a discount',
         subtitle: `${rp(base)} before discount`,
         submitLabel: 'Apply discount',
-        body: `
+        body: presetHtml + `
             <div>
                 <div class="pos-methods" id="pos-disc-mode" style="margin-bottom:12px">
                     <button type="button" class="pos-method is-on" data-mode="amount">Amount</button>
@@ -3073,6 +3122,35 @@ function openDiscountDrawer(lineId = null) {
         el.value = '0';
         preview();
     });
+
+    const presetBar = $('pos-disc-presets');
+    if (presetBar) {
+        presetBar.addEventListener('click', (e) => {
+            const b = e.target.closest('[data-preset]');
+            if (!b) return;
+            const p = applicable.find((x) => x.id === b.dataset.preset);
+            if (!p) return;
+            document.querySelectorAll('#pos-disc-presets .pos-method')
+                .forEach((x) => x.classList.toggle('is-on', x === b));
+
+            // Resolved through the SHARED module, so a percentage rounds the same
+            // here as it does on the diner's phone and in the settings preview.
+            const amount = window.FluxyPosPricing.presetDiscountAmount(p, base);
+            // Always entered as an AMOUNT, whatever the preset's own kind: the
+            // ledger holds Rupiah, and the percent field would re-apply itself
+            // against a base that can still move as lines are added.
+            mode = 'amount';
+            document.querySelectorAll('#pos-disc-mode .pos-method')
+                .forEach((x) => x.classList.toggle('is-on', x.dataset.mode === 'amount'));
+            $('pos-disc-label').textContent = 'Amount off';
+            el.value = window.FluxyMoney.formatMoneyInput(String(amount), window.FluxyMoney.baseCurrency());
+            // The preset's own reason, which is the point of it: a discount's
+            // reason is the only record of why money was given away, and a
+            // cashier should not be composing one with a customer waiting.
+            $('pos-disc-why').value = p.reason || p.name;
+            preview();
+        });
+    }
 }
 
 // ── Receipt ──────────────────────────────────────────────────────────────────
@@ -3142,7 +3220,26 @@ function openReceipt(order) {
   <table>
     ${row('Subtotal', rp(o.subtotal))}
     ${Number(o.discount_total) > 0 ? row(o.discount_reason || 'Diskon', `−${rp(o.discount_total)}`, 'dsc') : ''}
+    ${
+        // The receipt is the customer's own copy, and it is the document a
+        // dispute is settled with. A total that does not foot against its own
+        // lines is exactly the argument it exists to prevent — and in Indonesia
+        // the tax line is what tells them the charge was a tax rather than
+        // something the restaurant added.
+        Number(o.service_charge_amount) > 0
+            ? row('Layanan', rp(o.service_charge_amount)) : ''
+    }
+    ${
+        Number(o.tax_amount) > 0 && !(o.pos_pricing || {}).tax_inclusive
+            ? row((o.pos_pricing || {}).tax_label || 'Pajak', rp(o.tax_amount)) : ''
+    }
     ${row('Total', rp(o.total_amount), 'tot')}
+    ${
+        // Inclusive tax sits INSIDE the prices above, so it is stated after the
+        // total rather than added to it.
+        Number(o.tax_amount) > 0 && (o.pos_pricing || {}).tax_inclusive
+            ? row(`Termasuk ${(o.pos_pricing || {}).tax_label || 'Pajak'}`, rp(o.tax_amount)) : ''
+    }
     ${paid.map((p) => row(methodLabel(p.method), rp(p.amount))).join('')}
     ${
         // Tendered and change, on the receipt, for the one case where they
@@ -4804,6 +4901,19 @@ async function refresh({ keepOrder = false } = {}) {
     if (state.frozen) return;
     state.overview = overview;
     state.menu = menu;
+
+    // One read per outlet switch, not per refresh. A failure here must never
+    // take the till down: presets are a convenience over a discount the cashier
+    // can always still type by hand.
+    if (state.presetsFor !== state.outletId) {
+        try {
+            state.presets = await ds.getPosDiscountPresets(state.uid, { dimensionId: state.outletId });
+            state.presetsFor = state.outletId;
+        } catch (e) {
+            console.warn('[pos] discount presets unavailable', e);
+            state.presets = [];
+        }
+    }
     state.shift = shift;
     // The board and the floor plan read ONE list. `getPosOverview` returns the
     // bookings that could hold a table near now, which is what the floor plan

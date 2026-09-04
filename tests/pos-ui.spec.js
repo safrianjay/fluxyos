@@ -210,6 +210,68 @@ test.describe('Point of Sale', () => {
         expect(orange, `orange backgrounds are prohibited: ${orange.join(', ')}`).toEqual([]);
     });
 
+    test('SAVED DISCOUNTS ARE OFFERED AT THE TILL, AND FILL THE REASON TOO', async ({ page }) => {
+        // The point of a preset is not the arithmetic — a cashier can already
+        // type 20%. It is the REASON. A discount's reason is the only record of
+        // why money was given away, and composing one with a customer waiting is
+        // how "promo" ends up on a third of them. So the assertion that matters
+        // most here is that tapping a preset fills the reason field.
+        //
+        // ⚠️ IT BUILDS ITS OWN FIXTURE AND TAKES IT BACK DOWN. A version that
+        // skipped when the workspace happened to have no preset would be green
+        // for the wrong reason, which is the failure two specs in this file
+        // already shipped once.
+        const name = `QA till preset ${Date.now()}`;
+        await page.goto('/settings-pos');
+        await expect(page.locator('#pos-settings-body')).toBeVisible({ timeout: 25000 });
+        await page.locator('#pos-preset-add').click();
+        await page.locator('#pos-preset-name').fill(name);
+        await page.locator('#pos-preset-kind').selectOption('percent');
+        await page.locator('#pos-preset-value').fill('20');
+        await page.locator('#pos-preset-reason').fill('Staff meal');
+        await page.locator('#pos-preset-scope').selectOption('order');
+        await page.locator('#pos-preset-form button[type="submit"]').click();
+        await expect(page.locator('.pos-preset-row', { hasText: name })).toBeVisible({ timeout: 20000 });
+
+        try {
+            await page.goto('/pos');
+            await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
+            await expect(page.locator('#pos-new-order')).toBeEnabled({ timeout: 25000 });
+            await startTakeawayOrder(page);
+            await page.waitForSelector('.pos-card:not([disabled])', { timeout: 20000 });
+            await page.locator('.pos-card:not([disabled])').first().click();
+            await expect(page.locator('.pos-line')).toHaveCount(1, { timeout: 20000 });
+
+            await page.locator('#pos-discount-btn').click();
+            const preset = page.locator('#pos-disc-presets [data-preset]', { hasText: name });
+            await expect(preset, 'the saved discount was not offered at the till')
+                .toBeVisible({ timeout: 15000 });
+
+            await preset.click();
+            // It FILLS the form rather than submitting it. This dialog has an
+            // Apply button, and a preset that skipped it would make that button a
+            // lie and turn a mis-tap at a counter into money out of the door.
+            await expect(page.locator('#pos-disc-why')).toHaveValue('Staff meal');
+            const amount = await page.locator('#pos-disc-amt').inputValue();
+            expect(amount.replace(/\D/g, ''), 'the preset did not resolve to an amount').not.toBe('');
+            expect(Number(amount.replace(/\D/g, '')), 'a 20% preset resolved to nothing').toBeGreaterThan(0);
+            // Nothing is applied until Apply is pressed.
+            await expect(page.locator('.pos-total-row.is-discount')).toHaveCount(0);
+        } finally {
+            // Archived whatever happened above, so a failing run does not leave a
+            // preset behind for every later run to trip over.
+            await page.goto('/settings-pos');
+            await expect(page.locator('#pos-settings-body')).toBeVisible({ timeout: 25000 });
+            const row = page.locator('.pos-preset-row', { hasText: name });
+            if (await row.count()) {
+                page.once('dialog', (d) => d.accept());
+                await row.getByRole('button', { name: 'Archive' }).click();
+                const confirm = page.locator('button', { hasText: /^Archive$/ }).last();
+                if (await confirm.isVisible().catch(() => false)) await confirm.click();
+            }
+        }
+    });
+
     test('a paid order stays reachable, so refund and reprint are not dead ends', async ({ page }) => {
         // The gap this closes: Refund lives on the order panel, but a paid order
         // leaves the table grid AND used to clear the panel the instant it was
