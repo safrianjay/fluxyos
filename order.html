@@ -2546,13 +2546,12 @@ html.kb-open .welcome-art { display: none; }
     /**
      * The header's cover photo.
      *
-     * ⚠️ THE SEAM IS `menu.cover_image`, WHICH `qr-menu` DOES NOT SEND YET.
-     * That is deliberate: the owner-facing control lives in POS settings and
-     * is not built. When it is, the endpoint returns the URL and this reads it
-     * with no change here — so do not reach for the workspace doc from this
-     * page. The customer surface holds no Firestore handle by design, and
-     * everything it knows arrives through the three token-authenticated
-     * endpoints.
+     * ⚠️ THE SEAM IS `menu.cover_image`, SET IN POS SETTINGS AND SENT BY
+     * `qr-menu` (wired 2026-09-05). The endpoint signs a short-lived URL from
+     * the stored Storage PATH — a download URL would be a permanent public link
+     * to the workspace's own imagery. Do not reach for the workspace doc from
+     * this page: the customer surface holds no Firestore handle by design, and
+     * everything it knows arrives through the token-authenticated endpoints.
      *
      * Until then the PLACEHOLDER is the outlet's first photographed item,
      * served by the same `qr-menu-image` endpoint the grid already uses — so

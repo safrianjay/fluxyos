@@ -2,6 +2,11 @@
 
 const { allowOriginHeader } = require('./lib/allowed-origins');
 const { consume, ipKey, clientIp, tooManyRequests } = require('./lib/rate-limit');
+// ⚠️ THE SAME FILE THE TILL RUNS. `pos-pricing.js` is UMD precisely so this
+// CommonJS function and the ES-module client can share it — a diner's phone
+// and the cashier's screen pricing one outlet's bill differently is the
+// failure this module exists to make impossible.
+const pricing = require('../../assets/js/pos-pricing.js');
 
 // =============================================================================
 // FluxyOS — a customer at a table places an order. Public, unauthenticated.
@@ -334,9 +339,16 @@ exports.handler = async (event) => {
                 const orderDiscount = Math.max(0, Number(o.discount_amount) || 0);
                 const capped = Math.min(orderDiscount, Math.max(0, subtotal - lineDiscount));
                 const discountTotal = lineDiscount + capped;
-                const service = Math.max(0, Number(o.service_charge_amount) || 0);
-                const tax = Math.max(0, Number(o.tax_amount) || 0);
-                const total = subtotal - discountTotal + service + tax;
+                // Re-priced from the ORDER's own snapshot, never from live
+                // settings: a second round added to a bill opened an hour ago
+                // must be taxed at the rate that bill was opened with, or the
+                // receipt does not foot against its own lines.
+                const priced = pricing.computeBillTotals({
+                    subtotal, discountTotal, settings: o.pos_pricing || null
+                });
+                const service = priced.service;
+                const tax = priced.tax;
+                const total = priced.total;
 
                 // A targeted update, NOT a whole-document set. Only the derived
                 // figures and the lines move; every other key keeps whatever the
@@ -387,6 +399,25 @@ exports.handler = async (event) => {
 
             const subtotal = lines.reduce((s, l) => s + l.gross_amount, 0);
 
+            // The outlet's rates AS THEY ARE NOW, frozen onto the order — the
+            // same snapshot `createPosOrder` takes on the till, and the reason
+            // `pos_pricing` exists. Best-effort: an outlet with no settings doc,
+            // or a read that fails, prices at zero rates, which is what this
+            // endpoint billed before settings existed. Refusing a diner's order
+            // because a configuration document could not be read would be the
+            // wrong trade at a table with food waiting.
+            let posPricing = null;
+            try {
+                const cfg = await db
+                    .doc(`workspaces/${workspaceId}/pos_outlet_settings/${dimensionId}`).get();
+                if (cfg.exists) posPricing = pricing.normalizeSettings(cfg.data());
+            } catch (e) {
+                console.warn('[qr-order] outlet pricing unreadable; billing at zero rates', e);
+            }
+            const newTotals = pricing.computeBillTotals({
+                subtotal, discountTotal: 0, settings: posPricing
+            });
+
             await db.runTransaction(async (tx) => {
                 const snap = await tx.get(counterRef);
                 const next = (snap.exists ? (Number(snap.data().seq) || 0) : 0) + 1;
@@ -412,9 +443,10 @@ exports.handler = async (event) => {
                     discount_amount: 0,
                     discount_reason: null,
                     discount_total: 0,
-                    service_charge_amount: 0,
-                    tax_amount: 0,
-                    total_amount: subtotal,
+                    pos_pricing: posPricing,
+                    service_charge_amount: newTotals.service,
+                    tax_amount: newTotals.tax,
+                    total_amount: newTotals.total,
                     payments: [],
                     paid_amount: 0,
                     note: orderNote,
@@ -444,7 +476,11 @@ exports.handler = async (event) => {
             });
 
             orderId = orderRef.id;
-            totalAmount = subtotal;
+            // The PRICED total, not the subtotal. This is what the diner's phone
+            // is told they owe, and telling them the pre-tax figure while the
+            // order document holds the taxed one is the same bug in miniature:
+            // one number on the screen, a different one in the books.
+            totalAmount = newTotals.total;
         }
 
         if (refDoc) {

@@ -1,6 +1,11 @@
 'use strict';
 
 const { allowOriginHeader } = require('./lib/allowed-origins');
+// The same file the till and qr-order run. A cart that totals differently
+// from the order it becomes is a customer told one number and charged
+// another — which is the whole reason this module is shared rather than
+// reimplemented per surface.
+const pricing = require('../../assets/js/pos-pricing.js');
 const { consume, ipKey, clientIp, tooManyRequests } = require('./lib/rate-limit');
 
 // =============================================================================
@@ -164,6 +169,34 @@ exports.handler = async (event) => {
         items.sort((a, b) => String(a.category || '￿').localeCompare(String(b.category || '￿'))
             || a.name.localeCompare(b.name));
 
+        // Best-effort, both of them. A menu is what a hungry person is waiting
+        // for; failing it because a configuration document or a photo could not
+        // be read would be the wrong trade at a table.
+        let outletPricing = pricing.normalizeSettings(null);
+        let coverUrl = null;
+        try {
+            // Settings are keyed BY the outlet, and a table without one has no
+            // rates to apply — the same table that cannot attribute its revenue.
+            const cfg = table.dimension_id
+                ? await db.doc(`workspaces/${workspaceId}/pos_outlet_settings/${table.dimension_id}`).get()
+                : null;
+            if (cfg && cfg.exists) {
+                const data = cfg.data() || {};
+                outletPricing = pricing.normalizeSettings(data);
+                if (data.cover_image_path) {
+                    // Signed and SHORT-LIVED. A download URL would be a permanent
+                    // public link to the workspace's own imagery — the same call
+                    // items.image_path makes.
+                    const [url] = await admin.storage().bucket()
+                        .file(data.cover_image_path)
+                        .getSignedUrl({ action: 'read', expires: Date.now() + 60 * 60 * 1000 });
+                    coverUrl = url;
+                }
+            }
+        } catch (e) {
+            console.warn('[qr-menu] outlet settings unreadable; menu prices at zero rates', e && e.message);
+        }
+
         return {
             statusCode: 200,
             headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${CACHE_SECONDS}` },
@@ -174,6 +207,19 @@ exports.handler = async (event) => {
                 // the workspace's own currency or a peso menu prints rupiah.
                 currency: ['IDR', 'PHP', 'SGD', 'MYR'].includes(ws.base_currency) ? ws.base_currency : 'IDR',
                 categories: [...new Set(items.map((i) => i.category).filter(Boolean))],
+                // What this outlet charges on top, so the CART can show the same
+                // breakdown the bill will. Without it a diner reads Rp100.000 in
+                // their basket and is charged Rp111.000 at the end, and the app
+                // never said why.
+                //
+                // Absent settings send the module's defaults — every flag off —
+                // which is exactly what this endpoint described before.
+                pricing: outletPricing,
+                // The owner's header photo for this outlet, resolved to a URL the
+                // page can use. `order.html` holds no Firebase handle by design,
+                // so the path is turned into a signed URL HERE rather than being
+                // handed out as a permanent public link.
+                cover_image: coverUrl,
                 items
             })
         };
