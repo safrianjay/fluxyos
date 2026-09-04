@@ -1,7 +1,7 @@
 ---
 status: current
-owns: [pos_tables, pos_orders, pos_reservations, pos_table_directory]
-updated: 2026-09-01
+owns: [pos_tables, pos_orders, pos_reservations, pos_table_directory, pos_outlet_settings, pos_discount_presets]
+updated: 2026-09-05
 source: docs/POS_IMPLEMENTATION_PLAN.md
 ---
 
@@ -915,6 +915,107 @@ Read = all member roles plus `cashier`. Create/update = finance+ **and
 `cashier`**: they are the one holding the money, so withholding this would make
 the feature unusable by the only role that needs it. Never deleted.
 `opening_float` is immutable after create; `version` must advance by one.
+
+## 11. `pos_outlet_settings/{dimensionId}` — what an outlet charges
+
+Added 2026-09-05, with the POS Settings page. **Keyed BY the dimension id**, so
+an outlet cannot own two and nothing has to join.
+
+Deliberately NOT fields on `dimensions`: that document is the ledger's reference
+entity — `name_key` is immutable precisely because journal history resolves
+through it — and a warehouse has no opening hours or VAT rate. Widening this
+must never mean touching the validator the posting engine depends on.
+
+| Field | Type | Notes |
+|---|---|---|
+| `dimension_id` | string | == the doc id. Rules enforce the match |
+| `address` / `phone` | string ≤200 / ≤32 \| null | Shown on the customer's order page |
+| `hours` | list ≤7 | One row per weekday: `{day, closed, open, close}`. `closed` is a real answer and the default |
+| `cover_image_path` | string ≤300 \| null | A Storage PATH, never a URL — same rule as `items.image_path` |
+| `tax_enabled` / `tax_label` / `tax_rate_percent` / `tax_inclusive` | bool / string ≤24 / number 0–100 / bool | |
+| `service_enabled` / `service_rate_percent` / `service_taxable` | bool / number 0–100 / bool | `service_taxable` defaults TRUE |
+
+⚠️ **The rates are bounded in RULES, not only in the form.** They multiply every
+bill the outlet ever rings up, and a rate typed as `1100` instead of `11` does
+not fail anywhere else — it produces a plausible, enormous, wrong number on a
+receipt and a matching liability in the books.
+
+⚠️ **`hours` is validated in the DAL and nowhere else** (`_normalizeOpeningHours`),
+the same standing trade-off `lines[]` and `payments[]` make: rules cannot iterate
+cheaply and this ruleset has exhausted the evaluation budget in production once.
+Rules bound its SIZE, which is the part that protects the document.
+
+### The rates are SNAPSHOTTED onto the order
+
+`pos_orders.pos_pricing` is what the outlet's rates were when the order opened.
+Read once in `createPosOrder` and frozen, for the same reason `unit_price` is
+copied onto a line: an owner editing the rate at 8pm must not silently re-price
+the bills already open on the floor, and a receipt printed an hour ago has to
+stay reproducible.
+
+**One key holding a map**, not five scalars — five would cost five more
+expressions on the document the money path runs through. Its shape is owned by
+`pos-pricing.js`.
+
+An order with no snapshot — every order written before this — prices at zero,
+which is exactly what it billed before.
+
+### One pricing module, three callers
+
+`assets/js/pos-pricing.js` is **pure** and **UMD**, because the client is ES
+modules and Netlify Functions are CommonJS and this is the seam between them:
+
+| Caller | Surface |
+|---|---|
+| `_posTotals` | the staff till |
+| `qr-order` / `qr-menu` | the diner's own phone |
+| the settings preview | what the owner is shown |
+
+Two copies of "what does this bill come to" is how a customer is charged one
+number and the books record another. `money-format.js` and
+`netlify/functions/lib/format.js` are the same split kept as two files synced by
+a comment — which is what this avoids.
+
+⚠️ **Inclusive pricing EXTRACTS, it does not add.** When menu prices already
+contain the tax, adding it again charges the customer twice; the tax is carved
+out of what they were always going to pay, `total` is unchanged by the rate, and
+`revenue` drops instead — correct, because in that mode part of the menu price
+was never this workspace's money.
+
+Guard: `tests/pos-pricing.check.js` (1,200 combinations, pure, unconditional in
+the BE lane). Posting: `tests/pos-tax-service.check.js` — see §4.
+
+## 12. `pos_discount_presets/{presetId}` — named, reusable discounts
+
+So a cashier taps instead of typing an amount and a reason free-hand with a
+customer waiting. **They change nothing about posting**: a preset produces the
+same `discount_amount` + `discount_reason` an ad-hoc discount does, and still
+lands as contra-revenue in 4900 (§4).
+
+| Field | Type | Notes |
+|---|---|---|
+| `name` | string 1–40 | "Staff 20%", "Happy Hour" |
+| `kind` / `value` | `percent` \| `amount` / int ≥1 | Percent capped at 100 in rules — over that hands money back on every sale |
+| `scope` | `order` \| `line` | Which discount it can be applied to |
+| `reason` | string 1–80 | What lands on the order. The till REQUIRES a reason; a preset supplies its own so the cashier is not deciding under pressure |
+| `dimension_id` | string \| null | **Null means every outlet** |
+| `status` | `active` \| `archived` | Archived, never deleted — a preset applied to real sales is a fact about those sales |
+| `sort` | int | |
+| `auto` | map \| null | **The seam for automatic rules** — happy hour, minimum spend. Null on every preset today, and deliberately unvalidated in rules so adding conditions later needs no rules change and no deploy |
+
+### Rules for both
+
+Read = all member roles **plus `cashier`**: the till must be able to price a bill
+and offer the discounts, and a cashier is who is standing at it. Create/update =
+finance+ only — rates are money and hours are a promise to customers, neither of
+which is a floor-staff decision. Never deleted.
+
+Both are registered in all **three** finance-collection registries
+(`scripts/qa-run.js`, `.claude/hooks/qa-gate.sh`, `PROJECT_BACKGROUND.md` §4) and
+in the `audit_logs` `target_collection` allowlist — added WITH the collections
+rather than eleven days later, which is what §7a cost last time.
+
+Emulator coverage: 14 cases in `tests/pos-rules-emulator-test.mjs` (124 total).
 
 ## 9. What is NOT built
 

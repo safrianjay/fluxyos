@@ -140,7 +140,7 @@ const FINANCE_COLLECTIONS = [
   'pos_tables', 'pos_orders', 'pos_shifts',
   // Reservations (2026-09-01) — a booking holds a table, so it is operational
   // data the scope guard has to see.
-  'pos_reservations',
+  'pos_reservations', 'pos_outlet_settings', 'pos_discount_presets',
 ];
 
 function scopeGuard() {
@@ -274,6 +274,10 @@ function laneBE(changed) {
   // booking the government's PPN as revenue is indistinguishable from one
   // that does not, and the file that breaks it is rarely the one just edited.
   ok = record('be', run('check:pos-tax (tax and service post to 2100/4100, not revenue)', 'node', ['tests/pos-tax-service.check.js'])) && ok;
+  // One module, three callers — till, diner's phone, settings preview. Two
+  // copies of "what does this bill come to" is how a customer is charged one
+  // number and the books record another.
+  ok = record('be', run('check:pos-pricing (one bill total, three callers)', 'node', ['tests/pos-pricing.check.js'])) && ok;
   // Unconditional. The offending call can live in ANY module — the first
   // Firestore touch on a page decides the transport for all of it — so the file
   // that breaks this is rarely the file being edited. Same reasoning as

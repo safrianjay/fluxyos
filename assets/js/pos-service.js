@@ -46,6 +46,12 @@ import {
     Timestamp, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { periodKey as acctPeriodKey } from "./accounting-engine.js";
+// SIDE-EFFECT IMPORT. `pos-pricing.js` is UMD so the Netlify functions can
+// require the SAME file — one module, three callers, because two copies of
+// "what does this bill come to" is how a customer is charged one number and
+// the books record another. In an ES module context it has no `module`, so
+// it publishes itself on `self` exactly as money-format.js does.
+import "./pos-pricing.js";
 
 // The availability rule, shared with the floor plan and the Create Order dialog.
 //
@@ -557,6 +563,178 @@ export const POS_METHODS = {
     // Recompute every derived figure from the lines. Called on every mutation so
     // a total can never drift from what it is a total OF — the client never sends
     // a total, it sends lines.
+    /**
+     * The one pricing module, reached the way money-format.js is reached.
+     *
+     * ⚠️ THROWS rather than defaulting. A missing module with rates configured
+     * would quietly bill every customer the pre-tax figure — a silent
+     * under-charge and a tax liability that never gets recorded. A till that
+     * refuses to price a bill is a problem someone fixes in a minute; a till
+     * that prices it wrong is found by an accountant months later.
+     */
+    _pricing() {
+        const P = (typeof window !== 'undefined' && window.FluxyPosPricing)
+            || (typeof self !== 'undefined' && self.FluxyPosPricing);
+        if (!P) throw new Error('Pricing module missing — the till cannot total a bill.');
+        return P;
+    },
+
+    // ── Per-outlet till configuration ──────────────────────────────────────
+    //
+    // Keyed BY the dimension id, so an outlet cannot own two and no join is
+    // needed. Returns the module's own defaults when no doc exists, which is
+    // every outlet until an owner opens Settings — and those defaults reproduce
+    // the pre-settings bill exactly.
+    async getPosOutletSettings(userId, dimensionId) {
+        if (!userId || !dimensionId) return null;
+        const scope = this._scope(userId);
+        const snap = await getDoc(doc(this.db, `${scope}/pos_outlet_settings/${dimensionId}`));
+        const base = { dimension_id: dimensionId, address: null, phone: null, hours: [], cover_image_path: null };
+        if (!snap.exists()) return { ...base, ...this._pricing().DEFAULTS, exists: false };
+        return { ...base, ...this._pricing().DEFAULTS, ...snap.data(), exists: true };
+    },
+
+    /**
+     * ⚠️ `hours` IS VALIDATED HERE AND NOWHERE ELSE. Rules bound its size but
+     * cannot iterate it cheaply — the same standing trade-off `lines[]` and
+     * `payments[]` make — so this normalizer is the only thing between a typo
+     * and a restaurant advertising that it opens at 99:00.
+     */
+    async savePosOutletSettings(userId, dimensionId, payload = {}) {
+        if (!userId) throw new Error('userId required');
+        if (!dimensionId) throw new Error('Pick an outlet first.');
+        const scope = this._scope(userId);
+        const ref = doc(this.db, `${scope}/pos_outlet_settings/${dimensionId}`);
+        const existing = await getDoc(ref);
+
+        const pct = (v) => {
+            const n = Number(v);
+            if (!isFinite(n) || n < 0) return 0;
+            // Bounded here as well as in rules. Rules are the boundary; this is
+            // the message a human gets instead of `permission-denied`.
+            if (n > 100) throw new Error('A rate cannot be more than 100%.');
+            return Math.round(n * 100) / 100;
+        };
+        const body = {
+            dimension_id: dimensionId,
+            address: this._nullableString(payload.address, 200),
+            phone: this._nullableString(payload.phone, 32),
+            hours: this._normalizeOpeningHours(payload.hours),
+            cover_image_path: this._nullableString(payload.cover_image_path, 300),
+            tax_enabled: payload.tax_enabled === true,
+            tax_label: this._nullableString(payload.tax_label, 24) || 'PPN',
+            tax_rate_percent: pct(payload.tax_rate_percent),
+            tax_inclusive: payload.tax_inclusive === true,
+            service_enabled: payload.service_enabled === true,
+            service_rate_percent: pct(payload.service_rate_percent),
+            service_taxable: payload.service_taxable !== false,
+            updated_at: serverTimestamp(),
+            updated_by: userId
+        };
+        if (!existing.exists()) body.created_at = serverTimestamp();
+        await setDoc(ref, body, { merge: true });
+        this._auditCreateBestEffort(userId, {
+            action: 'pos_outlet_settings.saved',
+            target_collection: 'pos_outlet_settings',
+            target_id: dimensionId
+        });
+        return { ...body };
+    },
+
+    // Seven rows, one per weekday, and a day is either open with a window or
+    // shut. Stored as a LIST rather than a map keyed by day name so the order is
+    // the week's order and nothing has to sort it.
+    _normalizeOpeningHours(raw) {
+        const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+        const byDay = {};
+        (Array.isArray(raw) ? raw : []).forEach((r) => {
+            if (r && DAYS.includes(r.day)) byDay[r.day] = r;
+        });
+        const hhmm = (v, fallback) => {
+            const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(String(v || '').trim());
+            return m ? `${m[1]}:${m[2]}` : fallback;
+        };
+        return DAYS.map((day) => {
+            const r = byDay[day] || {};
+            // Closed is a real answer, and the default for a day nobody set.
+            if (r.closed === true) return { day, closed: true, open: null, close: null };
+            const open = hhmm(r.open, null);
+            const close = hhmm(r.close, null);
+            if (!open || !close) return { day, closed: true, open: null, close: null };
+            // An overnight window is legitimate — a bar closing at 02:00 is not a
+            // typo — so close < open is allowed and read as crossing midnight.
+            return { day, closed: false, open, close };
+        });
+    },
+
+    // ── Discount presets ───────────────────────────────────────────────────
+    //
+    // Named, reusable discounts so a cashier taps instead of typing an amount
+    // and a reason free-hand at the counter. They change NOTHING about posting:
+    // a preset produces the same discount_amount + discount_reason an ad-hoc one
+    // does, and still lands as contra-revenue in 4900.
+    async getPosDiscountPresets(userId, { dimensionId = null, includeArchived = false } = {}) {
+        if (!userId) return [];
+        const scope = this._scope(userId);
+        const snap = await getDocs(collection(this.db, `${scope}/pos_discount_presets`));
+        return snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .filter((p) => (includeArchived || p.status === 'active'))
+            // A preset with no outlet belongs to every outlet.
+            .filter((p) => !dimensionId || !p.dimension_id || p.dimension_id === dimensionId)
+            .sort((a, b) => (a.sort || 0) - (b.sort || 0) || String(a.name).localeCompare(String(b.name)));
+    },
+
+    async savePosDiscountPreset(userId, presetId, payload = {}) {
+        if (!userId) throw new Error('userId required');
+        const scope = this._scope(userId);
+        const name = this._nullableString(payload.name, 40);
+        if (!name) throw new Error('A discount needs a name.');
+        const kind = payload.kind === 'amount' ? 'amount' : 'percent';
+        const value = Math.round(Number(payload.value) || 0);
+        if (value < 1) throw new Error('A discount of nothing is not a discount.');
+        if (kind === 'percent' && value > 100) throw new Error('A discount cannot be more than 100%.');
+
+        const ref = presetId
+            ? doc(this.db, `${scope}/pos_discount_presets/${presetId}`)
+            : doc(collection(this.db, `${scope}/pos_discount_presets`));
+        const body = {
+            name,
+            kind,
+            value,
+            scope: payload.scope === 'line' ? 'line' : 'order',
+            // The till REQUIRES a reason on every discount — it is the only
+            // record of why money was given away. A preset supplies its own so
+            // the cashier is never the one deciding under pressure.
+            reason: this._nullableString(payload.reason, 80) || name,
+            dimension_id: this._nullableString(payload.dimension_id, 200),
+            status: payload.status === 'archived' ? 'archived' : 'active',
+            sort: Math.round(Number(payload.sort) || 0),
+            // The seam for automatic rules — happy hour, minimum spend. Null
+            // today on every preset, and shaped so adding conditions later needs
+            // no migration and no rules change.
+            auto: (payload.auto && typeof payload.auto === 'object') ? payload.auto : null,
+            updated_at: serverTimestamp(),
+            updated_by: userId
+        };
+        if (!presetId) body.created_at = serverTimestamp();
+        await setDoc(ref, body, { merge: true });
+        this._auditCreateBestEffort(userId, {
+            action: presetId ? 'pos_discount_preset.updated' : 'pos_discount_preset.created',
+            target_collection: 'pos_discount_presets',
+            target_id: ref.id
+        });
+        return { id: ref.id, ...body };
+    },
+
+    // Archived, never deleted: a preset that was applied to real sales is a fact
+    // about those sales, and the reason string on them points back to it.
+    async archivePosDiscountPreset(userId, presetId) {
+        const current = await getDoc(doc(this.db, `${this._scope(userId)}/pos_discount_presets/${presetId}`));
+        if (!current.exists()) throw new Error('That discount no longer exists.');
+        return this.savePosDiscountPreset(userId, presetId, { ...current.data(), status: 'archived' });
+    },
+
     _posTotals(order) {
         const lines = Array.isArray(order.lines) ? order.lines : [];
         const subtotal = lines.reduce((s, l) => s + (Number(l.gross_amount) || 0), 0);
@@ -566,8 +744,19 @@ export const POS_METHODS = {
         // would make the sale negative and post a backwards journal.
         const capped = Math.min(orderDiscount, Math.max(0, subtotal - lineDiscount));
         const discountTotal = lineDiscount + capped;
-        const service = Math.max(0, Number(order.service_charge_amount) || 0);
-        const tax = Math.max(0, Number(order.tax_amount) || 0);
+
+        // ⚠️ COMPUTED FROM THE ORDER'S OWN SNAPSHOT, never from live settings.
+        // `pos_pricing` is what the outlet's rates were when this order opened,
+        // so an owner changing the rate at 8pm cannot silently re-price the
+        // bills already sitting on the floor, and an hour-old receipt stays
+        // reproducible. Same discipline as `unit_price` and a modifier's
+        // `consumes`. No snapshot — every order before this shipped — prices at
+        // zero, which is exactly what it billed before.
+        const priced = this._pricing().computeBillTotals({
+            subtotal,
+            discountTotal,
+            settings: order.pos_pricing || null
+        });
         const paid = (Array.isArray(order.payments) ? order.payments : [])
             .filter((p) => p && p.status === 'settled')
             .reduce((s, p) => s + (Number(p.amount) || 0), 0);
@@ -575,9 +764,9 @@ export const POS_METHODS = {
             subtotal,
             discount_amount: capped,
             discount_total: discountTotal,
-            service_charge_amount: service,
-            tax_amount: tax,
-            total_amount: subtotal - discountTotal + service + tax,
+            service_charge_amount: priced.service,
+            tax_amount: priced.tax,
+            total_amount: priced.total,
             paid_amount: paid
         };
     },
@@ -636,8 +825,28 @@ export const POS_METHODS = {
             return next;
         });
 
+        // ⚠️ THE RATES ARE SNAPSHOTTED HERE, ONCE. Read at order time and frozen
+        // onto the document, so an owner editing the rate mid-service cannot
+        // re-price bills already open on the floor, and a receipt printed an
+        // hour ago stays reproducible. Same reason `unit_price` is copied onto a
+        // line rather than looked up when the bill is totalled.
+        //
+        // Best-effort: an outlet with no settings doc, or a read that fails,
+        // prices at the module's defaults — every flag off — which is exactly
+        // what this till billed before settings existed. Failing the ORDER
+        // because a rate could not be read would close the till over a
+        // configuration document.
+        let pricingSnapshot = null;
+        try {
+            const outlet = await this.getPosOutletSettings(userId, dimensionId);
+            if (outlet) pricingSnapshot = this._pricing().normalizeSettings(outlet);
+        } catch (e) {
+            console.warn('[pos] could not read outlet pricing; billing at zero rates', e);
+        }
+
         const payload = {
             order_number: `${dayKey}-${String(seq).padStart(3, '0')}`,
+            pos_pricing: pricingSnapshot,
             dimension_id: dimensionId,
             table_id: tableId || null,
             table_label: tableLabel || null,

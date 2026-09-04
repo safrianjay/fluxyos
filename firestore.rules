@@ -2655,6 +2655,18 @@ service cloud.firestore {
           // the order that needed attention most, and looking plausible while it
           // did. Write-only-on-transition, stamped by the DAL.
           'status_changed_at',
+          // The outlet's tax and service rates AS THEY WERE when this order was
+          // opened. Snapshotted rather than looked up, for the same reason
+          // `unit_price` and a modifier's `consumes` are: an owner editing the
+          // rate at 8pm must not silently re-price the bills already open on the
+          // floor, and a receipt printed an hour ago has to stay reproducible.
+          //
+          // ONE key, holding a map, deliberately. Five scalars would cost five
+          // more expressions on the document the money path runs through, and
+          // this ruleset has exhausted the evaluation budget in production once
+          // already. Its shape is owned by pos-pricing.js and validated in the
+          // DAL, the way `lines[]` and `payments[]` are.
+          'pos_pricing',
           'created_at', 'updated_at', 'created_by', 'updated_by'
         ]);
     }
@@ -2673,9 +2685,15 @@ service cloud.firestore {
         && (!('guest_count' in data) || data.guest_count == null
           || (data.guest_count is int && data.guest_count >= 0 && data.guest_count <= 999));
     }
+    // A map or absent. The rates inside it are bounded where they are SET
+    // (wsValidPosOutletFields), which is the one place a human types them.
+    function wsValidPosPricing(data) {
+      return !('pos_pricing' in data) || data.pos_pricing == null || data.pos_pricing is map;
+    }
     function wsValidPosOrderCreate(data) {
       return wsPosOrderKeys(data)
         && wsValidPosOrderGuest(data)
+        && wsValidPosPricing(data)
         && data.dimension_id is string
         && data.channel in ['staff', 'qr', 'connector']
         && data.status in ['open', 'submitted']
@@ -2689,6 +2707,7 @@ service cloud.firestore {
     function wsValidPosOrderUpdate(data, prev) {
       return wsPosOrderKeys(data)
         && wsValidPosOrderGuest(data)
+        && wsValidPosPricing(data)
         // `ready` sits between `sent` and `served`: the kitchen has finished the
         // dish and it is waiting to be carried out. Two beats, because they are
         // two different people's problems — a plate under the pass going cold is
@@ -2801,6 +2820,93 @@ service cloud.firestore {
         && data.dimension_id == prev.dimension_id
         && data.created_at == prev.created_at;
     }
+    // ── Per-outlet till configuration ──────────────────────────────────────
+    //
+    // One doc per outlet, keyed BY the dimension id, so there is no join and no
+    // way to own two. Deliberately NOT fields on `dimensions`: that document is
+    // the ledger's reference entity — `name_key` is immutable precisely because
+    // journal history resolves through it — and a warehouse has no opening hours
+    // or VAT rate. Widening this validator must never mean touching the one the
+    // posting engine depends on.
+    //
+    // `hours` is a LIST validated in the DAL, not here, for the same reason
+    // `lines[]` and `payments[]` are: rules cannot iterate cheaply and the
+    // evaluation budget on this ruleset has already been exhausted once in
+    // production. Rules bound its SIZE, which is the part that protects the
+    // document.
+    function wsPosOutletKeys(data) {
+      return data.keys().hasOnly([
+          'dimension_id', 'address', 'phone', 'hours', 'cover_image_path',
+          'tax_enabled', 'tax_label', 'tax_rate_percent', 'tax_inclusive',
+          'service_enabled', 'service_rate_percent', 'service_taxable',
+          'created_at', 'updated_at', 'updated_by'
+        ]);
+    }
+    // ⚠️ THE RATES ARE BOUNDED IN RULES, not only in the form. They multiply
+    // every bill this outlet ever rings up, and a rate typed as 1100 instead of
+    // 11 does not fail — it produces a plausible, enormous, wrong number on a
+    // customer's receipt and a matching liability in the books.
+    function wsValidPosOutletFields(data) {
+      return data.dimension_id is string
+        && data.dimension_id.size() > 0
+        && (data.address == null || (data.address is string && data.address.size() <= 200))
+        && (data.phone == null || (data.phone is string && data.phone.size() <= 32))
+        && data.hours is list
+        && data.hours.size() <= 7
+        && (data.cover_image_path == null
+            || (data.cover_image_path is string && data.cover_image_path.size() <= 300))
+        && data.tax_enabled is bool
+        && data.tax_label is string
+        && data.tax_label.size() <= 24
+        && data.tax_rate_percent is number
+        && data.tax_rate_percent >= 0
+        && data.tax_rate_percent <= 100
+        && data.tax_inclusive is bool
+        && data.service_enabled is bool
+        && data.service_rate_percent is number
+        && data.service_rate_percent >= 0
+        && data.service_rate_percent <= 100
+        && data.service_taxable is bool;
+    }
+
+    // ── Discount presets ───────────────────────────────────────────────────
+    //
+    // Named, reusable discounts the cashier picks instead of typing an amount
+    // and a reason free-hand. They change nothing about POSTING: a preset
+    // produces the same `discount_amount` + `discount_reason` an ad-hoc discount
+    // does, and still lands as contra-revenue in 4900.
+    //
+    // `auto` is the seam for automatic rules — happy hour, minimum spend — and
+    // is deliberately an unvalidated map here so adding conditions later needs no
+    // rules change and no deploy. Absent or null means "the cashier applies it",
+    // which is every preset today.
+    function wsPosDiscountPresetKeys(data) {
+      return data.keys().hasOnly([
+          'name', 'kind', 'value', 'scope', 'reason', 'dimension_id',
+          'status', 'sort', 'auto', 'created_at', 'updated_at', 'updated_by'
+        ]);
+    }
+    // A percent over 100 hands money back on every sale; an amount of zero is a
+    // preset that silently does nothing. Both are bounded here rather than only
+    // in the form, because the form is not the boundary.
+    function wsValidPosDiscountPresetFields(data) {
+      return data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 40
+        && data.kind in ['percent', 'amount']
+        && data.value is int
+        && data.value >= 1
+        && (data.kind != 'percent' || data.value <= 100)
+        && data.scope in ['order', 'line']
+        && data.reason is string
+        && data.reason.size() > 0
+        && data.reason.size() <= 80
+        && (data.dimension_id == null || data.dimension_id is string)
+        && data.status in ['active', 'archived']
+        && data.sort is int
+        && (data.auto == null || data.auto is map);
+    }
+
     // Accounting kernel: a journal may only post into a period that is not closed
     // or locked. A missing period doc means the period has never been closed (open).
     // The closing journal itself is allowed because the period lock write commits
@@ -2962,6 +3068,9 @@ service cloud.firestore {
           // Costs no expression budget: `in [...]` is one expression however
           // long the list is.
           'pos_tables', 'pos_orders', 'pos_shifts', 'pos_reservations',
+          // Added WITH the collections, not eleven days later — see §7a of
+          // docs/data-model/pos.md for what that cost last time.
+          'pos_outlet_settings', 'pos_discount_presets',
           // `business_categories.seeded` was denied the same way.
           'business_categories'
         ]
@@ -3935,6 +4044,28 @@ service cloud.firestore {
           && wsValidPosReservationCreate(request.resource.data);
         allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'cashier'])
           && wsValidPosReservationUpdate(request.resource.data, resource.data);
+        allow delete: if false;
+      }
+      // Per-outlet till configuration. READ includes `cashier` — the till needs
+      // the tax and service rates to price a bill, and a cashier is who is
+      // standing at it. WRITE is finance+: rates are money and hours are a
+      // promise to customers, neither of which is a floor-staff decision.
+      match /pos_outlet_settings/{dimensionId} {
+        allow read: if wsReadPos(workspaceId);
+        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && wsPosOutletKeys(request.resource.data)
+          && wsValidPosOutletFields(request.resource.data)
+          && request.resource.data.dimension_id == dimensionId;
+        allow delete: if false;
+      }
+      // Discount presets. Same split: the till READS them to offer them, and
+      // only finance+ decides what discounts exist. Archived, never deleted —
+      // a preset that was applied to real sales is a fact about those sales.
+      match /pos_discount_presets/{presetId} {
+        allow read: if wsReadPos(workspaceId);
+        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && wsPosDiscountPresetKeys(request.resource.data)
+          && wsValidPosDiscountPresetFields(request.resource.data);
         allow delete: if false;
       }
       // Period lifecycle. Closing requires finance+; locking is owner/admin only.

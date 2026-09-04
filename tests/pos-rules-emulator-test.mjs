@@ -603,6 +603,77 @@ async function main() {
     await expectOutcome('nobody can write the token directory', false, () =>
         setDoc(doc(db, 'pos_table_directory/tok999'), { workspace_id: WS }));
 
+    // ── Per-outlet settings and discount presets (2026-09-05) ──────────────
+    //
+    // Both are READ by the till and WRITTEN only by finance+. Rates multiply
+    // every bill an outlet rings up, and opening hours are a promise to
+    // customers; neither is a floor-staff decision.
+    console.log('\n— outlet settings and discount presets —');
+
+    const outletSettings = (o = {}) => ({
+        dimension_id: 'dim1', address: 'Jl. Kemang Raya 1', phone: '021555000',
+        hours: [{ day: 'mon', closed: false, open: '09:00', close: '22:00' }],
+        cover_image_path: null,
+        tax_enabled: true, tax_label: 'PPN', tax_rate_percent: 11, tax_inclusive: false,
+        service_enabled: true, service_rate_percent: 5, service_taxable: true,
+        created_at: new Date(), updated_at: new Date(), updated_by: uid, ...o
+    });
+    const preset = (o = {}) => ({
+        name: 'Staff 20%', kind: 'percent', value: 20, scope: 'order',
+        reason: 'Staff discount', dimension_id: null, status: 'active', sort: 0,
+        auto: null, created_at: new Date(), updated_at: new Date(), updated_by: uid, ...o
+    });
+
+    await setMemberRole(uid, 'owner');
+    await expectOutcome('owner writes outlet settings', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_outlet_settings/dim1`), outletSettings()));
+    await expectOutcome('owner writes a discount preset', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_discount_presets/p1`), preset()));
+
+    // ⚠️ THE RATE BOUND IS A RULE, not a form validation. A rate typed as 1100
+    // instead of 11 does not fail anywhere else — it produces a plausible,
+    // enormous, wrong number on every receipt and a matching liability.
+    await expectOutcome('a tax rate above 100% is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_outlet_settings/dim2`),
+            outletSettings({ dimension_id: 'dim2', tax_rate_percent: 1100 })));
+    await expectOutcome('a negative service rate is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_outlet_settings/dim3`),
+            outletSettings({ dimension_id: 'dim3', service_rate_percent: -5 })));
+    // The doc id IS the outlet, so a mismatch would let one outlet own another's
+    // rates and nothing downstream would notice which was which.
+    await expectOutcome('settings whose id and dimension_id disagree are denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_outlet_settings/dim4`),
+            outletSettings({ dimension_id: 'somewhere-else' })));
+    await expectOutcome('a 100%-plus percent preset is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_discount_presets/p2`),
+            preset({ value: 150 })));
+    await expectOutcome('a preset worth nothing is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_discount_presets/p3`), preset({ value: 0 })));
+    await expectOutcome('a preset with no reason is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_discount_presets/p4`), preset({ reason: '' })));
+    await expectOutcome('neither is ever deleted', false, () =>
+        deleteDoc(doc(db, `workspaces/${WS}/pos_discount_presets/p1`)));
+
+    // The till must be able to PRICE a bill, so a cashier reads both — and must
+    // never be the one deciding what the rates or the discounts are.
+    await setMemberRole(uid, 'cashier');
+    await expectOutcome('cashier READS outlet settings', true, () =>
+        getDoc(doc(db, `workspaces/${WS}/pos_outlet_settings/dim1`)));
+    await expectOutcome('cashier READS discount presets', true, () =>
+        getDoc(doc(db, `workspaces/${WS}/pos_discount_presets/p1`)));
+    await expectOutcome('cashier writing outlet settings is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_outlet_settings/dim1`),
+            outletSettings({ tax_rate_percent: 0 })));
+    await expectOutcome('cashier writing a discount preset is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_discount_presets/p9`), preset()));
+
+    // The pricing snapshot rides on the order. One key holding a map, because
+    // five scalars would cost five more expressions on the money path.
+    await expectOutcome('an order carrying its pricing snapshot is allowed', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_orders/o-priced`), order({
+            pos_pricing: { tax_enabled: true, tax_rate_percent: 11, service_enabled: false }
+        })));
+
     console.log(`\n${passed} passed, ${failed} failed`);
     process.exit(failed ? 1 : 0);
 }

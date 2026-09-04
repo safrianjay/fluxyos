@@ -45,6 +45,7 @@
     "check:rate-limit": "node tests/rate-limit.check.js",
     "check:modifier-cogs": "node tests/modifier-cogs.check.js",
     "check:pos-tax": "node tests/pos-tax-service.check.js",
+    "check:pos-pricing": "node tests/pos-pricing.check.js",
     "sync:table-directory": "node scripts/sync-pos-table-directory.js",
     "check:origins": "node tests/allowed-origins.check.js",
     "check:firestore-transport": "node tests/firestore-transport.check.js",
