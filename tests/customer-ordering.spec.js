@@ -206,14 +206,44 @@ test.describe('QR customer ordering', () => {
         // nothing to judge the request against.
         await expect(page.locator('.card').first()).toBeVisible();
         // Two fields and a button — no explanatory paragraph ABOVE them. The
-        // labels say what is wanted; the reason the number is wanted rides with
-        // the button, where it is read at the moment of committing.
+        // labels say what is wanted; the reason the number is wanted rides
+        // under the CTA, read at the moment of committing.
         await expect(page.locator('.welcome-lead, .welcome-lede')).toHaveCount(0);
         await expect(gate).not.toContainText('Isi data Anda sekali saja');
-        await expect(page.locator('.welcome-fine')).toContainText('habis');
-        expect(await page.locator('.welcome-fine').evaluate((el) =>
-            el.compareDocumentPosition(document.getElementById('welcome-name'))
-            & Node.DOCUMENT_POSITION_PRECEDING), 'the fine print follows the fields').toBeTruthy();
+        // The gate's tint is the WHOLE SHEET, never a band across the top: a
+        // band is a second surface and reads as a header bolted onto a form.
+        // The foot must therefore paint nothing of its own — and there is no
+        // head at all any more, which the title assertion above pins.
+        expect(await gate.locator('.sheet-foot').evaluate((el) =>
+            getComputedStyle(el).backgroundColor), 'the foot paints its own surface')
+            .toBe('rgba(0, 0, 0, 0)');
+        await expect(gate.locator('.sheet-head')).toHaveCount(0);
+        // Light, because the CTA is navy and would vanish on a dark ground.
+        const tint = await gate.evaluate((el) => getComputedStyle(el).backgroundImage);
+        expect(tint, 'the sheet carries the tint itself').not.toBe('none');
+
+        // NO heading and NO sub-line. The hero stack says what this is and two
+        // labelled fields say what to do; a title over that is a third thing to
+        // read before the first thing to do. The dialog is named by
+        // `aria-label` instead, since there is no heading left to point at.
+        await expect(page.locator('#welcome-title, #welcome-sub')).toHaveCount(0);
+        await expect(gate).toHaveAttribute('aria-label', /.+/);
+        expect(await gate.getAttribute('aria-labelledby'),
+            'aria-labelledby points at an element that no longer exists').toBeNull();
+
+        // A plain label-above-input, and the input must draw its own box. Two
+        // earlier passes lost that — tall cards with the label stacked over the
+        // value, then one grouped card with leading icons — and both read as a
+        // read-only detail row rather than somewhere to type.
+        const field = await page.locator('#welcome-name').evaluate((el) => {
+            const cs = getComputedStyle(el);
+            return { border: parseFloat(cs.borderTopWidth), radius: cs.borderTopLeftRadius };
+        });
+        expect(field.border, 'the input draws no border of its own').toBeGreaterThan(0);
+        expect(field.radius).not.toBe('0px');
+        // Sentence case, not the caps of the earlier pass.
+        expect(await page.locator('#welcome-name-field label')
+            .evaluate((el) => getComputedStyle(el).textTransform)).toBe('none');
 
         // It is not dismissible by any of the usual routes.
         await page.locator('#scrim').click({ position: { x: 10, y: 10 } });
@@ -225,9 +255,9 @@ test.describe('QR customer ordering', () => {
         await page.locator('#welcome-go').click();
         await expect(gate).toHaveClass(/is-open/);
         await expect(page.locator('#welcome-error')).toContainText('nama');
-        // The border lives on the `.field-input` wrapper, so the flag does too —
-        // on the input it would style an element that draws no border.
-        await expect(page.locator('#welcome-name').locator('xpath=..')).toHaveClass(/invalid/);
+        // The CARD draws the border now, so the flag lives on the card — on the
+        // input it would style an element that draws none.
+        await expect(page.locator('#welcome-name-field')).toHaveClass(/is-invalid/);
 
         // A short number is refused too — nine digits is the shortest real
         // Indonesian mobile.
@@ -235,13 +265,99 @@ test.describe('QR customer ordering', () => {
         await page.locator('#welcome-phone').fill('0812');
         await page.locator('#welcome-go').click();
         await expect(gate).toHaveClass(/is-open/);
-        await expect(page.locator('#welcome-phone').locator('xpath=..')).toHaveClass(/invalid/);
+        await expect(page.locator('#welcome-phone-field')).toHaveClass(/is-invalid/);
 
         // Digits are counted, not characters, so a formatted number passes.
         await page.locator('#welcome-phone').fill('+62 812-3456-7890');
         await page.locator('#welcome-go').click();
         await expect(gate).not.toHaveClass(/is-open/);
         await expect(page.locator('#cartbar')).not.toHaveClass(/is-open/);
+    });
+
+    test("THE GATE'S HERO IS THE REAL STATUS LADDER, IN FOCUS", async ({ page }) => {
+        // Built from data, not shipped as an asset: no request on restaurant
+        // wifi, and it cannot look like stock art. A hand-drawn SVG food scene
+        // was tried here and cut for looking exactly like stock art.
+        await stub(page);
+        await goTo(page);
+        await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/, { timeout: 15_000 });
+
+        const notes = page.locator('#welcome-art .welcome-note');
+        await expect(notes).toHaveCount(3);
+        // The same words the Pesanan tab uses, so the diner meets the
+        // vocabulary here and recognises it there.
+        await expect(notes.nth(0)).toContainText('Diterima');
+        await expect(notes.nth(1)).toContainText('Siap');
+        await expect(notes.nth(2)).toContainText('Diantar');
+
+        // ONE card is in focus and the neighbours are blurred back — the whole
+        // point of the device. Three equal cards is a list, not a hero.
+        const blur = (n) => notes.nth(n).evaluate((el) => getComputedStyle(el).filter);
+        expect(await blur(1), 'the middle card is the focused one').toBe('none');
+        expect(await blur(0)).toMatch(/blur/);
+        expect(await blur(2)).toMatch(/blur/);
+
+        // ⚠️ IT MUST NOT PROMISE A MESSAGE THE PRODUCT NEVER SENDS. FluxyOS
+        // pushes the diner nothing — staff read the name off the ticket — so
+        // dressing these as notifications would be a lie told in pixels.
+        const art = (await page.locator('#welcome-art').innerText()).toLowerCase();
+        for (const word of ['whatsapp', 'notifikasi', 'sms', 'pesan masuk']) {
+            expect(art, `the hero implies an automated "${word}"`).not.toContain(word);
+        }
+
+        // It sits ABOVE the fields with a deliberate break — not the 8px the
+        // vertical-rhythm rule treats as the floor, and not touching.
+        const box = await page.locator('#welcome-art').boundingBox();
+        const field = await page.locator('#welcome-name-field').boundingBox();
+        const gap = field.y - (box.y + box.height);
+        expect(gap, 'the hero and the first field have collapsed together')
+            .toBeGreaterThanOrEqual(12);
+    });
+
+    test('THE HEADER IS THE RESTAURANT, WITH A SCRIM THAT KEEPS IT LEGIBLE', async ({ page }) => {
+        // The gradient is the FALLBACK, not the intended look. A cover photo
+        // belongs here, and the owner-facing control (POS settings) is not
+        // built — so the placeholder is the outlet's first photographed item,
+        // served by the endpoint the grid already uses.
+        await stub(page);
+        await open(page);
+
+        const head = page.locator('.masthead');
+        await expect(head).toHaveClass(/has-cover/, { timeout: 15_000 });
+        const cover = await head.evaluate((el) =>
+            getComputedStyle(el).getPropertyValue('--mast-cover'));
+        expect(cover, 'the cover is not the token-authenticated image endpoint')
+            .toContain('qr-menu-image');
+
+        // ⚠️ THE SCRIM IS NOT DECORATION. Every pixel of chrome in this header
+        // is white — outlet name, table pill, search placeholder — and a lit
+        // dish on a white plate would erase all of it. A photo layer with no
+        // dark layer over it is the bug this pins.
+        const bg = await head.evaluate((el) => getComputedStyle(el).backgroundImage);
+        expect(bg, 'the cover photo has no scrim over it').toMatch(/linear-gradient\(.*rgba\(11, 15, 25/);
+    });
+
+    test('an outlet with no photos keeps the gradient, not a flat block', async ({ page }) => {
+        // A background-image that never loads fails SILENTLY and leaves the
+        // header a flat navy block — darker than the gradient it replaced,
+        // with nothing on screen to say why. So the cover is proven to decode
+        // before it is applied, and an outlet with nothing to show keeps what
+        // it had.
+        await stub(page);
+        await page.route('**/qr-menu?**', (route) => route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+                ...MENU,
+                items: MENU.items.map((i) => ({ ...i, has_image: false }))
+            })
+        }));
+        await open(page);
+        await expect(page.locator('.card').first()).toBeVisible();
+        await expect(page.locator('.masthead')).not.toHaveClass(/has-cover/);
+        const bg = await page.locator('.masthead').evaluate((el) =>
+            getComputedStyle(el).backgroundImage);
+        expect(bg, 'the fallback gradient was lost too').toContain('linear-gradient');
     });
 
     test('A SHEET SITS ON THE KEYBOARD, AND THE PAGE BEHIND IT CANNOT SCROLL', async ({ page }) => {
@@ -273,10 +389,15 @@ test.describe('QR customer ordering', () => {
         expect(await page.evaluate(() => getComputedStyle(document.documentElement)
             .getPropertyValue('--kb-inset').trim())).toBe('0px');
 
-        // Flush against the bottom with no keyboard up. Compared with a 1px
-        // tolerance because fractional layout puts WebKit a sub-pixel out.
+        // Flush against the bottom with no keyboard up. POLLED, because the
+        // `is-open` class lands 260ms before the slide-in transform finishes —
+        // a single read here measures the sheet mid-entrance. 1px of tolerance
+        // on top, for fractional layout.
+        await expect
+            .poll(async () => Math.abs((await geometry()).liftedBy),
+                  { timeout: 5_000, message: 'the sheet settles flush to the bottom' })
+            .toBeLessThanOrEqual(1);
         const resting = await geometry();
-        expect(Math.abs(resting.liftedBy)).toBeLessThanOrEqual(1);
 
         // A 300px keyboard lifts the sheet by exactly 300px — not "somewhere
         // above it" — and takes that much off the room it has to be tall in.
