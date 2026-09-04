@@ -152,6 +152,15 @@ async function main() {
     await expectOutcome('holds_stock must be a boolean, not a string', false, () =>
         updateDoc(doc(db, `workspaces/${WS_STOCK}`), { holds_stock: 'yes', updated_at: serverTimestamp() }));
 
+    // Its twin, for POS. Same shape, same hasOnly consequence: an undeployed
+    // ruleset rejects the whole workspace write, not just the key.
+    await expectOutcome('sells_at_counter true is accepted', true, () =>
+        updateDoc(doc(db, `workspaces/${WS_STOCK}`), { sells_at_counter: true, updated_at: serverTimestamp() }));
+    await expectOutcome('sells_at_counter false is accepted', true, () =>
+        updateDoc(doc(db, `workspaces/${WS_STOCK}`), { sells_at_counter: false, updated_at: serverTimestamp() }));
+    await expectOutcome('sells_at_counter must be a boolean', false, () =>
+        updateDoc(doc(db, `workspaces/${WS_STOCK}`), { sells_at_counter: 1, updated_at: serverTimestamp() }));
+
     // ---- a non-IDR workspace can actually operate ------------------------
     //
     // Before D3 these validators asserted `data.currency == 'IDR'`, so a

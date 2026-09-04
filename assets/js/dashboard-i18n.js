@@ -4933,6 +4933,19 @@
         // ── Account-mapping recommendations (mapping-suggestions.js) ──────
         // Not caught by the i18n audit — it does not scan this module — so these
         // are added by hand. They are user-facing copy in a Bahasa-first app.
+        // ── Onboarding: the two direct capability questions ───────────────
+        "Do you hold stock?": "Apakah Anda menyimpan stok?",
+        "Do you hold stock": "Apakah Anda menyimpan stok",
+        "Yes — we buy or make goods we keep": "Ya — kami membeli atau membuat barang yang kami simpan",
+        "No — we sell time, services or software": "Tidak — kami menjual waktu, jasa, atau software",
+        "Decides whether you get Inventory. Ingredients, materials and goods for resale all count.": "Menentukan apakah Anda mendapat modul Persediaan. Bahan baku, material, dan barang dagangan semuanya termasuk.",
+        "Do you sell face-to-face?": "Apakah Anda menjual secara tatap muka?",
+        "Do you sell face to face": "Apakah Anda menjual secara tatap muka",
+        "Yes — customers pay us at a counter or table": "Ya — pelanggan membayar di kasir atau di meja",
+        "No — we invoice, or sell online only": "Tidak — kami menagih lewat invoice, atau hanya jual online",
+        "Decides whether you get the Point of Sale till.": "Menentukan apakah Anda mendapat kasir Point of Sale.",
+        "Select an answer": "Pilih jawaban",
+
         "Recommended for your business": "Disarankan untuk bisnis Anda",
         "Use this": "Pakai ini",
         "Ingredients are the cost of what you sell, not overhead. Filed here, gross margin can be read; under Operations Expense it cannot.": "Bahan baku adalah harga pokok dari yang Anda jual, bukan biaya overhead. Dicatat di sini, laba kotor bisa dibaca; di bawah Beban Operasional tidak bisa.",

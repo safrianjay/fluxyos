@@ -165,6 +165,23 @@
                             <span class="onboarding-error" id="f-holds-stock-error" aria-live="polite"></span>
                         </label>
 
+                        <!-- The twin of the stock question, for POS. Same reason:
+                             a salon doing walk-in trade picks `services` and never
+                             sees the till, while a manufacturer that holds plenty of
+                             stock has no counter at all. Optional — unanswered falls
+                             back to the category exactly as before. -->
+                        <label class="onboarding-field">
+                            <span class="onboarding-label">Do you sell face-to-face?</span>
+                            <select name="sells_at_counter" id="f-sells-counter" class="onboarding-native-select" aria-describedby="f-sells-counter-error">
+                                <option value="" disabled selected>Select an answer</option>
+                                <option value="yes">Yes — customers pay us at a counter or table</option>
+                                <option value="no">No — we invoice, or sell online only</option>
+                            </select>
+                            <span id="f-sells-counter-custom" class="onboarding-custom-select" data-source-select="f-sells-counter" data-aria-label="Do you sell face to face"></span>
+                            <span class="onboarding-helper">Decides whether you get the Point of Sale till.</span>
+                            <span class="onboarding-error" id="f-sells-counter-error" aria-live="polite"></span>
+                        </label>
+
                         <label class="onboarding-field">
                             <span class="onboarding-label">Your role</span>
                             <select name="role" id="f-role" class="onboarding-native-select" required aria-describedby="f-role-error">

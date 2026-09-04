@@ -138,7 +138,11 @@ export const FEATURE_RULES = {
         // proof that no OTHER allowlisted workspace carries a third category,
         // and that is a data question, not a code one. Removing it on the
         // assumption would take a live module off a paying user in silence.
-        allowCategories: ['fnb', 'retail']
+        allowCategories: ['fnb', 'retail'],
+        // Asked directly at onboarding, same as Inventory's requiresStock. A
+        // salon doing walk-in trade is `services` and absolutely wants a till;
+        // a manufacturer is not and does not.
+        requiresCounterSales: true
     }
 };
 
@@ -192,11 +196,20 @@ function matches(rule, email) {
     );
     if (allowlisted) return true;
 
-    if (rule.requiresStock) {
-        const holds = (typeof window !== 'undefined' && window.FluxyWorkspace)
-            ? window.FluxyWorkspace.holdsStock : null;
-        if (holds === true) return true;
-        if (holds === false) return false;
+    // Two direct questions, one shape. Each names what its module depends on,
+    // each overrides the category in BOTH directions when answered, and each
+    // falls through to the category when not. Both sit BELOW the allowlist for
+    // the reason given above.
+    const direct = [
+        [rule.requiresStock, 'holdsStock'],
+        [rule.requiresCounterSales, 'sellsAtCounter']
+    ];
+    for (const [declared, key] of direct) {
+        if (!declared) continue;
+        const answer = (typeof window !== 'undefined' && window.FluxyWorkspace)
+            ? window.FluxyWorkspace[key] : null;
+        if (answer === true) return true;
+        if (answer === false) return false;
     }
     if (rule.allowCategories) {
         const category = (typeof window !== 'undefined' && window.FluxyWorkspace

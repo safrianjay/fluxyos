@@ -29,13 +29,17 @@ test('holds_stock is accepted by the DEPLOYED rules', async ({ page }) => {
         try {
             await setDoc(doc(db, `workspaces/${wsId}`), {
                 holds_stock: true,
+                // Its twin, verified in the same write: hasOnly means ONE
+                // unlisted key rejects the whole document, so a partial deploy
+                // looks exactly like a total one.
+                sells_at_counter: true,
                 updated_at: serverTimestamp()
             }, { merge: true });
         } catch (e) {
             return { ok: false, error: String((e && e.code) || e) };
         }
         const after = await getDoc(doc(db, `workspaces/${wsId}`));
-        return { ok: true, stored: after.data().holds_stock };
+        return { ok: true, stored: after.data().holds_stock, counter: after.data().sells_at_counter };
     });
 
     // A permission-denied here means the ruleset in production does not yet
@@ -43,6 +47,7 @@ test('holds_stock is accepted by the DEPLOYED rules', async ({ page }) => {
     expect(r.error).toBeUndefined();
     expect(r.ok).toBe(true);
     expect(r.stored).toBe(true);
+    expect(r.counter).toBe(true);
 });
 
 test('the workspace snapshot surfaces it to feature-access', async ({ page }) => {
@@ -51,6 +56,10 @@ test('the workspace snapshot surfaces it to feature-access', async ({ page }) =>
     // however correctly it was stored.
     await page.goto('/dashboard.html');
     await page.waitForFunction(() => window.FluxyWorkspace && window.FluxyWorkspace.ready, { timeout: 30000 });
-    const holds = await page.evaluate(() => window.FluxyWorkspace.holdsStock);
-    expect(holds).toBe(true);
+    const snap = await page.evaluate(() => ({
+        holds: window.FluxyWorkspace.holdsStock,
+        counter: window.FluxyWorkspace.sellsAtCounter
+    }));
+    expect(snap.holds).toBe(true);
+    expect(snap.counter).toBe(true);
 });

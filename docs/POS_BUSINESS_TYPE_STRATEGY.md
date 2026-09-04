@@ -519,3 +519,26 @@ Coverage: `tests/base-currency-rules-emulator-test.mjs` (accepts true, accepts
 **false** — a real answer, not an absent one — rejects a string, and permits a
 later change, because a consultancy that opens a shop genuinely changes answer).
 `tests/feature-access-category.check.js` covers the precedence.
+
+### `sells_at_counter` — the twin, for POS
+
+Same shape, same reason. A salon doing walk-in trade is `services` and
+absolutely wants a till; a cloud kitchen is `fnb` and sells only through
+delivery apps. Industry gets both wrong.
+
+`feature-access.js` now declares the two direct questions as a pair and loops
+them, so they behave identically by construction rather than by two copies that
+drift:
+
+| Rule | Declares | Reads |
+|---|---|---|
+| `inventory` | `requiresStock` | `holdsStock` |
+| `pos` | `requiresCounterSales` | `sellsAtCounter` |
+
+Both override the category in both directions when answered, both fall through
+when not, and both sit **below** the allowlist so a "no" can never revoke a
+module from a hand-listed workspace.
+
+**They do not leak into each other.** A manufacturer holds plenty of stock and
+has no counter; a salon has a counter and no stock. Asserted in
+`tests/feature-access-category.check.js`.

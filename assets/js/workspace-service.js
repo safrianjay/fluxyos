@@ -41,6 +41,8 @@ const state = {
     // The direct answer to "do you hold stock". null = unanswered, which
     // falls back to the category — NOT the same as false.
     holdsStock: null,
+    // The direct answer to "do you sell face-to-face". Same tri-state.
+    sellsAtCounter: null,
 };
 
 /**
@@ -116,6 +118,7 @@ function publish() {
         country: state.country,
         businessCategory: state.businessCategory,
         holdsStock: state.holdsStock,
+        sellsAtCounter: state.sellsAtCounter,
         isOwner: state.role === 'owner',
         can: (capability) => (state.status === 'active' ? permCan(state.role, capability) : false),
     };
@@ -306,7 +309,7 @@ async function resolveWorkspace(app, user) {
 async function _resolveWorkspace(app, user) {
     if (!user || !user.uid) {
         try { sessionStorage.removeItem('fluxy_ws'); } catch (_) {}
-        Object.assign(state, { id: null, role: null, status: null, uid: null, ready: false, name: null, plan: null, baseCurrency: null, country: null, businessCategory: null, holdsStock: null });
+        Object.assign(state, { id: null, role: null, status: null, uid: null, ready: false, name: null, plan: null, baseCurrency: null, country: null, businessCategory: null, holdsStock: null, sellsAtCounter: null });
         applyBaseCurrency(null);
         return publish();
     }
@@ -496,6 +499,7 @@ async function _resolveWorkspace(app, user) {
                 state.businessCategory = d.business_category || null;
                 // `?? null` not `|| null`: a stored `false` is an answer.
                 state.holdsStock = typeof d.holds_stock === 'boolean' ? d.holds_stock : null;
+                state.sellsAtCounter = typeof d.sells_at_counter === 'boolean' ? d.sells_at_counter : null;
                 applyBaseCurrency(state.baseCurrency);
                 writeCachedCurrency(user.uid, state.baseCurrency, state.country);
                 state.plan = (d.plan_id || d.plan_name || d.subscription_status) ? {

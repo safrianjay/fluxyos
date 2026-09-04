@@ -219,6 +219,39 @@ function withCategory(category, fn) {
         });
     });
 
+    check('a direct YES on counter sales beats a category that would refuse', () => {
+        // A salon doing walk-in trade is `services` and absolutely wants a till.
+        withWorkspace({ businessCategory: 'services', sellsAtCounter: true }, () => {
+            assert.strictEqual(matches(FEATURE_RULES.pos, STRANGER), true);
+        });
+    });
+
+    check('a direct NO on counter sales beats a category that would grant', () => {
+        // A cloud kitchen is `fnb` and sells only through delivery apps.
+        withWorkspace({ businessCategory: 'fnb', sellsAtCounter: false }, () => {
+            assert.strictEqual(matches(FEATURE_RULES.pos, STRANGER), false);
+        });
+    });
+
+    check('the two direct questions do not leak into each other', () => {
+        // Holding stock says nothing about selling over a counter, and vice
+        // versa. A manufacturer holds plenty and has no till.
+        withWorkspace({ businessCategory: 'manufacturing', holdsStock: true, sellsAtCounter: false }, () => {
+            assert.strictEqual(matches(FEATURE_RULES.inventory, STRANGER), true);
+            assert.strictEqual(matches(FEATURE_RULES.pos, STRANGER), false);
+        });
+        withWorkspace({ businessCategory: 'services', holdsStock: false, sellsAtCounter: true }, () => {
+            assert.strictEqual(matches(FEATURE_RULES.inventory, STRANGER), false);
+            assert.strictEqual(matches(FEATURE_RULES.pos, STRANGER), true);
+        });
+    });
+
+    check('a direct NO on counter sales never revokes an ALLOWLISTED workspace', () => {
+        withWorkspace({ businessCategory: 'services', sellsAtCounter: false }, () => {
+            assert.strictEqual(matches(FEATURE_RULES.pos, QA_EMAIL), true);
+        });
+    });
+
     check('TB Bangun Utama can reach inventory even if unstamped', () => {
         // Listed as well as covered by `retail`, because whether that workspace's
         // doc actually carries the category is a data question this file cannot

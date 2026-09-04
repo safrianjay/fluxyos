@@ -133,6 +133,7 @@ const state = {
         // the registration documents. assets/js/business-category.js.
         business_category: '',
         holds_stock: '',
+        sells_at_counter: '',
         // Device/UI language. Mirrored to the profile so the KYC reviewer knows
         // which language this business operates in; the live switch itself is
         // localStorage via FluxyI18n. Empty by default ON PURPOSE — bindLanguageSelect
@@ -236,6 +237,7 @@ async function hydrateSavedState(userId, progress) {
                 business_name: profile.business_name,
                 business_category: profile.business_category,
                 holds_stock: profile.holds_stock === true ? 'yes' : (profile.holds_stock === false ? 'no' : ''),
+                sells_at_counter: profile.sells_at_counter === true ? 'yes' : (profile.sells_at_counter === false ? 'no' : ''),
                 language: profile.language,
                 country: profile.country,
                 base_currency: profile.base_currency,
@@ -303,6 +305,7 @@ function initUI() {
     bindInput('#f-business-name', 'business_name');
     bindInput('#f-business-category', 'business_category');
     bindInput('#f-holds-stock', 'holds_stock');
+    bindInput('#f-sells-counter', 'sells_at_counter');
     bindLanguageSelect();
     bindInput('#f-country', 'country');
     bindInput('#f-base-currency', 'base_currency');
@@ -424,6 +427,7 @@ function syncFormFromState() {
     if (legal) legal.value = state.fields.legal_full_name || '';
     syncCustomSelectFromState('#f-business-category', '#f-business-category-custom', state.fields.business_category);
     syncCustomSelectFromState('#f-holds-stock', '#f-holds-stock-custom', state.fields.holds_stock);
+    syncCustomSelectFromState('#f-sells-counter', '#f-sells-counter-custom', state.fields.sells_at_counter);
     syncCustomSelectFromState('#f-role', '#f-role-custom', state.fields.role);
     syncCustomSelectFromState('#f-main-goal', '#f-main-goal-custom', state.fields.main_goal);
     syncCustomSelectFromState('#f-revenue', '#f-revenue-custom', state.fields.monthly_revenue_range);
@@ -1086,6 +1090,8 @@ async function onContinue() {
                 // which is exactly the pre-existing behaviour.
                 holdsStock: state.fields.holds_stock === 'yes' ? true
                     : (state.fields.holds_stock === 'no' ? false : undefined),
+                sellsAtCounter: state.fields.sells_at_counter === 'yes' ? true
+                    : (state.fields.sells_at_counter === 'no' ? false : undefined),
                 country: state.fields.country,
                 base_currency: state.fields.base_currency,
                 role: state.fields.role,
