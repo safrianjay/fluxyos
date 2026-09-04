@@ -59,6 +59,20 @@ const ORIGIN = {
 // migration reversible: `pos.html` is ['app', 'till'] while both work, and
 // dropping 'app' later turns /pos on the dashboard into a 301 to the till
 // origin automatically — one edit, no new redirect to write.
+// ⚠️⚠️ THIS SCRIPT DELETES FILES FROM THE WORKING TREE. It is a BUILD step —
+// Netlify runs it last, against a throwaway checkout — and it prunes every page
+// the selected role does not serve, in place, with no dry-run flag. Running it
+// by hand to inspect what a role would serve wipes your checkout: on 2026-09-05
+// a bare `SITE_ROLE=till node scripts/prepare-deploy.js` removed ~450 tracked
+// files, and `--dry-run` was silently ignored because it is not a flag.
+//
+// TO INSPECT THE SPLIT SAFELY, run `node tests/prepare-deploy.check.js`. It
+// dry-runs all four roles plus the no-op in a temp directory and asserts the
+// invariants. That is what it exists for.
+//
+// If you have already run this: `git restore --source=HEAD --staged --worktree .`
+// then delete the generated `_headers` and `_redirects` at the repo root.
+
 const PAGE_ROLES = {
     // ── marketing (fluxyos.com) ──────────────────────────────────────────
     'fluxyos.html': ['marketing'],   // homepage (served at /)

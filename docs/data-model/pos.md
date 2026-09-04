@@ -1032,6 +1032,23 @@ a bill opened at 10% still says 10% after the rate is changed.
 already inside the prices, and adding it as a row would make the arithmetic look
 wrong to the one person guaranteed to check: the customer holding the receipt.
 
+### The entry point is the DASHBOARD, and only the dashboard
+
+Settings → Operations → Point of Sale (`/settings-pos`). There is deliberately
+**no link from the till**, and adding one was considered and declined
+(2026-09-05).
+
+1. The page is `['app']` in `PAGE_ROLES`, so the till build prunes it and
+   `pos.fluxyos.com/settings-pos` 301s to the dashboard origin anyway.
+2. **Writes are finance+.** A cashier READS the rates — the till cannot price a
+   bill otherwise — but cannot change them, and `applyToPage()` routes a
+   POS-only role straight to `/pos`. A link on the till would be dead for the
+   person most likely to tap it.
+
+Accepted cost: an owner standing at the till switches origins to change a rate.
+That is a set-up decision rather than a service-time one, and orders already
+open keep their `pos_pricing` snapshot either way.
+
 ### Rules for both
 
 Read = all member roles **plus `cashier`**: the till must be able to price a bill
