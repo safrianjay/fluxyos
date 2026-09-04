@@ -113,6 +113,28 @@ const is = (actual, expected, label) => {
     is(/path\.startsWith\(`workspaces\/\$\{workspaceId\}\/items\/\$\{itemId\}\//.test(src), true,
         'refuses an image_path outside this item\'s own tree');
 
+    // ── The outlet cover (?cover=1), added 2026-09-05 ───────────────────────
+    //
+    // It exists HERE rather than as a URL in the qr-menu payload so it inherits
+    // all three gates above. A signed URL handed out in JSON would be a second
+    // way for a diner's phone to reach Storage, bypassing every one of them.
+    is(/cover\s*\|\|\s*''\)\s*===\s*'1'/.test(src), true,
+        'serves the outlet cover behind the same token checks');
+    is(/pos_outlet_settings/.test(src), true,
+        'reads the cover path from the outlet\'s own settings document');
+    // The directory already knows which outlet this table belongs to, so a
+    // token for table 4 cannot ask for another outlet's imagery.
+    is(/dimensionId\s*=\s*dir\.dimension_id/.test(src), true,
+        'scopes the cover to the outlet the scanned table belongs to');
+    is(/coverPath\.startsWith\(`workspaces\/\$\{workspaceId\}\/pos_outlets\/\$\{dimensionId\}\//.test(src), true,
+        'refuses a cover_image_path outside this outlet\'s own tree');
+    // qr-menu must not hand out a URL of its own. It did for about an hour on
+    // 2026-09-05 and it never worked — initAdmin there sets no storageBucket, so
+    // the call threw and the catch turned it into "this outlet has no photo".
+    const menuSrc = fs.readFileSync(path.join(ROOT, 'netlify/functions/qr-menu.js'), 'utf8');
+    is(/getSignedUrl/.test(menuSrc), false,
+        'qr-menu hands out no Storage URL of its own');
+
     console.log(failures ? `\n✗ ${failures} failure(s)\n` : '\nqr menu image: clean\n');
     process.exit(failures ? 1 : 0);
 })().catch((err) => {

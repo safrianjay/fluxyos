@@ -419,6 +419,18 @@ test.describe('QR customer ordering', () => {
             getComputedStyle(el).getPropertyValue('--mast-cover'));
         expect(cover, 'the cover is not the token-authenticated image endpoint')
             .toContain('qr-menu-image');
+        // ⚠️ NEVER a URL handed over in the menu payload. That was tried on
+        // 2026-09-05 and did not work — qr-menu's initAdmin sets no
+        // storageBucket, so the signed-URL call threw and the catch turned it
+        // into "this outlet has no photo", silently. The deeper reason it stays
+        // out: a URL in that payload is a second way to reach Storage, bypassing
+        // the rate limiter, the revoked-token check and the path guard.
+        const payloadHasUrl = await page.evaluate(async (t) => {
+            const r = await fetch(`/.netlify/functions/qr-menu?token=${t}`);
+            const j = await r.json();
+            return typeof j.cover_image === 'string' && /https?:/.test(j.cover_image);
+        }, TOKEN).catch(() => false);
+        expect(payloadHasUrl, 'qr-menu handed out a Storage URL').toBe(false);
 
         // ⚠️ THE SCRIM IS NOT DECORATION. Every pixel of chrome in this header
         // is white — outlet name, table pill, search placeholder — and a lit
@@ -426,6 +438,24 @@ test.describe('QR customer ordering', () => {
         // dark layer over it is the bug this pins.
         const bg = await head.evaluate((el) => getComputedStyle(el).backgroundImage);
         expect(bg, 'the cover photo has no scrim over it').toMatch(/linear-gradient\(.*rgba\(11, 15, 25/);
+    });
+
+    test('a shipped cover photo takes the header, through the image endpoint', async ({ page }) => {
+        await stub(page);
+        // The menu says only WHETHER a cover exists; the bytes come from the
+        // endpoint every item photo uses.
+        await page.route('**/qr-menu?**', (route) => route.fulfill({
+            status: 200, contentType: 'application/json',
+            body: JSON.stringify({ ...MENU, has_cover: true })
+        }));
+        await open(page);
+        const head = page.locator('.masthead');
+        await expect(head).toHaveClass(/has-cover/, { timeout: 15_000 });
+        const cover = await head.evaluate((el) =>
+            getComputedStyle(el).getPropertyValue('--mast-cover'));
+        expect(cover).toContain('cover=1');
+        expect(cover, 'the owner\'s cover fell back to an item photo')
+            .not.toContain('item=');
     });
 
     test('an outlet with no photos keeps the gradient, not a flat block', async ({ page }) => {

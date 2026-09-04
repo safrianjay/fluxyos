@@ -173,7 +173,7 @@ exports.handler = async (event) => {
         // for; failing it because a configuration document or a photo could not
         // be read would be the wrong trade at a table.
         let outletPricing = pricing.normalizeSettings(null);
-        let coverUrl = null;
+        let hasCover = false;
         try {
             // Settings are keyed BY the outlet, and a table without one has no
             // rates to apply — the same table that cannot attribute its revenue.
@@ -183,15 +183,7 @@ exports.handler = async (event) => {
             if (cfg && cfg.exists) {
                 const data = cfg.data() || {};
                 outletPricing = pricing.normalizeSettings(data);
-                if (data.cover_image_path) {
-                    // Signed and SHORT-LIVED. A download URL would be a permanent
-                    // public link to the workspace's own imagery — the same call
-                    // items.image_path makes.
-                    const [url] = await admin.storage().bucket()
-                        .file(data.cover_image_path)
-                        .getSignedUrl({ action: 'read', expires: Date.now() + 60 * 60 * 1000 });
-                    coverUrl = url;
-                }
+                hasCover = typeof data.cover_image_path === 'string' && !!data.cover_image_path;
             }
         } catch (e) {
             console.warn('[qr-menu] outlet settings unreadable; menu prices at zero rates', e && e.message);
@@ -215,11 +207,22 @@ exports.handler = async (event) => {
                 // Absent settings send the module's defaults — every flag off —
                 // which is exactly what this endpoint described before.
                 pricing: outletPricing,
-                // The owner's header photo for this outlet, resolved to a URL the
-                // page can use. `order.html` holds no Firebase handle by design,
-                // so the path is turned into a signed URL HERE rather than being
-                // handed out as a permanent public link.
-                cover_image: coverUrl,
+                // WHETHER there is a header photo, never a URL to it.
+                //
+                // ⚠️ This returned a signed URL for about an hour on 2026-09-05,
+                // and it never worked: `initAdmin()` here sets no `storageBucket`
+                // (qr-menu-image does), so `admin.storage().bucket()` threw on
+                // every request and the catch above turned it into "no photo".
+                // Silent, and indistinguishable from an outlet that had not set
+                // one.
+                //
+                // Fixing the missing line would have been one character of the
+                // problem. The rest is that a URL in this payload is a second
+                // way for a diner's phone to reach Storage, bypassing the rate
+                // limiter, the revoked-token check and the path guard that
+                // `qr-menu-image` applies to every menu photo. The page asks
+                // that endpoint for `?cover=1` instead.
+                has_cover: hasCover,
                 items
             })
         };

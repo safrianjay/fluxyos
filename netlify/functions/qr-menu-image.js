@@ -128,13 +128,23 @@ exports.handler = async (event) => {
     const q = event.queryStringParameters || {};
     const token = String(q.token || '');
     const itemId = String(q.item || '');
+    // `?cover=1` asks for the OUTLET's header photo instead of an item's. Served
+    // by this endpoint rather than as a URL in the qr-menu payload, so it gets
+    // the same three gates every menu photo does — the rate limiter, the revoked
+    // token check, and a path guard — and so there stays ONE way a diner's phone
+    // reaches Storage.
+    const wantsCover = String(q.cover || '') === '1';
 
     // One shape of refusal for every failure below. A customer holding a valid
     // token for table 4 must not be able to learn, from the difference between
     // two error messages, whether an item id exists in someone else's workspace.
     const notFound = { statusCode: 404, headers: { ...cors, 'Cache-Control': 'no-store' }, body: 'Not found' };
 
-    if (!SAFE.test(token) || !SAFE.test(itemId)) return notFound;
+    // An item id is required unless the cover was asked for; both is a
+    // contradiction rather than a preference, and answering one of them would
+    // be guessing at the caller's intent.
+    if (!SAFE.test(token)) return notFound;
+    if (wantsCover ? itemId !== '' : !SAFE.test(itemId)) return notFound;
 
     try {
         const db = initAdmin().firestore();
@@ -169,6 +179,34 @@ exports.handler = async (event) => {
         if (dir.revoked === true) return notFound;
         const workspaceId = dir.workspace_id;
         if (!workspaceId) return notFound;
+
+        // 2a. The OUTLET's header photo. Scoped to the outlet this table
+        //     belongs to, which the directory already knows — a token for table
+        //     4 cannot ask for another outlet's imagery.
+        if (wantsCover) {
+            const dimensionId = dir.dimension_id;
+            if (!dimensionId || !SAFE.test(String(dimensionId))) return notFound;
+            const cfgSnap = await db
+                .doc(`workspaces/${workspaceId}/pos_outlet_settings/${dimensionId}`).get();
+            if (!cfgSnap.exists) return notFound;
+            const coverPath = typeof (cfgSnap.data() || {}).cover_image_path === 'string'
+                ? cfgSnap.data().cover_image_path : '';
+            if (!coverPath) return notFound;
+            // Same belt and braces as the item path below: a string on a
+            // document becomes a file read for an anonymous caller exactly here.
+            if (!coverPath.startsWith(`workspaces/${workspaceId}/pos_outlets/${dimensionId}/`)) {
+                return notFound;
+            }
+            const coverFile = initAdmin().storage().bucket().file(coverPath);
+            const [coverUrl] = await coverFile.getSignedUrl({
+                action: 'read', expires: Date.now() + URL_TTL_MS
+            });
+            return {
+                statusCode: 302,
+                headers: { ...cors, Location: coverUrl, 'Cache-Control': `public, max-age=${CACHE_SECONDS}` },
+                body: ''
+            };
+        }
 
         // 2. The item, IN THAT WORKSPACE. This is the check a Storage rule
         //    cannot make: scoping a photo to the restaurant whose QR code was

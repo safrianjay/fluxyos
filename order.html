@@ -2546,12 +2546,12 @@ html.kb-open .welcome-art { display: none; }
     /**
      * The header's cover photo.
      *
-     * ⚠️ THE SEAM IS `menu.cover_image`, SET IN POS SETTINGS AND SENT BY
-     * `qr-menu` (wired 2026-09-05). The endpoint signs a short-lived URL from
-     * the stored Storage PATH — a download URL would be a permanent public link
-     * to the workspace's own imagery. Do not reach for the workspace doc from
-     * this page: the customer surface holds no Firestore handle by design, and
-     * everything it knows arrives through the token-authenticated endpoints.
+     * ⚠️ THE SEAM IS `menu.has_cover` — a BOOLEAN, never a URL. The photo is
+     * fetched from `qr-menu-image?cover=1`, exactly as item photos are, so a
+     * diner's phone has ONE way to reach Storage and it is the one carrying the
+     * rate limiter, the revoked-token check and the path guard. Do not reach for
+     * the workspace doc from this page either: the customer surface holds no
+     * Firestore handle by design.
      *
      * Until then the PLACEHOLDER is the outlet's first photographed item,
      * served by the same `qr-menu-image` endpoint the grid already uses — so
@@ -2561,7 +2561,13 @@ html.kb-open .welcome-art { display: none; }
     function paintHeaderCover() {
         var head = document.querySelector('.masthead');
         if (!head) return;
-        var url = typeof menu.cover_image === 'string' && menu.cover_image ? menu.cover_image : null;
+        // ⚠️ THE ENDPOINT, NOT A URL FROM THE PAYLOAD. `qr-menu` says only WHETHER
+        // a cover exists; the bytes come from `qr-menu-image?cover=1`, the same
+        // path every menu photo takes — so the rate limiter, the revoked-token
+        // check and the workspace path guard all apply to it too.
+        var url = menu.has_cover
+            ? (FN + 'qr-menu-image?token=' + encodeURIComponent(TOKEN) + '&cover=1')
+            : null;
         if (!url) {
             var shot = (menu.items || []).filter(function (i) { return i && i.has_image; })[0];
             if (shot) {
