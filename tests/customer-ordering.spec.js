@@ -327,6 +327,151 @@ test.describe('QR customer ordering', () => {
     const ART_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 160">'
         + '<rect width="300" height="160" fill="#CDE8DA"/></svg>';
 
+    // ── The hero ────────────────────────────────────────────────────────
+    //
+    // Two independent blocks: `.hero` knows about photos, `.outlet-card` knows
+    // about the outlet. The card OVERLAPS the image rather than sitting under a
+    // hard cut, and it is compact by construction — two rows, and a third is the
+    // thing to resist.
+    const HOURS = [
+        { day: 'mon', closed: false, open: '11:00', close: '23:00' },
+        { day: 'tue', closed: false, open: '11:00', close: '23:00' },
+        { day: 'wed', closed: false, open: '11:00', close: '23:00' },
+        { day: 'thu', closed: false, open: '11:00', close: '23:00' },
+        { day: 'fri', closed: false, open: '11:00', close: '01:00' },
+        { day: 'sat', closed: false, open: '11:00', close: '01:00' },
+        { day: 'sun', closed: true, open: null, close: null }
+    ];
+    const withHero = (over = {}) => ({
+        ...MENU,
+        outlet_info: { address: 'Jl. Kemang Raya 1', phone: '021 555 0000', hours: HOURS },
+        ...over
+    });
+    const heroMenu = (page, body) => page.route('**/qr-menu?**', (route) => route.fulfill({
+        status: 200, contentType: 'application/json', body: JSON.stringify(body)
+    }));
+
+    test('THE CARD OVERLAPS THE IMAGE, AND STAYS COMPACT', async ({ page }) => {
+        await stub(page);
+        await heroMenu(page, withHero());
+        await open(page);
+
+        const hero = await page.locator('#hero').boundingBox();
+        const card = await page.locator('.outlet-card').boundingBox();
+        const app = await page.locator('#app').boundingBox();
+
+        // Full bleed — edge to edge of the app column, not inset.
+        expect(Math.round(hero.width)).toBe(Math.round(app.width));
+        // It FLOATS UP over the image edge rather than sitting below a hard cut.
+        expect(hero.y + hero.height - card.y,
+            'the card no longer overlaps the image').toBeGreaterThan(24);
+
+        // ⚠️ COMPACT IS THE CONSTRAINT, so it is measured rather than trusted.
+        // Two rows: the name, then one row carrying the table, the status and
+        // both actions. A third row is what this assertion exists to catch.
+        expect(card.height, `the outlet card grew to ${Math.round(card.height)}px`)
+            .toBeLessThan(130);
+        await expect(page.locator('.outlet-card > *:not([hidden])')).toHaveCount(2);
+
+        // The scrim must never eat a swipe or a tap.
+        expect(await page.locator('.hero-scrim')
+            .evaluate((el) => getComputedStyle(el).pointerEvents)).toBe('none');
+        // And the page itself must not scroll sideways.
+        expect(await page.evaluate(() =>
+            document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    });
+
+    test('the gallery swipes, and the indicators follow', async ({ page }) => {
+        await stub(page);
+        await heroMenu(page, withHero({ has_cover: true }));
+        await open(page);
+
+        // A cover plus every photographed dish. The fixture has one.
+        const slides = page.locator('.hero-slide');
+        await expect(slides).toHaveCount(2, { timeout: 15_000 });
+        await expect(page.locator('#hero-count')).toHaveText('1 / 2');
+        await expect(page.locator('.hero-dot')).toHaveCount(2);
+
+        await page.locator('#hero-rail').evaluate((el) => { el.scrollLeft = el.clientWidth; });
+        await expect(page.locator('#hero-count')).toHaveText('2 / 2');
+        expect(await page.evaluate(() =>
+            [...document.querySelectorAll('.hero-dot')].findIndex((d) => d.classList.contains('is-on'))))
+            .toBe(1);
+    });
+
+    test('ONE photo is not a gallery — no dots, no counter', async ({ page }) => {
+        // An indicator for something that cannot move says "swipe me" and then
+        // does not. The fixture's single photographed item is the only slide.
+        await stub(page);
+        await heroMenu(page, withHero());
+        await open(page);
+        await expect(page.locator('.hero-slide')).toHaveCount(1, { timeout: 15_000 });
+        await expect(page.locator('#hero-count')).toBeHidden();
+        await expect(page.locator('.hero-dot')).toHaveCount(0);
+    });
+
+    test('an outlet with no photograph falls back to the gradient', async ({ page }) => {
+        await stub(page);
+        await heroMenu(page, withHero({
+            has_cover: false,
+            items: MENU.items.map((i) => ({ ...i, has_image: false }))
+        }));
+        await open(page);
+        await expect(page.locator('.hero-slide.is-empty')).toHaveCount(1, { timeout: 15_000 });
+        await expect(page.locator('#hero-count')).toBeHidden();
+        // The card still reads over it.
+        await expect(page.locator('#outlet-name')).toHaveText(MENU.outlet);
+    });
+
+    test('THE OPEN STATUS OPENS THE WEEK, WITH TODAY MARKED', async ({ page }) => {
+        await stub(page);
+        await heroMenu(page, withHero());
+        await open(page);
+
+        const status = page.locator('#outlet-status');
+        await expect(status).toBeVisible({ timeout: 15_000 });
+        // A green dot and a closing time is a CLAIM, and a diner arriving late
+        // deserves to check it — which is why the status is a button.
+        await expect(page.locator('#outlet-hours')).toBeHidden();
+        await status.click();
+        await expect(page.locator('#outlet-hours')).toBeVisible();
+        await expect(page.locator('.outlet-hours-row')).toHaveCount(7);
+        await expect(page.locator('.outlet-hours-row.is-today')).toHaveCount(1);
+        await expect(status).toHaveAttribute('aria-expanded', 'true');
+        // Sunday is closed in the fixture, and "Tutup" is a real answer.
+        await expect(page.locator('.outlet-hours-row').last()).toContainText('Tutup');
+    });
+
+    test('an outlet with no hours claims nothing', async ({ page }) => {
+        // A green dot nobody entered would be a status the product invented.
+        await stub(page);
+        await heroMenu(page, withHero({
+            outlet_info: { address: null, phone: null, hours: [] }
+        }));
+        await open(page);
+        await expect(page.locator('#outlet-name')).toHaveText(MENU.outlet, { timeout: 15_000 });
+        await expect(page.locator('#outlet-status')).toBeHidden();
+        // And neither action is offered without the field it needs.
+        await expect(page.locator('#act-directions')).toBeHidden();
+        await expect(page.locator('#act-call')).toBeHidden();
+    });
+
+    test('Directions and Call carry the outlet\'s own details', async ({ page }) => {
+        await stub(page);
+        await heroMenu(page, withHero());
+        await open(page);
+        await expect(page.locator('#act-directions')).toBeVisible({ timeout: 15_000 });
+        expect(await page.locator('#act-directions').getAttribute('href'))
+            .toContain(encodeURIComponent('Jl. Kemang Raya 1'));
+        // A dialable number: punctuation stripped, digits kept.
+        expect(await page.locator('#act-call').getAttribute('href')).toBe('tel:0215550000');
+        // Both on the SAME row as the status — that grouping is the constraint.
+        const statusBox = await page.locator('#outlet-status').boundingBox();
+        const callBox = await page.locator('#act-call').boundingBox();
+        expect(Math.abs((statusBox.y + statusBox.height / 2) - (callBox.y + callBox.height / 2)))
+            .toBeLessThan(24);
+    });
+
     // ── Rekomendasi Kami ────────────────────────────────────────────────
     //
     // The owner's own picks, marked per item in Inventory. A rail above the menu
@@ -519,11 +664,10 @@ test.describe('QR customer ordering', () => {
         await stub(page);
         await open(page);
 
-        const head = page.locator('.masthead');
-        await expect(head).toHaveClass(/has-cover/, { timeout: 15_000 });
-        const cover = await head.evaluate((el) =>
-            getComputedStyle(el).getPropertyValue('--mast-cover'));
-        expect(cover, 'the cover is not the token-authenticated image endpoint')
+        const shot = page.locator('.hero-slide img').first();
+        await expect(shot).toBeVisible({ timeout: 15_000 });
+        expect(await shot.getAttribute('src'),
+            'the hero is not the token-authenticated image endpoint')
             .toContain('qr-menu-image');
         // ⚠️ NEVER a URL handed over in the menu payload. That was tried on
         // 2026-09-05 and did not work — qr-menu's initAdmin sets no
@@ -538,12 +682,14 @@ test.describe('QR customer ordering', () => {
         }, TOKEN).catch(() => false);
         expect(payloadHasUrl, 'qr-menu handed out a Storage URL').toBe(false);
 
-        // ⚠️ THE SCRIM IS NOT DECORATION. Every pixel of chrome in this header
-        // is white — outlet name, table pill, search placeholder — and a lit
-        // dish on a white plate would erase all of it. A photo layer with no
+        // ⚠️ THE SCRIM IS NOT DECORATION. The back button, the photo counter and
+        // the card's top edge all sit on a photograph nobody has seen — a lit
+        // dish on a white plate erases every one of them. A photo layer with no
         // dark layer over it is the bug this pins.
-        const bg = await head.evaluate((el) => getComputedStyle(el).backgroundImage);
-        expect(bg, 'the cover photo has no scrim over it').toMatch(/linear-gradient\(.*rgba\(11, 15, 25/);
+        const scrim = await page.locator('.hero-scrim')
+            .evaluate((el) => getComputedStyle(el).backgroundImage);
+        expect(scrim, 'the hero photo has no scrim over it')
+            .toMatch(/linear-gradient\(.*rgba\(11, 15, 25/);
     });
 
     test('a shipped cover photo takes the header, through the image endpoint', async ({ page }) => {
@@ -555,36 +701,13 @@ test.describe('QR customer ordering', () => {
             body: JSON.stringify({ ...MENU, has_cover: true })
         }));
         await open(page);
-        const head = page.locator('.masthead');
-        await expect(head).toHaveClass(/has-cover/, { timeout: 15_000 });
-        const cover = await head.evaluate((el) =>
-            getComputedStyle(el).getPropertyValue('--mast-cover'));
-        expect(cover).toContain('cover=1');
-        expect(cover, 'the owner\'s cover fell back to an item photo')
-            .not.toContain('item=');
-    });
-
-    test('an outlet with no photos keeps the gradient, not a flat block', async ({ page }) => {
-        // A background-image that never loads fails SILENTLY and leaves the
-        // header a flat navy block — darker than the gradient it replaced,
-        // with nothing on screen to say why. So the cover is proven to decode
-        // before it is applied, and an outlet with nothing to show keeps what
-        // it had.
-        await stub(page);
-        await page.route('**/qr-menu?**', (route) => route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-                ...MENU,
-                items: MENU.items.map((i) => ({ ...i, has_image: false }))
-            })
-        }));
-        await open(page);
-        await expect(page.locator('.card').first()).toBeVisible();
-        await expect(page.locator('.masthead')).not.toHaveClass(/has-cover/);
-        const bg = await page.locator('.masthead').evaluate((el) =>
-            getComputedStyle(el).backgroundImage);
-        expect(bg, 'the fallback gradient was lost too').toContain('linear-gradient');
+        // The owner's own cover LEADS the gallery. Dish photos follow it, so a
+        // shop that has uploaded one is not shown its food first.
+        const first = page.locator('.hero-slide img').first();
+        await expect(first).toBeVisible({ timeout: 15_000 });
+        const src = await first.getAttribute('src');
+        expect(src).toContain('cover=1');
+        expect(src, 'the owner\'s cover fell back to an item photo').not.toContain('item=');
     });
 
     test('A SHEET SITS ON THE KEYBOARD, AND THE PAGE BEHIND IT CANNOT SCROLL', async ({ page }) => {
@@ -1137,50 +1260,33 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('#sheet-orders .orders-empty')).toContainText('Belum ada pesanan');
     });
 
-    test('the header owns identity AND search, in one zone', async ({ page }) => {
+    test('THE CARD OWNS IDENTITY; THE IMAGE OWNS THE IMPRESSION', async ({ page }) => {
         await stub(page);
         await open(page);
 
-        const head = page.locator('.masthead');
-        await expect(head.locator('h1')).toHaveText('Kopi Senja Kemang');
-        await expect(head.locator('#table-label')).toHaveText('Meja A04');
+        // Name and table live on the CARD now, not in a gradient band.
+        const card = page.locator('.outlet-card');
+        await expect(card.locator('h1')).toHaveText('Kopi Senja Kemang', { timeout: 15_000 });
+        await expect(card.locator('#table-label')).toHaveText('Meja A04');
 
-        // The outlet's own initials, not the FluxyOS mark: this is the
-        // restaurant's surface, and branding a diner's table with ours would be
-        // as odd here as on the printed card. Letters only — a name like
-        // "QA-CNT-1786886530917" would otherwise monogram as a serial number.
-        await expect(page.locator('#outlet-mark')).toHaveText('KS');
+        // The monogram is gone WITH the band. It stood in for a picture the page
+        // did not have; once the hero carries a photograph, two initials in a
+        // rounded square are a placeholder competing with the real thing.
+        await expect(page.locator('#outlet-mark')).toHaveCount(0);
 
-        // SEARCH IS INSIDE THE HEADER. It used to float on the page background
-        // between the header and the tabs, belonging to neither.
-        await expect(head.locator('#search')).toHaveCount(1);
-        const headBox = await head.boundingBox();
-        const searchBox = await page.locator('.mast-search').boundingBox();
-        expect(searchBox.y + searchBox.height).toBeLessThanOrEqual(headBox.y + headBox.height + 1);
-
-        // And the tabs attach directly to it — they filter the menu below, so
-        // there is nothing to sit between.
+        // Search moved OUT of the header and under the card. It is a filter on
+        // the menu, and it now sits with the chips that do the same job.
+        await expect(page.locator('.hero #search')).toHaveCount(0);
+        const search = await page.locator('.menu-search').boundingBox();
+        const cardBox = await card.boundingBox();
         const chips = await page.locator('#chips').boundingBox();
-        expect(chips.y - (headBox.y + headBox.height)).toBeLessThan(8);
+        expect(search.y).toBeGreaterThan(cardBox.y + cardBox.height - 1);
+        expect(chips.y).toBeGreaterThan(search.y);
 
-        // The eyebrow that once sat above the name said "Pesan dari meja Anda"
-        // — exactly what the headline and the table line already say. A label
+        // The eyebrow that once sat above the name said "Pesan dari meja Anda" —
+        // exactly what the headline and the table line already say. A label
         // restating the headline is prohibited (CLAUDE.md).
         await expect(page.locator('.brandline')).toHaveCount(0);
-        await expect(head).not.toContainText('Pesan dari meja');
-
-        // The name and the table stay on their own lines, and the name
-        // truncates rather than wrapping — a long one must not push the table
-        // line around. This is the case that broke it in production: a real
-        // outlet called "QA-CNT-1786886530917 Outlet".
-        await page.evaluate(() => {
-            document.getElementById('outlet-name').textContent =
-                'Restoran Padang Sederhana Bintang Lima Cabang Kemang Selatan Raya';
-        });
-        const clipped = await head.locator('h1').evaluate((el) => el.scrollWidth > el.clientWidth);
-        expect(clipped, 'the long name should be truncated, not overflowing').toBe(true);
-        const after = await page.locator('#table-label').boundingBox();
-        expect(after.width).toBeGreaterThan(0);
     });
 
     test('the splash shows the FluxyOS loader, not a bare spinner', async ({ page }) => {

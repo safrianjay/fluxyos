@@ -227,112 +227,203 @@ img { max-width: 100%; display: block; }
 }
 
 /* ==========================================================================
-   Header — who you are ordering from, and from which table
-   ==========================================================================
-   One zone rather than three. It was a thin gradient band, then search floating
-   on the page background, then the tab strip — the search belonging to neither
-   surface above nor below it. Now the header owns identity AND search, and the
-   tabs sit directly under it where they attach to the menu they filter. */
-.masthead {
-    /* THE FALLBACK, not the intended look. A photo is what belongs here — see
-       `.masthead.has-cover` below — and this gradient is what a restaurant
-       gets until one is set. The orange lives ONLY inside the gradient; an
-       orange background is prohibited project-wide, and gradients are the
-       documented exception. */
+   HERO — the gallery, and the card that floats over it
+   --------------------------------------------------------------------------
+   Two independent blocks, deliberately: `.hero` knows about photos and nothing
+   else, `.outlet-card` knows about the outlet and nothing about images. The
+   card OVERLAPS the image rather than sitting below a hard cut, which is what
+   stops the header reading as a stock banner with a panel bolted under it.
+
+   The old `.masthead` — a navy/purple gradient band holding the monogram, the
+   name and the search — is gone. It was a good header for a page with no
+   photograph; once an outlet has one, a gradient standing in for it is a
+   placeholder that never resolves.
+   ========================================================================== */
+.hero {
+    position: relative;
+    /* Full bleed. `#app` is capped at 640px and centred, so on a wide screen
+       this fills that column edge to edge, which is the phone case anyway. */
+    width: 100%;
+    aspect-ratio: 16 / 11;
+    max-height: 46vh;
+    background: var(--ink);
+    overflow: hidden;
+}
+
+/* The gallery is a scroll-snap rail, not a JS carousel. Native momentum, native
+   rubber-band, no library, and it degrades to a plain image when there is one
+   photo — which is every outlet today. */
+.hero-rail {
+    display: flex;
+    height: 100%;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+.hero-rail::-webkit-scrollbar { display: none; }
+.hero-slide { flex: 0 0 100%; height: 100%; scroll-snap-align: center; position: relative; }
+.hero-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* No photo at all: the page's own gradient, kept as the FALLBACK it always
+   should have been rather than the default treatment. */
+.hero-slide.is-empty {
     background:
         radial-gradient(120% 130% at 88% -10%, rgba(234, 88, 12, 0.30) 0%, transparent 58%),
         radial-gradient(90% 120% at 0% 100%, rgba(124, 58, 237, 0.28) 0%, transparent 60%),
         linear-gradient(135deg, #0B0F19 0%, #171334 55%, #2A1B4A 100%);
-    background-color: #0B0F19;
-    color: #fff;
-    padding: 16px 20px 18px;
-    border-radius: 0 0 24px 24px;
-    position: relative;
 }
 
-/* ---- Cover photo --------------------------------------------------------
-   The header is the restaurant's, so it should look like the restaurant.
-   `paintHeader()` sets `--mast-cover` and adds this class; without a photo the
-   class is absent and the gradient above stands unchanged.
-
-   ⚠️ THE SCRIM IS NOT DECORATION. Every pixel of text and chrome in this
-   header is white — the outlet name, the table pill, the search placeholder —
-   and a bright photo (a lit dish, a white plate) would erase all of it. The
-   scrim is what keeps the header legible whatever the owner uploads, so it
-   may be tuned but never removed.
-
-   ⚠️ PLACEHOLDER SOURCE. Until the owner can set one in POS settings, this
-   uses the first menu item that has a photo — real, already served by
-   `qr-menu-image`, and already being fetched for the grid behind. Nothing is
-   invented and no new asset ships. */
-.masthead.has-cover {
+/* ⚠️ THE SCRIM IS LOAD-BEARING, not decoration. The back button, the counter
+   and the card's top edge all sit on a photograph nobody has seen — a bright
+   plate or a white tablecloth makes every one of them invisible. It is
+   `pointer-events: none` so it never eats a swipe. */
+.hero-scrim {
+    position: absolute; inset: 0;
+    pointer-events: none;
     background:
-        linear-gradient(180deg, rgba(11, 15, 25, 0.58) 0%, rgba(11, 15, 25, 0.80) 100%),
-        var(--mast-cover) center / cover no-repeat,
-        linear-gradient(135deg, #0B0F19 0%, #171334 55%, #2A1B4A 100%);
-    background-color: #0B0F19;
+        linear-gradient(180deg, rgba(11,15,25,0.42) 0%, rgba(11,15,25,0) 26%),
+        linear-gradient(180deg, rgba(11,15,25,0) 52%, rgba(11,15,25,0.55) 86%, rgba(11,15,25,0.72) 100%);
 }
 
-.mast-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-/* The outlet's initials. A picture would be better and there is no field for
-   one, so this is the honest substitute — and it makes two restaurants on the
-   same phone instantly distinguishable. */
-.mast-mark {
-    flex: 0 0 auto;
-    width: 42px; height: 42px;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.14);
-    border: 1px solid rgba(255, 255, 255, 0.20);
+.hero-back {
+    position: absolute;
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    left: 14px;
+    width: 38px; height: 38px;
+    border: none; border-radius: 50%;
+    background: rgba(11, 15, 25, 0.42);
+    -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+    color: #fff;
     display: flex; align-items: center; justify-content: center;
-    font-size: 15px; font-weight: 700; letter-spacing: 0.02em;
-    text-transform: uppercase;
 }
+.hero-back svg { width: 20px; height: 20px; }
+.hero-back:active { background: rgba(11, 15, 25, 0.58); }
 
-.mast-id { min-width: 0; flex: 1 1 auto; }
-.mast-id h1 {
+/* Count pill bottom-RIGHT, clear of the card that overlaps the bottom-left. */
+.hero-count {
+    position: absolute;
+    right: 14px;
+    bottom: 76px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(11, 15, 25, 0.52);
+    -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+    color: #fff;
+    font-size: 11.5px; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+/* Dots say "there is more", which a count alone does not — a "1/8" reads as a
+   label until you have already discovered the swipe. Hidden at one photo,
+   because an indicator for a gallery that cannot move is noise. */
+.hero-dots {
+    position: absolute;
+    left: 0; right: 0; bottom: 82px;
+    display: flex; justify-content: center; gap: 5px;
+    pointer-events: none;
+}
+.hero-dot {
+    width: 5px; height: 5px; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.45);
+    transition: width 0.18s ease, background 0.18s ease;
+}
+.hero-dot.is-on { width: 16px; background: #fff; }
+
+/* ---- The outlet card ---------------------------------------------------
+   COMPACT BY CONSTRUCTION: two rows. The name, then one row carrying the
+   table, the open status and both actions. A third row is the thing to resist
+   — everything else about this outlet is one tap away and none of it is what a
+   diner needs before they start ordering. */
+.outlet-card {
+    position: relative;
+    z-index: 2;
+    /* The overlap. Negative margin rather than absolute positioning, so the
+       card still occupies flow and the chips below it never collide. */
+    margin: -58px 12px 0;
+    background: var(--surface);
+    border-radius: 18px;
+    padding: 14px 16px 12px;
+    box-shadow: 0 8px 28px -12px rgba(11, 15, 25, 0.28), 0 1px 2px rgba(11, 15, 25, 0.05);
+}
+.outlet-name {
     font-size: 19px;
     font-weight: 700;
     letter-spacing: -0.025em;
+    line-height: 1.25;
     margin: 0;
-    /* Truncates rather than wrapping: the table line below must stay put, and a
-       diner sitting IN the business does not need its full legal name read
-       back to them. */
-    white-space: nowrap;
+    /* Two lines, then ellipsis. "District 6: Pub Brewery and Kitchen" is a real
+       length, and a name that wraps to four lines turns a compact card tall. */
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
 }
-.mast-meta {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin: 3px 0 0;
-    font-size: 12.5px;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.72);
+.outlet-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 8px;
 }
-.mast-meta .dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.22);
+.outlet-meta { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; }
+.outlet-table {
+    flex: 0 0 auto;
+    font-size: 12.5px; font-weight: 600; color: var(--ink-70);
 }
+.outlet-sep { flex: 0 0 auto; width: 3px; height: 3px; border-radius: 999px; background: var(--ink-30); }
+/* The status is a BUTTON: it opens the week. A green dot plus a time is a
+   claim, and a diner arriving at 22:50 deserves to check it. */
+.outlet-status {
+    flex: 0 1 auto; min-width: 0;
+    display: inline-flex; align-items: center; gap: 5px;
+    background: none; border: none; padding: 0;
+    font-size: 12.5px; font-weight: 600;
+    color: var(--ink-70);
+}
+.outlet-status .dot {
+    flex: 0 0 auto;
+    width: 7px; height: 7px; border-radius: 999px; background: var(--ok);
+}
+.outlet-status.is-shut .dot { background: var(--danger); }
+.outlet-status-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.outlet-status svg { flex: 0 0 auto; width: 14px; height: 14px; color: var(--ink-30); transition: transform 0.16s ease; }
+.outlet-status[aria-expanded="true"] svg { transform: rotate(180deg); }
 
-.mast-search {
+.outlet-acts { flex: 0 0 auto; display: flex; gap: 8px; }
+.outlet-act {
+    width: 36px; height: 36px;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--ink);
+    display: flex; align-items: center; justify-content: center;
+}
+.outlet-act svg { width: 17px; height: 17px; }
+.outlet-act:active { background: var(--line-soft); }
+
+/* The week, revealed by the status. Inside the card so it pushes nothing
+   around — a panel that opened elsewhere would move the menu under a thumb. */
+.outlet-hours { margin-top: 10px; border-top: 1px solid var(--line-soft); padding-top: 8px; }
+.outlet-hours-row {
+    display: flex; justify-content: space-between; gap: 12px;
+    font-size: 12.5px; padding: 3px 0; color: var(--ink-50);
+}
+.outlet-hours-row.is-today { color: var(--ink); font-weight: 600; }
+
+/* Search now sits on the page canvas rather than inside a dark header, so it
+   needs a border to have an edge at all — the heavy drop shadow it used to
+   carry was doing that job against the gradient and reads as a floating slab
+   on white. */
+.menu-search {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-top: 16px;
+    margin: 14px 16px 2px;
     padding: 0 14px;
-    height: 46px;
+    height: 44px;
     border-radius: 14px;
     background: var(--surface);
-    box-shadow: 0 6px 18px -8px rgba(11, 15, 25, 0.45);
+    border: 1px solid var(--line);
+    box-shadow: 0 1px 2px rgba(11, 15, 25, 0.04);
 }
-.mast-search svg { width: 18px; height: 18px; color: var(--ink-30); flex: 0 0 auto; }
+.menu-search:focus-within { border-color: var(--ink-30); }
+.menu-search svg { width: 18px; height: 18px; color: var(--ink-30); flex: 0 0 auto; }
 .search {
     flex: 1 1 auto;
     min-width: 0;
@@ -1816,29 +1907,57 @@ html.kb-open .welcome-art { display: none; }
 
     <!-- The menu --------------------------------------------------------- -->
     <section id="view-menu" class="hidden">
-        <header class="masthead">
-            <div class="mast-row">
-                <!-- The RESTAURANT's monogram, not the FluxyOS mark. This is
-                     their surface; branding a diner's table with ours would be
-                     as odd here as it would be on the printed card. -->
-                <div class="mast-mark" id="outlet-mark" aria-hidden="true"></div>
-                <div class="mast-id">
-                    <h1 id="outlet-name">—</h1>
-                    <p class="mast-meta">
-                        <span class="dot"></span><span id="table-label">—</span>
-                    </p>
+        <!-- ── HERO ───────────────────────────────────────────────────────
+             Two independent blocks. `.hero` knows about photos; `.outlet-card`
+             knows about the outlet and nothing about images. The card overlaps
+             the image bottom rather than sitting under a hard cut. -->
+        <header class="hero" id="hero">
+            <div class="hero-rail" id="hero-rail"></div>
+            <div class="hero-scrim"></div>
+            <button class="hero-back" id="hero-back" type="button" aria-label="Kembali">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <div class="hero-dots" id="hero-dots" aria-hidden="true"></div>
+            <div class="hero-count num" id="hero-count" hidden></div>
+        </header>
+
+        <section class="outlet-card">
+            <h1 class="outlet-name" id="outlet-name">—</h1>
+            <div class="outlet-row">
+                <div class="outlet-meta">
+                    <span class="outlet-table" id="table-label">—</span>
+                    <span class="outlet-sep" id="outlet-sep" aria-hidden="true"></span>
+                    <!-- A BUTTON, because a green dot and a closing time is a
+                         claim, and a diner arriving at 22:50 deserves to check
+                         it. Hidden entirely when no hours are set — a status
+                         nobody entered would be invented. -->
+                    <button class="outlet-status" id="outlet-status" type="button"
+                            aria-expanded="false" aria-controls="outlet-hours" hidden>
+                        <span class="dot" aria-hidden="true"></span>
+                        <span class="outlet-status-text" id="outlet-status-text"></span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+                </div>
+                <div class="outlet-acts">
+                    <!-- Each is absent unless the outlet set the field it needs.
+                         A Call button with no number is an affordance that lies
+                         (DESIGN_SYSTEM 3c). -->
+                    <a class="outlet-act" id="act-directions" hidden target="_blank" rel="noopener" aria-label="Petunjuk arah">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.4-7-9.7A7 7 0 0 1 19 11.3C19 16.6 12 21 12 21z"/><circle cx="12" cy="11" r="2.4"/></svg>
+                    </a>
+                    <a class="outlet-act" id="act-call" hidden aria-label="Telepon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
+                    </a>
                 </div>
             </div>
-            <!-- Search lives INSIDE the header, sitting on its bottom edge. It
-                 was floating on the page background below, which left the
-                 header a thin band with nothing to do and the search belonging
-                 to neither zone. -->
-            <div class="mast-search">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-                <input id="search" class="search" type="search" inputmode="search"
-                       autocomplete="off" placeholder="Cari menu…" aria-label="Cari menu">
-            </div>
-        </header>
+            <div class="outlet-hours" id="outlet-hours" hidden></div>
+        </section>
+
+        <div class="menu-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <input id="search" class="search" type="search" inputmode="search"
+                   autocomplete="off" placeholder="Cari menu…" aria-label="Cari menu">
+        </div>
 
         <div class="rail">
             <div id="chips" class="chips" role="group" aria-label="Kategori"></div>
@@ -2646,70 +2765,245 @@ html.kb-open .welcome-art { display: none; }
         var name = menu.outlet || 'Menu';
         $('outlet-name').textContent = name;
         $('table-label').textContent = menu.table ? ('Meja ' + menu.table) : 'Meja';
-        $('outlet-mark').textContent = monogram(name);
         document.title = name + ' — FluxyOS';
-        paintHeaderCover();
+        paintHeroGallery();
+        paintOutletCard();
     }
 
+    // =====================================================================
+    // HERO GALLERY
+    //
+    // A scroll-snap rail, not a JS carousel: native momentum and rubber-band,
+    // no library on a page that must paint on a phone in one round trip.
+    //
+    // ⚠️ EVERY IMAGE IS PROVEN TO DECODE BEFORE IT IS SHOWN. A slide that 404s
+    // leaves a flat navy panel — darker than the gradient it replaced, with
+    // nothing to say why. That is how the cover failed silently for an hour on
+    // 2026-09-05, and the fallback below exists for the same reason.
+    // =====================================================================
+    function heroSources() {
+        var t = encodeURIComponent(TOKEN);
+        var out = [];
+        // The owner's own cover comes first when there is one.
+        if (menu.has_cover) out.push(FN + 'qr-menu-image?token=' + t + '&cover=1');
+        // Then the outlet's photographed dishes, so a shop that has uploaded no
+        // cover still gets a hero that looks like THIS restaurant rather than a
+        // gradient. Capped — a hero is an impression, not a catalogue.
+        (menu.items || []).forEach(function (i) {
+            if (out.length >= 8 || !i || !i.has_image) return;
+            out.push(FN + 'qr-menu-image?token=' + t + '&item=' + encodeURIComponent(i.id));
+        });
+        return out;
+    }
+
+    function paintHeroGallery() {
+        var rail = $('hero-rail');
+        var dots = $('hero-dots');
+        var count = $('hero-count');
+        var srcs = heroSources();
+
+        // No photograph anywhere: the page's own gradient, which is now the
+        // FALLBACK rather than the default treatment.
+        if (!srcs.length) {
+            rail.innerHTML = '<div class="hero-slide is-empty"></div>';
+            dots.innerHTML = '';
+            count.hidden = true;
+            return;
+        }
+
+        rail.innerHTML = srcs.map(function (src, n) {
+            return '<div class="hero-slide"><img alt="" decoding="async"'
+                + (n === 0 ? '' : ' loading="lazy"')
+                + ' src="' + esc(src) + '"></div>';
+        }).join('');
+
+        // A slide whose image will not decode is REMOVED, along with its dot —
+        // a blank panel in a gallery is worse than a shorter gallery.
+        Array.prototype.forEach.call(rail.querySelectorAll('img'), function (img) {
+            img.addEventListener('error', function () {
+                var slide = img.parentNode;
+                if (slide && slide.parentNode) slide.parentNode.removeChild(slide);
+                syncHeroIndicators();
+            });
+        });
+
+        syncHeroIndicators();
+        rail.addEventListener('scroll', onHeroScroll, { passive: true });
+    }
+
+    function heroSlideCount() { return $('hero-rail').querySelectorAll('.hero-slide').length; }
+
+    function heroIndex() {
+        var rail = $('hero-rail');
+        var w = rail.clientWidth || 1;
+        return Math.max(0, Math.min(heroSlideCount() - 1, Math.round(rail.scrollLeft / w)));
+    }
+
+    function syncHeroIndicators() {
+        var n = heroSlideCount();
+        var dots = $('hero-dots');
+        var count = $('hero-count');
+        // ONE photo is not a gallery. Dots and a counter for something that
+        // cannot move are noise that says "swipe me" and then does not.
+        if (n < 2) {
+            dots.innerHTML = '';
+            count.hidden = true;
+            return;
+        }
+        var at = heroIndex();
+        dots.innerHTML = new Array(n).join(',').split(',').map(function (_, i) {
+            return '<span class="hero-dot' + (i === at ? ' is-on' : '') + '"></span>';
+        }).join('');
+        count.hidden = false;
+        count.textContent = (at + 1) + ' / ' + n;
+    }
+
+    var heroTick = null;
+    function onHeroScroll() {
+        // Coalesced to a frame: a snap scroll fires this dozens of times and
+        // rewriting the dots on each one drops frames on the phones this page
+        // exists for.
+        if (heroTick) return;
+        heroTick = requestAnimationFrame(function () {
+            heroTick = null;
+            syncHeroIndicators();
+        });
+    }
+
+    // =====================================================================
+    // OUTLET CARD
+    //
+    // Compact by construction: the name, then ONE row carrying the table, the
+    // open status and both actions. Everything on it is either data the owner
+    // entered or omitted entirely — nothing here is inferred.
+    // =====================================================================
+    var DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    var DAY_LABELS = {
+        mon: 'Senin', tue: 'Selasa', wed: 'Rabu', thu: 'Kamis',
+        fri: 'Jumat', sat: 'Sabtu', sun: 'Minggu'
+    };
+
     /**
-     * The header's cover photo.
+     * Is the outlet open, and until when.
      *
-     * ⚠️ THE SEAM IS `menu.has_cover` — a BOOLEAN, never a URL. The photo is
-     * fetched from `qr-menu-image?cover=1`, exactly as item photos are, so a
-     * diner's phone has ONE way to reach Storage and it is the one carrying the
-     * rate limiter, the revoked-token check and the path guard. Do not reach for
-     * the workspace doc from this page either: the customer surface holds no
-     * Firestore handle by design.
+     * ⚠️ READ AGAINST THE DEVICE CLOCK, deliberately. The hours are wall-clock
+     * strings for the outlet, and the diner scanned a QR code AT the table — so
+     * their phone's local time IS the outlet's. Resolving a timezone server-side
+     * would be more machinery for the same answer in every real case. The one
+     * case it gets wrong is a saved link opened from another country, where the
+     * status may read closed when it is open; the hours list is right there
+     * underneath, which is why the status opens it.
      *
-     * Until then the PLACEHOLDER is the outlet's first photographed item,
-     * served by the same `qr-menu-image` endpoint the grid already uses — so
-     * the header looks like this restaurant rather than like a stock photo,
-     * and no new asset ships. No photographed item at all leaves the gradient.
+     * A window whose close is EARLIER than its open crosses midnight — a bar
+     * closing at 02.00 is not a typo, and treating it as one would tell every
+     * late diner the place was shut.
      */
-    function paintHeaderCover() {
-        var head = document.querySelector('.masthead');
-        if (!head) return;
-        // ⚠️ THE ENDPOINT, NOT A URL FROM THE PAYLOAD. `qr-menu` says only WHETHER
-        // a cover exists; the bytes come from `qr-menu-image?cover=1`, the same
-        // path every menu photo takes — so the rate limiter, the revoked-token
-        // check and the workspace path guard all apply to it too.
-        var url = menu.has_cover
-            ? (FN + 'qr-menu-image?token=' + encodeURIComponent(TOKEN) + '&cover=1')
-            : null;
-        if (!url) {
-            var shot = (menu.items || []).filter(function (i) { return i && i.has_image; })[0];
-            if (shot) {
-                url = FN + 'qr-menu-image?token=' + encodeURIComponent(TOKEN)
-                    + '&item=' + encodeURIComponent(shot.id);
+    function openState(hours) {
+        var rows = Array.isArray(hours) ? hours : [];
+        if (!rows.length) return null;
+        var byDay = {};
+        rows.forEach(function (r) { if (r && r.day) byDay[r.day] = r; });
+
+        var now = new Date();
+        var mins = now.getHours() * 60 + now.getMinutes();
+        var toMin = function (v) {
+            var m = /^(\d{2}):(\d{2})$/.exec(String(v || ''));
+            return m ? (Number(m[1]) * 60 + Number(m[2])) : null;
+        };
+        var dayAt = function (offset) {
+            return byDay[DAY_KEYS[(now.getDay() + offset + 7) % 7]] || null;
+        };
+
+        // Yesterday's window may still be running: 18.00–02.00 on Friday is open
+        // at 00.30 on Saturday.
+        var prev = dayAt(-1);
+        if (prev && prev.closed !== true) {
+            var po = toMin(prev.open); var pc = toMin(prev.close);
+            if (po !== null && pc !== null && pc < po && mins < pc) {
+                return { open: true, until: prev.close };
             }
         }
-        if (!url) return;
-        // Proven to DECODE before it is shown. A background-image that 404s
-        // fails silently and leaves the header a flat navy block — darker than
-        // the gradient it replaced, with nothing to say why.
-        var probe = new Image();
-        probe.addEventListener('load', function () {
-            head.style.setProperty('--mast-cover', 'url("' + url.replace(/"/g, '%22') + '")');
-            head.classList.add('has-cover');
-        });
-        probe.src = url;
+        var today = dayAt(0);
+        if (!today || today.closed === true) return { open: false, until: null };
+        var o = toMin(today.open); var c = toMin(today.close);
+        if (o === null || c === null) return { open: false, until: null };
+        var crosses = c < o;
+        var isOpen = crosses ? (mins >= o) : (mins >= o && mins < c);
+        return isOpen ? { open: true, until: today.close } : { open: false, until: null };
     }
 
-    /**
-     * Up to two initials from the outlet name.
-     *
-     * Words only — a name like "QA-CNT-1786886530917 Outlet" would otherwise
-     * produce "Q1", and digits in a monogram read as a serial number rather
-     * than a restaurant.
-     */
-    function monogram(name) {
-        var words = String(name || '').split(/[\s\-_]+/)
-            .map(function (w) { return w.replace(/[^A-Za-z\u00C0-\u024F]/g, ''); })
-            .filter(Boolean);
-        if (!words.length) return '•';
-        if (words.length === 1) return words[0].slice(0, 2);
-        return (words[0][0] + words[1][0]);
+    // 24h wall clock, the way Indonesian opening hours are written and spoken.
+    function hhmm(v) { return String(v || '').replace(':', '.'); }
+
+    function paintOutletCard() {
+        var info = (menu && menu.outlet_info) || {};
+        var status = $('outlet-status');
+        var sep = $('outlet-sep');
+        var state = openState(info.hours);
+
+        if (!state) {
+            // No hours set. Saying nothing is the honest answer — a green dot
+            // nobody entered would be a claim the product invented.
+            status.hidden = true;
+            sep.hidden = true;
+        } else {
+            status.hidden = false;
+            sep.hidden = false;
+            status.classList.toggle('is-shut', !state.open);
+            $('outlet-status-text').textContent = state.open
+                ? (state.until ? 'Buka sampai ' + hhmm(state.until) : 'Buka')
+                : 'Tutup';
+            paintOutletHours(info.hours);
+        }
+
+        var dir = $('act-directions');
+        if (info.address) {
+            dir.hidden = false;
+            dir.href = 'https://www.google.com/maps/search/?api=1&query='
+                + encodeURIComponent(info.address);
+        } else { dir.hidden = true; }
+
+        var call = $('act-call');
+        if (info.phone) {
+            call.hidden = false;
+            call.href = 'tel:' + String(info.phone).replace(/[^\d+]/g, '');
+        } else { call.hidden = true; }
     }
+
+    function paintOutletHours(hours) {
+        var host = $('outlet-hours');
+        var byDay = {};
+        (Array.isArray(hours) ? hours : []).forEach(function (r) {
+            if (r && r.day) byDay[r.day] = r;
+        });
+        var todayKey = DAY_KEYS[new Date().getDay()];
+        host.innerHTML = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map(function (d) {
+            var r = byDay[d];
+            var text = (!r || r.closed === true || !r.open || !r.close)
+                ? 'Tutup'
+                : hhmm(r.open) + ' – ' + hhmm(r.close);
+            return '<div class="outlet-hours-row' + (d === todayKey ? ' is-today' : '') + '">'
+                + '<span>' + esc(DAY_LABELS[d]) + '</span><span>' + esc(text) + '</span></div>';
+        }).join('');
+    }
+
+    $('outlet-status').addEventListener('click', function () {
+        var open = $('outlet-hours').hidden;
+        $('outlet-hours').hidden = !open;
+        $('outlet-status').setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+
+    // The collapse chevron. It closes the hours if they are open, and otherwise
+    // hands the gesture to the phone's own back — which on a QR page means the
+    // browser, since there is nowhere above the menu to go.
+    $('hero-back').addEventListener('click', function () {
+        if (!$('outlet-hours').hidden) {
+            $('outlet-hours').hidden = true;
+            $('outlet-status').setAttribute('aria-expanded', 'false');
+            return;
+        }
+        try { window.history.back(); } catch (_) { /* nothing above this page */ }
+    });
 
     // =====================================================================
     // Category rail. Categories are `items.pos_category` — a free string on the

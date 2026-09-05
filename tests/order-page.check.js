@@ -74,7 +74,7 @@ if (orphans.length) {
 // --- 2. The sections themselves are all present ----------------------------
 // Named because a deletion takes a contiguous run, and the run is a section.
 const SECTIONS = [
-    'Tokens', 'App frame', 'The FluxyOS loading animation', 'Header',
+    'Tokens', 'App frame', 'The FluxyOS loading animation', 'HERO',
     'Category tabs', 'Menu — a two-column grid', 'Order detail page',
     'Cart bar', 'Floating tab bar', 'Bottom sheets', 'Modifier groups',
     'Cart lines', 'Order status', 'Confirmation'

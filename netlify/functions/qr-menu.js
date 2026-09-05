@@ -178,6 +178,11 @@ exports.handler = async (event) => {
         // be read would be the wrong trade at a table.
         let outletPricing = pricing.normalizeSettings(null);
         let hasCover = false;
+        // What the hero card states about the place itself. Every field is
+        // optional and the card drops the control it belongs to when it is
+        // missing — a Call button on an outlet with no number is an affordance
+        // that lies (DESIGN_SYSTEM 3c).
+        let outletInfo = { address: null, phone: null, hours: [] };
         try {
             // Settings are keyed BY the outlet, and a table without one has no
             // rates to apply — the same table that cannot attribute its revenue.
@@ -188,6 +193,16 @@ exports.handler = async (event) => {
                 const data = cfg.data() || {};
                 outletPricing = pricing.normalizeSettings(data);
                 hasCover = typeof data.cover_image_path === 'string' && !!data.cover_image_path;
+                outletInfo = {
+                    address: typeof data.address === 'string' ? data.address.slice(0, 200) : null,
+                    phone: typeof data.phone === 'string' ? data.phone.slice(0, 32) : null,
+                    // Wall-clock strings, exactly as the owner typed them. NOT
+                    // resolved to "open now" here: the diner is sitting in the
+                    // restaurant, so their own device clock IS the outlet's local
+                    // time, and computing it server-side would mean carrying a
+                    // timezone this endpoint has no better source for.
+                    hours: Array.isArray(data.hours) ? data.hours.slice(0, 7) : []
+                };
             }
         } catch (e) {
             console.warn('[qr-menu] outlet settings unreadable; menu prices at zero rates', e && e.message);
@@ -227,6 +242,8 @@ exports.handler = async (event) => {
                 // `qr-menu-image` applies to every menu photo. The page asks
                 // that endpoint for `?cover=1` instead.
                 has_cover: hasCover,
+                // Address, phone and opening hours — the hero card's own data.
+                outlet_info: outletInfo,
                 items
             })
         };
