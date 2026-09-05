@@ -296,21 +296,6 @@ img { max-width: 100%; display: block; }
         linear-gradient(180deg, rgba(11,15,25,0) 52%, rgba(11,15,25,0.55) 86%, rgba(11,15,25,0.72) 100%);
 }
 
-.hero-back {
-    position: absolute;
-    top: calc(10px + env(safe-area-inset-top, 0px));
-    left: 14px;
-    width: 38px; height: 38px;
-    border: none; border-radius: 50%;
-    background: rgba(11, 15, 25, 0.42);
-    -webkit-backdrop-filter: blur(10px);
-            backdrop-filter: blur(10px);
-    color: #fff;
-    display: flex; align-items: center; justify-content: center;
-}
-.hero-back svg { width: 20px; height: 20px; }
-.hero-back:active { background: rgba(11, 15, 25, 0.58); }
-
 /* Count pill bottom-RIGHT, clear of the card that overlaps the bottom-left. */
 .hero-count {
     position: absolute;
@@ -425,7 +410,7 @@ img { max-width: 100%; display: block; }
     display: flex;
     align-items: center;
     gap: 10px;
-    margin: 14px 16px 2px;
+    margin: 14px 20px 8px;   /* 8px to the tab strip below, and the grid's own 20px inset */
     padding: 0 14px;
     height: 44px;
     border-radius: 14px;
@@ -474,7 +459,7 @@ img { max-width: 100%; display: block; }
     gap: 0;
     overflow-x: auto;
     padding: 8px 14px 0;
-    margin-top: 2px;
+    margin-top: 0;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
     /* The trough the inactive tabs sit in. */
@@ -725,16 +710,38 @@ img { max-width: 100%; display: block; }
     color: var(--ink-50); text-shadow: none;
 }
 
-/* White pill, ACCENT text. Orange is this product's accent and an orange
-   background is banned project-wide, so the colour goes on the label. */
+/* A "+" rather than "Tambah", so the price gets the room. White pill, ACCENT
+   glyph: orange is this product's accent and an orange background is banned
+   project-wide, so the colour goes on the mark.
+   ⚠️ ITS LABEL NEVER CHANGES, and that is load-bearing — see `.card-qty`. */
 .add-btn {
     flex: 0 0 auto;
-    height: 30px; padding: 0 12px;
+    width: 30px; height: 30px; padding: 0;
     border: none; border-radius: 999px;
     background: #fff; color: var(--accent);
-    font-size: 12.5px; font-weight: 700; letter-spacing: -0.01em;
+    display: flex; align-items: center; justify-content: center;
 }
+.add-btn svg { width: 17px; height: 17px; }
 .add-btn:active { background: #F3F4F6; }
+
+/* How many are already in the cart. A BADGE rather than a word on the button,
+   because the button now has to stay identical for every render — the count is
+   the only cart-dependent thing on a card, and putting it here is what lets
+   `syncCartBadges()` update it without rebuilding the DOM. */
+.card-qty {
+    position: absolute;
+    top: 10px; left: 10px;
+    min-width: 22px; height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--ink);
+    color: #fff;
+    font-size: 12px; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 6px -2px rgba(11, 15, 25, 0.45);
+}
+.card-qty[hidden] { display: none !important; }
 .card.is-plain .add-btn, .reco-card.is-plain .add-btn {
     border: 1px solid var(--line); background: var(--surface);
 }
@@ -1783,17 +1790,19 @@ html.kb-open .welcome-art { display: none; }
 .sheet-done { text-align: center; }
 .done-body { padding: 4px 24px 20px; }
 
-.done-mark {
-    width: 66px; height: 66px;
-    margin: 6px auto 16px;
-    border-radius: 50%;
-    background: rgba(4, 120, 87, 0.10);
-    border: 1px solid rgba(4, 120, 87, 0.22);
-    color: var(--ok);
-    display: flex; align-items: center; justify-content: center;
+/* Jay's supplied artwork, replacing the drawn tick-in-a-circle. Kept at its
+   own proportions and capped, so a later re-export at a different size cannot
+   push the order number below the fold. The pop is the same one the tick had —
+   it marks the moment the order landed, which is the one thing on this sheet
+   worth animating. */
+.done-art {
+    display: block;
+    width: 100%;
+    max-width: 200px;
+    height: auto;
+    margin: 2px auto 12px;
     animation: donePop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
-.done-mark svg { width: 30px; height: 30px; }
 @keyframes donePop {
     0%   { transform: scale(0.5); opacity: 0; }
     100% { transform: scale(1);   opacity: 1; }
@@ -1858,7 +1867,7 @@ html.kb-open .welcome-art { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
     .confetti { display: none !important; }
-    .done-mark { animation: none; }
+    .done-art { animation: none; }
 }
 </style>
 </head>
@@ -1898,9 +1907,6 @@ html.kb-open .welcome-art { display: none; }
         <header class="hero" id="hero">
             <div class="hero-rail" id="hero-rail"></div>
             <div class="hero-scrim"></div>
-            <button class="hero-back" id="hero-back" type="button" aria-label="Kembali">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-            </button>
             <div class="hero-dots" id="hero-dots" aria-hidden="true"></div>
             <div class="hero-count num" id="hero-count" hidden></div>
         </header>
@@ -2088,9 +2094,11 @@ html.kb-open .welcome-art { display: none; }
 <div id="sheet-done" class="sheet sheet-done" role="dialog" aria-modal="true" aria-labelledby="done-title">
     <div class="sheet-grip"></div>
     <div class="sheet-body done-body">
-        <div class="done-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-        </div>
+        <!-- Jay's own artwork. ABSOLUTE path: under the printed route
+             `/t/<token>` a relative `assets/…` resolves to `/t/assets/…`, which
+             the catch-all rewrite serves as 200-with-HTML rather than 404 — it
+             would fail while LOOKING like it loaded. -->
+        <img class="done-art" src="/assets/images/order-success.png" alt="" decoding="async">
         <h2 class="done-title" id="done-title">Pesanan terkirim</h2>
         <p class="done-sub" id="done-sub">Dapur sudah menerima pesanan Anda.</p>
         <div class="done-ticket">
@@ -2977,18 +2985,6 @@ html.kb-open .welcome-art { display: none; }
         $('outlet-status').setAttribute('aria-expanded', open ? 'true' : 'false');
     });
 
-    // The collapse chevron. It closes the hours if they are open, and otherwise
-    // hands the gesture to the phone's own back — which on a QR page means the
-    // browser, since there is nowhere above the menu to go.
-    $('hero-back').addEventListener('click', function () {
-        if (!$('outlet-hours').hidden) {
-            $('outlet-hours').hidden = true;
-            $('outlet-status').setAttribute('aria-expanded', 'false');
-            return;
-        }
-        try { window.history.back(); } catch (_) { /* nothing above this page */ }
-    });
-
     // =====================================================================
     // Category rail. Categories are `items.pos_category` — a free string on the
     // item, the same taxonomy the till builds its chips from. There is no
@@ -3073,6 +3069,8 @@ html.kb-open .welcome-art { display: none; }
             + '<h2 class="recos-title" id="recos-title">Rekomendasi Kami</h2>'
             + '</div><div class="recos-rail">' + cards + '</div>';
         host.hidden = false;
+        // The rail's photos get the same one-retry treatment as the grid's.
+        wireCardImages(host);
     }
 
     /**
@@ -3095,25 +3093,105 @@ html.kb-open .welcome-art { display: none; }
                 + categoryTint(i.category) + '">' + PLACEHOLDER + '</div>';
         var qty = qtyInCart(i.id);
         var hasOptions = (i.modifier_groups || []).length > 0;
+        // ⚠️ NOTHING CART-DEPENDENT IN THE MARKUP EXCEPT THE BADGE, which
+        // `syncCartBadges()` then updates in place. The button used to read
+        // "2 • Tambah lagi", so every add rebuilt the whole grid to change one
+        // word — and rebuilding meant `innerHTML`, which destroys every <img>
+        // and re-requests every photo. That is why images "sometimes did not
+        // load": they were being torn down and refetched on every tap.
         return '<article class="' + (extra || 'card') + (i.has_image ? '' : ' is-plain')
             + '" data-item="' + esc(i.id) + '" data-open="' + esc(i.id) + '">'
             + media
             + '<div class="card-scrim"></div>'
+            + '<span class="card-qty" data-qty="' + esc(i.id) + '"'
+            + (qty > 0 ? '' : ' hidden') + '>' + esc(String(qty || '')) + '</span>'
             + '<div class="card-body">'
             + '<h3 class="card-name">' + esc(i.name) + '</h3>'
             + (hasOptions ? '<div class="card-opts">Bisa disesuaikan</div>' : '')
             + '<div class="card-foot">'
             + '<span class="card-price num">' + esc(money(i.price)) + '</span>'
-            + '<button class="add-btn" type="button" data-open="' + esc(i.id) + '">'
-            // "Tambah lagi" when it is already in the cart — "Tambah" beside a
-            // count reads as though the count were the thing being added.
-            + (qty > 0 ? esc(qty + ' • Tambah lagi') : 'Tambah') + '</button>'
+            + '<button class="add-btn" type="button" data-open="' + esc(i.id) + '"'
+            + ' aria-label="Tambah ' + esc(i.name) + '">'
+            + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"'
+            + ' stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>'
+            + '</button>'
             + '</div></div></article>';
     }
 
+    /**
+     * Update the in-cart counts WITHOUT touching the DOM around them.
+     *
+     * This is the whole reason the button says "+" and the count lives in a
+     * badge: the card is otherwise identical for every render, so a cart change
+     * costs a handful of text writes instead of a full rebuild.
+     */
+    /**
+     * ⚠️ ONE RETRY BEFORE GIVING UP. A single failed request used to hide the
+     * photo permanently — `.failed { display: none }` — so one blip on
+     * restaurant wifi cost that dish its picture for the life of the page, with
+     * nothing to say why. The endpoint 302s to a signed URL, so a retry is a
+     * fresh redirect and a fresh URL rather than the same dead one.
+     *
+     * Two attempts, then the tint placeholder underneath, which is the state
+     * the card had before photos existed.
+     */
+    function wireCardImages(host) {
+        Array.prototype.forEach.call(host.querySelectorAll('.card-media img'), function (img) {
+            var tries = 0;
+            img.addEventListener('error', function () {
+                tries += 1;
+                if (tries > 1) { img.classList.add('failed'); return; }
+                var src = img.getAttribute('src');
+                // ⚠️ A DISTINCT URL, not the same one reassigned. Chromium
+                // refetches on `img.src = src`; WEBKIT treats setting the
+                // identical value as a no-op, so the retry never fired on the
+                // browser most of these diners are holding. The extra param is
+                // ignored by the endpoint — it reads only token/item/cover —
+                // and it also guarantees a fresh 302 rather than a cached one.
+                var retry = src + (src.indexOf('?') === -1 ? '?' : '&') + 'r=1';
+                // After a beat: an immediate retry usually lands in the same
+                // failing condition it just hit.
+                setTimeout(function () { img.src = retry; }, 500);
+            });
+        });
+    }
+
+    function syncCartBadges() {
+        Array.prototype.forEach.call(document.querySelectorAll('[data-qty]'), function (el) {
+            var n = qtyInCart(el.dataset.qty);
+            el.textContent = n > 0 ? String(n) : '';
+            el.hidden = n <= 0;
+        });
+    }
+
+    /**
+     * ⚠️ THE GRID IS ONLY REBUILT WHEN IT ACTUALLY CHANGED.
+     *
+     * `paintMenu()` is called from eight places, most of them cart edits, and
+     * it assigned `host.innerHTML` every time — which destroys every <img> and
+     * re-requests every photo. On a menu with photos that is a burst of
+     * requests on every single tap, and the images that lost the race stayed
+     * blank: the reported "sometimes the product images do not load".
+     *
+     * The signature is what the markup actually depends on — the filters and
+     * the visible item set. Everything else about a card is now static, so if
+     * the signature holds, syncing the badges is the entire update.
+     */
+    var menuSignature = null;
+
     function paintMenu() {
-        paintRecos();
         var items = visibleItems();
+        var signature = String(activeCategory) + '|' + String(searchTerm) + '|'
+            + items.map(function (i) { return i.id; }).join(',') + '|'
+            + (menu.items || []).filter(function (i) { return i && i.recommended; })
+                .map(function (i) { return i.id; }).join(',');
+        if (signature === menuSignature && $('menu').children.length) {
+            syncCartBadges();
+            return;
+        }
+        menuSignature = signature;
+
+        paintRecos();
         var host = $('menu');
         if (!items.length) {
             host.innerHTML = '<div class="empty">Tidak ada menu yang cocok.</div>';
@@ -3140,11 +3218,8 @@ html.kb-open .welcome-art { display: none; }
         if (gridOpen) html += '</div>';
         host.innerHTML = html;
 
-        // A photo that 404s (revoked token, deleted file) leaves the tile empty
-        // rather than showing a torn-image icon.
-        Array.prototype.forEach.call(host.querySelectorAll('.card-media img'), function (img) {
-            img.addEventListener('error', function () { img.classList.add('failed'); });
-        });
+        wireCardImages(host);
+        syncCartBadges();
     }
 
     $('menu').addEventListener('click', function (e) {

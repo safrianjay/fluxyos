@@ -327,6 +327,115 @@ test.describe('QR customer ordering', () => {
     const ART_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 160">'
         + '<rect width="300" height="160" fill="#CDE8DA"/></svg>';
 
+    test('ADDING TO THE CART DOES NOT REBUILD THE MENU, SO PHOTOS ARE NOT REFETCHED', async ({ page }) => {
+        // ⚠️ THE REPORTED BUG. `paintMenu()` is called from eight places, most of
+        // them cart edits, and it assigned `host.innerHTML` every time — which
+        // destroys every <img> and re-requests every photo. On a menu with
+        // pictures that is a burst of requests on every tap, and the ones that
+        // lost the race stayed blank: "sometimes the product images do not load".
+        await stub(page);
+        let imageRequests = 0;
+        await page.route('**/qr-menu-image**', (route) => {
+            imageRequests += 1;
+            return route.fulfill({
+                status: 200,
+                contentType: 'image/svg+xml',
+                body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 3"><rect width="4" height="3" fill="#ccc"/></svg>'
+            });
+        });
+        await open(page);
+        await expect(page.locator('.card').first()).toBeVisible();
+
+        // Identity of the actual DOM NODES, not a count — a rebuild replaces
+        // every one of them, and that is what re-requests the photos. Stamped
+        // on every grid image, so a rebuild cannot survive by luck.
+        const stampAll = () => page.evaluate(() =>
+            [...document.querySelectorAll('#menu .card-media img')].map((el) => {
+                el.dataset.probe = el.dataset.probe || String(Math.random());
+                return el.dataset.probe;
+            }));
+        const before = await stampAll();
+        expect(before.length, 'no photographed card to measure').toBeGreaterThan(0);
+        const requestsBefore = imageRequests;
+
+        await addPlain(page, 'Es Kopi Susu');
+
+        // The badge updated…
+        const badge = page.locator('[data-qty="i_latte"]');
+        await expect(badge).toBeVisible();
+        await expect(badge).toHaveText('1');
+        // …and every grid image is the SAME element it was.
+        expect(await stampAll(), 'the grid was rebuilt on a cart change').toEqual(before);
+
+        // The item sheet loads its own hero photo, which is one legitimate
+        // request. What must not happen is the GRID reloading — that would cost
+        // one per photographed card, every tap.
+        expect(imageRequests - requestsBefore,
+            'the grid refetched its photos when the cart changed')
+            .toBeLessThanOrEqual(1);
+    });
+
+    test('the add control is a "+", and the count is a badge', async ({ page }) => {
+        // The button's label has to be CONSTANT — it is what lets a cart change
+        // skip the rebuild above. The count moved to a badge for that reason,
+        // and the "+" leaves the price the room it needed.
+        await stub(page);
+        await open(page);
+        const card = page.locator('.card', { hasText: 'Es Kopi Susu' });
+        const btn = card.locator('.add-btn');
+        await expect(btn).toBeVisible();
+        // A glyph, not a word: no text node to change when the cart does.
+        expect((await btn.innerText()).trim()).toBe('');
+        await expect(btn.locator('svg')).toHaveCount(1);
+        // Still announced properly to a screen reader.
+        expect(await btn.getAttribute('aria-label')).toContain('Es Kopi Susu');
+        // Hidden until there is something to count.
+        await expect(card.locator('[data-qty]')).toBeHidden();
+    });
+
+    test('a photo that fails once is RETRIED before the card gives up on it', async ({ page }) => {
+        // A single failed request used to hide the photo permanently, so one
+        // blip on restaurant wifi cost that dish its picture for the life of the
+        // page — with nothing on screen to say why.
+        await stub(page);
+        let hits = 0;
+        await page.route('**/qr-menu-image**', (route) => {
+            hits += 1;
+            if (hits === 1) return route.fulfill({ status: 503, body: 'nope' });
+            return route.fulfill({
+                status: 200,
+                contentType: 'image/svg+xml',
+                body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 3"><rect width="4" height="3" fill="#8b5"/></svg>'
+            });
+        });
+        await open(page);
+        const img = page.locator('.card-media img').first();
+        await expect(img).toBeVisible({ timeout: 15_000 });
+        await expect.poll(async () => img.evaluate((el) => el.naturalWidth),
+            { timeout: 10_000, message: 'the photo was never retried' }).toBeGreaterThan(0);
+        await expect(img).not.toHaveClass(/failed/);
+    });
+
+    test('the confirmation shows the supplied artwork, on an absolute path', async ({ page }) => {
+        await stub(page);
+        await open(page);
+        await addPlain(page, 'Es Kopi Susu');
+        await page.locator('#cart-open').click();
+        await page.locator('#cart-submit').click();
+        await expect(page.locator('#sheet-done')).toHaveClass(/is-open/, { timeout: 20_000 });
+
+        const art = page.locator('.done-art');
+        await expect(art).toBeVisible();
+        // ⚠️ ABSOLUTE. Under `/t/<token>` a relative `assets/…` resolves to
+        // `/t/assets/…`, which the catch-all rewrite serves as 200-with-HTML —
+        // it would fail while LOOKING like it loaded.
+        expect(await art.getAttribute('src')).toBe('/assets/images/order-success.png');
+        // And it DECODES — a broken image passes every assertion above.
+        expect(await art.evaluate((el) => el.naturalWidth)).toBeGreaterThan(0);
+        // The drawn tick it replaced is gone.
+        await expect(page.locator('.done-mark')).toHaveCount(0);
+    });
+
     // ── The hero ────────────────────────────────────────────────────────
     //
     // Two independent blocks: `.hero` knows about photos, `.outlet-card` knows
@@ -1450,8 +1559,12 @@ test.describe('QR customer ordering', () => {
         const card = page.locator('.card', { hasText: 'Americano' });
         await expect(card.locator('[data-inc]')).toHaveCount(0);
         await expect(card.locator('[data-dec]')).toHaveCount(0);
-        // It shows the count and reopens the sheet instead.
-        await expect(card.getByRole('button')).toContainText('1 • Tambah lagi');
+        // It shows the count on a BADGE and reopens the sheet instead. The count
+        // moved off the button so the button's markup never changes with the
+        // cart — which is what lets an add skip the grid rebuild that was
+        // re-requesting every photo.
+        await expect(card.locator('[data-qty]')).toHaveText('1');
+        expect((await card.locator('.add-btn').innerText()).trim()).toBe('');
 
         // Quantity lives in the cart, where each line is visible.
         await page.locator('#cart-open').click();
@@ -1754,7 +1867,7 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('#view-cart')).toBeHidden();
 
         // Hierarchy: mark, then what happened, then the number staff call out.
-        await expect(done.locator('.done-mark svg')).toBeVisible();
+        await expect(done.locator('.done-art')).toBeVisible();
         await expect(done.locator('.done-title')).toHaveText('Pesanan terkirim');
         await expect(done.locator('#done-number')).toHaveText('2026-09-03-007');
 
