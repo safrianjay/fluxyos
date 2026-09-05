@@ -436,6 +436,111 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('.done-mark')).toHaveCount(0);
     });
 
+    test('A CATEGORY TAB SWIPE CANNOT DRAG THE WHOLE PAGE', async ({ page }) => {
+        // ⚠️ SCROLL CHAINING. When a horizontal scroller hits its end the browser
+        // hands the rest of the gesture to the PARENT, which pans the page
+        // sideways — the reported bug. Every horizontal rail on this page has to
+        // contain it, not just the one that was noticed.
+        await stub(page);
+        await open(page);
+        for (const sel of ['#chips', '.recos-rail', '#hero-rail']) {
+            const rail = page.locator(sel);
+            if (!(await rail.count())) continue;
+            expect(await rail.evaluate((el) => getComputedStyle(el).overscrollBehaviorX),
+                `${sel} lets a swipe chain out to the page`).toBe('contain');
+        }
+        // And nothing may make the document pannable in the first place.
+        expect(await page.evaluate(() => getComputedStyle(document.body).overflowX)).toBe('hidden');
+        expect(await page.evaluate(() =>
+            document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    });
+
+    test('THE CART SHOWS SERVICE AND TAX, WITH THEIR RATES', async ({ page }) => {
+        await stub(page);
+        await page.route('**/qr-menu?**', (route) => route.fulfill({
+            status: 200, contentType: 'application/json',
+            body: JSON.stringify({
+                ...MENU,
+                pricing: {
+                    tax_enabled: true, tax_label: 'PPN', tax_rate_percent: 11,
+                    tax_inclusive: false, service_enabled: true,
+                    service_rate_percent: 5, service_taxable: true
+                }
+            })
+        }));
+        // ⚠️ The page must actually LOAD the shared pricing module. It did not
+        // for a while — the script tag was missing — and the only symptom was a
+        // silent TypeError that left the cart bar unrendered.
+        const errors = [];
+        page.on('pageerror', (e) => errors.push(String(e)));
+        await open(page);
+        expect(await page.evaluate(() => typeof window.FluxyPosPricing),
+            'order.html is not loading pos-pricing.js').toBe('object');
+        await addPlain(page, 'Americano');          // 22.000
+        expect(errors, 'the page threw while pricing the cart').toEqual([]);
+        await page.locator('#cart-open').click();
+
+        const totals = page.locator('#cart-totals');
+        // The percentage rides with the label: "Layanan Rp1.100" invites exactly
+        // the question the rate answers.
+        await expect(totals).toContainText('Layanan');
+        await expect(totals).toContainText('5%');
+        await expect(totals).toContainText('PPN');
+        await expect(totals).toContainText('11%');
+
+        // 22.000 + 5% service = 1.100; 11% of 23.100 = 2.541 → 25.641.
+        const grand = await totals.locator('.line.grand .num').innerText();
+        expect(grand.replace(/\D/g, '')).toBe('25641');
+        // ⚠️ The floating bar must agree. Two totals on one screen that disagree
+        // is worse than either alone.
+        expect((await page.locator('#cart-total').innerText()).replace(/\D/g, ''))
+            .toBe('25641');
+    });
+
+    test('EARLIER ORDERS SURVIVE PAYMENT, AND CAN BE REORDERED', async ({ page }) => {
+        // ⚠️ THE REPORTED BUG. The status endpoint deliberately skips PAID
+        // orders — from the table's side that sitting is over. But the DEVICE
+        // knows what it ordered, and after paying and reordering a diner still
+        // wants to see it. Straight after payment there is no live order at all,
+        // which is exactly when this sheet used to show an empty state to
+        // someone holding a receipt.
+        await stub(page);
+        const history = [{
+            order_id: 'o_prev', order_number: '2026-09-05-001', status: 'paid',
+            lines: [{ item_id: 'i_americano', item_name: 'Americano', quantity: 2,
+                gross_amount: 44000, note: null, modifiers: [] }],
+            subtotal: 44000, discount_total: 0, service_charge_amount: 2200,
+            tax_amount: 5082, total_amount: 51282,
+            pricing: { tax_label: 'PPN', tax_rate_percent: 11, tax_inclusive: false,
+                service_rate_percent: 5 },
+            placed_at: Date.now() - 30 * 60 * 1000
+        }];
+        await page.route('**/qr-order-status**', (route) => route.fulfill({
+            status: 200, contentType: 'application/json',
+            body: JSON.stringify({ has_order: false, lines: [], history })
+        }));
+        await open(page);
+        await page.locator('.tab[data-tab="orders"]').click();
+
+        const panel = page.locator('.ohistory');
+        await expect(panel).toBeVisible({ timeout: 15_000 });
+        await expect(page.locator('.orders-empty-title')).toHaveText(/tidak ada pesanan aktif/i);
+        await panel.locator('summary').click();
+        await expect(panel).toContainText('2026-09-05-001');
+        await expect(panel).toContainText('Americano');
+        // The old bill's OWN rates, not whatever is configured now.
+        await expect(panel).toContainText('5%');
+        await expect(panel).toContainText('11%');
+
+        // And it can be ordered again. Resolved against TODAY's menu, never
+        // replayed from the old line — a repriced item must not arrive in the
+        // cart at yesterday's price.
+        await panel.getByRole('button', { name: /pesan lagi/i }).click();
+        await expect(page.locator('#view-cart')).toBeVisible();
+        await expect(page.locator('#cart-lines')).toContainText('Americano');
+        await expect(page.locator('#cart-count')).toHaveText('2');
+    });
+
     // ── The hero ────────────────────────────────────────────────────────
     //
     // Two independent blocks: `.hero` knows about photos, `.outlet-card` knows

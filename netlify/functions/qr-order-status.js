@@ -67,6 +67,80 @@ const msOf = (v) => {
     return null;
 };
 
+// Only the fields the sheet renders. The order document carries payments,
+// shift ids and journal stamps, none of which is a diner's business.
+function pricingOf(o) {
+    const p = (o && o.pos_pricing) || null;
+    if (!p) return null;
+    return {
+        tax_label: typeof p.tax_label === 'string' ? p.tax_label.slice(0, 24) : 'Pajak',
+        tax_rate_percent: Number(p.tax_rate_percent) || 0,
+        tax_inclusive: p.tax_inclusive === true,
+        service_rate_percent: Number(p.service_rate_percent) || 0
+    };
+}
+
+function lineOf(l) {
+    return {
+        item_id: String(l.item_id || ''),
+        item_name: String(l.item_name || '').slice(0, 120),
+        quantity: Number(l.quantity) || 0,
+        gross_amount: Number(l.gross_amount) || 0,
+        note: l.note ? String(l.note).slice(0, 120) : null,
+        modifiers: (Array.isArray(l.modifiers) ? l.modifiers : [])
+            .map((m) => String(m.option_name || '')).filter(Boolean)
+    };
+}
+
+/**
+ * Earlier orders this DEVICE placed at this table.
+ *
+ * ⚠️ EVERY ID IS RE-CHECKED AGAINST THE TABLE. The list arrives from the
+ * client, so it is a request, not a fact — an id belonging to another table is
+ * dropped rather than answered. That check is the entire security of this, and
+ * it is why the ids are read one at a time instead of trusted in bulk.
+ *
+ * Capped: a hero's worth of history is what a diner wants, not an audit trail.
+ */
+const HISTORY_MAX = 10;
+
+async function historyFor(db, workspaceId, tableId, raw, currentId) {
+    const ids = String(raw || '')
+        .split(',')
+        .map((v) => v.trim())
+        .filter((v) => SAFE.test(v) && v !== currentId)
+        .slice(-HISTORY_MAX);
+    if (!ids.length) return [];
+
+    const snaps = await db.getAll(
+        ...ids.map((id) => db.doc(`workspaces/${workspaceId}/pos_orders/${id}`)));
+    return snaps
+        .map((snap) => {
+            if (!snap.exists) return null;
+            const o = snap.data() || {};
+            // The check that makes this safe.
+            if (o.table_id !== tableId) return null;
+            // A voided order is a correction, not history — showing it only
+            // prompts "what happened?" at a table with nobody to answer.
+            if (o.voided_at) return null;
+            return {
+                order_id: snap.id,
+                order_number: String(o.order_number || ''),
+                status: o.status,
+                lines: (Array.isArray(o.lines) ? o.lines : []).map(lineOf),
+                subtotal: Number(o.subtotal) || 0,
+                discount_total: Number(o.discount_total) || 0,
+                service_charge_amount: Number(o.service_charge_amount) || 0,
+                tax_amount: Number(o.tax_amount) || 0,
+                total_amount: Number(o.total_amount) || 0,
+                pricing: pricingOf(o),
+                placed_at: msOf(o.opened_at) || msOf(o.created_at)
+            };
+        })
+        .filter(Boolean)
+        .sort((a, b) => (b.placed_at || 0) - (a.placed_at || 0));
+}
+
 exports.handler = async (event) => {
     const origin = (event.headers && (event.headers.origin || event.headers.Origin)) || '';
     const cors = {
@@ -83,7 +157,8 @@ exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors, body: '' };
     if (event.httpMethod !== 'GET') return json(405, { error: 'method_not_allowed' });
 
-    const token = String((event.queryStringParameters || {}).token || '');
+    const q = event.queryStringParameters || {};
+    const token = String(q.token || '');
     if (!SAFE.test(token)) return json(404, { error: 'not_found' });
 
     try {
@@ -142,7 +217,20 @@ exports.handler = async (event) => {
             doc = d;
         });
 
-        if (!doc) return json(200, { has_order: false, lines: [] });
+        // ── The diner's OWN history ─────────────────────────────────────
+        //
+        // The scan above deliberately skips paid orders: from the table's point
+        // of view that sitting is over and the bill belongs to whoever was here
+        // before. But the DEVICE knows which orders it placed, and after paying
+        // and reordering a diner still wants to see what they had — to check it,
+        // or to order it again.
+        //
+        // So the page sends the ids IT holds, and each is returned only if it
+        // belongs to THIS table. A guessed id from another table resolves to
+        // nothing, and nobody ever sees a bill they did not place.
+        const history = await historyFor(db, workspaceId, tableId, q.ids, doc && doc.id);
+
+        if (!doc) return json(200, { has_order: false, lines: [], history }, 'no-store');
 
         const o = doc.data() || {};
         const stage = STAGE[o.status] || { step: 1, label: 'Menunggu konfirmasi' };
@@ -159,27 +247,24 @@ exports.handler = async (event) => {
             stage_label: stage.label,
             // Line-level detail, because "is my food coming" is usually really
             // "did the extra shot make it onto the ticket".
-            lines: (Array.isArray(o.lines) ? o.lines : []).map((l) => ({
-                // The id, so the sheet can show the same photo the menu does.
-                // No new exposure: the diner already received every visible
-                // item id from `qr-menu` to be able to order at all.
-                item_id: String(l.item_id || ''),
-                item_name: String(l.item_name || '').slice(0, 120),
-                quantity: Number(l.quantity) || 0,
-                gross_amount: Number(l.gross_amount) || 0,
-                note: l.note ? String(l.note).slice(0, 120) : null,
-                modifiers: (Array.isArray(l.modifiers) ? l.modifiers : [])
-                    .map((m) => String(m.option_name || '')).filter(Boolean)
-            })),
+            // The item id rides along so the sheet can show the same photo the
+            // menu does. No new exposure: the diner already received every
+            // visible item id from `qr-menu` to be able to order at all.
+            lines: (Array.isArray(o.lines) ? o.lines : []).map(lineOf),
             note: o.note ? String(o.note).slice(0, 200) : null,
             subtotal: Number(o.subtotal) || 0,
             service_charge_amount: Number(o.service_charge_amount) || 0,
             tax_amount: Number(o.tax_amount) || 0,
+            // The rates THIS bill was charged at, not whatever is configured
+            // now. Snapshotted onto the order at creation precisely so a
+            // receipt stays reproducible after an owner edits a rate.
+            pricing: pricingOf(o),
             discount_total: Number(o.discount_total) || 0,
             total_amount: Number(o.total_amount) || 0,
             paid_amount: Number(o.paid_amount) || 0,
             placed_at: msOf(o.opened_at),
-            updated_at: msOf(o.status_changed_at) || msOf(o.updated_at)
+            updated_at: msOf(o.status_changed_at) || msOf(o.updated_at),
+            history
         }, 'no-store');
     } catch (err) {
         console.error('[qr-order-status]', err && err.message);

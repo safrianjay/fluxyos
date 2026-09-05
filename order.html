@@ -48,6 +48,12 @@
      spec loaded `/order.html?t=…` rather than the route a diner actually uses;
      `customer-ordering.spec.js` now drives `/t/<token>`. -->
 <script src="/assets/js/money-format.js"></script>
+<!-- The SAME pricing file the till and the order endpoints run. A cart that
+     totals differently from the order it becomes is a diner told one number and
+     charged another — worth one more small request.
+     ⚠️ ABSOLUTE: under `/t/<token>` a relative `assets/…` resolves to
+     `/t/assets/…`, which the catch-all rewrite serves as 200-with-HTML. -->
+<script src="/assets/js/pos-pricing.js"></script>
 <style>
 /* ==========================================================================
    Tokens — the subset of the design system this page needs, inlined. It cannot
@@ -116,6 +122,10 @@ html, body {
     /* iOS Safari zooms a page when an input's font-size is under 16px. Every
        input below is 16px for that reason and not for emphasis. */
     -webkit-text-size-adjust: 100%;
+    /* The backstop for the same bug. `overscroll-behavior-x` stops the CHAIN;
+       this stops anything that overflows from creating a pannable page in the
+       first place. Vertical scrolling is untouched. */
+    overflow-x: hidden;
 }
 
 /* Numbers are Inter with tabular figures and a plain zero. A monospace face is
@@ -268,6 +278,7 @@ img { max-width: 100%; display: block; }
     display: flex;
     height: 100%;
     overflow-x: auto;
+    overscroll-behavior-x: contain;   /* see .chips */
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
@@ -458,6 +469,11 @@ img { max-width: 100%; display: block; }
     align-items: flex-end;
     gap: 0;
     overflow-x: auto;
+    /* ⚠️ SCROLL CHAINING. When a horizontal scroller hits its end the browser
+       hands the remaining gesture to the PARENT, which drags the whole page
+       sideways — the reported bug. `contain` stops the chain at this element.
+       Set on every horizontal rail on the page, not just this one. */
+    overscroll-behavior-x: contain;
     padding: 8px 14px 0;
     margin-top: 0;
     scrollbar-width: none;
@@ -588,6 +604,7 @@ img { max-width: 100%; display: block; }
     gap: 12px;                /* the grid's own gap */
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;   /* see .chips */
     scroll-snap-type: x proximity;
     /* Padding rather than margin, so the first and last card clear the screen
        edge WITHOUT the rail's scrollable area stopping short of it. 20px to
@@ -1739,16 +1756,74 @@ html.kb-open .welcome-art { display: none; }
 .cartline-meta { font-size: 12px; color: var(--ink-50); margin-top: 2px; }
 .cartline-price { font-size: 14px; font-weight: 600; margin-left: auto; align-self: center; }
 
-.totals { padding: 14px 0 2px; }
+/* THREE STEPS, and only three. The breakdown reads at one size, the figures
+   that make it up at another, and the total at the last — before this the rows
+   and the grand total were 14 and 16 with the same weight, so nothing on the
+   panel said which number the customer actually pays. */
+.totals { padding: 12px 0 2px; }
 .totals .line {
-    display: flex; justify-content: space-between;
-    font-size: 14px; padding: 4px 0; color: var(--ink-70);
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 12px;
+    font-size: 13px; padding: 5px 0; color: var(--ink-50);
 }
+.totals .line .num { color: var(--ink-70); font-weight: 500; }
+/* The rate rides with its label, quieter than the label itself: it explains the
+   figure without competing with it. */
+.totals .line .rate { color: var(--ink-30); font-weight: 500; }
 .totals .line.grand {
-    font-size: 16px; font-weight: 600; color: var(--ink);
+    font-size: 16px; font-weight: 700; color: var(--ink);
+    letter-spacing: -0.015em;
     border-top: 1px solid var(--line);
     margin-top: 8px; padding-top: 12px;
 }
+.totals .line.grand .num { color: var(--ink); font-weight: 700; font-size: 17px; }
+/* Inclusive tax is already inside the total, so it is stated UNDER it rather
+   than as a row that would make the arithmetic look wrong. */
+.totals .line.incl { font-size: 11.5px; color: var(--ink-30); padding-top: 6px; }
+
+/* ---- Earlier orders --------------------------------------------------
+   Collapsed by default: it is context, not the answer to "where is my food",
+   which the panel above it already gives. A <details> so the disclosure is the
+   browser's own — keyboard, screen reader and back gesture all behave. */
+.ohistory {
+    margin-top: 12px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--surface);
+    overflow: hidden;
+}
+.ohistory-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 12px 14px;
+    font-size: 13px; font-weight: 600; color: var(--ink);
+    cursor: pointer;
+    list-style: none;
+}
+.ohistory-head::-webkit-details-marker { display: none; }
+.ohistory-count {
+    min-width: 20px; height: 20px; padding: 0 6px;
+    border-radius: 999px; background: var(--line-soft); color: var(--ink-70);
+    font-size: 11.5px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.ohistory-order { padding: 2px 14px 14px; border-top: 1px solid var(--line-soft); }
+.ohistory-top {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    padding: 10px 0 6px;
+}
+.ohistory-no { font-size: 12.5px; font-weight: 700; color: var(--ink); }
+.ohistory-when { font-size: 11.5px; color: var(--ink-30); }
+.ohistory-line {
+    display: flex; justify-content: space-between; gap: 12px;
+    font-size: 13px; padding: 3px 0; color: var(--ink-70);
+}
+.ohistory-again {
+    width: 100%; height: 38px; margin-top: 10px;
+    border: 1px solid var(--ink); border-radius: 10px;
+    background: var(--surface); color: var(--ink);
+    font-size: 13px; font-weight: 700;
+}
+.ohistory-again:active { background: var(--line-soft); }
 
 /* Sits above the tab bar and the cart bar, because it is a reply to tapping
    one of them. */
@@ -2214,6 +2289,13 @@ html.kb-open .welcome-art { display: none; }
     // way to tell that the sitting those details belonged to was long since
     // paid and cleared. A session now dies with its sitting.
     var SESSION_KEY = 'fluxyos_customer_session_' + TOKEN;
+    // Kept SEPARATELY from the session, because it outlives it: the session ends
+    // when the bill is settled, the record of what was ordered does not.
+    var PLACED_KEY = 'fluxyos_placed_orders_' + TOKEN;
+    var placed = (function () {
+        try { return JSON.parse(window.localStorage.getItem(PLACED_KEY) || '[]') || []; }
+        catch (_) { return []; }
+    })();
     var customer = null;
     var sitting = null;   // the order id this browser is participating in
 
@@ -2476,7 +2558,8 @@ html.kb-open .welcome-art { display: none; }
             return {
                 name: String(v.name),
                 phone: String(v.phone || ''),
-                sitting: v.sitting ? String(v.sitting) : null
+                sitting: v.sitting ? String(v.sitting) : null,
+                placed: Array.isArray(v.placed) ? v.placed.map(String) : []
             };
         } catch (_) { return null; }   // private mode throws on read, not just write
     }
@@ -2485,9 +2568,28 @@ html.kb-open .welcome-art { display: none; }
         customer = { name: v.name, phone: v.phone };
         if (v.sitting !== undefined) sitting = v.sitting;
         try {
-            window.localStorage.setItem(SESSION_KEY,
-                JSON.stringify({ name: v.name, phone: v.phone, sitting: sitting }));
+            window.localStorage.setItem(SESSION_KEY, JSON.stringify({
+                name: v.name, phone: v.phone, sitting: sitting, placed: placed
+            }));
         } catch (_) { /* in-memory only */ }
+    }
+
+    /**
+     * Every order id this DEVICE has placed at this table.
+     *
+     * ⚠️ IT SURVIVES `endSitting()`, and that is the point. The SITTING ends
+     * when the bill is settled; what the diner ordered is still what they
+     * ordered, and after paying and reordering they still want to see it — to
+     * check it, or to have it again. The server re-checks every id against the
+     * table, so this list is a request rather than a claim.
+     */
+    var PLACED_MAX = 10;
+
+    function rememberOrder(id) {
+        if (!id || placed.indexOf(id) !== -1) return;
+        placed = placed.concat([id]).slice(-PLACED_MAX);
+        try { window.localStorage.setItem(PLACED_KEY, JSON.stringify(placed)); } catch (_) {}
+        if (customer) writeSession({ name: customer.name, phone: customer.phone });
     }
 
     /**
@@ -2729,6 +2831,14 @@ html.kb-open .welcome-art { display: none; }
             var saved = readSession();
             customer = saved ? { name: saved.name, phone: saved.phone } : null;
             sitting = saved ? saved.sitting : null;
+            // Merge, never replace: the two stores are written at different
+            // moments and either can be the fresher one.
+            if (saved && saved.placed.length) {
+                saved.placed.forEach(function (id) {
+                    if (placed.indexOf(id) === -1) placed.push(id);
+                });
+                placed = placed.slice(-PLACED_MAX);
+            }
 
             // No stored session at all — a fresh scan. Ask immediately rather
             // than waiting on the network; there is nothing to validate.
@@ -3229,6 +3339,13 @@ html.kb-open .welcome-art { display: none; }
     // ⚠️ ITS OWN LISTENER. `#recos` is a SIBLING of `#menu`, not a child, so the
     // delegation above never sees it — the rail's cards would have looked
     // perfectly tappable and done nothing at all.
+    // Delegated: `#orders-body` is rewritten on every status refresh, so a
+    // per-button listener would be attached to a node that no longer exists.
+    $('orders-body').addEventListener('click', function (e) {
+        var again = e.target.closest('[data-reorder]');
+        if (again) reorderFrom(lastStatus && lastStatus.history, again.dataset.reorder);
+    });
+
     $('recos').addEventListener('click', function (e) {
         var open = e.target.closest('[data-open]');
         if (open) return openDetail(open.dataset.open);
@@ -3455,7 +3572,11 @@ html.kb-open .welcome-art { display: none; }
         // The floating bar on the MENU still summarises; the page it opens is
         // where the detail lives.
         setText($('cart-count'), String(count));
-        setText($('cart-total'), money(total));
+        // The bar states the same figure the panel does. Two totals on one
+        // screen that disagree is worse than either alone.
+        setText($('cart-total'), money(window.FluxyPosPricing.computeBillTotals({
+            subtotal: total, discountTotal: 0, settings: (menu && menu.pricing) || null
+        }).total));
         $('cartbar').classList.toggle('is-open', count > 0 && !$('view-menu').classList.contains('hidden'));
 
         setText($('cart-outlet'), (menu && menu.outlet) || '');
@@ -3493,9 +3614,24 @@ html.kb-open .welcome-art { display: none; }
                 + '</div>';
         }).join('');
 
-        $('cart-totals').innerHTML =
-            '<div class="line"><span>Subtotal</span><span class="num">' + esc(money(total)) + '</span></div>'
-            + '<div class="line grand"><span>Total</span><span class="num">' + esc(money(total)) + '</span></div>';
+        // ⚠️ PRICED THROUGH THE SHARED MODULE. The cart used to print the
+        // subtotal twice — once as "Subtotal", once as "Total" — which was true
+        // only while every outlet charged nothing on top. The moment an owner
+        // sets a service fee, a diner reading Rp100.000 here and being charged
+        // Rp111.000 at the end has been misled by this panel.
+        var rates = (menu && menu.pricing) || null;
+        var priced = window.FluxyPosPricing.computeBillTotals({
+            subtotal: total, discountTotal: 0, settings: rates
+        });
+        $('cart-totals').innerHTML = breakdownRows({
+            subtotal: priced.base, discount: 0, service: priced.service,
+            tax: priced.tax, total: priced.total
+        }, {
+            service_rate_percent: rates && rates.service_rate_percent,
+            tax_rate_percent: rates && rates.tax_rate_percent,
+            tax_label: priced.taxLabel,
+            tax_inclusive: priced.taxInclusive
+        });
 
         // Identity was captured once by the gate; this confirms who the order
         // goes out under rather than asking again.
@@ -3853,7 +3989,8 @@ html.kb-open .welcome-art { display: none; }
     function refreshOrders(opts) {
         var reconcile = !!(opts && opts.reconcile);
         var seq = ++ordersSeq;
-        return fetch(FN + 'qr-order-status?token=' + encodeURIComponent(TOKEN))
+        return fetch(FN + 'qr-order-status?token=' + encodeURIComponent(TOKEN)
+            + (placed.length ? '&ids=' + encodeURIComponent(placed.join(',')) : ''))
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (data) {
                 if (seq !== ordersSeq) return;      // a newer request has overtaken this one
@@ -3888,15 +4025,29 @@ html.kb-open .welcome-art { display: none; }
         return hrs + ' jam lalu';
     }
 
+    // What the sheet last painted, so a delegated handler can reach the history
+    // it is looking at without re-fetching it.
+    var lastStatus = null;
+
     function paintOrders(d) {
+        lastStatus = d;
         if (!d.has_order || !(d.lines || []).length) {
             $('orders-foot').hidden = true;
+            // ⚠️ HISTORY SHOWS HERE TOO, and this is the case it matters most
+            // in: straight after paying there is no live order, and that is
+            // exactly when a diner opens this sheet to check what they had or
+            // to order it again. Returning early left them an empty state
+            // holding a receipt.
+            var past = historyPanel(d.history);
             $('orders-body').innerHTML =
                 '<div class="orders-empty">'
                 + '<div class="orders-empty-mark">' + svg(ICON.plate) + '</div>'
-                + '<p class="orders-empty-title">Belum ada pesanan</p>'
-                + '<p class="orders-empty-sub">Pesanan di meja ini akan muncul di sini begitu dikirim.</p>'
-                + '</div>';
+                + '<p class="orders-empty-title">'
+                + (past ? 'Tidak ada pesanan aktif' : 'Belum ada pesanan') + '</p>'
+                + '<p class="orders-empty-sub">' + (past
+                    ? 'Pesanan sebelumnya ada di bawah.'
+                    : 'Pesanan di meja ini akan muncul di sini begitu dikirim.')
+                + '</p></div>' + past;
             return;
         }
 
@@ -3969,10 +4120,10 @@ html.kb-open .welcome-art { display: none; }
                 + '</div></div>';
         }).join('');
 
-        var rows = '';
-        if (d.discount_total) rows += totalRow('Diskon', -d.discount_total);
-        if (d.service_charge_amount) rows += totalRow('Layanan', d.service_charge_amount);
-        if (d.tax_amount) rows += totalRow('Pajak', d.tax_amount);
+        var rows = breakdownRows({
+            subtotal: d.subtotal, discount: d.discount_total,
+            service: d.service_charge_amount, tax: d.tax_amount, total: d.total_amount
+        }, d.pricing);
 
         var called = billed
             ? '<div class="bill-called">'
@@ -3983,12 +4134,129 @@ html.kb-open .welcome-art { display: none; }
         $('orders-body').innerHTML = hero + track + called
             + '<div class="opanel">' + lines + '</div>'
             + (d.note ? '<div class="onote"><span>Catatan</span><p>' + esc(d.note) + '</p></div>' : '')
-            + '<div class="opanel totals">' + rows
-            + '<div class="line grand"><span>Total</span><span class="num">'
-            + esc(money(d.total_amount)) + '</span></div></div>'
+            + '<div class="opanel totals">' + rows + '</div>'
+            + historyPanel(d.history)
             + '<p class="orders-foot">' + esc(billed
                 ? 'Setelah dibayar, meja ini kosong lagi. Pindai QR untuk pesan lagi.'
                 : 'Tagihan dibayar di kasir.') + '</p>';
+    }
+
+    /**
+     * The price breakdown, rendered identically on the cart page and in the
+     * Pesanan sheet. One function because a customer comparing the two is
+     * exactly who notices when they disagree.
+     *
+     * `rates` is the ORDER's own snapshot where there is one (the sheet), and
+     * the outlet's live settings where there is not (the cart, before an order
+     * exists). Both carry the percentage, because "Layanan Rp5.000" invites the
+     * question the percentage answers.
+     */
+    function breakdownRows(t, rates) {
+        var r = rates || {};
+        var pct = function (v) {
+            var n = Number(v) || 0;
+            return n > 0 ? ' <span class="rate">' + esc(String(n) + '%') + '</span>' : '';
+        };
+        var row = function (label, amount, extra) {
+            return '<div class="line' + (extra ? ' ' + extra : '') + '"><span>' + label
+                + '</span><span class="num">' + esc(money(amount)) + '</span></div>';
+        };
+        var out = row('Subtotal', t.subtotal);
+        if (t.discount) out += row('Diskon', -t.discount);
+        if (t.service > 0) out += row('Layanan' + pct(r.service_rate_percent), t.service);
+        // Inclusive tax is already inside the total, so it is stated UNDER the
+        // total rather than as a row that would make the arithmetic look wrong.
+        if (t.tax > 0 && !r.tax_inclusive) {
+            out += row(esc(r.tax_label || 'Pajak') + pct(r.tax_rate_percent), t.tax);
+        }
+        out += '<div class="line grand"><span>Total</span><span class="num">'
+            + esc(money(t.total)) + '</span></div>';
+        if (t.tax > 0 && r.tax_inclusive) {
+            out += row('Termasuk ' + esc(r.tax_label || 'Pajak') + pct(r.tax_rate_percent),
+                t.tax, 'incl');
+        }
+        return out;
+    }
+
+    /**
+     * Earlier orders this device placed at this table.
+     *
+     * ⚠️ WHY IT EXISTS. The status endpoint deliberately skips PAID orders —
+     * from the table's point of view that sitting is over and the bill belongs
+     * to whoever was here before. But a diner who has paid and reordered still
+     * wants what they had: to check it, or to have it again. The server returns
+     * only ids this device sent AND that belong to this table, so nobody sees a
+     * bill they did not place.
+     *
+     * Collapsed by default. It is context, not the answer to "where is my
+     * food" — which is what the panel above it is for.
+     */
+    function historyPanel(history) {
+        var rows = Array.isArray(history) ? history : [];
+        if (!rows.length) return '';
+        return '<details class="ohistory">'
+            + '<summary class="ohistory-head">Pesanan sebelumnya'
+            + '<span class="ohistory-count num">' + rows.length + '</span></summary>'
+            + rows.map(function (h) {
+                var when = h.placed_at ? timeAgo(h.placed_at) : '';
+                var items = (h.lines || []).map(function (l) {
+                    return '<div class="ohistory-line"><span>' + esc(l.item_name)
+                        + ' <span class="rate">×' + (Number(l.quantity) || 0) + '</span></span>'
+                        + '<span class="num">' + esc(money(l.gross_amount)) + '</span></div>';
+                }).join('');
+                return '<div class="ohistory-order">'
+                    + '<div class="ohistory-top">'
+                    + '<span class="ohistory-no num">' + esc(h.order_number || '—') + '</span>'
+                    + (when ? '<span class="ohistory-when">' + esc(when) + '</span>' : '')
+                    + '</div>'
+                    + items
+                    + '<div class="totals">' + breakdownRows({
+                        subtotal: h.subtotal, discount: h.discount_total,
+                        service: h.service_charge_amount, tax: h.tax_amount,
+                        total: h.total_amount
+                    }, h.pricing) + '</div>'
+                    + '<button type="button" class="ohistory-again" data-reorder="'
+                    + esc(h.order_id) + '">Pesan lagi yang ini</button>'
+                    + '</div>';
+            }).join('')
+            + '</details>';
+    }
+
+    /**
+     * Re-add an earlier order's lines to the cart.
+     *
+     * ⚠️ RESOLVED AGAINST TODAY'S MENU, never replayed from the old order. An
+     * item can have been taken off the menu, renamed, or REPRICED since — and
+     * replaying a stored `unit_price` would put yesterday's price in today's
+     * cart, which is the silent wrong number this codebase spends its checks
+     * on. Anything no longer orderable is dropped and SAID, rather than
+     * appearing at a price that no longer exists.
+     *
+     * Modifiers are deliberately not restored: the option ids on an old line may
+     * no longer exist on the item, and silently dropping a "no sugar" is worse
+     * than asking again. The diner lands in the cart and can adjust.
+     */
+    function reorderFrom(history, orderId) {
+        var src = (history || []).filter(function (h) { return h.order_id === orderId; })[0];
+        if (!src) return;
+        var added = 0; var missed = 0;
+        (src.lines || []).forEach(function (l) {
+            var item = itemById(l.item_id);
+            if (!item) { missed += 1; return; }
+            addToCart(item, [], '', Math.max(1, Number(l.quantity) || 1));
+            added += 1;
+        });
+        if (!added) {
+            toast('Menu pesanan itu sudah tidak tersedia.');
+            return;
+        }
+        closeSheets();
+        paintCart();
+        paintMenu();
+        goCart();
+        toast(missed
+            ? (missed + ' item sudah tidak tersedia dan tidak ditambahkan.')
+            : 'Ditambahkan ke pesanan Anda.');
     }
 
     function totalRow(label, amount) {
@@ -4208,6 +4476,7 @@ html.kb-open .welcome-art { display: none; }
             .then(function (res) {
                 // From here on this device is part of THIS sitting.
                 sitting = res.order_id || sitting;
+                rememberOrder(res.order_id);
                 if (customer) writeSession({ name: customer.name, phone: customer.phone, sitting: sitting });
                 setText($('done-number'), res.order_number || '');
                 setText($('done-sub'), res.rejected_lines
