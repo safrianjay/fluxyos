@@ -136,18 +136,34 @@ test.describe('a non-IDR workspace renders in its own currency', () => {
         // the re-render is skipped for any reason, the rupiah ladder stays on
         // screen and the customer is quoted a price we will not charge.
         await page.goto('/checkout.html?plan=growth&billing=annually');
-        await page.waitForFunction(() => !!window.FluxyMoney, null, { timeout: 15000 });
-        // Give the auth handler its re-render.
-        await page.waitForFunction(() => {
-            const el = document.getElementById('summary-total');
-            return el && el.textContent && el.textContent.trim().length > 1;
-        }, null, { timeout: 20000 });
+
+        // ⚠️ THROUGH THE HELPER, which is the whole point of it. Reading
+        // `baseCurrency()` as soon as FluxyMoney exists returns the IDR DEFAULT:
+        // the workspace profile read is still in flight, and `country` is
+        // published by that read. Every other test in this file waits through
+        // `workspaceCurrency`, whose own comment describes this exact flake —
+        // this one had its own hand-rolled waits and raced it.
+        const { base, symbol } = await workspaceCurrency(page);
+
+        // ⚠️ WAIT FOR THE CONDITION, NOT FOR "SOMETHING RENDERED". This used to
+        // wait until `#summary-total` was merely non-empty — which the IDR
+        // FIRST render satisfies — and then assert the currency. So it raced the
+        // auth re-render it exists to test, and under parallel load it timed out
+        // on a page that was simply slow rather than wrong. Both failures looked
+        // identical and neither said which it was.
+        //
+        // Polling the real condition removes the race (a first render can never
+        // satisfy it) and makes a slow page cost time instead of a red build.
+        // The message carries what was actually on screen.
+        await expect
+            .poll(async () => (await page.locator('#summary-total').textContent() || '').trim(),
+                {
+                    timeout: 45_000,
+                    message: `checkout never re-rendered in ${base} after auth settled`
+                })
+            .toContain(symbol);
 
         const total = (await page.locator('#summary-total').textContent() || '').trim();
-        const base = await page.evaluate(() => window.FluxyMoney.baseCurrency());
-        const symbol = await page.evaluate((c) => window.FluxyMoney.CURRENCIES[c].symbol, base);
-
-        expect(total, `checkout total "${total}" is not in ${base}`).toContain(symbol);
         expect(total, `checkout still shows the rupiah default on a ${base} workspace`).not.toContain('Rp');
 
         // The tax row must name the local tax, never Indonesia's.
