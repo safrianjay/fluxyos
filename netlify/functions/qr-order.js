@@ -294,20 +294,26 @@ exports.handler = async (event) => {
         // by definition.
         const recent = await db.collection(`workspaces/${workspaceId}/pos_orders`)
             .orderBy('created_at', 'desc').limit(50).get();
-        // ⚠️ EVERY STATE WHERE ORDERING IS STILL OFFERED, not just the first
-        // two. This read `open || submitted`, so the moment the kitchen moved a
-        // ticket to `sent` a second round stopped matching — the client got
-        // `sitting_ended`, retried without a sitting, and a WHOLE NEW ORDER
-        // DOCUMENT was created for the same table. One unpaid dining session,
-        // split across two bills, and the diner asked to settle each separately.
-        // It also left two live orders on one table, which the floor plan and
-        // `getPosOverview` both resolve by picking whichever they find first.
+        // ⚠️ THE KITCHEN IS THE BOUNDARY, and this is the whole rule.
         //
-        // `awaiting_payment` is deliberately NOT here: the bill has been
-        // requested and a cashier may already have quoted it, so silently
-        // growing that total is a worse failure than refusing. The sheet hides
-        // "add more" in that state for the same reason.
-        const APPENDABLE = ['open', 'submitted', 'sent', 'ready', 'served'];
+        // A round merges into the live order only while NOTHING HAS BEEN
+        // PREPARED — `open` and `submitted` both mean the till has not sent it
+        // yet, so four people still choosing produce one ticket rather than
+        // four. Once the kitchen has the order (`sent` onward) a new round is a
+        // NEW ORDER DOCUMENT, because a ticket is a unit of work: merging into
+        // one puts already-served dishes back in front of a cook, who has no way
+        // to tell which lines are new and will make them again.
+        //
+        // ⚠️ THIS WAS `['open','submitted','sent','ready','served']` FOR A DAY
+        // (2026-09-05), and it also reset the order to `submitted` so the board
+        // would notice the new lines. That reset is what made it dangerous:
+        // the ENTIRE order went back to the kitchen, served items included.
+        // Reverted 2026-09-06 on Jay's correction.
+        //
+        // Splitting the TICKET does not split the BILL — the customer's total is
+        // consolidated across the session in `qr-order-status`, which is the
+        // separation this model turns on: one bill, many tickets.
+        const APPENDABLE = ['open', 'submitted'];
         let openDoc = null;
         recent.forEach((d) => {
             if (openDoc) return;
@@ -341,9 +347,9 @@ exports.handler = async (event) => {
             const result = await db.runTransaction(async (tx) => {
                 const snap = await tx.get(ref);
                 const o = snap.data() || {};
-                // It may have been paid, voided, or sent to the cashier between
-                // the read above and here — a cashier closing the bill while a
-                // customer taps.
+                // It may have been sent to the kitchen, paid or voided between
+                // the read above and here — a cook picking up the ticket, or a
+                // cashier closing the bill, while a customer taps.
                 if (!APPENDABLE.includes(o.status)) return null;
 
                 const merged = [...(Array.isArray(o.lines) ? o.lines : [])];
@@ -394,21 +400,6 @@ exports.handler = async (event) => {
                     updated_by: 'qr'
                 };
 
-                // ⚠️ NEW FOOD MEANS THE KITCHEN HAS WORK AGAIN. Appending to an
-                // order the kitchen had already finished would otherwise leave
-                // the new lines on a ticket the board reads as `served` — the
-                // dish is on the bill, nobody is cooking it, and the only
-                // symptom is a customer waiting. So a post-kitchen order goes
-                // back to `submitted`, which is the state that says "acknowledge
-                // this", and `status_changed_at` is re-stamped so the board's
-                // waiting timer measures the NEW wait rather than the old one.
-                //
-                // `open` and `submitted` are left alone: neither has reached the
-                // kitchen, so there is no transition to make.
-                if (o.status === 'sent' || o.status === 'ready' || o.status === 'served') {
-                    patch.status = 'submitted';
-                    patch.status_changed_at = admin.firestore.Timestamp.fromDate(now);
-                }
                 // A second round's note is APPENDED, not substituted. Someone
                 // ordering more food does not retract the request they made
                 // with the first round, and silently dropping it is worse than

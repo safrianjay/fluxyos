@@ -730,6 +730,70 @@ test.describe('QR customer ordering', () => {
         expect(grand[1].replace(/\D/g, ''), 'a settled bill still asks for money').toBe('0');
     });
 
+    test('TICKETS SPLIT AT THE KITCHEN; THE BILL DOES NOT', async ({ page }) => {
+        // ⚠️ THE CORRECTION. A round placed after the kitchen has the previous
+        // ticket is its OWN order — a cook handed a merged ticket cannot tell
+        // which lines are new and will make the served ones again. The diner
+        // must never pay for that separation: two tickets, one total.
+        await stub(page);
+        const ticket = (id, no, status, stage, name, amount) => ({
+            order_id: id, order_number: no, status, stage,
+            stage_label: stage === 4 ? 'Diantar' : 'Disiapkan',
+            lines: [{ item_id: 'i_americano', item_name: name, quantity: 1,
+                gross_amount: amount, note: null, modifiers: [] }],
+            subtotal: amount, discount_total: 0, service_charge_amount: 0,
+            tax_amount: 0, total_amount: amount, paid_amount: 0,
+            pricing: null, placed_at: Date.now() - 10 * 60 * 1000
+        });
+        const orders = [
+            ticket('o2', '2026-09-06-002', 'submitted', 2, 'Mie Goreng', 30000),
+            ticket('o1', '2026-09-06-001', 'served', 4, 'Nasi Goreng', 50000)
+        ];
+        await page.route('**/qr-order-status**', (route) => route.fulfill({
+            status: 200, contentType: 'application/json',
+            body: JSON.stringify({
+                has_order: true, ...orders[0], lines: orders[0].lines,
+                note: null, history: [], orders,
+                session: {
+                    order_count: 2, subtotal: 80000, discount_total: 0,
+                    service_charge_amount: 0, tax_amount: 0,
+                    total_amount: 80000, paid_amount: 0, outstanding: 80000
+                }
+            })
+        }));
+        await open(page);
+        await page.locator('.tab[data-tab="orders"]').click();
+
+        // BOTH tickets are visible, each keeping its own progress — that is what
+        // the kitchen works from and what the diner watches per round.
+        const tickets = page.locator('.oticket');
+        await expect(tickets).toHaveCount(2, { timeout: 15_000 });
+        await expect(tickets.nth(0)).toContainText('2026-09-06-002');
+        await expect(tickets.nth(0)).toContainText('Mie Goreng');
+        await expect(tickets.nth(1)).toContainText('2026-09-06-001');
+        await expect(tickets.nth(1)).toContainText('Diantar');
+
+        // ⚠️ AND ONE BILL. 50.000 + 30.000, never just the newest ticket.
+        const totals = page.locator('.opanel.totals').first();
+        expect((await totals.locator('.line.grand .num').first().innerText()).replace(/\D/g, ''))
+            .toBe('80000');
+        await expect(page.locator('#bill-btn')).toContainText('80.000');
+        await expect(page.locator('#bill-btn'), 'the CTA quoted only the newest ticket')
+            .not.toContainText('30.000');
+    });
+
+    test('a single ticket shows no ticket list — it would restate the panel above', async ({ page }) => {
+        await stub(page);
+        await open(page);
+        await addPlain(page, 'Americano');
+        await page.locator('#cart-open').click();
+        await page.locator('#cart-submit').click();
+        await expect(page.locator('#sheet-done')).toHaveClass(/is-open/, { timeout: 20_000 });
+        await page.locator('#done-status').click();
+        await expect(page.locator('#sheet-orders')).toHaveClass(/is-open/);
+        await expect(page.locator('.otickets')).toHaveCount(0);
+    });
+
     // ── The hero ────────────────────────────────────────────────────────
     //
     // Two independent blocks: `.hero` knows about photos, `.outlet-card` knows

@@ -198,25 +198,25 @@ is(/tx\.update\(ref, patch\)/.test(appendBlock), true,
     'appending to an open order is a targeted update');
 is(/tx\.set\(ref/.test(appendBlock), false,
     '…never a whole-document set, which a stale read would use to revert the till');
-// ⚠️ THE APPENDABLE SET IS THE STATES WHERE ORDERING IS STILL OFFERED.
-// It read `open || submitted`, so the moment the kitchen moved a ticket to
-// `sent` a second round stopped matching, the client retried without a sitting,
-// and a WHOLE NEW ORDER DOCUMENT appeared for the same table — one unpaid
-// session split across two bills, and two live orders on one table.
-is(/APPENDABLE = \['open', 'submitted', 'sent', 'ready', 'served'\]/.test(SRC), true,
-    'a second round appends across every state where ordering is still offered');
-// `awaiting_payment` stays out: the bill has been requested and a cashier may
-// already have quoted it, so silently growing that total is worse than
-// refusing. `paid` and `void` are terminal.
-is(/APPENDABLE/.test(SRC) && /'awaiting_payment'/.test(
+// ⚠️ THE KITCHEN IS THE BOUNDARY. A round merges only while NOTHING HAS BEEN
+// PREPARED — `open` and `submitted` both mean the till has not sent it yet, so
+// four people still choosing make one ticket. Once a cook has the order, a new
+// round must be a NEW DOCUMENT: a ticket is a unit of work, and merging puts
+// already-served dishes back in front of someone who will make them again.
+//
+// This briefly read `['open','submitted','sent','ready','served']` and ALSO
+// reset the order to `submitted` so the board would notice the new lines. The
+// reset is what made it dangerous — the entire order went back to the kitchen,
+// served items included. Both are guarded against here.
+is(/const APPENDABLE = \['open', 'submitted'\]/.test(SRC), true,
+    'a round merges only before the kitchen has the order');
+is(/'sent'|'ready'|'served'/.test(
     (SRC.match(/const APPENDABLE = \[[^\]]*\]/) || [''])[0]), false,
-    'a bill already requested cannot be silently grown');
+    'merging past the kitchen would re-cook served dishes');
+is(/patch\.status\s*=/.test(appendBlock), false,
+    'appending must never move the order back to the kitchen');
 is(/!APPENDABLE\.includes\(o\.status\)/.test(appendBlock), true,
-    'an order paid, voided or sent to the cashier mid-tap is refused');
-// New food means the kitchen has work again. Without this the added lines sit
-// on a ticket the board reads as `served`: on the bill, nobody cooking it.
-is(/patch\.status = 'submitted'/.test(appendBlock), true,
-    'a post-kitchen order is sent back for acknowledgement when more is added');
+    'an order sent, paid or voided mid-tap gets its own document instead');
 
 // ── The two item projections ────────────────────────────────────────────
 //

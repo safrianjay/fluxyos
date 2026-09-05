@@ -1823,6 +1823,28 @@ html.kb-open .welcome-art { display: none; }
     padding-bottom: 4px;
 }
 
+/* Each ticket in the session, with its own progress. Separate rounds, one
+   bill — so the list is informational and the total below it is the answer. */
+.otickets {
+    margin-top: 12px;
+    background: var(--surface);
+    border: 1px solid var(--line-soft);
+    border-radius: 14px;
+    padding: 12px 14px;
+}
+.oticket { padding: 8px 0; border-top: 1px solid var(--line-soft); }
+.oticket:first-of-type { border-top: 0; padding-top: 2px; }
+.oticket-top {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 10px; padding-bottom: 4px;
+}
+.oticket-no { font-size: 12.5px; font-weight: 700; color: var(--ink); }
+.oticket-stage { font-size: 11.5px; font-weight: 600; color: var(--ok); }
+.oticket-line {
+    display: flex; justify-content: space-between; gap: 12px;
+    font-size: 13px; padding: 2px 0; color: var(--ink-70);
+}
+
 /* ---- Earlier orders --------------------------------------------------
    Collapsed by default: it is context, not the answer to "where is my food",
    which the panel above it already gives. A <details> so the disclosure is the
@@ -4105,8 +4127,22 @@ html.kb-open .welcome-art { display: none; }
         // the assignment — so the button read "Minta bill · Rp0" on every
         // unpaid table. Silent, and exactly the wrong number to be confident
         // about.
-        var outstanding = Math.max(0,
-            (Number(d.total_amount) || 0) - (Number(d.paid_amount) || 0));
+        // ⚠️ THE SESSION'S BILL, NOT THIS TICKET'S. Rounds placed after the
+        // kitchen has the previous one are separate ORDERS — the cook needs
+        // separate tickets — but from the diner's seat it is one meal and one
+        // total. Falls back to the single order for a payload from before the
+        // session field existed.
+        var bill = d.session || {
+            total_amount: Number(d.total_amount) || 0,
+            paid_amount: Number(d.paid_amount) || 0,
+            outstanding: Math.max(0, (Number(d.total_amount) || 0) - (Number(d.paid_amount) || 0)),
+            subtotal: Number(d.subtotal) || 0,
+            discount_total: Number(d.discount_total) || 0,
+            service_charge_amount: Number(d.service_charge_amount) || 0,
+            tax_amount: Number(d.tax_amount) || 0,
+            order_count: 1
+        };
+        var outstanding = Math.max(0, Number(bill.outstanding) || 0);
 
         // ── What the footer offers, and when ────────────────────────────────
         //
@@ -4179,9 +4215,9 @@ html.kb-open .welcome-art { display: none; }
         }).join('');
 
         var rows = breakdownRows({
-            subtotal: d.subtotal, discount: d.discount_total,
-            service: d.service_charge_amount, tax: d.tax_amount,
-            total: d.total_amount, paid: d.paid_amount
+            subtotal: bill.subtotal, discount: bill.discount_total,
+            service: bill.service_charge_amount, tax: bill.tax_amount,
+            total: bill.total_amount, paid: bill.paid_amount
         }, d.pricing);
 
         var called = billed
@@ -4193,6 +4229,7 @@ html.kb-open .welcome-art { display: none; }
         $('orders-body').innerHTML = hero + track + called
             + '<div class="opanel">' + lines + '</div>'
             + (d.note ? '<div class="onote"><span>Catatan</span><p>' + esc(d.note) + '</p></div>' : '')
+            + ticketPanels(d.orders)
             + '<div class="opanel totals"><div class="osession-head">Ringkasan pembayaran</div>'
             + rows + '</div>'
             + sessionSummary(d)
@@ -4377,6 +4414,40 @@ html.kb-open .welcome-art { display: none; }
             + row('Semua pesanan', ordered)
             + (paid > 0 ? row('Sudah dibayar', -paid) : '')
             + row(outstanding > 0 ? 'Perlu dibayar' : 'Lunas', outstanding, 'grand')
+            + '</div>';
+    }
+
+    /**
+     * Every ticket in this session, each with its own progress.
+     *
+     * ⚠️ THE TICKETS ARE SEPARATE AND THE BILL IS NOT. A round placed after the
+     * kitchen has the previous one is its own order, because a cook handed a
+     * merged ticket cannot tell which lines are new and will make the served
+     * ones again. The diner should never have to think about that: they see
+     * what they ordered, when, and how far along each round is — under one
+     * total.
+     *
+     * Rendered only for a SECOND ticket onward. With one round this would
+     * restate the panel directly above it.
+     */
+    function ticketPanels(orders) {
+        var list = Array.isArray(orders) ? orders : [];
+        if (list.length < 2) return '';
+        return '<div class="otickets">'
+            + '<div class="osession-head">Pesanan di meja ini</div>'
+            + list.map(function (o) {
+                var stageLabel = o.stage_label || (STAGES[Math.max(0, (o.stage || 1) - 1)] || {}).label || '';
+                var items = (o.lines || []).map(function (l) {
+                    return '<div class="oticket-line"><span>' + esc(l.item_name)
+                        + ' <span class="rate">×' + (Number(l.quantity) || 0) + '</span></span>'
+                        + '<span class="num">' + esc(money(l.gross_amount)) + '</span></div>';
+                }).join('');
+                return '<div class="oticket">'
+                    + '<div class="oticket-top">'
+                    + '<span class="oticket-no num">' + esc(o.order_number || '—') + '</span>'
+                    + '<span class="oticket-stage">' + esc(stageLabel) + '</span>'
+                    + '</div>' + items + '</div>';
+            }).join('')
             + '</div>';
     }
 

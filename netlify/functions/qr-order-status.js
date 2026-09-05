@@ -141,6 +141,33 @@ async function historyFor(db, workspaceId, tableId, raw, currentId) {
         .sort((a, b) => (b.placed_at || 0) - (a.placed_at || 0));
 }
 
+/**
+ * The bill: every live order at this table, summed.
+ *
+ * ⚠️ TICKETS SPLIT, BILLS DO NOT. The kitchen gets a separate order per round
+ * so a cook is never handed already-served dishes again; the customer gets one
+ * total, because from their seat it is one meal. That separation is the whole
+ * model — splitting the ticket must never split what they owe.
+ *
+ * `paid_amount` is summed too, so a part-settled table shows what is genuinely
+ * left rather than the gross.
+ */
+function sessionOf(docs) {
+    const add = (k) => docs.reduce((t, d) => t + (Number((d.data() || {})[k]) || 0), 0);
+    const total = add('total_amount');
+    const paid = add('paid_amount');
+    return {
+        order_count: docs.length,
+        subtotal: add('subtotal'),
+        discount_total: add('discount_total'),
+        service_charge_amount: add('service_charge_amount'),
+        tax_amount: add('tax_amount'),
+        total_amount: total,
+        paid_amount: paid,
+        outstanding: Math.max(0, total - paid)
+    };
+}
+
 exports.handler = async (event) => {
     const origin = (event.headers && (event.headers.origin || event.headers.Origin)) || '';
     const cors = {
@@ -205,17 +232,32 @@ exports.handler = async (event) => {
         //            older than that is a table nobody closed out.
         const STALE_MS = 12 * 60 * 60 * 1000;
         const now = Date.now();
-        let doc = null;
+
+        // ⚠️ EVERY LIVE ORDER, NOT THE FIRST ONE. Since 2026-09-06 a round
+        // placed after the kitchen has the previous ticket becomes its own
+        // ORDER — the kitchen needs separate tickets or a cook re-makes already
+        // served dishes. The customer's BILL is not split by that: it is the sum
+        // of everything still owed at this table.
+        //
+        // The active dining session is DERIVED, not stored: it is exactly the
+        // set of orders here that are neither paid, voided, nor stale. Paying
+        // one drops it out; paying all of them ends the session and the next
+        // party starts clean. Same call `pos_tables` makes about occupancy
+        // (pos.md §2) — a stored session and the real orders eventually
+        // disagree, and nothing would report it.
+        const live = [];
         recent.forEach((d) => {
-            if (doc) return;
             const o = d.data() || {};
             if (o.table_id !== tableId) return;
             if (o.voided_at) return;
             if (o.status === 'paid' || o.paid_at) return;
             const opened = msOf(o.opened_at) || msOf(o.created_at);
             if (opened && (now - opened) > STALE_MS) return;
-            doc = d;
+            live.push(d);
         });
+        // Newest first — the one a diner is asking about is the one they just
+        // placed, and it is what the hero and the progress track describe.
+        const doc = live[0] || null;
 
         // ── The diner's OWN history ─────────────────────────────────────
         //
@@ -230,7 +272,12 @@ exports.handler = async (event) => {
         // nothing, and nobody ever sees a bill they did not place.
         const history = await historyFor(db, workspaceId, tableId, q.ids, doc && doc.id);
 
-        if (!doc) return json(200, { has_order: false, lines: [], history }, 'no-store');
+        if (!doc) {
+            return json(200, {
+                has_order: false, lines: [], history,
+                orders: [], session: sessionOf([])
+            }, 'no-store');
+        }
 
         const o = doc.data() || {};
         const stage = STAGE[o.status] || { step: 1, label: 'Menunggu konfirmasi' };
@@ -264,7 +311,31 @@ exports.handler = async (event) => {
             paid_amount: Number(o.paid_amount) || 0,
             placed_at: msOf(o.opened_at),
             updated_at: msOf(o.status_changed_at) || msOf(o.updated_at),
-            history
+            history,
+            // Every live ticket, each keeping its OWN status — that is what the
+            // kitchen works from and what the diner watches per round.
+            orders: live.map((d) => {
+                const x = d.data() || {};
+                const st = STAGE[x.status] || { step: 1, label: 'Menunggu konfirmasi' };
+                return {
+                    order_id: d.id,
+                    order_number: String(x.order_number || ''),
+                    status: x.status,
+                    stage: st.step,
+                    stage_label: st.label,
+                    lines: (Array.isArray(x.lines) ? x.lines : []).map(lineOf),
+                    subtotal: Number(x.subtotal) || 0,
+                    discount_total: Number(x.discount_total) || 0,
+                    service_charge_amount: Number(x.service_charge_amount) || 0,
+                    tax_amount: Number(x.tax_amount) || 0,
+                    total_amount: Number(x.total_amount) || 0,
+                    paid_amount: Number(x.paid_amount) || 0,
+                    pricing: pricingOf(x),
+                    placed_at: msOf(x.opened_at) || msOf(x.created_at)
+                };
+            }),
+            // …and ONE bill across all of them.
+            session: sessionOf(live)
         }, 'no-store');
     } catch (err) {
         console.error('[qr-order-status]', err && err.message);

@@ -408,6 +408,47 @@ accepts partial amounts, so this is a till rule rather than a lost capability.
 Quick-cash amounts come from `FluxyMoney.cashSuggestions`, which reads the
 currency's own banknotes — see `MULTI_MARKET_ARCHITECTURE.md` §2d.
 
+### Tickets split at the kitchen; the bill does not
+
+**This is the model, and it took two wrong turns to reach.**
+
+| | |
+|---|---|
+| **Order** | A TICKET — a unit of kitchen work, with its own status and lifecycle |
+| **Bill** | Every live order at the table, summed |
+
+`qr-order` merges a round into the live order only while `open` or `submitted`
+— both mean the till has not sent it yet, so four people still choosing produce
+one ticket rather than four. **Once a cook has the order, a new round is a new
+document.** A merged ticket cannot tell a cook which lines are new, so they make
+the already-served ones again.
+
+⚠️ **On 2026-09-05 `APPENDABLE` was widened to `sent`, `ready` and `served`, and
+the order was reset to `submitted` so the board would notice the new lines.** The
+reset is what made it dangerous: the ENTIRE order went back to the kitchen,
+served dishes included. Reverted 2026-09-06 on Jay's correction, and guarded in
+both directions by `check:qr-order` — the appendable set, and that appending
+never writes `status`.
+
+### The dining session is DERIVED, not stored
+
+`qr-order-status` returns every order at the table that is neither paid, voided,
+nor stale, plus one `session` total across them. That set **is** the active
+dining session: paying one drops it out, paying all of them ends the session, and
+the next party starts clean with no boundary to maintain.
+
+Same call `pos_tables` makes about occupancy (§2): a stored session and the real
+orders eventually disagree, and nothing would report it. It also answers the
+session cases without a new collection — a first order paid and a second unpaid
+leaves exactly the second outstanding, because the paid one is no longer live.
+
+The diner sees each ticket with its own progress and ONE total; the CTA quotes
+the session's outstanding, never the newest ticket's.
+
+⚠️ **Splitting the ticket must never split what they owe.** That is the whole
+point of the separation, and the spec that fails if the CTA ever quotes a single
+ticket is `TICKETS SPLIT AT THE KITCHEN; THE BILL DOES NOT`.
+
 ### One table, one bill — and what nearly broke it
 
 `qr-order` appends a second round to the table's live order. Until 2026-09-05 it
