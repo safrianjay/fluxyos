@@ -58,9 +58,14 @@ async function workspaceCurrency(page) {
     // arrives that is a real regression, and it should surface as the explicit
     // "QA fixture has no business country" assertion below rather than as an
     // opaque wait timeout.
+    // 30s, not 15: under `npm run qa` this runs beside the Firestore emulator
+    // and another browser lane, and the profile read is a real network round
+    // trip. At 15s it expired on a loaded machine, the catch below swallowed it,
+    // and the helper returned the pre-resolution IDR DEFAULT — a wrong answer
+    // rather than a slow one.
     await page.waitForFunction(
         () => !!(window.FluxyWorkspace && window.FluxyWorkspace.country),
-        null, { timeout: 15000 }
+        null, { timeout: 30000 }
     ).catch(() => {});
     return page.evaluate(() => ({
         base: window.FluxyMoney.baseCurrency(),
@@ -144,6 +149,13 @@ test.describe('a non-IDR workspace renders in its own currency', () => {
         // `workspaceCurrency`, whose own comment describes this exact flake —
         // this one had its own hand-rolled waits and raced it.
         const { base, symbol } = await workspaceCurrency(page);
+        // ⚠️ SAY SO IF THE WORKSPACE NEVER RESOLVED. `workspaceCurrency`
+        // swallows its own timeout by design, so a slow profile read comes back
+        // as the IDR default — and the poll below would then spend 45 seconds
+        // waiting for "Rp" on a page correctly showing pesos, and report it as
+        // a re-render failure. This turns that into one clear line.
+        expect(base, 'the workspace never resolved — this reads as an IDR default')
+            .not.toBe('IDR');
 
         // ⚠️ WAIT FOR THE CONDITION, NOT FOR "SOMETHING RENDERED". This used to
         // wait until `#summary-total` was merely non-empty — which the IDR

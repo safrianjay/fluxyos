@@ -9,6 +9,17 @@ const path = require('path');
  * `use.storageState` in playwright.config.js.
  */
 test('authenticate as QA user', async ({ page }, testInfo) => {
+    // ⚠️ ITS OWN BUDGET, above the 60s global. This is a real login round trip
+    // against production Firebase and it measures ~38s on an IDLE machine —
+    // while `npm run qa` runs it with the Firestore emulator and a second
+    // browser lane on the same box. The inner waits below are 90s, and without
+    // this the test would be killed at 60s before any of them could report
+    // what was actually slow.
+    //
+    // Raised HERE rather than globally: every other spec inherits an
+    // already-authenticated storageState and has no excuse for taking a minute.
+    test.setTimeout(150_000);
+
     // Which QA account this run authenticates as, derived from the PROJECT name
     // rather than an env var so `npx playwright test` needs no special
     // invocation: `auth-setup` → the original Indonesian account (unchanged for
@@ -43,12 +54,23 @@ test('authenticate as QA user', async ({ page }, testInfo) => {
     // verification view instead of /dashboard (login.html `routeUser`). The QA
     // account is unverified, so click "Continue without verifying" to proceed.
     // Race the two possible outcomes so a verified account still works.
-    const dashboard = page.waitForURL(/\/dashboard(\.html)?($|\?)/, { timeout: 30_000 });
+    const dashboard = page.waitForURL(/\/dashboard(\.html)?($|\?)/, { timeout: 90_000 });
     const verifyGate = page.locator('#verify-view')
-        .waitFor({ state: 'visible', timeout: 30_000 })
+        .waitFor({ state: 'visible', timeout: 90_000 })
         .then(() => page.locator('#verify-skip-link').click());
     await Promise.race([dashboard, verifyGate]);
-    await page.waitForURL(/\/dashboard(\.html)?($|\?)/, { timeout: 30_000 });
+    // ⚠️ THE WHOLE BROWSER LANE HANGS OFF THIS ONE WAIT. Every spec depends on
+    // the `auth-setup` project, so when this times out Playwright reports the
+    // dependency failure and then "N did not run" — which reads, in the QA
+    // runner's truncated output, as though the last-named PAGE failed. Two QA
+    // runs were chased as a `reports.html` and then a `budget.html` regression
+    // before the real line was found.
+    //
+    // 30s is a real login round trip against production Firebase, measured at
+    // ~38s for this whole test on an idle machine — and `npm run qa` runs it
+    // with the Firestore emulator and a second browser lane on the same box.
+    // The margin was under one second of headroom in the wrong direction.
+    await page.waitForURL(/\/dashboard(\.html)?($|\?)/, { timeout: 90_000 });
 
     // Wait until the sidebar is hydrated so subsequent specs find the nav.
     await expect(page.locator('#sidebar')).toBeVisible();
