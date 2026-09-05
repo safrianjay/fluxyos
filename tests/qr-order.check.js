@@ -201,5 +201,23 @@ is(/tx\.set\(ref/.test(appendBlock), false,
 is(/o\.status !== 'open' && o\.status !== 'submitted'/.test(appendBlock), true,
     'an order paid or voided mid-tap is refused rather than appended to');
 
+// ── The two item projections ────────────────────────────────────────────
+//
+// ⚠️ `getPosMenu` (the till) and `qr-menu` (the diner) each project an explicit
+// WHITELIST. A field added to `items` and left out of one arrives as `undefined`
+// and the feature silently does nothing on that surface — how
+// pos_modifier_groups, barcode and image_path each failed on their first cut
+// (items.md §9). This pins the pair for `pos_recommended`.
+const posSvc = fs.readFileSync(path.join(ROOT, 'assets/js/pos-service.js'), 'utf8');
+const qrMenuSrc = fs.readFileSync(path.join(ROOT, 'netlify/functions/qr-menu.js'), 'utf8');
+const dbSvc = fs.readFileSync(path.join(ROOT, 'assets/js/db-service.js'), 'utf8');
+
+is(/pos_recommended:\s*data\.pos_recommended/.test(dbSvc), true,
+    'saveItem persists pos_recommended — without it the drawer toggle does nothing');
+is(/pos_recommended:\s*i\.pos_recommended/.test(posSvc), true,
+    'getPosMenu projects pos_recommended (undefined at the till otherwise)');
+is(/recommended:\s*i\.pos_recommended/.test(qrMenuSrc), true,
+    'qr-menu projects it to the diner (the rail never renders otherwise)');
+
 console.log(failures ? `\n✗ ${failures} failure(s)\n` : '\nqr-order: clean\n');
 process.exit(failures ? 1 : 0);

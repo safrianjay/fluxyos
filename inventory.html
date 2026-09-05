@@ -906,6 +906,19 @@
                         <span class="inv-check-sub">Needs a selling price. Without a recipe it sells at 100% margin, overstating gross profit.</span>
                     </span>
                 </label>
+                <!-- Directly under "Show on the till" because it REFINES that
+                     answer: a recommendation for something not on the menu is a
+                     rail pointing at nothing. Ticking it also ticks the one
+                     above rather than refusing — the person has said plainly
+                     what they want, and making them find a second checkbox to
+                     be allowed to want it is the kind of form that gets sworn
+                     at. -->
+                <label class="inv-check" style="margin-top:4px;">
+                    <input id="item-pos-recommended" type="checkbox" class="inv-check-box">
+                    <span class="inv-check-text">Recommend to customers
+                        <span class="inv-check-sub">Features it in “Rekomendasi Kami” at the top of the page a diner’s QR code opens. Not shown on the till.</span>
+                    </span>
+                </label>
 
                 <!-- ── Options (modifiers) ───────────────────────────────────
                      Size, sugar level, add-ons. They live on the ITEM because
@@ -2549,6 +2562,7 @@
             setItemPhoto(isEdit ? (item.image_path || null) : null);
             renderMenuGroups(isEdit ? (item.pos_category || '') : '');
             document.getElementById('item-pos-visible').checked = isEdit ? item.pos_visible === true : false;
+            document.getElementById('item-pos-recommended').checked = isEdit ? item.pos_recommended === true : false;
 
             // `type` is immutable once the item exists: a stock item may already
             // carry movements, and a recipe is relieved as its ingredients — so
@@ -2786,6 +2800,7 @@
                 // every other amount in the app.
                 sales_price: Number(document.getElementById('item-price').value.replace(/\D/g, '')) || null,
                 pos_visible: document.getElementById('item-pos-visible').checked,
+                pos_recommended: document.getElementById('item-pos-recommended').checked,
                 // The picker's answer, not the raw text box — the box only holds
                 // a NEW group's name and is empty whenever an existing one is
                 // selected.
@@ -3279,6 +3294,27 @@
                 window.showToast('Give the item a selling price first — the till needs something to charge.', 'error');
             }
         });
+        // Recommending something implies selling it, so ticking this ticks
+        // "Show on the till" too — and unticking that unticks this, because a
+        // recommendation left behind on an item taken off the menu is a rail
+        // entry the owner cannot see and cannot explain.
+        document.getElementById('item-pos-recommended').addEventListener('change', (e) => {
+            if (!e.target.checked) return;
+            const visible = document.getElementById('item-pos-visible');
+            if (visible.checked) return;
+            const price = parseAmountInput(document.getElementById('item-price').value);
+            if (!price) {
+                e.target.checked = false;
+                window.showToast('Give the item a selling price first — a recommendation has to be orderable.', 'error');
+                return;
+            }
+            visible.checked = true;
+            window.showToast('Also shown on the till — a recommendation has to be orderable.', 'info');
+        });
+        document.getElementById('item-pos-visible').addEventListener('change', (e) => {
+            if (!e.target.checked) document.getElementById('item-pos-recommended').checked = false;
+        });
+
         // ── Option-group editor wiring ──────────────────────────────────
         //
         // One delegated listener for the whole editor, because every change

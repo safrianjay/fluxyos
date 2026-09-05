@@ -527,6 +527,11 @@ export const POS_METHODS = {
                 // doing nothing. That is exactly how pos_modifier_groups failed
                 // on its first cut.
                 barcode: i.barcode || null,
+                // ⚠️ WHITELIST. A field added to `items` and not added here
+                // arrives as `undefined` and the feature silently does nothing —
+                // how pos_modifier_groups, barcode and image_path each failed on
+                // their first cut (items.md §9).
+                pos_recommended: i.pos_recommended === true,
                 // Whether "how many are left" is even a question for this item.
                 // A service is never held as stock, and a recipe's availability
                 // is its ingredients' — neither has an on-hand number of its own.

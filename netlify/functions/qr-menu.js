@@ -144,6 +144,10 @@ exports.handler = async (event) => {
                 // qr-menu-image for the bytes, so no storage path reaches a
                 // customer and no public URL is ever minted.
                 has_image: typeof i.image_path === 'string' && !!i.image_path,
+                // ⚠️ THE SECOND WHITELIST. `getPosMenu` has one for the till and
+                // this one serves the diner; a field added to only one of them
+                // works on one surface and silently does nothing on the other.
+                recommended: i.pos_recommended === true,
                 // Options the customer chooses, with their price deltas. What
                 // each option CONSUMES is deliberately stripped — that is stock
                 // and cost, and none of a diner's business.

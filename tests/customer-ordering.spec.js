@@ -327,6 +327,112 @@ test.describe('QR customer ordering', () => {
     const ART_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 160">'
         + '<rect width="300" height="160" fill="#CDE8DA"/></svg>';
 
+    // ── Rekomendasi Kami ────────────────────────────────────────────────
+    //
+    // The owner's own picks, marked per item in Inventory. A rail above the menu
+    // it is drawn from.
+    const withRecos = (over = {}) => ({
+        ...MENU,
+        items: MENU.items.map((i) => (
+            i.id === 'i_latte' ? { ...i, recommended: true }
+                : i.id === 'i_nasgor' ? { ...i, recommended: true, has_image: false }
+                    : i)),
+        ...over
+    });
+
+    test('THE RECOMMENDATIONS RAIL SITS BETWEEN THE CHIPS AND THE MENU', async ({ page }) => {
+        await stub(page);
+        await page.route('**/qr-menu?**', (route) => route.fulfill({
+            status: 200, contentType: 'application/json', body: JSON.stringify(withRecos())
+        }));
+        await open(page);
+
+        const rail = page.locator('#recos');
+        await expect(rail).toBeVisible({ timeout: 15_000 });
+        await expect(page.locator('#recos-title')).toHaveText(/rekomendasi/i);
+        // ONLY the marked items, never the whole menu.
+        const cards = page.locator('.reco-card');
+        await expect(cards).toHaveCount(2);
+        await expect(cards.first()).toContainText('Es Kopi Susu');
+
+        // Position is the spec, not an accident: below the category chips and
+        // above the menu they are drawn from.
+        const chips = await page.locator('#chips').boundingBox();
+        const box = await rail.boundingBox();
+        const menu = await page.locator('#menu').boundingBox();
+        expect(box.y).toBeGreaterThanOrEqual(chips.y + chips.height - 1);
+        expect(box.y + box.height).toBeLessThanOrEqual(menu.y + 1);
+
+        // It scrolls horizontally, and the PAGE does not.
+        const overflows = await page.locator('.recos-rail')
+            .evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+        expect(overflows, 'the rail does not scroll — cards were wrapped or shrunk').toBe(true);
+        expect(await page.evaluate(() =>
+            document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    });
+
+    test('a card in the rail opens the item, like every other card', async ({ page }) => {
+        // ⚠️ THE BUG THIS PINS: `#recos` is a SIBLING of `#menu`, and the
+        // delegated open handler was bound to `#menu`. The rail's cards looked
+        // perfectly tappable and did nothing at all.
+        await stub(page);
+        await page.route('**/qr-menu?**', (route) => route.fulfill({
+            status: 200, contentType: 'application/json', body: JSON.stringify(withRecos())
+        }));
+        await open(page);
+        await page.locator('.reco-card', { hasText: 'Es Kopi Susu' })
+            .getByRole('button', { name: /tambah/i }).click();
+        // The item SHEET, not a straight add — a recommended dish carries options
+        // like any other, and a button that skipped them would cart the wrong thing.
+        await expect(page.locator('#sheet-item')).toHaveClass(/is-open/, { timeout: 15_000 });
+        await expect(page.locator('#item-title')).toHaveText('Es Kopi Susu');
+    });
+
+    test('a recommendation with no photo stays legible instead of going muddy', async ({ page }) => {
+        // Most items have no photo (items.md §9), so this is the COMMON case.
+        // A dark scrim over a pastel tint turns the card to grey sludge and reads
+        // as a loading failure, so a photoless card inverts to ink on light.
+        await stub(page);
+        await page.route('**/qr-menu?**', (route) => route.fulfill({
+            status: 200, contentType: 'application/json', body: JSON.stringify(withRecos())
+        }));
+        await open(page);
+        const plain = page.locator('.reco-card.is-plain');
+        await expect(plain).toHaveCount(1);
+        const ink = await plain.locator('.reco-name').evaluate((el) => getComputedStyle(el).color);
+        const onPhoto = await page.locator('.reco-card:not(.is-plain) .reco-name')
+            .evaluate((el) => getComputedStyle(el).color);
+        expect(ink, 'the photoless card kept the white-on-photo treatment').not.toBe(onPhoto);
+    });
+
+    test('the rail is a BROWSE affordance — it gets out of the way when searching', async ({ page }) => {
+        // A diner who has typed a dish has said what they want. A fixed rail of
+        // something else at the top of their results is the page arguing.
+        await stub(page);
+        await page.route('**/qr-menu?**', (route) => route.fulfill({
+            status: 200, contentType: 'application/json', body: JSON.stringify(withRecos())
+        }));
+        await open(page);
+        await expect(page.locator('#recos')).toBeVisible();
+
+        await page.locator('#search').fill('americano');
+        await expect(page.locator('#recos')).toBeHidden();
+        await page.locator('#search').fill('');
+        await expect(page.locator('#recos')).toBeVisible();
+
+        // Same for a category tab.
+        await page.locator('.chip', { hasText: 'Kopi' }).click();
+        await expect(page.locator('#recos')).toBeHidden();
+    });
+
+    test('an outlet that has recommended nothing gets no heading', async ({ page }) => {
+        // An empty rail under a title is a promise the outlet has not made.
+        await stub(page);
+        await open(page);
+        await expect(page.locator('#recos')).toBeHidden();
+        await expect(page.locator('.reco-card')).toHaveCount(0);
+    });
+
     test('THE GATE NEVER GOES LOOKING FOR ARTWORK THAT WAS NOT DECLARED', async ({ page }) => {
         // ⚠️ DECLARED, NOT PROBED. The obvious build — try `.svg`, then `.png`,
         // then `.webp` — costs every diner three or four 404s on restaurant

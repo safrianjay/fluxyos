@@ -21,6 +21,37 @@ async function gotoItems(page) {
     );
 }
 
+test('RECOMMENDING AN ITEM IMPLIES SELLING IT, IN BOTH DIRECTIONS', async ({ page }) => {
+    // A recommendation for something not on the menu is a rail pointing at
+    // nothing. Rather than refusing — the person has said plainly what they want
+    // — ticking this ticks "Show on the till" too, and unticking that clears
+    // this, so a recommendation is never left behind on an item taken off the
+    // menu where the owner cannot see it.
+    await page.goto('/inventory');
+    await page.locator('#new-item-btn').click({ timeout: 25000 });
+
+    const recommended = page.locator('#item-pos-recommended');
+    const visible = page.locator('#item-pos-visible');
+    await expect(recommended, 'the recommend control is missing from the item drawer')
+        .toBeVisible({ timeout: 20000 });
+
+    // With no price, the till checkbox already refuses; so must this one, and
+    // for the same stated reason rather than silently doing nothing.
+    // `.click()`, not `.check()` — `check()` asserts the box ENDS UP checked, and
+    // the whole point here is that it does not.
+    await recommended.click();
+    await expect(recommended).not.toBeChecked();
+
+    await page.locator('#item-price').fill('25000');
+    await recommended.click();
+    await expect(recommended).toBeChecked();
+    await expect(visible, 'recommending did not imply selling').toBeChecked();
+
+    await visible.click();
+    await expect(recommended, 'a recommendation was left behind on an item off the menu')
+        .not.toBeChecked();
+});
+
 test('SKU is answered next to Name, not nine fields below it', async ({ page }) => {
     await gotoItems(page);
     await page.click('#new-item-btn');

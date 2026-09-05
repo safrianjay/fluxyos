@@ -467,6 +467,110 @@ img { max-width: 100%; display: block; }
     .grid { grid-template-columns: repeat(3, 1fr); }
 }
 
+/* ==========================================================================
+   Rekomendasi Kami — the owner's own picks
+   --------------------------------------------------------------------------
+   A horizontal rail of vertical cards, above the menu it is drawn from. Built
+   to a supplied reference (Swiggy's "Top Picks"): full-bleed photo, the name
+   and price over a scrim at the foot, one ADD button.
+
+   ⚠️ `cover` HERE, `contain` EVERYWHERE ELSE — a deliberate, narrow exception
+   to items.md §9, which bans cropping because "the cropped part is often what
+   identifies the product". That reasoning holds for a grid card, where the
+   photo IS the identification. It does not hold here: the name is set large
+   ACROSS the image, the uncropped photo is still one tap away in the item
+   sheet, and the same dish appears uncropped in the grid below. A letterboxed
+   photo in a tall card would be a picture floating in two grey bands.
+   ========================================================================== */
+.recos { margin: 4px 0 2px; }
+.recos-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; padding: 0 16px 10px;
+}
+.recos-title { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
+.recos-sub { font-size: 12px; color: var(--ink-50); }
+.recos-rail {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    /* Padding rather than margin, so the first and last card clear the screen
+       edge WITHOUT the rail's scrollable area stopping short of it. */
+    padding: 2px 16px 8px;
+    scrollbar-width: none;
+}
+.recos-rail::-webkit-scrollbar { display: none; }
+
+.reco-card {
+    position: relative;
+    flex: 0 0 auto;
+    width: 208px;
+    aspect-ratio: 3 / 4;
+    border-radius: 18px;
+    overflow: hidden;
+    scroll-snap-align: start;
+    background: var(--ink);
+    padding: 0;
+    border: none;
+    text-align: left;
+    color: #fff;
+    display: block;
+    box-shadow: 0 2px 10px -4px rgba(11, 15, 25, 0.18), 0 1px 2px rgba(11, 15, 25, 0.06);
+    transition: transform 0.14s ease;
+}
+.reco-card:active { transform: scale(0.985); }
+.reco-media { position: absolute; inset: 0; }
+.reco-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.reco-media.is-placeholder {
+    background: var(--tint, linear-gradient(150deg, #FFF1E4, #FDE3CE));
+    display: flex; align-items: center; justify-content: center;
+}
+.reco-media.is-placeholder svg { width: 46px; height: 46px; color: rgba(11, 15, 25, 0.26); }
+
+/* ⚠️ NO PHOTO IS THE COMMON CASE, not an edge one — most items have none
+   (items.md §9). A dark scrim laid over a pastel tint turns it to grey sludge
+   and the card reads as a loading failure, so a photoless card inverts instead:
+   light scrim, ink text, an outlined pill. Same card, still legible, and it
+   does not pretend to be a photograph. */
+.reco-card.is-plain { background: var(--surface); color: var(--ink); }
+.reco-card.is-plain .reco-scrim {
+    background: linear-gradient(180deg, rgba(255,255,255,0) 40%, rgba(255,255,255,0.86) 76%, rgba(255,255,255,0.96) 100%);
+}
+.reco-card.is-plain .reco-name,
+.reco-card.is-plain .reco-price { text-shadow: none; }
+.reco-card.is-plain .reco-price { color: var(--ink); }
+.reco-card.is-plain .reco-add { border: 1px solid var(--line); background: var(--surface); }
+/* The scrim is what makes white text legible over an unknown photo. Without it
+   a pale dish and a white name are the same colour. */
+.reco-scrim {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(11,15,25,0) 38%, rgba(11,15,25,0.72) 78%, rgba(11,15,25,0.88) 100%);
+}
+.reco-body { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 12px 12px; }
+.reco-name {
+    font-size: 15px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.25;
+    margin: 0 0 6px;
+    /* Two lines then ellipsis: a long dish name must not push the price and the
+       button off the bottom of the card. */
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-shadow: 0 1px 2px rgba(11, 15, 25, 0.5);
+}
+.reco-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.reco-price { font-size: 14px; font-weight: 700; text-shadow: 0 1px 2px rgba(11, 15, 25, 0.5); }
+/* White pill, ACCENT text. The reference's is green; orange is this product's
+   accent and an orange background is banned project-wide, so the colour goes on
+   the label where accents belong. */
+.reco-add {
+    flex: 0 0 auto;
+    height: 32px; padding: 0 14px;
+    border: none; border-radius: 999px;
+    background: #fff; color: var(--accent);
+    font-size: 13px; font-weight: 700; letter-spacing: -0.01em;
+}
+.reco-add:active { background: #F3F4F6; }
+
 .card {
     background: var(--surface);
     border: 1px solid var(--line-soft);
@@ -1740,6 +1844,10 @@ html.kb-open .welcome-art { display: none; }
             <div id="chips" class="chips" role="group" aria-label="Kategori"></div>
         </div>
 
+        <!-- Between the chips and the menu, exactly as the reference places it.
+             Rendered empty (and absent) until an owner marks something. -->
+        <section id="recos" class="recos" hidden aria-labelledby="recos-title"></section>
+
         <div id="menu" class="menu"></div>
         <!-- Clears the floating tab bar AND the cart bar above it, so the last
              card is never trapped under either. Derived from --tabbar-space so
@@ -2652,7 +2760,64 @@ html.kb-open .welcome-art { display: none; }
         }, 0);
     }
 
+    /**
+     * "Rekomendasi Kami" — the owner's own picks, marked per item in
+     * Inventory → the item drawer.
+     *
+     * ⚠️ HIDDEN WHILE SEARCHING OR FILTERING. It is a BROWSE affordance: a
+     * diner who has typed "kopi" or tapped Minuman has told us what they want,
+     * and a fixed rail of something else at the top of their results is the
+     * page arguing with them. It comes back when the filter clears.
+     *
+     * Absent entirely when nothing is marked. An empty rail under a heading is
+     * a promise the outlet has not made.
+     */
+    var MAX_RECOS = 12;
+
+    function paintRecos() {
+        var host = $('recos');
+        if (!host) return;
+        var filtering = !!activeCategory || !!String(searchTerm || '').trim();
+        var picks = filtering ? [] : (menu && Array.isArray(menu.items) ? menu.items : [])
+            .filter(function (i) { return i && i.recommended === true; })
+            .slice(0, MAX_RECOS);
+
+        if (!picks.length) { host.hidden = true; host.innerHTML = ''; return; }
+
+        var cards = picks.map(function (i) {
+            var media = i.has_image
+                ? '<div class="reco-media"><img loading="lazy" decoding="async" alt="" src="'
+                    + FN + 'qr-menu-image?token=' + encodeURIComponent(TOKEN)
+                    + '&item=' + encodeURIComponent(i.id) + '"></div>'
+                : '<div class="reco-media is-placeholder" style="--tint:'
+                    + categoryTint(i.category) + '">' + PLACEHOLDER + '</div>';
+            var qty = qtyInCart(i.id);
+            return '<article class="reco-card' + (i.has_image ? '' : ' is-plain')
+                + '" data-open="' + esc(i.id) + '">'
+                + media
+                + '<div class="reco-scrim"></div>'
+                + '<div class="reco-body">'
+                + '<h3 class="reco-name">' + esc(i.name) + '</h3>'
+                + '<div class="reco-foot">'
+                + '<span class="reco-price num">' + esc(money(i.price)) + '</span>'
+                // Same target as the card itself, and the same one the grid uses
+                // — the item sheet. NOT a straight add: a recommended dish is as
+                // likely to carry options as any other, and a button that
+                // skipped them would put the wrong thing in the cart.
+                + '<button class="reco-add" type="button" data-open="' + esc(i.id) + '">'
+                + (qty > 0 ? esc(qty + ' •') + ' Tambah' : 'Tambah') + '</button>'
+                + '</div></div></article>';
+        }).join('');
+
+        host.innerHTML = '<div class="recos-head">'
+            + '<h2 class="recos-title" id="recos-title">Rekomendasi Kami</h2>'
+            + '<span class="recos-sub">Pilihan ' + esc(menu.outlet || 'kami') + '</span>'
+            + '</div><div class="recos-rail">' + cards + '</div>';
+        host.hidden = false;
+    }
+
     function paintMenu() {
+        paintRecos();
         var items = visibleItems();
         var host = $('menu');
         if (!items.length) {
@@ -2718,6 +2883,13 @@ html.kb-open .welcome-art { display: none; }
     }
 
     $('menu').addEventListener('click', function (e) {
+        var open = e.target.closest('[data-open]');
+        if (open) return openDetail(open.dataset.open);
+    });
+    // ⚠️ ITS OWN LISTENER. `#recos` is a SIBLING of `#menu`, not a child, so the
+    // delegation above never sees it — the rail's cards would have looked
+    // perfectly tappable and done nothing at all.
+    $('recos').addEventListener('click', function (e) {
         var open = e.target.closest('[data-open]');
         if (open) return openDetail(open.dataset.open);
     });

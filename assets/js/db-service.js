@@ -6675,6 +6675,14 @@ class DataService {
             sales_price: Number.isInteger(Number(data.sales_price)) && Number(data.sales_price) > 0
                 ? Number(data.sales_price) : null,
             pos_visible: data.pos_visible === true,
+            // Featured in "Rekomendasi Kami" on the customer's ordering page.
+            // A flag on the ITEM rather than a curated list document, for the
+            // same reason the menu IS this collection: a separate list would
+            // drift from the catalogue, and the way it drifts is a rail
+            // recommending something that has been archived or taken off the
+            // menu. Meaningless without `pos_visible`, which the drawer enforces
+            // and `qr-menu` enforces again by only ever projecting visible items.
+            pos_recommended: data.pos_recommended === true,
             pos_category: this._nullableString(data.pos_category, 40),
             pos_sort: Number.isInteger(Number(data.pos_sort)) ? Number(data.pos_sort) : 0,
             // Option groups — size, sugar level, add-ons. Validated HERE and

@@ -54,6 +54,7 @@ creates `stock` items and preserves — but does not edit — a `composite`'s
 | `custom_fields` | map ≤20 \| null | `custom_field_*` columns. Flat strings, values ≤200 chars |
 | `import_batch_id` | string \| null | Set by a bulk import. Ties the items, their movements and their opening journal to one event |
 | `image_path` | string ≤400 \| null | Product photo, shown on the POS menu card. **A STORAGE PATH, never a URL** — see §9. Optional everywhere; most items have none |
+| `pos_recommended` | boolean | Features the item in **Rekomendasi Kami** on the customer's ordering page. A flag on the ITEM, not a curated list document — see §10 |
 
 ## 2a. `reorder_point`: absence is not zero
 
@@ -563,6 +564,60 @@ existed.
 there; a field left out reaches the till as `undefined` and the feature silently
 does nothing, which is how `pos_modifier_groups` and `barcode` each failed on
 their first cut.
+
+## 10. `pos_recommended` — the owner's own picks
+
+Added 2026-09-05. Marked in the item drawer, directly under **Show on the till**,
+and rendered as the **Rekomendasi Kami** rail above the menu on `order.html`.
+
+**A flag on the item, not a curated list document.** For the same reason the
+menu IS this collection (`pos.md` §1): a separate list drifts from the
+catalogue, and the direction it drifts is a rail recommending something
+archived, unpriced or taken off the menu.
+
+### It implies `pos_visible`, in both directions
+
+A recommendation for something not on the menu is a rail pointing at nothing.
+Ticking it ticks *Show on the till* too — rather than refusing, because the
+person has said plainly what they want and making them find a second checkbox
+to be allowed to want it is the kind of form that gets sworn at. Unticking
+*Show on the till* clears it, so a recommendation is never left behind on an
+item the owner can no longer see it on. With no selling price both refuse, and
+say why.
+
+### ⚠️ It crosses BOTH item projections
+
+`getPosMenu` (the till) and `qr-menu` (the diner) each project an explicit
+whitelist. A field added to one and not the other works on one surface and
+silently does nothing on the other — the same failure `pos_modifier_groups`,
+`barcode` and `image_path` each had on their first cut (§9). Guard:
+three assertions in `tests/qr-order.check.js`.
+
+`items` has no `hasOnly` in rules (§5), so this needed **no rules change and no
+deploy**.
+
+### The rail
+
+Horizontal scroll, vertical cards, built to a supplied reference. Three
+behaviours that are the spec rather than decoration:
+
+- **`cover` here, `contain` everywhere else** — a deliberate, narrow exception
+  to §9. That ban exists because a cropped photo loses what identifies the
+  product; here the name is set large ACROSS the image, the uncropped photo is
+  one tap away in the item sheet, and the same dish appears uncropped in the
+  grid below. A letterboxed photo in a tall card is a picture in two grey bands.
+- **A photoless card INVERTS** to ink-on-light instead of white-on-scrim. Most
+  items have no photo, so this is the common case; a dark scrim over a pastel
+  tint reads as a loading failure.
+- **Hidden while searching or filtering.** It is a browse affordance — a diner
+  who typed a dish has said what they want, and a fixed rail of something else
+  above their results is the page arguing with them.
+
+⚠️ `#recos` is a SIBLING of `#menu`, so it needs its own delegated tap handler.
+Bound only to `#menu`, the cards look perfectly tappable and do nothing.
+
+Guards: five specs in `tests/customer-ordering.spec.js`, one in
+`tests/inventory-item-accounting.spec.js`.
 
 ## 8. Composites are not importable
 
