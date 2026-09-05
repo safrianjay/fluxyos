@@ -1485,6 +1485,14 @@ function renderOrderLists() {
     const MAX_LINES = 8;
 
     const now = Date.now();
+
+    // ⚠️ WHICH TICKETS BELONG TO ONE BILL. Built from `activeOrders` rather than
+    // from `rows`, because the board is filtered and sorted: a cashier looking
+    // at "Awaiting payment" must still be told the table has a second ticket
+    // that their current tab is hiding. Taking the sibling count from the
+    // visible list would state a smaller number exactly when it matters.
+    const siblings = tableTickets();
+
     grid.innerHTML = rows.map((o) => {
         const st = STATUS[o.status] || STATUS.open;
         const lvl = waitLevel(o, now);
@@ -1565,6 +1573,7 @@ function renderOrderLists() {
 
             <div class="pos-ocard-total"><span>Total</span><span>${rp(o.total_amount)}</span></div>
 
+            ${tableBillStrip(o, siblings)}
             ${cardAction(o)}
         </article>`;
     }).join('');
@@ -1608,6 +1617,11 @@ function renderOrderLists() {
             // before the order it was about to charge had been loaded.
             selectOrder(b.dataset.pay);
             openPaymentModal();
+        }));
+    grid.querySelectorAll('[data-table-bill]').forEach((b) =>
+        b.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openTableBillModal(b.dataset.tableBill);
         }));
     grid.querySelectorAll('[data-print]').forEach((b) =>
         b.addEventListener('click', () => {
@@ -2698,6 +2712,169 @@ function drawer({ title, subtitle, body, submitLabel, onSubmit, danger = false }
     return el;
 }
 
+// ── One table, one bill ─────────────────────────────────────────────────────
+//
+// Tickets split at the kitchen and the bill does not (pos.md). The customer's
+// phone has said so since 2026-09-06 — it shows every live ticket and one
+// total. The BOARD did not: two rounds at one table were two cards with two
+// totals and two Pay buttons, and the cashier added them up in their head.
+//
+// That is the under-collection shape. Nothing errors when a cashier settles the
+// 30.000 ticket and misses the 50.000 one; both documents stay individually
+// correct, and the shortfall only surfaces if somebody re-reads the table.
+
+/** Live, unpaid tickets at each table, oldest first. Keyed by table id. */
+function tableTickets() {
+    const map = new Map();
+    ((state.overview || {}).activeOrders || []).forEach((o) => {
+        if (!o.table_id || o.status === 'paid' || o.status === 'void') return;
+        if (posOrderDue(o) <= 0) return;
+        if (!map.has(o.table_id)) map.set(o.table_id, []);
+        map.get(o.table_id).push(o);
+    });
+    map.forEach((list) => list.sort((a, b) =>
+        (toMs(a.opened_at) || toMs(a.created_at) || 0) - (toMs(b.opened_at) || toMs(b.created_at) || 0)));
+    return map;
+}
+
+/** What this ticket still owes. Netted, so a part payment is not billed twice. */
+function posOrderDue(o) {
+    return Math.max(0, Math.round(Number(o.total_amount) || 0) - Math.round(Number(o.paid_amount) || 0));
+}
+
+const billTotal = (list) => (list || []).reduce((t, o) => t + posOrderDue(o), 0);
+
+// Shown only from the SECOND ticket. On a table with one it would restate the
+// total directly above it and put a second, near-identical button beside the
+// card's own — the board's rule is one action per card, and this is the one
+// case where the table has an action the ticket does not.
+function tableBillStrip(o, siblings) {
+    const list = (o.table_id && siblings.get(o.table_id)) || [];
+    if (list.length < 2) return '';
+    return `<div class="pos-ocard-bill">
+        <div class="pos-ocard-bill-txt">
+            <span class="pos-ocard-bill-label">Table ${esc(o.table_label || '')} · ${list.length} tickets</span>
+            <span class="pos-ocard-bill-total num">${esc(rp(billTotal(list)))}</span>
+        </div>
+        <button type="button" class="pos-ocard-btn" data-table-bill="${esc(o.table_id)}">Bill together</button>
+    </div>`;
+}
+
+// ── The table bill ──────────────────────────────────────────────────────────
+//
+// MERGE AND SPLIT ARE ONE CONTROL, not two features. The list is every live
+// ticket at the table with a checkbox; all of them on is a merged bill, some of
+// them is a split one, and whatever is left unticked stays open and still owed.
+// Two separate flows would eventually disagree about what a payment does.
+//
+// It does NOT touch the tickets themselves. They keep their own documents,
+// their own kitchen status and their own journals — merging the documents is
+// the thing that puts served dishes back in front of a cook, and the whole
+// model rests on not doing it.
+function openTableBillModal(tableId) {
+    const list = (tableTickets().get(tableId) || []);
+    if (!list.length) { toast('Nothing left to settle at that table.'); return; }
+    const label = list[0].table_label || '';
+    // Everything on by default: settling the table is the common case, and a
+    // dialog that opens with nothing chosen makes the cashier do the work
+    // twice.
+    const picked = new Set(list.map((o) => o.id));
+
+    document.getElementById('pos-bill-modal')?.remove();
+    const el = document.createElement('div');
+    el.id = 'pos-bill-modal';
+    el.className = 'pos-modal-layer';
+    el.innerHTML = `
+        <div class="pos-modal-backdrop" data-close></div>
+        <div class="pos-modal pos-bill" role="dialog" aria-modal="true" aria-labelledby="pos-bill-title">
+            <div class="pos-modal-head">
+                <div>
+                    <h2 class="pos-modal-title" id="pos-bill-title">Table ${esc(label)} bill</h2>
+                    <p class="pos-modal-sub">${list.length} tickets · untick any the customer is not paying for now</p>
+                </div>
+                <button type="button" class="pos-modal-close" data-close aria-label="Close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18 18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="pos-modal-body">
+                <div class="pos-bill-list" id="pos-bill-list"></div>
+                <p class="pos-hint" id="pos-bill-rest" hidden></p>
+            </div>
+            <div class="pos-modal-foot">
+                <div class="pos-bill-sum">
+                    <span class="pos-bill-sum-label">To pay now</span>
+                    <span class="pos-bill-sum-value num" id="pos-bill-total"></span>
+                </div>
+                <button type="button" class="pos-btn-primary" id="pos-bill-pay">Take payment</button>
+            </div>
+        </div>`;
+    document.body.appendChild(el);
+
+    const close = () => el.remove();
+    el.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', close));
+    document.addEventListener('keydown', function onEsc(e) {
+        if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onEsc); }
+    });
+
+    const paint = () => {
+        const chosen = list.filter((o) => picked.has(o.id));
+        el.querySelector('#pos-bill-list').innerHTML = list.map((o) => {
+            const st = STATUS[o.status] || STATUS.open;
+            const n = (o.lines || []).reduce((t, l) => t + (Number(l.quantity) || 0), 0);
+            const on = picked.has(o.id);
+            return `<label class="pos-bill-row${on ? ' is-on' : ''}">
+                <input type="checkbox" data-ticket="${esc(o.id)}"${on ? ' checked' : ''}>
+                <span class="pos-bill-row-main">
+                    <span class="pos-bill-row-top">
+                        <span class="pos-bill-row-no">${esc(o.order_number || '')}</span>
+                        <span class="fluxy-table-status ${st.cls}">${esc(st.label)}</span>
+                    </span>
+                    <span class="pos-bill-row-meta">${n} item${n === 1 ? '' : 's'}${
+                        // The kitchen's own reading of this ticket, so a cashier
+                        // can see they are about to bill for food that has not
+                        // arrived — which is a conversation to have, not a
+                        // refusal: pos.md, a ticket's stage never decides what
+                        // is owed.
+                        ''}</span>
+                </span>
+                <span class="pos-bill-row-amt num">${esc(rp(posOrderDue(o)))}</span>
+            </label>`;
+        }).join('');
+        el.querySelector('#pos-bill-total').textContent = rp(billTotal(chosen));
+        // What is being LEFT BEHIND, stated in words. A split bill that silently
+        // leaves a ticket open is how a table walks out owing money nobody
+        // mentioned.
+        const rest = list.filter((o) => !picked.has(o.id));
+        const restEl = el.querySelector('#pos-bill-rest');
+        restEl.hidden = !rest.length;
+        if (rest.length) {
+            restEl.textContent = `${rest.length} ticket${rest.length === 1 ? '' : 's'} `
+                + `(${rp(billTotal(rest))}) stay open on this table.`;
+        }
+        el.querySelector('#pos-bill-pay').disabled = !chosen.length;
+    };
+
+    el.querySelector('#pos-bill-list').addEventListener('change', (e) => {
+        const box = e.target.closest('[data-ticket]');
+        if (!box) return;
+        if (box.checked) picked.add(box.dataset.ticket); else picked.delete(box.dataset.ticket);
+        paint();
+    });
+
+    el.querySelector('#pos-bill-pay').addEventListener('click', () => {
+        const chosen = list.filter((o) => picked.has(o.id));
+        if (!chosen.length) return;
+        close();
+        // Straight into the payment modal the till already uses — same methods,
+        // same quick-cash notes, same change arithmetic. A second money dialog
+        // is a second place for the cash rules to be subtly different.
+        openPaymentModal({ orders: chosen, tableLabel: label });
+    });
+
+    paint();
+    return el;
+}
+
 // ── Take payment ────────────────────────────────────────────────────────────
 //
 // A centre-screen modal, not the side drawer it used to be. Taking money is the
@@ -2712,12 +2889,24 @@ function drawer({ title, subtitle, body, submitLabel, onSubmit, danger = false }
 // currency name rather than written out per country. IDR is both the correct
 // answer and the fallback, so a hardcoded assumption is invisible on an
 // Indonesian account and wrong everywhere else.
-function openPaymentModal() {
-    const o = state.order;
+//
+// TWO MODES, ONE DIALOG. With no argument it charges the order in the panel, as
+// it always has. Given `orders` it charges a TABLE BILL — several tickets, one
+// tender, one change calculation, one receipt. The cash rules, the quick-cash
+// notes, the non-cash lockdown and the short-tender refusal are identical in
+// both, which is the reason this is a mode rather than a second dialog: a
+// second money dialog is a second place for those rules to drift.
+function openPaymentModal({ orders = null, tableLabel = null } = {}) {
+    // A bill is a list; a single order is a list of one. Everything below reads
+    // the list, so there is no branch to keep in step.
+    const bill = Array.isArray(orders) && orders.length ? orders.slice() : null;
+    const o = bill ? bill[0] : state.order;
     if (!o) return;
     const M = window.FluxyMoney;
     const cur = M.baseCurrency();
-    const due = Math.max(0, Number(o.total_amount) - Number(o.paid_amount || 0));
+    const due = bill
+        ? bill.reduce((t, x) => t + posOrderDue(x), 0)
+        : Math.max(0, Number(o.total_amount) - Number(o.paid_amount || 0));
     const methods = DataService.POS_PAYMENT_METHODS;
     let method = 'cash';
     let received = due;                       // exact is the commonest tender
@@ -2732,7 +2921,9 @@ function openPaymentModal() {
             <div class="pos-modal-head">
                 <div>
                     <h2 class="pos-modal-title" id="pos-pay-title">Take payment</h2>
-                    <p class="pos-modal-sub">${esc(o.table_label ? `Table ${o.table_label}` : 'Takeaway')} · ${esc(orderShort(o))}</p>
+                    <p class="pos-modal-sub">${bill
+                        ? `${esc(`Table ${tableLabel || o.table_label || ''}`)} · ${bill.length} tickets`
+                        : `${esc(o.table_label ? `Table ${o.table_label}` : 'Takeaway')} · ${esc(orderShort(o))}`}</p>
                 </div>
                 <button type="button" class="pos-modal-close" data-close aria-label="Close">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18 18 6M6 6l12 12"/></svg>
@@ -2983,6 +3174,7 @@ function openPaymentModal() {
             const submit = $$('pos-pay-submit');
             submit.disabled = true;
             try {
+                if (bill) { await settleBill(); return; }
                 const order = await ds.recordPosPayment(state.uid, state.orderId, {
                     // Do NOT wait for the ledger emission before closing this
                     // modal. The money is recorded by the order write; emission
@@ -3041,6 +3233,39 @@ function openPaymentModal() {
             }
         });
     });
+
+    // ── Settling several tickets as one bill ────────────────────────────
+    //
+    // ONE CALL, not a loop. `payPosTableBill` writes every ticket in a single
+    // Firestore transaction, so the money is recorded for all of them or for
+    // none — a loop would leave the cashier holding cash against a bill that is
+    // half settled, with no record of the half that failed.
+    async function settleBill() {
+        const res = await ds.payPosTableBill(state.uid, bill.map((x) => x.id), {
+            // Same reason as the single-order path: the money is recorded by
+            // the order writes, and emission rebuilds the cost basis from every
+            // item and up to 1000 stock movements. Awaited below, after the
+            // receipt is on screen.
+            awaitEmit: false,
+            method,
+            amountReceived: received,
+            reference: $$('pos-pay-ref').value
+        });
+        close();
+        toast(res.change > 0
+            ? `Paid — give ${rp(res.change)} change.`
+            : `Paid — ${rp(res.billDue)} across ${res.orders.length} tickets.`);
+        // Best-effort, exactly as the single-order path: a booking that will not
+        // tidy must never surface as a failed payment.
+        res.orders.forEach((x) => { closeReservationForOrder(x.id).catch(() => {}); });
+        // ONE receipt for the whole bill. The customer paid once and is owed one
+        // document; printing a slip per ticket would put the separation the
+        // KITCHEN needs in front of the person who never had it.
+        openReceipt(res.orders);
+        renderOrder(); renderMenu();
+        if (res.emitting) await res.emitting;
+        await refresh({ keepOrder: true });
+    }
 
     // Seed the settle note and the first paint.
     el.querySelector('.pos-method.is-on')?.click();
@@ -3172,8 +3397,24 @@ function openDiscountDrawer(lineId = null) {
 // customer.
 //
 // 58mm is the thermal roll every Indonesian warung printer uses.
+// ONE RECEIPT, however many tickets paid for it.
+//
+// `order` may be a single order or the list `payPosTableBill` settled. The
+// customer paid once and is owed one document — printing a slip per ticket
+// would hand them the separation the KITCHEN needs and they never had.
+//
+// ⚠️ EACH TICKET KEEPS ITS OWN TOTALS BLOCK, and that is not decoration. Two
+// tickets can carry different `pos_pricing` snapshots (an order opened before a
+// rate change, one after), so a single summed "Pajak 11%" line could describe
+// neither of them. Printing each ticket's own subtotal, service and tax and
+// then one grand total is arithmetic the customer can check on any combination
+// — which is the entire job of the document.
 function openReceipt(order) {
-    const o = order;
+    const list = (Array.isArray(order) ? order : [order]).filter(Boolean);
+    if (!list.length) return;
+    const o = list[0];
+    const split = list.length > 1;
+    const grand = list.reduce((t, x) => t + (Number(x.total_amount) || 0), 0);
     const line = (l) => {
         const net = (Number(l.gross_amount) || 0) - (Number(l.discount_amount) || 0);
         const each = (Number(l.unit_price) || 0) + (Number(l.modifier_amount) || 0);
@@ -3186,7 +3427,39 @@ function openReceipt(order) {
              + `<td class="r">${rp(net)}</td></tr>`;
     };
     const row = (label, value, cls = '') => `<tr class="${cls}"><td>${esc(label)}</td><td class="r">${value}</td></tr>`;
-    const paid = (o.payments || []).filter((p) => p.status === 'settled');
+
+    // One ticket's own arithmetic: subtotal → discount → service → tax → total.
+    // Rendered per ticket on a merged bill and as the whole totals block on a
+    // single one, so the two can never state a charge differently.
+    const ticketTotals = (x) => [
+        row('Subtotal', rp(x.subtotal)),
+        Number(x.discount_total) > 0
+            ? row(x.discount_reason || 'Diskon', `\u2212${rp(x.discount_total)}`, 'dsc') : '',
+        Number(x.service_charge_amount) > 0 ? row('Layanan', rp(x.service_charge_amount)) : '',
+        Number(x.tax_amount) > 0 && !(x.pos_pricing || {}).tax_inclusive
+            ? row((x.pos_pricing || {}).tax_label || 'Pajak', rp(x.tax_amount)) : '',
+        row('Total', rp(x.total_amount), 'tot'),
+        // Inclusive tax sits INSIDE the prices above, so it is stated after the
+        // total rather than added to it.
+        Number(x.tax_amount) > 0 && (x.pos_pricing || {}).tax_inclusive
+            ? row(`Termasuk ${(x.pos_pricing || {}).tax_label || 'Pajak'}`, rp(x.tax_amount)) : ''
+    ].join('');
+    // Every settled payment across the bill, with the ones taken TOGETHER folded
+    // back into one row. `payPosTableBill` writes a payment per ticket sharing a
+    // `bill_id`, so without this a single Rp80.000 cash tender would print as
+    // two payment lines and two change figures on the customer's own copy.
+    const paid = (() => {
+        const groups = new Map();
+        list.forEach((x) => (x.payments || []).filter((p) => p.status === 'settled').forEach((p) => {
+            const key = p.bill_id || p.payment_id;
+            const g = groups.get(key) || { method: p.method, amount: 0, amount_received: 0, change_given: 0 };
+            g.amount += Number(p.amount) || 0;
+            g.amount_received += Number(p.amount_received) || 0;
+            g.change_given += Number(p.change_given) || 0;
+            groups.set(key, g);
+        }));
+        return [...groups.values()];
+    })();
     // Printed in Bahasa regardless of the staff UI language — the reader is the
     // customer, not the cashier.
     const ID_METHOD = { cash: 'Tunai', qris: 'QRIS', transfer: 'Transfer', card: 'Kartu', other: 'Lainnya' };
@@ -3211,6 +3484,7 @@ function openReceipt(order) {
   td { padding: 2px 0; vertical-align: top; }
   .tot td { font-weight: 700; font-size: 12px; padding-top: 4px; }
   .dsc td { color: #444; }
+  .tk { font-weight: 700; margin: 6px 0 2px; }
   .foot { margin-top: 8px; text-align: center; font-size: 10px; color: #555; }
   @media screen {
     body { box-shadow: 0 0 0 1px #e2e8f0; padding: 16px; margin-top: 24px; }
@@ -3221,9 +3495,17 @@ function openReceipt(order) {
   @media print { .noprint { display: none; } }
 </style></head><body>
   <h1>${esc((outlet && outlet.name) || 'FluxyOS')}</h1>
-  <div class="c m">${esc(o.table_label ? `Meja ${o.table_label}` : 'Bawa pulang')} · ${esc(o.order_number || '')}</div>
+  <div class="c m">${esc(o.table_label ? `Meja ${o.table_label}` : 'Bawa pulang')} · ${esc(split
+      ? list.map((x) => x.order_number || '').filter(Boolean).join(' + ')
+      : (o.order_number || ''))}</div>
   <div class="c m">${when.toLocaleString(window.FluxyMoney.baseLocale())}</div>
   <hr>
+  ${split ? list.map((x) => `
+    <div class="tk">${esc(x.order_number || '')}</div>
+    <table>${(x.lines || []).map(line).join('')}</table>
+    <table>${ticketTotals(x)}</table>
+    <hr>`).join('') : ''}
+  ${split ? `<table>${row('Total', rp(grand), 'tot')}</table>` : `
   <table>${(o.lines || []).map(line).join('')}</table>
   <hr>
   <table>
@@ -3249,6 +3531,8 @@ function openReceipt(order) {
         Number(o.tax_amount) > 0 && (o.pos_pricing || {}).tax_inclusive
             ? row(`Termasuk ${(o.pos_pricing || {}).tax_label || 'Pajak'}`, rp(o.tax_amount)) : ''
     }
+  </table>`}
+  <table>
     ${paid.map((p) => row(methodLabel(p.method), rp(p.amount))).join('')}
     ${
         // Tendered and change, on the receipt, for the one case where they
@@ -3261,7 +3545,7 @@ function openReceipt(order) {
             row('Tunai', rp(p.amount_received)) + row('Kembalian', rp(p.change_given))).join('')
     }
   </table>
-  ${o.refund_transaction_id ? '<hr><div class="c"><strong>DIREFUND</strong></div>' : ''}
+  ${list.some((x) => x.refund_transaction_id) ? '<hr><div class="c"><strong>DIREFUND</strong></div>' : ''}
   <div class="foot">Terima kasih 🙏</div>
   <div class="noprint"><button onclick="window.print()">Cetak</button></div>
 <script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 250); });</` + `script>

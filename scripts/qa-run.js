@@ -278,6 +278,13 @@ function laneBE(changed) {
   // copies of "what does this bill come to" is how a customer is charged one
   // number and the books record another.
   ok = record('be', run('check:pos-pricing (one bill total, three callers)', 'node', ['tests/pos-pricing.check.js'])) && ok;
+  // Unconditional, and for the same reason as the two above: one tender across
+  // several tickets is arithmetic whose failures produce documents that are all
+  // individually consistent. Σ amount is the bill, Σ amount_received is the
+  // tender, Σ change_given is the change — `getPosShiftTally` sums the last two,
+  // so getting the allocation wrong makes the drawer read over or short at close
+  // with nothing anywhere reporting it.
+  ok = record('be', run('check:pos-table-bill (one tender, several tickets, three sums)', 'node', ['tests/pos-table-bill.check.js'])) && ok;
   // Unconditional. The offending call can live in ANY module — the first
   // Firestore touch on a page decides the transport for all of it — so the file
   // that breaks this is rarely the file being edited. Same reasoning as

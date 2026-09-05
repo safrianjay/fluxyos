@@ -50,7 +50,11 @@ async function seedBoard(page, orders) {
             id: `seed-${i}`,
             order_number: `20260901-9${i}`,
             status: o.status,
-            table_id: o.table ? 't1' : null,
+            // DERIVED FROM THE LABEL, not a constant. It was `'t1'` for every
+            // seeded order, so the whole board sat at one table — which was
+            // invisible until the till started grouping a table's tickets into
+            // one bill, and then every fixture claimed to be one party.
+            table_id: o.table ? `t${o.table}` : null,
             table_label: o.table || null,
             lines: [{ line_id: 'l1', item_name: 'Seeded dish', quantity: 1, unit_price: 20000, gross_amount: 20000 }],
             total_amount: o.total || 20000,
@@ -285,9 +289,24 @@ test('an abandoned cart is stale, not late', async ({ page }) => {
     // day-old order also OWNED the top of a longest-waiting sort, burying the
     // one that mattered.
     await openBoard(page);
-    // 3h20m rather than the real-world 23h, so the cart is still inside the
-    // board's default Today window — the staleness rule is what is under test,
-    // not the date filter, and a yesterday fixture would simply be filtered out.
+    // ⚠️ THE DATE FILTER IS SWITCHED OFF FIRST, and that is not tidiness.
+    //
+    // The fixture is 3h20m old, chosen to clear STALE_MINS while staying inside
+    // the board's default Today window. "Today" starts at local midnight, so
+    // between 00:00 and 03:20 the cart lands YESTERDAY and is filtered out
+    // before the staleness rule is ever reached — this test failed every night
+    // for a three-hour window and passed every morning, which reads as flake
+    // rather than as a clock. Found at 03:08 WIB on 2026-09-06.
+    //
+    // Nothing here is about the date window, so it is removed rather than
+    // worked around with an age that no wall-clock can make safe: at 00:05 even
+    // a ten-minute-old order is yesterday.
+    await page.click('#pos-orders-filter');
+    await page.locator('#pos-filter-rail [data-group="orderDate"]').click();
+    await page.locator('#pos-filter-options [data-value="all"]').click();
+    await page.click('#pos-filter-apply');
+    await expect(page.locator('#pos-filter-panel')).toBeHidden();
+
     const rows = await seedBoard(page, [
         { status: 'open', ageMin: 200 },       // long abandoned
         { status: 'sent', ageMin: 20 }         // genuinely late in the kitchen
@@ -532,3 +551,103 @@ test('opening a card still reaches the actions the board does not carry', async 
     await expect(page.locator('#pos-order-panel')).toBeVisible();
 });
 
+
+// =============================================================================
+// ONE TABLE, ONE BILL — at the till.
+//
+// The diner's phone has consolidated a table's tickets since 2026-09-06. The
+// BOARD did not: two rounds at one table were two cards, two totals and two Pay
+// buttons, and the cashier added them up in their head. That is an
+// under-collection shape — settle the 30.000 ticket, miss the 50.000 one, and
+// both documents stay individually correct while the money is short.
+//
+// Merge and split are ONE control here, deliberately: the dialog lists every
+// live ticket with a checkbox. All ticked is a merged bill; unticking one splits
+// it and says, in words, what stays open.
+// =============================================================================
+
+/** Two live tickets at table 6, one served and one still in the kitchen. */
+async function seedSplitTable(page) {
+    await seedBoard(page, [
+        { status: 'served', table: '6', total: 50000, ageMin: 30 },
+        { status: 'sent',   table: '6', total: 30000, ageMin: 5 },
+        // A different table, so the strip is proven to be per-table rather than
+        // "the board has more than one order".
+        { status: 'served', table: '9', total: 25000, ageMin: 12 }
+    ]);
+}
+
+test('a table with two tickets offers ONE bill across them', async ({ page }) => {
+    await openBoard(page);
+    await seedSplitTable(page);
+
+    // Both table-6 cards carry the strip; the lone table-9 card does not — on a
+    // single ticket it would restate the total directly above it.
+    const strips = page.locator('.pos-ocard-bill');
+    await expect(strips).toHaveCount(2);
+    await expect(strips.first()).toContainText('2 tickets');
+    await expect(strips.first()).toContainText('80.000');
+
+    // ⚠️ THE FIGURE IS THE TABLE'S, NOT THE CARD'S. A strip quoting the card it
+    // sits on would be the exact under-collection the feature exists to stop.
+    const cardTotals = await page.locator('.pos-ocard-total').allInnerTexts();
+    expect(cardTotals.some((t) => /50\.000/.test(t)), 'the 50.000 ticket is still its own card').toBe(true);
+    expect(cardTotals.some((t) => /30\.000/.test(t)), 'so is the 30.000 one').toBe(true);
+});
+
+test('THE BILL DIALOG MERGES BY DEFAULT AND SPLITS ON DEMAND', async ({ page }) => {
+    await openBoard(page);
+    await seedSplitTable(page);
+
+    await page.locator('[data-table-bill]').first().click();
+    const modal = page.locator('#pos-bill-modal');
+    await expect(modal).toBeVisible();
+
+    // Everything ticked: settling the table is the common case, and a dialog
+    // that opens with nothing chosen makes the cashier do the work twice.
+    const boxes = modal.locator('[data-ticket]');
+    await expect(boxes).toHaveCount(2);
+    expect(await boxes.nth(0).isChecked()).toBe(true);
+    expect(await boxes.nth(1).isChecked()).toBe(true);
+    await expect(modal.locator('#pos-bill-total')).toContainText('80.000');
+    // Nothing is being left behind, so nothing claims to be.
+    await expect(modal.locator('#pos-bill-rest')).toBeHidden();
+
+    // Unticking one IS the split. The total drops and — the part that matters —
+    // the dialog says what stays open, because a split bill that silently
+    // leaves a ticket behind is how a table walks out owing money.
+    await boxes.nth(1).uncheck();
+    await expect(modal.locator('#pos-bill-total')).toContainText('50.000');
+    await expect(modal.locator('#pos-bill-rest')).toBeVisible();
+    await expect(modal.locator('#pos-bill-rest')).toContainText('30.000');
+    await expect(modal.locator('#pos-bill-rest')).toContainText('stay open');
+
+    // Nothing selected is not a bill.
+    await boxes.nth(0).uncheck();
+    await expect(modal.locator('#pos-bill-pay')).toBeDisabled();
+    await boxes.nth(0).check();
+    await expect(modal.locator('#pos-bill-pay')).toBeEnabled();
+});
+
+test('the payment dialog charges the BILL, not the ticket it was opened from', async ({ page }) => {
+    await openBoard(page);
+    await seedSplitTable(page);
+
+    await page.locator('[data-table-bill]').first().click();
+    await page.locator('#pos-bill-pay').click();
+
+    const pay = page.locator('#pos-pay-modal');
+    await expect(pay).toBeVisible();
+    // The whole point, stated as an assertion: Rp80.000, never Rp50.000.
+    await expect(pay.locator('#pos-pay-due')).toContainText('80.000');
+    await expect(pay.locator('#pos-pay-due')).not.toContainText('50.000');
+    // And it says what it is settling, so the cashier is not guessing which
+    // number is on screen.
+    await expect(pay.locator('.pos-modal-sub')).toContainText('2 tickets');
+    await expect(pay.locator('.pos-modal-sub')).toContainText('Table 6');
+
+    // Change is computed against the BILL. Against one ticket it would offer
+    // 50.000 back on a 100.000 note and the drawer would be 30.000 short.
+    await pay.locator('#pos-pay-amount').fill('100.000');
+    await expect(pay.locator('#pos-change-value')).toContainText('20.000');
+});

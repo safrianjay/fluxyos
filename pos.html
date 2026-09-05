@@ -1020,6 +1020,21 @@
             border-top: 1px solid #E2E8F0; padding-top: 8px;
             font-size: 14px; font-weight: 700; color: #0B0F19; font-variant-numeric: tabular-nums;
         }
+        /* One table, one bill. Shown only from the SECOND ticket, so it is
+           never a duplicate of the total directly above it. Slate rather than
+           orange: it is a fact about the table, not an alarm — and an orange
+           BACKGROUND is banned project-wide. */
+        .pos-ocard-bill {
+            display: flex; align-items: center; gap: 10px;
+            border-top: 1px dashed #CBD5E1; padding-top: 8px;
+        }
+        .pos-ocard-bill-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .pos-ocard-bill-label { font-size: 12px; font-weight: 600; color: #EA580C; }
+        .pos-ocard-bill-total {
+            font-size: 14px; font-weight: 700; color: #0B0F19; font-variant-numeric: tabular-nums;
+        }
+        .pos-ocard-bill .pos-ocard-btn { flex: 0 0 auto; padding: 0 12px; }
+
         .pos-ocard-actions { display: flex; gap: 8px; }
         .pos-ocard-btn {
             flex: 1; min-height: 34px; border-radius: 8px; cursor: pointer;
@@ -1029,6 +1044,29 @@
         .pos-ocard-btn:hover { background: #F8FAFC; }
         .pos-ocard-btn.is-primary { background: #0F172A; border-color: #0F172A; color: #fff; }
         .pos-ocard-btn.is-primary:hover { background: #1E293B; }
+
+        /* ── The table bill ─────────────────────────────────────────────────
+           Merge and split are one control: every live ticket at the table with
+           a checkbox. All on is a merged bill; unticking one splits it and
+           leaves that ticket open. */
+        .pos-bill-list { display: flex; flex-direction: column; gap: 8px; }
+        .pos-bill-row {
+            display: flex; align-items: center; gap: 12px; cursor: pointer;
+            border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 12px;
+            background: #fff;
+        }
+        .pos-bill-row.is-on { border-color: #CBD5E1; background: #F8FAFC; }
+        .pos-bill-row input { width: 18px; height: 18px; accent-color: #EA580C; flex: 0 0 auto; }
+        .pos-bill-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+        .pos-bill-row-top { display: flex; align-items: center; gap: 8px; }
+        .pos-bill-row-no { font-size: 14px; font-weight: 600; color: #0B0F19; }
+        .pos-bill-row-meta { font-size: 12px; color: #64748B; }
+        .pos-bill-row-amt { font-size: 14px; font-weight: 600; color: #0B0F19; font-variant-numeric: tabular-nums; }
+        /* The figure the cashier is about to ask for, in the footer beside the
+           button that asks for it. */
+        .pos-bill-sum { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+        .pos-bill-sum-label { font-size: 12px; color: #64748B; }
+        .pos-bill-sum-value { font-size: 20px; font-weight: 700; color: #0B0F19; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 
         /* ── Floor plan ─────────────────────────────────────────────────
            Following the supplied reference: zone tabs, a legend, and table

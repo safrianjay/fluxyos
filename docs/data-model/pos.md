@@ -469,6 +469,7 @@ So both halves now hold:
 | `qr-order-status` | one `session` total across every live ticket |
 | `qr-request-bill` | moves **every** live ticket to `awaiting_payment` |
 | `tableStateAt` | reports `orders`, `orderCount` and the table's `outstanding` |
+| `payPosTableBill` | settles a table's tickets as ONE bill, in one transaction |
 
 ⚠️ **A ticket's STAGE never decides whether it is on the bill.** #001 eaten and
 #002 still frying are one meal to the person paying for them; only paid, voided
@@ -508,11 +509,71 @@ settings would let an owner editing a rate mid-meal produce a table whose two
 tickets are taxed differently — and the consolidated total then carries a single
 percentage describing neither.
 
-**Still manual: settling a multi-ticket table.** The till takes payment per
-order, so a cashier closing a table with two tickets records two payments. The
-tile now shows the table's total and its ticket count so they cannot collect the
-smaller figure believing it is the bill, but one-tap settlement across a sitting
-is not built.
+### Merge and split are ONE control (2026-09-06)
+
+The diner's phone consolidated a table's tickets; the **till** did not. Two
+rounds at one table were two cards, two totals and two Pay buttons, and the
+cashier added them up in their head — the under-collection shape again, from the
+third direction.
+
+`payPosTableBill(userId, orderIds, {...})` settles a list of tickets as one
+bill. The board shows a strip on every card whose table holds more than one live
+ticket ("Table 6 · 2 tickets · Rp80.000 · Bill together"), which opens a dialog
+listing them with a checkbox each.
+
+**All ticked is a merge; unticking one is a split.** One mechanism, because two
+would eventually disagree about what a payment does — and whatever is left
+unticked is stated in words ("1 ticket (Rp30.000) stays open on this table"),
+since a split bill that silently leaves a ticket behind is how a table walks out
+owing money nobody mentioned.
+
+⚠️ **It does not merge the ORDERS, and must never start to.** Each ticket keeps
+its document, its kitchen status and its own journal. What is merged is the act
+of paying: one tender, one change calculation, one receipt, N settled tickets.
+
+⚠️ **ONE TRANSACTION.** Every ticket is written together or none is. A loop of
+`recordPosPayment` would leave the cashier holding cash against a half-settled
+bill with no record of the half that failed. Firestore requires every read
+before any write, which is what the sequential `tx.get` loop is for.
+
+⚠️ **THE ALLOCATION IS WHAT KEEPS THE DRAWER HONEST**, and all three sums matter:
+
+```
+Σ amount           = the bill      what revenue absorbs
+Σ amount_received  = the tender    what crossed the counter
+Σ change_given     = the change    what went back
+```
+
+`getPosShiftTally` sums the last two off the payments, so putting the whole
+tender on every ticket — or the change on more than one — makes the close read
+over or short by exactly the difference, with every document individually
+consistent. Same defect `amount` vs `amount_received` fixed for a single order
+on 2026-09-01, one level up. The change rides on the **last** ticket because it
+is one physical handful of notes, not a share of each.
+
+**One table, one outlet.** Sitting together is the proxy for "one party paying
+one bill"; without it a mis-tap settles another table's food against this
+customer's cash and both orders look correct afterwards. Takeaway is excluded
+for the same reason — no table means nothing says two bags are one person.
+
+`payments[].bill_id` ties the payments taken together. On the payment, not on
+the orders: `payments[]` has no `hasOnly` (§7) so it needs no deploy, and it is
+a fact about what happened rather than a session entity that would then have to
+be kept true. The receipt folds payments sharing a `bill_id` back into one row —
+without it a single Rp80.000 tender prints as two payment lines and two change
+figures on the customer's own copy.
+
+**The receipt keeps each ticket's own totals block**, then one grand total. Two
+tickets can carry different `pos_pricing` snapshots (one opened before a rate
+change, one after), so a single summed "Pajak 11%" line could describe neither.
+
+Guard: `check:pos-table-bill` — 37 assertions, pure, unconditional in the BE
+lane, driving the real method against a fake transaction that throws on a read
+after a write. Board: three specs in `tests/pos-orders-board.spec.js`.
+
+**Still not built: splitting a bill by ITEM or by seat.** The unit of splitting
+is the ticket. Assigning individual lines to payers needs a UI for it and a
+posting story for a partly-settled ticket, and neither exists.
 
 ### The visit total is three figures, never one
 
@@ -1183,6 +1244,7 @@ Emulator coverage: 14 cases in `tests/pos-rules-emulator-test.mjs` (124 total).
 ## 9. What is NOT built
 
 Offline-first (v1 is online-only with a visible connection banner — the largest
-honest limitation), kitchen display, split-by-seat,
+honest limitation), kitchen display, split-by-seat and split-by-item (the unit
+of splitting is the TICKET — see §3),
 per-outlet menu pricing, QR ordering, payment providers, and any AI over POS
 data. §15 of the plan sequences all of them.

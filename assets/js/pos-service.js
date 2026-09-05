@@ -1346,6 +1346,200 @@ export const POS_METHODS = {
     },
 
 
+    // ── ONE BILL ACROSS SEVERAL TICKETS ─────────────────────────────────────
+    //
+    // Tickets split at the kitchen and the bill does not (pos.md). The diner's
+    // phone has said so since 2026-09-06; the TILL still took payment one order
+    // at a time, so a cashier closing a table with two tickets recorded two
+    // payments and had to add the totals up themselves.
+    //
+    // ⚠️ THIS DOES NOT MERGE THE ORDERS, and it must never start to. Each ticket
+    // keeps its own document, its own status and its own journal — that
+    // separation is what stops a cook being handed already-served dishes. What
+    // is merged is the ACT OF PAYING: one tender, one change calculation, one
+    // receipt, N settled tickets.
+    //
+    // SPLITTING IS THE SAME MECHANISM WITH A SHORTER LIST. `orderIds` is
+    // whatever the cashier selected: all of them is a merged bill, some of them
+    // is a split one, and the tickets left out stay open and still owed. There
+    // is no second code path and therefore no way for the two to disagree about
+    // what a payment does.
+    //
+    // ONE TRANSACTION, so the money is recorded for every ticket or for none.
+    // The alternative — a loop of `recordPosPayment` — leaves the cashier
+    // holding cash they have taken against a bill that is half settled, with no
+    // record of the half that failed. Firestore reads must all precede writes,
+    // which is why the snapshots are collected first.
+    //
+    // Each ticket keeps its OWN rates snapshot and therefore its own journal, so
+    // a merged bill still produces books that foot per ticket. That is also why
+    // `pos_pricing` is inherited across a sitting (pos.md): two tickets taxed
+    // differently would sum into a total describing neither.
+    async payPosTableBill(userId, orderIds, {
+        method = 'cash', amountReceived = null, reference = null,
+        // Same argument as `recordPosPayment`: the money is recorded by the
+        // order writes, emission is best-effort with `emitUnpostedPosSales` as
+        // its retry, and making the cashier watch it happen N times over is
+        // worse here than it was for one order.
+        awaitEmit = false
+    } = {}) {
+        const ids = [...new Set((Array.isArray(orderIds) ? orderIds : [])
+            .map((v) => String(v || '')).filter(Boolean))];
+        if (!ids.length) throw new Error('Pick at least one ticket to settle.');
+        // A table does not have twenty live tickets, and a transaction reading
+        // an unbounded list is how one bad call takes the till down mid-service.
+        if (ids.length > 20) throw new Error('Too many tickets for one bill.');
+        const methods = POS_PAYMENT_METHODS.map((m) => m.id);
+        if (!methods.includes(method)) throw new Error('Pick how the customer paid.');
+        const tender = this._posTenderFor(method);
+
+        const refs = new Map(ids.map((id) =>
+            [id, doc(this.db, `${this._scope(userId)}/pos_orders/${id}`)]));
+        const now = new Date();
+        const stamp = Timestamp.fromDate(now);
+        // What ties these payments together. On the PAYMENT, not on the orders:
+        // `payments[]` has no `hasOnly` in rules (pos.md §7) so it needs no
+        // deploy, and it is a fact about what happened rather than a session
+        // entity that would then have to be kept true (pos.md — the sitting is
+        // derived, not stored). It is what lets a reprint rebuild the same
+        // combined receipt weeks later.
+        const billId = `b${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`;
+
+        const settled = await runTransaction(this.db, async (tx) => {
+            const rows = [];
+            // Sequential on purpose: every read must land before the first
+            // write, and a `for` loop makes that ordering readable.
+            for (const id of ids) {
+                const snap = await tx.get(refs.get(id));
+                if (!snap.exists()) throw new Error('One of those tickets no longer exists.');
+                rows.push({ id: snap.id, ...snap.data() });
+            }
+
+            const name = (o) => `Ticket ${o.order_number || o.id}`;
+            rows.forEach((o) => {
+                if (o.status === 'void') throw new Error(`${name(o)} was voided and cannot be paid.`);
+                if (o.status === 'paid') throw new Error(`${name(o)} is already paid.`);
+                if (!(o.lines || []).length) throw new Error(`${name(o)} has nothing on it to pay for.`);
+            });
+
+            // ⚠️ ONE TABLE, ONE OUTLET. The proxy for "one party paying one
+            // bill" is that they are sitting together — without it a mis-tap
+            // could settle another table's food against this customer's cash,
+            // and both orders would look individually correct afterwards.
+            // Takeaway is excluded for the same reason: it has no table, so
+            // nothing says those two bags belong to the same person.
+            const tableId = rows[0].table_id || null;
+            const outlet = rows[0].dimension_id || null;
+            if (rows.length > 1) {
+                if (!tableId) throw new Error('Only orders at the same table can be settled together.');
+                if (rows.some((o) => (o.table_id || null) !== tableId)) {
+                    throw new Error('Those tickets are not all at the same table.');
+                }
+                if (rows.some((o) => (o.dimension_id || null) !== outlet)) {
+                    throw new Error('Those tickets are not all from the same outlet.');
+                }
+            }
+
+            // Oldest first — the order the sitting began with, and the order the
+            // receipt reads down in. Also what makes the change allocation below
+            // deterministic rather than dependent on the caller's array.
+            rows.sort((a, b) => (posToMs(a.opened_at) || posToMs(a.created_at) || 0)
+                - (posToMs(b.opened_at) || posToMs(b.created_at) || 0));
+
+            const dues = rows.map((o) => {
+                const t = this._posTotals(o);
+                return Math.max(0, Math.round(t.total_amount) - Math.round(t.paid_amount));
+            });
+            const billDue = dues.reduce((s, v) => s + v, 0);
+            if (billDue <= 0) throw new Error('There is nothing left to pay on those tickets.');
+
+            const received = amountReceived == null ? billDue : Math.round(Number(amountReceived) || 0);
+            if (received < billDue) {
+                throw new Error('The amount received is less than the bill.');
+            }
+            if (tender !== 'cash' && received !== billDue) {
+                throw new Error('Change can only be given on a cash payment.');
+            }
+            const change = received - billDue;
+
+            // ⚠️ THE ALLOCATION IS WHAT KEEPS THE DRAWER COUNT HONEST.
+            //
+            //   Σ amount           = the bill        (what revenue absorbed)
+            //   Σ amount_received  = the tender      (what crossed the counter)
+            //   Σ change_given     = the change      (what went back)
+            //
+            // `getPosShiftTally` sums `amount_received` and `change_given` off
+            // the payments, so putting the whole tender on every ticket — or the
+            // change on more than one — would make the close read over or short
+            // by exactly the difference, with every document individually
+            // consistent. Same defect `amount` vs `amount_received` fixed for a
+            // single order on 2026-09-01, one level up.
+            //
+            // The change rides on the LAST ticket because change is one physical
+            // handful of notes, not a share of each ticket.
+            const out = [];
+            rows.forEach((o, i) => {
+                const applied = dues[i];
+                if (applied <= 0) return;            // already settled on its own
+                const extra = i === rows.length - 1 ? change : 0;
+                const payments = [...(o.payments || []), {
+                    // The index keeps two tickets settled in the same
+                    // millisecond from sharing a payment id.
+                    payment_id: `p${Date.now().toString(36)}${i}`,
+                    method, provider: 'manual', amount: applied,
+                    tender,
+                    amount_received: applied + extra,
+                    change_given: extra,
+                    reference: this._nullableString(reference, 80),
+                    // Which tickets were paid together. Absent on every payment
+                    // taken one order at a time, which is the honest reading.
+                    bill_id: billId,
+                    status: 'settled',
+                    received_at: stamp,
+                    received_by: this.actorUid || userId
+                }];
+                const totals = this._posTotals({ ...o, payments });
+                const isPaid = totals.paid_amount >= totals.total_amount;
+                const patch = {
+                    payments, ...totals,
+                    status: isPaid ? 'paid' : 'awaiting_payment',
+                    paid_at: isPaid ? stamp : null,
+                    version: (Number(o.version) || 1) + 1,
+                    updated_at: serverTimestamp(),
+                    updated_by: this.actorUid || userId
+                };
+                // The Orders board's clock, stamped only on a real transition —
+                // the same rule `updatePosOrder` applies and for the same
+                // reason: every write bumps `updated_at`, so it cannot answer
+                // "how long has this been waiting".
+                if (patch.status !== o.status) patch.status_changed_at = serverTimestamp();
+                tx.update(refs.get(o.id), patch);
+                out.push({
+                    ...o, ...totals, payments,
+                    status: patch.status,
+                    paid_at: patch.paid_at,
+                    version: patch.version
+                });
+            });
+
+            return { orders: out, billDue, received, change, billId };
+        });
+
+        // Each ticket emits its OWN sale, because each carries its own rates and
+        // its own lines. Best-effort and independent: one failure must not stop
+        // the others, and `emitUnpostedPosSales` retries whatever is left
+        // unstamped — the POS overview shows the backlog rather than hiding it.
+        const emitting = Promise.all(settled.orders
+            .filter((o) => o.status === 'paid')
+            .map((o) => this._emitPosSale(userId, o).catch((err) => {
+                console.error('[pos] sale recorded but not yet emitted to the ledger:',
+                    o.order_number || o.id, err && err.message);
+            })));
+        if (awaitEmit) await emitting;
+        else Object.defineProperty(settled, 'emitting', { value: emitting, enumerable: false });
+        return settled;
+    },
+
     // ── The cash drawer ─────────────────────────────────────────────────────
     //
     // A shift is what makes the till reconcilable. Without it an owner has a
