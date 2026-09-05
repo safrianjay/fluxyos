@@ -198,8 +198,25 @@ is(/tx\.update\(ref, patch\)/.test(appendBlock), true,
     'appending to an open order is a targeted update');
 is(/tx\.set\(ref/.test(appendBlock), false,
     '…never a whole-document set, which a stale read would use to revert the till');
-is(/o\.status !== 'open' && o\.status !== 'submitted'/.test(appendBlock), true,
-    'an order paid or voided mid-tap is refused rather than appended to');
+// ⚠️ THE APPENDABLE SET IS THE STATES WHERE ORDERING IS STILL OFFERED.
+// It read `open || submitted`, so the moment the kitchen moved a ticket to
+// `sent` a second round stopped matching, the client retried without a sitting,
+// and a WHOLE NEW ORDER DOCUMENT appeared for the same table — one unpaid
+// session split across two bills, and two live orders on one table.
+is(/APPENDABLE = \['open', 'submitted', 'sent', 'ready', 'served'\]/.test(SRC), true,
+    'a second round appends across every state where ordering is still offered');
+// `awaiting_payment` stays out: the bill has been requested and a cashier may
+// already have quoted it, so silently growing that total is worse than
+// refusing. `paid` and `void` are terminal.
+is(/APPENDABLE/.test(SRC) && /'awaiting_payment'/.test(
+    (SRC.match(/const APPENDABLE = \[[^\]]*\]/) || [''])[0]), false,
+    'a bill already requested cannot be silently grown');
+is(/!APPENDABLE\.includes\(o\.status\)/.test(appendBlock), true,
+    'an order paid, voided or sent to the cashier mid-tap is refused');
+// New food means the kitchen has work again. Without this the added lines sit
+// on a ticket the board reads as `served`: on the bill, nobody cooking it.
+is(/patch\.status = 'submitted'/.test(appendBlock), true,
+    'a post-kitchen order is sent back for acknowledgement when more is added');
 
 // ── The two item projections ────────────────────────────────────────────
 //

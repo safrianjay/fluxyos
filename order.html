@@ -1813,6 +1813,16 @@ html.kb-open .welcome-art { display: none; }
    than as a row that would make the arithmetic look wrong. */
 .totals .line.incl { font-size: 11.5px; color: var(--ink-30); padding-top: 6px; }
 
+/* The visit, in three figures. Set apart from the order's own totals because
+   it answers a different question — "what have we spent here" rather than "what
+   is on this bill". */
+.osession { margin-top: 12px; background: var(--canvas); }
+.osession-head {
+    font-size: 11.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--ink-50);
+    padding-bottom: 4px;
+}
+
 /* ---- Earlier orders --------------------------------------------------
    Collapsed by default: it is context, not the answer to "where is my food",
    which the panel above it already gives. A <details> so the disclosure is the
@@ -4084,7 +4094,7 @@ html.kb-open .welcome-art { display: none; }
                 + '<p class="orders-empty-sub">' + (past
                     ? 'Pesanan sebelumnya ada di bawah.'
                     : 'Pesanan di meja ini akan muncul di sini begitu dikirim.')
-                + '</p></div>' + past;
+                + '</p></div>' + sessionSummary(d) + past;
             return;
         }
 
@@ -4172,6 +4182,7 @@ html.kb-open .welcome-art { display: none; }
             + '<div class="opanel">' + lines + '</div>'
             + (d.note ? '<div class="onote"><span>Catatan</span><p>' + esc(d.note) + '</p></div>' : '')
             + '<div class="opanel totals">' + rows + '</div>'
+            + sessionSummary(d)
             + historyPanel(d.history)
             + '<p class="orders-foot">' + esc(billed
                 ? 'Setelah dibayar, meja ini kosong lagi. Pindai QR untuk pesan lagi.'
@@ -4294,6 +4305,45 @@ html.kb-open .welcome-art { display: none; }
         toast(missed
             ? (missed + ' item sudah tidak tersedia dan tidak ditambahkan.')
             : 'Ditambahkan ke pesanan Anda.');
+    }
+
+    /**
+     * What this table has spent across the whole visit.
+     *
+     * ⚠️ IT NEVER COMBINES A PAID BILL INTO A PAYABLE TOTAL. A settled order is
+     * money that has already changed hands; folding it into "what you owe" asks
+     * the customer to pay it twice, and the ledger has a posted sale saying they
+     * did not. So the visit is shown in three figures — ordered, already paid,
+     * still to pay — which is the question "what have we spent" actually being
+     * answered, without inventing a bill nobody owes.
+     *
+     * A session with no earlier orders shows nothing: the order's own total IS
+     * the visit total, and restating it would be a panel that adds a number
+     * without adding a fact.
+     */
+    function sessionSummary(d) {
+        var past = (d && d.history) || [];
+        if (!past.length) return '';
+
+        var paid = 0; var outstanding = 0;
+        past.forEach(function (h) {
+            var amt = Number(h.total_amount) || 0;
+            if (h.status === 'paid') paid += amt; else outstanding += amt;
+        });
+        var live = d.has_order ? (Number(d.total_amount) || 0) : 0;
+        outstanding += live;
+        var ordered = paid + outstanding;
+
+        var row = function (label, amount, cls) {
+            return '<div class="line' + (cls ? ' ' + cls : '') + '"><span>' + esc(label)
+                + '</span><span class="num">' + esc(money(amount)) + '</span></div>';
+        };
+        return '<div class="opanel totals osession">'
+            + '<div class="osession-head">Total kunjungan ini</div>'
+            + row('Semua pesanan', ordered)
+            + (paid > 0 ? row('Sudah dibayar', -paid) : '')
+            + row(outstanding > 0 ? 'Perlu dibayar' : 'Lunas', outstanding, 'grand')
+            + '</div>';
     }
 
     function totalRow(label, amount) {
@@ -4549,6 +4599,8 @@ html.kb-open .welcome-art { display: none; }
                     // on it, which is where this notice renders.
                     msg = 'Pesanan sebelumnya sudah selesai. Coba kirim lagi untuk membuka pesanan baru.';
                     sitting = null;
+                } else if (err && err.error === 'bill_requested') {
+                    msg = 'Bill meja ini sudah diminta. Panggil staf kalau mau menambah pesanan.';
                 } else if (err && err.error === 'order_closed') {
                     msg = 'Tagihan meja ini baru saja ditutup. Panggil staf untuk membuka pesanan baru.';
                 } else if (err && err.error === 'nothing_orderable') {

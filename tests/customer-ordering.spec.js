@@ -602,6 +602,68 @@ test.describe('QR customer ordering', () => {
         }
     });
 
+    test('THE VISIT TOTAL NEVER FOLDS A PAID BILL INTO WHAT IS OWED', async ({ page }) => {
+        // ⚠️ THE WHOLE POINT. A settled order is money that has already changed
+        // hands, and the ledger has a posted sale saying so. Folding it into
+        // "what you owe" asks the customer to pay it twice — which is the one
+        // way to make this worse than the two separate totals it replaces.
+        await stub(page);
+        await page.route('**/qr-order-status**', (route) => route.fulfill({
+            status: 200, contentType: 'application/json',
+            body: JSON.stringify({
+                has_order: true, order_id: 'o_now', order_number: '2026-09-05-002',
+                status: 'served', stage: 4, stage_label: 'Diantar',
+                lines: [{ item_id: 'i_americano', item_name: 'Americano', quantity: 1,
+                    gross_amount: 22000, note: null, modifiers: [] }],
+                subtotal: 22000, discount_total: 0, service_charge_amount: 0,
+                tax_amount: 0, total_amount: 22000, paid_amount: 0,
+                pricing: null, placed_at: Date.now() - 5 * 60 * 1000,
+                history: [{
+                    order_id: 'o_prev', order_number: '2026-09-05-001', status: 'paid',
+                    lines: [{ item_id: 'i_latte', item_name: 'Es Kopi Susu', quantity: 2,
+                        gross_amount: 56000, note: null, modifiers: [] }],
+                    subtotal: 56000, discount_total: 0, service_charge_amount: 0,
+                    tax_amount: 0, total_amount: 56000, pricing: null,
+                    placed_at: Date.now() - 60 * 60 * 1000
+                }]
+            })
+        }));
+        await open(page);
+        await page.locator('.tab[data-tab="orders"]').click();
+
+        const visit = page.locator('.osession');
+        await expect(visit).toBeVisible({ timeout: 15_000 });
+        const figure = async (label) => (await visit.locator('.line', { hasText: label })
+            .locator('.num').innerText()).replace(/\D/g, '');
+
+        // Everything ordered this visit…
+        expect(await figure('Semua pesanan')).toBe('78000');    // 56.000 + 22.000
+        // …what is already settled, shown as a deduction…
+        expect(await figure('Sudah dibayar')).toBe('56000');
+        // …and only the live order is payable.
+        expect(await figure('Perlu dibayar'),
+            'a paid bill was folded into what the customer still owes').toBe('22000');
+
+        // The live order's own panel is untouched — it still states ITS total,
+        // which is what the cashier will take.
+        const own = await page.locator('.opanel.totals:not(.osession) .line.grand .num').innerText();
+        expect(own.replace(/\D/g, '')).toBe('22000');
+    });
+
+    test('a visit with nothing settled shows no summary at all', async ({ page }) => {
+        // With one order the order's total IS the visit total, and restating it
+        // would be a panel that adds a number without adding a fact.
+        await stub(page);
+        await open(page);
+        await addPlain(page, 'Americano');
+        await page.locator('#cart-open').click();
+        await page.locator('#cart-submit').click();
+        await expect(page.locator('#sheet-done')).toHaveClass(/is-open/, { timeout: 20_000 });
+        await page.locator('#done-status').click();
+        await expect(page.locator('#sheet-orders')).toHaveClass(/is-open/);
+        await expect(page.locator('.osession')).toHaveCount(0);
+    });
+
     // ── The hero ────────────────────────────────────────────────────────
     //
     // Two independent blocks: `.hero` knows about photos, `.outlet-card` knows

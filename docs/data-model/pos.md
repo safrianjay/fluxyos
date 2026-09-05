@@ -408,6 +408,45 @@ accepts partial amounts, so this is a till rule rather than a lost capability.
 Quick-cash amounts come from `FluxyMoney.cashSuggestions`, which reads the
 currency's own banknotes — see `MULTI_MARKET_ARCHITECTURE.md` §2d.
 
+### One table, one bill — and what nearly broke it
+
+`qr-order` appends a second round to the table's live order. Until 2026-09-05 it
+matched only `open` and `submitted`, so **the moment the kitchen moved a ticket
+to `sent`, a second round stopped matching**: the client was told
+`sitting_ended`, retried without a sitting, and a WHOLE NEW ORDER DOCUMENT was
+created for the same table.
+
+The visible symptom was a diner asked to settle two bills for one unpaid meal.
+The worse one was invisible: **two live orders on one table**, which the floor
+plan and `getPosOverview` both resolve by taking whichever they find first.
+
+`APPENDABLE` is now every state where ordering is still offered — `open`,
+`submitted`, `sent`, `ready`, `served`.
+
+⚠️ **`awaiting_payment` is deliberately excluded.** The bill has been requested
+and a cashier may already have quoted it; silently growing that total is a worse
+failure than refusing. The sheet hides "add more" in that state for the same
+reason, and the refusal is its own error (`bill_requested`, not
+`sitting_ended`) so the page can say *why* rather than retry into a second
+order.
+
+⚠️ **Appending to a post-kitchen order sends it back to `submitted`** and
+re-stamps `status_changed_at`. Without that the new lines sit on a ticket the
+board reads as `served`: the dish is on the bill, nobody is cooking it, and the
+only symptom is a customer waiting. The re-stamp is deliberate too — the board's
+waiting timer should measure the NEW wait, not the old one.
+
+### The visit total is three figures, never one
+
+A settled order is money that has already changed hands. Folding it into "what
+you owe" asks the customer to pay twice, and the ledger has a posted `POS-SALE`
+saying they did not. So the Pesanan sheet states the visit as **ordered / already
+paid / still to pay** rather than a single combined bill, and a visit with
+nothing settled shows no summary at all — the order's own total already is it.
+
+Guards: `check:qr-order` (the appendable set, the exclusion, and the kitchen
+hand-back) and two specs in `tests/customer-ordering.spec.js`.
+
 ### `channel` is the connector seam
 
 `pos_orders` is a **normalized** order document; the first-party till is merely

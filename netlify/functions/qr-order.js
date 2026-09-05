@@ -294,18 +294,44 @@ exports.handler = async (event) => {
         // by definition.
         const recent = await db.collection(`workspaces/${workspaceId}/pos_orders`)
             .orderBy('created_at', 'desc').limit(50).get();
+        // ⚠️ EVERY STATE WHERE ORDERING IS STILL OFFERED, not just the first
+        // two. This read `open || submitted`, so the moment the kitchen moved a
+        // ticket to `sent` a second round stopped matching — the client got
+        // `sitting_ended`, retried without a sitting, and a WHOLE NEW ORDER
+        // DOCUMENT was created for the same table. One unpaid dining session,
+        // split across two bills, and the diner asked to settle each separately.
+        // It also left two live orders on one table, which the floor plan and
+        // `getPosOverview` both resolve by picking whichever they find first.
+        //
+        // `awaiting_payment` is deliberately NOT here: the bill has been
+        // requested and a cashier may already have quoted it, so silently
+        // growing that total is a worse failure than refusing. The sheet hides
+        // "add more" in that state for the same reason.
+        const APPENDABLE = ['open', 'submitted', 'sent', 'ready', 'served'];
         let openDoc = null;
         recent.forEach((d) => {
             if (openDoc) return;
             const o = d.data() || {};
-            if (o.table_id === tableId && (o.status === 'open' || o.status === 'submitted')) openDoc = d;
+            if (o.table_id === tableId && APPENDABLE.includes(o.status)) openDoc = d;
         });
 
         let orderId; let orderNumber; let totalAmount;
 
         // The client claims to be mid-sitting. If the table is not in that
         // sitting any more, say so instead of starting a new one.
+        //
+        // ⚠️ TWO DIFFERENT REFUSALS, and conflating them costs the diner an
+        // explanation. `sitting_ended` means the table moved on and a NEW order
+        // is the right answer — the page retries as one. A bill already
+        // REQUESTED is not that: the sitting is very much alive, a cashier is
+        // on their way with a total, and opening a second order behind it is
+        // exactly the split bill this endpoint now exists to prevent.
         if (sitting && (!openDoc || openDoc.id !== sitting)) {
+            const held = recent.docs.find((d) => d.id === sitting);
+            const heldStatus = held ? (held.data() || {}).status : null;
+            if (heldStatus === 'awaiting_payment') {
+                return json(409, { error: 'bill_requested' });
+            }
             return json(409, { error: 'sitting_ended' });
         }
 
@@ -315,9 +341,10 @@ exports.handler = async (event) => {
             const result = await db.runTransaction(async (tx) => {
                 const snap = await tx.get(ref);
                 const o = snap.data() || {};
-                // It may have been paid or voided between the read above and
-                // here — a cashier closing the bill while a customer taps.
-                if (o.status !== 'open' && o.status !== 'submitted') return null;
+                // It may have been paid, voided, or sent to the cashier between
+                // the read above and here — a cashier closing the bill while a
+                // customer taps.
+                if (!APPENDABLE.includes(o.status)) return null;
 
                 const merged = [...(Array.isArray(o.lines) ? o.lines : [])];
                 for (const add of lines) {
@@ -366,6 +393,22 @@ exports.handler = async (event) => {
                     updated_at: admin.firestore.FieldValue.serverTimestamp(),
                     updated_by: 'qr'
                 };
+
+                // ⚠️ NEW FOOD MEANS THE KITCHEN HAS WORK AGAIN. Appending to an
+                // order the kitchen had already finished would otherwise leave
+                // the new lines on a ticket the board reads as `served` — the
+                // dish is on the bill, nobody is cooking it, and the only
+                // symptom is a customer waiting. So a post-kitchen order goes
+                // back to `submitted`, which is the state that says "acknowledge
+                // this", and `status_changed_at` is re-stamped so the board's
+                // waiting timer measures the NEW wait rather than the old one.
+                //
+                // `open` and `submitted` are left alone: neither has reached the
+                // kitchen, so there is no transition to make.
+                if (o.status === 'sent' || o.status === 'ready' || o.status === 'served') {
+                    patch.status = 'submitted';
+                    patch.status_changed_at = admin.firestore.Timestamp.fromDate(now);
+                }
                 // A second round's note is APPENDED, not substituted. Someone
                 // ordering more food does not retract the request they made
                 // with the first round, and silently dropping it is worse than
