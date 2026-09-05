@@ -542,13 +542,31 @@ leaves the old one unreferenced. Overwriting in place would leave every
 already-loaded till showing stale bytes from its blob cache with no way to know,
 and would make a mis-click unrecoverable.
 
-### The ratio is kept — `contain`, not `cover`
+### The ratio is kept — `contain` on the TILL, `cover` on the diner's menu
 
-Both preserve the image's own proportions; `cover` does it by CROPPING to fill
-the tile, and on a menu the cropped part is often what identifies the product.
-The tile stays a fixed 4:3 so the grid keeps one rhythm — letting each card take
-its photo's height would rag the catalogue and move every tap target the moment
-an image finished loading.
+**The till: `contain`, and this is unchanged.** Both preserve the image's own
+proportions; `cover` does it by CROPPING to fill the tile, and a cashier
+matching a dish to a ticket at speed is exactly the case where the cropped part
+is often what identifies the product — and they have no item sheet to open for
+the uncropped photo. The tile stays a fixed 4:3 so the grid keeps one rhythm;
+letting each card take its photo's height would rag the catalogue and move every
+tap target the moment an image finished loading.
+
+**The diner's menu (`order.html`): `cover`, since 2026-09-05.** Reversed on
+Jay's instruction when the menu card became a full-image card — a 3:4 photo
+filling the card with the name set ACROSS it, matching the recommendation rail.
+The original reasoning does not survive that change: identification no longer
+depends on the crop because the name is on the picture, the uncropped photo is
+one tap away in the item sheet, and a letterboxed photo in a tall card is a
+picture floating in two grey bands.
+
+⚠️ **The two surfaces now differ on purpose.** Guard:
+`tests/pos-item-image.spec.js` → "THE TILL STILL DOES NOT CROP", which exists
+precisely so nobody later "makes them consistent" by cropping the till.
+
+The diner's grid and its recommendation rail render **one component**
+(`productCard` in `order.html`) at one width (`--card-w`, the grid's own
+column), so a rail can never drift from the menu it is drawn from.
 
 `.pos-grid.has-images` applies the tile to **every** card once any visible item
 has a photo. Sizing per card made a mixed menu ragged, and a shop part-way

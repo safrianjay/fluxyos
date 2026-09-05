@@ -89,6 +89,17 @@
        pre-paint fallback. Hard-coding it means every restyle of the bar
        silently re-introduces an overlap, which is what happened. */
     --tabbar-space: calc(66px + var(--safe-bottom));
+    /* ONE card width, so the recommendation rail and the menu grid below it can
+       never disagree. The grid is 2 columns with a 12px gap inside 20px page
+       padding, and `#app` caps at 640px — this is that column, stated once.
+       Before it the rail used a hand-picked 208px and read as a different
+       component that happened to be nearby. */
+    --card-w: calc((min(100vw, 640px) - 52px) / 2);
+}
+/* The grid takes a third column on roomier phones and in the desktop frame; the
+   rail follows it rather than staying two-up beside a three-up grid. */
+@media (min-width: 520px) {
+    :root { --card-w: calc((min(100vw, 640px) - 64px) / 3); }
 }
 
 * { box-sizing: border-box; }
@@ -573,187 +584,160 @@ img { max-width: 100%; display: block; }
    sheet, and the same dish appears uncropped in the grid below. A letterboxed
    photo in a tall card would be a picture floating in two grey bands.
    ========================================================================== */
-.recos { margin: 4px 0 2px; }
-.recos-head {
-    display: flex; align-items: baseline; justify-content: space-between;
-    gap: 12px; padding: 0 16px 10px;
+/* ⚠️ ITS OWN GROUND. The rail sits between the sticky tabs and the menu, and on
+   the flat canvas it read as the first row of the menu rather than as a
+   separate thing. The band is the page's existing SKY tint — the family
+   `categoryTint` already uses on unphotographed cards — fading into the canvas
+   at the bottom so there is no hard seam where the menu begins. No new hue: not
+   orange (banned as a background project-wide) and not the hero's purple, which
+   at this scale would read as a second header. */
+.recos {
+    padding: 8px 0 14px;      /* 8px to the tabs above, as specified */
+    background: linear-gradient(180deg, #EAF2FA 0%, #F5FAFD 68%, var(--canvas) 100%);
+    border-bottom: 1px solid var(--line-soft);
 }
+.recos-head { padding: 0 20px 10px; }
 .recos-title { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
-.recos-sub { font-size: 12px; color: var(--ink-50); }
 .recos-rail {
     display: flex;
-    gap: 12px;
+    gap: 12px;                /* the grid's own gap */
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scroll-snap-type: x proximity;
     /* Padding rather than margin, so the first and last card clear the screen
-       edge WITHOUT the rail's scrollable area stopping short of it. */
-    padding: 2px 16px 8px;
+       edge WITHOUT the rail's scrollable area stopping short of it. 20px to
+       match the grid's page padding. */
+    padding: 2px 20px 2px;
+    /* ⚠️ AND scroll-padding TO MATCH. `scroll-snap-align: start` snaps to the
+       SCROLLPORT edge, which ignores padding — so the rail rested at
+       scrollLeft: 20 with the first card flush against the screen edge and the
+       inset silently eaten. The two values have to move together. */
+    scroll-padding-inline: 20px;
     scrollbar-width: none;
 }
 .recos-rail::-webkit-scrollbar { display: none; }
 
-.reco-card {
+/* ---- ONE product card, two call sites ----------------------------------
+   The rail and the grid render the SAME component. They were two nearly
+   identical blocks for one visual idea, which is how a rail drifts from the
+   menu it is drawn from.
+
+   ⚠️ `cover`, NOT `contain` — this REVERSES items.md §9 for the diner's menu,
+   on Jay's instruction (2026-09-05). §9's reasoning was that cropping loses
+   what identifies a dish. That held while the name sat in a body BELOW the
+   photo and the tile was a 4:3 letterbox; in a full-image card the name is set
+   across the picture, so identification never depends on the crop, and the
+   uncropped photo is one tap away in the item sheet.
+
+   ⚠️ THE TILL IS UNCHANGED. `pos.html` keeps `contain`: a cashier matching a
+   dish to a ticket at speed is exactly the identification §9 protects, and they
+   have no item sheet to fall back to. */
+.card, .reco-card {
     position: relative;
-    flex: 0 0 auto;
-    width: 208px;
     aspect-ratio: 3 / 4;
     border-radius: 18px;
     overflow: hidden;
-    scroll-snap-align: start;
     background: var(--ink);
     padding: 0;
     border: none;
+    /* The whole card is the tap target, not just the button. */
     text-align: left;
     color: #fff;
     display: block;
-    box-shadow: 0 2px 10px -4px rgba(11, 15, 25, 0.18), 0 1px 2px rgba(11, 15, 25, 0.06);
+    box-shadow: 0 2px 10px -4px rgba(11, 15, 25, 0.14), 0 1px 2px rgba(11, 15, 25, 0.05);
     transition: transform 0.14s ease;
 }
-.reco-card:active { transform: scale(0.985); }
-.reco-media { position: absolute; inset: 0; }
-.reco-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.reco-media.is-placeholder {
-    background: var(--tint, linear-gradient(150deg, #FFF1E4, #FDE3CE));
-    display: flex; align-items: center; justify-content: center;
+.card:active, .reco-card:active { transform: scale(0.985); }
+
+/* Rail-only geometry. The grid takes its width from `1fr`; the rail cannot, so
+   it reads the same column width the grid computes. */
+.reco-card {
+    flex: 0 0 auto;
+    width: var(--card-w);
+    scroll-snap-align: start;
 }
-.reco-media.is-placeholder svg { width: 46px; height: 46px; color: rgba(11, 15, 25, 0.26); }
 
 /* ⚠️ NO PHOTO IS THE COMMON CASE, not an edge one — most items have none
-   (items.md §9). A dark scrim laid over a pastel tint turns it to grey sludge
-   and the card reads as a loading failure, so a photoless card inverts instead:
-   light scrim, ink text, an outlined pill. Same card, still legible, and it
-   does not pretend to be a photograph. */
-.reco-card.is-plain { background: var(--surface); color: var(--ink); }
-.reco-card.is-plain .reco-scrim {
-    background: linear-gradient(180deg, rgba(255,255,255,0) 40%, rgba(255,255,255,0.86) 76%, rgba(255,255,255,0.96) 100%);
+   (items.md §9). A dark scrim over a pastel tint turns it to grey sludge and
+   the card reads as a loading failure, so a photoless card INVERTS: light
+   scrim, ink text, an outlined pill. Same card, still legible, and it does not
+   pretend to be a photograph. */
+.card.is-plain, .reco-card.is-plain { background: var(--surface); color: var(--ink); }
+
+.card-media { position: absolute; inset: 0; }
+/* ABSOLUTELY POSITIONED, and it has to be. With `height: 100%` in a box sized
+   only by `aspect-ratio`, the height resolves against an indefinite container,
+   falls back to `auto`, and a square source makes the tile square — overriding
+   the ratio and leaving the grid ragged. */
+.card-media img {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
 }
-.reco-card.is-plain .reco-name,
-.reco-card.is-plain .reco-price { text-shadow: none; }
-.reco-card.is-plain .reco-price { color: var(--ink); }
-.reco-card.is-plain .reco-add { border: 1px solid var(--line); background: var(--surface); }
+.card-media img.failed { display: none; }
+/* MOST MENUS ARE MOSTLY UNPHOTOGRAPHED, so the placeholder is what the grid
+   actually looks like — and a field of identical grey rectangles reads as a
+   broken page rather than a menu. Each tile takes a warm tint keyed to the
+   category. */
+.card-media.is-placeholder {
+    background: var(--tint, linear-gradient(150deg, #FFF3E9, #FDE9DA));
+    display: flex; align-items: center; justify-content: center;
+}
+.card-media.is-placeholder svg { width: 42px; height: 42px; color: rgba(11, 15, 25, 0.26); }
+
 /* The scrim is what makes white text legible over an unknown photo. Without it
    a pale dish and a white name are the same colour. */
-.reco-scrim {
+.card-scrim {
     position: absolute; inset: 0;
-    background: linear-gradient(180deg, rgba(11,15,25,0) 38%, rgba(11,15,25,0.72) 78%, rgba(11,15,25,0.88) 100%);
+    background: linear-gradient(180deg, rgba(11,15,25,0) 34%, rgba(11,15,25,0.70) 76%, rgba(11,15,25,0.88) 100%);
 }
-.reco-body { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 12px 12px; }
-.reco-name {
-    font-size: 15px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.25;
-    margin: 0 0 6px;
+.card.is-plain .card-scrim, .reco-card.is-plain .card-scrim {
+    background: linear-gradient(180deg, rgba(255,255,255,0) 36%, rgba(255,255,255,0.86) 74%, rgba(255,255,255,0.96) 100%);
+}
+
+.card-body { position: absolute; left: 0; right: 0; bottom: 0; padding: 11px; }
+.card-name {
+    font-size: 14px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.25;
+    margin: 0 0 5px;
     /* Two lines then ellipsis: a long dish name must not push the price and the
        button off the bottom of the card. */
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
     overflow: hidden;
     text-shadow: 0 1px 2px rgba(11, 15, 25, 0.5);
 }
-.reco-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.reco-price { font-size: 14px; font-weight: 700; text-shadow: 0 1px 2px rgba(11, 15, 25, 0.5); }
-/* White pill, ACCENT text. The reference's is green; orange is this product's
-   accent and an orange background is banned project-wide, so the colour goes on
-   the label where accents belong. */
-.reco-add {
+.card-opts {
+    font-size: 10.5px; font-weight: 600; margin: -2px 0 6px;
+    color: rgba(255, 255, 255, 0.82);
+    text-shadow: 0 1px 2px rgba(11, 15, 25, 0.5);
+}
+.card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.card-price {
+    font-size: 14px; font-weight: 700; letter-spacing: -0.015em;
+    text-shadow: 0 1px 2px rgba(11, 15, 25, 0.5);
+}
+.card.is-plain .card-name, .reco-card.is-plain .card-name { text-shadow: none; }
+.card.is-plain .card-price, .reco-card.is-plain .card-price {
+    text-shadow: none; color: var(--ink);
+}
+.card.is-plain .card-opts, .reco-card.is-plain .card-opts {
+    color: var(--ink-50); text-shadow: none;
+}
+
+/* White pill, ACCENT text. Orange is this product's accent and an orange
+   background is banned project-wide, so the colour goes on the label. */
+.add-btn {
     flex: 0 0 auto;
-    height: 32px; padding: 0 14px;
+    height: 30px; padding: 0 12px;
     border: none; border-radius: 999px;
     background: #fff; color: var(--accent);
-    font-size: 13px; font-weight: 700; letter-spacing: -0.01em;
+    font-size: 12.5px; font-weight: 700; letter-spacing: -0.01em;
 }
-.reco-add:active { background: #F3F4F6; }
-
-.card {
-    background: var(--surface);
-    border: 1px solid var(--line-soft);
-    border-radius: 18px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    /* The whole card is the tap target, not just the button. */
-    text-align: left;
-    padding: 0;
-    color: inherit;
-    /* Depth instead of an outline. A grid of hairline boxes reads as a
-       wireframe; a soft shadow makes each card an object on a surface. */
-    box-shadow: 0 2px 10px -4px rgba(11, 15, 25, 0.10), 0 1px 2px rgba(11, 15, 25, 0.04);
-    transition: transform 0.14s ease, box-shadow 0.14s ease;
+.add-btn:active { background: #F3F4F6; }
+.card.is-plain .add-btn, .reco-card.is-plain .add-btn {
+    border: 1px solid var(--line); background: var(--surface);
 }
-.card:active {
-    transform: scale(0.985);
-    box-shadow: 0 1px 4px -2px rgba(11, 15, 25, 0.12);
-}
-
-/* FIXED 4:3 with `contain`, matching the till exactly — the same image appears
-   on both surfaces, and `cover` crops the part of a dish that identifies it
-   (docs/CUSTOMER_ORDERING_PLAN_REVIEW.md §4). */
-.card-media {
-    width: 100%;
-    aspect-ratio: 4 / 3;
-    background: var(--line-soft);
-    display: flex; align-items: center; justify-content: center;
-    position: relative;
-}
-/* MOST MENUS ARE MOSTLY UNPHOTOGRAPHED, so the placeholder is what the grid
-   actually looks like — and a field of identical grey rectangles reads as a
-   broken page rather than a menu. Each tile takes a warm tint keyed to the
-   category, so the grid has colour and the eye can tell sections apart while
-   scrolling. Kept low-saturation: it must sit behind a real photo without
-   competing when one arrives. */
-.card-media.is-placeholder { background: var(--tint, linear-gradient(150deg, #FFF3E9, #FDE9DA)); }
-.card-media.is-placeholder svg { color: rgba(11, 15, 25, 0.28); }
-/* ABSOLUTELY POSITIONED, and it has to be. With `height: 100%` in a box sized
-   only by `aspect-ratio`, the height resolves against an indefinite container —
-   so it falls back to `auto` and a SQUARE source image makes the tile square,
-   overriding the 4:3 and leaving the grid ragged. That is the exact defect the
-   placeholder exists to prevent, arriving from the other direction. Taking the
-   image out of flow makes the aspect-ratio the only thing setting the height. */
-.card-media img {
-    position: absolute;
-    inset: 0;
-    width: 100%; height: 100%;
-    object-fit: contain;
-}
-.card-media img.failed { display: none; }
-.card-media.is-placeholder svg { width: 36px; height: 36px; }
-
-.card-body {
-    padding: 10px 11px 12px;
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 auto;
-    gap: 4px;
-}
-.card-name {
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: -0.01em;
-    margin: 0;
-    /* Two lines then ellipsis. A grid cell has no room to grow sideways, and a
-       ragged card height breaks the row. */
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    min-height: 2.4em;
-}
-.card-price { font-size: 15px; font-weight: 700; letter-spacing: -0.015em; }
-.card-opts { font-size: 11px; color: var(--ink-50); }
-
-.card-foot { margin-top: auto; padding-top: 8px; }
-
-.add-btn {
-    width: 100%;
-    height: 34px;
-    padding: 0 10px;
-    border-radius: 10px;
-    border: 1px solid var(--ink);
-    background: var(--surface);
-    color: var(--ink);
-    font-size: 12.5px;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-}
-.add-btn:active { background: var(--line-soft); }
 
 .stepper {
     display: inline-flex;
@@ -3079,35 +3063,52 @@ html.kb-open .welcome-art { display: none; }
         if (!picks.length) { host.hidden = true; host.innerHTML = ''; return; }
 
         var cards = picks.map(function (i) {
-            var media = i.has_image
-                ? '<div class="reco-media"><img loading="lazy" decoding="async" alt="" src="'
-                    + FN + 'qr-menu-image?token=' + encodeURIComponent(TOKEN)
-                    + '&item=' + encodeURIComponent(i.id) + '"></div>'
-                : '<div class="reco-media is-placeholder" style="--tint:'
-                    + categoryTint(i.category) + '">' + PLACEHOLDER + '</div>';
-            var qty = qtyInCart(i.id);
-            return '<article class="reco-card' + (i.has_image ? '' : ' is-plain')
-                + '" data-open="' + esc(i.id) + '">'
-                + media
-                + '<div class="reco-scrim"></div>'
-                + '<div class="reco-body">'
-                + '<h3 class="reco-name">' + esc(i.name) + '</h3>'
-                + '<div class="reco-foot">'
-                + '<span class="reco-price num">' + esc(money(i.price)) + '</span>'
-                // Same target as the card itself, and the same one the grid uses
-                // — the item sheet. NOT a straight add: a recommended dish is as
-                // likely to carry options as any other, and a button that
-                // skipped them would put the wrong thing in the cart.
-                + '<button class="reco-add" type="button" data-open="' + esc(i.id) + '">'
-                + (qty > 0 ? esc(qty + ' •') + ' Tambah' : 'Tambah') + '</button>'
-                + '</div></div></article>';
+            return productCard(i, 'reco-card');
         }).join('');
 
+        // Title only. The outlet's name is already stated on the card directly
+        // above this, so "Pilihan <outlet>" restated it in the same viewport —
+        // the redundancy CLAUDE.md bans on eyebrows.
         host.innerHTML = '<div class="recos-head">'
             + '<h2 class="recos-title" id="recos-title">Rekomendasi Kami</h2>'
-            + '<span class="recos-sub">Pilihan ' + esc(menu.outlet || 'kami') + '</span>'
             + '</div><div class="recos-rail">' + cards + '</div>';
         host.hidden = false;
+    }
+
+    /**
+     * ONE product card, rendered identically in the rail and in the grid.
+     *
+     * It was two builders emitting two shapes for one visual idea, which is how
+     * a rail stops looking like the menu it is drawn from. `extra` carries the
+     * rail's own class; everything inside is shared.
+     *
+     * The card and its button both open the item SHEET rather than adding
+     * straight — a dish carries options, and a button that skipped them would
+     * cart the wrong thing.
+     */
+    function productCard(i, extra) {
+        var media = i.has_image
+            ? '<div class="card-media"><img loading="lazy" decoding="async" alt="" src="'
+                + FN + 'qr-menu-image?token=' + encodeURIComponent(TOKEN)
+                + '&item=' + encodeURIComponent(i.id) + '"></div>'
+            : '<div class="card-media is-placeholder" style="--tint:'
+                + categoryTint(i.category) + '">' + PLACEHOLDER + '</div>';
+        var qty = qtyInCart(i.id);
+        var hasOptions = (i.modifier_groups || []).length > 0;
+        return '<article class="' + (extra || 'card') + (i.has_image ? '' : ' is-plain')
+            + '" data-item="' + esc(i.id) + '" data-open="' + esc(i.id) + '">'
+            + media
+            + '<div class="card-scrim"></div>'
+            + '<div class="card-body">'
+            + '<h3 class="card-name">' + esc(i.name) + '</h3>'
+            + (hasOptions ? '<div class="card-opts">Bisa disesuaikan</div>' : '')
+            + '<div class="card-foot">'
+            + '<span class="card-price num">' + esc(money(i.price)) + '</span>'
+            + '<button class="add-btn" type="button" data-open="' + esc(i.id) + '">'
+            // "Tambah lagi" when it is already in the cart — "Tambah" beside a
+            // count reads as though the count were the thing being added.
+            + (qty > 0 ? esc(qty + ' • Tambah lagi') : 'Tambah') + '</button>'
+            + '</div></div></article>';
     }
 
     function paintMenu() {
@@ -3133,38 +3134,8 @@ html.kb-open .welcome-art { display: none; }
             }
             if (!gridOpen) { html += '<div class="grid">'; gridOpen = true; }
 
-            var qty = qtyInCart(i.id);
-            var hasOptions = (i.modifier_groups || []).length > 0;
-
-            html += '<article class="card" data-item="' + esc(i.id) + '" data-open="' + esc(i.id) + '">';
-
-            // Every card gets a tile. A grid where only some cells carry an
-            // image collapses into a ragged mess — worse than in a list, where
-            // at least the text still lines up.
-            if (i.has_image) {
-                html += '<div class="card-media"><img loading="lazy" decoding="async" alt="" src="'
-                    + FN + 'qr-menu-image?token=' + encodeURIComponent(TOKEN)
-                    + '&item=' + encodeURIComponent(i.id) + '"></div>';
-            } else {
-                html += '<div class="card-media is-placeholder" style="--tint:'
-                    + categoryTint(i.category) + '">' + PLACEHOLDER + '</div>';
-            }
-
-            html += '<div class="card-body">'
-                + '<h3 class="card-name">' + esc(i.name) + '</h3>'
-                + '<div class="card-price num">' + esc(money(i.price)) + '</div>'
-                + (hasOptions ? '<div class="card-opts">Bisa disesuaikan</div>' : '')
-                + '<div class="card-foot">';
-
-            // NO STEPPER ON THE CARD, deliberately. Now that every item can
-            // carry a note, the same product can sit in the cart several ways,
-            // and a "+" here could only ever bump ONE of them — the plain,
-            // note-less line. Tapping "+" on a card reading "1" would have
-            // silently created a SECOND line without the note. Quantity is
-            // edited in the cart, where each line is visible and unambiguous.
-            html += '<button class="add-btn" type="button" data-open="' + esc(i.id) + '">'
-                + (qty > 0 ? qty + ' • Tambah lagi' : 'Tambah') + '</button>';
-            html += '</div></div></article>';
+            // The SAME component the rail renders — see productCard().
+            html += productCard(i);
         });
         if (gridOpen) html += '</div>';
         host.innerHTML = html;

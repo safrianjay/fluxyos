@@ -33,6 +33,36 @@ test.describe.configure({ timeout: 240_000 });
 const PNG_4x3 = 'iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAYAAAC09K7GAAAAHElEQVQIW2NkYGD4z'
     + 'wAFjDAGNgFsijASsCnCKgcAVfIDATT7lLcAAAAASUVORK5CYII=';
 
+test('THE TILL STILL DOES NOT CROP — items.md §9 holds here', async ({ page }) => {
+    // The diner's menu moved to `cover` on 2026-09-05 (full-image cards, the
+    // name set across the picture). The till did NOT follow, and this is what
+    // stops someone "making them consistent" later.
+    //
+    // A cashier is matching a dish to a ticket at speed, which is exactly the
+    // identification §9 protects — and unlike a diner they have no item sheet to
+    // open for the uncropped photo.
+    await page.goto('/pos');
+    await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
+    await page.waitForSelector('.pos-card', { timeout: 20000 });
+
+    const fit = await page.evaluate(() => {
+        const img = document.querySelector('.pos-card-media img');
+        if (img) return getComputedStyle(img).objectFit;
+        // No photographed item in this workspace: build the exact shape the rule
+        // targets and read it, so the check still means something rather than
+        // skipping. `.pos-card-media img` is the selector in pos.html.
+        const media = document.createElement('div');
+        media.className = 'pos-card-media';
+        const probe = document.createElement('img');
+        media.appendChild(probe);
+        document.body.appendChild(media);
+        const v = getComputedStyle(probe).objectFit;
+        media.remove();
+        return v;
+    });
+    expect(fit, 'the till started cropping menu photos').toBe('contain');
+});
+
 test('a product photo round-trips to Storage and never becomes a public URL', async ({ page }) => {
     await page.goto('/inventory.html');
     // `attached`, not visible: the file input is deliberately hidden and driven

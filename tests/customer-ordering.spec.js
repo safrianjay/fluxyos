@@ -476,12 +476,13 @@ test.describe('QR customer ordering', () => {
     //
     // The owner's own picks, marked per item in Inventory. A rail above the menu
     // it is drawn from.
+    // ALL THREE, so the rail genuinely overflows at the test viewport. Now that
+    // a card is a grid column rather than a hand-picked 208px, two of them fit
+    // on screen and the scroll assertion below would pass on a rail that could
+    // not scroll — green for the wrong reason.
     const withRecos = (over = {}) => ({
         ...MENU,
-        items: MENU.items.map((i) => (
-            i.id === 'i_latte' ? { ...i, recommended: true }
-                : i.id === 'i_nasgor' ? { ...i, recommended: true, has_image: false }
-                    : i)),
+        items: MENU.items.map((i) => ({ ...i, recommended: true })),
         ...over
     });
 
@@ -497,7 +498,7 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('#recos-title')).toHaveText(/rekomendasi/i);
         // ONLY the marked items, never the whole menu.
         const cards = page.locator('.reco-card');
-        await expect(cards).toHaveCount(2);
+        await expect(cards).toHaveCount(3);
         await expect(cards.first()).toContainText('Es Kopi Susu');
 
         // Position is the spec, not an accident: below the category chips and
@@ -507,6 +508,35 @@ test.describe('QR customer ordering', () => {
         const menu = await page.locator('#menu').boundingBox();
         expect(box.y).toBeGreaterThanOrEqual(chips.y + chips.height - 1);
         expect(box.y + box.height).toBeLessThanOrEqual(menu.y + 1);
+
+        // ⚠️ THE RAIL FOLLOWS THE GRID, exactly. A hand-picked card width is how
+        // a rail ends up looking like a different component that happens to be
+        // nearby — both read `--card-w`, so they cannot drift.
+        const recoCard = await page.locator('.reco-card').first().boundingBox();
+        const gridCard = await page.locator('.grid .card').first().boundingBox();
+        expect(Math.abs(recoCard.width - gridCard.width),
+            `rail card ${Math.round(recoCard.width)}px vs grid card ${Math.round(gridCard.width)}px`)
+            .toBeLessThan(1.5);
+        // And the first card starts on the grid's own left edge. `scroll-snap-align:
+        // start` snaps to the SCROLLPORT edge and ignores padding, so without a
+        // matching `scroll-padding` the rail rests scrolled by its own inset and
+        // the first card sits flush against the screen.
+        expect(Math.abs(recoCard.x - gridCard.x),
+            'the first card does not line up with the menu below it').toBeLessThan(1.5);
+        expect(await page.locator('.recos-rail').evaluate((el) => el.scrollLeft),
+            'the rail rests scrolled, eating its own left inset').toBe(0);
+
+        // 8px between the tab strip and the title, as specified.
+        const section = await page.locator('#recos').boundingBox();
+        const title = await page.locator('#recos-title').boundingBox();
+        expect(Math.round(title.y - section.y)).toBe(8);
+
+        // Its own ground, so it does not read as the first row of the menu.
+        expect(await page.locator('#recos').evaluate((el) => getComputedStyle(el).backgroundImage))
+            .not.toBe('none');
+        // The outlet's name is already on the card directly above; restating it
+        // here was the redundancy CLAUDE.md bans on eyebrows.
+        await expect(page.locator('.recos-sub')).toHaveCount(0);
 
         // It scrolls horizontally, and the PAGE does not.
         const overflows = await page.locator('.recos-rail')
@@ -542,10 +572,11 @@ test.describe('QR customer ordering', () => {
             status: 200, contentType: 'application/json', body: JSON.stringify(withRecos())
         }));
         await open(page);
+        // Two of the three fixture items carry no photo.
         const plain = page.locator('.reco-card.is-plain');
-        await expect(plain).toHaveCount(1);
-        const ink = await plain.locator('.reco-name').evaluate((el) => getComputedStyle(el).color);
-        const onPhoto = await page.locator('.reco-card:not(.is-plain) .reco-name')
+        await expect(plain).toHaveCount(2);
+        const ink = await plain.first().locator('.card-name').evaluate((el) => getComputedStyle(el).color);
+        const onPhoto = await page.locator('.reco-card:not(.is-plain) .card-name')
             .evaluate((el) => getComputedStyle(el).color);
         expect(ink, 'the photoless card kept the white-on-photo treatment').not.toBe(onPhoto);
     });
@@ -955,16 +986,18 @@ test.describe('QR customer ordering', () => {
             els.slice(0, 2).map((e) => Math.round(e.getBoundingClientRect().top)));
         expect(boxes[0]).toBe(boxes[1]);
 
-        // Every media tile is 4:3 and identical, photo or placeholder. A square
-        // source image once stretched its tile and left the grid ragged —
-        // `height: 100%` in an aspect-ratio box resolves to auto.
-        const tiles = await page.locator('.card-media').evaluateAll((els) => els.map((e) => {
+        // Every CARD is 3:4 and identical, photo or placeholder. The card is now
+        // the tile — the photo fills it and the name sits across the bottom —
+        // so a ragged card is a ragged row. A square source image once stretched
+        // its tile because `height: 100%` in an aspect-ratio box resolves to
+        // auto; the image is absolutely positioned to stop that.
+        const tiles = await page.locator('.card').evaluateAll((els) => els.map((e) => {
             const r = e.getBoundingClientRect();
             return { ratio: +(r.width / r.height).toFixed(2), h: Math.round(r.height) };
         }));
-        tiles.forEach((t) => expect(t.ratio).toBeCloseTo(1.33, 1));
+        tiles.forEach((t) => expect(t.ratio).toBeCloseTo(0.75, 1));
         expect(new Set(tiles.map((t) => t.h)).size,
-            'media tiles are not all the same height — the grid will look ragged').toBe(1);
+            'cards are not all the same height — the grid will look ragged').toBe(1);
     });
 
     test('category tabs carry drawn icons, not emoji', async ({ page }) => {
@@ -1322,16 +1355,19 @@ test.describe('QR customer ordering', () => {
         expect(firstRow.y - (chips.y + chips.height)).toBeLessThan(60);
     });
 
-    test('a photo loads and keeps its aspect ratio', async ({ page }) => {
+    test('a photo FILLS the card, and the till still does not crop', async ({ page }) => {
         await stub(page);
         await open(page);
 
         const img = page.locator('.card', { hasText: 'Es Kopi Susu' }).locator('.card-media img');
         await expect(img).toBeVisible();
-        // `contain`, matching the till exactly. `cover` crops the part of a dish
-        // that identifies it, and the SAME photo appears on both surfaces — one
-        // of them would be wrong and nobody could tell which.
-        await expect(img).toHaveCSS('object-fit', 'contain');
+        // ⚠️ `cover` HERE, AND THIS REVERSES items.md §9 for the diner's menu —
+        // Jay's call, 2026-09-05. §9 banned cropping because it loses what
+        // identifies a dish; that held while the name sat in a body BELOW the
+        // photo. In a full-image card the name is set across the picture, so
+        // identification never depends on the crop, and the uncropped photo is
+        // one tap away in the item sheet.
+        await expect(img).toHaveCSS('object-fit', 'cover');
 
         // An item with no photo gets a PLACEHOLDER tile, not nothing. A list
         // where only some rows have a tile reads as broken rather than as
