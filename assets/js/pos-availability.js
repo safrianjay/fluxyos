@@ -166,7 +166,10 @@ export const ACTIVE_ORDER_STATUSES = ['open', 'submitted', 'sent', 'ready', 'ser
  *
  * @returns {{
  *   state: 'free'|'occupied'|'bill'|'reserved',
- *   order: object|null,        the order sitting there, if any
+ *   order: object|null,        the ticket to act on first, if any
+ *   orders: object[],          EVERY live ticket here, oldest first
+ *   orderCount: number,
+ *   outstanding: number,       what the TABLE still owes across all of them
  *   reservation: object|null,  the booking HOLDING it, if any
  *   upcoming: object|null,     the next booking that is not holding it yet
  *   available: boolean         may a walk-in be seated here right now
@@ -176,10 +179,35 @@ export const ACTIVE_ORDER_STATUSES = ['open', 'submitted', 'sent', 'ready', 'ser
  * it reads "in use", not "reserved", because that is what the room looks like —
  * but either one makes it unavailable, which is the only fact the Create Order
  * dialog needs.
+ *
+ * ⚠️ A TABLE CAN CARRY SEVERAL TICKETS. Since tickets split at the kitchen
+ * (pos.md §"Tickets split at the kitchen") a second round placed after the first
+ * was sent is its own document, so this returns the whole set and what they add
+ * up to — not `.find()`'s first match.
+ *
+ * That first match is the reason `outstanding` exists. The floor tile printed
+ * ONE ticket's total, so a table holding #001 for 50.000 and #002 for 30.000
+ * showed whichever the array happened to yield: a cashier collects 30.000,
+ * the diner leaves, and 50.000 stays open on a table that still reads occupied.
+ * Nothing errors. The money is simply not there.
  */
 export function tableStateAt(tableId, { orders = [], reservations = [] } = {}, atMs = Date.now()) {
-    const order = orders.find((o) => o && o.table_id === tableId
-        && ACTIVE_ORDER_STATUSES.includes(o.status)) || null;
+    const live = orders.filter((o) => o && o.table_id === tableId
+        && ACTIVE_ORDER_STATUSES.includes(o.status))
+        // Oldest first: that is the order the sitting began with, and the one a
+        // cashier reads down from.
+        .sort((a, b) => (toMs(a.opened_at) || toMs(a.created_at) || 0)
+            - (toMs(b.opened_at) || toMs(b.created_at) || 0));
+
+    // The ticket to act on: whichever has had its bill requested, else the
+    // first. DETERMINISTIC — `.find()` over an unsorted list meant the tile's
+    // `data-order` could point at a different ticket between two renders.
+    const order = live.find((o) => o.status === 'awaiting_payment') || live[0] || null;
+
+    // What the TABLE owes, which is the only figure a cashier should ever be
+    // shown next to a table. Partial payments are netted off per ticket.
+    const outstanding = live.reduce((t, o) => t
+        + Math.max(0, (Number(o.total_amount) || 0) - (Number(o.paid_amount) || 0)), 0);
 
     const holding = reservations
         .filter((r) => r && r.table_id === tableId && reservationHoldsAt(r, atMs))
@@ -199,10 +227,18 @@ export function tableStateAt(tableId, { orders = [], reservations = [] } = {}, a
 
     const reservation = holding[0] || null;
     let state = 'free';
-    if (order) state = order.status === 'awaiting_payment' ? 'bill' : 'occupied';
-    else if (reservation) state = 'reserved';
+    // ⚠️ ANY ticket awaiting payment puts the table in the bill state. Reading
+    // it off one ticket meant a table whose first round was already waiting to
+    // be paid still painted as merely occupied, because the newest round was
+    // `sent` — the cashier's cue to walk over, missing.
+    if (live.length) {
+        state = live.some((o) => o.status === 'awaiting_payment') ? 'bill' : 'occupied';
+    } else if (reservation) state = 'reserved';
 
-    return { state, order, reservation, upcoming, available: state === 'free' };
+    return {
+        state, order, orders: live, orderCount: live.length, outstanding,
+        reservation, upcoming, available: state === 'free'
+    };
 }
 
 /**

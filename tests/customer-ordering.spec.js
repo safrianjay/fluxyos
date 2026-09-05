@@ -780,6 +780,73 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('#bill-btn')).toContainText('80.000');
         await expect(page.locator('#bill-btn'), 'the CTA quoted only the newest ticket')
             .not.toContainText('30.000');
+
+        // ⚠️ AND THE BADGE COUNTS THE SITTING. It read `lines` — the newest
+        // ticket's — so the tab whose whole job is "here is what you have
+        // ordered" showed 1 for a diner holding two rounds.
+        await expect(page.locator('#tab-orders-badge')).toHaveText('2');
+    });
+
+    test('a SERVED ticket stays on the bill — stage does not decide what is owed', async ({ page }) => {
+        // Jay's example, verbatim: #001 Nasi Goreng served, #002 Mie Goreng
+        // still being cooked, customer asks for the bill. Whether an order is
+        // billed is decided by paid-or-not, never by how far along it is — and
+        // `qr-request-bill` moves BOTH tickets to awaiting_payment, or the
+        // cashier settles the newest round and leaves the first meal open.
+        await stub(page);
+        const line = (name, amount) => [{ item_id: 'i_americano', item_name: name,
+            quantity: 1, gross_amount: amount, note: null, modifiers: [] }];
+        const orders = [
+            { order_id: 'o2', order_number: '002', status: 'sent', stage: 2,
+                stage_label: 'Sedang disiapkan', lines: line('Mie Goreng', 30000),
+                subtotal: 30000, discount_total: 0, service_charge_amount: 0,
+                tax_amount: 0, total_amount: 30000, paid_amount: 0,
+                pricing: null, placed_at: Date.now() - 60_000 },
+            { order_id: 'o1', order_number: '001', status: 'served', stage: 4,
+                stage_label: 'Sudah diantar', lines: line('Nasi Goreng', 50000),
+                subtotal: 50000, discount_total: 0, service_charge_amount: 0,
+                tax_amount: 0, total_amount: 50000, paid_amount: 0,
+                pricing: null, placed_at: Date.now() - 30 * 60_000 }
+        ];
+        await page.route('**/qr-order-status**', (route) => route.fulfill({
+            status: 200, contentType: 'application/json',
+            body: JSON.stringify({
+                has_order: true, ...orders[0], lines: orders[0].lines,
+                note: null, history: [], orders,
+                session: {
+                    order_count: 2, subtotal: 80000, discount_total: 0,
+                    service_charge_amount: 0, tax_amount: 0,
+                    total_amount: 80000, paid_amount: 0, outstanding: 80000
+                }
+            })
+        }));
+
+        let billBody = null;
+        await page.route('**/qr-request-bill', (route) => {
+            billBody = JSON.parse(route.request().postData() || '{}');
+            return route.fulfill({
+                status: 200, contentType: 'application/json',
+                // Two tickets moved, which is the server-side half of the rule.
+                body: JSON.stringify({ ok: true, already: false, order_count: 2,
+                    order_numbers: ['002', '001'], order_number: '002' })
+            });
+        });
+
+        await open(page);
+        await page.locator('.tab[data-tab="orders"]').click();
+
+        // The served ticket is still shown, and still counted.
+        await expect(page.locator('.oticket')).toHaveCount(2, { timeout: 15_000 });
+        await expect(page.locator('#bill-btn')).toContainText('80.000');
+
+        // Asking for the bill is a statement about the TABLE — one call, and
+        // the server moves every live ticket behind it.
+        await page.locator('#bill-btn').click();
+        await expect(page.locator('#bill-btn')).toContainText('Ketuk lagi');
+        await page.locator('#bill-btn').click();
+        await expect.poll(() => billBody, { timeout: 15_000 }).not.toBe(null);
+        expect(Object.keys(billBody), 'the request names the table, not an order')
+            .toEqual(['token']);
     });
 
     test('a single ticket shows no ticket list — it would restate the panel above', async ({ page }) => {

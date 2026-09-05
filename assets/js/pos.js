@@ -677,8 +677,6 @@ function renderTables() {
     // cashier operates the till, they do not mint table cards.
     $('pos-qr-btn')?.classList.toggle('hidden', !mayArrange);
 
-    const byTable = {};
-    (o.activeOrders || []).forEach((ord) => { if (ord.table_id) byTable[ord.table_id] = ord; });
     // Reservations are read through the SAME function the Create Order dialog
     // and `createPosOrder` use. The floor plan does not get its own opinion
     // about what "free" means — that is precisely how a reserved table ends up
@@ -706,8 +704,11 @@ function renderTables() {
     const shown = o.tables.filter((t) => !state.zone || (t.zone || null) === state.zone);
 
     const tables = shown.map((t, i) => {
-        const ord = byTable[t.id];
         const avail = tableStateAt(t.id, { orders: o.activeOrders || [], reservations }, now);
+        // From `tableStateAt`, not the byTable map: that was a last-write-wins
+        // object, so on a table with two tickets `data-order` pointed at
+        // whichever the array yielded last and could change between renders.
+        const ord = avail.order;
         const res = avail.reservation;
         const cls = { free: 'is-free', occupied: 'is-busy', bill: 'is-bill', reserved: 'is-reserved' }[avail.state];
         const seats = Math.min(12, Math.max(2, Number(t.seats) || 4));
@@ -737,8 +738,16 @@ function renderTables() {
                     ${t.zone && !state.zone ? `<span class="pos-table-zone">${esc(t.zone)}</span>` : ''}
                 </span>
                 ${ord ? `<span class="pos-table-meta">
-                    <span class="pos-table-money">${rp(ord.total_amount)}</span>
-                    ${elapsedSince(ord.opened_at) ? `<span class="pos-table-since">${esc(elapsedSince(ord.opened_at))}</span>` : ''}
+                    <span class="pos-table-money">${rp(avail.outstanding)}</span>
+                    ${avail.orderCount > 1
+                        // ⚠️ THE TABLE'S TOTAL, AND THAT IT IS MORE THAN ONE
+                        // TICKET. This printed a single ticket's total, so a
+                        // table holding #001 for 50.000 and #002 for 30.000
+                        // showed one of them: the cashier collects that, the
+                        // diner leaves, and the rest stays open on a table that
+                        // still reads occupied. Nothing errors.
+                        ? `<span class="pos-table-tickets">${avail.orderCount} tickets</span>`
+                        : (elapsedSince(ord.opened_at) ? `<span class="pos-table-since">${esc(elapsedSince(ord.opened_at))}</span>` : '')}
                 </span>` : `<span class="pos-table-free">${
                     // Who and when, never a bare "Reserved". A cashier reading
                     // one word assumes the system is being cautious, and a

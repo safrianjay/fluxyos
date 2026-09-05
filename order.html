@@ -4121,7 +4121,12 @@ html.kb-open .welcome-art { display: none; }
         }
 
         var step = Math.min(4, Math.max(1, Number(d.stage) || 1));
-        var billed = d.status === 'awaiting_payment';
+        // ANY live ticket awaiting payment means the bill is called — the same
+        // test the server applies before refusing a new round with
+        // `bill_requested`. Read off `d.status` alone (the newest ticket's) the
+        // page would keep offering "order more" into a refusal.
+        var billed = d.status === 'awaiting_payment'
+            || (d.orders || []).some(function (o) { return o.status === 'awaiting_payment'; });
         // ⚠️ COMPUTED BEFORE ANYTHING READS IT. This sat below the footer block
         // that formats it onto the CTA, and `var` hoists the declaration but not
         // the assignment — so the button read "Minta bill · Rp0" on every
@@ -4149,9 +4154,18 @@ html.kb-open .welcome-art { display: none; }
         // ADDING is always available; asking for the bill is not. A bill
         // requested before the food arrives summons a cashier to a table that
         // is still waiting on its order — so the button appears only once the
-        // kitchen has SERVED it (stage 4). Before that the honest action is
-        // "order something else".
-        var servedYet = step >= 4 || billed;
+        // kitchen has SERVED something (stage 4). Before that the honest action
+        // is "order something else".
+        //
+        // ⚠️ ANY TICKET, NOT THE NEWEST. `step` describes the latest round, so
+        // a diner who had eaten their main and then ordered coffee could not
+        // ask for the bill at all: the button vanished the moment the second
+        // ticket was created and came back only when the coffee arrived. They
+        // have food in front of them and a reason to settle — whether they pay
+        // now and wait, or pay for what they have had, is the restaurant's
+        // conversation to have, not something to hide a button over.
+        var servedYet = billed || step >= 4
+            || (d.orders || []).some(function (o) { return (Number(o.stage) || 0) >= 4; });
         $('orders-foot').hidden = false;
         $('bill-btn').hidden = !servedYet || billed;
         $('bill-hint').hidden = !servedYet || billed;
@@ -4508,23 +4522,31 @@ html.kb-open .welcome-art { display: none; }
     /**
      * Reconcile this device's sitting with the table's.
      *
-     * The server is the authority. If the table has no live order, or is in a
-     * DIFFERENT one, then whatever this browser was participating in is over —
-     * the bill was settled and the table cleared — and the stored identity goes
+     * The server is the authority. If the order this browser was participating
+     * in is no longer among the table's live ones, that sitting is over — the
+     * bill was settled and the table cleared — and the stored identity goes
      * with it. That is what stops a link opened the next day from silently
      * continuing yesterday's sitting.
+     *
+     * ⚠️ MEMBERSHIP, NOT EQUALITY. A table now carries several tickets at once,
+     * and `order_id` is only the NEWEST of them. Comparing against it meant
+     * that the moment anyone at the table started a second round, every other
+     * phone decided its own sitting had ended: cart kept, but "Pesanan
+     * sebelumnya sudah selesai" over a meal still being eaten.
      */
     function reconcileSitting(d) {
         var live = d && d.has_order ? (d.order_id || null) : null;
+        var ids = (d && d.orders || []).map(function (o) { return o.order_id; });
+        if (live && ids.indexOf(live) < 0) ids.push(live);
 
         if (!sitting) {
             // Not participating yet. Joining a sitting already in progress is
-            // fine — a table shares one order — so just adopt it.
+            // fine — a table shares one bill — so just adopt it.
             sitting = live;
             if (customer) writeSession({ name: customer.name, phone: customer.phone, sitting: sitting });
             return;
         }
-        if (live && live === sitting) return;      // still the same sitting
+        if (ids.indexOf(sitting) >= 0) return;     // still in the same sitting
 
         // The table has moved on. The sitting is over; who this phone belongs
         // to is not, so the identity survives and the next order simply opens a
@@ -4546,16 +4568,20 @@ html.kb-open .welcome-art { display: none; }
         }
     }
 
+    // ⚠️ ACROSS EVERY LIVE TICKET. `d.lines` is the newest one's, so a diner who
+    // had ordered twice saw a badge counting only the second round — the tab
+    // that exists to say "here is what you have ordered" quietly understating
+    // it. Falls back to `lines` for a response that predates `orders`.
     function paintOrdersBadge(d) {
-        var n = d && d.has_order
-            ? (d.lines || []).reduce(function (s, l) { return s + (Number(l.quantity) || 0); }, 0)
-            : 0;
+        var tickets = (d && d.orders && d.orders.length) ? d.orders : (d && d.has_order ? [d] : []);
+        var n = tickets.reduce(function (t, o) {
+            return t + (o.lines || []).reduce(function (s, l) { return s + (Number(l.quantity) || 0); }, 0);
+        }, 0);
         var badge = $('tab-orders-badge');
         badge.textContent = String(n);
         badge.classList.toggle('on', n > 0);
     }
 
-    // A lightweight toast, because two of the four tabs answer with words.
     // A lightweight toast, because two of the four tabs answer with words.
     var toastTimer = null;
     function toast(msg) {

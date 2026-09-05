@@ -218,6 +218,56 @@ is(/patch\.status\s*=/.test(appendBlock), false,
 is(/!APPENDABLE\.includes\(o\.status\)/.test(appendBlock), true,
     'an order sent, paid or voided mid-tap gets its own document instead');
 
+// --- 7. ONE SITTING, MANY TICKETS ------------------------------------------
+//
+// ⚠️ THE BILL IS THE TABLE'S, NOT THE LAST ROUND'S. Since tickets split at the
+// kitchen a table carries several orders at once, and the customer-facing rule
+// is that an order's STAGE has nothing to do with whether it is on the bill:
+// #001 eaten and #002 still frying are one meal to the person paying. Only
+// paid, voided and stale drop out — the same three exclusions, in all three
+// endpoints, or a diner is shown a bill one of them would refuse to act on.
+const STATUS = fs.readFileSync(path.join(ROOT, 'netlify/functions/qr-order-status.js'), 'utf8');
+const BILL = fs.readFileSync(path.join(ROOT, 'netlify/functions/qr-request-bill.js'), 'utf8');
+
+const window12h = (src) => /STALE_MS = 12 \* 60 \* 60 \* 1000/.test(src);
+is([SRC, STATUS, BILL].every(window12h), true,
+    'all three endpoints define the same 12-hour sitting window');
+
+// Requesting the bill moves EVERY live ticket. It scanned only the first for a
+// day: the board then showed #002 ready to pay and #001 merely `served`, so a
+// cashier settled the newest round and left the meal before it open.
+is(/const live = \[\];/.test(BILL), true,
+    'qr-request-bill collects every live ticket, not the first');
+is(/if \(doc\) return;/.test(BILL), false,
+    '…the single-pick scan is gone — it short-billed the table');
+is(/tx\.getAll\(\.\.\.live\.map/.test(BILL), true,
+    '…and reads them all before writing, which a transaction requires');
+is(/if \(!REQUESTABLE\.includes\(o\.status\)\) return;/.test(BILL), true,
+    'a ticket already settled or voided is skipped rather than failing the tap');
+// The customer-side rule, stated as a negative: nothing about a ticket's
+// progress may keep it off the bill.
+is(/'served'/.test((BILL.match(/const REQUESTABLE = \[[^\]]*\]/) || [''])[0]), true,
+    'a SERVED ticket can still be billed — the diner has eaten it');
+
+// `qr-order` refuses on LIVENESS, not appendability. Asking whether the client's
+// sitting was the appendable order meant that from the moment a cook picked up
+// round one, round two came back `sitting_ended` — and the page's retry re-sent
+// it carrying no sitting at all, straight through the guard's own hole.
+is(/if \(!held \|\| !isLive\(held\.data\(\) \|\| \{\}\)\)/.test(SRC), true,
+    'a live sitting past the kitchen opens a new ticket, not a refusal');
+is(/openDoc\.id !== sitting/.test(SRC), false,
+    '…the appendability test is gone from the sitting check');
+is(/isLive\(o\) && APPENDABLE\.includes\(o\.status\)/.test(SRC), true,
+    'an abandoned open order cannot absorb the next party\u2019s first round');
+is(/isLive\(o\) && o\.status === 'awaiting_payment'/.test(SRC), true,
+    'a requested bill closes the table to new orders, whoever is asking');
+
+// One sitting, one rate card: a second ticket inherits the first's snapshot, or
+// an owner editing a rate mid-meal produces a table whose tickets are taxed
+// differently and a consolidated total describing neither.
+is(/const sittingRates = liveDocs\.length/.test(SRC), true,
+    'a new ticket inherits the sitting\u2019s pricing snapshot');
+
 // ── The two item projections ────────────────────────────────────────────
 //
 // ⚠️ `getPosMenu` (the till) and `qr-menu` (the diner) each project an explicit

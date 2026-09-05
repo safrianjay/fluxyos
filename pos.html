@@ -1221,6 +1221,11 @@
         .pos-table-meta { display: flex; align-items: baseline; gap: 8px; font-size: 12px; }
         .pos-table-money { font-weight: 600; color: #1E293B; font-variant-numeric: tabular-nums; }
         .pos-table-since { color: #64748B; font-variant-numeric: tabular-nums; }
+        /* A table carrying more than one ticket. Reads as a fact about the
+           table, not an alert — the cashier needs to know the total covers two
+           kitchen tickets before they take a payment, and orange here is an
+           accent on text, never a background. */
+        .pos-table-tickets { color: #EA580C; font-weight: 600; }
 
         /* Arrange mode. The tables stop being buttons and become furniture. */
         .pos-floor.is-arranging .pos-table { cursor: grab; touch-action: none; }

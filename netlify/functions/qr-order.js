@@ -52,6 +52,19 @@ const MAX_QTY = 99;
 
 const SAFE = /^[A-Za-z0-9_-]{1,128}$/;
 
+// A sitting does not outlive a service. Anything older is a table nobody closed
+// out, not the party currently seated — the same window `qr-order-status` and
+// `qr-request-bill` use, and it must stay the same in all three or a diner is
+// shown a bill this endpoint would refuse to add to.
+const STALE_MS = 12 * 60 * 60 * 1000;
+
+const msOf = (v) => {
+    if (!v) return null;
+    if (typeof v.toDate === 'function') return v.toDate().getTime();
+    if (typeof v._seconds === 'number') return v._seconds * 1000;
+    return null;
+};
+
 let _initialized = false;
 function initAdmin() {
     if (!_initialized) {
@@ -314,31 +327,72 @@ exports.handler = async (event) => {
         // consolidated across the session in `qr-order-status`, which is the
         // separation this model turns on: one bill, many tickets.
         const APPENDABLE = ['open', 'submitted'];
+
+        // What counts as part of the sitting happening at this table right now.
+        // Three exclusions, the same three `qr-order-status` applies, so the
+        // set this endpoint writes into is exactly the set the diner is shown.
+        const nowMs = Date.now();
+        const isLive = (o) => {
+            if (!o || o.table_id !== tableId || o.voided_at) return false;
+            if (o.status === 'paid' || o.paid_at) return false;
+            const opened = msOf(o.opened_at) || msOf(o.created_at);
+            return !(opened && (nowMs - opened) > STALE_MS);
+        };
+
+        // Newest first, because `recent` is. The OLDEST live ticket is the one
+        // the sitting started with, and its rate card is the sitting's.
+        const liveDocs = recent.docs.filter((d) => isLive(d.data() || {}));
+
         let openDoc = null;
         recent.forEach((d) => {
             if (openDoc) return;
             const o = d.data() || {};
-            if (o.table_id === tableId && APPENDABLE.includes(o.status)) openDoc = d;
+            // `isLive` as well as APPENDABLE: an `open` order left over from
+            // days ago is still technically appendable, and without this a new
+            // party's first round would land on the previous one's abandoned
+            // ticket and be billed with their food.
+            if (isLive(o) && APPENDABLE.includes(o.status)) openDoc = d;
         });
 
         let orderId; let orderNumber; let totalAmount;
 
-        // The client claims to be mid-sitting. If the table is not in that
-        // sitting any more, say so instead of starting a new one.
+        // TWO REFUSALS, and conflating them costs the diner an explanation.
+        // `sitting_ended` means the table moved on and a new order is the right
+        // answer — the page retries as one. `bill_requested` is the opposite:
+        // the sitting is very much alive and a cashier is already on the way.
         //
-        // ⚠️ TWO DIFFERENT REFUSALS, and conflating them costs the diner an
-        // explanation. `sitting_ended` means the table moved on and a NEW order
-        // is the right answer — the page retries as one. A bill already
-        // REQUESTED is not that: the sitting is very much alive, a cashier is
-        // on their way with a total, and opening a second order behind it is
-        // exactly the split bill this endpoint now exists to prevent.
-        if (sitting && (!openDoc || openDoc.id !== sitting)) {
+        // ⚠️ A REQUESTED BILL CLOSES THE TABLE, whoever is asking and whatever
+        // they hold. A cashier is walking over with a total; a ticket opened
+        // behind it is the split bill this check exists to prevent, and it is
+        // the one thing here that does NOT depend on the client's own sitting —
+        // a second phone at the same table would otherwise slip past it.
+        if (recent.docs.some((d) => {
+            const o = d.data() || {};
+            return isLive(o) && o.status === 'awaiting_payment';
+        })) {
+            return json(409, { error: 'bill_requested' });
+        }
+
+        // ⚠️ "THE KITCHEN HAS MY TICKET" IS NOT "MY SITTING IS OVER".
+        //
+        // This asked whether the client's sitting was the APPENDABLE order, so
+        // from the moment a cook picked up round one, round two was refused
+        // `sitting_ended` — and the page's retry re-sent it carrying NO sitting
+        // at all. It worked, and that is what made it bad: the ordinary second
+        // round went through the exact hole this guard was built to close, so
+        // "the diner is continuing" and "a new party sat down" arrived as the
+        // same request.
+        //
+        // The question is liveness, not appendability. A sitting that is still
+        // live continues — into the open ticket if there is one, into a new
+        // ticket of its own if the kitchen already has the last. `sitting_ended`
+        // goes back to meaning what it says: that order is paid, voided, gone,
+        // or belongs to another table.
+        if (sitting) {
             const held = recent.docs.find((d) => d.id === sitting);
-            const heldStatus = held ? (held.data() || {}).status : null;
-            if (heldStatus === 'awaiting_payment') {
-                return json(409, { error: 'bill_requested' });
+            if (!held || !isLive(held.data() || {})) {
+                return json(409, { error: 'sitting_ended' });
             }
-            return json(409, { error: 'sitting_ended' });
         }
 
         if (openDoc) {
@@ -440,13 +494,28 @@ exports.handler = async (event) => {
             // endpoint billed before settings existed. Refusing a diner's order
             // because a configuration document could not be read would be the
             // wrong trade at a table with food waiting.
+            //
+            // ⚠️ ONE SITTING, ONE RATE CARD. A second ticket INHERITS the rates
+            // the first was opened with, exactly as an appended round does —
+            // the tickets are separate for the kitchen, and the diner is still
+            // paying one bill. Reading live settings here would let an owner
+            // editing a rate mid-meal produce a table whose two tickets are
+            // taxed differently, and the consolidated total would then carry a
+            // single percentage that describes neither of them.
             let posPricing = null;
-            try {
-                const cfg = await db
-                    .doc(`workspaces/${workspaceId}/pos_outlet_settings/${dimensionId}`).get();
-                if (cfg.exists) posPricing = pricing.normalizeSettings(cfg.data());
-            } catch (e) {
-                console.warn('[qr-order] outlet pricing unreadable; billing at zero rates', e);
+            const sittingRates = liveDocs.length
+                ? (liveDocs[liveDocs.length - 1].data() || {}).pos_pricing || null
+                : null;
+            if (sittingRates) {
+                posPricing = pricing.normalizeSettings(sittingRates);
+            } else {
+                try {
+                    const cfg = await db
+                        .doc(`workspaces/${workspaceId}/pos_outlet_settings/${dimensionId}`).get();
+                    if (cfg.exists) posPricing = pricing.normalizeSettings(cfg.data());
+                } catch (e) {
+                    console.warn('[qr-order] outlet pricing unreadable; billing at zero rates', e);
+                }
             }
             const newTotals = pricing.computeBillTotals({
                 subtotal, discountTotal: 0, settings: posPricing

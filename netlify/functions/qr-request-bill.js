@@ -10,18 +10,26 @@ const { consume, ipKey, clientIp, tooManyRequests } = require('./lib/rate-limit'
 //     POST /.netlify/functions/qr-request-bill   { token }
 //
 // THIS DOES NOT TAKE MONEY, and the distinction matters. A phone at a table
-// cannot settle a bill; a cashier does, at the till. What this does is move the
-// order to `awaiting_payment` — the status that already exists for exactly this
-// ("request bill is not payment", docs/CUSTOMER_ORDERING_PLAN_REVIEW.md §3) —
-// so the till's board shows the table as ready to pay.
+// cannot settle a bill; a cashier does, at the till. What this does is move
+// every live order to `awaiting_payment` — the status that already exists for
+// exactly this ("request bill is not payment",
+// docs/CUSTOMER_ORDERING_PLAN_REVIEW.md §3) — so the till's board shows the
+// table as ready to pay.
 //
-// THE SITTING ENDS WHEN THE CASHIER SETTLES IT. Once the order is `paid`,
-// `qr-order-status` stops returning it, so the table reads clear and the next
-// diner who scans starts fresh. Ordering again after payment means scanning
-// again, which is the intended shape: the QR is the entry to a sitting.
+// ⚠️ EVERY LIVE ORDER, BECAUSE THE BILL IS THE TABLE'S, NOT THE LAST ROUND'S.
+// Tickets split at the kitchen so a cook is never handed served dishes again,
+// and the diner's status has nothing to do with what they owe: #001 eaten and
+// #002 still frying are one meal to the person paying for them. Whether an
+// order is on the bill is decided by paid-or-not, never by how far along it is.
 //
-// Idempotent. A second tap on a bill already requested is a no-op that returns
-// the same answer — a diner who taps twice must not produce two states.
+// THE SITTING ENDS WHEN THE CASHIER SETTLES IT. Once an order is `paid`,
+// `qr-order-status` stops returning it; when the last one goes the table reads
+// clear and the next diner who scans starts fresh. Ordering again after payment
+// means scanning again — the QR is the entry to a sitting.
+//
+// Idempotent, and partially so: a second tap moves whatever is left and reports
+// the rest as already waiting. A diner who taps twice must not produce two
+// states, and a round placed between the two taps must not be left behind.
 // =============================================================================
 
 const IP_BURST_LIMIT = 20;
@@ -98,48 +106,81 @@ exports.handler = async (event) => {
         const tableId = dir.table_id;
         if (!workspaceId || !tableId) return json(404, { error: 'not_found' });
 
-        // The same "which order is this sitting" rule qr-order-status applies.
+        // The same three exclusions qr-order-status applies — voided, paid,
+        // and older than a service. What is left IS the active dining session.
         const recent = await db.collection(`workspaces/${workspaceId}/pos_orders`)
             .orderBy('created_at', 'desc').limit(50).get();
+        // ⚠️ EVERY LIVE TICKET, NOT THE NEWEST ONE.
+        //
+        // Since tickets split at the kitchen (2026-09-06) a table can be
+        // carrying several orders at once — #001 served, #002 still being
+        // cooked. Asking for the bill is a statement about the TABLE, not about
+        // whichever round happens to be last: the diner is done and wants one
+        // total for everything they have eaten.
+        //
+        // This scanned only the first match for a day. The till's board would
+        // then show #002 as ready to pay and #001 as merely `served`, so a
+        // cashier settling the table settled the newest round and left the meal
+        // that came before it open — a short payment that nothing reports,
+        // because both documents are individually consistent.
         const now = Date.now();
-        let doc = null;
+        const live = [];
         recent.forEach((d) => {
-            if (doc) return;
             const o = d.data() || {};
             if (o.table_id !== tableId || o.voided_at) return;
             if (o.status === 'paid' || o.paid_at) return;
             const opened = msOf(o.opened_at) || msOf(o.created_at);
             if (opened && (now - opened) > STALE_MS) return;
-            doc = d;
+            live.push(d);
         });
 
-        if (!doc) return json(409, { error: 'no_open_order' });
+        if (!live.length) return json(409, { error: 'no_open_order' });
 
         const result = await db.runTransaction(async (tx) => {
-            const snap = await tx.get(doc.ref);
-            const o = snap.data() || {};
-            // Re-checked inside the transaction: a cashier may have settled the
-            // bill in the seconds between the read above and this write.
-            if (o.status === 'paid' || o.paid_at || o.voided_at) return { closed: true };
-            if (o.status === 'awaiting_payment') return { already: true, order_number: o.order_number };
-            if (!REQUESTABLE.includes(o.status)) return { closed: true };
+            // Every read before any write — a transaction's contract, and the
+            // reason this is a getAll rather than a get inside the loop.
+            const snaps = await tx.getAll(...live.map((d) => d.ref));
+            const moved = [];
+            const already = [];
+            snaps.forEach((snap, i) => {
+                const o = snap.data() || {};
+                // Re-checked inside the transaction: a cashier may have settled
+                // one of these in the seconds since the read above.
+                if (o.status === 'paid' || o.paid_at || o.voided_at) return;
+                if (o.status === 'awaiting_payment') {
+                    already.push(String(o.order_number || ''));
+                    return;
+                }
+                if (!REQUESTABLE.includes(o.status)) return;
 
-            tx.update(doc.ref, {
-                status: 'awaiting_payment',
-                // The Orders board is a kitchen screen too, and "how long has
-                // this been waiting" is the question it exists to answer.
-                status_changed_at: admin.firestore.FieldValue.serverTimestamp(),
-                updated_at: admin.firestore.FieldValue.serverTimestamp(),
-                updated_by: 'qr'
+                tx.update(live[i].ref, {
+                    status: 'awaiting_payment',
+                    // The Orders board is a kitchen screen too, and "how long
+                    // has this been waiting" is the question it exists to
+                    // answer.
+                    status_changed_at: admin.firestore.FieldValue.serverTimestamp(),
+                    updated_at: admin.firestore.FieldValue.serverTimestamp(),
+                    updated_by: 'qr'
+                });
+                moved.push(String(o.order_number || ''));
             });
-            return { ok: true, order_number: o.order_number };
+            return { moved, already };
         });
 
-        if (result.closed) return json(409, { error: 'order_closed' });
+        // Nothing moved and nothing was already waiting: every ticket closed
+        // underneath the tap.
+        if (!result.moved.length && !result.already.length) {
+            return json(409, { error: 'order_closed' });
+        }
+        const numbers = [...result.moved, ...result.already].filter(Boolean);
         return json(200, {
             ok: true,
-            already: !!result.already,
-            order_number: result.order_number || null
+            // Idempotent: a second tap moves nothing and says so, rather than
+            // producing a second state.
+            already: result.moved.length === 0,
+            order_count: result.moved.length + result.already.length,
+            order_numbers: numbers,
+            order_number: numbers[0] || null
         });
     } catch (err) {
         console.error('[qr-request-bill]', err && err.message);

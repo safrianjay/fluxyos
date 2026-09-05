@@ -451,31 +451,68 @@ ticket is `TICKETS SPLIT AT THE KITCHEN; THE BILL DOES NOT`.
 
 ### One table, one bill — and what nearly broke it
 
-`qr-order` appends a second round to the table's live order. Until 2026-09-05 it
-matched only `open` and `submitted`, so **the moment the kitchen moved a ticket
-to `sent`, a second round stopped matching**: the client was told
-`sitting_ended`, retried without a sitting, and a WHOLE NEW ORDER DOCUMENT was
-created for the same table.
+`APPENDABLE` matched only `open` and `submitted`, so **the moment the kitchen
+moved a ticket to `sent`, a second round stopped matching**: the client was told
+`sitting_ended`, retried without a sitting, and a whole new order document was
+created for the same table. The visible symptom was a diner asked to settle two
+bills for one unpaid meal.
 
-The visible symptom was a diner asked to settle two bills for one unpaid meal.
-The worse one was invisible: **two live orders on one table**, which the floor
-plan and `getPosOverview` both resolve by taking whichever they find first.
+The fix taken on 2026-09-05 — widen `APPENDABLE` to `sent`, `ready` and
+`served` — was the wrong one, and is described above. **The right answer was
+that the second document was correct and the second BILL was the bug.**
 
-`APPENDABLE` is now every state where ordering is still offered — `open`,
-`submitted`, `sent`, `ready`, `served`.
+So both halves now hold:
 
-⚠️ **`awaiting_payment` is deliberately excluded.** The bill has been requested
-and a cashier may already have quoted it; silently growing that total is a worse
-failure than refusing. The sheet hides "add more" in that state for the same
-reason, and the refusal is its own error (`bill_requested`, not
-`sitting_ended`) so the page can say *why* rather than retry into a second
-order.
+| | |
+|---|---|
+| `qr-order` | a round past the kitchen opens its own ticket |
+| `qr-order-status` | one `session` total across every live ticket |
+| `qr-request-bill` | moves **every** live ticket to `awaiting_payment` |
+| `tableStateAt` | reports `orders`, `orderCount` and the table's `outstanding` |
 
-⚠️ **Appending to a post-kitchen order sends it back to `submitted`** and
-re-stamps `status_changed_at`. Without that the new lines sit on a ticket the
-board reads as `served`: the dish is on the bill, nobody is cooking it, and the
-only symptom is a customer waiting. The re-stamp is deliberate too — the board's
-waiting timer should measure the NEW wait, not the old one.
+⚠️ **A ticket's STAGE never decides whether it is on the bill.** #001 eaten and
+#002 still frying are one meal to the person paying for them; only paid, voided
+and stale drop out. All three endpoints share the same 12-hour window, pinned by
+`check:qr-order`, or a diner is shown a bill one of them would refuse to act on.
+
+⚠️ **`qr-request-bill` scanned only the first live ticket for a day.** The board
+then showed #002 ready to pay and #001 merely `served`, so a cashier settling the
+table settled the newest round and left the meal before it open — a short
+payment nothing reports, because both documents are individually consistent.
+
+⚠️ **The floor tile printed one ticket's total for the same reason.** A table
+holding 50.000 and 30.000 showed whichever the array yielded; the cashier
+collects that, the diner leaves, and the rest stays open on a table that still
+reads occupied. `tableStateAt` now sums the table and the tile marks
+"2 tickets", and `state` is `bill` if **any** ticket is awaiting payment — read
+off one ticket, a table whose first round was already waiting painted as merely
+occupied and the cue to walk over never appeared.
+
+⚠️ **`awaiting_payment` closes the table to new orders, whoever is asking.** The
+bill has been quoted and a cashier is walking over; silently growing that total
+is worse than refusing. The check does not depend on the client's own sitting —
+a second phone at the table would otherwise slip past it — and the refusal is
+its own error (`bill_requested`, not `sitting_ended`) so the page can say *why*
+rather than retry into another ticket.
+
+⚠️ **"The kitchen has my ticket" is not "my sitting is over".** `qr-order` asked
+whether the client's sitting was the *appendable* order, so from the moment a
+cook picked up round one, round two came back `sitting_ended` — and the page's
+retry re-sent it carrying **no sitting at all**, straight through the hole in the
+guard built to close exactly that. The test is liveness now: a live sitting
+continues, into the open ticket or into a new one of its own.
+
+⚠️ **One sitting, one rate card.** A new ticket inherits `pos_pricing` from the
+sitting's oldest live ticket, exactly as an appended round does. Reading live
+settings would let an owner editing a rate mid-meal produce a table whose two
+tickets are taxed differently — and the consolidated total then carries a single
+percentage describing neither.
+
+**Still manual: settling a multi-ticket table.** The till takes payment per
+order, so a cashier closing a table with two tickets records two payments. The
+tile now shows the table's total and its ticket count so they cannot collect the
+smaller figure believing it is the bill, but one-tap settlement across a sitting
+is not built.
 
 ### The visit total is three figures, never one
 

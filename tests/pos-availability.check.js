@@ -104,6 +104,40 @@ const at = (h, m = 0) => new Date(2026, 8, 15, h, m, 0, 0).getTime();   // 15 Se
     is(A.tableStateAt('t1', both, at(19)).state, 'occupied', 'an order outranks a booking in the display');
     is(A.tableStateAt('t1', both, at(19)).available, false, '…and the table is still unavailable');
 
+    // ── A TABLE CAN CARRY SEVERAL TICKETS ───────────────────────────────────
+    //
+    // Tickets split at the kitchen, so a table holds one ticket per round and
+    // the floor plan must speak for the TABLE. This returned `.find()`'s first
+    // match and the tile printed its total, so a table owing 80.000 across two
+    // tickets showed whichever the array yielded: the cashier takes that, the
+    // diner leaves, and the rest stays open on a table that still reads
+    // occupied. Nothing errors — the money is simply not there.
+    const split = {
+        orders: [
+            { id: 'b2', table_id: 't5', status: 'sent',
+                opened_at: at(19, 30), total_amount: 30000, paid_amount: 0 },
+            { id: 'b1', table_id: 't5', status: 'awaiting_payment',
+                opened_at: at(19, 0), total_amount: 50000, paid_amount: 0 }
+        ],
+        reservations: []
+    };
+    const t5 = A.tableStateAt('t5', split, at(20));
+    is(t5.orderCount, 2, 'both tickets at the table are reported');
+    is(t5.outstanding, 80000, 'THE TABLE OWES THE SUM — not one ticket\u2019s total');
+    is(t5.orders[0].id, 'b1', 'oldest first, the order the sitting began with');
+    is(t5.order.id, 'b1', 'the ticket to act on is the one awaiting payment');
+    is(t5.state, 'bill', 'ANY ticket awaiting payment puts the table in the bill state');
+
+    // A part-paid ticket nets off, so the tile asks for what is genuinely left.
+    const part = { orders: [{ id: 'p1', table_id: 't6', status: 'served',
+        opened_at: at(19), total_amount: 50000, paid_amount: 20000 }], reservations: [] };
+    is(A.tableStateAt('t6', part, at(20)).outstanding, 30000,
+        'a partial payment is netted off the table total');
+
+    // One ticket behaves exactly as before — the common case must not have
+    // acquired a new shape.
+    is(A.tableStateAt('t1', ctx, at(19)).orderCount, 1, 'one ticket is still one ticket');
+
     // The next booking on a table that is free right now — what lets the floor
     // plan warn before a two-hour party is seated into a wall.
     const upcoming = A.tableStateAt('t4', ctx, at(16)).upcoming;
