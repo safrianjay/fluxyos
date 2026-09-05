@@ -4100,6 +4100,13 @@ html.kb-open .welcome-art { display: none; }
 
         var step = Math.min(4, Math.max(1, Number(d.stage) || 1));
         var billed = d.status === 'awaiting_payment';
+        // ⚠️ COMPUTED BEFORE ANYTHING READS IT. This sat below the footer block
+        // that formats it onto the CTA, and `var` hoists the declaration but not
+        // the assignment — so the button read "Minta bill · Rp0" on every
+        // unpaid table. Silent, and exactly the wrong number to be confident
+        // about.
+        var outstanding = Math.max(0,
+            (Number(d.total_amount) || 0) - (Number(d.paid_amount) || 0));
 
         // ── What the footer offers, and when ────────────────────────────────
         //
@@ -4113,7 +4120,11 @@ html.kb-open .welcome-art { display: none; }
         $('bill-btn').hidden = !servedYet || billed;
         $('bill-hint').hidden = !servedYet || billed;
         $('orders-add').hidden = billed;
-        setText($('bill-btn'), 'Minta bill & bayar');
+        // ⚠️ THE CTA CARRIES THE FIGURE. "Minta bill & bayar" made a diner
+        // commit to a number they had to scroll up to read, and on a table that
+        // had part-paid it was the wrong number they were remembering. It states
+        // the OUTSTANDING amount — what is actually about to be collected.
+        setText($('bill-btn'), 'Minta bill · ' + money(outstanding));
         $('bill-btn').classList.remove('is-busy');
         setDisabled($('bill-btn'), false);
         billConfirm = false;
@@ -4169,7 +4180,8 @@ html.kb-open .welcome-art { display: none; }
 
         var rows = breakdownRows({
             subtotal: d.subtotal, discount: d.discount_total,
-            service: d.service_charge_amount, tax: d.tax_amount, total: d.total_amount
+            service: d.service_charge_amount, tax: d.tax_amount,
+            total: d.total_amount, paid: d.paid_amount
         }, d.pricing);
 
         var called = billed
@@ -4181,7 +4193,8 @@ html.kb-open .welcome-art { display: none; }
         $('orders-body').innerHTML = hero + track + called
             + '<div class="opanel">' + lines + '</div>'
             + (d.note ? '<div class="onote"><span>Catatan</span><p>' + esc(d.note) + '</p></div>' : '')
-            + '<div class="opanel totals">' + rows + '</div>'
+            + '<div class="opanel totals"><div class="osession-head">Ringkasan pembayaran</div>'
+            + rows + '</div>'
             + sessionSummary(d)
             + historyPanel(d.history)
             + '<p class="orders-foot">' + esc(billed
@@ -4217,8 +4230,23 @@ html.kb-open .welcome-art { display: none; }
         if (t.tax > 0 && !r.tax_inclusive) {
             out += row(esc(r.tax_label || 'Pajak') + pct(r.tax_rate_percent), t.tax);
         }
-        out += '<div class="line grand"><span>Total</span><span class="num">'
-            + esc(money(t.total)) + '</span></div>';
+        var paid = Math.max(0, Number(t.paid) || 0);
+        // ⚠️ STATUS IS NOT PAYMENT. An order can be served, delivered and
+        // finished while none of it has been settled — the two are separate
+        // facts and the sheet must never let one imply the other. So the TOTAL
+        // is stated first, then what has actually been received, then what is
+        // still owed; and when nothing has been paid the middle two rows are
+        // absent rather than printed as zeroes.
+        if (paid > 0) {
+            out += '<div class="line grand"><span>Total pesanan</span><span class="num">'
+                + esc(money(t.total)) + '</span></div>';
+            out += row('Sudah dibayar', -paid);
+            out += '<div class="line grand"><span>Sisa tagihan</span><span class="num">'
+                + esc(money(Math.max(0, t.total - paid))) + '</span></div>';
+        } else {
+            out += '<div class="line grand"><span>Total pesanan</span><span class="num">'
+                + esc(money(t.total)) + '</span></div>';
+        }
         if (t.tax > 0 && r.tax_inclusive) {
             out += row('Termasuk ' + esc(r.tax_label || 'Pajak') + pct(r.tax_rate_percent),
                 t.tax, 'incl');
@@ -4330,8 +4358,14 @@ html.kb-open .welcome-art { display: none; }
             var amt = Number(h.total_amount) || 0;
             if (h.status === 'paid') paid += amt; else outstanding += amt;
         });
-        var live = d.has_order ? (Number(d.total_amount) || 0) : 0;
-        outstanding += live;
+        var liveTotal = d.has_order ? (Number(d.total_amount) || 0) : 0;
+        var livePaid = d.has_order ? (Number(d.paid_amount) || 0) : 0;
+        // A part-paid live order counts BOTH ways: what has been received is
+        // paid, what is left is owed. Counting the whole thing as outstanding
+        // would over-state the bill by exactly what the customer has already
+        // handed over.
+        paid += livePaid;
+        outstanding += Math.max(0, liveTotal - livePaid);
         var ordered = paid + outstanding;
 
         var row = function (label, amount, cls) {

@@ -664,6 +664,72 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('.osession')).toHaveCount(0);
     });
 
+    // The bill cases the spec enumerates, driven through the sheet.
+    const billSheet = (page, over) => page.route('**/qr-order-status**', (route) =>
+        route.fulfill({
+            status: 200, contentType: 'application/json',
+            body: JSON.stringify({
+                has_order: true, order_id: 'o_now', order_number: '2026-09-05-002',
+                status: 'served', stage: 4, stage_label: 'Diantar',
+                lines: [{ item_id: 'i_americano', item_name: 'Americano', quantity: 1,
+                    gross_amount: 100000, note: null, modifiers: [] }],
+                subtotal: 100000, discount_total: 0, service_charge_amount: 0,
+                tax_amount: 0, total_amount: 100000, paid_amount: 0,
+                pricing: null, placed_at: Date.now() - 5 * 60 * 1000, history: [],
+                ...over
+            })
+        }));
+
+    test('SERVED IS NOT PAID — an unpaid bill states its whole total', async ({ page }) => {
+        // ⚠️ ORDER STATUS AND PAYMENT STATUS ARE DIFFERENT FACTS. A delivered
+        // order whose money has not been collected is still owed in full, and
+        // the sheet must never let "served" imply "settled".
+        await stub(page);
+        await billSheet(page, {});
+        await open(page);
+        await page.locator('.tab[data-tab="orders"]').click();
+
+        const totals = page.locator('.opanel.totals').first();
+        await expect(totals).toContainText('Ringkasan pembayaran', { timeout: 15_000 });
+        expect((await totals.locator('.line.grand .num').first().innerText()).replace(/\D/g, ''))
+            .toBe('100000');
+        // Nothing paid, so no "sudah dibayar" row — a zero printed as a fact is
+        // noise, and it invites the reader to check arithmetic that is not there.
+        await expect(totals).not.toContainText('Sudah dibayar');
+        // The CTA carries the figure rather than making them scroll for it.
+        await expect(page.locator('#bill-btn')).toContainText('100.000');
+    });
+
+    test('A PART-PAID BILL SHOWS TOTAL, PAID AND WHAT IS LEFT', async ({ page }) => {
+        // `paid_amount` was returned by the endpoint and read by nothing, so a
+        // customer who had already handed over 60.000 was shown the full
+        // 100.000 with no sign of it.
+        await stub(page);
+        await billSheet(page, { paid_amount: 60000 });
+        await open(page);
+        await page.locator('.tab[data-tab="orders"]').click();
+
+        const totals = page.locator('.opanel.totals').first();
+        await expect(totals).toContainText('Sudah dibayar', { timeout: 15_000 });
+        const grand = await totals.locator('.line.grand .num').allInnerTexts();
+        expect(grand[0].replace(/\D/g, ''), 'total pesanan').toBe('100000');
+        expect(grand[1].replace(/\D/g, ''), 'sisa tagihan').toBe('40000');
+        // And the CTA asks for the REMAINDER, never the original total.
+        await expect(page.locator('#bill-btn')).toContainText('40.000');
+        await expect(page.locator('#bill-btn')).not.toContainText('100.000');
+    });
+
+    test('a fully paid bill asks for nothing more', async ({ page }) => {
+        await stub(page);
+        await billSheet(page, { paid_amount: 100000 });
+        await open(page);
+        await page.locator('.tab[data-tab="orders"]').click();
+        const totals = page.locator('.opanel.totals').first();
+        await expect(totals).toContainText('Sisa tagihan', { timeout: 15_000 });
+        const grand = await totals.locator('.line.grand .num').allInnerTexts();
+        expect(grand[1].replace(/\D/g, ''), 'a settled bill still asks for money').toBe('0');
+    });
+
     // ── The hero ────────────────────────────────────────────────────────
     //
     // Two independent blocks: `.hero` knows about photos, `.outlet-card` knows
