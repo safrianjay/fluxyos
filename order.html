@@ -471,9 +471,18 @@ img { max-width: 100%; display: block; }
     overflow-x: auto;
     /* ⚠️ SCROLL CHAINING. When a horizontal scroller hits its end the browser
        hands the remaining gesture to the PARENT, which drags the whole page
-       sideways — the reported bug. `contain` stops the chain at this element.
-       Set on every horizontal rail on the page, not just this one. */
+       sideways. `contain` stops the chain at this element. Set on every
+       horizontal rail on the page, not just this one. */
     overscroll-behavior-x: contain;
+    /* ⚠️ AND THE GESTURE ITSELF. `overscroll-behavior` only stops the CHAIN at
+       the end of the scroll; a drag that starts here and moves diagonally still
+       pans the page up and down. `pan-x` tells the browser this strip answers
+       horizontal gestures only, so a swipe across the tabs cannot take the page
+       with it.
+       Deliberately NOT applied to the recommendation rail or the hero: those
+       are 300px and 46vh tall, and blocking vertical there would turn most of
+       the first screen into a dead zone for scrolling. This strip is 40px. */
+    touch-action: pan-x;
     padding: 8px 14px 0;
     margin-top: 0;
     scrollbar-width: none;
@@ -848,6 +857,9 @@ img { max-width: 100%; display: block; }
    566px below the fold on a six-line order. */
 .page-body {
     padding: 14px 16px 16px;
+    /* Clears the fixed footer bar, so the last panel is never trapped
+       under it. */
+    padding-bottom: calc(96px + var(--safe-bottom));
 }
 
 .panel {
@@ -962,14 +974,34 @@ img { max-width: 100%; display: block; }
 
 /* STICKY, so the primary action is always reachable. On a long order the
    commit button must not be something you scroll to find. */
+/* ⚠️ FIXED, NOT STICKY — and it was sticky, which is why it never stuck.
+   `position: sticky; bottom: 0` needs somewhere to stick FROM: the element has
+   to be able to sit lower than where it is pinned. This is the LAST child of
+   its section, so its natural position already IS the bottom of its containing
+   block and the sticky range is zero. It read as sticky in the stylesheet and
+   behaved like a plain block on the page.
+
+   Full-bleed with the content constrained, so on a wide screen the bar spans
+   the window while its button still lines up with the 640px column above it. */
 .page-foot {
-    position: sticky;
-    bottom: 0;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
     z-index: 15;
-    padding: 12px 16px calc(14px + var(--safe-bottom));
+    padding: 10px 16px calc(12px + var(--safe-bottom));
     background: var(--surface);
     border-top: 1px solid var(--line);
     box-shadow: 0 -8px 24px -14px rgba(11, 15, 25, 0.35);
+}
+.page-foot-inner { max-width: 640px; margin: 0 auto; }
+/* Who the order goes out under, in the bar rather than adrift above it. It is
+   the last thing a diner checks before committing, so it belongs beside the
+   commit — not scrolled past on the way to it. */
+.page-foot .who {
+    padding: 0 2px 8px;
+    border: none;
+    background: none;
+    border-radius: 0;
+    font-size: 12.5px;
 }
 
 /* ==========================================================================
@@ -2088,14 +2120,19 @@ html.kb-open .welcome-art { display: none; }
                 <div class="totals" id="cart-totals"></div>
             </div>
 
-            <div class="who" id="cart-who"></div>
             <div id="cart-notice"></div>
         </div>
 
+        <!-- The commit bar. Who the order is for sits WITH the button rather
+             than adrift above it: it is the last thing a diner checks before
+             committing, so it belongs beside the commit. -->
         <div class="page-foot">
-            <button class="primary" id="cart-submit" type="button">
-                <span>Order Sekarang</span><span class="num" id="cart-submit-total"></span>
-            </button>
+            <div class="page-foot-inner">
+                <div class="who" id="cart-who"></div>
+                <button class="primary" id="cart-submit" type="button">
+                    <span>Order Sekarang</span><span class="num" id="cart-submit-total"></span>
+                </button>
+            </div>
         </div>
     </section>
 

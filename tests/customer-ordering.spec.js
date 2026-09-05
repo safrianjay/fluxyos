@@ -541,6 +541,67 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('#cart-count')).toHaveText('2');
     });
 
+    test('THE COMMIT BAR ACTUALLY STICKS, AND CARRIES WHO THE ORDER IS FOR', async ({ page }) => {
+        // ⚠️ IT WAS `position: sticky; bottom: 0` AND NEVER STUCK. Sticky needs
+        // somewhere to stick FROM — the element has to be able to sit lower than
+        // where it is pinned. This bar is the LAST child of its section, so its
+        // natural position already IS the bottom of its containing block and the
+        // sticky range was zero. It read as sticky in the stylesheet and behaved
+        // like a plain block on the page.
+        await stub(page);
+        await open(page);
+        await addPlain(page, 'Americano');
+        await addPlain(page, 'Nasi Goreng Kampung');
+        await page.locator('#cart-open').click();
+
+        const foot = page.locator('.page-foot');
+        await expect(foot).toBeVisible();
+        expect(await foot.evaluate((el) => getComputedStyle(el).position)).toBe('fixed');
+
+        // Visible at the top of the page…
+        const viewport = page.viewportSize();
+        let box = await foot.boundingBox();
+        expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
+        // …and still visible after scrolling to the bottom, which is the whole
+        // claim. On a long order the commit must never be something you hunt for.
+        await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+        await page.waitForTimeout(150);
+        box = await foot.boundingBox();
+        expect(box.y, 'the commit bar scrolled away with the page')
+            .toBeLessThan(viewport.height);
+        expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
+
+        // Nothing is trapped underneath it.
+        const lastPanel = await page.locator('.page-body > *').last().boundingBox();
+        expect(lastPanel.y + lastPanel.height,
+            'the last panel is hidden behind the commit bar').toBeLessThanOrEqual(box.y + 1);
+
+        // And it carries who the order is for — the last thing checked before
+        // committing belongs beside the commit.
+        await expect(foot.locator('#cart-who')).toContainText('Sinta');
+        await expect(foot.locator('#cart-submit')).toBeVisible();
+    });
+
+    test('dragging the category tabs cannot scroll the page at all', async ({ page }) => {
+        // `overscroll-behavior` only stops the CHAIN once a scroller hits its
+        // end. A drag that starts on the strip and moves diagonally still panned
+        // the page up and down — the second half of the reported bug.
+        await stub(page);
+        await open(page);
+        expect(await page.locator('#chips').evaluate((el) => getComputedStyle(el).touchAction),
+            'a diagonal drag on the tabs can still take the page with it')
+            .toBe('pan-x');
+
+        // ⚠️ NOT applied to the tall rails. They are 300px and 46vh, and
+        // blocking vertical there would turn most of the first screen into a
+        // dead zone for scrolling.
+        for (const sel of ['.recos-rail', '#hero-rail']) {
+            if (!(await page.locator(sel).count())) continue;
+            expect(await page.locator(sel).evaluate((el) => getComputedStyle(el).touchAction),
+                `${sel} blocks vertical scrolling over a large area`).not.toBe('pan-x');
+        }
+    });
+
     // ── The hero ────────────────────────────────────────────────────────
     //
     // Two independent blocks: `.hero` knows about photos, `.outlet-card` knows
@@ -1736,7 +1797,14 @@ test.describe('QR customer ordering', () => {
         await page.evaluate(() => window.scrollTo(0, 4000));
         await page.waitForTimeout(250);
         expect(await visible(), 'the CTA scrolled off the screen').toBe(true);
-        await expect(page.locator('.page-foot')).toHaveCSS('position', 'sticky');
+        // OUT OF FLOW, without naming which mechanism. This line read
+        // `toHaveCSS('position', 'sticky')` and pinned the implementation
+        // instead of the outcome — so when `sticky` turned out to be the wrong
+        // tool (the bar is the last child of its section, so its sticky range is
+        // zero) the assertion was the thing standing in the way of fixing it.
+        expect(await page.locator('.page-foot')
+            .evaluate((el) => getComputedStyle(el).position))
+            .toMatch(/fixed|sticky/);
     });
 
     test('every order line shows what it is', async ({ page }) => {
