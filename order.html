@@ -3638,19 +3638,34 @@ html.kb-open .welcome-art { display: none; }
         var count = cartCount();
         var total = cartTotal();
 
+        // ⚠️ ONE PRICED FIGURE, USED BY ALL THREE PLACES THAT STATE IT.
+        //
+        // The bar, the totals panel and the ORDER BUTTON each showed a total,
+        // and the button showed the bare subtotal — so a diner read "Total
+        // Rp232.000" in the panel and pressed a button reading Rp200.000
+        // directly beneath it. Reported by Jay.
+        //
+        // The panel and the bar were already priced through the module; each
+        // called it separately, and the button called nothing. Computing it
+        // once and reading it three times is what makes them agree by
+        // construction rather than by three people remembering to.
+        var rates = (menu && menu.pricing) || null;
+        var priced = window.FluxyPosPricing.computeBillTotals({
+            subtotal: total, discountTotal: 0, settings: rates
+        });
+
         // The floating bar on the MENU still summarises; the page it opens is
         // where the detail lives.
         setText($('cart-count'), String(count));
-        // The bar states the same figure the panel does. Two totals on one
-        // screen that disagree is worse than either alone.
-        setText($('cart-total'), money(window.FluxyPosPricing.computeBillTotals({
-            subtotal: total, discountTotal: 0, settings: (menu && menu.pricing) || null
-        }).total));
+        setText($('cart-total'), money(priced.total));
         $('cartbar').classList.toggle('is-open', count > 0 && !$('view-menu').classList.contains('hidden'));
 
         setText($('cart-outlet'), (menu && menu.outlet) || '');
         setText($('cart-table'), menu && menu.table ? ('Meja ' + menu.table) : '');
-        setText($('cart-submit-total'), money(total));
+        // ⚠️ THE PRICED TOTAL, which is what they will actually be charged. The
+        // subtotal here is the number a diner commits to while looking at a
+        // different one.
+        setText($('cart-submit-total'), money(priced.total));
         setDisabled($('cart-submit'), count === 0 || submitting);
 
         if (!count) {
@@ -3683,15 +3698,12 @@ html.kb-open .welcome-art { display: none; }
                 + '</div>';
         }).join('');
 
-        // ⚠️ PRICED THROUGH THE SHARED MODULE. The cart used to print the
-        // subtotal twice — once as "Subtotal", once as "Total" — which was true
-        // only while every outlet charged nothing on top. The moment an owner
-        // sets a service fee, a diner reading Rp100.000 here and being charged
-        // Rp111.000 at the end has been misled by this panel.
-        var rates = (menu && menu.pricing) || null;
-        var priced = window.FluxyPosPricing.computeBillTotals({
-            subtotal: total, discountTotal: 0, settings: rates
-        });
+        // PRICED THROUGH THE SHARED MODULE, computed once at the top of this
+        // function. The cart used to print the subtotal twice — once as
+        // "Subtotal", once as "Total" — which was true only while every outlet
+        // charged nothing on top. The moment an owner sets a service fee, a
+        // diner reading Rp100.000 here and being charged Rp111.000 at the end
+        // has been misled by this panel.
         $('cart-totals').innerHTML = breakdownRows({
             subtotal: priced.base, discount: 0, service: priced.service,
             tax: priced.tax, total: priced.total

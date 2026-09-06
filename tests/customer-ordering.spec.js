@@ -602,6 +602,45 @@ test.describe('QR customer ordering', () => {
         }
     });
 
+    test('EVERY TOTAL ON THE CART PAGE IS THE SAME NUMBER', async ({ page }) => {
+        // ⚠️ THE BUTTON PRINTED THE SUBTOTAL. The panel said "Total Rp232.000"
+        // and the order button directly beneath it said Rp200.000 — a diner
+        // commits to a figure while looking at a different one, and finds out
+        // which was true when the bill arrives. The bar, the panel and the
+        // button now read one priced figure computed once.
+        await stub(page);
+        await page.route('**/qr-menu?**', (route) => route.fulfill({
+            status: 200, contentType: 'application/json',
+            body: JSON.stringify({
+                ...MENU,
+                pricing: {
+                    tax_enabled: true, tax_label: 'PPN', tax_rate_percent: 11,
+                    tax_inclusive: false, service_enabled: true,
+                    service_rate_percent: 5, service_taxable: true
+                }
+            })
+        }));
+        await open(page);
+        await addPlain(page, 'Americano');
+
+        // The floating bar on the menu.
+        const bar = (await page.locator('#cart-total').innerText()).replace(/\D/g, '');
+        await page.locator('#cart-open').click();
+
+        const panel = page.locator('#cart-totals .line.grand .num').first();
+        const panelTotal = (await panel.innerText()).replace(/\D/g, '');
+        const button = (await page.locator('#cart-submit-total').innerText()).replace(/\D/g, '');
+
+        expect(button, 'the order button does not state what will be charged').toBe(panelTotal);
+        expect(bar, 'the menu bar and the cart panel disagree').toBe(panelTotal);
+
+        // And it is genuinely the PRICED total, not the subtotal — otherwise
+        // all three could agree on the wrong number.
+        const sub = (await page.locator('#cart-totals .line').first().innerText()).replace(/\D/g, '');
+        expect(Number(panelTotal), 'service and tax are missing from the total')
+            .toBeGreaterThan(Number(sub));
+    });
+
     test('THE VISIT TOTAL NEVER FOLDS A PAID BILL INTO WHAT IS OWED', async ({ page }) => {
         // ⚠️ THE WHOLE POINT. A settled order is money that has already changed
         // hands, and the ledger has a posted sale saying so. Folding it into
