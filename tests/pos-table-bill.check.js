@@ -385,6 +385,110 @@ const sumOver = (field) => writes.reduce((t, w) =>
         is(/no such item/i.test(e.message), true, 'an item that is not on the ticket is refused');
     }
 
+    // ── 7d. SPLIT EVENLY ────────────────────────────────────────────────────
+    //
+    // "Three ways." Same exactness rule as by-item: N shares must total the
+    // bill TO THE RUPIAH, or the last payer is short by one and cannot close the
+    // table. Rounding a share and multiplying does not do it.
+    const evenTicket = (over) => ticket('o1', {
+        total_amount: 319000, subtotal: 275000, status: 'served',
+        lines: [dish('a', 200000), dish('b', 75000)],
+        ...(over || {})
+    });
+    const payWays = (n, opts) => payBill.call(host, 'u1', ['o1'],
+        { ladder: FNB, splitWays: n, method: 'cash', ...opts });
+
+    let takenPays = [];
+    let collected = 0;
+    const amounts = [];
+    for (let k = 0; k < 3; k += 1) {
+        seed(evenTicket({ paid_amount: collected, payments: takenPays.slice() }));
+        // eslint-disable-next-line no-await-in-loop
+        const r = await payWays(3);
+        amounts.push(r.billDue);
+        is(r.share.index, k + 1, `share ${k + 1} of 3 knows which one it is`);
+        takenPays = takenPays.concat([{
+            payment_id: `s${k}`, status: 'settled', amount: r.billDue,
+            split_ways: 3, split_index: k + 1, bill_id: `bill${k}`
+        }]);
+        collected += r.billDue;
+    }
+    is(collected, 319000, 'THREE EVEN SHARES TOTAL THE BILL, to the rupiah');
+    is(JSON.stringify(amounts), JSON.stringify([106333, 106334, 106333]),
+        'the rounding is spread, not dumped on the last payer');
+    is(patchOf('o1').status, 'paid', 'the last share closes the ticket');
+
+    // ⚠️ THE INDEX IS COUNTED BY BILL, NOT BY PAYMENT. One share can settle
+    // several tickets at a table, and counting payments would make it look like
+    // more payers had been through than actually had — so the fourth person
+    // would be asked for nothing and the table would never close.
+    seed(evenTicket({
+        paid_amount: 106333,
+        payments: [
+            { payment_id: 'a1', status: 'settled', amount: 60000, split_ways: 3, split_index: 1, bill_id: 'shared' },
+            { payment_id: 'a2', status: 'settled', amount: 46333, split_ways: 3, split_index: 1, bill_id: 'shared' }
+        ]
+    }));
+    res = await payWays(3);
+    is(res.share.index, 2, 'one share across two tickets is still ONE payer');
+    is(res.billDue, 106334, '…and the next share is the second, not the third');
+
+    // ⚠️ A THREE-WAY SPLIT HAS THREE SHARES, even when the bill has moved since.
+    //
+    // The table agrees to split three ways, all three pay — and then somebody
+    // orders another drink onto the same ticket. The ticket is no longer
+    // settled, so nothing upstream refuses, and a fourth "share of three" would
+    // be handed out. The drink is a new bill, not a fourth third.
+    seed(evenTicket({
+        total_amount: 350000, paid_amount: 319000,
+        // The REAL share amounts, which is the point of the allocator: they
+        // are not three equal thirds and they total the bill exactly.
+        payments: [106333, 106334, 106333].map((amount, n) => ({
+            payment_id: `f${n}`, status: 'settled', amount,
+            split_ways: 3, split_index: n + 1, bill_id: `f${n}`
+        }))
+    }));
+    try {
+        await payWays(3);
+        fail('a fourth share of a three-way split was allowed');
+    } catch (e) {
+        is(/already been paid/i.test(e.message), true, 'a split cannot be paid more times than it was split');
+    }
+    // …and the remainder is settled as an ordinary bill, which still works.
+    res = await payBill.call(host, 'u1', ['o1'], { ladder: FNB, method: 'cash' });
+    is(res.billDue, 31000, 'what was added after the split is billed on its own');
+
+    // An even split fills tickets OLDEST FIRST, so tickets close as the money
+    // comes in rather than every one sitting part-paid until the last payer.
+    seed(ticket('o1', { total_amount: 60000, status: 'served', opened_at: { __ts: 1000 } }),
+         ticket('o2', { total_amount: 60000, status: 'served', opened_at: { __ts: 2000 } }));
+    res = await payBill.call(host, 'u1', ['o1', 'o2'],
+        { ladder: FNB, splitWays: 2, method: 'cash' });
+    is(res.billDue, 60000, 'half of a two-ticket table is half the table');
+    is(patchOf('o1').status, 'paid', 'the oldest ticket is settled outright');
+    is(writes.length, 1, '…and the second is not touched at all');
+
+    // The two split modes are different decisions, and asking for both means
+    // the cashier has not made one.
+    seed(evenTicket());
+    try {
+        await payBill.call(host, 'u1', ['o1'], {
+            ladder: FNB, method: 'cash', splitWays: 3,
+            lines: [{ order_id: 'o1', line_ids: ['a'] }]
+        });
+        fail('by-item and evenly were accepted together');
+    } catch (e) {
+        is(/by item or evenly/i.test(e.message), true, 'a bill is split by item or evenly, not both');
+    }
+
+    seed(evenTicket());
+    try {
+        await payWays(1);
+        fail('a one-way split was allowed');
+    } catch (e) {
+        is(/between 2 and 50/i.test(e.message), true, 'splitting one way is not splitting');
+    }
+
     // ── 8. The refusals ─────────────────────────────────────────────────────
     const refuses = async (label, ids2, opts, match) => {
         try { await pay(ids2, opts); fail(`${label} — it was ALLOWED`); }

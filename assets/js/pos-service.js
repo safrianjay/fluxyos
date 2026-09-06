@@ -1470,6 +1470,14 @@ export const POS_METHODS = {
         // only in what is selected, and two code paths would eventually
         // disagree about what a payment does to an order.
         lines = null,
+        // ── SPLIT EVENLY ────────────────────────────────────────────────────
+        //
+        // "Three ways." One share of the bill per call; the caller says how many
+        // ways and the DAL works out which share this is from what has already
+        // been taken. Mutually exclusive with `lines` — a bill is split by item
+        // or by head, and asking for both at once means the cashier has not
+        // decided which.
+        splitWays = null,
         // Same argument as `recordPosPayment`: the money is recorded by the
         // order writes, emission is best-effort with `emitUnpostedPosSales` as
         // its retry, and making the cashier watch it happen N times over is
@@ -1489,6 +1497,15 @@ export const POS_METHODS = {
         if (Array.isArray(lines) && lines.length && !selection) {
             throw new Error('Pick at least one item to pay for.');
         }
+        const ways = splitWays == null ? null
+            : Math.round(Number(splitWays) || 0);
+        if (ways != null && (!Number.isInteger(ways) || ways < 2 || ways > 50)) {
+            throw new Error('Split a bill between 2 and 50 ways.');
+        }
+        if (ways != null && selection) {
+            throw new Error('A bill is split by item or evenly, not both.');
+        }
+
         const ids = selection
             ? [...new Set(selection.map((x) => x.order_id))]
             : [...new Set((Array.isArray(orderIds) ? orderIds : [])
@@ -1599,7 +1616,49 @@ export const POS_METHODS = {
                     selectedIds: picked
                 }).amount;
             });
-            const billDue = dues.reduce((s, v) => s + v, 0);
+            // ── ONE SHARE OF AN EVEN SPLIT ──────────────────────────────
+            //
+            // `dues` above is the whole outstanding bill. An even split pays a
+            // fraction of it, so the share is worked out first and then filled
+            // across the tickets OLDEST FIRST — so tickets close as the money
+            // comes in rather than every one of them sitting part-paid until the
+            // last payer arrives.
+            let shares = dues;
+            let shareInfo = null;
+            if (ways != null) {
+                const outstanding = dues.reduce((t, v) => t + v, 0);
+                // What this split's earlier shares already collected. Counted by
+                // distinct `bill_id`, because ONE share can touch several
+                // tickets and counting payments would make it look like more
+                // payers had been through than actually had.
+                const seen = new Set();
+                let takenAmount = 0;
+                rows.forEach((o) => (o.payments || []).forEach((p) => {
+                    if (p.status !== 'settled' || p.split_ways !== ways) return;
+                    takenAmount += Number(p.amount) || 0;
+                    if (p.bill_id) seen.add(p.bill_id);
+                }));
+                const taken = seen.size;
+                if (taken >= ways) throw new Error('Every share of that split has already been paid.');
+
+                // The bill AS IT WAS when the split started. Reconstructed
+                // rather than stored, so an interrupted split — a share taken,
+                // the dialog closed, the next payer served ten minutes later —
+                // still adds up without a split entity to keep true.
+                const info = this._pricing().evenSplitShare({
+                    base: outstanding + takenAmount, ways, taken
+                });
+                shareInfo = { ...info, ways, taken };
+
+                let left = info.amount;
+                shares = dues.map((v) => {
+                    const take = Math.min(v, left);
+                    left -= take;
+                    return take;
+                });
+            }
+
+            const billDue = shares.reduce((s, v) => s + v, 0);
             if (billDue <= 0) throw new Error('There is nothing left to pay on those tickets.');
 
             const received = amountReceived == null ? billDue : Math.round(Number(amountReceived) || 0);
@@ -1628,7 +1687,7 @@ export const POS_METHODS = {
             // handful of notes, not a share of each ticket.
             const out = [];
             rows.forEach((o, i) => {
-                const applied = dues[i];
+                const applied = shares[i];
                 if (applied <= 0) return;            // already settled on its own
                 const extra = i === rows.length - 1 ? change : 0;
                 const payments = [...(o.payments || []), {
@@ -1659,6 +1718,10 @@ export const POS_METHODS = {
                     // It is what the next split reads to know what is left, and
                     // what the receipt prints instead of the whole ticket.
                     ...(selection ? { line_ids: picks[i] } : {}),
+                    // How many ways this bill was split. What the NEXT share
+                    // reads to know which one it is — and the only thing stored
+                    // about the split at all.
+                    ...(shareInfo ? { split_ways: shareInfo.ways, split_index: shareInfo.index } : {}),
                     status: 'settled',
                     received_at: stamp,
                     received_by: this.actorUid || userId
@@ -1692,7 +1755,7 @@ export const POS_METHODS = {
                 });
             });
 
-            return { orders: out, billDue, received, change, billId };
+            return { orders: out, billDue, received, change, billId, share: shareInfo };
         });
 
         // Each ticket emits its OWN sale, because each carries its own rates and

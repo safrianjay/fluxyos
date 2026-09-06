@@ -2938,6 +2938,9 @@ function openTableBillModal(tableId) {
     // for mine." Both end in the same `payPosTableBill` call with a different
     // selection, so there is one place that decides what a payment does.
     let mode = 'ticket';
+    // How many ways, when splitting evenly. Two is the commonest answer and the
+    // one the control opens on.
+    let ways = 2;
     // line_id → true, across every ticket at the table. Line ids are unique per
     // order; the map is keyed `orderId|lineId` so two tickets cannot collide.
     const pickedLines = new Set();
@@ -3005,6 +3008,7 @@ function openTableBillModal(tableId) {
                 <div class="pos-bill-modes" id="pos-bill-modes" role="tablist">
                     <button type="button" role="tab" data-bill-mode="ticket" aria-selected="true">Whole tickets</button>
                     <button type="button" role="tab" data-bill-mode="item" aria-selected="false">By item</button>
+                    <button type="button" role="tab" data-bill-mode="even" aria-selected="false">Split evenly</button>
                 </div>
                 <div class="pos-bill-list" id="pos-bill-list"></div>
                 <p class="pos-hint" id="pos-bill-rest" hidden></p>
@@ -3101,7 +3105,57 @@ function openTableBillModal(tableId) {
         el.querySelector('#pos-bill-pay').disabled = !chosen.length;
     };
 
-    const paint = () => (mode === 'item' ? paintItems() : paintTickets());
+    // ── Split evenly ────────────────────────────────────────────────────────
+    //
+    // The bill is the TABLE's outstanding, and the shares already taken are read
+    // back off the payments — so an interrupted split ("one paid, we'll get the
+    // rest in a minute") picks up where it left off rather than starting again
+    // and over-collecting.
+    const evenState = () => {
+        const P = window.FluxyPosPricing;
+        const outstanding = list.reduce((t, o) => t + posOrderDue(o), 0);
+        const seen = new Set();
+        let takenAmount = 0;
+        list.forEach((o) => (o.payments || []).forEach((p) => {
+            if (p.status !== 'settled' || p.split_ways !== ways) return;
+            takenAmount += Number(p.amount) || 0;
+            if (p.bill_id) seen.add(p.bill_id);
+        }));
+        const taken = seen.size;
+        const share = P
+            ? P.evenSplitShare({ base: outstanding + takenAmount, ways, taken })
+            : { amount: 0, index: 1, isLast: false };
+        return { outstanding, taken, share, done: taken >= ways };
+    };
+
+    const paintEven = () => {
+        const st = evenState();
+        el.querySelector('#pos-bill-sub').textContent =
+            'One share at a time — take each person\u2019s payment as they hand it over.';
+        el.querySelector('#pos-bill-list').innerHTML = `
+            <div class="pos-bill-ways">
+                <span class="pos-bill-ways-label">Split between</span>
+                <div class="pos-bill-ways-row">
+                    ${[2, 3, 4, 5, 6].map((n) => `<button type="button" class="pos-bill-way${n === ways ? ' is-on' : ''}" data-ways="${n}">${n}</button>`).join('')}
+                </div>
+            </div>
+            <div class="pos-bill-share">
+                <span class="pos-bill-share-label">${st.done
+                    ? 'Every share of this split has been paid'
+                    : `Share ${st.share.index} of ${ways}`}</span>
+                <span class="pos-bill-share-note">${st.taken
+                    ? `${st.taken} of ${ways} already paid`
+                    : `${esc(rp(st.outstanding))} on this table`}</span>
+            </div>`;
+        el.querySelector('#pos-bill-total').textContent = rp(st.done ? 0 : st.share.amount);
+        const rest = st.done ? 0 : st.outstanding - st.share.amount;
+        const restEl = el.querySelector('#pos-bill-rest');
+        restEl.hidden = rest <= 0;
+        if (rest > 0) restEl.textContent = `${rp(rest)} still to pay on this table after this share.`;
+        el.querySelector('#pos-bill-pay').disabled = st.done || st.share.amount <= 0;
+    };
+
+    const paint = () => (mode === 'item' ? paintItems() : mode === 'even' ? paintEven() : paintTickets());
 
     el.querySelector('#pos-bill-modes').addEventListener('click', (e) => {
         const b = e.target.closest('[data-bill-mode]');
@@ -3109,6 +3163,13 @@ function openTableBillModal(tableId) {
         mode = b.dataset.billMode;
         el.querySelectorAll('[data-bill-mode]').forEach((x) =>
             x.setAttribute('aria-selected', String(x.dataset.billMode === mode)));
+        paint();
+    });
+
+    el.querySelector('#pos-bill-list').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-ways]');
+        if (!b) return;
+        ways = Number(b.dataset.ways) || 2;
         paint();
     });
 
@@ -3146,6 +3207,17 @@ function openTableBillModal(tableId) {
     });
 
     el.querySelector('#pos-bill-pay').addEventListener('click', () => {
+        if (mode === 'even') {
+            const st = evenState();
+            if (st.done || st.share.amount <= 0) return;
+            close();
+            openPaymentModal({
+                orders: list, tableLabel: label,
+                splitWays: ways, shareIndex: st.share.index,
+                due: st.share.amount
+            });
+            return;
+        }
         if (mode === 'item') {
             const sel = splitSelection();
             const total = splitTotal();
@@ -3195,7 +3267,8 @@ function openTableBillModal(tableId) {
 // notes, the non-cash lockdown and the short-tender refusal are identical in
 // both, which is the reason this is a mode rather than a second dialog: a
 // second money dialog is a second place for those rules to drift.
-function openPaymentModal({ orders = null, tableLabel = null, lines = null, due: dueOverride = null } = {}) {
+function openPaymentModal({ orders = null, tableLabel = null, lines = null,
+    splitWays = null, shareIndex = null, due: dueOverride = null } = {}) {
     // A bill is a list; a single order is a list of one. Everything below reads
     // the list, so there is no branch to keep in step.
     const bill = Array.isArray(orders) && orders.length ? orders.slice() : null;
@@ -3225,9 +3298,11 @@ function openPaymentModal({ orders = null, tableLabel = null, lines = null, due:
                 <div>
                     <h2 class="pos-modal-title" id="pos-pay-title">Take payment</h2>
                     <p class="pos-modal-sub">${bill
-                        ? `${esc(`Table ${tableLabel || o.table_label || ''}`)} · ${lines
-                            ? `${lines.reduce((t, x) => t + x.line_ids.length, 0)} items`
-                            : `${bill.length} tickets`}`
+                        ? `${esc(`Table ${tableLabel || o.table_label || ''}`)} · ${splitWays
+                            ? `share ${shareIndex} of ${splitWays}`
+                            : lines
+                                ? `${lines.reduce((t, x) => t + x.line_ids.length, 0)} items`
+                                : `${bill.length} tickets`}`
                         : `${esc(o.table_label ? `Table ${o.table_label}` : 'Takeaway')} · ${esc(orderShort(o))}`}</p>
                 </div>
                 <button type="button" class="pos-modal-close" data-close aria-label="Close">
@@ -3558,15 +3633,19 @@ function openPaymentModal({ orders = null, tableLabel = null, lines = null, due:
             awaitEmit: false,
             method,
             ladder: posProfile().ladder,
-            // Null on a whole-ticket bill; the chosen lines on a split.
+            // Null on a whole-ticket bill; the chosen lines on a split by item;
+            // the number of ways on an even one. The DAL refuses both at once.
             lines,
+            splitWays,
             amountReceived: received,
             reference: $$('pos-pay-ref').value
         });
         close();
-        const what = lines
-            ? `${lines.reduce((t, x) => t + x.line_ids.length, 0)} items`
-            : `${res.orders.length} tickets`;
+        const what = splitWays
+            ? `share ${res.share ? res.share.index : shareIndex} of ${splitWays}`
+            : lines
+                ? `${lines.reduce((t, x) => t + x.line_ids.length, 0)} items`
+                : `${res.orders.length} tickets`;
         toast(res.change > 0
             ? `Paid — give ${rp(res.change)} change.`
             : `Paid — ${rp(res.billDue)} across ${what}.`);
@@ -3750,11 +3829,16 @@ function openReceipt(order, { billId = null } = {}) {
     // Not itemised further than that on purpose. The share is allocated across
     // the SELECTION, so printing a per-dish tax line would be inventing a split
     // of a split; the total is exact and the lines say what it was for.
-    const splitPay = billId
-        ? list.flatMap((x) => (x.payments || []).filter((p) => p.status === 'settled'
-            && p.bill_id === billId && (p.line_ids || []).length))
+    const billPay = billId
+        ? list.flatMap((x) => (x.payments || []).filter((p) => p.status === 'settled' && p.bill_id === billId))
         : [];
+    const splitPay = billPay.filter((p) => (p.line_ids || []).length);
     const isSplit = splitPay.length > 0;
+    // An EVEN share prints the whole table's items and states which share of the
+    // bill it paid — the payer has no items of their own to list, and a receipt
+    // reading only "Dibayar Rp106.334" tells them nothing about what for.
+    const evenPay = !isSplit ? billPay.filter((p) => Number(p.split_ways) > 1) : [];
+    const evenShare = evenPay[0] || null;
     // Sectioned only when one block would have to state two different tax
     // treatments at once — see above. Everything else combines.
     const split = list.length > 1
@@ -3895,6 +3979,7 @@ function openReceipt(order, { billId = null } = {}) {
       list.map((x) => x.order_number || '').filter(Boolean).join(' + '))}</div>
   <div class="c m">${when.toLocaleString(window.FluxyMoney.baseLocale())}</div>
   <hr>
+  ${evenShare ? `<div class="c m">Bagian ${esc(String(evenShare.split_index || ''))} dari ${esc(String(evenShare.split_ways))}</div>` : ''}
   ${isSplit ? `
   <div class="c m">Bagian dari tagihan meja</div>
   <table>${splitLines.map(line).join('')}</table>
@@ -3907,8 +3992,10 @@ function openReceipt(order, { billId = null } = {}) {
   <table>${bill.lines.map(line).join('')}</table>
   <hr>
   <table>${ticketTotals(bill)}</table>`}
+  ${evenShare ? `<table>${row('Dibayar bagian ini',
+      rp(evenPay.reduce((t, p) => t + (Number(p.amount) || 0), 0)), 'tot')}</table>` : ''}
   <table>
-    ${(isSplit ? splitPay : paid).map((p) => row(methodLabel(p.method), rp(p.amount))).join('')}
+    ${(isSplit ? splitPay : evenShare ? evenPay : paid).map((p) => row(methodLabel(p.method), rp(p.amount))).join('')}
     ${
         // Tendered and change, on the receipt, for the one case where they
         // differ from the total: cash. This is the customer's own record of what
@@ -3916,7 +4003,7 @@ function openReceipt(order, { billId = null } = {}) {
         // counter is actually about, and the receipt was silent on both.
         // Older payments carry neither field; they fall out rather than
         // rendering "Rp0" against a sale nobody can now check.
-        (isSplit ? splitPay : paid).filter((p) => Number(p.change_given) > 0).map((p) =>
+        (isSplit ? splitPay : evenShare ? evenPay : paid).filter((p) => Number(p.change_given) > 0).map((p) =>
             row('Tunai', rp(p.amount_received)) + row('Kembalian', rp(p.change_given))).join('')
     }
   </table>

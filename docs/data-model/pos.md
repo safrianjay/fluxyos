@@ -657,13 +657,49 @@ SELECTION, so a per-dish tax line would be inventing a split of a split.
 Splitting does **not** move the kitchen ladder — someone paying for their
 starter must not take the main course off the cook's screen.
 
-**Still not built: split by SEAT, and even splits ("three ways").** The unit is
-the item. An even split is a partial tender against the selection, which
-`payPosTableBill` deliberately refuses today.
+### Split evenly (2026-09-06)
 
-Guards: `check:pos-table-bill` (63 assertions — three splits totalling the
-ticket in two different orders, the last taking the exact remainder, both
-double-charge refusals) and two board specs.
+"Three ways." The third reading of one bill, and the same call again —
+`payPosTableBill(..., { splitWays: N })` takes **one share** and is called once
+per payer. Mutually exclusive with `lines`: a bill is split by item or by head,
+and asking for both means the cashier has not decided which.
+
+⚠️ **N shares must total the bill to the rupiah.** Rounding a share and
+multiplying does not do it — three thirds of 319.000 round to 106.333 and sum to
+319.999, a rupiah the table does not owe on a ticket that could then never
+close. `evenSplitShare` uses the same running-total rule as `splitLineShare`, so
+319.000 three ways is **106.333 + 106.334 + 106.333** and the last share is
+exactly what is left, by construction rather than by a special case.
+
+**The split is derived, not stored** — the same call `pos_tables` makes about
+occupancy and `qr-order-status` makes about the sitting. `payments[].split_ways`
+is the only thing recorded; the index counts distinct `bill_id`s among payments
+carrying it, and the base is reconstructed as *outstanding + what those shares
+took*. That is what lets an interrupted split — one paid, the dialog closed, the
+next payer served ten minutes later — pick up at share 2 instead of restarting
+and over-collecting.
+
+⚠️ **The index counts BILLS, not payments.** One share can settle several tickets
+at a table, so counting payments would make it look like more payers had been
+through than actually had — the fourth person would be asked for nothing and the
+table would never close.
+
+⚠️ **A three-way split has three shares, even when the bill has moved since.**
+All three pay, then somebody orders another drink onto the ticket: it is no
+longer settled, so nothing upstream refuses, and a fourth "share of three" would
+be handed out. The drink is a new bill, not a fourth third.
+
+A share fills tickets **oldest first**, so tickets close as the money comes in
+rather than every one sitting part-paid until the last payer arrives. Its receipt
+prints the table's items and states *Bagian 2 dari 3* — the payer has no items of
+their own, and a slip reading only "Rp106.334" says nothing about what for.
+
+**Still not built: split by SEAT.** The units are the item and the head.
+
+Guards: `check:pos-table-bill` (78 assertions — three splits totalling the ticket
+in two different orders and three even shares totalling the bill, the last taking
+the exact remainder, both double-charge refusals, and the bill-not-payment index
+count) and five board specs.
 
 ### Payment status and order status are TWO STATES (2026-09-06)
 

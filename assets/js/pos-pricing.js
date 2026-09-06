@@ -221,9 +221,42 @@
         };
     }
 
+    // ── SPLITTING A BILL EVENLY ─────────────────────────────────────────────
+    //
+    // "Three ways." The same exactness problem as `splitLineShare` and the same
+    // answer: N shares of a bill must total it TO THE RUPIAH, or the last payer
+    // is short by one and cannot close the table.
+    //
+    // Rounding a share and multiplying does not do it — three thirds of 319.000
+    // round to 106.333 and sum to 319.999 — so each share is the difference
+    // between two rounded cumulative figures and the errors cancel. The Nth
+    // share is therefore exactly whatever is left, by construction rather than
+    // by a special case.
+    //
+    // `base` is the bill AS IT WAS when the split started, reconstructed by the
+    // caller from what is still outstanding plus the shares already taken. That
+    // is what lets "three ways" survive being interrupted — a share taken, the
+    // dialog closed, the next payer served ten minutes later — without storing a
+    // split entity that would then have to be kept true.
+    //
+    // @param {{base:number, ways:number, taken:number}} input
+    // @returns {{amount:number, index:number, isLast:boolean}}
+    function evenSplitShare(input) {
+        var i = input || {};
+        var base = int(i.base);
+        var ways = Math.max(1, Math.min(50, Math.round(Number(i.ways) || 1)));
+        // How many shares have already been paid. Clamped so a miscount cannot
+        // produce a negative share or index past the end.
+        var taken = Math.max(0, Math.min(ways - 1, Math.round(Number(i.taken) || 0)));
+        var index = taken + 1;
+        var amount = Math.round(base * index / ways) - Math.round(base * taken / ways);
+        return { amount: Math.max(0, amount), index: index, isLast: index >= ways };
+    }
+
     return {
         DEFAULTS: DEFAULTS,
         splitLineShare: splitLineShare,
+        evenSplitShare: evenSplitShare,
         normalizeSettings: normalizeSettings,
         computeBillTotals: computeBillTotals,
         presetDiscountAmount: presetDiscountAmount
