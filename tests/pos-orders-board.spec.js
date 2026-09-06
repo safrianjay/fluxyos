@@ -1276,6 +1276,62 @@ test('the dialogs name the party, and are wide enough to read', async ({ page })
     await expect(whoRow).toContainText('4 guests');
 });
 
+test('THE ORDER AND THE MONEY SIT SIDE BY SIDE, SO THE LIST GETS THE HEIGHT', async ({ page }) => {
+    // Stacked, the item list was squeezed between the amount due and the method
+    // buttons and showed four or five lines of a table's order — and this screen
+    // exists for the cashier to read the WHOLE thing back to the customer.
+    await openBoard(page);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.evaluate(() => {
+        const ts = (ms) => { const d = new Date(Date.now() - ms); return { toDate: () => d }; };
+        const L = (id, name, price) => ({ line_id: id, item_id: `i-${id}`, item_name: name,
+            quantity: 1, unit_price: price, gross_amount: price });
+        return window.__posSeedBoard([{
+            id: 'r1', order_number: '017', status: 'served', table_id: 't3', table_label: '3',
+            customer_name: 'Budi Santoso', customer_phone: '0812 3456 7890', guest_count: 4,
+            lines: ['Burger', 'Jasa Konsultasi Menu', 'Caffe Latter', 'Nasi Goreng Spesial',
+                'Es Teh Manis', 'Ayam Bakar', 'Sate Ayam', 'Air Mineral']
+                .map((n, i) => L(`l${i}`, n, 10000 * (i + 1))),
+            subtotal: 360000, discount_total: 0, service_charge_amount: 18000, tax_amount: 41580,
+            total_amount: 419580, paid_amount: 0, payments: [],
+            pos_pricing: { tax_enabled: true, tax_label: 'PPN', tax_rate_percent: 11,
+                tax_inclusive: false, service_enabled: true, service_rate_percent: 5 },
+            opened_at: ts(900000), status_changed_at: ts(900000)
+        }]);
+    });
+    await page.locator('[data-table-bill]').first().click();
+    await page.locator('#pos-bill-modal [data-bill-mode="ticket"]').click();
+    await page.locator('#pos-bill-pay').click();
+    await expect(page.locator('#pos-pay-modal .pos-review-totals')).toBeVisible();
+
+    // Side by side: the order ends before the money begins.
+    const cols = await page.locator('#pos-pay-modal').evaluate((el) => {
+        const a = el.querySelector('.pos-review').getBoundingClientRect();
+        const b = el.querySelector('#pos-method-row').getBoundingClientRect();
+        return { reviewRight: a.right, methodLeft: b.left, sameRow: Math.abs(a.top - b.top) < 400 };
+    });
+    expect(cols.reviewRight, 'the columns overlap').toBeLessThanOrEqual(cols.methodLeft + 1);
+    expect(cols.sameRow).toBe(true);
+
+    // ⚠️ AND ALL EIGHT ITEMS ARE ON SCREEN. The point of the split is the list,
+    // so a layout that is side by side and still scrolls the order has not
+    // solved anything.
+    const scrolls = await page.locator('#pos-pay-modal .pos-review-lines')
+        .evaluate((el) => el.scrollHeight > el.clientHeight + 1);
+    expect(scrolls, 'the item list still scrolls at eight items').toBe(false);
+    await expect(page.locator('#pos-pay-modal .pos-review-line')).toHaveCount(8);
+
+    // Narrow tills go back to one column rather than squeezing two.
+    await page.setViewportSize({ width: 820, height: 720 });
+    await page.waitForTimeout(200);
+    const stacked = await page.locator('#pos-pay-modal').evaluate((el) => {
+        const a = el.querySelector('.pos-review').getBoundingClientRect();
+        const b = el.querySelector('#pos-method-row').getBoundingClientRect();
+        return a.bottom <= b.top + 1;
+    });
+    expect(stacked, 'the dialog stayed two-column on a narrow till').toBe(true);
+});
+
 test('THE PAYMENT DIALOG SHOWS WHAT IS BEING PAID FOR, WITH VAT AND SERVICE', async ({ page }) => {
     await openBoard(page);
     await seedReviewTicket(page);

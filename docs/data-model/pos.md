@@ -677,8 +677,18 @@ people as well as the right table. Distinct across the tickets being settled: a
 table can hold two rounds opened by two people, and the same name twice reads as
 a bug.
 
-Both settle dialogs are **640px** rather than 460 — each now carries a list, and
-a three-word menu name wrapped onto a second line beside its price.
+**The payment dialog is TWO COLUMNS** — what was ordered on the left, the money
+on the right — at **940px**; the bill dialog is 640. Stacked, the item list was
+squeezed between the amount due and the method buttons and showed four or five
+lines of a table's order, and this screen exists for the cashier to read the
+*whole* thing back to the customer. Side by side it takes ten lines before it
+scrolls, and an eight-item table fits with the footer still pinned on a
+1024×768 tablet. Below 900px it collapses back to one column rather than
+squeezing two.
+
+**The amount due moved to the top of the right column** — the figure and the
+field that has to match it belong together, and the left column is then purely
+"what they ordered".
 
 The line list **scrolls** rather than growing: the method buttons have to stay
 reachable on a 10" tablet however long the order is, and a review that pushes

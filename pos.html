@@ -710,8 +710,28 @@
            dishes to divide — and a 460px column made a three-word menu name wrap
            onto two lines beside its price. A cashier checking a screen against a
            customer's order should be reading it, not decoding it. */
-        .pos-modal.pos-pay,
         .pos-modal.pos-bill { width: min(640px, 100%); }
+        /* The payment dialog is TWO COLUMNS — the order on the left, the money
+           on the right — so it is wider again. */
+        .pos-modal.pos-pay { width: min(940px, 100%); }
+        .pos-pay-body {
+            grid-template-columns: minmax(300px, 1fr) minmax(360px, 1.05fr);
+            align-items: start; gap: 20px;
+        }
+        /* Each column stacks its own fields; the BODY only divides them. */
+        .pos-pay-col { display: grid; gap: 14px; align-content: start; min-width: 0; }
+        /* The review is the column, so it takes the height rather than a strip
+           of it. Ten lines before it scrolls, against four when this was one
+           column — which is the whole reason for the split. */
+        .pos-pay-body .pos-review { margin-bottom: 0; }
+        .pos-pay-body .pos-review-lines { max-height: 340px; }
+
+        @media (max-width: 900px) {
+            /* One column again on a narrow till. The list goes back to a cap
+               that leaves the method buttons reachable without scrolling. */
+            .pos-pay-body { grid-template-columns: 1fr; }
+            .pos-pay-body .pos-review-lines { max-height: 132px; }
+        }
         /* The bill, stated once and large. Everything else on this screen is in
            service of matching this number, so it outranks all of it. */
         /* ── The amount due is the HEADLINE, not a field ─────────────────────

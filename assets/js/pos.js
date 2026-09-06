@@ -3574,15 +3574,26 @@ function openPaymentModal({ orders = null, tableLabel = null, lines = null,
                 </button>
             </div>
 
-            <form class="pos-modal-body" id="pos-pay-form">
-                <!-- The bill, stated once and large. Everything below is in
-                     service of matching this number. -->
+            <!-- TWO COLUMNS: what was ordered on the left, the money on the
+                 right. Stacked, the item list was squeezed between the amount
+                 due and the method buttons and showed four or five lines of a
+                 table's order — and this screen exists for the cashier to read
+                 the whole thing back to the customer. Side by side the list gets
+                 the height and the money work stays in one place. Collapses to
+                 one column below 900px. -->
+            <form class="pos-modal-body pos-pay-body" id="pos-pay-form">
+                <div class="pos-pay-col">
+                    ${reviewHtml}
+                </div>
+
+                <div class="pos-pay-col">
+                <!-- The bill, stated once and large, at the top of the column
+                     where the money is entered — the figure and the field that
+                     has to match it belong together. -->
                 <div class="pos-pay-due">
                     <span class="pos-pay-due-label">Amount due</span>
                     <span class="pos-pay-due-value" id="pos-pay-due">${esc(rp(due))}</span>
                 </div>
-
-                ${reviewHtml}
 
                 <div class="pos-field">
                     <label>Payment method</label>
@@ -3635,6 +3646,7 @@ function openPaymentModal({ orders = null, tableLabel = null, lines = null,
                 <div class="pos-field">
                     <label for="pos-pay-ref">Reference <span class="opt">(optional)</span></label>
                     <input id="pos-pay-ref" name="reference" placeholder="Transfer note, QRIS ref…" autocomplete="off">
+                </div>
                 </div>
             </form>
 
