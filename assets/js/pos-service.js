@@ -1272,6 +1272,21 @@ export const POS_METHODS = {
         return total > 0 && paid >= total;
     },
 
+    // Which of a ticket's lines have already been paid for, across every split
+    // taken against it. Read from the payments, never stored on the line: one
+    // fact in one place, and `payments[]` is already the record of what was
+    // collected.
+    _posCoveredLineIds(o) {
+        const out = [];
+        ((o && o.payments) || []).forEach((p) => {
+            if (p.status !== 'settled') return;
+            (Array.isArray(p.line_ids) ? p.line_ids : []).forEach((id) => {
+                if (!out.includes(id)) out.push(id);
+            });
+        });
+        return out;
+    },
+
     // Does the KITCHEN still have work on a ticket in this status?
     //
     // ⚠️ THIS IS PROFILE DATA, NOT A PROPERTY OF THE STATUS, and the DAL is
@@ -1444,14 +1459,40 @@ export const POS_METHODS = {
         // As `recordPosPayment` — the till's ladder, so settling a table does
         // not close out a ticket the kitchen is still working on.
         ladder = null,
+        // ── SPLIT BY ITEM ───────────────────────────────────────────────────
+        //
+        // `[{ order_id, line_ids: [...] }]`. Absent, whole tickets are settled
+        // as before; present, only the lines named are — with their share of
+        // that ticket's service charge, tax and order discount. "I'll pay for my
+        // dish" is a bill of its own, and the ticket stays open for the rest.
+        //
+        // ONE METHOD, not a second one beside it: a split and a merge differ
+        // only in what is selected, and two code paths would eventually
+        // disagree about what a payment does to an order.
+        lines = null,
         // Same argument as `recordPosPayment`: the money is recorded by the
         // order writes, emission is best-effort with `emitUnpostedPosSales` as
         // its retry, and making the cashier watch it happen N times over is
         // worse here than it was for one order.
         awaitEmit = false
     } = {}) {
-        const ids = [...new Set((Array.isArray(orderIds) ? orderIds : [])
-            .map((v) => String(v || '')).filter(Boolean))];
+        // A line selection names its own tickets, so it is the authority on
+        // which orders this payment touches.
+        const selection = Array.isArray(lines) && lines.length
+            ? lines
+                .map((x) => ({
+                    order_id: String((x && x.order_id) || ''),
+                    line_ids: [...new Set(((x && x.line_ids) || []).map((v) => String(v || '')).filter(Boolean))]
+                }))
+                .filter((x) => x.order_id && x.line_ids.length)
+            : null;
+        if (Array.isArray(lines) && lines.length && !selection) {
+            throw new Error('Pick at least one item to pay for.');
+        }
+        const ids = selection
+            ? [...new Set(selection.map((x) => x.order_id))]
+            : [...new Set((Array.isArray(orderIds) ? orderIds : [])
+                .map((v) => String(v || '')).filter(Boolean))];
         if (!ids.length) throw new Error('Pick at least one ticket to settle.');
         // A table does not have twenty live tickets, and a transaction reading
         // an unbounded list is how one bad call takes the till down mid-service.
@@ -1513,9 +1554,50 @@ export const POS_METHODS = {
             rows.sort((a, b) => (posToMs(a.opened_at) || posToMs(a.created_at) || 0)
                 - (posToMs(b.opened_at) || posToMs(b.created_at) || 0));
 
-            const dues = rows.map((o) => {
+            // What each ticket contributes to THIS payment: its whole remaining
+            // balance, or the exact share of the items chosen off it.
+            const picks = rows.map((o) => {
+                if (!selection) return null;
+                const entry = selection.find((x) => x.order_id === o.id);
+                return entry ? entry.line_ids : [];
+            });
+            const dues = rows.map((o, i) => {
                 const t = this._posTotals(o);
-                return Math.max(0, Math.round(t.total_amount) - Math.round(t.paid_amount));
+                if (!selection) {
+                    return Math.max(0, Math.round(t.total_amount) - Math.round(t.paid_amount));
+                }
+                const picked = picks[i];
+                if (!picked.length) return 0;
+
+                const onTicket = new Set((o.lines || []).map((l) => l.line_id));
+                picked.forEach((id) => {
+                    if (!onTicket.has(id)) throw new Error(`${name(o)} has no such item on it any more.`);
+                });
+
+                // ⚠️ EVERY LINE IS PAID FOR ONCE. Without this the same dish can
+                // be charged to two people, and both payments look correct: the
+                // ticket over-collects and nothing reconciles it back.
+                const covered = this._posCoveredLineIds(o);
+                picked.forEach((id) => {
+                    if (covered.includes(id)) throw new Error('Someone has already paid for one of those items.');
+                });
+
+                // ⚠️ A TICKET CANNOT BE PART-PAID BOTH WAYS. A whole-ticket
+                // payment says nothing about WHICH items it covered, so a split
+                // taken after one has no way to know what is left and would
+                // charge for it again. Refused rather than guessed at.
+                const blind = (o.payments || []).some((p) => p.status === 'settled'
+                    && !(Array.isArray(p.line_ids) && p.line_ids.length));
+                if (blind) {
+                    throw new Error(`${name(o)} already has a payment against the whole ticket — settle the rest of it the same way.`);
+                }
+
+                return this._pricing().splitLineShare({
+                    lines: o.lines || [],
+                    total: Math.round(t.total_amount),
+                    coveredIds: covered,
+                    selectedIds: picked
+                }).amount;
             });
             const billDue = dues.reduce((s, v) => s + v, 0);
             if (billDue <= 0) throw new Error('There is nothing left to pay on those tickets.');
@@ -1572,6 +1654,11 @@ export const POS_METHODS = {
                     // reprint reads down the same way the original did.
                     bill_id: billId,
                     bill_orders: rows.map((x) => x.id),
+                    // WHICH items this payment settled. Absent on a whole-ticket
+                    // payment, which is the honest reading — it covered the lot.
+                    // It is what the next split reads to know what is left, and
+                    // what the receipt prints instead of the whole ticket.
+                    ...(selection ? { line_ids: picks[i] } : {}),
                     status: 'settled',
                     received_at: stamp,
                     received_by: this.actorUid || userId

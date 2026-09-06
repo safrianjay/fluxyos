@@ -843,3 +843,115 @@ test('a served ticket that is already paid offers CLOSE OUT, not a second bill',
     await expect(page.locator('.pos-ocard-btn.is-primary')).toHaveText('Close out');
     await expect(page.locator('.pos-ocard [data-pay]')).toHaveCount(0);
 });
+
+// ── Split by item ───────────────────────────────────────────────────────────
+//
+// "I'll pay for my dish." The selection is LINES rather than tickets, and each
+// payer owes their share of that ticket's service charge and tax — a split that
+// charges the menu price and drops the rest is a bill that does not foot and a
+// restaurant that under-collects.
+
+/** One ticket at table 6: 200.000 of food + 10.000 service + 22.000 PPN. */
+async function seedSplitByItem(page) {
+    return page.evaluate(() => {
+        const ts = (ms) => { const d = new Date(Date.now() - ms); return { toDate: () => d }; };
+        const L = (id, name, price) => ({ line_id: id, item_id: `i-${id}`, item_name: name,
+            quantity: 1, unit_price: price, gross_amount: price });
+        return window.__posSeedBoard([{
+            id: 'sp1', order_number: '004', status: 'served',
+            table_id: 't6', table_label: '6', dimension_id: 'd1',
+            lines: [L('a', 'Burger', 125000), L('b', 'Nasi', 10000), L('c', 'Caffe Latter', 65000)],
+            subtotal: 200000, discount_total: 0, service_charge_amount: 10000, tax_amount: 22000,
+            total_amount: 232000, paid_amount: 0, payments: [],
+            pos_pricing: { tax_enabled: true, tax_label: 'PPN', tax_rate_percent: 11, service_enabled: true, service_rate_percent: 5 },
+            opened_at: ts(900000), status_changed_at: ts(900000)
+        }, {
+            id: 'sp2', order_number: '005', status: 'sent',
+            table_id: 't6', table_label: '6', dimension_id: 'd1',
+            lines: [L('d', 'Es Teh', 10000)],
+            subtotal: 10000, discount_total: 0, service_charge_amount: 500, tax_amount: 1100,
+            total_amount: 11600, paid_amount: 0, payments: [],
+            opened_at: ts(120000), status_changed_at: ts(120000)
+        }]);
+    });
+}
+
+test('SPLIT BY ITEM CHARGES THE DISH PLUS ITS SHARE OF SERVICE AND TAX', async ({ page }) => {
+    await openBoard(page);
+    await seedSplitByItem(page);
+
+    await page.locator('[data-table-bill]').first().click();
+    const modal = page.locator('#pos-bill-modal');
+    await expect(modal).toBeVisible();
+
+    // Two readings of one bill, and the cashier chooses which.
+    await modal.locator('[data-bill-mode="item"]').click();
+    await expect(modal.locator('[data-bill-mode="item"]')).toHaveAttribute('aria-selected', 'true');
+
+    // Every line across BOTH tickets, grouped by ticket — the customer's dish
+    // may be on either round.
+    await expect(modal.locator('[data-line]')).toHaveCount(4);
+    await expect(modal.locator('.pos-bill-ticket-head').first()).toHaveText('004');
+
+    // Nothing chosen is not a bill.
+    await expect(modal.locator('#pos-bill-pay')).toBeDisabled();
+
+    // ⚠️ THE BURGER IS Rp125.000 ON THE MENU AND Rp145.000 TO PAY FOR. Charging
+    // the menu price would leave the service charge and the tax on the ticket
+    // with nobody paying them, and the table could never settle.
+    await modal.locator('[data-line="sp1|a"]').check();
+    await expect(modal.locator('#pos-bill-total')).toContainText('145.000');
+    // …and it says what the table still owes after this, so a split never ends
+    // with everyone assuming somebody else got the rest.
+    await expect(modal.locator('#pos-bill-rest')).toContainText('98.600');
+
+    // Adding the drink from the OTHER ticket adds that ticket's own share.
+    await modal.locator('[data-line="sp2|d"]').check();
+    await expect(modal.locator('#pos-bill-total')).toContainText('156.600');
+
+    // The payment dialog is quoted the split, never the table's total.
+    await modal.locator('#pos-bill-pay').click();
+    const pay = page.locator('#pos-pay-modal');
+    await expect(pay.locator('#pos-pay-due')).toContainText('156.600');
+    await expect(pay.locator('.pos-modal-sub')).toContainText('2 items');
+    await expect(pay.locator('#pos-pay-due')).not.toContainText('243.600');
+});
+
+test('a dish somebody has already paid for cannot be picked again', async ({ page }) => {
+    await openBoard(page);
+    await page.evaluate(() => {
+        const ts = (ms) => { const d = new Date(Date.now() - ms); return { toDate: () => d }; };
+        const L = (id, name, price) => ({ line_id: id, item_id: `i-${id}`, item_name: name,
+            quantity: 1, unit_price: price, gross_amount: price });
+        return window.__posSeedBoard([{
+            id: 'sp1', order_number: '004', status: 'served',
+            table_id: 't6', table_label: '6',
+            lines: [L('a', 'Burger', 125000), L('b', 'Nasi', 10000)],
+            subtotal: 135000, service_charge_amount: 0, tax_amount: 0,
+            total_amount: 135000, paid_amount: 125000,
+            payments: [{ payment_id: 'p1', method: 'cash', status: 'settled',
+                amount: 125000, bill_id: 'b1', line_ids: ['a'] }],
+            opened_at: ts(900000), status_changed_at: ts(900000)
+        }, {
+            id: 'sp2', order_number: '005', status: 'served', table_id: 't6', table_label: '6',
+            lines: [L('c', 'Es Teh', 10000)], subtotal: 10000,
+            service_charge_amount: 0, tax_amount: 0, total_amount: 10000, paid_amount: 0, payments: [],
+            opened_at: ts(120000), status_changed_at: ts(120000)
+        }]);
+    });
+
+    await page.locator('[data-table-bill]').first().click();
+    const modal = page.locator('#pos-bill-modal');
+    await modal.locator('[data-bill-mode="item"]').click();
+
+    // Shown and struck through, not hidden — a customer asking "what about the
+    // burger?" needs an answer, not a gap.
+    const burger = modal.locator('.pos-bill-line', { hasText: 'Burger' });
+    await expect(burger).toHaveClass(/is-done/);
+    await expect(burger).toContainText('Paid');
+    await expect(modal.locator('[data-line="sp1|a"]')).toBeDisabled();
+
+    // What is left is still selectable, and priced on its own.
+    await modal.locator('[data-line="sp1|b"]').check();
+    await expect(modal.locator('#pos-bill-total')).toContainText('10.000');
+});

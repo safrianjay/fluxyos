@@ -1054,6 +1054,43 @@
            Merge and split are one control: every live ticket at the table with
            a checkbox. All on is a merged bill; unticking one splits it and
            leaves that ticket open. */
+        /* Whole tickets vs by item. A segmented control, not two buttons: they
+           are two readings of one bill, and the cashier is choosing which. */
+        .pos-bill-modes {
+            display: flex; gap: 4px; padding: 4px; margin-bottom: 12px;
+            background: #F1F5F9; border-radius: 10px;
+        }
+        .pos-bill-modes button {
+            flex: 1; min-height: 32px; border: 0; border-radius: 7px; cursor: pointer;
+            background: transparent; color: #64748B; font-size: 13px; font-weight: 600;
+        }
+        .pos-bill-modes button[aria-selected="true"] {
+            background: #fff; color: #0B0F19; box-shadow: 0 1px 2px rgba(15, 23, 42, .08);
+        }
+
+        .pos-bill-ticket + .pos-bill-ticket { margin-top: 12px; }
+        .pos-bill-ticket-head {
+            font-size: 12px; font-weight: 600; color: #64748B;
+            letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px;
+        }
+        .pos-bill-line {
+            display: flex; align-items: center; gap: 10px; cursor: pointer;
+            padding: 8px 10px; border-radius: 8px; border: 1px solid transparent;
+        }
+        .pos-bill-line.is-on { background: #F8FAFC; border-color: #CBD5E1; }
+        .pos-bill-line input { width: 16px; height: 16px; accent-color: #EA580C; flex: 0 0 auto; }
+        .pos-bill-line-name { flex: 1; min-width: 0; font-size: 14px; color: #0B0F19; }
+        .pos-bill-line-qty { color: #64748B; }
+        .pos-bill-line-amt { font-size: 14px; color: #334155; font-variant-numeric: tabular-nums; }
+        /* Already settled by somebody else. Shown rather than hidden — a
+           customer asking "what about the burger?" needs an answer, not a gap. */
+        .pos-bill-line.is-done { opacity: .55; cursor: default; }
+        .pos-bill-line.is-done .pos-bill-line-name { text-decoration: line-through; }
+        .pos-bill-line-paid {
+            font-size: 11px; font-weight: 600; color: #16A34A;
+            letter-spacing: 0.06em; text-transform: uppercase;
+        }
+
         .pos-bill-list { display: flex; flex-direction: column; gap: 8px; }
         .pos-bill-row {
             display: flex; align-items: center; gap: 12px; cursor: pointer;

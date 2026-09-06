@@ -107,6 +107,8 @@ const host = {
     _nullableString: (v, n) => (v ? String(v).slice(0, n) : null),
     _posTenderFor: (m) => (m === 'cash' ? 'cash' : 'external'),
     _posSettled: syncMethodUnder('_posSettled'),
+    _posCoveredLineIds: syncMethodUnder('_posCoveredLineIds'),
+    _pricing: () => require('../assets/js/pos-pricing.js'),
     _posKitchenPending: syncMethodUnder('_posKitchenPending'),
     _posStatusAfterPayment: syncMethodUnder('_posStatusAfterPayment'),
     _posTotals: (o) => ({
@@ -265,6 +267,123 @@ const sumOver = (field) => writes.reduce((t, w) =>
     seed(ticket('o1', { total_amount: 50000, status: 'open', opened_at: { __ts: 1000 } }));
     await pay(['o1'], { method: 'cash', amountReceived: 50000 });
     is(patchOf('o1').status, 'open', 'the same sale under a kitchen ladder keeps its place in it');
+
+    // ── 7c. SPLIT BY ITEM ───────────────────────────────────────────────────
+    //
+    // "I'll pay for my dish." The selection is lines rather than tickets, and
+    // each payer owes their share of that ticket's service charge and tax — a
+    // split that charges the menu price and drops the rest is a bill that does
+    // not foot and a restaurant that under-collects.
+    //
+    // ⚠️ THE INVARIANT IS EXACTNESS. Split a ticket three ways and the three
+    // amounts must total it to the rupiah: short by one and the last payer
+    // cannot close the ticket, over by one and they are charged for a rupiah
+    // nobody owes — either way the order sits unsettled with the table still
+    // reading occupied.
+    const dish = (id, gross, extra) => ({
+        line_id: id, item_id: `i-${id}`, item_name: `Dish ${id}`,
+        quantity: 1, unit_price: gross, gross_amount: gross, ...(extra || {})
+    });
+    // 200.000 of food + 10.000 service + 22.000 tax — Jay's own receipt.
+    const splitTicket = (over) => ticket('o1', {
+        total_amount: 232000, subtotal: 200000, status: 'served',
+        lines: [dish('a', 125000), dish('b', 10000), dish('c', 65000)],
+        ...(over || {})
+    });
+    const payLines = (sel, opts) => payBill.call(host, 'u1', null,
+        { ladder: FNB, lines: sel, ...opts });
+
+    seed(splitTicket());
+    res = await payLines([{ order_id: 'o1', line_ids: ['a'] }],
+        { method: 'cash', amountReceived: 145000 });
+    is(res.billDue, 145000, 'one dish carries its share of the service and tax, not the menu price');
+    is(lastPayment('o1').amount, 145000, '…and that is what the payment records');
+    is(JSON.stringify(lastPayment('o1').line_ids), JSON.stringify(['a']),
+        'the payment names the items it settled');
+    // Served and only part paid IS awaiting payment — the kitchen is finished
+    // and the table still owes for the rest.
+    is(patchOf('o1').status, 'awaiting_payment',
+        'a served ticket with items still unpaid is awaiting payment');
+
+    // …but a ticket the KITCHEN still has keeps its rung, exactly as a whole
+    // payment leaves it. Somebody paying for their starter must not take the
+    // main course off the cook's screen.
+    seed(splitTicket({ status: 'sent' }));
+    await payLines([{ order_id: 'o1', line_ids: ['a'] }], { method: 'cash' });
+    is(patchOf('o1').status, 'sent', 'splitting a ticket does not move it off the kitchen screen');
+
+    // Three payers, one ticket, in sequence — the sums have to land EXACTLY.
+    // Done as a real sequence rather than a helper, so each step reads.
+    let covered = [];
+    let paidSoFar = 0;
+    const takenPayments = [];
+    for (const pick of [['a'], ['b'], ['c']]) {
+        seed(splitTicket({ paid_amount: paidSoFar, payments: takenPayments.slice() }));
+        // eslint-disable-next-line no-await-in-loop
+        const r = await payLines([{ order_id: 'o1', line_ids: pick }], { method: 'cash' });
+        takenPayments.push({
+            payment_id: `t${covered.length}`, status: 'settled',
+            amount: r.billDue, line_ids: pick
+        });
+        covered = covered.concat(pick);
+        paidSoFar += r.billDue;
+    }
+    is(paidSoFar, 232000, 'THREE SPLITS TOTAL THE TICKET, to the rupiah');
+    is(takenPayments[2].amount, 232000 - takenPayments[0].amount - takenPayments[1].amount,
+        'the last payer takes the exact remainder, never a rounded share');
+
+    // The same three in a different order still total the ticket — rounding
+    // must not depend on who pays first.
+    covered = []; paidSoFar = 0; takenPayments.length = 0;
+    for (const pick of [['c'], ['a'], ['b']]) {
+        seed(splitTicket({ paid_amount: paidSoFar, payments: takenPayments.slice() }));
+        // eslint-disable-next-line no-await-in-loop
+        const r = await payLines([{ order_id: 'o1', line_ids: pick }], { method: 'cash' });
+        takenPayments.push({ payment_id: `u${covered.length}`, status: 'settled', amount: r.billDue, line_ids: pick });
+        covered = covered.concat(pick);
+        paidSoFar += r.billDue;
+    }
+    is(paidSoFar, 232000, '…and so do the same three in a different order');
+
+    // The final split SETTLES the ticket, which is what closes the table out.
+    is(patchOf('o1').status, 'paid', 'the last item paid for closes the ticket');
+    is(patchOf('o1').paid_at !== null, true, '…and stamps it paid');
+
+    // A line paid for twice is money collected twice, and both payments look
+    // right. This is the guard that stops it.
+    seed(splitTicket({
+        paid_amount: 145000,
+        payments: [{ payment_id: 'x', status: 'settled', amount: 145000, line_ids: ['a'] }]
+    }));
+    try {
+        await payLines([{ order_id: 'o1', line_ids: ['a'] }], { method: 'cash' });
+        fail('a dish already paid for was charged again');
+    } catch (e) {
+        is(/already paid for one of those items/i.test(e.message), true,
+            'an item somebody has already paid for cannot be charged again');
+    }
+
+    // A whole-ticket part payment says nothing about WHICH items it covered, so
+    // a split after one would charge for them again.
+    seed(splitTicket({
+        paid_amount: 50000,
+        payments: [{ payment_id: 'y', status: 'settled', amount: 50000 }]
+    }));
+    try {
+        await payLines([{ order_id: 'o1', line_ids: ['a'] }], { method: 'cash' });
+        fail('a split was allowed on top of a blind part payment');
+    } catch (e) {
+        is(/against the whole ticket/i.test(e.message), true,
+            'a split is refused on a ticket already part-paid without item detail');
+    }
+
+    seed(splitTicket());
+    try {
+        await payLines([{ order_id: 'o1', line_ids: ['nope'] }], { method: 'cash' });
+        fail('an item that is not on the ticket was billed');
+    } catch (e) {
+        is(/no such item/i.test(e.message), true, 'an item that is not on the ticket is refused');
+    }
 
     // ── 8. The refusals ─────────────────────────────────────────────────────
     const refuses = async (label, ids2, opts, match) => {

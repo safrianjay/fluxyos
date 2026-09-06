@@ -143,8 +143,87 @@
         return Math.min(b, value);
     }
 
+    // ── SPLITTING A TICKET BY ITEM ──────────────────────────────────────────
+    //
+    // "I'll pay for my dish." The customer picks lines; this says what they owe,
+    // INCLUDING their share of the ticket's service charge, tax and any
+    // order-level discount — a split that charges the menu price and drops the
+    // rest is a bill that does not foot and a restaurant that under-collects.
+    //
+    // ⚠️ THE INVARIANT IS EXACTNESS, NOT FAIRNESS. Split a 319.000 ticket three
+    // ways and the three amounts must total 319.000 to the rupiah — otherwise
+    // the last payer either cannot close the ticket (short by one) or is charged
+    // for a rupiah nobody owes, and the order sits unsettled with the table
+    // looking occupied. Proportional rounding does not give you that: three
+    // shares of a third each round to 106.333 and sum to 319.999.
+    //
+    // So it allocates on the RUNNING TOTAL rather than per share:
+    //
+    //     amount = round(total × coveredAfter / all) − round(total × covered / all)
+    //
+    // Each payment is the difference between two rounded cumulative figures, so
+    // the errors cancel and the final selection — whose `coveredAfter` is the
+    // whole ticket — takes exactly whatever is left. True in any order, for any
+    // partition, at any rounding.
+    //
+    // The WEIGHT is the line's net of its own discount: a half-price dish should
+    // carry half the service charge with it. An order-level discount is not a
+    // line's, so it spreads across everyone, which is what dividing into
+    // `total` already does.
+    function lineWeight(l) {
+        var gross = int(l && l.gross_amount);
+        var disc = int(l && l.discount_amount);
+        return Math.max(0, gross - disc);
+    }
+
+    /**
+     * @param {{lines:array, total:number, coveredIds:array, selectedIds:array}} input
+     * @returns {{amount:number, weightAll:number, weightCovered:number,
+     *            weightSelected:number, coversRest:boolean}}
+     */
+    function splitLineShare(input) {
+        var i = input || {};
+        var lines = Array.isArray(i.lines) ? i.lines : [];
+        var total = int(i.total);
+        var covered = {};
+        (Array.isArray(i.coveredIds) ? i.coveredIds : []).forEach(function (id) { covered[id] = true; });
+        var selected = {};
+        (Array.isArray(i.selectedIds) ? i.selectedIds : []).forEach(function (id) { selected[id] = true; });
+
+        // A ticket discounted to nothing has no gross to weigh, and dividing by
+        // it would produce NaN on every share. Each line then counts as one, so
+        // the partition still adds up exactly — which is the property that
+        // matters when there is no money to apportion.
+        var flat = lines.reduce(function (t, l) { return t + lineWeight(l); }, 0) <= 0;
+        var w = function (l) { return flat ? 1 : lineWeight(l); };
+
+        var all = 0; var wCovered = 0; var wSelected = 0;
+        lines.forEach(function (l) {
+            var id = l && l.line_id;
+            var weight = w(l);
+            all += weight;
+            if (covered[id]) wCovered += weight;
+            else if (selected[id]) wSelected += weight;
+        });
+        if (all <= 0) {
+            return { amount: 0, weightAll: 0, weightCovered: 0, weightSelected: 0, coversRest: true };
+        }
+
+        var after = wCovered + wSelected;
+        var amount = Math.round(total * after / all) - Math.round(total * wCovered / all);
+        return {
+            amount: Math.max(0, amount),
+            weightAll: all,
+            weightCovered: wCovered,
+            weightSelected: wSelected,
+            // The selection finishes the ticket, so it takes the exact remainder.
+            coversRest: after >= all
+        };
+    }
+
     return {
         DEFAULTS: DEFAULTS,
+        splitLineShare: splitLineShare,
         normalizeSettings: normalizeSettings,
         computeBillTotals: computeBillTotals,
         presetDiscountAmount: presetDiscountAmount

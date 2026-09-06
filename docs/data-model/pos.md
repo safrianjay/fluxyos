@@ -603,9 +603,67 @@ Guard: `check:pos-table-bill` — 41 assertions, pure, unconditional in the BE
 lane, driving the real method against a fake transaction that throws on a read
 after a write. Board: five specs in `tests/pos-orders-board.spec.js`.
 
-**Still not built: splitting a bill by ITEM or by seat.** The unit of splitting
-is the ticket. Assigning individual lines to payers needs a UI for it and a
-posting story for a partly-settled ticket, and neither exists.
+### Split by item (2026-09-06)
+
+"I'll pay for my dish." The bill dialog has two readings of one table —
+**Whole tickets** and **By item** — and both end in the same
+`payPosTableBill` call with a different selection. `lines` is
+`[{ order_id, line_ids: [...] }]`; absent, whole tickets settle as before.
+
+⚠️ **A dish costs more than its menu price.** The share carries that ticket's
+service charge, tax and order-level discount with it — charge the menu price and
+the rest is left on the ticket with nobody paying it, and the table can never
+settle. A Rp125.000 burger on a 5%/11% ticket is **Rp145.000** to pay for.
+
+⚠️ **THE INVARIANT IS EXACTNESS, NOT FAIRNESS.** Split a 232.000 ticket three
+ways and the three amounts must total 232.000 **to the rupiah**: short by one and
+the last payer cannot close the ticket, over by one and they are charged for a
+rupiah nobody owes — either way the order sits unsettled with the table still
+reading occupied. Proportional rounding does not give you that (three thirds of
+319.000 round to 106.333 and sum to 319.999), so `splitLineShare` allocates on
+the **running total**:
+
+```
+amount = round(total × coveredAfter / all) − round(total × covered / all)
+```
+
+Each payment is the difference between two rounded cumulative figures, so the
+errors cancel and the final selection takes exactly what is left — in any order,
+for any partition. The **weight** is the line net of its own discount (a
+half-price dish carries half the service charge); an order-level discount is not
+a line's, so dividing into `total` spreads it across everyone. A ticket
+discounted to nothing weighs each line as one, so the partition still adds up.
+
+It lives in `pos-pricing.js` — pure, UMD, and the same module the dialog quotes
+with. A dialog that adds up its own way is how a customer is quoted one number
+and charged another.
+
+**`payments[].line_ids` is the record of which dishes a payment settled.** Read
+back by the next split to know what is left, and by the receipt. Two guards
+follow from it:
+
+- **A line is paid for once.** Without the check the same dish can be charged to
+  two people and both payments look correct — the ticket over-collects and
+  nothing reconciles it back.
+- **A ticket cannot be part-paid both ways.** A whole-ticket payment says
+  nothing about which items it covered, so a split after one has no way to know
+  what is left and would charge for it again. Refused, not guessed at.
+
+**The split's receipt is their items and what they paid**, never the table's
+ticket — that states a figure they did not pay, to the person least able to
+check it. It is not itemised further: the share is allocated across the
+SELECTION, so a per-dish tax line would be inventing a split of a split.
+
+Splitting does **not** move the kitchen ladder — someone paying for their
+starter must not take the main course off the cook's screen.
+
+**Still not built: split by SEAT, and even splits ("three ways").** The unit is
+the item. An even split is a partial tender against the selection, which
+`payPosTableBill` deliberately refuses today.
+
+Guards: `check:pos-table-bill` (63 assertions — three splits totalling the
+ticket in two different orders, the last taking the exact remainder, both
+double-charge refusals) and two board specs.
 
 ### Payment status and order status are TWO STATES (2026-09-06)
 

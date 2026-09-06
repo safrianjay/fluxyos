@@ -2931,6 +2931,60 @@ function openTableBillModal(tableId) {
     // twice.
     const picked = new Set(list.map((o) => o.id));
 
+    // ── TWO GRANULARITIES, ONE DIALOG ───────────────────────────────────────
+    //
+    // `ticket` splits by ROUND — whoever had the second round pays for it.
+    // `item` splits by DISH, which is what a table actually asks for: "I'll pay
+    // for mine." Both end in the same `payPosTableBill` call with a different
+    // selection, so there is one place that decides what a payment does.
+    let mode = 'ticket';
+    // line_id → true, across every ticket at the table. Line ids are unique per
+    // order; the map is keyed `orderId|lineId` so two tickets cannot collide.
+    const pickedLines = new Set();
+    const lineKeyOf = (o, l) => `${o.id}|${l.line_id}`;
+
+    // What has already been paid for, per ticket. A line somebody else settled
+    // is shown and struck through rather than hidden — a customer asking "what
+    // about the burger?" needs an answer, not a gap.
+    const coveredOf = (o) => {
+        const out = new Set();
+        (o.payments || []).forEach((p) => {
+            if (p.status !== 'settled') return;
+            (p.line_ids || []).forEach((id) => out.add(id));
+        });
+        return out;
+    };
+
+    // ⚠️ A TICKET ALREADY PART-PAID WITHOUT ITEM DETAIL CANNOT BE SPLIT. A
+    // whole-ticket payment says nothing about which dishes it covered, so a
+    // split after one would charge for them again. The DAL refuses it; the
+    // dialog says so before the cashier has selected anything.
+    const blindPaid = (o) => (o.payments || []).some((p) => p.status === 'settled'
+        && !((p.line_ids || []).length));
+
+    // The exact amount for the current line selection, through the SAME module
+    // the DAL charges with — a dialog that adds up shares its own way is how a
+    // customer is quoted one number and charged another.
+    const splitSelection = () => list.map((o) => ({
+        order_id: o.id,
+        line_ids: (o.lines || []).filter((l) => pickedLines.has(lineKeyOf(o, l))).map((l) => l.line_id)
+    })).filter((x) => x.line_ids.length);
+
+    const splitTotal = () => {
+        const P = window.FluxyPosPricing;
+        if (!P) return 0;
+        return splitSelection().reduce((sum, sel) => {
+            const o = list.find((x) => x.id === sel.order_id);
+            if (!o) return sum;
+            return sum + P.splitLineShare({
+                lines: o.lines || [],
+                total: Math.round(Number(o.total_amount) || 0),
+                coveredIds: [...coveredOf(o)],
+                selectedIds: sel.line_ids
+            }).amount;
+        }, 0);
+    };
+
     document.getElementById('pos-bill-modal')?.remove();
     const el = document.createElement('div');
     el.id = 'pos-bill-modal';
@@ -2941,13 +2995,17 @@ function openTableBillModal(tableId) {
             <div class="pos-modal-head">
                 <div>
                     <h2 class="pos-modal-title" id="pos-bill-title">Table ${esc(label)} bill</h2>
-                    <p class="pos-modal-sub">${list.length} tickets · untick any the customer is not paying for now</p>
+                    <p class="pos-modal-sub" id="pos-bill-sub"></p>
                 </div>
                 <button type="button" class="pos-modal-close" data-close aria-label="Close">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18 18 6M6 6l12 12"/></svg>
                 </button>
             </div>
             <div class="pos-modal-body">
+                <div class="pos-bill-modes" id="pos-bill-modes" role="tablist">
+                    <button type="button" role="tab" data-bill-mode="ticket" aria-selected="true">Whole tickets</button>
+                    <button type="button" role="tab" data-bill-mode="item" aria-selected="false">By item</button>
+                </div>
                 <div class="pos-bill-list" id="pos-bill-list"></div>
                 <p class="pos-hint" id="pos-bill-rest" hidden></p>
             </div>
@@ -2967,8 +3025,45 @@ function openTableBillModal(tableId) {
         if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onEsc); }
     });
 
-    const paint = () => {
+    const paintItems = () => {
+        el.querySelector('#pos-bill-sub').textContent =
+            'Tick the items this customer is paying for — their share of service and tax comes with them.';
+        el.querySelector('#pos-bill-list').innerHTML = list.map((o) => {
+            const covered = coveredOf(o);
+            const blind = blindPaid(o);
+            const rows = (o.lines || []).map((l) => {
+                const done = covered.has(l.line_id);
+                const on = pickedLines.has(lineKeyOf(o, l));
+                return `<label class="pos-bill-line${done ? ' is-done' : ''}${on ? ' is-on' : ''}">
+                    <input type="checkbox" data-line="${esc(lineKeyOf(o, l))}"${on ? ' checked' : ''}${done || blind ? ' disabled' : ''}>
+                    <span class="pos-bill-line-name">${esc(l.item_name || '')}${
+                        (l.quantity || 1) > 1 ? ` <span class="pos-bill-line-qty">× ${esc(String(l.quantity))}</span>` : ''}</span>
+                    ${done ? '<span class="pos-bill-line-paid">Paid</span>' : ''}
+                    <span class="pos-bill-line-amt num">${esc(rp(Number(l.gross_amount) || 0))}</span>
+                </label>`;
+            }).join('');
+            return `<div class="pos-bill-ticket">
+                <div class="pos-bill-ticket-head">${esc(o.order_number || '')}</div>
+                ${blind ? '<p class="pos-hint is-warn">Part of this ticket was already paid without item detail — settle the rest as a whole ticket.</p>' : ''}
+                ${rows}
+            </div>`;
+        }).join('');
+
+        const total = splitTotal();
+        el.querySelector('#pos-bill-total').textContent = rp(total);
+        // What the TABLE still owes after this payment — the figure that stops a
+        // split ending with everyone assuming somebody else got the rest.
+        const rest = list.reduce((t, o) => t + posOrderDue(o), 0) - total;
+        const restEl = el.querySelector('#pos-bill-rest');
+        restEl.hidden = rest <= 0;
+        if (rest > 0) restEl.textContent = `${rp(rest)} still to pay on this table after this.`;
+        el.querySelector('#pos-bill-pay').disabled = total <= 0;
+    };
+
+    const paintTickets = () => {
         const chosen = list.filter((o) => picked.has(o.id));
+        el.querySelector('#pos-bill-sub').textContent =
+            `${list.length} tickets · untick any the customer is not paying for now`;
         el.querySelector('#pos-bill-list').innerHTML = list.map((o) => {
             const st = STATUS[o.status] || STATUS.open;
             const n = (o.lines || []).reduce((t, l) => t + (Number(l.quantity) || 0), 0);
@@ -3006,6 +3101,24 @@ function openTableBillModal(tableId) {
         el.querySelector('#pos-bill-pay').disabled = !chosen.length;
     };
 
+    const paint = () => (mode === 'item' ? paintItems() : paintTickets());
+
+    el.querySelector('#pos-bill-modes').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-bill-mode]');
+        if (!b || b.dataset.billMode === mode) return;
+        mode = b.dataset.billMode;
+        el.querySelectorAll('[data-bill-mode]').forEach((x) =>
+            x.setAttribute('aria-selected', String(x.dataset.billMode === mode)));
+        paint();
+    });
+
+    el.querySelector('#pos-bill-list').addEventListener('change', (e) => {
+        const box = e.target.closest('[data-line]');
+        if (!box) return;
+        if (box.checked) pickedLines.add(box.dataset.line); else pickedLines.delete(box.dataset.line);
+        paint();
+    });
+
     // Opening a ticket to add to it is the OTHER thing a cashier wants from a
     // table, and the floor plan now routes here for both — so this dialog must
     // not be a dead end for it.
@@ -3033,6 +3146,21 @@ function openTableBillModal(tableId) {
     });
 
     el.querySelector('#pos-bill-pay').addEventListener('click', () => {
+        if (mode === 'item') {
+            const sel = splitSelection();
+            const total = splitTotal();
+            if (!sel.length || total <= 0) return;
+            close();
+            openPaymentModal({
+                orders: list.filter((o) => sel.some((x) => x.order_id === o.id)),
+                tableLabel: label,
+                // The selection AND the figure it came to, so the payment modal
+                // never re-derives an amount the dialog already quoted.
+                lines: sel,
+                due: total
+            });
+            return;
+        }
         const chosen = list.filter((o) => picked.has(o.id));
         if (!chosen.length) return;
         close();
@@ -3067,7 +3195,7 @@ function openTableBillModal(tableId) {
 // notes, the non-cash lockdown and the short-tender refusal are identical in
 // both, which is the reason this is a mode rather than a second dialog: a
 // second money dialog is a second place for those rules to drift.
-function openPaymentModal({ orders = null, tableLabel = null } = {}) {
+function openPaymentModal({ orders = null, tableLabel = null, lines = null, due: dueOverride = null } = {}) {
     // A bill is a list; a single order is a list of one. Everything below reads
     // the list, so there is no branch to keep in step.
     const bill = Array.isArray(orders) && orders.length ? orders.slice() : null;
@@ -3075,9 +3203,13 @@ function openPaymentModal({ orders = null, tableLabel = null } = {}) {
     if (!o) return;
     const M = window.FluxyMoney;
     const cur = M.baseCurrency();
-    const due = bill
-        ? bill.reduce((t, x) => t + posOrderDue(x), 0)
-        : Math.max(0, Number(o.total_amount) - Number(o.paid_amount || 0));
+    // A SPLIT quotes its own figure. The lines chosen carry a share of service
+    // and tax that only `splitLineShare` can work out, and re-deriving it here
+    // from the tickets would quote the whole bill for a plate of chips.
+    const due = dueOverride != null ? Math.max(0, Math.round(dueOverride))
+        : (bill
+            ? bill.reduce((t, x) => t + posOrderDue(x), 0)
+            : Math.max(0, Number(o.total_amount) - Number(o.paid_amount || 0)));
     const methods = DataService.POS_PAYMENT_METHODS;
     let method = 'cash';
     let received = due;                       // exact is the commonest tender
@@ -3093,7 +3225,9 @@ function openPaymentModal({ orders = null, tableLabel = null } = {}) {
                 <div>
                     <h2 class="pos-modal-title" id="pos-pay-title">Take payment</h2>
                     <p class="pos-modal-sub">${bill
-                        ? `${esc(`Table ${tableLabel || o.table_label || ''}`)} · ${bill.length} tickets`
+                        ? `${esc(`Table ${tableLabel || o.table_label || ''}`)} · ${lines
+                            ? `${lines.reduce((t, x) => t + x.line_ids.length, 0)} items`
+                            : `${bill.length} tickets`}`
                         : `${esc(o.table_label ? `Table ${o.table_label}` : 'Takeaway')} · ${esc(orderShort(o))}`}</p>
                 </div>
                 <button type="button" class="pos-modal-close" data-close aria-label="Close">
@@ -3424,20 +3558,28 @@ function openPaymentModal({ orders = null, tableLabel = null } = {}) {
             awaitEmit: false,
             method,
             ladder: posProfile().ladder,
+            // Null on a whole-ticket bill; the chosen lines on a split.
+            lines,
             amountReceived: received,
             reference: $$('pos-pay-ref').value
         });
         close();
+        const what = lines
+            ? `${lines.reduce((t, x) => t + x.line_ids.length, 0)} items`
+            : `${res.orders.length} tickets`;
         toast(res.change > 0
             ? `Paid — give ${rp(res.change)} change.`
-            : `Paid — ${rp(res.billDue)} across ${res.orders.length} tickets.`);
+            : `Paid — ${rp(res.billDue)} across ${what}.`);
         // Best-effort, exactly as the single-order path: a booking that will not
         // tidy must never surface as a failed payment.
         res.orders.forEach((x) => { closeReservationForOrder(x.id).catch(() => {}); });
         // ONE receipt for the whole bill. The customer paid once and is owed one
         // document; printing a slip per ticket would put the separation the
         // KITCHEN needs in front of the person who never had it.
-        openReceipt(res.orders);
+        // A SPLIT'S RECEIPT IS THEIR ITEMS, NOT THE TABLE'S. Printing the whole
+        // ticket to someone who paid for one dish hands them a document stating
+        // a figure they did not pay.
+        openReceipt(res.orders, { billId: res.billId });
         renderOrder(); renderMenu();
         if (res.emitting) await res.emitting;
         await refresh({ keepOrder: true });
@@ -3592,10 +3734,27 @@ function openDiscountDrawer(lineId = null) {
 // above the total in one case and below it in the other. Since a second ticket
 // inherits the sitting's `pos_pricing` (pos.md) that cannot happen within a
 // sitting any more; it survives for bills opened before that rule existed.
-function openReceipt(order) {
+function openReceipt(order, { billId = null } = {}) {
     const list = (Array.isArray(order) ? order : [order]).filter(Boolean);
     if (!list.length) return;
     const o = list[0];
+
+    // ── A SPLIT'S RECEIPT IS THEIR ITEMS, AND WHAT THEY PAID ────────────────
+    //
+    // Someone who paid for one dish must not be handed the table's whole
+    // ticket: it states a figure they did not pay, and it is the document a
+    // dispute is settled with. When this payment named its lines, the receipt
+    // is those lines and the amount that was actually collected for them —
+    // service and tax included, because their share of both is inside it.
+    //
+    // Not itemised further than that on purpose. The share is allocated across
+    // the SELECTION, so printing a per-dish tax line would be inventing a split
+    // of a split; the total is exact and the lines say what it was for.
+    const splitPay = billId
+        ? list.flatMap((x) => (x.payments || []).filter((p) => p.status === 'settled'
+            && p.bill_id === billId && (p.line_ids || []).length))
+        : [];
+    const isSplit = splitPay.length > 0;
     // Sectioned only when one block would have to state two different tax
     // treatments at once — see above. Everything else combines.
     const split = list.length > 1
@@ -3625,6 +3784,17 @@ function openReceipt(order) {
     // The bill as ONE set of figures. Summed from the tickets rather than
     // recomputed, so the receipt can never state a total the orders do not.
     const sum = (f) => list.reduce((t, x) => t + (Number(x[f]) || 0), 0);
+    // On a split, the "bill" is only what this payer settled.
+    const splitLines = isSplit
+        ? list.flatMap((x) => {
+            const ids = new Set((x.payments || [])
+                .filter((p) => p.status === 'settled' && p.bill_id === billId)
+                .flatMap((p) => p.line_ids || []));
+            return (x.lines || []).filter((l) => ids.has(l.line_id));
+        })
+        : [];
+    const splitTotal = splitPay.reduce((t, p) => t + (Number(p.amount) || 0), 0);
+
     const bill = {
         lines: billLines,
         subtotal: sum('subtotal'),
@@ -3725,7 +3895,11 @@ function openReceipt(order) {
       list.map((x) => x.order_number || '').filter(Boolean).join(' + '))}</div>
   <div class="c m">${when.toLocaleString(window.FluxyMoney.baseLocale())}</div>
   <hr>
-  ${split ? `${list.map((x) => `
+  ${isSplit ? `
+  <div class="c m">Bagian dari tagihan meja</div>
+  <table>${splitLines.map(line).join('')}</table>
+  <hr>
+  <table>${row('Dibayar', rp(splitTotal), 'tot')}</table>` : split ? `${list.map((x) => `
     <div class="tk">${esc(x.order_number || '')}</div>
     <table>${(x.lines || []).map(line).join('')}</table>
     <table>${ticketTotals(x)}</table>
@@ -3734,7 +3908,7 @@ function openReceipt(order) {
   <hr>
   <table>${ticketTotals(bill)}</table>`}
   <table>
-    ${paid.map((p) => row(methodLabel(p.method), rp(p.amount))).join('')}
+    ${(isSplit ? splitPay : paid).map((p) => row(methodLabel(p.method), rp(p.amount))).join('')}
     ${
         // Tendered and change, on the receipt, for the one case where they
         // differ from the total: cash. This is the customer's own record of what
@@ -3742,7 +3916,7 @@ function openReceipt(order) {
         // counter is actually about, and the receipt was silent on both.
         // Older payments carry neither field; they fall out rather than
         // rendering "Rp0" against a sale nobody can now check.
-        paid.filter((p) => Number(p.change_given) > 0).map((p) =>
+        (isSplit ? splitPay : paid).filter((p) => Number(p.change_given) > 0).map((p) =>
             row('Tunai', rp(p.amount_received)) + row('Kembalian', rp(p.change_given))).join('')
     }
   </table>
