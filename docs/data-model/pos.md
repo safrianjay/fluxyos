@@ -607,6 +607,64 @@ after a write. Board: five specs in `tests/pos-orders-board.spec.js`.
 is the ticket. Assigning individual lines to payers needs a UI for it and a
 posting story for a partly-settled ticket, and neither exists.
 
+### Payment status and order status are TWO STATES (2026-09-06)
+
+```
+Order status     open → submitted → sent → ready → served → paid
+Payment status   unpaid → paid          (paid_amount vs total_amount)
+```
+
+⚠️ **They were one field, and paying moved both.** `recordPosPayment` wrote
+`status: 'paid'` whatever the kitchen was doing — so on a merged bill the ticket
+still in the pan went terminal the moment the customer paid: off the Kitchen
+tab, off the floor plan's active set, and reading as **done** to the cook who
+still had to make it. Reported by Jay hours after the merged bill shipped.
+
+`status` now only reaches `paid` once the kitchen has finished **and** the money
+is in. Until then the ticket keeps its own rung and carries a **Paid** badge
+beside it — never instead of it, because a cashier reading one pill cannot tell
+whether the food has gone out.
+
+⚠️ **"The kitchen still has work" is PROFILE data, not a property of the
+status.** A retail counter has no ladder at all: its orders live at `open` and
+paying is the end of them. The first cut hardcoded the F&B statuses and left
+every pay-first sale sitting `open` forever, receipt printed, sale never closed
+(`tests/pos-pay-first.spec.js` caught it). The till passes its own
+`posProfile().ladder`; absent, payment closes the order out, which is what every
+caller did before. `awaiting_payment` is a **payment** rung, so `served` leading
+there is not outstanding kitchen work.
+
+**Everything that asked `status === 'paid'` had to be re-read as "settled".**
+Each was silent in its own direction:
+
+| Reader | If left on the status |
+|---|---|
+| `_emitPosSale` gate | revenue posts only when the food is served — never, if nobody closes the ticket |
+| `emitUnpostedPosSales` | the retry never finds it |
+| **`getPosShiftTally`** | the drawer count omits the bill, and the close reads SHORT — the variance posting to 6700 as a loss |
+| `getPosOverview.todayPaid` | `salesToday` understates the till's own takings |
+| `voidPosOrder` | a paid order could be voided, leaving posted revenue behind |
+| `refundPosOrder` / reprint | a customer who paid and changed their mind while the food cooked could not be refunded |
+| line editing | a settled bill could have a dish added to it |
+
+`todayPaid` and `activeOrders` now **overlap** — a settled ticket the kitchen
+still has is both a sale taken today and live work — so every caller that
+concatenates them dedupes by id (`allBoardOrders`).
+
+**The diner keeps watching their food.** `qr-order-status` dropped a ticket on
+`paid_at`, which took a diner's own order off their phone the moment they paid
+for it. A ticket leaves the sitting when the food has **arrived** and the bill is
+settled — which is what `status === 'paid'` now means.
+
+**No rules change.** `status != 'paid' || paid_amount >= total_amount` is a
+one-way implication and still holds; the frozen-paid transitions simply engage
+when the ticket closes out rather than at payment. The window in between is
+protected in the DAL instead: void, edit and pay all refuse a settled order.
+
+Guards: `check:pos-table-bill` (the kitchen keeps its status, the board's clock
+does not restart on a ticket that did not move, and a counter with no ladder
+still closes out) and two board specs.
+
 ### The visit total is three figures, never one
 
 A settled order is money that has already changed hands. Folding it into "what

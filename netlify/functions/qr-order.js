@@ -334,7 +334,11 @@ exports.handler = async (event) => {
         const nowMs = Date.now();
         const isLive = (o) => {
             if (!o || o.table_id !== tableId || o.voided_at) return false;
-            if (o.status === 'paid' || o.paid_at) return false;
+            // Paid is not finished — a settled ticket the kitchen still has
+            // keeps the sitting alive, or a diner ordering dessert after paying
+            // for their main would be told their sitting had ended.
+            if (o.status === 'paid') return false;
+            if (o.paid_at && ['served', 'awaiting_payment'].includes(o.status)) return false;
             const opened = msOf(o.opened_at) || msOf(o.created_at);
             return !(opened && (nowMs - opened) > STALE_MS);
         };

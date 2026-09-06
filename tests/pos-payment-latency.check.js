@@ -38,6 +38,21 @@ const is = (actual, expected, label) => {
     else fail(`${label}\n      expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
 };
 
+/**
+ * Lift a SYNC helper out of the module, so this drives the real predicate.
+ *
+ * `_posSettled` decides whether the sale emits at all, which is exactly what
+ * this check measures the timing of — a hand-written copy would let the two
+ * drift on the one fact the whole file is about.
+ */
+function syncMethodUnder(name) {
+    const start = SRC.indexOf(`    ${name}(`);
+    if (start === -1) throw new Error(`${name} not found in pos-service.js`);
+    const end = SRC.indexOf('\n    },\n', start);
+    // eslint-disable-next-line no-new-func
+    return new Function(`return ({ ${SRC.slice(start, end + 6)} });`)()[name];
+}
+
 /** Pull `recordPosPayment` out of the module and bind it to a stub. */
 function methodUnder(name) {
     const start = SRC.indexOf(`    async ${name}(`);
@@ -61,13 +76,22 @@ function methodUnder(name) {
 
     host._posTenderFor = (m) => (m === 'cash' ? 'cash' : 'external');
     host._nullableString = (v) => (v == null ? null : String(v));
+    host._posSettled = syncMethodUnder('_posSettled');
+    host._posKitchenPending = syncMethodUnder('_posKitchenPending');
+    host._posStatusAfterPayment = syncMethodUnder('_posStatusAfterPayment');
     host._posTotals = (o) => ({
         paid_amount: (o.payments || []).reduce((s, p) => s + p.amount, 0),
         total_amount: 50000
     });
+    // Mirrors the real `updatePosOrder`, which merges the recomputed totals into
+    // what it returns. Without them the returned order carries no
+    // `paid_amount`, `_posSettled` reads false, and the sale never emits — so
+    // this file would measure the timing of something that had stopped
+    // happening and report it as fast.
     host.updatePosOrder = async (uid, id, fn) => {
         const base = { id, status: 'awaiting_payment', lines: [{ item_id: 'x' }], payments: [] };
-        return { ...base, ...fn(base) };
+        const merged = { ...base, ...fn(base) };
+        return { ...merged, ...host._posTotals(merged) };
     };
     host._emitPosSale = () => {
         emitStarted = Date.now();

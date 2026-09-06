@@ -37,6 +37,10 @@ const SAFE = /^[A-Za-z0-9_-]{1,128}$/;
 // open → submitted → sent → ready → served → awaiting_payment → paid, and a
 // diner does not need the operational vocabulary — they need to know whether to
 // keep waiting.
+// The statuses where the kitchen has nothing left to do. Mirrors
+// `_posKitchenDone` in pos-service.js.
+const KITCHEN_DONE = ['served', 'awaiting_payment', 'paid'];
+
 const STAGE = {
     open:              { step: 1, label: 'Menunggu konfirmasi' },
     submitted:         { step: 1, label: 'Menunggu konfirmasi' },
@@ -250,7 +254,16 @@ exports.handler = async (event) => {
             const o = d.data() || {};
             if (o.table_id !== tableId) return;
             if (o.voided_at) return;
-            if (o.status === 'paid' || o.paid_at) return;
+            // ⚠️ PAID IS NOT THE SAME AS FINISHED. Since 2026-09-06 payment no
+            // longer moves the kitchen ladder, so a ticket can be settled and
+            // still being cooked — and the diner who just paid is exactly the
+            // person who wants to watch it. Dropping it on `paid_at` alone took
+            // their food off their own phone the moment they paid for it.
+            //
+            // The sitting ends for a ticket when the food has ARRIVED and the
+            // bill is settled, which is what `status === 'paid'` now means.
+            if (o.status === 'paid') return;
+            if (o.paid_at && KITCHEN_DONE.includes(o.status)) return;
             const opened = msOf(o.opened_at) || msOf(o.created_at);
             if (opened && (now - opened) > STALE_MS) return;
             live.push(d);

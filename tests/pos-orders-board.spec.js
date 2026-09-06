@@ -770,3 +770,76 @@ test('TAPPING A TWO-TICKET TABLE OPENS THE TABLE, NOT ONE TICKET', async ({ page
     await expect(page.locator('#pos-bill-modal')).toHaveCount(0);
     await expect(page.locator('.pos-view[data-view="till"]')).toBeVisible();
 });
+
+// ── Payment status and order status are two different states ────────────────
+//
+// ⚠️ THEY WERE ONE FIELD. Paying wrote `paid` whatever the kitchen was doing,
+// so settling a merged bill sent the ticket still in the pan to a terminal
+// state: off the kitchen tab, and reading as done to the cook who still had to
+// make it. Reported by Jay hours after the merged bill shipped.
+//
+//   Order status    New → Preparing → Ready → Served → Completed
+//   Payment status  Unpaid → Paid
+//
+// Paying moves the second one only.
+
+test('A PAID TICKET STILL IN THE KITCHEN KEEPS ITS OWN STATUS', async ({ page }) => {
+    await openBoard(page);
+    const rows = await page.evaluate(() => {
+        const ts = (ms) => { const d = new Date(Date.now() - ms); return { toDate: () => d }; };
+        const mk = (id, no, status, total, paid) => ({
+            id, order_number: no, status, table_id: 't6', table_label: '6',
+            lines: [{ line_id: `l${id}`, item_name: `Dish ${no}`, quantity: 1, unit_price: total, gross_amount: total }],
+            subtotal: total, total_amount: total, paid_amount: paid,
+            payments: paid ? [{ payment_id: `p${id}`, method: 'cash', status: 'settled', amount: paid }] : [],
+            opened_at: ts(600000), status_changed_at: ts(600000),
+            paid_at: paid >= total ? ts(60000) : null
+        });
+        return window.__posSeedBoard([
+            // #001 eaten and paid; #002 paid on the same merged bill and still
+            // being cooked.
+            mk('s1', '001', 'served', 50000, 50000),
+            mk('s2', '002', 'sent', 30000, 30000)
+        ]);
+    });
+
+    // The cooking ticket is STILL IN THE KITCHEN, not completed.
+    expect(rows.map((r) => r.status).sort()).toEqual(['sent', 'served']);
+    // …and it is still on the Kitchen tab, which is the screen a cook works from.
+    await page.click('[data-otab="kitchen"]');
+    await expect(page.locator('.pos-ocard')).toHaveCount(1);
+    await expect(page.locator('.pos-ocard')).toContainText('002');
+    // Its status pill still says the kitchen has it, with Paid BESIDE it —
+    // never instead of it, which is the substitution that loses the cook.
+    await expect(page.locator('.pos-ocard-status')).toContainText('In the kitchen');
+    await expect(page.locator('.pos-ocard .pos-paid-badge')).toHaveText('Paid');
+
+    // ⚠️ AND ITS ACTION IS THE KITCHEN'S NEXT STEP, never "Pay Bill". The money
+    // is already in the drawer; a payment dialog here is how a customer is
+    // charged twice.
+    const btn = page.locator('.pos-ocard-btn.is-primary');
+    await expect(btn).toHaveText('Mark as Ready');
+    await expect(page.locator('.pos-ocard [data-pay]')).toHaveCount(0);
+
+    // Nothing paid-and-cooking is in Completed — it is not completed.
+    await page.click('[data-otab="done"]');
+    await expect(page.locator('.pos-ocard')).toHaveCount(0);
+});
+
+test('a served ticket that is already paid offers CLOSE OUT, not a second bill', async ({ page }) => {
+    await openBoard(page);
+    await page.evaluate(() => {
+        const ts = (ms) => { const d = new Date(Date.now() - ms); return { toDate: () => d }; };
+        return window.__posSeedBoard([{
+            id: 's1', order_number: '001', status: 'served', table_id: 't6', table_label: '6',
+            lines: [{ line_id: 'l1', item_name: 'Dish', quantity: 1, unit_price: 50000, gross_amount: 50000 }],
+            subtotal: 50000, total_amount: 50000, paid_amount: 50000,
+            payments: [{ payment_id: 'p1', method: 'cash', status: 'settled', amount: 50000 }],
+            opened_at: ts(600000), status_changed_at: ts(600000), paid_at: ts(60000)
+        }]);
+    });
+    // "Request Bill" on an order already settled would send the cashier to
+    // collect money that is in the drawer.
+    await expect(page.locator('.pos-ocard-btn.is-primary')).toHaveText('Close out');
+    await expect(page.locator('.pos-ocard [data-pay]')).toHaveCount(0);
+});

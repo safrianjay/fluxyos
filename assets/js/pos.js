@@ -414,6 +414,60 @@ const STATUS = {
     void:             { label: 'Voided',           cls: 'fluxy-status-danger',  next: null,               action: null }
 };
 
+// ── PAYMENT STATUS AND ORDER STATUS ARE TWO DIFFERENT THINGS ────────────────
+//
+// `status` above is the KITCHEN's ladder. Whether the customer has paid is
+// `paid_amount` against `total_amount`, and the two move independently: a table
+// settles one merged bill while one of its tickets is still being cooked.
+//
+// ⚠️ THEY WERE THE SAME FIELD. Paying wrote `paid` whatever the kitchen was
+// doing, so on a merged bill the ticket still in the pan went terminal the
+// moment the customer paid — off the kitchen tab, reading as done to the cook
+// who still had to make it. `status` now only reaches `paid` once the kitchen
+// has finished AND the money is in; until then the ticket keeps its own state
+// and carries a Paid badge beside it.
+//
+// Mirrors `_posSettled` in pos-service.js. Two copies of "has this been paid
+// for" is how a badge and a drawer count come to disagree, so the DAL's is the
+// one that writes and this one only ever reads.
+const isSettled = (o) => {
+    const total = Math.round(Number(o && o.total_amount) || 0);
+    return total > 0 && Math.round(Number(o && o.paid_amount) || 0) >= total;
+};
+
+// The next rung, given what the kitchen and the customer have each done.
+//
+// A settled order has no bill left to request, so `served` leads to closing it
+// out rather than to `awaiting_payment` — which would ask the cashier to
+// collect money that is already in the drawer.
+function nextStatusFor(o) {
+    if (!o) return null;
+    if (isSettled(o) && o.status === 'served') return 'paid';
+    return posProfile().ladder[o.status] || null;
+}
+
+// The words on that step.
+function actionFor(o) {
+    const st = STATUS[o.status] || STATUS.open;
+    if (isSettled(o) && o.status === 'served') return 'Close out';
+    return st.action;
+}
+
+// The badge that says the money is in, whatever the kitchen is doing. Rendered
+// BESIDE the status, never instead of it — that substitution is the bug.
+const paidBadge = (o) => (isSettled(o) && o.status !== 'paid'
+    ? '<span class="fluxy-table-status fluxy-status-success pos-paid-badge">Paid</span>' : '');
+
+// Every order the board holds, with no duplicates. `activeOrders` and
+// `paidToday` OVERLAP now: an order settled while its food cooks is in both,
+// because it is both a sale taken today and a ticket the kitchen still has.
+function allBoardOrders(ov) {
+    const seen = new Map();
+    ((ov || {}).activeOrders || []).concat((ov || {}).paidToday || [])
+        .forEach((o) => { if (o && !seen.has(o.id)) seen.set(o.id, o); });
+    return [...seen.values()];
+}
+
 // ── Outlets ──────────────────────────────────────────────────────────────────
 
 async function loadOutlets() {
@@ -1098,7 +1152,7 @@ function inDateWindow(o, mode) {
 
 function visibleOrders() {
     const ov = state.overview || {};
-    const all = (ov.activeOrders || []).concat(ov.paidToday || []);
+    const all = allBoardOrders(ov);
     const pass = ORDER_TABS[state.orderTab] || ORDER_TABS.all;
     const q = (state.orderQuery || '').trim().toLowerCase();
     // One `now` for the whole pass. Reading Date.now() inside the comparator
@@ -1451,16 +1505,21 @@ function cardAction(o) {
         </div>`;
     }
     if (!st.action) return '';
-    // `data-advance` for a status move, `data-pay` for the one that opens money.
-    const attr = o.status === 'awaiting_payment' ? 'data-pay' : 'data-advance';
+    // ⚠️ A SETTLED TICKET IS NEVER OFFERED "PAY BILL" — the money is already in
+    // the drawer, and a second payment dialog on a paid order is how a customer
+    // gets charged twice. Its next step is the KITCHEN's, and once the food is
+    // out there is nothing left but to close it out.
+    const attr = (o.status === 'awaiting_payment' && !isSettled(o)) ? 'data-pay' : 'data-advance';
+    const label = actionFor(o);
+    if (!label) return '';
     return `<div class="pos-ocard-actions">
-        <button type="button" class="pos-ocard-btn is-primary is-only" ${attr}="${esc(o.id)}">${esc(st.action)}</button>
+        <button type="button" class="pos-ocard-btn is-primary is-only" ${attr}="${esc(o.id)}">${esc(label)}</button>
     </div>`;
 }
 
 function renderTabCounts() {
     const ov = state.overview || {};
-    const all = (ov.activeOrders || []).concat(ov.paidToday || []);
+    const all = allBoardOrders(ov);
     const now = Date.now();
     const scoped = all.filter((o) => inDateWindow(o, state.orderDate)
         && !(state.orderService === 'dine_in' && !o.table_id)
@@ -1484,6 +1543,11 @@ function renderOrderLists() {
 
     const rows = visibleOrders();
     if (!rows.length) {
+        // ⚠️ CLEARED, not just hidden. The previous tab's cards stayed in the
+        // DOM behind `.hidden` — reachable by a screen reader, and by anything
+        // else that queries the board, so an empty tab still answered with the
+        // last tab's orders.
+        grid.innerHTML = '';
         grid.classList.add('hidden');
         empty.classList.remove('hidden');
         empty.innerHTML = `<div class="fluxy-table-empty">
@@ -1547,6 +1611,7 @@ function renderOrderLists() {
                                 + ' · ' + when.toLocaleTimeString(window.FluxyMoney.baseLocale(), { hour: '2-digit', minute: '2-digit' }))
                             : ''}</p>
                         <span class="fluxy-table-status ${st.cls} pos-ocard-status">${esc(st.label)}</span>
+                        ${paidBadge(o)}
                     </div>
                 </div>
                 ${waitChip(o, now)}
@@ -2263,6 +2328,9 @@ function setPrimaryAction(primary, o, st) {
         primary.textContent = p.closeLabel;
         return;
     }
+    // A settled order owes nothing, so its next step is never payment — it is
+    // whatever the kitchen has left, or closing out.
+    if (isSettled(o)) { primary.textContent = actionFor(o) || p.closeLabel; return; }
     const nextIsPayment = o.status === 'awaiting_payment' || !p.ladder[o.status];
     if (p.payFirst && nextIsPayment) {
         const due = Math.max(0, (Number(o.total_amount) || 0) - (Number(o.paid_amount) || 0));
@@ -2376,6 +2444,11 @@ function renderOrder() {
     badge.className = `fluxy-table-status ${st.cls} pos-order-badge`;
     badge.textContent = st.label;
     badge.classList.remove('hidden');
+    // Paid rides BESIDE the kitchen status, never instead of it. Replacing it
+    // is the bug: a cashier reading one pill cannot tell whether the food has
+    // gone out, and that is the question the panel is open to answer.
+    const paidPill = $('pos-order-paid');
+    if (paidPill) paidPill.classList.toggle('hidden', !isSettled(o) || o.status === 'paid');
 
     const rows = o.lines || [];
     // "Not finished with" — said directly. It used to read `st.next || awaiting`,
@@ -2542,7 +2615,7 @@ function renderOrder() {
     if (txAmt > 0 && pricing.tax_inclusive) {
         bits.push(`<div class="pos-total-row"><span>Incl. ${esc(pricing.tax_label || 'tax')}</span><span>${rp(txAmt)}</span></div>`);
     }
-    if (Number(o.paid_amount) > 0 && o.status !== 'paid') {
+    if (Number(o.paid_amount) > 0 && !isSettled(o)) {
         bits.push(`<div class="pos-total-row"><span>Paid so far</span><span>${rp(o.paid_amount)}</span></div>`);
         bits.push(`<div class="pos-total-row is-grand"><span>Balance</span><span>${rp(Number(o.total_amount) - Number(o.paid_amount))}</span></div>`);
     }
@@ -2553,7 +2626,11 @@ function renderOrder() {
     primary.disabled = empty && o.status !== 'paid';
     setPrimaryAction(primary, o, st);
 
-    const editable = !['paid', 'void'].includes(o.status);
+    // A SETTLED order is not editable, whatever the kitchen is doing with it.
+    // Keyed on `status === 'paid'` this reopened the moment payment stopped
+    // moving the ladder — so a bill already paid could have a dish added to it,
+    // silently taking the order back to part-paid.
+    const editable = o.status !== 'void' && !isSettled(o);
     // Hold is pay-first only. In F&B the TABLE is the parking slot, so a second
     // parking concept would be two ways to do one thing.
     $('pos-hold-btn')?.classList.toggle('hidden',
@@ -2564,9 +2641,12 @@ function renderOrder() {
     // A paid order's only correction is a refund, and only once.
     const ws = (typeof window !== 'undefined' && window.FluxyWorkspace) || null;
     const mayRefund = !!(ws && typeof ws.can === 'function' && ws.can('pos.refund'));
+    // Both keyed on SETTLED: a customer who has paid and changed their mind
+    // while the food is still cooking is exactly who asks for a refund, and the
+    // receipt they are owed exists from the moment they paid.
     refundBtn.classList.toggle('hidden',
-        !(o.status === 'paid' && mayRefund && !o.refund_transaction_id));
-    $('pos-reprint-btn').classList.toggle('hidden', o.status !== 'paid');
+        !(isSettled(o) && mayRefund && !o.refund_transaction_id));
+    $('pos-reprint-btn').classList.toggle('hidden', !isSettled(o));
     if (o.refund_transaction_id) {
         badge.className = 'fluxy-status fluxy-status-danger';
         badge.textContent = 'Refunded';
@@ -2630,7 +2710,7 @@ async function startOrder(tableId, details = {}) {
 // LIST, this must be able to OPEN.
 function selectOrder(orderId) {
     const ov = state.overview || {};
-    const found = (ov.activeOrders || []).concat(ov.paidToday || [])
+    const found = allBoardOrders(ov)
         .find((o) => o.id === orderId);
     if (!found) return;
     state.orderId = orderId;
@@ -2646,9 +2726,9 @@ function selectOrder(orderId) {
 // the till, where the order on screen IS the subject.
 async function advanceOrderById(orderId) {
     const ov = state.overview || {};
-    const o = (ov.activeOrders || []).concat(ov.paidToday || []).find((x) => x.id === orderId);
+    const o = allBoardOrders(ov).find((x) => x.id === orderId);
     if (!o) return;
-    const next = posProfile().ladder[o.status];
+    const next = nextStatusFor(o);
     if (!next) return;
     try {
         const updated = await ds.setPosOrderStatus(state.uid, orderId, next);
@@ -2671,12 +2751,13 @@ async function advance() {
         renderOrder(); renderMenu();
         return;
     }
-    if (o.status === 'awaiting_payment') return openPaymentModal();
+    // Never re-open the money dialog on an order that is already settled.
+    if (o.status === 'awaiting_payment' && !isSettled(o)) return openPaymentModal();
     // The ladder is PROFILE data, not a property of the status. A pay-first
     // profile has no next step, and "no next step" here means charge — never
     // "do nothing", which is what a bare `return` would have made it.
-    const next = posProfile().ladder[o.status];
-    if (!next) return openPaymentModal();
+    const next = nextStatusFor(o);
+    if (!next) return isSettled(o) ? undefined : openPaymentModal();
     try {
         state.order = await ds.setPosOrderStatus(state.uid, state.orderId, next);
         renderOrder();
@@ -2791,7 +2872,7 @@ function billOrderIds(o) {
  */
 async function reprintBill(orderId) {
     const known = [...((state.overview || {}).activeOrders || []),
-        ...((state.overview || {}).paidToday || [])];
+        ...((state.overview || {}).paidToday || [])].filter((o, i, a) => a.findIndex((x) => x.id === o.id) === i);
     const o = known.find((x) => x.id === orderId);
     if (!o) return;
 
@@ -3275,6 +3356,10 @@ function openPaymentModal({ orders = null, tableLabel = null } = {}) {
                     // after the receipt is on screen.
                     awaitEmit: false,
                     method,
+                    // The till's ladder, so paying does not close out a ticket
+                    // the kitchen is still working on — and DOES close out a
+                    // retail sale, whose profile has no ladder at all.
+                    ladder: posProfile().ladder,
                     // What is APPLIED to the bill is capped at what is owed; the
                     // rest is change, not revenue and not money in the drawer.
                     // Sending the whole tender as `amount` is what used to make
@@ -3338,6 +3423,7 @@ function openPaymentModal({ orders = null, tableLabel = null } = {}) {
             // receipt is on screen.
             awaitEmit: false,
             method,
+            ladder: posProfile().ladder,
             amountReceived: received,
             reference: $$('pos-pay-ref').value
         });
@@ -5361,7 +5447,7 @@ async function refresh({ keepOrder = false } = {}) {
     // Re-bind the open order to the freshly-read copy, so the panel can never
     // show a stale version and lose the concurrency race on the next write.
     if (state.orderId && !keepOrder) {
-        const live = (overview.activeOrders || []).concat(overview.paidToday || [])
+        const live = allBoardOrders(overview)
             .find((o) => o.id === state.orderId);
         if (live) state.order = live;
         else if (state.order && !['paid', 'void'].includes(state.order.status)) {

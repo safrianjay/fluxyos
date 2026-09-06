@@ -1035,6 +1035,11 @@
         }
         .pos-ocard-bill .pos-ocard-btn { flex: 0 0 auto; padding: 0 12px; }
 
+        /* PAID sits beside the kitchen status, never instead of it. The order
+           status ladder and the payment status are two different states, and a
+           cashier reading one pill cannot tell whether the food has gone out. */
+        .pos-paid-badge { margin-left: 6px; }
+
         .pos-ocard-actions { display: flex; gap: 8px; }
         .pos-ocard-btn {
             flex: 1; min-height: 34px; border-radius: 8px; cursor: pointer;
@@ -2007,6 +2012,7 @@
                                 </span>
                                 <h2 id="pos-order-title">No order open</h2>
                                 <span id="pos-order-status" class="fluxy-status hidden"></span>
+                                <span id="pos-order-paid" class="fluxy-table-status fluxy-status-success pos-paid-badge hidden">Paid</span>
                             </div>
                             <p id="pos-order-sub" class="pos-order-sub">Start one below, or tap a free table.</p>
                         </div>

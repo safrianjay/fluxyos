@@ -1113,7 +1113,7 @@ export const POS_METHODS = {
     // and one of the two needs a new field. See docs/POS_BUSINESS_TYPE_STRATEGY.md §C5.
     async setPosOrderLabel(userId, orderId, label) {
         return this.updatePosOrder(userId, orderId, (order) => {
-            if (['paid', 'void'].includes(order.status)) {
+            if (order.status === 'void' || this._posSettled(order)) {
                 throw new Error('That sale is already closed.');
             }
             return { note: this._nullableString(label, 60) };
@@ -1167,7 +1167,10 @@ export const POS_METHODS = {
         const out = await this.updatePosOrder(userId, orderId, (order) => {
             // A paid order has already posted revenue and relieved stock; undoing
             // that is a refund (which reverses both), not a void.
-            if (order.status === 'paid') throw new Error('This order is already paid. Refund it instead — a void would leave the revenue posted.');
+            // SETTLED, not closed out — since payment no longer moves the
+            // kitchen ladder, a bill paid while its food cooks is still `sent`,
+            // and voiding it would leave the posted revenue behind.
+            if (this._posSettled(order)) throw new Error('This order is already paid. Refund it instead — a void would leave the revenue posted.');
             return { status: 'void', void_reason: why, voided_at: Timestamp.fromDate(new Date()) };
         });
         await this._auditCreateBestEffort(userId, 'pos_order.voided', 'pos_orders', orderId,
@@ -1245,6 +1248,57 @@ export const POS_METHODS = {
         return { pos_cash_amount: total - clearing, pos_clearing_amount: clearing };
     },
 
+    // ── PAYMENT STATUS AND ORDER STATUS ARE TWO DIFFERENT THINGS ────────────
+    //
+    // `status` is the KITCHEN's ladder: open → submitted → sent → ready →
+    // served. Whether the customer has paid is `paid_amount` against
+    // `total_amount`, and it moves independently — a table can settle a merged
+    // bill while one of its tickets is still being cooked.
+    //
+    // ⚠️ THEY WERE THE SAME FIELD, and paying flipped an order to `paid`
+    // whatever the kitchen was doing with it. On a merged bill that meant #002,
+    // still in the pan, vanished from the kitchen tab the moment the customer
+    // paid for #001 and #002 together: the cook loses the ticket and the board
+    // says the food is done. Reported by Jay on 2026-09-06, hours after the
+    // merged bill shipped.
+    //
+    // So `status` only reaches `paid` once the kitchen has finished AND the
+    // money is in. Until then the ticket keeps its own state and carries a Paid
+    // badge — one terminal value, so nothing downstream has to learn a second
+    // way to ask "is this order closed".
+    _posSettled(o) {
+        const total = Math.round(Number(o && o.total_amount) || 0);
+        const paid = Math.round(Number(o && o.paid_amount) || 0);
+        return total > 0 && paid >= total;
+    },
+
+    // Does the KITCHEN still have work on a ticket in this status?
+    //
+    // ⚠️ THIS IS PROFILE DATA, NOT A PROPERTY OF THE STATUS, and the DAL is
+    // deliberately not the one who knows. A retail counter has no kitchen ladder
+    // at all — `open` is where its orders live and paying is the end of them —
+    // so a rule hardcoded to F&B statuses here left every pay-first sale sitting
+    // `open` forever, with the receipt printed and the order never closed.
+    //
+    // The till passes its own ladder; absent, nothing is pending and payment
+    // closes the order out, which is what every caller did before this existed.
+    //
+    // `awaiting_payment` is a PAYMENT rung, not a kitchen one — `served` leads
+    // there, and treating that as outstanding kitchen work would stop a normal
+    // dine-in bill from ever closing.
+    _posKitchenPending(status, ladder) {
+        const next = ladder ? ladder[status] : null;
+        return !!next && next !== 'awaiting_payment';
+    },
+
+    // What `status` becomes when money lands on an order. The kitchen's state is
+    // left ALONE while it still has work — including on a part payment, which
+    // used to force `awaiting_payment` onto a ticket that was still frying.
+    _posStatusAfterPayment(current, settled, ladder) {
+        if (this._posKitchenPending(current, ladder)) return current;
+        return settled ? 'paid' : 'awaiting_payment';
+    },
+
     // Record money received. An order becomes `paid` only when what has been
     // recorded covers the bill — paid is DERIVED, never asserted. Partial
     // payments accumulate; the order stays awaiting_payment until the balance
@@ -1267,6 +1321,10 @@ export const POS_METHODS = {
     // new fields needed no rules change and no deploy.
     async recordPosPayment(userId, orderId, {
         method = 'cash', amount, amountReceived = null, reference = null,
+        // The till's status ladder, so payment does not overwrite kitchen work
+        // in progress. See `_posKitchenPending` — absent means "nothing is
+        // pending", which is the behaviour every caller had before it existed.
+        ladder = null,
         // Wait for the ledger emission before returning?
         //
         // The money is recorded by the order write ABOVE the emission, and the
@@ -1300,7 +1358,7 @@ export const POS_METHODS = {
         }
 
         const order = await this.updatePosOrder(userId, orderId, (o) => {
-            if (o.status === 'paid') throw new Error('This order is already fully paid.');
+            if (this._posSettled(o)) throw new Error('This order is already fully paid.');
             if (!(o.lines || []).length) throw new Error('There is nothing on this order to pay for.');
             const payments = [...(o.payments || []), {
                 payment_id: `p${Date.now().toString(36)}`,
@@ -1321,14 +1379,20 @@ export const POS_METHODS = {
             const settled = totals.paid_amount >= totals.total_amount;
             return {
                 payments,
-                status: settled ? 'paid' : 'awaiting_payment',
+                // The KITCHEN's status, untouched while it still has the ticket.
+                status: this._posStatusAfterPayment(o.status, settled, ladder),
+                // Payment is recorded here whatever the kitchen is doing, so a
+                // Paid badge is answerable from the order alone.
                 paid_at: settled ? Timestamp.fromDate(new Date()) : null
             };
         });
 
-        // Only a PAID order emits. An open or partially-paid one has produced no
-        // financial event yet, and a voided one never will.
-        if (order.status === 'paid') {
+        // A SETTLED order emits, whatever the kitchen is doing. Gated on
+        // `status === 'paid'` it would wait for the food to be served — so a
+        // sale taken at 19:00 and served at 19:20 posted at 19:20, and one the
+        // staff never closed out never posted at all. The money arriving is the
+        // financial event; carrying the plate is not.
+        if (this._posSettled(order)) {
             const emitting = this._emitPosSale(userId, order).catch((err) => {
                 // The money is recorded either way. Emission is retried by
                 // `emitUnpostedPosSales`, and the POS overview surfaces the
@@ -1377,6 +1441,9 @@ export const POS_METHODS = {
     // differently would sum into a total describing neither.
     async payPosTableBill(userId, orderIds, {
         method = 'cash', amountReceived = null, reference = null,
+        // As `recordPosPayment` — the till's ladder, so settling a table does
+        // not close out a ticket the kitchen is still working on.
+        ladder = null,
         // Same argument as `recordPosPayment`: the money is recorded by the
         // order writes, emission is best-effort with `emitUnpostedPosSales` as
         // its retry, and making the cashier watch it happen N times over is
@@ -1418,7 +1485,7 @@ export const POS_METHODS = {
             const name = (o) => `Ticket ${o.order_number || o.id}`;
             rows.forEach((o) => {
                 if (o.status === 'void') throw new Error(`${name(o)} was voided and cannot be paid.`);
-                if (o.status === 'paid') throw new Error(`${name(o)} is already paid.`);
+                if (this._posSettled(o)) throw new Error(`${name(o)} is already paid.`);
                 if (!(o.lines || []).length) throw new Error(`${name(o)} has nothing on it to pay for.`);
             });
 
@@ -1513,7 +1580,12 @@ export const POS_METHODS = {
                 const isPaid = totals.paid_amount >= totals.total_amount;
                 const patch = {
                     payments, ...totals,
-                    status: isPaid ? 'paid' : 'awaiting_payment',
+                    // ⚠️ THE BILL IS MERGED; THE KITCHEN TICKETS ARE NOT. This
+                    // wrote 'paid' unconditionally, so settling a table sent
+                    // every ticket on it to a terminal state — including the one
+                    // still in the pan, which then vanished off the kitchen tab
+                    // and read as done.
+                    status: this._posStatusAfterPayment(o.status, isPaid, ladder),
                     paid_at: isPaid ? stamp : null,
                     version: (Number(o.version) || 1) + 1,
                     updated_at: serverTimestamp(),
@@ -1541,7 +1613,7 @@ export const POS_METHODS = {
         // the others, and `emitUnpostedPosSales` retries whatever is left
         // unstamped — the POS overview shows the backlog rather than hiding it.
         const emitting = Promise.all(settled.orders
-            .filter((o) => o.status === 'paid')
+            .filter((o) => this._posSettled(o))
             .map((o) => this._emitPosSale(userId, o).catch((err) => {
                 console.error('[pos] sale recorded but not yet emitted to the ledger:',
                     o.order_number || o.id, err && err.message);
@@ -1680,8 +1752,22 @@ export const POS_METHODS = {
     // than a time-range guess, which two tills at one outlet would make
     // ambiguous the moment that ships.
     async getPosShiftTally(userId, shiftId) {
-        const orders = await this.getPosOrders(userId, { statuses: ['paid'], limitCount: 300 });
-        const mine = orders.filter((o) => o.shift_id === shiftId);
+        // ⚠️ EVERY STATUS MONEY CAN LAND ON, then filtered by SETTLED.
+        //
+        // This queried `statuses: ['paid']`, which stopped being "the orders
+        // that took money" the moment payment stopped moving the kitchen ladder:
+        // a merged bill settled while one ticket was still cooking would have
+        // been left out of the drawer count entirely, and the close would read
+        // SHORT by it — the variance posting to 6700 as a loss. That is the
+        // precise shape of the two bugs this function has already had (pos.md
+        // §3), and it is the one thing the shift exists to get right.
+        //
+        // `void` is the only status excluded: a voided order took nothing.
+        const orders = await this.getPosOrders(userId, {
+            statuses: ['open', 'submitted', 'sent', 'ready', 'served', 'awaiting_payment', 'paid'],
+            limitCount: 300
+        });
+        const mine = orders.filter((o) => o.shift_id === shiftId && this._posSettled(o));
         // TENDER, not settlement. A bank transfer settles to the same account as
         // cash and puts nothing in the drawer — counting it here made the blind
         // count short by every transfer taken. See POS_PAYMENT_METHODS.
@@ -1975,7 +2061,12 @@ export const POS_METHODS = {
 
             snap.docs.forEach((d) => {
                 const o = { id: d.id, ...d.data() };
-                if (o.status === 'paid' && !o.transaction_id) found.push(o);
+                // SETTLED, not `status === 'paid'`. A sale whose food is still
+                // being cooked has taken the customer's money and has to reach
+                // the ledger; gated on the terminal status it would sit
+                // unposted until somebody closed the ticket out, and forever if
+                // nobody did.
+                if (this._posSettled(o) && !o.voided_at && !o.transaction_id) found.push(o);
             });
             scanned += snap.docs.length;
             cursor = snap.docs[snap.docs.length - 1];
@@ -2013,7 +2104,11 @@ export const POS_METHODS = {
         const snap = await getDoc(doc(this.db, `${scope}/pos_orders/${orderId}`));
         if (!snap.exists()) throw new Error('That order no longer exists.');
         const order = { id: snap.id, ...snap.data() };
-        if (order.status !== 'paid') throw new Error('Only a paid order can be refunded.');
+        // SETTLED, not closed out. A customer who has paid and changed their mind
+        // while the food is still being cooked is exactly who asks for a refund,
+        // and refusing them because the kitchen has not finished would be a rule
+        // about the wrong thing.
+        if (!this._posSettled(order)) throw new Error('Only a paid order can be refunded.');
         if (order.refund_transaction_id) throw new Error('This order has already been refunded.');
 
         const when = new Date();
@@ -2189,7 +2284,14 @@ export const POS_METHODS = {
         // floor plan, and the table it is sitting at reads as free.
         const openStatuses = ['open', 'submitted', 'sent', 'ready', 'served', 'awaiting_payment'];
         const active = orders.filter((o) => openStatuses.includes(o.status));
-        const todayPaid = orders.filter((o) => o.status === 'paid' && (() => {
+        // ⚠️ SETTLED TODAY, not closed out today. `salesToday` sums this, so
+        // reading `status === 'paid'` understated the till's own takings by
+        // every bill paid while its food was still cooking — a plausible wrong
+        // number on the one figure a cashier checks against the drawer.
+        //
+        // It therefore OVERLAPS `active`: an order can be settled and still in
+        // the kitchen. Every caller that concatenates the two dedupes by id.
+        const todayPaid = orders.filter((o) => this._posSettled(o) && !o.voided_at && (() => {
             const t = o.paid_at && typeof o.paid_at.toDate === 'function' ? o.paid_at.toDate() : null;
             return t && t >= start;
         })());
@@ -2264,7 +2366,7 @@ export const POS_METHODS = {
             activeOrders: active,
             // The two honesty signals. Both are counts of things that are wrong
             // and would otherwise be invisible.
-            unpostedCount: orders.filter((o) => o.status === 'paid' && !o.transaction_id).length,
+            unpostedCount: orders.filter((o) => this._posSettled(o) && !o.voided_at && !o.transaction_id).length,
             // itemId -> base units on hand. Advisory ONLY: the till shows it and
             // never enforces it. A shop that has physically got the thing sells
             // it, whatever the system believes — refusing the sale would make

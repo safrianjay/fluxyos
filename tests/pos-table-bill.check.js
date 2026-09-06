@@ -38,6 +38,23 @@ const is = (actual, expected, label) => {
     else fail(`${label}\n      expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
 };
 
+/**
+ * Lift a SYNC helper out of the module, so the check drives the real predicate.
+ *
+ * Hand-writing `_posSettled` into the stub would let the two drift, and the
+ * thing that would drift is "has this customer paid" — which now decides
+ * whether the kitchen keeps its ticket, whether the sale reaches the ledger and
+ * whether the drawer count includes it.
+ */
+function syncMethodUnder(name) {
+    const start = SRC.indexOf(`    ${name}(`);
+    if (start === -1) throw new Error(`${name} not found in pos-service.js`);
+    const end = SRC.indexOf('\n    },\n', start);
+    if (end === -1) throw new Error(`could not find the end of ${name}`);
+    // eslint-disable-next-line no-new-func
+    return new Function(`return ({ ${SRC.slice(start, end + 6)} });`)()[name];
+}
+
 /** Lift one method out of the module and bind the module-level names it reads. */
 function methodUnder(name, env) {
     const start = SRC.indexOf(`    async ${name}(`);
@@ -89,6 +106,9 @@ const host = {
     _scope: () => 'workspaces/w1',
     _nullableString: (v, n) => (v ? String(v).slice(0, n) : null),
     _posTenderFor: (m) => (m === 'cash' ? 'cash' : 'external'),
+    _posSettled: syncMethodUnder('_posSettled'),
+    _posKitchenPending: syncMethodUnder('_posKitchenPending'),
+    _posStatusAfterPayment: syncMethodUnder('_posStatusAfterPayment'),
     _posTotals: (o) => ({
         subtotal: o.subtotal || 0,
         discount_total: 0,
@@ -101,7 +121,10 @@ const host = {
     }),
     _emitPosSale: async () => {}
 };
-const pay = (ids, opts) => payBill.call(host, 'u1', ids, opts);
+// The F&B ladder the till hands the DAL. A retail counter passes none, which is
+// what makes a pay-first sale close out on payment.
+const FNB = { open: 'sent', submitted: 'sent', sent: 'ready', ready: 'served', served: 'awaiting_payment' };
+const pay = (ids, opts) => payBill.call(host, 'u1', ids, { ladder: FNB, ...opts });
 
 const ticket = (id, over = {}) => ({
     id,
@@ -201,6 +224,48 @@ const sumOver = (field) => writes.reduce((t, w) =>
     is(JSON.stringify(lastPayment('o1').bill_orders), JSON.stringify(['o1']),
         'a one-ticket bill records only itself — the reprint must not go looking for a sibling');
 
+    // ── 7b. PAYING DOES NOT COOK THE FOOD ───────────────────────────────────
+    //
+    // ⚠️ Order status and payment status are two different things, and this is
+    // the assertion that says so. Settling a merged bill used to write 'paid'
+    // onto every ticket on it — so #002, still in the pan, went terminal the
+    // moment the customer paid: off the kitchen tab, and reading as done to the
+    // cook who still had to make it.
+    seed(ticket('o1', { total_amount: 50000, status: 'served', opened_at: { __ts: 1000 } }),
+         ticket('o2', { total_amount: 30000, status: 'sent', opened_at: { __ts: 2000 } }));
+    await pay(['o1', 'o2'], { method: 'cash', amountReceived: 80000 });
+
+    const patchOf = (id) => (writes.find((w) => w.id === id) || {}).patch || {};
+    is(patchOf('o1').status, 'paid', 'a ticket the kitchen has finished closes out');
+    is(patchOf('o2').status, 'sent', 'a ticket still in the kitchen KEEPS ITS OWN STATUS');
+    is(patchOf('o2').paid_at !== null, true, '…and is still recorded as paid');
+    is(patchOf('o2').paid_amount, 30000, '…for its own full amount');
+    // The board's clock must not restart on a ticket that did not move.
+    is('status_changed_at' in patchOf('o2'), false,
+        'a ticket that did not change status does not restart the kitchen’s timer');
+    is(patchOf('o1').status_changed_at === SERVER_TS, true,
+        '…while the one that DID move is stamped');
+
+    // Same rule on a part payment, which used to force `awaiting_payment` onto a
+    // ticket that was still frying.
+    seed(ticket('o1', { total_amount: 50000, status: 'ready', opened_at: { __ts: 1000 } }));
+    await pay(['o1'], { method: 'cash', amountReceived: 50000 });
+    is(patchOf('o1').status, 'ready', 'a READY ticket paid for is still ready to serve');
+
+    // ⚠️ AND A COUNTER WITH NO KITCHEN CLOSES OUT ON PAYMENT. The first cut of
+    // this rule hardcoded the F&B statuses, so every pay-first RETAIL sale — an
+    // order that lives at `open` and has no ladder at all — sat `open` forever
+    // with its receipt printed and the sale never closed.
+    seed(ticket('o1', { total_amount: 50000, status: 'open', opened_at: { __ts: 1000 } }));
+    await payBill.call(host, 'u1', ['o1'], { method: 'cash', amountReceived: 50000 });
+    is(patchOf('o1').status, 'paid', 'a retail sale with no kitchen ladder closes out');
+
+    // …and the same order under an F&B ladder does NOT, because `open` there
+    // means the kitchen has not been given it yet.
+    seed(ticket('o1', { total_amount: 50000, status: 'open', opened_at: { __ts: 1000 } }));
+    await pay(['o1'], { method: 'cash', amountReceived: 50000 });
+    is(patchOf('o1').status, 'open', 'the same sale under a kitchen ladder keeps its place in it');
+
     // ── 8. The refusals ─────────────────────────────────────────────────────
     const refuses = async (label, ids2, opts, match) => {
         try { await pay(ids2, opts); fail(`${label} — it was ALLOWED`); }
@@ -239,7 +304,7 @@ const sumOver = (field) => writes.reduce((t, w) =>
         { method: 'cash', amountReceived: 100000 }, /voided/i);
 
     seed(ticket('o1'), ticket('o2', {
-        status: 'paid', opened_at: { __ts: 2000 },
+        status: 'paid', opened_at: { __ts: 2000 }, paid_amount: 50000,
         payments: [{ payment_id: 'p', status: 'settled', amount: 50000 }]
     }));
     await refuses('an already-paid ticket cannot be charged twice', ['o1', 'o2'],
