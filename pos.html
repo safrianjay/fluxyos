@@ -817,27 +817,43 @@
         /* CHANGE is the number the cashier acts on — it is how much cash leaves
            the drawer, and getting it wrong costs real money in both directions.
            Green, large, and the loudest thing on screen after the bill itself. */
+        /* ── Change ──────────────────────────────────────────────────────────
+           STACKED, not `space-between`. Pinned to opposite ends of the column
+           the label and the figure had a gulf between them and stopped reading
+           as one thing — the third time that exact defect showed up on this
+           dialog, after the amount due and the currency mark.
+
+           GREEN MEANS THERE IS MONEY TO HAND BACK. Cash is the default method
+           and exact is the commonest tender, so the dialog opened with a large
+           green success panel announcing Rp0 — celebrating the state that
+           requires nothing. The loud one should be the one with an action in it.
+        */
         .pos-change {
-            display: flex; align-items: baseline; justify-content: space-between;
-            gap: 12px; margin-top: 10px; padding: 12px 14px; border-radius: 12px;
+            display: flex; flex-direction: column; gap: 2px;
+            margin-top: 10px; padding: 12px 14px; border-radius: 12px;
             background: #F0FDF4; border: 1px solid #BBF7D0;
         }
-        .pos-change-label { font-size: 12px; font-weight: 600; color: #15803D; }
+        .pos-change-label {
+            font-size: 12px; font-weight: 600; color: #15803D;
+            letter-spacing: 0.06em; text-transform: uppercase;
+        }
         .pos-change-value {
             font-size: 24px; font-weight: 700; color: #15803D;
-            font-variant-numeric: tabular-nums; letter-spacing: -0.025em;
+            font-variant-numeric: tabular-nums; letter-spacing: -0.025em; line-height: 1.15;
         }
-        /* Exact money.
-           Greying this out was a mistake: a grey panel holding a zero reads as
-           an EMPTY field, not as a computed answer — reported as "the change is
-           not calculated" when it had been calculated correctly. It keeps the
-           green, so it is visibly the same result field it always is, and says
-           in words that the sum came out at nothing. Only the emphasis drops. */
-        .pos-change.is-zero .pos-change-value { font-size: 20px; }
-        .pos-change { flex-wrap: wrap; }
-        .pos-change-note {
-            flex: 1 0 100%; font-size: 12px; color: #15803D; margin-top: 2px;
-        }
+        .pos-change-note { font-size: 12px; color: #15803D; margin-top: 2px; }
+
+        /* ⚠️ EXACT MONEY IS QUIET, BUT IT IS STILL AN ANSWER.
+           Greying this out was a mistake ONCE: a grey panel holding a bare zero
+           read as an EMPTY field and was reported as "the change is not
+           calculated" when it had been calculated correctly. What fixed it was
+           the SENTENCE, not the colour — so the words stay and only the emphasis
+           drops. A neutral panel saying "nothing to give back" cannot be
+           mistaken for a field nobody filled in. */
+        .pos-change.is-zero { background: #F8FAFC; border-color: #E2E8F0; }
+        .pos-change.is-zero .pos-change-label { color: #64748B; }
+        .pos-change.is-zero .pos-change-value { font-size: 20px; color: #334155; }
+        .pos-change.is-zero .pos-change-note { color: #64748B; }
 
         /* ⚠️ The `hidden` ATTRIBUTE must beat a class that sets `display`.
            `.pos-change` and `.pos-quick` are `display: flex`, and a class rule
