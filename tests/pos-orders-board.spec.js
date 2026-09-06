@@ -1233,6 +1233,7 @@ async function seedReviewTicket(page) {
             quantity: 1, unit_price: price, gross_amount: price });
         return window.__posSeedBoard([{
             id: 'r1', order_number: '017', status: 'served', table_id: 't3', table_label: '3',
+            customer_name: 'Budi Santoso', customer_phone: '0812 3456 7890', guest_count: 4,
             lines: [L('a', 'Burger', 145000), L('b', 'Jasa Konsultasi Menu', 500000)],
             subtotal: 645000, discount_total: 0, service_charge_amount: 32250, tax_amount: 70950,
             total_amount: 748200, paid_amount: 0, payments: [],
@@ -1242,6 +1243,38 @@ async function seedReviewTicket(page) {
         }]);
     });
 }
+
+test('the dialogs name the party, and are wide enough to read', async ({ page }) => {
+    // The cashier is confirming the right PARTY as well as the right table, and
+    // the details were already on the document — captured at Create Order, or by
+    // the diner's own phone on a QR order — and simply never shown.
+    await openBoard(page);
+    await seedReviewTicket(page);
+    await page.locator('[data-table-bill]').first().click();
+
+    // ⚠️ ON ITS OWN LINE. Joined into the subtitle it read "Budi Santoso · 0812
+    // 3456 7890 · Tick the items this customer is paying for…" and wrapped — the
+    // name being checked against a person buried in a usage instruction.
+    const who = page.locator('#pos-bill-who');
+    await expect(who).toBeVisible();
+    await expect(who).toHaveText('Budi Santoso · 0812 3456 7890');
+    await expect(page.locator('#pos-bill-sub')).not.toContainText('Budi');
+
+    // Both settle dialogs carry a list now, and 460px wrapped menu names onto a
+    // second line beside their price.
+    const billWidth = await page.locator('#pos-bill-modal .pos-modal')
+        .evaluate((el) => el.getBoundingClientRect().width);
+    expect(billWidth).toBeGreaterThan(560);
+
+    await page.locator('#pos-bill-modal [data-bill-mode="ticket"]').click();
+    await page.locator('#pos-bill-pay').click();
+    const pay = page.locator('#pos-pay-modal .pos-modal');
+    expect(await pay.evaluate((el) => el.getBoundingClientRect().width)).toBeGreaterThan(560);
+    const whoRow = page.locator('#pos-pay-modal .pos-review-who');
+    await expect(whoRow).toContainText('Budi Santoso');
+    await expect(whoRow).toContainText('0812 3456 7890');
+    await expect(whoRow).toContainText('4 guests');
+});
 
 test('THE PAYMENT DIALOG SHOWS WHAT IS BEING PAID FOR, WITH VAT AND SERVICE', async ({ page }) => {
     await openBoard(page);
@@ -1274,6 +1307,26 @@ test('THE PAYMENT DIALOG SHOWS WHAT IS BEING PAID FOR, WITH VAT AND SERVICE', as
     // different bill than the one being charged is worse than no review.
     await expect(review).toContainText('748.200');
     await expect(page.locator('#pos-pay-due')).toContainText('748.200');
+
+    // ⚠️ AND NONE OF IT IS CLIPPED. The modal body is a GRID, and a grid item
+    // that hides its own overflow has an automatic minimum size of zero — so the
+    // card was sliced through the middle of a menu item, totals and all, the
+    // moment the dialog was taller than the screen.
+    const clipped = await page.locator('#pos-pay-modal .pos-review').evaluate((el) => {
+        const card = el.getBoundingClientRect();
+        const last = el.querySelector('.pos-review-totals').getBoundingClientRect();
+        return last.bottom > card.bottom + 1;
+    });
+    expect(clipped, 'the order review is cut off inside its own card').toBe(false);
+
+    // The amount due is not scrolled off the top by the tender field taking
+    // focus — the cashier opened this to check two things and both are on screen.
+    const dueVisible = await page.locator('#pos-pay-due').evaluate((el) => {
+        const body = el.closest('.pos-modal-body').getBoundingClientRect();
+        const r = el.getBoundingClientRect();
+        return r.top >= body.top - 1;
+    });
+    expect(dueVisible, 'the dialog opens already scrolled past the amount due').toBe(true);
 });
 
 test('a split reviews ONLY the dishes chosen, with their own share of VAT', async ({ page }) => {

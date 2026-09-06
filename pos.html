@@ -705,17 +705,34 @@
            Built on the shared modal (.pos-modal-layer / .pos-modal), so the
            scrim, blur, card and pinned footer are the dashboard's, not a second
            dialog language. What is specific to money is below. */
-        .pos-modal.pos-pay { width: min(480px, 100%); }
+        /* The two settle dialogs are WIDER than the rest.
+           Both now carry a list — the items being paid for, or the tickets and
+           dishes to divide — and a 460px column made a three-word menu name wrap
+           onto two lines beside its price. A cashier checking a screen against a
+           customer's order should be reading it, not decoding it. */
+        .pos-modal.pos-pay,
+        .pos-modal.pos-bill { width: min(640px, 100%); }
         /* The bill, stated once and large. Everything else on this screen is in
            service of matching this number, so it outranks all of it. */
-        .pos-pay-due {
-            display: flex; align-items: baseline; justify-content: space-between;
-            gap: 12px; padding: 12px 14px; border-radius: 12px;
-            background: #F8FAFC; border: 1px solid #E2E8F0;
+        /* ── The amount due is the HEADLINE, not a field ─────────────────────
+           It was a grey panel with the label pinned left and the figure pinned
+           right by `space-between`. At 460px that was tight enough to read as
+           one thing; at 640px it stretched to opposite ends of the box and the
+           two stopped looking related — the same defect the currency symbol had
+           below, and fixed the same way: put them together.
+           It also sat directly above the order review, so the dialog opened with
+           two bordered grey panels of near-identical weight and nothing read as
+           primary. The box is gone: the figure is the loudest thing on screen by
+           being the biggest, and the review card below is now the only panel.
+           24px is the top of the dashboard scale — the hierarchy comes from
+           stacking and weight, not from inventing a bigger step. */
+        .pos-pay-due { display: flex; flex-direction: column; gap: 2px; padding: 0 2px 4px; }
+        .pos-pay-due-label {
+            font-size: 12px; font-weight: 600; color: #64748B;
+            letter-spacing: 0.06em; text-transform: uppercase;
         }
-        .pos-pay-due-label { font-size: 12px; font-weight: 500; color: #64748B; }
         .pos-pay-due-value {
-            font-size: 24px; font-weight: 700; color: #0B0F19;
+            font-size: 24px; font-weight: 700; color: #0B0F19; line-height: 1.15;
             font-variant-numeric: tabular-nums; letter-spacing: -0.025em;
         }
         /* The currency sits WITH its number, not at the opposite end of the box.
@@ -1061,17 +1078,41 @@
            SCROLLS rather than growing: the method buttons must stay reachable
            on a 10" tablet however long the order is, and a review that pushes
            them off screen is a review nobody reads. */
+        /* ⚠️ NO `overflow: hidden` HERE. The modal body is a grid, and a grid
+           item that clips its own overflow has an automatic minimum size of
+           ZERO — so the moment the dialog was taller than the screen the row
+           collapsed and the card was sliced through the middle of a menu item,
+           totals and all. The corners are rounded on the edge children instead,
+           which keeps the card content-sized and makes the BODY scroll, which
+           is what it is for. */
         .pos-review {
-            border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;
-            margin-bottom: 16px; background: #fff;
+            border: 1px solid #E2E8F0; border-radius: 12px;
+            margin-bottom: 12px; background: #fff;
         }
+        .pos-review > :first-child { border-radius: 11px 11px 0 0; }
+        .pos-review > :last-child { border-radius: 0 0 11px 11px; }
+        /* Who the order is for, at the top of the review. The cashier is
+           confirming they have the right table AND the right party. */
+        .pos-review-who {
+            display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+            padding: 8px 12px; border-bottom: 1px solid #E2E8F0;
+        }
+        .pos-review-who strong { font-size: 14px; font-weight: 600; color: #0B0F19; }
+        .pos-review-who span { font-size: 12px; color: #64748B; font-variant-numeric: tabular-nums; }
+
         .pos-review-head {
-            padding: 8px 12px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0;
+            padding: 6px 12px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0;
             font-size: 12px; font-weight: 600; color: #64748B;
             letter-spacing: 0.06em; text-transform: uppercase;
         }
-        .pos-review-lines { max-height: 168px; overflow-y: auto; padding: 6px 12px; }
-        .pos-review-line { display: flex; gap: 10px; align-items: baseline; padding: 5px 0; }
+        /* Scrolls past four or five items so a long order cannot push the
+           method buttons off screen — with a floor under it, because this is a
+           scroll container too and would otherwise be the next thing the grid
+           collapses to nothing. */
+        .pos-review-lines {
+            max-height: 132px; min-height: 84px; overflow-y: auto; padding: 4px 12px;
+        }
+        .pos-review-line { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; }
         .pos-review-qty { flex: 0 0 auto; font-size: 12px; font-weight: 600; color: #64748B; min-width: 24px; }
         .pos-review-name { flex: 1; min-width: 0; font-size: 14px; color: #0B0F19; }
         .pos-review-mods { display: block; font-size: 12px; color: #64748B; }
@@ -1084,6 +1125,14 @@
         .pos-review-row.is-grand {
             font-size: 14px; font-weight: 700; color: #0B0F19;
             border-top: 1px solid #E2E8F0; margin-top: 4px; padding-top: 6px;
+        }
+
+        /* Whose bill this is, under the title. The cashier is checking it
+           against the person in front of them, so it reads as an identity and
+           not as part of the instruction below it. */
+        .pos-bill-who {
+            margin: 2px 0 0; font-size: 13px; font-weight: 600; color: #334155;
+            font-variant-numeric: tabular-nums;
         }
 
         .pos-bill-modes {

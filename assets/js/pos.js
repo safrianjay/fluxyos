@@ -3060,6 +3060,15 @@ function openTableBillModal(tableId) {
     const pickedLines = new Set();
     const lineKeyOf = (o, l) => `${o.id}|${l.line_id}`;
 
+    // Who is at this table, for the dialog's subtitle — the cashier is
+    // confirming the right party as well as the right table. Distinct, because
+    // two rounds opened by one person would otherwise name them twice.
+    const partyLine = () => {
+        const names = [...new Set(list.map((x) => (x.customer_name || '').trim()).filter(Boolean))];
+        const phones = [...new Set(list.map((x) => (x.customer_phone || '').trim()).filter(Boolean))];
+        return [names.join(', '), phones.join(', ')].filter(Boolean).join(' · ');
+    };
+
     // What has already been paid for, per ticket. A line somebody else settled
     // is shown and struck through rather than hidden — a customer asking "what
     // about the burger?" needs an answer, not a gap.
@@ -3119,6 +3128,7 @@ function openTableBillModal(tableId) {
             <div class="pos-modal-head">
                 <div>
                     <h2 class="pos-modal-title" id="pos-bill-title">Table ${esc(label)} bill</h2>
+                    <p class="pos-bill-who" id="pos-bill-who" hidden></p>
                     <p class="pos-modal-sub" id="pos-bill-sub"></p>
                 </div>
                 <button type="button" class="pos-modal-close" data-close aria-label="Close">
@@ -3180,15 +3190,17 @@ function openTableBillModal(tableId) {
         // split ending with everyone assuming somebody else got the rest.
         const rest = list.reduce((t, o) => t + posOrderDue(o), 0) - total;
         const restEl = el.querySelector('#pos-bill-rest');
-        restEl.hidden = rest <= 0;
-        if (rest > 0) restEl.textContent = `${rp(rest)} still to pay on this table after this.`;
+        // Nothing chosen yet is not a remainder — "after this" with nothing in
+        // "this" is a sentence about a payment that does not exist.
+        restEl.hidden = rest <= 0 || total <= 0;
+        if (!restEl.hidden) restEl.textContent = `${rp(rest)} still to pay on this table after this.`;
         el.querySelector('#pos-bill-pay').disabled = total <= 0;
     };
 
     const paintTickets = () => {
         const chosen = list.filter((o) => picked.has(o.id));
         el.querySelector('#pos-bill-sub').textContent =
-            `${list.length} tickets · untick any the customer is not paying for now`;
+            `${list.length} ticket${list.length === 1 ? '' : 's'} · untick any the customer is not paying for now`;
         el.querySelector('#pos-bill-list').innerHTML = list.map((o) => {
             const st = STATUS[o.status] || STATUS.open;
             const n = (o.lines || []).reduce((t, l) => t + (Number(l.quantity) || 0), 0);
@@ -3275,6 +3287,16 @@ function openTableBillModal(tableId) {
         if (rest > 0) restEl.textContent = `${rp(rest)} still to pay on this table after this share.`;
         el.querySelector('#pos-bill-pay').disabled = st.done || st.share.amount <= 0;
     };
+
+    // ⚠️ ITS OWN LINE, not folded into the instruction. Joined with " · " the
+    // subtitle read "Budi Santoso · 0812 3456 7890 · Tick the items this
+    // customer is paying for…" and wrapped to two lines — the name a cashier is
+    // checking against the person in front of them buried in a sentence about
+    // how to use the dialog.
+    const whoEl = el.querySelector('#pos-bill-who');
+    const party = partyLine();
+    whoEl.hidden = !party;
+    whoEl.textContent = party;
 
     const paint = () => (mode === 'item' ? paintItems() : mode === 'even' ? paintEven() : paintTickets());
 
@@ -3475,11 +3497,33 @@ function openPaymentModal({ orders = null, tableLabel = null, lines = null,
         };
     })();
 
+    // Who this order is for. Captured at Create Order, or by the diner's own
+    // phone on a QR order — either way it is already on the document and was
+    // simply not shown at the one moment a cashier is confirming they have the
+    // right party as well as the right table.
+    //
+    // DISTINCT across the tickets being settled: a table can hold two rounds
+    // opened by two people, and listing the same name twice reads as a bug.
+    const who = (() => {
+        const src = bill || [o];
+        const uniq = (f) => [...new Set(src.map((x) => (x[f] || '').trim()).filter(Boolean))];
+        return {
+            names: uniq('customer_name'),
+            phones: uniq('customer_phone'),
+            guests: src.reduce((t, x) => t + (Number(x.guest_count) || 0), 0)
+        };
+    })();
+
     const pricingOf = o.pos_pricing || {};
     const reviewRow = (label, value, cls) =>
         `<div class="pos-review-row${cls ? ` ${cls}` : ''}"><span>${esc(label)}</span><span class="num">${esc(rp(value))}</span></div>`;
     const reviewHtml = `
         <div class="pos-review">
+            ${who.names.length || who.phones.length || who.guests ? `<div class="pos-review-who">
+                ${who.names.length ? `<strong>${esc(who.names.join(', '))}</strong>` : ''}
+                ${who.phones.length ? `<span>${esc(who.phones.join(', '))}</span>` : ''}
+                ${who.guests ? `<span>${esc(String(who.guests))} guest${who.guests === 1 ? '' : 's'}</span>` : ''}
+            </div>` : ''}
             <div class="pos-review-head">${review.lines.length} item${review.lines.length === 1 ? '' : 's'}${
                 review.note ? ` · ${esc(review.note)}` : ''}</div>
             <div class="pos-review-lines">
@@ -3522,7 +3566,7 @@ function openPaymentModal({ orders = null, tableLabel = null, lines = null,
                             ? `share ${shareIndex} of ${splitWays}`
                             : lines
                                 ? `${lines.reduce((t, x) => t + x.line_ids.length, 0)} items`
-                                : `${bill.length} tickets`}`
+                                : `${bill.length} ticket${bill.length === 1 ? '' : 's'}`}`
                         : `${esc(o.table_label ? `Table ${o.table_label}` : 'Takeaway')} · ${esc(orderShort(o))}`}</p>
                 </div>
                 <button type="button" class="pos-modal-close" data-close aria-label="Close">
@@ -3889,7 +3933,11 @@ function openPaymentModal({ orders = null, tableLabel = null, lines = null,
     // Seed the settle note and the first paint.
     el.querySelector('.pos-method.is-on')?.click();
     setReceived(due);
-    setTimeout(() => amt.focus(), 40);
+    // ⚠️ `preventScroll`. Focusing this field scrolls it into view, and now that
+    // the dialog carries the order review above it that scrolled the AMOUNT DUE
+    // and half the items off the top — the cashier opened a payment screen
+    // already scrolled past the two things they came to check.
+    setTimeout(() => amt.focus({ preventScroll: true }), 40);
     return el;
 }
 

@@ -670,9 +670,38 @@ review, and the split figures are exactly what that payer's receipt will carry.
 third of a tax line is a figure nothing else in the system holds. The header
 names the share and the amount due carries it.
 
+It also names the **party** — name, phone, covers. Captured at Create Order or
+by the diner's own phone on a QR order, so it was already on the document and
+simply never shown at the one moment a cashier is confirming they have the right
+people as well as the right table. Distinct across the tickets being settled: a
+table can hold two rounds opened by two people, and the same name twice reads as
+a bug.
+
+Both settle dialogs are **640px** rather than 460 — each now carries a list, and
+a three-word menu name wrapped onto a second line beside its price.
+
 The line list **scrolls** rather than growing: the method buttons have to stay
 reachable on a 10" tablet however long the order is, and a review that pushes
 them off screen is a review nobody reads.
+
+⚠️ **`.pos-review` must not clip its own overflow.** The modal body is a GRID,
+and a grid item that hides its overflow has an automatic minimum size of **zero**
+— so the moment the dialog was taller than the screen the row collapsed and the
+card was sliced through the middle of a menu item, totals and all. The corners
+are rounded on the edge children instead, and `.pos-review-lines` carries a
+`min-height` for the same reason.
+
+⚠️ **The tender field takes focus with `preventScroll`.** Focusing it scrolls it
+into view, which scrolled the amount due and half the items off the top — the
+dialog opened already past the two things the cashier came to check.
+
+**The amount due is a headline, not a field.** It was a grey panel with the label
+pinned left and the figure right by `space-between`; at 640px they stretched to
+opposite ends and stopped reading as one thing, and it sat directly above the
+review card as a second panel of near-identical weight with nothing reading as
+primary. Stacked label-over-value, no box, and the review is now the only panel.
+24px is the top of the dashboard scale — the hierarchy comes from stacking and
+weight, never from inventing a bigger step.
 
 ### A split's receipt is theirs alone
 
