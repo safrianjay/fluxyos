@@ -208,6 +208,92 @@ main > header {
     box-shadow: none;
 }
 
+/* ── Collapsing the sidebar ──────────────────────────────────────────────────
+   One rule set for the dashboard AND the till — `pos.html` renders the same
+   <aside id="sidebar"> and loads the same loader, deliberately.
+
+   The width lives here for the same reason the expanded one does: every app
+   page hardcodes `w-[220px]` on the element, and an id + class + attribute
+   selector beats it without touching thirty files. */
+#sidebar.app-sidebar-light[data-collapsed="1"] {
+    /* 80, not 76: the logo mark and the expand arrow share this row, and at 76
+       the arrow sat hard against the right edge. */
+    width: 80px !important;
+}
+/* The mark shrinks so the two fit the rail without crowding. It stays — it is
+   the brand anchor and the way back to Overview, and a rail of nav icons with
+   nothing at the top reads as a fragment of a menu rather than the menu. */
+#sidebar.app-sidebar-light[data-collapsed="1"] #logo-icon {
+    width: 30px;
+    height: 30px;
+}
+/* Only the width animates. Fading the labels as well made the whole menu look
+   like it was loading rather than folding. */
+#sidebar.app-sidebar-light {
+    transition: width 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+    #sidebar.app-sidebar-light { transition: none; }
+}
+
+/* Everything that is words. `.sidebar-hide` was already on every label in the
+   markup and had no rule anywhere — a hook left for exactly this. */
+#sidebar[data-collapsed="1"] .sidebar-hide,
+#sidebar[data-collapsed="1"] .logo-text,
+#sidebar[data-collapsed="1"] .entity-switcher-wrap {
+    display: none !important;
+}
+/* The avatar and the sign-out button stay; only their words go, and
+   `.sidebar-hide` already carries both. Centred so the rail reads as a column
+   of icons rather than a left-aligned strip with a gap down its right. */
+#sidebar[data-collapsed="1"] #profile-area > div,
+#sidebar[data-collapsed="1"] #logout-btn { justify-content: center; gap: 0; }
+#sidebar[data-collapsed="1"] #profile-area { padding-left: 8px; padding-right: 8px; }
+
+/* The icons centre, and the row keeps its full height so the target stays
+   comfortable for a finger on the till's tablet. */
+#sidebar[data-collapsed="1"] .nav-item {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+    gap: 0;
+}
+#sidebar[data-collapsed="1"] #nav-container { padding-left: 8px; padding-right: 8px; }
+#sidebar[data-collapsed="1"] #logo-container { justify-content: center; }
+#sidebar.app-sidebar-light[data-collapsed="1"] #sidebar-header {
+    padding: 0 6px !important;
+    justify-content: center;
+    gap: 2px;
+}
+
+/* The arrow. Points the way it will take the menu, so it is a direction and
+   not a state to decode. */
+.sidebar-collapse-btn {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 8px;
+    border: 1px solid transparent; background: transparent;
+    color: #64748B; cursor: pointer;
+    transition: background-color 140ms ease, color 140ms ease;
+}
+.sidebar-collapse-btn svg { width: 16px; height: 16px; }
+.sidebar-collapse-btn:hover { background: #F1F5F9; color: #0B0F19; }
+.sidebar-collapse-btn:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
+#sidebar[data-collapsed="1"] .sidebar-collapse-btn svg { transform: scaleX(-1); }
+
+/* ⚠️ NOT ON A PHONE. Below 640px the sidebar is already a full-width drawer
+   that slides in over the page — a 76px rail there would be a menu of unlabelled
+   icons covering the screen it just came from, which is neither of the two
+   things this control is for. */
+@media (max-width: 640px) {
+    #sidebar.app-sidebar-light[data-collapsed="1"] { width: 248px !important; }
+    #sidebar[data-collapsed="1"] .sidebar-hide,
+    #sidebar[data-collapsed="1"] .logo-text,
+    #sidebar[data-collapsed="1"] .entity-switcher-wrap { display: revert !important; }
+    #sidebar[data-collapsed="1"] .nav-item { justify-content: flex-start; gap: 12px; }
+    .sidebar-collapse-btn { display: none; }
+}
+
 #sidebar.app-sidebar-light #sidebar-header,
 #sidebar.app-sidebar-light #profile-area {
     height: 64px;

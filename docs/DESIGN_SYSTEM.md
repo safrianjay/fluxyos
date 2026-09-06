@@ -128,6 +128,28 @@ fully on-scale and must stay there.
 - Legacy table snippets should migrate to `fluxy-table*` classes instead of
   adding page-local `text-[11px]`, mixed padding, or custom badge colors.
 
+## Sidebar collapse
+
+The sidebar folds to an 80px icon rail via the arrow beside the FluxyOS logo.
+**One implementation serves the dashboard and the till** — `pos.html` renders the
+same `<aside id="sidebar">` and loads the same `sidebar-loader.js`, deliberately,
+so a parallel control would be two things to keep in step.
+
+- **The width lives in `shared-dashboard.css`**, not on the element. Every app
+  page hardcodes `w-[220px]` on the `<aside>`; an id + class + attribute selector
+  beats it without touching thirty files.
+- **`.sidebar-hide` is the label hook** — it was already on every label in the
+  markup and had no rule anywhere until this shipped.
+- **The choice persists** (`fluxyos-sidebar-collapsed`) and is applied in the
+  same task as the injected markup, so a multi-page app never flashes the full
+  menu on navigation. Absent a stored choice it defaults collapsed below 1100px.
+- **Every nav item carries its label as `title`.** Collapsed, an item is an icon
+  and nothing else. The till rebuilds `#nav-container` after the loader runs, so
+  a `MutationObserver` re-labels whatever appears.
+- **Not on a phone.** Below 640px the sidebar is already a full-width drawer over
+  the page; a rail there would be unlabelled icons covering the screen it came
+  from. The control is hidden and the collapsed rules are reverted.
+
 ## Dashboard Data Table Standard
 
 Authenticated app tables use the shared `fluxy-table*` classes in

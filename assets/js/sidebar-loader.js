@@ -125,7 +125,7 @@
     const sidebarHTML = `
         <!-- Logo Area (Official Login Page Logo) -->
         <div class="logo-area h-16 flex items-center px-4 border-b border-slate-200 bg-white sticky top-0 z-10" id="sidebar-header">
-            <div id="logo-container" class="flex items-center gap-3 cursor-pointer group overflow-hidden w-full">
+            <div id="logo-container" class="flex items-center gap-3 cursor-pointer group overflow-hidden flex-1 min-w-0">
                 <div class="w-9 h-9 text-[#F3F6FA] flex-shrink-0" id="logo-icon">
                     <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
                         <rect width="40" height="40" rx="8" fill="currentColor" />
@@ -137,6 +137,16 @@
                 </div>
                 <span class="logo-text font-bold text-[18px] tracking-tight text-[#1E2F4A] transition-colors">FluxyOS</span>
             </div>
+            <!-- Collapse. Beside the logo because that is the one row that never
+                 scrolls and never changes, on every app page and on the till. -->
+            <button type="button" id="sidebar-collapse-btn" class="sidebar-collapse-btn"
+                    aria-expanded="true" aria-controls="sidebar" title="Collapse menu">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m15 18-6-6 6-6"/>
+                </svg>
+                <span class="sr-only">Collapse menu</span>
+            </button>
         </div>
 
         <!-- Entity Switcher (Global HQ) -->
@@ -429,12 +439,92 @@
         applyEntityLabel(event?.detail?.label);
     });
 
+    // ── Collapsing the sidebar ──────────────────────────────────────────────
+    //
+    // One implementation for the dashboard AND the till: `pos.html` renders the
+    // same `<aside id="sidebar">` and loads this same file, deliberately (its
+    // own comment: a parallel sidebar "guarantees the two drift apart the first
+    // time either moves"). So the arrow beside the logo works on both.
+    //
+    // ⚠️ APPLIED BEFORE THE NAV IS WIRED, not after paint. The sidebar is
+    // injected by script, so setting the attribute here happens in the same task
+    // as the markup — the collapsed width is never painted wide first. A class
+    // toggled from a later listener would flash the full menu on every page
+    // load, which on a multi-page app is every navigation.
+    const COLLAPSE_KEY = 'fluxyos-sidebar-collapsed';
+    // Below this the menu costs more room than it earns. Only a DEFAULT — an
+    // explicit choice is remembered and wins at any width.
+    const AUTO_COLLAPSE_BELOW = 1100;
+
+    function collapsePreference() {
+        let stored = null;
+        try { stored = localStorage.getItem(COLLAPSE_KEY); } catch (_) { /* private mode */ }
+        if (stored === '1') return true;
+        if (stored === '0') return false;
+        return window.innerWidth < AUTO_COLLAPSE_BELOW;
+    }
+
+    function setSidebarCollapsed(sidebar, collapsed) {
+        sidebar.setAttribute('data-collapsed', collapsed ? '1' : '0');
+        // On the ROOT too, so a page can lay itself out against the menu width
+        // without reaching into the sidebar. Nothing reads it yet; it costs one
+        // attribute and saves the next page from a global lookup.
+        document.documentElement.setAttribute('data-sidebar-collapsed', collapsed ? '1' : '0');
+        const btn = document.getElementById('sidebar-collapse-btn');
+        if (btn) {
+            btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            btn.title = collapsed ? 'Expand menu' : 'Collapse menu';
+            const label = btn.querySelector('.sr-only');
+            if (label) label.textContent = btn.title;
+        }
+    }
+
+    // ⚠️ THE LABEL BECOMES THE TOOLTIP. Collapsed, a nav item is an icon and
+    // nothing else — and several of these icons are only distinguishable to
+    // someone who already knows the menu. Taken from the text that is about to
+    // be hidden, so the two can never disagree.
+    function labelNavItems(root) {
+        root.querySelectorAll('.nav-item').forEach((item) => {
+            const text = (item.querySelector('.sidebar-text') || {}).textContent;
+            if (text && !item.title) item.title = text.trim();
+        });
+    }
+
+    function initSidebarCollapse(sidebar) {
+        labelNavItems(sidebar);
+
+        // ⚠️ THE TILL REPLACES THIS NAV AFTER WE RUN. `pos.js` swaps
+        // `#nav-container` for its own five destinations once the outlet
+        // resolves, so labelling once at injection left every till icon without
+        // a tooltip — an unlabelled rail on the one surface used by staff who
+        // did not choose the software. Watching the container covers that and
+        // anything else that builds nav items later.
+        const nav = sidebar.querySelector('#nav-container');
+        if (nav && typeof MutationObserver === 'function') {
+            new MutationObserver(() => labelNavItems(nav)).observe(nav, { childList: true, subtree: true });
+        }
+
+        setSidebarCollapsed(sidebar, collapsePreference());
+
+        const btn = document.getElementById('sidebar-collapse-btn');
+        if (!btn) return;
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const next = sidebar.getAttribute('data-collapsed') !== '1';
+            setSidebarCollapsed(sidebar, next);
+            // Remembered across pages: this is a multi-page app and re-collapsing
+            // on every navigation would make the control useless.
+            try { localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0'); } catch (_) { /* private mode */ }
+        });
+    }
+
     function inject() {
         const sidebar = document.getElementById('sidebar');
         if (!sidebar) return;
 
         sidebar.innerHTML = sidebarHTML;
         applyAppSidebarTheme(sidebar);
+        initSidebarCollapse(sidebar);
 
         // Entity Switcher dropdown
         const entityBtn = document.getElementById('entity-switcher-btn');
