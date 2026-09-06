@@ -236,6 +236,30 @@ test.describe('Reservations hold their table', () => {
 // booking is a fact about the evening). The `finally` matters — a spec that
 // fails mid-way would otherwise leave a real QA table held against every
 // walk-in, which is the exact harm this feature exists to prevent.
+/**
+ * Find a booking on the list, in whichever range holds it.
+ *
+ * ⚠️ "TOMORROW" IS NOT ALWAYS IN THE WEEK ON SCREEN. The board opens on the
+ * current week and the week starts Monday, so on a SUNDAY tomorrow is the next
+ * range and the row is genuinely not there — this test failed every Sunday and
+ * passed the other six days, which reads as flake rather than as a calendar.
+ * Found on Sunday 2026-09-06, the same day a board spec turned out to fail
+ * nightly between midnight and 03:20 for the mirror-image reason.
+ *
+ * A booking for tomorrow is in this range or the next one, and never anywhere
+ * else, so one step forward is the whole search.
+ */
+async function findRow(page, guest) {
+    const row = () => page.locator('#pos-res-list tr[data-res]', { hasText: guest });
+    await page.click('[data-rlayout="list"]').catch(() => {});
+    await page.fill('#pos-res-search', guest).catch(() => {});
+    if (await row().count()) return row();
+    await page.click('[data-rmove="1"]').catch(() => {});
+    // The range move re-renders the list; the filter is re-applied against it.
+    await page.fill('#pos-res-search', guest).catch(() => {});
+    return row();
+}
+
 test('a booking survives a real round-trip to Firestore, and releases its table again', async ({ page }) => {
     await openTill(page);
     await page.click('#nav-container [data-view="reservations"]');
@@ -269,21 +293,36 @@ test('a booking survives a real round-trip to Firestore, and releases its table 
         if (await table.count()) await dialog.locator('#pos-res-table').selectOption(await table.getAttribute('value'));
 
         await dialog.locator('#pos-res-submit').click();
-        // A rules refusal surfaces IN the dialog, so a failure here names the
-        // cause instead of timing out on a list that never changed.
-        await expect(dialog.locator('#pos-res-error')).toBeHidden({ timeout: 20000 });
-        await expect(dialog).toHaveCount(0, { timeout: 20000 });
+
+        // ⚠️ A RACE, NOT A SEQUENCE, and the difference is the whole diagnosis.
+        //
+        // This asserted the error was hidden and THEN that the dialog had
+        // closed. `toBeHidden` resolves on its first poll — before the save
+        // round-trip has even come back — so the refusal it exists to surface
+        // appeared a second later and the test spent twenty seconds timing out
+        // on a dialog that was, by then, displaying exactly why. The guard
+        // reported "the dialog never closed" for every possible cause.
+        //
+        // Whichever happens first now decides, and a refusal is quoted.
+        const err = dialog.locator('#pos-res-error');
+        const outcome = await Promise.race([
+            dialog.waitFor({ state: 'detached', timeout: 25000 }).then(() => 'closed'),
+            err.waitFor({ state: 'visible', timeout: 25000 }).then(() => 'refused')
+        ]).catch(() => 'stuck');
+        if (outcome !== 'closed') {
+            const why = await err.innerText().catch(() => '');
+            throw new Error(outcome === 'refused'
+                ? `the reservation was refused: ${why}`
+                : 'the dialog neither closed nor said why — the submit was swallowed');
+        }
         created = true;
 
         // Read it back off the board rather than trusting the toast.
-        await page.click('[data-rlayout="list"]');
-        await page.fill('#pos-res-search', guest);
-        await expect(page.locator('#pos-res-list tr[data-res]', { hasText: guest })).toHaveCount(1);
+        await expect(await findRow(page, guest),
+            'the booking was created and the board does not show it').toHaveCount(1);
     } finally {
         if (created) {
-            await page.fill('#pos-res-search', guest).catch(() => {});
-            await page.click('[data-rlayout="list"]').catch(() => {});
-            const row = page.locator('#pos-res-list tr[data-res]', { hasText: guest }).first();
+            const row = (await findRow(page, guest)).first();
             if (await row.count()) {
                 await row.click();
                 // Cancelling is an UPDATE — a second rules transition, and the

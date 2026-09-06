@@ -667,10 +667,18 @@ async function seedPaidBill(page) {
         const mk = (id, no, amount, ageMin) => ({
             id, order_number: no, status: 'paid',
             table_id: 't6', table_label: '6', dimension_id: 'd1',
-            lines: [{ line_id: `l-${id}`, item_name: `Dish ${no}`, quantity: 1,
-                unit_price: amount, gross_amount: amount }],
+            lines: [
+                { line_id: `l-${id}`, item_id: `i-${no}`, item_name: `Dish ${no}`,
+                    quantity: 1, unit_price: amount - 10000, gross_amount: amount - 10000 },
+                // The SAME item on both tickets — two rounds that each had a
+                // Nasi. On the bill that is one line of two, not two lines of
+                // one.
+                { line_id: `n-${id}`, item_id: 'i-nasi', item_name: 'Nasi',
+                    quantity: 1, unit_price: 10000, gross_amount: 10000 }
+            ],
             subtotal: amount, discount_total: 0, service_charge_amount: 0, tax_amount: 0,
             total_amount: amount, paid_amount: amount,
+            pos_pricing: { tax_enabled: false, tax_inclusive: false, tax_label: 'PPN' },
             payments: [{
                 payment_id: `p-${id}`, method: 'cash', tender: 'cash', status: 'settled',
                 amount, amount_received: id === 'seed-b2' ? amount + 20000 : amount,
@@ -702,11 +710,22 @@ test('a merged bill REPRINTS AS THE BILL, not as one ticket', async ({ page }) =
 
     // BOTH tickets, and the grand total — printed from the older card, so this
     // also proves the reprint works from whichever ticket is tapped.
-    expect(text, 'the first ticket is missing from its own bill').toContain('001');
-    expect(text, 'the second ticket is missing — the customer is under-billed').toContain('002');
+    // Both numbers in the HEADER — the lines are one bill, so this is the only
+    // place the customer can see which kitchen tickets it covers.
+    expect(text, 'the first ticket number is missing from the header').toContain('001 + 002');
     expect(text).toContain('Dish 001');
     expect(text).toContain('Dish 002');
     expect(text, 'the bill does not state what was actually paid').toContain('80.000');
+
+    // ⚠️ ONE BILL, NOT TWO RECEIPTS STAPLED TOGETHER. The tickets are the
+    // KITCHEN's unit of work and the customer never had them: a section per
+    // ticket asks the person paying to do arithmetic about a split they did not
+    // make. The order numbers in the header are the only place it belongs.
+    expect((text.match(/Subtotal/g) || []).length, 'the bill has a subtotal per ticket').toBe(1);
+    expect((text.match(/Total/g) || []).length, 'the bill has a total per ticket').toBe(1);
+    // …and the same item from two rounds is one line of two.
+    expect((text.match(/Nasi/g) || []).length, 'the same dish is listed twice').toBe(1);
+    expect(text, 'the repeated dish did not add up').toContain('2 ×');
     // One tender, so ONE change figure. Folding payments that share a bill_id is
     // what stops an Rp80.000 cash bill printing two payment lines.
     expect((text.match(/Kembalian/g) || []).length, 'change is stated more than once').toBe(1);

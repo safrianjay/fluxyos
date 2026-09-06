@@ -3493,18 +3493,64 @@ function openDiscountDrawer(lineId = null) {
 // customer paid once and is owed one document — printing a slip per ticket
 // would hand them the separation the KITCHEN needs and they never had.
 //
-// ⚠️ EACH TICKET KEEPS ITS OWN TOTALS BLOCK, and that is not decoration. Two
-// tickets can carry different `pos_pricing` snapshots (an order opened before a
-// rate change, one after), so a single summed "Pajak 11%" line could describe
-// neither of them. Printing each ticket's own subtotal, service and tax and
-// then one grand total is arithmetic the customer can check on any combination
-// — which is the entire job of the document.
+// ⚠️ ONE LIST AND ONE TOTAL, not a section per ticket. The tickets are the
+// KITCHEN's unit of work and the customer never had them: a bill that repeats
+// "Nasi × 1" under two headings, with two subtotals and two tax lines, asks the
+// person paying to do arithmetic about a split they did not make. The order
+// numbers are stated together in the header, which is the only place the
+// separation is any of their business.
+//
+// It sections ONLY when the tickets are priced differently in a way a single
+// block cannot state honestly — a rate card that carries the tax INSIDE the
+// menu prices on one ticket and adds it on the other, which puts the tax line
+// above the total in one case and below it in the other. Since a second ticket
+// inherits the sitting's `pos_pricing` (pos.md) that cannot happen within a
+// sitting any more; it survives for bills opened before that rule existed.
 function openReceipt(order) {
     const list = (Array.isArray(order) ? order : [order]).filter(Boolean);
     if (!list.length) return;
     const o = list[0];
-    const split = list.length > 1;
+    // Sectioned only when one block would have to state two different tax
+    // treatments at once — see above. Everything else combines.
+    const split = list.length > 1
+        && new Set(list.map((x) => !!(x.pos_pricing || {}).tax_inclusive)).size > 1;
     const grand = list.reduce((t, x) => t + (Number(x.total_amount) || 0), 0);
+
+    // The bill's lines, with identical ones folded together. Two rounds that
+    // each had a Nasi are two Nasi, and printing the line twice reads to the
+    // customer as a mistake in their favour or against it — neither is what a
+    // bill is for. Same identity the kitchen merges on: item, price, note and
+    // the exact set of options, so a latte with extra sugar never merges into
+    // one with protein.
+    const billLines = (() => {
+        const byKey = new Map();
+        list.forEach((x) => (x.lines || []).forEach((l) => {
+            const key = [l.item_id, l.unit_price, l.note || '',
+                (l.modifiers || []).map((m) => `${m.group_id}:${m.option_id}`).sort().join(',')].join('|');
+            const at = byKey.get(key);
+            if (!at) { byKey.set(key, { ...l }); return; }
+            at.quantity = (Number(at.quantity) || 0) + (Number(l.quantity) || 0);
+            at.gross_amount = (Number(at.gross_amount) || 0) + (Number(l.gross_amount) || 0);
+            at.discount_amount = (Number(at.discount_amount) || 0) + (Number(l.discount_amount) || 0);
+        }));
+        return [...byKey.values()];
+    })();
+
+    // The bill as ONE set of figures. Summed from the tickets rather than
+    // recomputed, so the receipt can never state a total the orders do not.
+    const sum = (f) => list.reduce((t, x) => t + (Number(x[f]) || 0), 0);
+    const bill = {
+        lines: billLines,
+        subtotal: sum('subtotal'),
+        discount_total: sum('discount_total'),
+        discount_reason: list.map((x) => x.discount_reason).filter(Boolean)[0] || null,
+        service_charge_amount: sum('service_charge_amount'),
+        tax_amount: sum('tax_amount'),
+        total_amount: grand,
+        // Every ticket in a sitting carries the same rate card, so the label and
+        // the treatment are the bill's too.
+        pos_pricing: o.pos_pricing
+    };
     const line = (l) => {
         const net = (Number(l.gross_amount) || 0) - (Number(l.discount_amount) || 0);
         const each = (Number(l.unit_price) || 0) + (Number(l.modifier_amount) || 0);
@@ -3585,43 +3631,22 @@ function openReceipt(order) {
   @media print { .noprint { display: none; } }
 </style></head><body>
   <h1>${esc((outlet && outlet.name) || 'FluxyOS')}</h1>
-  <div class="c m">${esc(o.table_label ? `Meja ${o.table_label}` : 'Bawa pulang')} · ${esc(split
-      ? list.map((x) => x.order_number || '').filter(Boolean).join(' + ')
-      : (o.order_number || ''))}</div>
+  <div class="c m">${esc(o.table_label ? `Meja ${o.table_label}` : 'Bawa pulang')} · ${esc(
+      // EVERY ticket's number, whether or not the body is sectioned. The lines
+      // are one bill now, so the header is the only place the customer can see
+      // which kitchen tickets it covers — and it is what a cashier reads back
+      // when somebody asks about one of them.
+      list.map((x) => x.order_number || '').filter(Boolean).join(' + '))}</div>
   <div class="c m">${when.toLocaleString(window.FluxyMoney.baseLocale())}</div>
   <hr>
-  ${split ? list.map((x) => `
+  ${split ? `${list.map((x) => `
     <div class="tk">${esc(x.order_number || '')}</div>
     <table>${(x.lines || []).map(line).join('')}</table>
     <table>${ticketTotals(x)}</table>
-    <hr>`).join('') : ''}
-  ${split ? `<table>${row('Total', rp(grand), 'tot')}</table>` : `
-  <table>${(o.lines || []).map(line).join('')}</table>
+    <hr>`).join('')}<table>${row('Total', rp(grand), 'tot')}</table>` : `
+  <table>${bill.lines.map(line).join('')}</table>
   <hr>
-  <table>
-    ${row('Subtotal', rp(o.subtotal))}
-    ${Number(o.discount_total) > 0 ? row(o.discount_reason || 'Diskon', `−${rp(o.discount_total)}`, 'dsc') : ''}
-    ${
-        // The receipt is the customer's own copy, and it is the document a
-        // dispute is settled with. A total that does not foot against its own
-        // lines is exactly the argument it exists to prevent — and in Indonesia
-        // the tax line is what tells them the charge was a tax rather than
-        // something the restaurant added.
-        Number(o.service_charge_amount) > 0
-            ? row('Layanan', rp(o.service_charge_amount)) : ''
-    }
-    ${
-        Number(o.tax_amount) > 0 && !(o.pos_pricing || {}).tax_inclusive
-            ? row((o.pos_pricing || {}).tax_label || 'Pajak', rp(o.tax_amount)) : ''
-    }
-    ${row('Total', rp(o.total_amount), 'tot')}
-    ${
-        // Inclusive tax sits INSIDE the prices above, so it is stated after the
-        // total rather than added to it.
-        Number(o.tax_amount) > 0 && (o.pos_pricing || {}).tax_inclusive
-            ? row(`Termasuk ${(o.pos_pricing || {}).tax_label || 'Pajak'}`, rp(o.tax_amount)) : ''
-    }
-  </table>`}
+  <table>${ticketTotals(bill)}</table>`}
   <table>
     ${paid.map((p) => row(methodLabel(p.method), rp(p.amount))).join('')}
     ${
@@ -4470,17 +4495,48 @@ function mergeReservations() {
 // Fetch the range the board is looking at. Called when the range moves, not on
 // every repaint: scrubbing through a week is a paint against data already in
 // hand, and a query per arrow press would make the board feel like a website.
+// ⚠️ AFTER A RESERVATION IS WRITTEN, RE-READ THE RANGE — `refresh()` is not
+// enough and the gap is silent both ways.
+//
+// `refresh()` reloads `getPosOverview`, which returns the bookings that could
+// hold a table NEAR NOW because that is what the floor plan needs. The board is
+// showing a week. So a booking taken for tomorrow closed its dialog, said "Table
+// held for …", and did not appear on the board the host was looking at — they
+// would reasonably take it again. Cancelling one was worse: the toast said the
+// table was free and the board went on showing it held, which is the exact
+// disagreement between two surfaces that `pos_availability` exists to prevent
+// (pos.md §4a), pointing inward.
+async function refreshReservations() {
+    await refresh();
+    await loadReservationRange();
+}
+
 async function loadReservationRange() {
     if (!state.uid || !state.outletId) return;
+    // A SEEDED BOARD MUST NOT BE REPAINTED FROM THE SERVER — the same rule
+    // `refresh()` follows, in the one data path that was not following it.
+    //
+    // `__posSeedFloor` freezes the page and writes the fixture into
+    // `state.resRange`; switching to the reservations view then called this,
+    // which overwrote it with the workspace's real bookings and merged them in.
+    // The seeded booking was still there, joined by every leftover one — so a
+    // spec reading the FIRST row of the list was reading whatever the workspace
+    // happened to hold. It passed on a clean workspace and failed on a used one,
+    // which reads as flake rather than as a second data path.
+    if (state.frozen) return;
     const days = resRangeDays();
     const from = startOfDay(days[0]).getTime();
     const to = addDays(startOfDay(days[days.length - 1]), 1).getTime();
     // Every status, unlike the floor plan's read: a cancelled booking and a
     // no-show are what an evening's history is made of, and a board that hides
     // them makes a full night out of one that half emptied.
-    state.resRange = await ds.getPosReservations(state.uid, {
+    const rows = await ds.getPosReservations(state.uid, {
         dimensionId: state.outletId, fromMs: from, toMs: to, limitCount: 400
     });
+    // Checked AGAIN after the await, for the reason `refresh()` gives: freezing
+    // stops the next read from starting, not one already in flight.
+    if (state.frozen) return;
+    state.resRange = rows;
     mergeReservations();
     renderReservations();
 }
@@ -4792,8 +4848,7 @@ function openReservationDialog({ reservation = null, startsAt = null, tableId = 
                 }, { create: !editing, reservationId: editing ? reservation.id : null });
                 close();
                 toast(editing ? 'Reservation updated.' : `Table held for ${name}.`);
-                await refresh();
-                renderReservations();
+                await refreshReservations();
             } catch (error) {
                 submit.disabled = false;
                 submit.textContent = editing ? 'Save changes' : 'Create reservation';
@@ -4876,7 +4931,7 @@ function openReservationDetail(r) {
                     const order = await ds.seatPosReservation(state.uid, r.id,
                         { shiftId: state.shift ? state.shift.id : null });
                     close();
-                    await refresh();
+                    await refreshReservations();
                     // Straight to the till with their order open: seating a party
                     // and taking their first order are one motion, and landing
                     // the host back on the calendar is a step they would undo.
@@ -4887,8 +4942,7 @@ function openReservationDetail(r) {
                 }
                 await ds.setPosReservationStatus(state.uid, r.id, act);
                 close();
-                await refresh();
-                renderReservations();
+                await refreshReservations();
                 toast(act === 'completed' ? 'Reservation closed out.'
                     : act === 'no_show' ? `${r.guest_name} marked a no-show. ${r.table_label || 'The table'} is free again.`
                     : `Reservation cancelled. ${r.table_label || 'The table'} is free again.`);

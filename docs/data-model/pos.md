@@ -583,9 +583,21 @@ till. The dialog carries a per-row **Open** so adding to a round is not a dead
 end — with `preventDefault`, since the button sits inside the row's `<label>` and
 would otherwise toggle what the bill covers on the way out.
 
-**The receipt keeps each ticket's own totals block**, then one grand total. Two
-tickets can carry different `pos_pricing` snapshots (one opened before a rate
-change, one after), so a single summed "Pajak 11%" line could describe neither.
+**The receipt is ONE bill, not two receipts stapled together.** All the lines in
+one list — identical items folded together, on the same identity the kitchen
+merges on, so two rounds that each had a Nasi print as one line of two — then
+one subtotal, one service line, one tax line and one total. The tickets are the
+KITCHEN's unit of work and the customer never had them; a section per ticket
+asks the person paying to do arithmetic about a split they did not make. **Every
+order number is stated in the header**, which is the only place the separation
+is any of their business and what a cashier reads back when somebody asks about
+one of them.
+
+It sections per ticket in exactly one case: tickets whose rate cards disagree
+about whether tax is INSIDE the menu prices, which puts the tax line above the
+total on one and below it on the other. A second ticket inherits the sitting's
+`pos_pricing`, so that cannot happen within a sitting any more — it survives for
+bills opened before that rule existed.
 
 Guard: `check:pos-table-bill` — 41 assertions, pure, unconditional in the BE
 lane, driving the real method against a fake transaction that throws on a read
