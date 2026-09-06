@@ -19,9 +19,15 @@ const fs = require('fs');
 // That is a fixture problem quietly becoming product-test logic.
 //
 // SAFE BY CONSTRUCTION:
-//   · Only `open` / `submitted` / `sent` / `ready` / `served` — never anything
-//     with money on it. `awaiting_payment` has had a payment partially applied
-//     and `paid` has posted revenue; both are a refund's job, not a sweep's.
+//   · Only `open` / `submitted` / `sent` / `ready` / `served`, AND only with
+//     `paid_amount` of zero — never anything with money on it.
+//     `awaiting_payment` has had a payment partially applied and `paid` has
+//     posted revenue; both are a refund's job, not a sweep's.
+//
+//     ⚠️ THE STATUS ALONE STOPPED ANSWERING THAT on 2026-09-06, when payment
+//     stopped moving the kitchen ladder (pos.md): a settled ticket whose food
+//     is still cooking sits at `sent`, so this swept it up and `voidPosOrder`
+//     refused it — correctly, and reported as a teardown failure every run.
 //   · Voids through the app's own DAL, so rules, the audit log and the version
 //     guard all apply exactly as they would to a cashier.
 //   · Never fails the run. A teardown that turns a green suite red because it
@@ -60,7 +66,12 @@ module.exports = async () => {
 
             const snap = await fs2.getDocs(fs2.collection(fs2.getFirestore(app), `${scope}/pos_orders`));
             const stray = [];
-            snap.forEach((d) => { if (voidable.includes((d.data() || {}).status)) stray.push(d.id); });
+            snap.forEach((d) => {
+                const o = d.data() || {};
+                // Money on it is money on it, whatever the kitchen ladder says.
+                if (Number(o.paid_amount) > 0) return;
+                if (voidable.includes(o.status)) stray.push(d.id);
+            });
 
             let voided = 0, failed = 0;
             for (const id of stray) {
