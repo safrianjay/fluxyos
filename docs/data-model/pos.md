@@ -649,6 +649,31 @@ follow from it:
   nothing about which items it covered, so a split after one has no way to know
   what is left and would charge for it again. Refused, not guessed at.
 
+### The payment dialog states what is being paid for (2026-09-06)
+
+It showed a number and nothing else, so a wrong selection in the split dialog —
+or the wrong table entirely — was invisible at the one moment it could still be
+undone for free. Above the method buttons, because it answers *"is this the
+right order?"* before *"how are they paying?"*.
+
+| Mode | What it reviews |
+|---|---|
+| whole ticket(s) | every item, and the table's subtotal / service / tax |
+| split by item | ONLY the dishes chosen, with their own share of service and tax |
+| split evenly | the bill it is a share OF, headed "Share 2 of 3" |
+
+⚠️ **Priced through the same module and the same allocation the charge uses.** A
+review that describes a different bill than the one being taken is worse than no
+review, and the split figures are exactly what that payer's receipt will carry.
+
+**An even share deliberately shows the BILL's breakdown, not a third of it** — a
+third of a tax line is a figure nothing else in the system holds. The header
+names the share and the amount due carries it.
+
+The line list **scrolls** rather than growing: the method buttons have to stay
+reachable on a 10" tablet however long the order is, and a review that pushes
+them off screen is a review nobody reads.
+
 ### A split's receipt is theirs alone
 
 Never the table's ticket — that states a figure they did not pay, to the person

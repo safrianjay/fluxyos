@@ -3404,6 +3404,105 @@ function openPaymentModal({ orders = null, tableLabel = null, lines = null,
         : (bill
             ? bill.reduce((t, x) => t + posOrderDue(x), 0)
             : Math.max(0, Number(o.total_amount) - Number(o.paid_amount || 0)));
+
+    // ── WHAT THIS PAYMENT IS FOR, above the method buttons ──────────────────
+    //
+    // The cashier's last chance to catch a mis-tap before money moves. They are
+    // holding a number and a customer who ordered something specific, and until
+    // now this dialog showed only the number — so a wrong selection in the split
+    // dialog, or the wrong table entirely, was invisible at the one moment it
+    // could still be undone for free.
+    //
+    // Priced through the SAME module and the same allocation the charge uses, so
+    // the review can never describe a different bill than the one being taken.
+    const review = (() => {
+        const P = window.FluxyPosPricing;
+        const src = bill || [o];
+        const merge = (rows) => {
+            const byKey = new Map();
+            rows.forEach((l) => {
+                const key = [l.item_id, l.unit_price, l.note || '',
+                    (l.modifiers || []).map((m) => `${m.group_id}:${m.option_id}`).sort().join(',')].join('|');
+                const at = byKey.get(key);
+                if (!at) { byKey.set(key, { ...l }); return; }
+                at.quantity = (Number(at.quantity) || 0) + (Number(l.quantity) || 0);
+                at.gross_amount = (Number(at.gross_amount) || 0) + (Number(l.gross_amount) || 0);
+            });
+            return [...byKey.values()];
+        };
+
+        // A split by item reviews only the dishes chosen, with their own share of
+        // the service charge and tax — the same figures their receipt will carry.
+        if (lines && P) {
+            const picked = [];
+            const acc = { subtotal: 0, discount: 0, service: 0, tax: 0, breakdown: true };
+            src.forEach((x) => {
+                const sel = lines.find((y) => y.order_id === x.id);
+                if (!sel) return;
+                const ids = new Set(sel.line_ids);
+                picked.push(...(x.lines || []).filter((l) => ids.has(l.line_id)));
+                const r = P.splitLineShare({
+                    lines: x.lines || [],
+                    total: Math.round(Number(x.total_amount) || 0),
+                    subtotal: Math.round(Number(x.subtotal) || 0),
+                    discountTotal: Math.round(Number(x.discount_total) || 0),
+                    service: Math.round(Number(x.service_charge_amount) || 0),
+                    tax: Math.round(Number(x.tax_amount) || 0),
+                    taxInclusive: !!(x.pos_pricing || {}).tax_inclusive,
+                    coveredIds: (x.payments || [])
+                        .filter((p) => p.status === 'settled')
+                        .flatMap((p) => p.line_ids || []),
+                    selectedIds: sel.line_ids
+                });
+                acc.subtotal += r.subtotal; acc.discount += r.discount;
+                acc.service += r.service; acc.tax += r.tax;
+                if (!r.breakdown) acc.breakdown = false;
+            });
+            return { lines: merge(picked), ...acc, total: due, note: null };
+        }
+
+        // Everything else reviews the whole of what is on the table or ticket.
+        // On an even split the breakdown describes the BILL and the amount due
+        // is the share, which the header already says — stating a third of a tax
+        // line would be a figure nothing else in the system holds.
+        const sum = (f) => src.reduce((t, x) => t + (Number(x[f]) || 0), 0);
+        return {
+            lines: merge(src.flatMap((x) => x.lines || [])),
+            subtotal: sum('subtotal'), discount: sum('discount_total'),
+            service: sum('service_charge_amount'), tax: sum('tax_amount'),
+            total: sum('total_amount'), breakdown: true,
+            note: splitWays ? `Share ${shareIndex} of ${splitWays} of this bill` : null
+        };
+    })();
+
+    const pricingOf = o.pos_pricing || {};
+    const reviewRow = (label, value, cls) =>
+        `<div class="pos-review-row${cls ? ` ${cls}` : ''}"><span>${esc(label)}</span><span class="num">${esc(rp(value))}</span></div>`;
+    const reviewHtml = `
+        <div class="pos-review">
+            <div class="pos-review-head">${review.lines.length} item${review.lines.length === 1 ? '' : 's'}${
+                review.note ? ` · ${esc(review.note)}` : ''}</div>
+            <div class="pos-review-lines">
+                ${review.lines.map((l) => `<div class="pos-review-line">
+                    <span class="pos-review-qty num">${esc(String(l.quantity || 1))}×</span>
+                    <span class="pos-review-name">${esc(l.item_name || '')}${
+                        (l.modifiers || []).length
+                            ? `<span class="pos-review-mods">${esc((l.modifiers || []).map((m) => m.option_name).join(', '))}</span>`
+                            : ''}</span>
+                    <span class="pos-review-amt num">${esc(rp(Number(l.gross_amount) || 0))}</span>
+                </div>`).join('')}
+            </div>
+            <div class="pos-review-totals">
+                ${review.breakdown ? reviewRow('Subtotal', review.subtotal) : ''}
+                ${review.breakdown && review.discount > 0 ? reviewRow('Discount', -review.discount) : ''}
+                ${review.breakdown && review.service > 0 ? reviewRow('Service', review.service) : ''}
+                ${review.breakdown && review.tax > 0 && !pricingOf.tax_inclusive
+                    ? reviewRow(pricingOf.tax_label || 'Tax', review.tax) : ''}
+                ${reviewRow(review.note ? 'Bill total' : 'Total', review.total, 'is-grand')}
+                ${review.breakdown && review.tax > 0 && pricingOf.tax_inclusive
+                    ? reviewRow(`Incl. ${pricingOf.tax_label || 'tax'}`, review.tax) : ''}
+            </div>
+        </div>`;
     const methods = DataService.POS_PAYMENT_METHODS;
     let method = 'cash';
     let received = due;                       // exact is the commonest tender
@@ -3438,6 +3537,8 @@ function openPaymentModal({ orders = null, tableLabel = null, lines = null,
                     <span class="pos-pay-due-label">Amount due</span>
                     <span class="pos-pay-due-value" id="pos-pay-due">${esc(rp(due))}</span>
                 </div>
+
+                ${reviewHtml}
 
                 <div class="pos-field">
                     <label>Payment method</label>

@@ -1219,3 +1219,98 @@ test('the other share reprints as its own bill too', async ({ page }) => {
     expect(text).toContain('600.000');
     expect(text).toContain('Kembalian');
 });
+
+// ── The cashier confirms the order before taking money ──────────────────────
+//
+// The payment dialog showed a number and nothing else. A wrong selection in the
+// split dialog — or the wrong table entirely — was invisible at the one moment
+// it could still be undone for free.
+
+async function seedReviewTicket(page) {
+    return page.evaluate(() => {
+        const ts = (ms) => { const d = new Date(Date.now() - ms); return { toDate: () => d }; };
+        const L = (id, name, price) => ({ line_id: id, item_id: `i-${id}`, item_name: name,
+            quantity: 1, unit_price: price, gross_amount: price });
+        return window.__posSeedBoard([{
+            id: 'r1', order_number: '017', status: 'served', table_id: 't3', table_label: '3',
+            lines: [L('a', 'Burger', 145000), L('b', 'Jasa Konsultasi Menu', 500000)],
+            subtotal: 645000, discount_total: 0, service_charge_amount: 32250, tax_amount: 70950,
+            total_amount: 748200, paid_amount: 0, payments: [],
+            pos_pricing: { tax_enabled: true, tax_label: 'PPN', tax_rate_percent: 11,
+                tax_inclusive: false, service_enabled: true, service_rate_percent: 5 },
+            opened_at: ts(900000), status_changed_at: ts(900000)
+        }]);
+    });
+}
+
+test('THE PAYMENT DIALOG SHOWS WHAT IS BEING PAID FOR, WITH VAT AND SERVICE', async ({ page }) => {
+    await openBoard(page);
+    await seedReviewTicket(page);
+
+    await page.locator('[data-table-bill]').first().click();
+    await page.locator('#pos-bill-modal [data-bill-mode="ticket"]').click();
+    await page.locator('#pos-bill-pay').click();
+
+    const review = page.locator('#pos-pay-modal .pos-review');
+    await expect(review).toBeVisible();
+    // Above the method buttons, because it answers "is this the right order?"
+    // before "how are they paying?".
+    const order = await page.locator('#pos-pay-modal').evaluate((el) => {
+        const r = el.querySelector('.pos-review');
+        const m = el.querySelector('#pos-method-row');
+        return r.compareDocumentPosition(m) & Node.DOCUMENT_POSITION_FOLLOWING ? 'review first' : 'methods first';
+    });
+    expect(order).toBe('review first');
+
+    await expect(review).toContainText('Burger');
+    await expect(review).toContainText('Jasa Konsultasi Menu');
+    await expect(review).toContainText('Subtotal');
+    await expect(review).toContainText('645.000');
+    await expect(review).toContainText('Service');
+    await expect(review).toContainText('32.250');
+    await expect(review).toContainText('PPN');
+    await expect(review).toContainText('70.950');
+    // ⚠️ AND IT AGREES WITH THE FIGURE ABOVE IT. A review that describes a
+    // different bill than the one being charged is worse than no review.
+    await expect(review).toContainText('748.200');
+    await expect(page.locator('#pos-pay-due')).toContainText('748.200');
+});
+
+test('a split reviews ONLY the dishes chosen, with their own share of VAT', async ({ page }) => {
+    await openBoard(page);
+    await seedReviewTicket(page);
+
+    await page.locator('[data-table-bill]').first().click();
+    await page.locator('#pos-bill-modal [data-line="r1|a"]').check();
+    await page.locator('#pos-bill-pay').click();
+
+    const review = page.locator('#pos-pay-modal .pos-review');
+    await expect(review).toContainText('Burger');
+    await expect(review, 'the other payer\'s dish is in this review').not.toContainText('Jasa Konsultasi');
+    // The same figures their receipt will carry — 145.000 + 7.250 + 15.950.
+    await expect(review).toContainText('145.000');
+    await expect(review).toContainText('7.250');
+    await expect(review).toContainText('15.950');
+    await expect(review).toContainText('168.200');
+    await expect(page.locator('#pos-pay-due')).toContainText('168.200');
+    await expect(review, 'the table total is quoted on a split').not.toContainText('748.200');
+});
+
+test('an even share reviews the bill it is a share OF, and says so', async ({ page }) => {
+    await openBoard(page);
+    await seedReviewTicket(page);
+
+    await page.locator('[data-table-bill]').first().click();
+    await page.locator('#pos-bill-modal [data-bill-mode="even"]').click();
+    await page.locator('#pos-bill-modal [data-ways="3"]').click();
+    await page.locator('#pos-bill-pay').click();
+
+    const review = page.locator('#pos-pay-modal .pos-review');
+    // The breakdown describes the BILL — a third of a tax line is a figure
+    // nothing else in the system holds — so the header says which share it is
+    // and the amount due carries it.
+    await expect(review).toContainText('Share 1 of 3');
+    await expect(review).toContainText('Bill total');
+    await expect(review).toContainText('748.200');
+    await expect(page.locator('#pos-pay-due')).toContainText('249.400');
+});
