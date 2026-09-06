@@ -1152,10 +1152,49 @@ export const POS_METHODS = {
         });
     },
 
+    // ── CLOSING A SETTLED TICKET OUT ────────────────────────────────────────
+    //
+    // The terminal rung, and the only legitimate way to reach `paid` besides
+    // being settled while the kitchen was already finished.
+    //
+    // ⚠️ IT HAD NO WAY TO BE REACHED. `paid` is deliberately absent from
+    // `setPosOrderStatus` — it is earned, not asserted — and that was complete
+    // while payment moved the ladder itself. Once it stopped (so a cooking
+    // ticket would keep its place), an order paid mid-kitchen had no route to a
+    // terminal state at all: the till answered `"paid" is not a status an order
+    // can be moved to here` and the ticket could not be closed. Reported by Jay.
+    //
+    // Still earned rather than asserted: the money has to be in first. Nothing
+    // is emitted here — `_emitPosSale` runs when the order is SETTLED, which
+    // was at payment, and `transaction_id` is the idempotency key either way.
+    async closePosOrder(userId, orderId) {
+        const out = await this.updatePosOrder(userId, orderId, (order) => {
+            if (order.status === 'paid') return {};
+            if (!this._posSettled(order)) {
+                throw new Error('This order has not been paid in full yet.');
+            }
+            return {
+                status: 'paid',
+                // Normally already stamped by the payment; set here for an order
+                // settled before the field existed.
+                paid_at: order.paid_at || Timestamp.fromDate(new Date())
+            };
+        });
+        // `pos_order.closed`, NOT `.paid` — `_emitPosSale` already writes that
+        // one when the sale reaches the ledger, and two entries under one name
+        // for two different events is an audit trail that reads as complete and
+        // is not. The `target_collection` allowlist in firestore.rules is what
+        // gates these, and `pos_orders` is already on it (pos.md §7a), so a new
+        // action name needs no rules change.
+        await this._auditCreateBestEffort(userId, 'pos_order.closed', 'pos_orders', orderId,
+            { total_amount: out.total_amount });
+        return out;
+    },
+
     async setPosOrderStatus(userId, orderId, status) {
         // `paid` and `void` are absent on purpose: those are earned by
-        // recordPosPayment and voidPosOrder, which do the posting and the
-        // reason-keeping. This method only walks the service ladder.
+        // recordPosPayment / closePosOrder and voidPosOrder, which do the
+        // posting and the reason-keeping. This method only walks the ladder.
         const allowed = ['open', 'submitted', 'sent', 'ready', 'served', 'awaiting_payment'];
         if (!allowed.includes(status)) throw new Error(`"${status}" is not a status an order can be moved to here.`);
         return this.updatePosOrder(userId, orderId, () => ({ status }));

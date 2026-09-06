@@ -694,6 +694,21 @@ rather than every one sitting part-paid until the last payer arrives. Its receip
 prints the table's items and states *Bagian 2 dari 3* — the payer has no items of
 their own, and a slip reading only "Rp106.334" says nothing about what for.
 
+### Reaching the dialog
+
+⚠️ **A single ticket could not be split at all.** The strip appeared only from
+the SECOND ticket, so a party of three sharing one order — the commonest table
+there is, and the one that actually says "we'll split this" — had no way to pay
+separately. It now shows for one ticket carrying more than one dish, labelled
+**Split bill** rather than *Bill together*, and the dialog opens on **By item**:
+with one ticket "Whole tickets" is the Pay button again, and splitting is the
+reason it was opened. A single ticket with a single line still gets no strip —
+nothing to split, nothing to merge.
+
+**And from the order panel**, which is where the cashier is standing when the
+customer says it. Sending them to the Orders board to find the same dialog is a
+detour they would take every time.
+
 **Still not built: split by SEAT.** The units are the item and the head.
 
 Guards: `check:pos-table-bill` (78 assertions — three splits totalling the ticket
@@ -749,6 +764,23 @@ concatenates them dedupes by id (`allBoardOrders`).
 `paid_at`, which took a diner's own order off their phone the moment they paid
 for it. A ticket leaves the sitting when the food has **arrived** and the bill is
 settled — which is what `status === 'paid'` now means.
+
+⚠️ **`paid` HAD NO WAY TO BE REACHED.** It is deliberately absent from
+`setPosOrderStatus` — earned, not asserted — which was complete while payment
+moved the ladder itself. Once payment stopped doing that, an order paid
+mid-kitchen had no route to a terminal state at all: the till answered
+`"paid" is not a status an order can be moved to here` and the ticket could not
+be closed. `closePosOrder` is that route, and keeps `paid` earned by refusing
+anything not settled. It emits nothing — `_emitPosSale` already ran at payment,
+and `transaction_id` is the idempotency key either way. Audited as
+`pos_order.closed`, not `.paid`: `_emitPosSale` already writes that one, and two
+entries under one name for two different events is an audit trail that reads as
+complete and is not.
+
+**A paid ticket at the pass closes in ONE press.** From `ready` the button reads
+**Serve & close** — the plate goes out and the ticket finishes together. Making
+a runner press Serve and then Close out is busywork, and a board full of
+served-and-paid tickets nobody closed is what makes `status` untrustworthy.
 
 **No rules change.** `status != 'paid' || paid_amount >= total_amount` is a
 one-way implication and still holds; the frozen-paid transitions simply engage

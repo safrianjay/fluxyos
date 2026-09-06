@@ -442,14 +442,21 @@ const isSettled = (o) => {
 // collect money that is already in the drawer.
 function nextStatusFor(o) {
     if (!o) return null;
-    if (isSettled(o) && o.status === 'served') return 'paid';
+    // A settled order has no bill left to request. From `ready` the next press
+    // carries the plate out and finishes the ticket in one motion — making a
+    // runner press Serve and then Close out is busywork, and a board full of
+    // served-and-paid tickets nobody closed is what makes `status` untrustworthy.
+    if (isSettled(o) && ['ready', 'served', 'awaiting_payment'].includes(o.status)) return 'paid';
     return posProfile().ladder[o.status] || null;
 }
 
 // The words on that step.
 function actionFor(o) {
     const st = STATUS[o.status] || STATUS.open;
-    if (isSettled(o) && o.status === 'served') return 'Close out';
+    if (isSettled(o)) {
+        if (o.status === 'ready') return 'Serve & close';
+        if (o.status === 'served' || o.status === 'awaiting_payment') return 'Close out';
+    }
     return st.action;
 }
 
@@ -2636,6 +2643,18 @@ function renderOrder() {
     $('pos-hold-btn')?.classList.toggle('hidden',
         !posProfile().payFirst || !editable || empty);
     discountBtn.classList.toggle('hidden', !editable || empty);
+    // ⚠️ SPLITTING BELONGS WHERE THE CASHIER IS. They are standing in this panel
+    // when the customer says "we'll split it" — sending them to the Orders board
+    // to find the same dialog is a detour they would take every time. Offered
+    // whenever there is something to divide: more than one dish, or more than
+    // one ticket at the table.
+    const splitBtn = $('pos-split-btn');
+    if (splitBtn) {
+        const siblings = o.table_id ? (tableTickets().get(o.table_id) || []) : [];
+        const divisible = (o.lines || []).length > 1 || siblings.length > 1;
+        splitBtn.classList.toggle('hidden',
+            !divisible || !o.table_id || isSettled(o) || o.status === 'void');
+    }
     voidBtn.classList.toggle('hidden', !editable);
 
     // A paid order's only correction is a refund, and only once.
@@ -2731,7 +2750,11 @@ async function advanceOrderById(orderId) {
     const next = nextStatusFor(o);
     if (!next) return;
     try {
-        const updated = await ds.setPosOrderStatus(state.uid, orderId, next);
+        // `paid` is earned, not asserted — `setPosOrderStatus` refuses it, which
+        // is why closing a settled ticket has its own call.
+        const updated = next === 'paid'
+            ? await ds.closePosOrder(state.uid, orderId)
+            : await ds.setPosOrderStatus(state.uid, orderId, next);
         // Patch in memory and repaint straight away. Waiting for the refresh
         // leaves the card sitting on its old status for a round trip, which on a
         // busy board reads as "the press did nothing" and gets pressed again.
@@ -2759,7 +2782,10 @@ async function advance() {
     const next = nextStatusFor(o);
     if (!next) return isSettled(o) ? undefined : openPaymentModal();
     try {
-        state.order = await ds.setPosOrderStatus(state.uid, state.orderId, next);
+        // As on the board: `paid` is earned, not asserted.
+        state.order = next === 'paid'
+            ? await ds.closePosOrder(state.uid, state.orderId)
+            : await ds.setPosOrderStatus(state.uid, state.orderId, next);
         renderOrder();
         await refresh({ keepOrder: true });
     } catch (err) { fail(err, 'Could not update that order.'); }
@@ -2895,19 +2921,29 @@ async function reprintBill(orderId) {
     openReceipt(list);
 }
 
-// Shown only from the SECOND ticket. On a table with one it would restate the
-// total directly above it and put a second, near-identical button beside the
-// card's own — the board's rule is one action per card, and this is the one
-// case where the table has an action the ticket does not.
+// The table's own action, when it has one the ticket does not.
+//
+// TWO CASES, and for a while only the first was offered:
+//   · several tickets — one bill across them ("Bill together")
+//   · ONE ticket with several dishes on it — the commonest table there is, and
+//     the one that actually says "we'll split this". It could not reach the
+//     dialog at all, so a party of three sharing one order had no way to pay
+//     separately. Reported by Jay.
+//
+// A single ticket with a single line has nothing to split and no siblings to
+// merge, so it gets no strip — the card's own action is the whole story.
 function tableBillStrip(o, siblings) {
     const list = (o.table_id && siblings.get(o.table_id)) || [];
-    if (list.length < 2) return '';
+    if (!list.length) return '';
+    const splittable = (o.lines || []).length > 1;
+    if (list.length < 2 && !splittable) return '';
+    const many = list.length > 1;
     return `<div class="pos-ocard-bill">
         <div class="pos-ocard-bill-txt">
-            <span class="pos-ocard-bill-label">Table ${esc(o.table_label || '')} · ${list.length} tickets</span>
+            <span class="pos-ocard-bill-label">Table ${esc(o.table_label || '')}${many ? ` · ${list.length} tickets` : ''}</span>
             <span class="pos-ocard-bill-total num">${esc(rp(billTotal(list)))}</span>
         </div>
-        <button type="button" class="pos-ocard-btn" data-table-bill="${esc(o.table_id)}">Bill together</button>
+        <button type="button" class="pos-ocard-btn" data-table-bill="${esc(o.table_id)}">${many ? 'Bill together' : 'Split bill'}</button>
     </div>`;
 }
 
@@ -2937,7 +2973,10 @@ function openTableBillModal(tableId) {
     // `item` splits by DISH, which is what a table actually asks for: "I'll pay
     // for mine." Both end in the same `payPosTableBill` call with a different
     // selection, so there is one place that decides what a payment does.
-    let mode = 'ticket';
+    // A single ticket has no rounds to choose between, so "Whole tickets" is
+    // just the Pay button again — the reason to open this dialog at all is to
+    // split it, and By item is where that starts.
+    let mode = list.length > 1 ? 'ticket' : 'item';
     // How many ways, when splitting evenly. Two is the commonest answer and the
     // one the control opens on.
     let ways = 2;
@@ -3006,9 +3045,9 @@ function openTableBillModal(tableId) {
             </div>
             <div class="pos-modal-body">
                 <div class="pos-bill-modes" id="pos-bill-modes" role="tablist">
-                    <button type="button" role="tab" data-bill-mode="ticket" aria-selected="true">Whole tickets</button>
-                    <button type="button" role="tab" data-bill-mode="item" aria-selected="false">By item</button>
-                    <button type="button" role="tab" data-bill-mode="even" aria-selected="false">Split evenly</button>
+                    <button type="button" role="tab" data-bill-mode="ticket" aria-selected="${mode === 'ticket'}">Whole tickets</button>
+                    <button type="button" role="tab" data-bill-mode="item" aria-selected="${mode === 'item'}">By item</button>
+                    <button type="button" role="tab" data-bill-mode="even" aria-selected="${mode === 'even'}">Split evenly</button>
                 </div>
                 <div class="pos-bill-list" id="pos-bill-list"></div>
                 <p class="pos-hint" id="pos-bill-rest" hidden></p>
@@ -5874,6 +5913,10 @@ function wire() {
         return once(advance);
     });
     $('pos-discount-btn').addEventListener('click', openDiscountDrawer);
+    $('pos-split-btn')?.addEventListener('click', () => {
+        const o = state.order;
+        if (o && o.table_id) openTableBillModal(o.table_id);
+    });
     $('pos-void-btn').addEventListener('click', openVoidDrawer);
     $('pos-refund-btn').addEventListener('click', openRefundDrawer);
     $('pos-reprint-btn').addEventListener('click', () => openReceipt(state.order));

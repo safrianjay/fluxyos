@@ -844,6 +844,32 @@ test('a served ticket that is already paid offers CLOSE OUT, not a second bill',
     await expect(page.locator('.pos-ocard [data-pay]')).toHaveCount(0);
 });
 
+test('a PAID ticket waiting at the pass closes in one press, not two', async ({ page }) => {
+    // ⚠️ AND THAT PRESS HAS TO WORK. `paid` is deliberately absent from
+    // `setPosOrderStatus` — it is earned, not asserted — which was complete
+    // while payment moved the ladder itself. Once payment stopped doing that,
+    // an order paid mid-kitchen had no route to a terminal state at all: the
+    // till answered `"paid" is not a status an order can be moved to here` and
+    // the ticket could not be closed.
+    await openBoard(page);
+    await page.evaluate(() => {
+        const ts = (ms) => { const d = new Date(Date.now() - ms); return { toDate: () => d }; };
+        return window.__posSeedBoard([{
+            id: 's1', order_number: '001', status: 'ready', table_id: 't6', table_label: '6',
+            lines: [{ line_id: 'l1', item_name: 'Dish', quantity: 1, unit_price: 50000, gross_amount: 50000 }],
+            subtotal: 50000, total_amount: 50000, paid_amount: 50000,
+            payments: [{ payment_id: 'p1', method: 'cash', status: 'settled', amount: 50000 }],
+            opened_at: ts(600000), status_changed_at: ts(600000), paid_at: ts(60000)
+        }]);
+    });
+
+    // One motion: the plate goes out and the ticket finishes. Making a runner
+    // press Serve and then Close out is busywork, and a board full of
+    // served-and-paid tickets nobody closed is what makes `status` untrustworthy.
+    await expect(page.locator('.pos-ocard-btn.is-primary')).toHaveText('Serve & close');
+    await expect(page.locator('.pos-ocard .pos-paid-badge')).toHaveText('Paid');
+});
+
 // ── Split by item ───────────────────────────────────────────────────────────
 //
 // "I'll pay for my dish." The selection is LINES rather than tickets, and each
@@ -1043,4 +1069,57 @@ test('AN INTERRUPTED EVEN SPLIT PICKS UP WHERE IT LEFT OFF', async ({ page }) =>
     await expect(modal.locator('.pos-bill-share-label')).toHaveText('Share 2 of 3');
     await expect(modal.locator('.pos-bill-share-note')).toContainText('1 of 3 already paid');
     await expect(modal.locator('#pos-bill-total')).toContainText('106.334');
+});
+
+test('A SINGLE TICKET WITH SEVERAL DISHES CAN STILL BE SPLIT', async ({ page }) => {
+    // ⚠️ IT COULD NOT REACH THE DIALOG AT ALL. The strip appeared only from the
+    // SECOND ticket, so a party of three sharing one order — the commonest table
+    // there is, and the one that actually says "we'll split this" — had no way
+    // to pay separately. Reported by Jay.
+    await openBoard(page);
+    await page.evaluate(() => {
+        const ts = (ms) => { const d = new Date(Date.now() - ms); return { toDate: () => d }; };
+        const L = (id, name, price) => ({ line_id: id, item_id: `i-${id}`, item_name: name,
+            quantity: 1, unit_price: price, gross_amount: price });
+        return window.__posSeedBoard([{
+            id: 'one', order_number: '004', status: 'served', table_id: 't6', table_label: '6',
+            lines: [L('a', 'Burger', 125000), L('b', 'Nasi', 10000), L('c', 'Latte', 65000)],
+            subtotal: 200000, service_charge_amount: 0, tax_amount: 0,
+            total_amount: 200000, paid_amount: 0, payments: [],
+            opened_at: ts(600000), status_changed_at: ts(600000)
+        }, {
+            // A one-LINE ticket at another table has nothing to split and no
+            // sibling to merge, so it gets no strip — the card's own action is
+            // the whole story.
+            id: 'lone', order_number: '005', status: 'served', table_id: 't9', table_label: '9',
+            lines: [L('d', 'Es Teh', 10000)],
+            subtotal: 10000, service_charge_amount: 0, tax_amount: 0,
+            total_amount: 10000, paid_amount: 0, payments: [],
+            opened_at: ts(300000), status_changed_at: ts(300000)
+        }]);
+    });
+
+    const strips = page.locator('.pos-ocard-bill');
+    await expect(strips).toHaveCount(1);
+    // One ticket, so it says what it does — splitting, not merging.
+    await expect(strips.first()).toContainText('Split bill');
+    await expect(strips.first()).not.toContainText('tickets');
+
+    await strips.locator('[data-table-bill]').click();
+    const modal = page.locator('#pos-bill-modal');
+    await expect(modal).toBeVisible();
+
+    // It opens ON By item: with one ticket, "Whole tickets" is the Pay button
+    // again, and splitting is the reason the dialog was opened.
+    await expect(modal.locator('[data-bill-mode="item"]')).toHaveAttribute('aria-selected', 'true');
+    await expect(modal.locator('[data-line]')).toHaveCount(3);
+
+    await modal.locator('[data-line="one|a"]').check();
+    await expect(modal.locator('#pos-bill-total')).toContainText('125.000');
+    await expect(modal.locator('#pos-bill-rest')).toContainText('75.000');
+
+    // Splitting evenly is available on one ticket too — three people, one order.
+    await modal.locator('[data-bill-mode="even"]').click();
+    await modal.locator('[data-ways="4"]').click();
+    await expect(modal.locator('#pos-bill-total')).toContainText('50.000');
 });

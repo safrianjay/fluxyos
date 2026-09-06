@@ -489,6 +489,50 @@ const sumOver = (field) => writes.reduce((t, w) =>
         is(/between 2 and 50/i.test(e.message), true, 'splitting one way is not splitting');
     }
 
+    // ── 7e. CLOSING A SETTLED TICKET OUT ────────────────────────────────────
+    //
+    // ⚠️ THERE WAS NO WAY TO. `paid` is deliberately absent from
+    // `setPosOrderStatus` — it is earned, not asserted — which was complete
+    // while payment moved the ladder itself. Once payment stopped doing that,
+    // an order paid mid-kitchen had no route to a terminal state: the till
+    // answered `"paid" is not a status an order can be moved to here` and the
+    // ticket could not be closed at all.
+    const closeOut = methodUnder('closePosOrder', env);
+    const closeHost = {
+        ...host,
+        _auditCreateBestEffort: async () => {},
+        updatePosOrder: async (uid, id, fn) => {
+            const base = store[id];
+            const changes = (await fn(base)) || {};
+            writes.push({ id, patch: changes });
+            return { ...base, ...changes };
+        }
+    };
+
+    resetWorld();
+    store.o1 = ticket('o1', { status: 'served', total_amount: 50000, paid_amount: 50000 });
+    let closed = await closeOut.call(closeHost, 'u1', 'o1');
+    is(closed.status, 'paid', 'a settled ticket can be closed out');
+    is(patchOf('o1').paid_at !== undefined, true, '…and carries a paid_at');
+
+    // Still EARNED, not asserted: the money has to be in first.
+    resetWorld();
+    store.o1 = ticket('o1', { status: 'served', total_amount: 50000, paid_amount: 20000 });
+    try {
+        await closeOut.call(closeHost, 'u1', 'o1');
+        fail('a ticket that is not paid in full was closed out');
+    } catch (e) {
+        is(/not been paid in full/i.test(e.message), true,
+            'closing out is earned — an unpaid ticket cannot be closed');
+    }
+
+    // Idempotent: a second press on a ticket already closed changes nothing.
+    resetWorld();
+    store.o1 = ticket('o1', { status: 'paid', total_amount: 50000, paid_amount: 50000 });
+    closed = await closeOut.call(closeHost, 'u1', 'o1');
+    is(closed.status, 'paid', 'closing an already-closed ticket is a no-op');
+    is(Object.keys(writes[0].patch).length, 0, '…and writes nothing');
+
     // ── 8. The refusals ─────────────────────────────────────────────────────
     const refuses = async (label, ids2, opts, match) => {
         try { await pay(ids2, opts); fail(`${label} — it was ALLOWED`); }
