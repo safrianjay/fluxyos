@@ -3048,6 +3048,18 @@ function openTableBillModal(tableId) {
     // `item` splits by DISH, which is what a table actually asks for: "I'll pay
     // for mine." Both end in the same `payPosTableBill` call with a different
     // selection, so there is one place that decides what a payment does.
+    // ⚠️ SPLIT EVENLY IS ARCHIVED, NOT REMOVED (Jay's call, 2026-09-06).
+    //
+    // The TAB is gone; everything behind it stays — `evenSplitShare`,
+    // `payPosTableBill`'s `splitWays` path, and their guards in
+    // `check:pos-table-bill`, which are pure and cost nothing to keep green.
+    // Turning it back on is this one line.
+    //
+    // It is archived rather than deleted because the reason to remove it is
+    // that nobody has asked for it yet, not that it is wrong: the arithmetic is
+    // proven and re-deriving it later would be the expensive half.
+    const SPLIT_EVENLY = false;
+
     // A single ticket has no rounds to choose between, so "Whole tickets" is
     // just the Pay button again — the reason to open this dialog at all is to
     // split it, and By item is where that starts.
@@ -3139,7 +3151,7 @@ function openTableBillModal(tableId) {
                 <div class="pos-bill-modes" id="pos-bill-modes" role="tablist">
                     <button type="button" role="tab" data-bill-mode="ticket" aria-selected="${mode === 'ticket'}">Whole tickets</button>
                     <button type="button" role="tab" data-bill-mode="item" aria-selected="${mode === 'item'}">By item</button>
-                    <button type="button" role="tab" data-bill-mode="even" aria-selected="${mode === 'even'}">Split evenly</button>
+                    ${SPLIT_EVENLY ? `<button type="button" role="tab" data-bill-mode="even" aria-selected="${mode === 'even'}">Split evenly</button>` : ''}
                 </div>
                 <div class="pos-bill-list" id="pos-bill-list"></div>
                 <p class="pos-hint" id="pos-bill-rest" hidden></p>

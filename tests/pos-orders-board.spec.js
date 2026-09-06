@@ -982,93 +982,25 @@ test('a dish somebody has already paid for cannot be picked again', async ({ pag
     await expect(modal.locator('#pos-bill-total')).toContainText('10.000');
 });
 
-// ── Split evenly ────────────────────────────────────────────────────────────
+// ── Split evenly is ARCHIVED ────────────────────────────────────────────────
 //
-// "Three ways." One share at a time, taken as each person hands their money
-// over. Same exactness rule as by-item: N shares must total the bill to the
-// rupiah, or the last payer is short by one and cannot close the table.
+// The tab is not offered (Jay's call, 2026-09-06). Everything behind it stays —
+// `evenSplitShare` and `payPosTableBill`'s `splitWays` path are still guarded by
+// `check:pos-table-bill`, which is pure and costs nothing to keep green, so
+// turning it back on is one line and not a re-derivation.
+//
+// This asserts the tab is GONE rather than deleting the thought: re-adding it
+// should be a deliberate act, not something that drifts back in.
 
-test('SPLIT EVENLY QUOTES ONE SHARE AT A TIME, AND THEY ADD UP', async ({ page }) => {
+test('the Split evenly tab is not offered', async ({ page }) => {
     await openBoard(page);
-    await page.evaluate(() => {
-        const ts = (ms) => { const d = new Date(Date.now() - ms); return { toDate: () => d }; };
-        const L = (id, name, price) => ({ line_id: id, item_id: `i-${id}`, item_name: name,
-            quantity: 1, unit_price: price, gross_amount: price });
-        const mk = (id, no, total, lines, age) => ({
-            id, order_number: no, status: 'served', table_id: 't6', table_label: '6',
-            lines, subtotal: total, service_charge_amount: 0, tax_amount: 0,
-            total_amount: total, paid_amount: 0, payments: [],
-            opened_at: ts(age), status_changed_at: ts(age)
-        });
-        return window.__posSeedBoard([
-            mk('e1', '004', 232000, [L('a', 'Burger', 232000)], 900000),
-            mk('e2', '005', 87000, [L('b', 'Es Teh', 87000)], 120000)
-        ]);
-    });
-
+    await seedSplitByItem(page);
     await page.locator('[data-table-bill]').first().click();
     const modal = page.locator('#pos-bill-modal');
-    await modal.locator('[data-bill-mode="even"]').click();
-
-    // Two is the commonest answer and the one it opens on.
-    await expect(modal.locator('.pos-bill-way.is-on')).toHaveText('2');
-    await expect(modal.locator('.pos-bill-share-label')).toHaveText('Share 1 of 2');
-    // 319.000 in two = 159.500.
-    await expect(modal.locator('#pos-bill-total')).toContainText('159.500');
-    await expect(modal.locator('#pos-bill-rest')).toContainText('159.500');
-
-    // ⚠️ THREE WAYS IS NOT A THIRD ROUNDED. 319.000 ÷ 3 is 106.333.33, and three
-    // rounded thirds sum to 319.999 — a rupiah the table does not owe, on a
-    // ticket that could then never close.
-    await modal.locator('[data-ways="3"]').click();
-    await expect(modal.locator('.pos-bill-share-label')).toHaveText('Share 1 of 3');
-    await expect(modal.locator('#pos-bill-total')).toContainText('106.333');
-
-    // The payment dialog is quoted the share and says which one it is.
-    await modal.locator('#pos-bill-pay').click();
-    const pay = page.locator('#pos-pay-modal');
-    await expect(pay.locator('#pos-pay-due')).toContainText('106.333');
-    await expect(pay.locator('.pos-modal-sub')).toContainText('share 1 of 3');
-});
-
-test('AN INTERRUPTED EVEN SPLIT PICKS UP WHERE IT LEFT OFF', async ({ page }) => {
-    // One person pays, the dialog closes, the next is served ten minutes later.
-    // The shares already taken are read back off the payments — restarting at
-    // share 1 would over-collect, and nothing would report it.
-    await openBoard(page);
-    await page.evaluate(() => {
-        const ts = (ms) => { const d = new Date(Date.now() - ms); return { toDate: () => d }; };
-        const L = (id, name, price) => ({ line_id: id, item_id: `i-${id}`, item_name: name,
-            quantity: 1, unit_price: price, gross_amount: price });
-        return window.__posSeedBoard([{
-            id: 'e1', order_number: '004', status: 'served', table_id: 't6', table_label: '6',
-            lines: [L('a', 'Burger', 232000)], subtotal: 232000,
-            service_charge_amount: 0, tax_amount: 0,
-            total_amount: 232000, paid_amount: 106333,
-            // Share 1 of 3 already collected.
-            payments: [{ payment_id: 'p1', method: 'cash', status: 'settled',
-                amount: 106333, split_ways: 3, split_index: 1, bill_id: 'b1' }],
-            opened_at: ts(900000), status_changed_at: ts(900000)
-        }, {
-            id: 'e2', order_number: '005', status: 'served', table_id: 't6', table_label: '6',
-            lines: [L('b', 'Es Teh', 87000)], subtotal: 87000,
-            service_charge_amount: 0, tax_amount: 0,
-            total_amount: 87000, paid_amount: 0, payments: [],
-            opened_at: ts(120000), status_changed_at: ts(120000)
-        }]);
-    });
-
-    await page.locator('[data-table-bill]').first().click();
-    const modal = page.locator('#pos-bill-modal');
-    await modal.locator('[data-bill-mode="even"]').click();
-    await modal.locator('[data-ways="3"]').click();
-
-    // ⚠️ SHARE TWO, NOT SHARE ONE. The base is reconstructed from what is still
-    // outstanding plus what the earlier shares already took, so the three shares
-    // still total the original bill.
-    await expect(modal.locator('.pos-bill-share-label')).toHaveText('Share 2 of 3');
-    await expect(modal.locator('.pos-bill-share-note')).toContainText('1 of 3 already paid');
-    await expect(modal.locator('#pos-bill-total')).toContainText('106.334');
+    await expect(modal.locator('[data-bill-mode]')).toHaveCount(2);
+    await expect(modal.locator('[data-bill-mode="ticket"]')).toBeVisible();
+    await expect(modal.locator('[data-bill-mode="item"]')).toBeVisible();
+    await expect(modal.locator('[data-bill-mode="even"]')).toHaveCount(0);
 });
 
 test('A SINGLE TICKET WITH SEVERAL DISHES CAN STILL BE SPLIT', async ({ page }) => {
@@ -1118,10 +1050,6 @@ test('A SINGLE TICKET WITH SEVERAL DISHES CAN STILL BE SPLIT', async ({ page }) 
     await expect(modal.locator('#pos-bill-total')).toContainText('125.000');
     await expect(modal.locator('#pos-bill-rest')).toContainText('75.000');
 
-    // Splitting evenly is available on one ticket too — three people, one order.
-    await modal.locator('[data-bill-mode="even"]').click();
-    await modal.locator('[data-ways="4"]').click();
-    await expect(modal.locator('#pos-bill-total')).toContainText('50.000');
 });
 
 // ── A split's receipt is theirs alone ───────────────────────────────────────
@@ -1405,21 +1333,3 @@ test('a split reviews ONLY the dishes chosen, with their own share of VAT', asyn
     await expect(review, 'the table total is quoted on a split').not.toContainText('748.200');
 });
 
-test('an even share reviews the bill it is a share OF, and says so', async ({ page }) => {
-    await openBoard(page);
-    await seedReviewTicket(page);
-
-    await page.locator('[data-table-bill]').first().click();
-    await page.locator('#pos-bill-modal [data-bill-mode="even"]').click();
-    await page.locator('#pos-bill-modal [data-ways="3"]').click();
-    await page.locator('#pos-bill-pay').click();
-
-    const review = page.locator('#pos-pay-modal .pos-review');
-    // The breakdown describes the BILL — a third of a tax line is a figure
-    // nothing else in the system holds — so the header says which share it is
-    // and the amount due carries it.
-    await expect(review).toContainText('Share 1 of 3');
-    await expect(review).toContainText('Bill total');
-    await expect(review).toContainText('748.200');
-    await expect(page.locator('#pos-pay-due')).toContainText('249.400');
-});

@@ -753,7 +753,21 @@ in doubt; a breakdown that does not add up would be worse than none.
 Splitting does **not** move the kitchen ladder — someone paying for their
 starter must not take the main course off the cook's screen.
 
-### Split evenly (2026-09-06)
+### Split evenly — ARCHIVED (2026-09-06)
+
+⚠️ **The tab is not offered.** Jay's call, the same day it shipped: nobody has
+asked for it yet, and the bill dialog is easier to read with two modes than
+three. It is archived rather than deleted because the reason to hide it is
+absence of demand, not that it is wrong — the arithmetic is proven, and
+re-deriving it later would be the expensive half.
+
+Everything behind it stays: `evenSplitShare`, `payPosTableBill`'s `splitWays`
+path, and their guards in `check:pos-table-bill`, which are pure and cost nothing
+to keep green. **Turning it back on is one line** — `SPLIT_EVENLY` in
+`openTableBillModal`. A board spec asserts the tab is absent, so re-adding it is
+a deliberate act rather than something that drifts back in.
+
+The description below is what it does when enabled.
 
 "Three ways." The third reading of one bill, and the same call again —
 `payPosTableBill(..., { splitWays: N })` takes **one share** and is called once
