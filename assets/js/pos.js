@@ -2896,11 +2896,86 @@ function billOrderIds(o) {
  * smaller receipt: `pos_orders` is never deleted, so a miss here is a network
  * or permission problem and one more tap fixes it.
  */
+/**
+ * The bills this order was settled by.
+ *
+ * ⚠️ A SPLIT TICKET WAS PAID BY SEVERAL PEOPLE AND OWES SEVERAL RECEIPTS. The
+ * reprint handed back the whole ticket with every payment listed on it — so the
+ * customer who paid for one dish got a document stating the table's total and
+ * two other people's money. Reported by Jay, from a real receipt.
+ */
+function billsOn(order) {
+    const groups = new Map();
+    ((order && order.payments) || []).forEach((p) => {
+        if (p.status !== 'settled' || !p.bill_id) return;
+        const g = groups.get(p.bill_id) || {
+            bill_id: p.bill_id, amount: 0, lines: 0,
+            ways: p.split_ways || null, index: p.split_index || null
+        };
+        g.amount += Number(p.amount) || 0;
+        g.lines += (p.line_ids || []).length;
+        groups.set(p.bill_id, g);
+    });
+    return [...groups.values()];
+}
+
+/** Ask which receipt, when the ticket was settled by more than one person. */
+function openReceiptPicker(order, bills) {
+    document.getElementById('pos-rcpt-modal')?.remove();
+    const el = document.createElement('div');
+    el.id = 'pos-rcpt-modal';
+    el.className = 'pos-modal-layer';
+    el.innerHTML = `
+        <div class="pos-modal-backdrop" data-close></div>
+        <div class="pos-modal" role="dialog" aria-modal="true" aria-labelledby="pos-rcpt-title">
+            <div class="pos-modal-head">
+                <div>
+                    <h2 class="pos-modal-title" id="pos-rcpt-title">Which receipt?</h2>
+                    <p class="pos-modal-sub">${esc(orderShort(order))} was settled by ${bills.length} payments.</p>
+                </div>
+                <button type="button" class="pos-modal-close" data-close aria-label="Close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18 18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="pos-modal-body">
+                <div class="pos-bill-list" id="pos-rcpt-list">
+                    ${bills.map((b, n) => `<button type="button" class="pos-bill-row" data-bill="${esc(b.bill_id)}">
+                        <span class="pos-bill-row-main">
+                            <span class="pos-bill-row-no">${b.ways
+                                ? `Share ${esc(String(b.index || n + 1))} of ${esc(String(b.ways))}`
+                                : b.lines ? `${b.lines} item${b.lines === 1 ? '' : 's'}` : `Payment ${n + 1}`}</span>
+                        </span>
+                        <span class="pos-bill-row-amt num">${esc(rp(b.amount))}</span>
+                    </button>`).join('')}
+                </div>
+            </div>
+        </div>`;
+    document.body.appendChild(el);
+    const close = () => el.remove();
+    el.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', close));
+    el.querySelector('#pos-rcpt-list').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-bill]');
+        if (!b) return;
+        close();
+        openReceipt(order, { billId: b.dataset.bill });
+    });
+    return el;
+}
+
 async function reprintBill(orderId) {
     const known = [...((state.overview || {}).activeOrders || []),
         ...((state.overview || {}).paidToday || [])].filter((o, i, a) => a.findIndex((x) => x.id === o.id) === i);
     const o = known.find((x) => x.id === orderId);
     if (!o) return;
+
+    // Settled by several people: ask which of them is standing there.
+    const bills = billsOn(o);
+    if (bills.length > 1) { openReceiptPicker(o, bills); return; }
+    // One bill, but a split one — reprint it as the split it was.
+    if (bills.length === 1 && (bills[0].lines || bills[0].ways)) {
+        openReceipt(o, { billId: bills[0].bill_id });
+        return;
+    }
 
     const ids = billOrderIds(o);
     if (ids.length < 2) { openReceipt(o); return; }
@@ -3018,9 +3093,16 @@ function openTableBillModal(tableId) {
         return splitSelection().reduce((sum, sel) => {
             const o = list.find((x) => x.id === sel.order_id);
             if (!o) return sum;
+            // The SAME inputs the DAL charges with, or the dialog quotes one
+            // number and the till takes another.
             return sum + P.splitLineShare({
                 lines: o.lines || [],
                 total: Math.round(Number(o.total_amount) || 0),
+                subtotal: Math.round(Number(o.subtotal) || 0),
+                discountTotal: Math.round(Number(o.discount_total) || 0),
+                service: Math.round(Number(o.service_charge_amount) || 0),
+                tax: Math.round(Number(o.tax_amount) || 0),
+                taxInclusive: !!(o.pos_pricing || {}).tax_inclusive,
                 coveredIds: [...coveredOf(o)],
                 selectedIds: sel.line_ids
             }).amount;
@@ -3857,17 +3939,19 @@ function openReceipt(order, { billId = null } = {}) {
     if (!list.length) return;
     const o = list[0];
 
-    // ── A SPLIT'S RECEIPT IS THEIR ITEMS, AND WHAT THEY PAID ────────────────
+    // ── A SPLIT'S RECEIPT IS THEIR ITEMS, AND THEIR OWN ARITHMETIC ──────────
     //
     // Someone who paid for one dish must not be handed the table's whole
     // ticket: it states a figure they did not pay, and it is the document a
-    // dispute is settled with. When this payment named its lines, the receipt
-    // is those lines and the amount that was actually collected for them —
-    // service and tax included, because their share of both is inside it.
+    // dispute is settled with.
     //
-    // Not itemised further than that on purpose. The share is allocated across
-    // the SELECTION, so printing a per-dish tax line would be inventing a split
-    // of a split; the total is exact and the lines say what it was for.
+    // ⚠️ AND IT CARRIES ITS OWN SERVICE CHARGE AND TAX. It printed only "Dibayar
+    // Rp168.200" under the items, which tells a customer nothing about why a
+    // Rp145.000 burger cost that — and in Indonesia the tax line is what says
+    // the extra was a tax rather than something the restaurant added. Every
+    // component is allocated by `splitLineShare` on the same running-total rule,
+    // so the split's subtotal + layanan + PPN foot to exactly what was charged
+    // AND the splits still sum to the ticket's own figures.
     const billPay = billId
         ? list.flatMap((x) => (x.payments || []).filter((p) => p.status === 'settled' && p.bill_id === billId))
         : [];
@@ -3917,6 +4001,51 @@ function openReceipt(order, { billId = null } = {}) {
         })
         : [];
     const splitTotal = splitPay.reduce((t, p) => t + (Number(p.amount) || 0), 0);
+
+    // This split's own subtotal, discount, service and tax — recomputed rather
+    // than stored, from the lines it covered and what the ticket was covering
+    // before it. Same module, same rule, so the printed figures are the ones
+    // that were charged.
+    const splitParts = (() => {
+        if (!isSplit) return null;
+        const P = window.FluxyPosPricing;
+        if (!P) return null;
+        const acc = { subtotal: 0, discount: 0, service: 0, tax: 0, amount: 0, breakdown: true };
+        list.forEach((x) => {
+            const mine = (x.payments || []).filter((p) => p.status === 'settled' && p.bill_id === billId);
+            if (!mine.length) return;
+            const ids = mine.flatMap((p) => p.line_ids || []);
+            if (!ids.length) return;
+            // What THIS ticket had already been paid for before this split —
+            // every settled payment on it that is not part of this bill.
+            const before = (x.payments || [])
+                .filter((p) => p.status === 'settled' && p.bill_id !== billId)
+                .flatMap((p) => p.line_ids || []);
+            const r = P.splitLineShare({
+                lines: x.lines || [],
+                total: Math.round(Number(x.total_amount) || 0),
+                subtotal: Math.round(Number(x.subtotal) || 0),
+                discountTotal: Math.round(Number(x.discount_total) || 0),
+                service: Math.round(Number(x.service_charge_amount) || 0),
+                tax: Math.round(Number(x.tax_amount) || 0),
+                taxInclusive: !!(x.pos_pricing || {}).tax_inclusive,
+                coveredIds: before,
+                selectedIds: ids
+            });
+            acc.subtotal += r.subtotal;
+            acc.discount += r.discount;
+            acc.service += r.service;
+            acc.tax += r.tax;
+            acc.amount += r.amount;
+            if (!r.breakdown) acc.breakdown = false;
+        });
+        // ⚠️ IT MUST FOOT AGAINST WHAT WAS ACTUALLY COLLECTED. If the recomputed
+        // share and the recorded payment disagree — an order edited between the
+        // split and the reprint — the breakdown is not printed rather than
+        // printed wrong. The amount collected is never in doubt.
+        if (acc.amount !== splitTotal) acc.breakdown = false;
+        return acc;
+    })();
 
     const bill = {
         lines: billLines,
@@ -4023,7 +4152,15 @@ function openReceipt(order, { billId = null } = {}) {
   <div class="c m">Bagian dari tagihan meja</div>
   <table>${splitLines.map(line).join('')}</table>
   <hr>
-  <table>${row('Dibayar', rp(splitTotal), 'tot')}</table>` : split ? `${list.map((x) => `
+  <table>${splitParts && splitParts.breakdown ? ticketTotals({
+      subtotal: splitParts.subtotal,
+      discount_total: splitParts.discount,
+      discount_reason: null,
+      service_charge_amount: splitParts.service,
+      tax_amount: splitParts.tax,
+      total_amount: splitTotal,
+      pos_pricing: o.pos_pricing
+  }) : row('Dibayar', rp(splitTotal), 'tot')}</table>` : split ? `${list.map((x) => `
     <div class="tk">${esc(x.order_number || '')}</div>
     <table>${(x.lines || []).map(line).join('')}</table>
     <table>${ticketTotals(x)}</table>

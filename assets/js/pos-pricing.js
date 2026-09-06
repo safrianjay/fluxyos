@@ -177,9 +177,20 @@
     }
 
     /**
-     * @param {{lines:array, total:number, coveredIds:array, selectedIds:array}} input
-     * @returns {{amount:number, weightAll:number, weightCovered:number,
-     *            weightSelected:number, coversRest:boolean}}
+     * @param {{lines:array, total:number, coveredIds:array, selectedIds:array,
+     *          subtotal?:number, discountTotal?:number, service?:number,
+     *          tax?:number, taxInclusive?:boolean}} input
+     * @returns {{amount:number, subtotal:number, discount:number, service:number,
+     *            tax:number, breakdown:boolean, weightAll:number,
+     *            weightCovered:number, weightSelected:number, coversRest:boolean}}
+     *
+     * ⚠️ EVERY COMPONENT IS ALLOCATED, NOT JUST THE TOTAL — because the split's
+     * receipt has to state its own subtotal, service charge and tax, and a
+     * receipt whose lines do not add up to what was charged is the argument it
+     * exists to prevent. Each component partitions by the same running-total
+     * rule, so all of them still sum to the ticket's own figures exactly, and
+     * the charged amount is the SUM OF THE COMPONENTS rather than a separately
+     * rounded share of the total — which is what makes each receipt foot.
      */
     function splitLineShare(input) {
         var i = input || {};
@@ -206,13 +217,49 @@
             else if (selected[id]) wSelected += weight;
         });
         if (all <= 0) {
-            return { amount: 0, weightAll: 0, weightCovered: 0, weightSelected: 0, coversRest: true };
+            return {
+                amount: 0, subtotal: 0, discount: 0, service: 0, tax: 0, breakdown: false,
+                weightAll: 0, weightCovered: 0, weightSelected: 0, coversRest: true
+            };
         }
 
         var after = wCovered + wSelected;
-        var amount = Math.round(total * after / all) - Math.round(total * wCovered / all);
+        // One component's share, by the running-total rule.
+        var portion = function (amount) {
+            var v = int(amount);
+            return Math.round(v * after / all) - Math.round(v * wCovered / all);
+        };
+
+        var subtotal = portion(i.subtotal);
+        var discount = portion(i.discountTotal);
+        var service = portion(i.service);
+        var tax = portion(i.tax);
+
+        // ⚠️ INCLUSIVE TAX IS ALREADY INSIDE THE PRICES, so adding it here would
+        // charge this payer for it twice — the same rule `computeBillTotals`
+        // follows, and the reason the receipt states it after the total rather
+        // than as a line above it.
+        var fromParts = subtotal - discount + service + (i.taxInclusive ? 0 : tax);
+
+        // Do the ticket's own figures reconcile to its total? On anything
+        // written before service and tax existed they do, trivially. If they do
+        // NOT — odd or hand-patched data — the components are not something to
+        // print, so the share falls back to a plain proportion of the total and
+        // says the breakdown cannot be trusted rather than printing one that
+        // does not add up.
+        var ticketFromParts = int(i.subtotal) - int(i.discountTotal) + int(i.service)
+            + (i.taxInclusive ? 0 : int(i.tax));
+        var reconciles = total > 0 && ticketFromParts === total;
+
         return {
-            amount: Math.max(0, amount),
+            amount: Math.max(0, reconciles
+                ? fromParts
+                : Math.round(total * after / all) - Math.round(total * wCovered / all)),
+            subtotal: subtotal,
+            discount: discount,
+            service: service,
+            tax: tax,
+            breakdown: reconciles,
             weightAll: all,
             weightCovered: wCovered,
             weightSelected: wSelected,

@@ -1648,9 +1648,17 @@ export const POS_METHODS = {
                     throw new Error(`${name(o)} already has a payment against the whole ticket — settle the rest of it the same way.`);
                 }
 
+                // Every component, not just the total — the split's receipt has
+                // to state its own subtotal, service charge and tax, and it can
+                // only do that if they were allocated rather than guessed at.
                 return this._pricing().splitLineShare({
                     lines: o.lines || [],
                     total: Math.round(t.total_amount),
+                    subtotal: Math.round(t.subtotal),
+                    discountTotal: Math.round(t.discount_total),
+                    service: Math.round(t.service_charge_amount),
+                    tax: Math.round(t.tax_amount),
+                    taxInclusive: !!(o.pos_pricing || {}).tax_inclusive,
                     coveredIds: covered,
                     selectedIds: picked
                 }).amount;

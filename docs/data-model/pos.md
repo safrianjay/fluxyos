@@ -649,10 +649,42 @@ follow from it:
   nothing about which items it covered, so a split after one has no way to know
   what is left and would charge for it again. Refused, not guessed at.
 
-**The split's receipt is their items and what they paid**, never the table's
-ticket — that states a figure they did not pay, to the person least able to
-check it. It is not itemised further: the share is allocated across the
-SELECTION, so a per-dish tax line would be inventing a split of a split.
+### A split's receipt is theirs alone
+
+Never the table's ticket — that states a figure they did not pay, to the person
+least able to check it and most likely to be disputing it.
+
+⚠️ **THE REPRINT HANDED BACK THE WHOLE TICKET.** The settle-time receipt was
+already filtered; the Print button was not, so a customer who paid for one dish
+got a document listing every item, the table's total and two other people's
+money. A ticket settled by several people **owes several receipts** — the
+reprint now asks which one, listing each share with its amount.
+
+⚠️ **AND EACH CARRIES ITS OWN SERVICE CHARGE AND TAX.** "Dibayar Rp168.200"
+under a Rp145.000 burger tells a customer nothing about why, and in Indonesia
+the tax line is what says the extra was a **tax** rather than something the
+restaurant added.
+
+So `splitLineShare` allocates **every component**, not just the total — subtotal,
+discount, service and tax, each by the same running-total rule. Two consequences,
+and both are needed:
+
+| | |
+|---|---|
+| within a share | `subtotal − discount + service + tax` **equals what was charged** |
+| across shares | each component still sums to the ticket's own figure exactly |
+
+The charged amount is therefore the **sum of the components**, not a separately
+rounded share of the total — that is what makes the receipt foot. Jay's ticket
+(645.000 + 5% + 11% = 748.200) splits to 145.000/7.250/15.950 = **168.200** and
+500.000/25.000/55.000 = **580.000**.
+
+⚠️ **Inclusive tax is left inside the prices**, exactly as `computeBillTotals`
+does — adding a share of it would charge that payer for it twice.
+
+⚠️ **A ticket whose own parts do not reconcile to its total prints no
+breakdown**, and falls back to a plain proportion. The amount collected is never
+in doubt; a breakdown that does not add up would be worse than none.
 
 Splitting does **not** move the kitchen ladder — someone paying for their
 starter must not take the main course off the cook's screen.

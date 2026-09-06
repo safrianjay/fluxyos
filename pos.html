@@ -1122,6 +1122,9 @@
             background: #fff;
         }
         .pos-bill-row.is-on { border-color: #CBD5E1; background: #F8FAFC; }
+        /* The receipt picker reuses the row, as a button. */
+        button.pos-bill-row { width: 100%; text-align: left; font: inherit; }
+        button.pos-bill-row:hover { background: #F8FAFC; border-color: #CBD5E1; }
         .pos-bill-row input { width: 18px; height: 18px; accent-color: #EA580C; flex: 0 0 auto; }
         .pos-bill-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
         .pos-bill-row-top { display: flex; align-items: center; gap: 8px; }

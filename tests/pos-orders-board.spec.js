@@ -1123,3 +1123,99 @@ test('A SINGLE TICKET WITH SEVERAL DISHES CAN STILL BE SPLIT', async ({ page }) 
     await modal.locator('[data-ways="4"]').click();
     await expect(modal.locator('#pos-bill-total')).toContainText('50.000');
 });
+
+// ── A split's receipt is theirs alone ───────────────────────────────────────
+//
+// ⚠️ THE REPRINT HANDED BACK THE WHOLE TICKET. A customer who paid for one dish
+// got a document stating the table's total and two other people's money — the
+// receipt is what a dispute is settled with, and it was arguing the wrong side.
+// Reported by Jay from a real one.
+
+/** Jay's ticket: two dishes settled by two people. */
+async function seedTwoWaySplit(page) {
+    return page.evaluate(() => {
+        const ts = (ms) => { const d = new Date(Date.now() - ms); return { toDate: () => d }; };
+        return window.__posSeedBoard([{
+            id: 'r1', order_number: '2026-09-06-017', status: 'paid',
+            table_id: 't3', table_label: '3', dimension_id: 'd1',
+            lines: [
+                { line_id: 'a', item_id: 'i-a', item_name: 'Burger', quantity: 1, unit_price: 145000, gross_amount: 145000 },
+                { line_id: 'b', item_id: 'i-b', item_name: 'Jasa Konsultasi Menu', quantity: 1, unit_price: 500000, gross_amount: 500000 }
+            ],
+            subtotal: 645000, discount_total: 0, service_charge_amount: 32250, tax_amount: 70950,
+            total_amount: 748200, paid_amount: 748200,
+            pos_pricing: { tax_enabled: true, tax_label: 'PPN', tax_rate_percent: 11,
+                tax_inclusive: false, service_enabled: true, service_rate_percent: 5 },
+            payments: [
+                { payment_id: 'p1', method: 'cash', tender: 'cash', status: 'settled', amount: 168200,
+                    amount_received: 168200, change_given: 0, bill_id: 'B1', bill_orders: ['r1'], line_ids: ['a'] },
+                { payment_id: 'p2', method: 'cash', tender: 'cash', status: 'settled', amount: 580000,
+                    amount_received: 600000, change_given: 20000, bill_id: 'B2', bill_orders: ['r1'], line_ids: ['b'] }
+            ],
+            opened_at: ts(900000), status_changed_at: ts(900000), paid_at: ts(60000)
+        }]);
+    });
+}
+
+test('EACH SPLIT REPRINTS ITS OWN ITEMS, VAT AND SERVICE — NOT THE TABLE\'S', async ({ page }) => {
+    await openBoard(page);
+    await seedTwoWaySplit(page);
+
+    // Two people paid, so the reprint asks which of them is standing there
+    // rather than guessing — or handing over both.
+    await page.locator('[data-print]').first().click();
+    const picker = page.locator('#pos-rcpt-modal');
+    await expect(picker).toBeVisible();
+    await expect(picker.locator('[data-bill]')).toHaveCount(2);
+    await expect(picker).toContainText('168.200');
+    await expect(picker).toContainText('580.000');
+
+    const popup = page.waitForEvent('popup', { timeout: 30000 });
+    await picker.locator('[data-bill]').first().click();
+    const sheet = await popup;
+    await sheet.waitForLoadState('domcontentloaded').catch(() => {});
+    const text = (await sheet.locator('body').innerText()).replace(/\s+/g, ' ');
+    await sheet.close();
+
+    // ⚠️ ONLY THEIR DISH. The other person's Rp500.000 is none of their business
+    // and is not on their receipt.
+    expect(text).toContain('Burger');
+    expect(text, 'the other payer\'s item is on this receipt').not.toContain('Jasa Konsultasi');
+    expect(text, 'the table total is on a share receipt').not.toContain('748.200');
+    expect(text, 'the other share\'s payment is on this receipt').not.toContain('580.000');
+
+    // ⚠️ AND ITS OWN VAT AND SERVICE CHARGE. "Dibayar Rp168.200" under a
+    // Rp145.000 burger tells a customer nothing about why — and in Indonesia the
+    // tax line is what says the extra was a tax, not something the restaurant
+    // added.
+    expect(text).toContain('Subtotal');
+    expect(text).toContain('145.000');      // this share's subtotal
+    expect(text).toContain('Layanan');
+    expect(text).toContain('7.250');        // its share of the 32.250 service
+    expect(text).toContain('PPN');
+    expect(text).toContain('15.950');       // its share of the 70.950 tax
+    expect(text).toContain('168.200');      // and they foot to what was paid
+});
+
+test('the other share reprints as its own bill too', async ({ page }) => {
+    await openBoard(page);
+    await seedTwoWaySplit(page);
+    await page.locator('[data-print]').first().click();
+
+    const popup = page.waitForEvent('popup', { timeout: 30000 });
+    await page.locator('#pos-rcpt-modal [data-bill]').nth(1).click();
+    const sheet = await popup;
+    await sheet.waitForLoadState('domcontentloaded').catch(() => {});
+    const text = (await sheet.locator('body').innerText()).replace(/\s+/g, ' ');
+    await sheet.close();
+
+    expect(text).toContain('Jasa Konsultasi');
+    expect(text, 'the first payer\'s dish is on the second receipt').not.toContain('Burger');
+    expect(text).toContain('500.000');      // its subtotal
+    expect(text).toContain('25.000');       // its service
+    expect(text).toContain('55.000');       // its tax
+    expect(text).toContain('580.000');      // its total, which they foot to
+    // Its own tender and change — the two figures a dispute is actually about.
+    expect(text).toContain('600.000');
+    expect(text).toContain('Kembalian');
+});

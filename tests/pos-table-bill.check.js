@@ -385,6 +385,58 @@ const sumOver = (field) => writes.reduce((t, w) =>
         is(/no such item/i.test(e.message), true, 'an item that is not on the ticket is refused');
     }
 
+    // ── 7c-ii. THE SPLIT'S OWN SERVICE CHARGE AND TAX ───────────────────────
+    //
+    // ⚠️ THE RECEIPT HAS TO SAY WHY A Rp145.000 BURGER COST Rp168.200, and in
+    // Indonesia the tax line is what tells a customer the extra was a tax rather
+    // than something the restaurant added. So every component is allocated, not
+    // just the total — and by the same running-total rule, so the split's own
+    // subtotal + layanan + tax FOOT to what was charged AND the splits still sum
+    // to the ticket's own figures.
+    //
+    // Jay's real receipt: 645.000 of food, 5% service, 11% PPN, 748.200 total.
+    const P = require('../assets/js/pos-pricing.js');
+    const JAY = {
+        lines: [{ line_id: 'a', gross_amount: 145000 }, { line_id: 'b', gross_amount: 500000 }],
+        subtotal: 645000, discountTotal: 0, service: 32250, tax: 70950,
+        total: 748200, taxInclusive: false
+    };
+    let cover = [];
+    const parts = [];
+    [['a'], ['b']].forEach((pick) => {
+        const r = P.splitLineShare({ ...JAY, coveredIds: cover, selectedIds: pick });
+        parts.push(r);
+        cover = cover.concat(pick);
+    });
+    is(parts[0].amount, 168200, 'the burger\u2019s share is what the till actually charged');
+    is(parts[0].subtotal, 145000, '…its own subtotal is the dish');
+    is(parts[0].service, 7250, '…its own share of the service charge');
+    is(parts[0].tax, 15950, '…and of the tax');
+    is(parts[0].subtotal - parts[0].discount + parts[0].service + parts[0].tax, parts[0].amount,
+        'THE RECEIPT FOOTS: subtotal + layanan + tax is exactly what was paid');
+    is(parts[1].subtotal - parts[1].discount + parts[1].service + parts[1].tax, parts[1].amount,
+        '…on the second share too');
+    is(parts[0].subtotal + parts[1].subtotal, 645000, 'and the shares still sum to the ticket subtotal');
+    is(parts[0].service + parts[1].service, 32250, '…its service charge');
+    is(parts[0].tax + parts[1].tax, 70950, '…its tax');
+    is(parts[0].amount + parts[1].amount, 748200, '…and its total');
+
+    // ⚠️ INCLUSIVE TAX IS ALREADY IN THE PRICES, so adding a share of it would
+    // charge this payer for it twice — the same trap `computeBillTotals` names.
+    const INC = { ...JAY, service: 32250, tax: 67022, total: 677250, taxInclusive: true };
+    const incA = P.splitLineShare({ ...INC, coveredIds: [], selectedIds: ['a'] });
+    const incB = P.splitLineShare({ ...INC, coveredIds: ['a'], selectedIds: ['b'] });
+    is(incA.amount + incB.amount, 677250, 'an inclusive-tax ticket still splits to its exact total');
+    is(incA.amount, incA.subtotal - incA.discount + incA.service,
+        '…with the tax left inside the prices, not added on top');
+
+    // Data that does not reconcile prints no breakdown rather than a wrong one.
+    const odd = P.splitLineShare({
+        ...JAY, total: 999999, coveredIds: [], selectedIds: ['a']
+    });
+    is(odd.breakdown, false, 'a ticket whose parts do not add up prints no breakdown');
+    is(odd.amount > 0, true, '…but the amount charged is never in doubt');
+
     // ── 7d. SPLIT EVENLY ────────────────────────────────────────────────────
     //
     // "Three ways." Same exactness rule as by-item: N shares must total the
