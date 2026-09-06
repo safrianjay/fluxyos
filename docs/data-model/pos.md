@@ -556,20 +556,40 @@ one bill"; without it a mis-tap settles another table's food against this
 customer's cash and both orders look correct afterwards. Takeaway is excluded
 for the same reason — no table means nothing says two bags are one person.
 
-`payments[].bill_id` ties the payments taken together. On the payment, not on
-the orders: `payments[]` has no `hasOnly` (§7) so it needs no deploy, and it is
-a fact about what happened rather than a session entity that would then have to
-be kept true. The receipt folds payments sharing a `bill_id` back into one row —
-without it a single Rp80.000 tender prints as two payment lines and two change
-figures on the customer's own copy.
+`payments[].bill_id` ties the payments taken together, and `bill_orders` carries
+the ticket ids beside it. On the payment, not on the orders: `payments[]` has no
+`hasOnly` (§7) so it needs no deploy, and it is a fact about what happened rather
+than a session entity that would then have to be kept true. The receipt folds
+payments sharing a `bill_id` back into one row — without it a single Rp80.000
+tender prints as two payment lines and two change figures on the customer's own
+copy.
+
+⚠️ **`bill_orders` exists because `bill_id` alone is ungroupable.** Firestore
+cannot query inside an array of maps, so the key would name a set nothing could
+ever resolve — and the reprint would hand a customer one ticket's slip for a bill
+they paid in full. The reprint is **the whole bill or nothing**: a ticket it
+cannot load refuses the print and says so, because `pos_orders` is never deleted
+so a miss is a network or permission problem and one more tap fixes it. A
+receipt that understates a settled bill is the document that exists to prevent
+the argument, arguing the wrong side.
+
+**The floor tile promises the table, so the tap delivers it.** Once the tile
+started showing the table's outstanding and its ticket count, tapping a table
+reading "Rp80.000 · 2 tickets" opened ONE ticket's panel showing Rp50.000 —
+nothing errored, the cashier was simply handed a smaller number than the tile
+they had just pressed. A table with more than one live ticket now opens the same
+bill dialog the board's strip does; a table with one still lands straight on the
+till. The dialog carries a per-row **Open** so adding to a round is not a dead
+end — with `preventDefault`, since the button sits inside the row's `<label>` and
+would otherwise toggle what the bill covers on the way out.
 
 **The receipt keeps each ticket's own totals block**, then one grand total. Two
 tickets can carry different `pos_pricing` snapshots (one opened before a rate
 change, one after), so a single summed "Pajak 11%" line could describe neither.
 
-Guard: `check:pos-table-bill` — 37 assertions, pure, unconditional in the BE
+Guard: `check:pos-table-bill` — 41 assertions, pure, unconditional in the BE
 lane, driving the real method against a fake transaction that throws on a read
-after a write. Board: three specs in `tests/pos-orders-board.spec.js`.
+after a write. Board: five specs in `tests/pos-orders-board.spec.js`.
 
 **Still not built: splitting a bill by ITEM or by seat.** The unit of splitting
 is the ticket. Assigning individual lines to payers needs a UI for it and a

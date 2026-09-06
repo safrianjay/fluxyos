@@ -1493,7 +1493,18 @@ export const POS_METHODS = {
                     reference: this._nullableString(reference, 80),
                     // Which tickets were paid together. Absent on every payment
                     // taken one order at a time, which is the honest reading.
+                    //
+                    // ⚠️ THE IDS, NOT JUST THE KEY. A reprint has to rebuild the
+                    // COMBINED receipt weeks later, and Firestore cannot query
+                    // inside an array of maps — so a bare `bill_id` would be a
+                    // grouping key nothing could ever group by, and the reprint
+                    // would hand a customer one ticket's slip for a bill they
+                    // paid in full. Bounded by the 20-ticket cap above.
+                    //
+                    // Written in receipt order (oldest ticket first), so a
+                    // reprint reads down the same way the original did.
                     bill_id: billId,
+                    bill_orders: rows.map((x) => x.id),
                     status: 'settled',
                     received_at: stamp,
                     received_by: this.actorUid || userId

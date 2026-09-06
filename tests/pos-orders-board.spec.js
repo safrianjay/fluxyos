@@ -651,3 +651,103 @@ test('the payment dialog charges the BILL, not the ticket it was opened from', a
     await pay.locator('#pos-pay-amount').fill('100.000');
     await expect(pay.locator('#pos-change-value')).toContainText('20.000');
 });
+
+// ── Reprinting what was actually paid ───────────────────────────────────────
+//
+// ⚠️ A MERGED BILL REPRINTED AS ONE TICKET UNDERSTATES WHAT WAS SETTLED, and it
+// is handed to the person least able to check it and most likely to be
+// disputing it. `payPosTableBill` writes the sibling ids onto the payment for
+// exactly this: Firestore cannot query inside an array of maps, so a bare
+// `bill_id` would be a grouping key nothing could ever group by.
+
+/** Two PAID tickets at table 6, settled together as one Rp80.000 bill. */
+async function seedPaidBill(page) {
+    return page.evaluate(() => {
+        const ts = (ms) => { const d = new Date(Date.now() - ms); return { toDate: () => d }; };
+        const mk = (id, no, amount, ageMin) => ({
+            id, order_number: no, status: 'paid',
+            table_id: 't6', table_label: '6', dimension_id: 'd1',
+            lines: [{ line_id: `l-${id}`, item_name: `Dish ${no}`, quantity: 1,
+                unit_price: amount, gross_amount: amount }],
+            subtotal: amount, discount_total: 0, service_charge_amount: 0, tax_amount: 0,
+            total_amount: amount, paid_amount: amount,
+            payments: [{
+                payment_id: `p-${id}`, method: 'cash', tender: 'cash', status: 'settled',
+                amount, amount_received: id === 'seed-b2' ? amount + 20000 : amount,
+                change_given: id === 'seed-b2' ? 20000 : 0,
+                bill_id: 'bill-1', bill_orders: ['seed-b1', 'seed-b2']
+            }],
+            opened_at: ts(ageMin * 60000), status_changed_at: ts(ageMin * 60000),
+            paid_at: ts(60000)
+        });
+        return window.__posSeedBoard([mk('seed-b1', '001', 50000, 40), mk('seed-b2', '002', 30000, 10)]);
+    });
+}
+
+test('a merged bill REPRINTS AS THE BILL, not as one ticket', async ({ page }) => {
+    await openBoard(page);
+    const rows = await seedPaidBill(page);
+
+    // The button says what will come out of the printer. A cashier expecting one
+    // slip and holding a two-ticket bill has been told something wrong by it.
+    expect(rows.every((r) => r.actions.includes('Print bill')),
+        'a ticket settled with others still offered "Print receipt"').toBe(true);
+
+    const popup = page.waitForEvent('popup', { timeout: 30000 });
+    await page.locator('[data-print]').first().click();
+    const sheet = await popup;
+    await sheet.waitForLoadState('domcontentloaded').catch(() => {});
+    const text = (await sheet.locator('body').innerText()).replace(/\s+/g, ' ');
+    await sheet.close();
+
+    // BOTH tickets, and the grand total — printed from the older card, so this
+    // also proves the reprint works from whichever ticket is tapped.
+    expect(text, 'the first ticket is missing from its own bill').toContain('001');
+    expect(text, 'the second ticket is missing — the customer is under-billed').toContain('002');
+    expect(text).toContain('Dish 001');
+    expect(text).toContain('Dish 002');
+    expect(text, 'the bill does not state what was actually paid').toContain('80.000');
+    // One tender, so ONE change figure. Folding payments that share a bill_id is
+    // what stops an Rp80.000 cash bill printing two payment lines.
+    expect((text.match(/Kembalian/g) || []).length, 'change is stated more than once').toBe(1);
+});
+
+// ── The floor plan tile promises the table, so the tap delivers it ──────────
+test('TAPPING A TWO-TICKET TABLE OPENS THE TABLE, NOT ONE TICKET', async ({ page }) => {
+    await openBoard(page);
+    await seedSplitTable(page);
+    // The floor keeps whatever orders the board was seeded with, so the two
+    // seeds compose: tickets from one, tables from the other.
+    await page.evaluate(() => window.__posSeedFloor([
+        { id: 't6', label: '6', seats: 4, status: 'active', dimension_id: 'd1' },
+        { id: 't9', label: '9', seats: 2, status: 'active', dimension_id: 'd1' }
+    ], []));
+    await page.click('#nav-container [data-view="tables"]');
+    await expect(page.locator('.pos-view[data-view="tables"]')).toBeVisible();
+
+    // The tile states the TABLE's outstanding and that it covers two tickets.
+    const t6 = page.locator('.pos-table[data-table="t6"]');
+    await expect(t6).toContainText('80.000');
+    await expect(t6).toContainText('2 tickets');
+
+    // ⚠️ AND THE TAP AGREES WITH IT. Before this, tapping a table reading
+    // Rp80.000 opened one ticket's panel showing Rp50.000 — nothing errored, the
+    // cashier was simply handed a smaller number than the tile they pressed.
+    await t6.click();
+    const modal = page.locator('#pos-bill-modal');
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#pos-bill-total')).toContainText('80.000');
+
+    // Opening a ticket to add to it is the other errand a cashier has at a
+    // table, so the dialog is not a dead end for it — and doing so must not
+    // silently change what the bill covers on the way out.
+    await modal.locator('[data-open-ticket]').first().click();
+    await expect(modal).toHaveCount(0);
+    await expect(page.locator('.pos-view[data-view="till"]')).toBeVisible();
+
+    // A table with ONE ticket still goes straight to the till, where the work is.
+    await page.click('#nav-container [data-view="tables"]');
+    await page.locator('.pos-table[data-table="t9"]').click();
+    await expect(page.locator('#pos-bill-modal')).toHaveCount(0);
+    await expect(page.locator('.pos-view[data-view="till"]')).toBeVisible();
+});

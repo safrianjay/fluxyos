@@ -794,8 +794,23 @@ function renderTables() {
         btn.addEventListener('click', async () => {
             const orderId = btn.dataset.order;
             if (orderId) {
-                // An occupied table: the order already exists, so open it and go
-                // where the work is.
+                // ⚠️ THE TILE PROMISES THE TABLE, SO THE TAP HAS TO DELIVER IT.
+                //
+                // Since the tile started showing the table's outstanding and its
+                // ticket count, tapping a table reading "Rp80.000 · 2 tickets"
+                // opened ONE ticket's panel showing Rp50.000. Nothing errored;
+                // the cashier was simply shown a smaller number than the tile
+                // they had just tapped, which is the under-collection shape one
+                // step removed.
+                //
+                // The table dialog answers both things a cashier wants here —
+                // bill the table, or open a ticket to add to it — so a table
+                // with more than one goes there and a table with one still
+                // lands straight on the till, where the work is.
+                if ((tableTickets().get(btn.dataset.table) || []).length > 1) {
+                    openTableBillModal(btn.dataset.table);
+                    return;
+                }
                 selectOrder(orderId);
                 renderOrderControls();
                 setView('till');
@@ -1427,8 +1442,12 @@ window.__posSeedBoard = (rows) => {
 function cardAction(o) {
     const st = STATUS[o.status] || STATUS.open;
     if (o.status === 'paid') {
+        // "Bill" when this ticket was settled with others, because that is what
+        // comes out of the printer — a cashier expecting one slip and holding a
+        // three-ticket bill has been told something wrong by the button.
+        const merged = billOrderIds(o).length > 1;
         return `<div class="pos-ocard-actions">
-            <button type="button" class="pos-ocard-btn" data-print="${esc(o.id)}">Print receipt</button>
+            <button type="button" class="pos-ocard-btn" data-print="${esc(o.id)}">${merged ? 'Print bill' : 'Print receipt'}</button>
         </div>`;
     }
     if (!st.action) return '';
@@ -1624,9 +1643,9 @@ function renderOrderLists() {
             openTableBillModal(b.dataset.tableBill);
         }));
     grid.querySelectorAll('[data-print]').forEach((b) =>
-        b.addEventListener('click', () => {
-            const o = visibleOrders().find((x) => x.id === b.dataset.print);
-            if (o) openReceipt(o);
+        b.addEventListener('click', (e) => {
+            e.stopPropagation();
+            once(() => reprintBill(b.dataset.print));
         }));
 }
 
@@ -2744,6 +2763,57 @@ function posOrderDue(o) {
 
 const billTotal = (list) => (list || []).reduce((t, o) => t + posOrderDue(o), 0);
 
+/**
+ * The tickets that were paid together with this one, oldest first.
+ *
+ * ⚠️ READ OFF THE PAYMENT, because there is nowhere else it could come from.
+ * Firestore cannot query inside an array of maps, so `bill_id` alone is a
+ * grouping key nothing can group by — `payPosTableBill` writes the ids beside
+ * it for exactly this. Empty for every payment taken one order at a time.
+ */
+function billOrderIds(o) {
+    const p = (o && o.payments || [])
+        .filter((x) => x.status === 'settled' && Array.isArray(x.bill_orders) && x.bill_orders.length)
+        .slice(-1)[0];
+    return p ? p.bill_orders.slice() : [];
+}
+
+/**
+ * Reprint what the customer actually paid.
+ *
+ * ⚠️ THE WHOLE BILL OR NOTHING. A merged bill reprinted as one ticket
+ * understates what was settled, and it is handed to the person least able to
+ * check it and most likely to be disputing it — the exact document that exists
+ * to prevent the argument, arguing the wrong side. So a ticket that cannot be
+ * resolved refuses the print and says why, rather than quietly printing a
+ * smaller receipt: `pos_orders` is never deleted, so a miss here is a network
+ * or permission problem and one more tap fixes it.
+ */
+async function reprintBill(orderId) {
+    const known = [...((state.overview || {}).activeOrders || []),
+        ...((state.overview || {}).paidToday || [])];
+    const o = known.find((x) => x.id === orderId);
+    if (!o) return;
+
+    const ids = billOrderIds(o);
+    if (ids.length < 2) { openReceipt(o); return; }
+
+    const list = [];
+    for (const id of ids) {
+        const hit = known.find((x) => x.id === id);
+        // The board only holds today's paid orders, so a reprint of an older
+        // bill has to go and get the rest.
+        // eslint-disable-next-line no-await-in-loop
+        const row = hit || await ds.getPosOrder(state.uid, id).catch(() => null);
+        if (row) list.push(row);
+    }
+    if (list.length < ids.length) {
+        toast(`This bill covered ${ids.length} tickets and only ${list.length} could be loaded — try again.`, 'error');
+        return;
+    }
+    openReceipt(list);
+}
+
 // Shown only from the SECOND ticket. On a table with one it would restate the
 // total directly above it and put a second, near-identical button beside the
 // card's own — the board's rule is one action per card, and this is the one
@@ -2838,6 +2908,7 @@ function openTableBillModal(tableId) {
                         ''}</span>
                 </span>
                 <span class="pos-bill-row-amt num">${esc(rp(posOrderDue(o)))}</span>
+                <button type="button" class="pos-bill-open" data-open-ticket="${esc(o.id)}">Open</button>
             </label>`;
         }).join('');
         el.querySelector('#pos-bill-total').textContent = rp(billTotal(chosen));
@@ -2853,6 +2924,25 @@ function openTableBillModal(tableId) {
         }
         el.querySelector('#pos-bill-pay').disabled = !chosen.length;
     };
+
+    // Opening a ticket to add to it is the OTHER thing a cashier wants from a
+    // table, and the floor plan now routes here for both — so this dialog must
+    // not be a dead end for it.
+    //
+    // `preventDefault` because the button sits inside the row's <label>: without
+    // it the label activates and the tap silently toggles the checkbox as well,
+    // so the cashier leaves for the till having also changed what the bill
+    // covers.
+    el.querySelector('#pos-bill-list').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-open-ticket]');
+        if (!b) return;
+        e.preventDefault();
+        e.stopPropagation();
+        close();
+        selectOrder(b.dataset.openTicket);
+        renderOrderControls();
+        setView('till');
+    });
 
     el.querySelector('#pos-bill-list').addEventListener('change', (e) => {
         const box = e.target.closest('[data-ticket]');

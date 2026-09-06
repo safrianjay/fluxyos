@@ -1062,6 +1062,14 @@
         .pos-bill-row-no { font-size: 14px; font-weight: 600; color: #0B0F19; }
         .pos-bill-row-meta { font-size: 12px; color: #64748B; }
         .pos-bill-row-amt { font-size: 14px; font-weight: 600; color: #0B0F19; font-variant-numeric: tabular-nums; }
+        /* Secondary by construction: billing the table is why this dialog
+           opened, and opening a ticket is the other errand. */
+        .pos-bill-open {
+            flex: 0 0 auto; min-height: 30px; padding: 0 10px; cursor: pointer;
+            border: 1px solid #E2E8F0; border-radius: 8px; background: #fff;
+            color: #475569; font-size: 12px; font-weight: 600;
+        }
+        .pos-bill-open:hover { background: #F1F5F9; }
         /* The figure the cashier is about to ask for, in the footer beside the
            button that asks for it. */
         .pos-bill-sum { flex: 1; display: flex; flex-direction: column; gap: 2px; }

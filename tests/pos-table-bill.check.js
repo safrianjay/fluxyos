@@ -164,6 +164,16 @@ const sumOver = (field) => writes.reduce((t, w) =>
     is(ids.size, 1, 'every payment carries the SAME bill_id');
     is([...ids][0] === undefined, false, '…and it is actually set');
 
+    // ⚠️ AND THE IDS BESIDE IT. Firestore cannot query inside an array of maps,
+    // so `bill_id` on its own is a grouping key nothing can group by — a reprint
+    // would hand the customer one ticket's slip for a bill they paid in full.
+    is(JSON.stringify(lastPayment('o1').bill_orders), JSON.stringify(['o1', 'o2']),
+        'the payment records WHICH tickets were paid together');
+    is(JSON.stringify(lastPayment('o2').bill_orders), JSON.stringify(['o1', 'o2']),
+        '…on every ticket, so a reprint works from whichever one is tapped');
+    is(JSON.stringify(lastPayment('o1').bill_orders), JSON.stringify(['o1', 'o2']),
+        '…in receipt order, oldest first');
+
     // ── 5. Order does not matter to the caller ──────────────────────────────
     // The tickets are sorted oldest-first inside, so the change lands in the
     // same place however the board happened to hand them over.
@@ -188,6 +198,8 @@ const sumOver = (field) => writes.reduce((t, w) =>
     is(res.billDue, 50000, 'a split bill charges only the tickets chosen');
     is(writes.length, 1, '…and writes only those');
     is(store.o2.status, 'served', 'the ticket left out is untouched and still owed');
+    is(JSON.stringify(lastPayment('o1').bill_orders), JSON.stringify(['o1']),
+        'a one-ticket bill records only itself — the reprint must not go looking for a sibling');
 
     // ── 8. The refusals ─────────────────────────────────────────────────────
     const refuses = async (label, ids2, opts, match) => {
