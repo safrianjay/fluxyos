@@ -106,6 +106,18 @@ const host = {
     _scope: () => 'workspaces/w1',
     _nullableString: (v, n) => (v ? String(v).slice(0, n) : null),
     _posTenderFor: (m) => (m === 'cash' ? 'cash' : 'external'),
+    // ⚠️ THE REAL RETRY SEAM. Every till transaction goes through `_posTxn`
+    // (check:pos-offline), so binding `runTransaction` alone stopped being
+    // enough — and a stub that skipped the seam would test a path production
+    // does not take.
+    _posTxn: (() => {
+        const start = SRC.indexOf('    async _posTxn(fn) {');
+        const end = SRC.indexOf('\n    },\n', start);
+        // eslint-disable-next-line no-new-func
+        return new Function('runTransaction', `return ({ ${SRC.slice(start, end + 6)} });`)(
+            (db, fn) => env.runTransaction(db, fn))._posTxn;
+    })(),
+    _posConnectionOk: () => {},
     _posSettled: syncMethodUnder('_posSettled'),
     _posCoveredLineIds: syncMethodUnder('_posCoveredLineIds'),
     _pricing: () => require('../assets/js/pos-pricing.js'),

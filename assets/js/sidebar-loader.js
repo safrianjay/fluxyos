@@ -141,9 +141,13 @@
                  scrolls and never changes, on every app page and on the till. -->
             <button type="button" id="sidebar-collapse-btn" class="sidebar-collapse-btn"
                     aria-expanded="true" aria-controls="sidebar" title="Collapse menu">
+                <!-- A DOUBLE chevron. One arrow reads as "back" — the browser
+                     control every user already has — and this does not navigate.
+                     Two says "fold this panel", which is the convention. -->
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="m15 18-6-6 6-6"/>
+                    <path d="m11 17-5-5 5-5"/>
+                    <path d="m18 17-5-5 5-5"/>
                 </svg>
                 <span class="sr-only">Collapse menu</span>
             </button>

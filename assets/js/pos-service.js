@@ -419,7 +419,7 @@ export const POS_METHODS = {
     async _mutatePosReservation(userId, reservationId, mutate, auditAction = 'pos_reservation.updated') {
         if (!userId || !reservationId) throw new Error('userId and reservationId required');
         const ref = doc(this.db, `${this._scope(userId)}/pos_reservations/${reservationId}`);
-        const result = await runTransaction(this.db, async (tx) => {
+        const result = await this._posTxn(async (tx) => {
             const snap = await tx.get(ref);
             if (!snap.exists()) throw new Error('That reservation no longer exists.');
             const current = { id: snap.id, ...snap.data() };
@@ -874,7 +874,7 @@ export const POS_METHODS = {
         const counterRef = doc(this.db, `${scope}/counters/pos-${dimensionId}-${dayKey}`);
         const orderRef = doc(collection(this.db, `${scope}/pos_orders`));
 
-        const seq = await runTransaction(this.db, async (tx) => {
+        const seq = await this._posTxn(async (tx) => {
             const snap = await tx.get(counterRef);
             const next = (snap.exists() ? (Number(snap.data().seq) || 0) : 0) + 1;
             tx.set(counterRef, { seq: next, entity_id: this._resolvedScopeId(userId), updated_at: serverTimestamp() }, { merge: true });
@@ -949,10 +949,61 @@ export const POS_METHODS = {
     // silently overwriting the line the first one just added. Last-write-wins on
     // an embedded lines[] loses a dish and nothing reports it
     // (docs/POS_IMPLEMENTATION_PLAN.md §18.2).
+    // ── ONE SEAM FOR EVERY TILL TRANSACTION ─────────────────────────────────
+    //
+    // Restaurant wifi drops for SECONDS, not hours — an access point
+    // re-associating, not an outage. Without this a cashier tapping Pay during a
+    // three-second blip got an error and re-tapped; with it the tap simply takes
+    // three seconds. "The till broke" becomes "the till paused".
+    //
+    // ⚠️ ONLY `unavailable`, AND THAT IS WHAT MAKES IT SAFE. Firestore raises it
+    // when the client could not REACH the backend, so the transaction did not
+    // commit and re-running it cannot double anything. Every other code —
+    // `aborted`, `failed-precondition`, `permission-denied` — means the server
+    // answered, and retrying those would be guessing at what it decided.
+    //
+    // Re-running is safe for a second reason too: a transaction re-READS inside
+    // itself, so the mutate function sees fresh state. If a payment somehow had
+    // landed, the retry finds the order settled and refuses it — a correct
+    // refusal, not a double charge.
+    //
+    // Bounded deliberately. This is not offline support (the till is online-only
+    // and says so); it is not making the cashier pay for a blink.
+    async _posTxn(fn) {
+        const DELAYS = [400, 900, 1800];        // ~3.1s of trying, then give up
+        for (let attempt = 0; ; attempt += 1) {
+            try {
+                const out = await runTransaction(this.db, fn);
+                this._posConnectionOk(true);
+                return out;
+            } catch (err) {
+                const unreachable = err && (err.code === 'unavailable'
+                    || err.code === 'firestore/unavailable');
+                if (!unreachable || attempt >= DELAYS.length) {
+                    if (unreachable) this._posConnectionOk(false);
+                    throw err;
+                }
+                // eslint-disable-next-line no-await-in-loop
+                await new Promise((r) => setTimeout(r, DELAYS[attempt]));
+            }
+        }
+    },
+
+    // Whether the backend is actually reachable, as observed by a real write —
+    // not `navigator.onLine`, which reports that a network interface exists.
+    // Connected to a router with no internet reads as online, so the till would
+    // say it was fine while every save hung.
+    _posConnectionOk(ok) {
+        this.posOnline = ok;
+        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+            window.dispatchEvent(new CustomEvent('fluxy-pos-connection', { detail: { ok } }));
+        }
+    },
+
     async updatePosOrder(userId, orderId, mutate) {
         if (!userId || !orderId) throw new Error('userId and orderId required');
         const ref = doc(this.db, `${this._scope(userId)}/pos_orders/${orderId}`);
-        return runTransaction(this.db, async (tx) => {
+        return this._posTxn(async (tx) => {
             const snap = await tx.get(ref);
             if (!snap.exists()) throw new Error('That order no longer exists.');
             const current = { id: snap.id, ...snap.data() };
@@ -1569,7 +1620,7 @@ export const POS_METHODS = {
         // combined receipt weeks later.
         const billId = `b${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`;
 
-        const settled = await runTransaction(this.db, async (tx) => {
+        const settled = await this._posTxn(async (tx) => {
             const rows = [];
             // Sequential on purpose: every read must land before the first
             // write, and a `for` loop makes that ordering readable.
@@ -1917,7 +1968,7 @@ export const POS_METHODS = {
 
         const scope = this._scope(userId);
         const ref = doc(this.db, `${scope}/pos_shifts/${shiftId}`);
-        const out = await runTransaction(this.db, async (tx) => {
+        const out = await this._posTxn(async (tx) => {
             const snap = await tx.get(ref);
             if (!snap.exists()) throw new Error('That shift no longer exists.');
             const cur = { id: snap.id, ...snap.data() };

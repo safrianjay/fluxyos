@@ -285,6 +285,11 @@ function laneBE(changed) {
   // so getting the allocation wrong makes the drawer read over or short at close
   // with nothing anywhere reporting it.
   ok = record('be', run('check:pos-table-bill (one tender, several tickets, three sums)', 'node', ['tests/pos-table-bill.check.js'])) && ok;
+  // Unconditional. Restaurant wifi drops for seconds, and the rule that makes
+  // retrying safe — `unavailable` means the transaction never reached the
+  // backend, everything else means the server answered — is exactly the kind of
+  // line a later change widens by one code without noticing.
+  ok = record('be', run('check:pos-offline (a blip does not fail a sale)', 'node', ['tests/pos-offline.check.js'])) && ok;
   // Unconditional. The offending call can live in ANY module — the first
   // Firestore touch on a page decides the transport for all of it — so the file
   // that breaks this is rarely the file being edited. Same reasoning as

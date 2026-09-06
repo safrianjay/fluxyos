@@ -6437,12 +6437,38 @@ function wire() {
     // gone — Create Order is the only entry point now.
     $('pos-order-search').addEventListener('input', renderOrderSearch);
 
+    // ── Is the till actually reachable? ─────────────────────────────────────
+    //
     // Offline is v1's honest limitation: the till is online-only, so it says so
     // loudly rather than silently failing a save mid-service.
-    const setOnline = () => document.body.classList.toggle('is-offline', !navigator.onLine);
-    window.addEventListener('online', setOnline);
-    window.addEventListener('offline', setOnline);
-    setOnline();
+    //
+    // ⚠️ `navigator.onLine` IS A RELIABLE "NO" AND A WORTHLESS "YES". It reports
+    // whether a network interface exists, not whether anything is on the other
+    // end — so a till associated to a router with no internet, which is the
+    // commonest failure in a restaurant, read as ONLINE while every save hung.
+    // The banner was reassuring at exactly the wrong moment.
+    //
+    // The truthful signal is a real request. `_posTxn` in the DAL reports what
+    // it observes on every till write, and that is what this listens to.
+    let reachable = true;
+    const paintConnection = () =>
+        document.body.classList.toggle('is-offline', !navigator.onLine || !reachable);
+
+    window.addEventListener('fluxy-pos-connection', (e) => {
+        reachable = !!(e.detail && e.detail.ok);
+        paintConnection();
+    });
+    window.addEventListener('offline', paintConnection);
+    window.addEventListener('online', () => {
+        // The INTERFACE is back. Whether the backend is takes a real request to
+        // find out, so the banner stays up until one succeeds — clearing it here
+        // would be the same lie in the other direction.
+        paintConnection();
+        refresh({ keepOrder: true })
+            .then(() => { reachable = true; paintConnection(); })
+            .catch(() => {});
+    });
+    paintConnection();
 }
 
 // ---------------------------------------------------------------------------

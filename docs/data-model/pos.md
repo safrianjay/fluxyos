@@ -1567,10 +1567,44 @@ rather than eleven days later, which is what §7a cost last time.
 
 Emulator coverage: 14 cases in `tests/pos-rules-emulator-test.mjs` (124 total).
 
+### A blip is not an outage (2026-09-06)
+
+Restaurant wifi drops for **seconds** — an access point re-associating, not an
+outage. Every till mutation is a Firestore transaction, so a three-second blip
+surfaced as an error on the tap and the cashier pressed Pay again with a customer
+waiting.
+
+`_posTxn` in `pos-service.js` is the one seam every till transaction goes
+through, and it retries for ~3.1s before giving up. **"The till broke" becomes
+"the till paused".**
+
+⚠️ **ONLY `unavailable`, and that is what makes it safe.** Firestore raises it
+when the client could not REACH the backend, so the transaction did not commit
+and re-running cannot double anything. Every other code — `aborted`,
+`failed-precondition`, `permission-denied` — means the server **answered**, and
+retrying those would be guessing at what it decided. A transaction also re-reads
+inside itself, so a retry sees fresh state: if a payment somehow had landed, the
+retry finds the order settled and refuses it.
+
+⚠️ **`navigator.onLine` IS A RELIABLE "NO" AND A WORTHLESS "YES".** It reports
+that a network interface exists, not that anything is on the other end — so a
+till associated to a router with no internet, the commonest failure in a
+restaurant, read as ONLINE while every save hung. The banner was reassuring at
+exactly the wrong moment. It now shows when *either* the interface is down or a
+real write reported the backend unreachable, and coming back online proves
+itself with an actual request before it clears.
+
+**This is not offline support.** Nothing queues; a genuine outage still stops the
+till, loudly. What it removes is the blink.
+
+Guard: `check:pos-offline` — 17 assertions, pure, unconditional in the BE lane,
+including that every other error code is raised at once and that a server-side
+refusal never reports the till offline.
+
 ## 9. What is NOT built
 
-Offline-first (v1 is online-only with a visible connection banner — the largest
-honest limitation), kitchen display, split-by-seat and split-by-item (the unit
-of splitting is the TICKET — see §3),
+Offline-first (v1 is online-only — the largest honest limitation; see the
+blip-tolerance note below for what it DOES survive), kitchen display,
+split-by-seat (the units are the item and the head — see §3),
 per-outlet menu pricing, QR ordering, payment providers, and any AI over POS
 data. §15 of the plan sequences all of them.
