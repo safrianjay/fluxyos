@@ -1468,6 +1468,14 @@ window.__posSeedBoard = (rows) => {
     // deterministic. Reversed by reloading the page, which every spec does.
     if (state.unwatch) { state.unwatch(); state.unwatch = null; }
     state.frozen = true;
+    // ⚠️ AND THE DATE WINDOW GOES WITH IT. "Today" starts at LOCAL MIDNIGHT, so
+    // a fixture seeded 90 minutes old lands YESTERDAY when the clock is past
+    // 00:00 and is filtered out before the rule under test is ever reached. Two
+    // specs failed that way — one nightly between 00:00 and 03:20, one in the
+    // half hour after midnight — and both read as flake rather than as a
+    // calendar. A seeded board is a frozen board by definition; a real date
+    // filter over manufactured ages is not something any of them are testing.
+    state.orderDate = 'all';
 
     const all = (rows || []).map((o) => ({ ...o }));
     state.overview = {
@@ -3034,9 +3042,35 @@ function tableBillStrip(o, siblings) {
 // the thing that puts served dishes back in front of a cook, and the whole
 // model rests on not doing it.
 function openTableBillModal(tableId) {
-    const list = (tableTickets().get(tableId) || []);
+    // MUTABLE: another table's tickets can be folded in below.
+    let list = (tableTickets().get(tableId) || []).slice();
     if (!list.length) { toast('Nothing left to settle at that table.'); return; }
     const label = list[0].table_label || '';
+
+    // ── ONE PAYER, SEVERAL TABLES ───────────────────────────────────────────
+    //
+    // A large family across three tables, each keeping its own tickets, and at
+    // the end one of them pays for all of it. That is a payment action, not a
+    // claim that the tables are one seating area — so nothing about the floor
+    // plan or the diners' phones changes, and this dialog is the only thing
+    // that knows about it.
+    //
+    // The tables already IN the bill, primary first.
+    const joined = new Set([tableId]);
+    const tablesOf = () => [...new Set(list.map((o) => o.table_id).filter(Boolean))];
+    const spansTables = () => tablesOf().length > 1;
+    const labelOf = (id) => {
+        const hit = list.find((o) => o.table_id === id);
+        return (hit && hit.table_label) || id;
+    };
+
+    // Every other table at this outlet with something still owing.
+    const otherTables = () => [...tableTickets().entries()]
+        .filter(([id, rows]) => !joined.has(id) && rows.length)
+        .map(([id, rows]) => ({
+            id, label: rows[0].table_label || id, due: billTotal(rows), rows
+        }))
+        .sort((a, b) => String(a.label).localeCompare(String(b.label), undefined, { numeric: true }));
     // Everything on by default: settling the table is the common case, and a
     // dialog that opens with nothing chosen makes the cashier do the work
     // twice.
@@ -3154,6 +3188,7 @@ function openTableBillModal(tableId) {
                     ${SPLIT_EVENLY ? `<button type="button" role="tab" data-bill-mode="even" aria-selected="${mode === 'even'}">Split evenly</button>` : ''}
                 </div>
                 <div class="pos-bill-list" id="pos-bill-list"></div>
+                <div class="pos-bill-join" id="pos-bill-join"></div>
                 <p class="pos-hint" id="pos-bill-rest" hidden></p>
             </div>
             <div class="pos-modal-foot">
@@ -3190,7 +3225,9 @@ function openTableBillModal(tableId) {
                 </label>`;
             }).join('');
             return `<div class="pos-bill-ticket">
-                <div class="pos-bill-ticket-head">${esc(o.order_number || '')}</div>
+                <div class="pos-bill-ticket-head">${spansTables()
+                    ? `Table ${esc(o.table_label || '')} · ${esc(o.order_number || '')}`
+                    : esc(o.order_number || '')}</div>
                 ${blind ? '<p class="pos-hint is-warn">Part of this ticket was already paid without item detail — settle the rest as a whole ticket.</p>' : ''}
                 ${rows}
             </div>`;
@@ -3221,7 +3258,9 @@ function openTableBillModal(tableId) {
                 <input type="checkbox" data-ticket="${esc(o.id)}"${on ? ' checked' : ''}>
                 <span class="pos-bill-row-main">
                     <span class="pos-bill-row-top">
-                        <span class="pos-bill-row-no">${esc(o.order_number || '')}</span>
+                        <span class="pos-bill-row-no">${spansTables()
+                            ? `Table ${esc(o.table_label || '')} · ${esc(o.order_number || '')}`
+                            : esc(o.order_number || '')}</span>
                         <span class="fluxy-table-status ${st.cls}">${esc(st.label)}</span>
                     </span>
                     <span class="pos-bill-row-meta">${n} item${n === 1 ? '' : 's'}${
@@ -3305,12 +3344,79 @@ function openTableBillModal(tableId) {
     // customer is paying for…" and wrapped to two lines — the name a cashier is
     // checking against the person in front of them buried in a sentence about
     // how to use the dialog.
-    const whoEl = el.querySelector('#pos-bill-who');
-    const party = partyLine();
-    whoEl.hidden = !party;
-    whoEl.textContent = party;
+    //
+    // ⚠️ REPAINTED, NOT COMPUTED ONCE. Taking on another table brings another
+    // party with it, and a heading still naming only the first one would be
+    // wrong at exactly the moment the cashier is checking who they are charging.
+    function paintWho() {
+        const whoEl = el.querySelector('#pos-bill-who');
+        const party = partyLine();
+        whoEl.hidden = !party;
+        whoEl.textContent = party;
+        const title = el.querySelector('#pos-bill-title');
+        const labels = tablesOf().map(labelOf);
+        title.textContent = labels.length > 1
+            ? `Tables ${labels.join(', ')} bill`
+            : `Table ${label} bill`;
+    }
 
-    const paint = () => (mode === 'item' ? paintItems() : mode === 'even' ? paintEven() : paintTickets());
+    // The other tables this bill could take on, and the ones it already has.
+    //
+    // ⚠️ REMOVABLE. Adding the wrong table is one tap, and the recovery has to
+    // be one tap too — the alternative is closing the dialog and starting the
+    // selection again with a customer waiting.
+    function paintJoin() {
+        const host = el.querySelector('#pos-bill-join');
+        const others = otherTables();
+        const added = tablesOf().filter((id) => id !== tableId);
+        if (!others.length && !added.length) { host.innerHTML = ''; return; }
+        host.innerHTML = `
+            ${added.length ? `<div class="pos-bill-joined">
+                ${added.map((id) => `<span class="pos-bill-chip">Table ${esc(labelOf(id))}
+                    <button type="button" data-drop-table="${esc(id)}" aria-label="Remove table ${esc(labelOf(id))}">×</button>
+                </span>`).join('')}
+            </div>` : ''}
+            ${others.length ? `<div class="pos-bill-add">
+                <span class="pos-bill-add-label">Add another table</span>
+                <div class="pos-bill-add-row">
+                    ${others.map((t) => `<button type="button" class="pos-bill-add-btn" data-add-table="${esc(t.id)}">
+                        <span>Table ${esc(t.label)}</span><span class="num">${esc(rp(t.due))}</span>
+                    </button>`).join('')}
+                </div>
+            </div>` : ''}`;
+    }
+
+    const paint = () => {
+        (mode === 'item' ? paintItems() : mode === 'even' ? paintEven() : paintTickets());
+        paintJoin();
+        paintWho();
+    };
+
+    el.querySelector('#pos-bill-join').addEventListener('click', (e) => {
+        const add = e.target.closest('[data-add-table]');
+        if (add) {
+            const rows = tableTickets().get(add.dataset.addTable) || [];
+            if (!rows.length) return;
+            joined.add(add.dataset.addTable);
+            list = list.concat(rows);
+            // A newly added table joins the bill whole — the cashier asked for
+            // it, and making them tick its tickets again would be the same
+            // decision twice.
+            rows.forEach((o) => picked.add(o.id));
+            paint();
+            return;
+        }
+        const drop = e.target.closest('[data-drop-table]');
+        if (!drop) return;
+        const id = drop.dataset.dropTable;
+        joined.delete(id);
+        list = list.filter((o) => o.table_id !== id);
+        list.forEach(() => {});
+        // Anything selected off that table goes with it, in both modes.
+        [...picked].forEach((oid) => { if (!list.some((o) => o.id === oid)) picked.delete(oid); });
+        [...pickedLines].forEach((k) => { if (!list.some((o) => k.startsWith(`${o.id}|`))) pickedLines.delete(k); });
+        paint();
+    });
 
     el.querySelector('#pos-bill-modes').addEventListener('click', (e) => {
         const b = e.target.closest('[data-bill-mode]');
@@ -3381,6 +3487,7 @@ function openTableBillModal(tableId) {
             openPaymentModal({
                 orders: list.filter((o) => sel.some((x) => x.order_id === o.id)),
                 tableLabel: label,
+                acrossTables: spansTables(),
                 // The selection AND the figure it came to, so the payment modal
                 // never re-derives an amount the dialog already quoted.
                 lines: sel,
@@ -3394,11 +3501,23 @@ function openTableBillModal(tableId) {
         // Straight into the payment modal the till already uses — same methods,
         // same quick-cash notes, same change arithmetic. A second money dialog
         // is a second place for the cash rules to be subtly different.
-        openPaymentModal({ orders: chosen, tableLabel: label });
+        openPaymentModal({
+            orders: chosen, tableLabel: label,
+            acrossTables: [...new Set(chosen.map((o) => o.table_id))].length > 1
+        });
     });
 
     paint();
     return el;
+}
+
+// How to name what is being paid for. One table is its number; several is all of
+// them, because a bill spanning three tables that says "Table 5" is charging a
+// customer for food they will not see listed under a heading they recognise.
+function billTables(bill, tableLabel, one) {
+    const labels = [...new Set((bill || [one]).map((x) => x && x.table_label).filter(Boolean))];
+    if (labels.length > 1) return `Tables ${labels.join(', ')}`;
+    return `Table ${labels[0] || tableLabel || (one && one.table_label) || ''}`;
 }
 
 // ── Take payment ────────────────────────────────────────────────────────────
@@ -3423,7 +3542,7 @@ function openTableBillModal(tableId) {
 // both, which is the reason this is a mode rather than a second dialog: a
 // second money dialog is a second place for those rules to drift.
 function openPaymentModal({ orders = null, tableLabel = null, lines = null,
-    splitWays = null, shareIndex = null, due: dueOverride = null } = {}) {
+    splitWays = null, shareIndex = null, acrossTables = false, due: dueOverride = null } = {}) {
     // A bill is a list; a single order is a list of one. Everything below reads
     // the list, so there is no branch to keep in step.
     const bill = Array.isArray(orders) && orders.length ? orders.slice() : null;
@@ -3449,6 +3568,14 @@ function openPaymentModal({ orders = null, tableLabel = null, lines = null,
     //
     // Priced through the SAME module and the same allocation the charge uses, so
     // the review can never describe a different bill than the one being taken.
+    // ⚠️ NAMED ONLY WHEN THERE IS MORE THAN ONE. Adding a table to a bill means
+    // charging for food the cashier has not looked at, and this row is what
+    // makes that deliberate rather than a mis-tap they find out about later.
+    const reviewTables = (rows) => {
+        const labels = [...new Set(rows.map((x) => x && x.table_label).filter(Boolean))];
+        return labels.length > 1 ? `Tables ${labels.join(', ')}` : '';
+    };
+
     const review = (() => {
         const P = window.FluxyPosPricing;
         const src = bill || [o];
@@ -3492,7 +3619,7 @@ function openPaymentModal({ orders = null, tableLabel = null, lines = null,
                 acc.service += r.service; acc.tax += r.tax;
                 if (!r.breakdown) acc.breakdown = false;
             });
-            return { lines: merge(picked), ...acc, total: due, note: null };
+            return { lines: merge(picked), ...acc, total: due, note: null, tables: reviewTables(src) };
         }
 
         // Everything else reviews the whole of what is on the table or ticket.
@@ -3501,6 +3628,7 @@ function openPaymentModal({ orders = null, tableLabel = null, lines = null,
         // line would be a figure nothing else in the system holds.
         const sum = (f) => src.reduce((t, x) => t + (Number(x[f]) || 0), 0);
         return {
+            tables: reviewTables(src),
             lines: merge(src.flatMap((x) => x.lines || [])),
             subtotal: sum('subtotal'), discount: sum('discount_total'),
             service: sum('service_charge_amount'), tax: sum('tax_amount'),
@@ -3537,6 +3665,7 @@ function openPaymentModal({ orders = null, tableLabel = null, lines = null,
                 ${who.guests ? `<span>${esc(String(who.guests))} guest${who.guests === 1 ? '' : 's'}</span>` : ''}
             </div>` : ''}
             <div class="pos-review-head">${review.lines.length} item${review.lines.length === 1 ? '' : 's'}${
+                review.tables ? ` · ${esc(review.tables)}` : ''}${
                 review.note ? ` · ${esc(review.note)}` : ''}</div>
             <div class="pos-review-lines">
                 ${review.lines.map((l) => `<div class="pos-review-line">
@@ -3574,7 +3703,7 @@ function openPaymentModal({ orders = null, tableLabel = null, lines = null,
                 <div>
                     <h2 class="pos-modal-title" id="pos-pay-title">Take payment</h2>
                     <p class="pos-modal-sub">${bill
-                        ? `${esc(`Table ${tableLabel || o.table_label || ''}`)} · ${splitWays
+                        ? `${esc(billTables(bill, tableLabel, o))} · ${splitWays
                             ? `share ${shareIndex} of ${splitWays}`
                             : lines
                                 ? `${lines.reduce((t, x) => t + x.line_ids.length, 0)} items`
@@ -3927,6 +4056,9 @@ function openPaymentModal({ orders = null, tableLabel = null, lines = null,
             // the number of ways on an even one. The DAL refuses both at once.
             lines,
             splitWays,
+            // The DAL refuses a cross-table bill unless the caller says so, and
+            // this dialog is the only caller that can.
+            acrossTables,
             amountReceived: received,
             reference: $$('pos-pay-ref').value
         });
@@ -4312,7 +4444,11 @@ function openReceipt(order, { billId = null } = {}) {
   @media print { .noprint { display: none; } }
 </style></head><body>
   <h1>${esc((outlet && outlet.name) || 'FluxyOS')}</h1>
-  <div class="c m">${esc(o.table_label ? `Meja ${o.table_label}` : 'Bawa pulang')} · ${esc(
+  <div class="c m">${esc((() => {
+      const labels = [...new Set(list.map((x) => x.table_label).filter(Boolean))];
+      if (labels.length > 1) return `Meja ${labels.join(', ')}`;
+      return labels[0] ? `Meja ${labels[0]}` : 'Bawa pulang';
+  })())} · ${esc(
       // EVERY ticket's number, whether or not the body is sectioned. The lines
       // are one bill now, so the header is the only place the customer can see
       // which kitchen tickets it covers — and it is what a cashier reads back

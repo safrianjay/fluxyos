@@ -804,6 +804,47 @@ rather than every one sitting part-paid until the last payer arrives. Its receip
 prints the table's items and states *Bagian 2 dari 3* — the payer has no items of
 their own, and a slip reading only "Rp106.334" says nothing about what for.
 
+### One payer, several tables (2026-09-07)
+
+A large family seated across three tables, each keeping its own tickets, and at
+the end one of them says "put it all on mine".
+
+⚠️ **THIS IS A PAYMENT ACTION, NOT A MERGED TABLE.** The tables are not one
+seating area, and modelling them as one would assert something untrue about the
+room and then need undoing. Nothing about the floor plan, occupancy, reservations
+or the diners' phones changes — the bill dialog is the only thing that knows.
+
+That the two are separable is only true because **each table keeps its own
+tickets**. Occupancy is already correct (every table has live orders, so none
+reads free), and each phone correctly shows *that table's* outstanding right up
+to the moment somebody else settles it — after which those tickets leave the
+session and the phone shows nothing owed. Were the party to put everything on one
+ticket, the other tables would read FREE and a walk-in would be seated into them:
+**that** is when a stored table group starts earning its keep, and it is not
+built.
+
+`payPosTableBill` gains `acrossTables`. ⚠️ **An opt-in, because the refusal is
+the point** — settling another table's food against this customer's cash is
+exactly what the same-table guard exists to stop, and both orders look correct
+afterwards. The caller has to say so rather than the DAL trusting a UI to have
+been careful. **One outlet stays hard** (two outlets are two sets of books) and
+**takeaway is still excluded** (nothing says two bags on a counter are one
+party).
+
+The dialog lists the outlet's other occupied tables **with what each owes** — a
+cashier picking a table needs the figure, not just the number — and added tables
+appear as chips that come off in one tap, because adding the wrong one is one
+tap and the recovery has to cost the same with a customer waiting. Every row,
+the title and the party line name their table once the bill spans more than one.
+
+⚠️ **The review is what makes it safe.** Adding a table means charging for food
+the cashier has not looked at; the payment dialog lists every item across every
+table, names them all, and names each party — so it is deliberate rather than a
+mis-tap discovered later.
+
+Guards: `check:pos-table-bill` (the opt-in, the outlet boundary, the takeaway
+refusal) and two board specs.
+
 ### Reaching the dialog
 
 ⚠️ **A single ticket could not be split at all.** The strip appeared only from

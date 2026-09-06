@@ -1207,6 +1207,39 @@
         .pos-bill-share-label { font-size: 14px; font-weight: 600; color: #0B0F19; }
         .pos-bill-share-note { font-size: 12px; color: #64748B; }
 
+        /* ── Taking on another table's bill ──────────────────────────────────
+           One payer, several tables — a family seated apart and one of them
+           settling all of it. Below the list, because it is something you do
+           AFTER seeing what is already on the bill. */
+        .pos-bill-join { margin-top: 12px; }
+        .pos-bill-joined { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+        .pos-bill-chip {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 6px 4px 10px; border-radius: 999px;
+            background: #F1F5F9; border: 1px solid #E2E8F0;
+            font-size: 12px; font-weight: 600; color: #334155;
+        }
+        /* Removable in one tap: adding the wrong table is one tap, and the
+           recovery has to cost the same with a customer waiting. */
+        .pos-bill-chip button {
+            border: 0; background: transparent; cursor: pointer; color: #64748B;
+            font-size: 14px; line-height: 1; padding: 2px 4px; border-radius: 999px;
+        }
+        .pos-bill-chip button:hover { background: #E2E8F0; color: #0B0F19; }
+        .pos-bill-add-label {
+            display: block; font-size: 12px; font-weight: 600; color: #64748B;
+            letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px;
+        }
+        .pos-bill-add-row { display: flex; flex-wrap: wrap; gap: 6px; }
+        .pos-bill-add-btn {
+            display: inline-flex; align-items: baseline; gap: 8px; cursor: pointer;
+            padding: 7px 11px; border-radius: 8px;
+            border: 1px dashed #CBD5E1; background: #fff;
+            font-size: 13px; font-weight: 600; color: #334155;
+        }
+        .pos-bill-add-btn:hover { border-style: solid; border-color: #94A3B8; background: #F8FAFC; }
+        .pos-bill-add-btn .num { font-weight: 500; color: #64748B; font-variant-numeric: tabular-nums; }
+
         .pos-bill-ticket + .pos-bill-ticket { margin-top: 12px; }
         .pos-bill-ticket-head {
             font-size: 12px; font-weight: 600; color: #64748B;

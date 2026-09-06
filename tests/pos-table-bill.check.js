@@ -621,6 +621,34 @@ const sumOver = (field) => writes.reduce((t, w) =>
     await refuses('two different tables cannot be settled as one bill', ['o1', 'o2'],
         { method: 'cash', amountReceived: 100000 }, /same table/i);
 
+    // ── ONE PAYER, SEVERAL TABLES ───────────────────────────────────────────
+    //
+    // A family seated across three tables, each keeping its own tickets, and at
+    // the end one of them settles all of it. That is a payment ACTION, not a
+    // claim that the tables are one seating area — nothing about the floor plan
+    // or the diners' phones changes.
+    //
+    // ⚠️ AN OPT-IN, BECAUSE THE REFUSAL IS THE POINT. Settling another table's
+    // food against this customer's cash is exactly what the guard above exists
+    // to stop, and both orders look correct afterwards. The caller has to say
+    // so, rather than the DAL trusting a UI to have been careful.
+    seed(ticket('o1'), ticket('o2', { table_id: 't7', table_label: '7', opened_at: { __ts: 2000 } }));
+    res = await pay(['o1', 'o2'], { method: 'cash', amountReceived: 100000, acrossTables: true });
+    is(res.billDue, 100000, 'one payer can settle two tables when the caller says so');
+    is(writes.length, 2, '…and both tickets are written');
+
+    // Still one outlet. Two outlets are two sets of books, and no cashier
+    // decision can make them one bill.
+    seed(ticket('o1'), ticket('o2', { table_id: 't7', dimension_id: 'd2', opened_at: { __ts: 2000 } }));
+    await refuses('an outlet boundary is not a cashier decision', ['o1', 'o2'],
+        { method: 'cash', amountReceived: 100000, acrossTables: true }, /same outlet/i);
+
+    // And still no takeaway: nothing says two bags on a counter belong to the
+    // same person, which is the reason takeaway was excluded in the first place.
+    seed(ticket('o1'), ticket('o2', { table_id: null, table_label: null, opened_at: { __ts: 2000 } }));
+    await refuses('a takeaway bag cannot be added to a table bill', ['o1', 'o2'],
+        { method: 'cash', amountReceived: 100000, acrossTables: true }, /takeaway/i);
+
     seed(ticket('o1', { table_id: null, table_label: null }),
          ticket('o2', { table_id: null, table_label: null, opened_at: { __ts: 2000 } }));
     await refuses('takeaway has no table, so two bags are not one bill', ['o1', 'o2'],

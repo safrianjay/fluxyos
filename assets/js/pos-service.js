@@ -1568,6 +1568,20 @@ export const POS_METHODS = {
         // or by head, and asking for both at once means the cashier has not
         // decided which.
         splitWays = null,
+        // ── ONE PAYER, SEVERAL TABLES ───────────────────────────────────────
+        //
+        // A large family seated across three tables, each keeping its own
+        // tickets, and at the end one of them says "put it all on mine". That is
+        // a payment ACTION, not a claim that the tables are one seating area —
+        // so nothing about the room changes and this is the only thing that
+        // knows about it.
+        //
+        // ⚠️ AN OPT-IN, BECAUSE THE REFUSAL IS THE POINT. Settling another
+        // table's food against this customer's cash is exactly what the
+        // same-table guard exists to stop, and both orders look correct
+        // afterwards. Requiring the caller to say so keeps the refusal the
+        // default rather than resting on a UI being careful.
+        acrossTables = false,
         // Same argument as `recordPosPayment`: the money is recorded by the
         // order writes, emission is best-effort with `emitUnpostedPosSales` as
         // its retry, and making the cashier watch it happen N times over is
@@ -1646,12 +1660,23 @@ export const POS_METHODS = {
             const tableId = rows[0].table_id || null;
             const outlet = rows[0].dimension_id || null;
             if (rows.length > 1) {
-                if (!tableId) throw new Error('Only orders at the same table can be settled together.');
-                if (rows.some((o) => (o.table_id || null) !== tableId)) {
-                    throw new Error('Those tickets are not all at the same table.');
-                }
+                // ⚠️ ONE OUTLET, ALWAYS. Two outlets are two sets of books, and
+                // no cashier decision can make them one bill.
                 if (rows.some((o) => (o.dimension_id || null) !== outlet)) {
                     throw new Error('Those tickets are not all from the same outlet.');
+                }
+                if (acrossTables) {
+                    // Still every ticket must be AT a table. Takeaway is
+                    // excluded for the reason it always was: nothing says two
+                    // bags on a counter belong to the same person.
+                    if (rows.some((o) => !o.table_id)) {
+                        throw new Error('Takeaway orders cannot be added to a table bill.');
+                    }
+                } else {
+                    if (!tableId) throw new Error('Only orders at the same table can be settled together.');
+                    if (rows.some((o) => (o.table_id || null) !== tableId)) {
+                        throw new Error('Those tickets are not all at the same table.');
+                    }
                 }
             }
 

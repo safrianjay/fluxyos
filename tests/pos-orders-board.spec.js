@@ -289,24 +289,13 @@ test('an abandoned cart is stale, not late', async ({ page }) => {
     // day-old order also OWNED the top of a longest-waiting sort, burying the
     // one that mattered.
     await openBoard(page);
-    // ⚠️ THE DATE FILTER IS SWITCHED OFF FIRST, and that is not tidiness.
-    //
-    // The fixture is 3h20m old, chosen to clear STALE_MINS while staying inside
-    // the board's default Today window. "Today" starts at local midnight, so
-    // between 00:00 and 03:20 the cart lands YESTERDAY and is filtered out
-    // before the staleness rule is ever reached — this test failed every night
-    // for a three-hour window and passed every morning, which reads as flake
-    // rather than as a clock. Found at 03:08 WIB on 2026-09-06.
-    //
-    // Nothing here is about the date window, so it is removed rather than
-    // worked around with an age that no wall-clock can make safe: at 00:05 even
+    // The fixture is 3h20m old, to clear STALE_MINS. `__posSeedBoard` drops the
+    // date window for it — "today" starts at local midnight, so between 00:00
+    // and 03:20 this cart lands YESTERDAY and is filtered out before the
+    // staleness rule is ever reached. That failed nightly for a three-hour
+    // window and passed every morning, which reads as flake rather than as a
+    // clock. No age can be made safe by choosing a better number: at 00:05 even
     // a ten-minute-old order is yesterday.
-    await page.click('#pos-orders-filter');
-    await page.locator('#pos-filter-rail [data-group="orderDate"]').click();
-    await page.locator('#pos-filter-options [data-value="all"]').click();
-    await page.click('#pos-filter-apply');
-    await expect(page.locator('#pos-filter-panel')).toBeHidden();
-
     const rows = await seedBoard(page, [
         { status: 'open', ageMin: 200 },       // long abandoned
         { status: 'sent', ageMin: 20 }         // genuinely late in the kitchen
@@ -1333,3 +1322,97 @@ test('a split reviews ONLY the dishes chosen, with their own share of VAT', asyn
     await expect(review, 'the table total is quoted on a split').not.toContainText('748.200');
 });
 
+
+// ── One payer, several tables ───────────────────────────────────────────────
+//
+// A large family seated across three tables, each keeping its own tickets, and
+// at the end one of them says "put it all on mine". That is a payment ACTION,
+// not a claim that the tables are one seating area — so nothing about the floor
+// plan or the diners' phones changes, and the bill dialog is the only thing
+// that knows about it.
+
+async function seedThreeTables(page) {
+    return page.evaluate(() => {
+        const ts = (ms) => { const d = new Date(Date.now() - ms); return { toDate: () => d }; };
+        const L = (id, name, price) => ({ line_id: id, item_id: `i-${id}`, item_name: name,
+            quantity: 1, unit_price: price, gross_amount: price });
+        const mk = (id, no, table, cust, lines, sub) => ({
+            id, order_number: no, status: 'served',
+            table_id: `t${table}`, table_label: String(table), dimension_id: 'd1',
+            customer_name: cust, lines,
+            subtotal: sub, discount_total: 0, service_charge_amount: 0, tax_amount: 0,
+            total_amount: sub, paid_amount: 0, payments: [],
+            opened_at: ts(600000), status_changed_at: ts(600000)
+        });
+        return window.__posSeedBoard([
+            mk('o5', '017', 5, 'Pak Budi', [L('a', 'Nasi Goreng', 55000), L('b', 'Es Teh', 12000)], 67000),
+            mk('o6', '018', 6, 'Ibu Sari', [L('c', 'Ayam Bakar', 78000)], 78000),
+            mk('o7', '019', 7, 'Dika', [L('d', 'Sate Ayam', 45000)], 45000)
+        ]);
+    });
+}
+
+test('ONE PAYER CAN TAKE ON ANOTHER TABLE\'S BILL', async ({ page }) => {
+    await openBoard(page);
+    await seedThreeTables(page);
+
+    await page.locator('[data-table-bill]').first().click();
+    const modal = page.locator('#pos-bill-modal');
+    await modal.locator('[data-bill-mode="ticket"]').click();
+    await expect(modal.locator('#pos-bill-total')).toContainText('67.000');
+
+    // The other occupied tables are offered, with what each still owes — a
+    // cashier picking a table needs the figure, not just the number.
+    await expect(modal.locator('[data-add-table]')).toHaveCount(2);
+    await expect(modal.locator('[data-add-table="t6"]')).toContainText('78.000');
+
+    await modal.locator('[data-add-table="t6"]').click();
+    await modal.locator('[data-add-table="t7"]').click();
+    await expect(modal.locator('#pos-bill-total')).toContainText('190.000');
+
+    // ⚠️ EVERY ROW NAMES ITS TABLE once the bill spans more than one. Three
+    // ticket numbers with no tables is a list a cashier cannot check against
+    // the room.
+    const rows = modal.locator('.pos-bill-row-no');
+    await expect(rows.nth(0)).toContainText('Table 5');
+    await expect(rows.nth(1)).toContainText('Table 6');
+    await expect(rows.nth(2)).toContainText('Table 7');
+    // …and the heading follows, because it is no longer table 5's bill.
+    await expect(modal.locator('#pos-bill-title')).toHaveText('Tables 5, 6, 7 bill');
+    await expect(modal.locator('#pos-bill-who')).toContainText('Ibu Sari');
+
+    // ⚠️ REMOVABLE IN ONE TAP. Adding the wrong table is one tap and the
+    // recovery has to cost the same with a customer waiting.
+    await modal.locator('[data-drop-table="t7"]').click();
+    await expect(modal.locator('#pos-bill-total')).toContainText('145.000');
+    await expect(modal.locator('.pos-bill-row-no')).toHaveCount(2);
+});
+
+test('the payment dialog names every table it is charging for', async ({ page }) => {
+    // ⚠️ THIS IS WHAT MAKES IT SAFE. Adding a table means charging for food the
+    // cashier has not looked at; the review is where that stops being a mis-tap
+    // they find out about later.
+    await openBoard(page);
+    await seedThreeTables(page);
+    await page.locator('[data-table-bill]').first().click();
+    await page.locator('#pos-bill-modal [data-bill-mode="ticket"]').click();
+    await page.locator('[data-add-table="t6"]').click();
+    await page.locator('[data-add-table="t7"]').click();
+    await page.locator('#pos-bill-pay').click();
+
+    const pay = page.locator('#pos-pay-modal');
+    await expect(pay.locator('.pos-modal-sub')).toContainText('Tables 5, 6, 7');
+    await expect(pay.locator('.pos-modal-sub')).toContainText('3 tickets');
+    await expect(pay.locator('#pos-pay-due')).toContainText('190.000');
+
+    // Every item from all three tables, and the parties they belong to.
+    const review = pay.locator('.pos-review');
+    // (The head is uppercased by CSS, so the DOM text is title case.)
+    await expect(review).toContainText('Tables 5, 6, 7');
+    await expect(review).toContainText('Nasi Goreng');
+    await expect(review).toContainText('Ayam Bakar');
+    await expect(review).toContainText('Sate Ayam');
+    await expect(review.locator('.pos-review-who')).toContainText('Pak Budi');
+    await expect(review.locator('.pos-review-who')).toContainText('Dika');
+    await expect(review.locator('.pos-review-line')).toHaveCount(4);
+});
