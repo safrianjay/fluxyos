@@ -321,6 +321,54 @@ img { max-width: 100%; display: block; }
     font-size: 11.5px; font-weight: 600;
     font-variant-numeric: tabular-nums;
 }
+/* ---- Language switcher -------------------------------------------------
+   Same chrome treatment as `.hero-count` — a translucent dark pill with a blur
+   — because both sit on a photograph nobody has seen and the alternative is a
+   control that vanishes on a white tablecloth. */
+.lang-btn {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    right: 12px;
+    z-index: 3;                       /* over `.hero-scrim`, which is inert */
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 11px 7px 9px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(11, 15, 25, 0.52);
+    -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+    color: #fff;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.02em;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.lang-btn svg { width: 15px; height: 15px; display: block; }
+/* Two letters, so the pill does not resize between EN and ID and shift the
+   hero's only control a pixel sideways on every switch. */
+.lang-btn-code { line-height: 1; font-variant-numeric: normal; }
+.lang-btn:active { transform: scale(0.96); }
+
+/* A ROW PER LANGUAGE, full width, ~52px tall — a language is picked once and
+   the list is two items long, so there is no reason to make it a small target. */
+.lang-opt {
+    width: 100%;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--line-soft);
+    border-radius: 14px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 15px; font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+.lang-opt + .lang-opt { margin-top: 8px; }
+.lang-opt[aria-pressed="true"] { border-color: var(--accent); }
+/* The tick is the ONLY state marker. An orange fill behind the chosen row would
+   be a block of brand orange as a background, which is banned project-wide. */
+.lang-opt-tick { width: 20px; height: 20px; flex: 0 0 auto; color: var(--accent); }
+.lang-opt[aria-pressed="false"] .lang-opt-tick { visibility: hidden; }
+
 /* Dots say "there is more", which a count alone does not — a "1/8" reads as a
    label until you have already discovered the swipe. Hidden at one photo,
    because an indicator for a gallery that cannot move is noise. */
@@ -2055,7 +2103,7 @@ html.kb-open .welcome-art { display: none; }
                 <img src="/assets/images/favicon.svg" alt="" onerror="this.style.display='none'">
             </div>
         </div>
-        <p>Memuat menu…</p>
+        <p data-i18n="loading.menu">Memuat menu…</p>
     </section>
 
     <!-- Dead / revoked / unknown token ----------------------------------- -->
@@ -2075,6 +2123,16 @@ html.kb-open .welcome-art { display: none; }
             <div class="hero-scrim"></div>
             <div class="hero-dots" id="hero-dots" aria-hidden="true"></div>
             <div class="hero-count num" id="hero-count" hidden></div>
+            <!-- ⚠️ ABOVE THE SCRIM, which is `pointer-events: none` and would
+                 otherwise be the only thing between this and the photo. Top
+                 right, where the hero has nothing else: the count sits bottom
+                 right and the outlet card overlaps bottom left. -->
+            <button class="lang-btn" id="lang-btn" type="button"
+                    aria-haspopup="dialog" aria-controls="sheet-lang"
+                    data-i18n-aria="lang.open" aria-label="Ganti bahasa">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8"/><path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18z"/></svg>
+                <span class="lang-btn-code num" id="lang-btn-code">EN</span>
+            </button>
         </header>
 
         <section class="outlet-card">
@@ -2098,10 +2156,10 @@ html.kb-open .welcome-art { display: none; }
                     <!-- Each is absent unless the outlet set the field it needs.
                          A Call button with no number is an affordance that lies
                          (DESIGN_SYSTEM 3c). -->
-                    <a class="outlet-act" id="act-directions" hidden target="_blank" rel="noopener" aria-label="Petunjuk arah">
+                    <a class="outlet-act" id="act-directions" hidden target="_blank" rel="noopener" data-i18n-aria="outlet.directions" aria-label="Petunjuk arah">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.4-7-9.7A7 7 0 0 1 19 11.3C19 16.6 12 21 12 21z"/><circle cx="12" cy="11" r="2.4"/></svg>
                     </a>
-                    <a class="outlet-act" id="act-call" hidden aria-label="Telepon">
+                    <a class="outlet-act" id="act-call" hidden data-i18n-aria="outlet.call" aria-label="Telepon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
                     </a>
                 </div>
@@ -2112,11 +2170,12 @@ html.kb-open .welcome-art { display: none; }
         <div class="menu-search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
             <input id="search" class="search" type="search" inputmode="search"
-                   autocomplete="off" placeholder="Cari menu…" aria-label="Cari menu">
+                   autocomplete="off" data-i18n-ph="search.placeholder" placeholder="Cari menu…"
+                   data-i18n-aria="search.aria" aria-label="Cari menu">
         </div>
 
         <div class="rail">
-            <div id="chips" class="chips" role="group" aria-label="Kategori"></div>
+            <div id="chips" class="chips" role="group" data-i18n-aria="chips.aria" aria-label="Kategori"></div>
         </div>
 
         <!-- Between the chips and the menu, exactly as the reference places it.
@@ -2138,7 +2197,7 @@ html.kb-open .welcome-art { display: none; }
          real to return to. -->
     <section id="view-cart" class="hidden">
         <header class="page-head">
-            <button class="page-back" type="button" id="cart-back" aria-label="Kembali ke menu">
+            <button class="page-back" type="button" id="cart-back" data-i18n-aria="cart.back" aria-label="Kembali ke menu">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
             </button>
             <div class="page-title">
@@ -2153,25 +2212,26 @@ html.kb-open .welcome-art { display: none; }
                 <div class="panel-actions">
                     <button type="button" class="chip-action" id="cart-add-more">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-                        Tambah menu
+                        <span data-i18n="cart.addMore">Tambah menu</span>
                     </button>
                     <button type="button" class="chip-action" id="cart-note-toggle">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
-                        Catatan dapur
+                        <span data-i18n="cart.kitchenNote">Catatan dapur</span>
                     </button>
                     <label class="chip-action" id="cart-cutlery-wrap">
                         <input type="checkbox" id="cart-cutlery">
-                        Tanpa sendok garpu
+                        <span data-i18n="cart.noCutlery">Tanpa sendok garpu</span>
                     </label>
                 </div>
                 <div id="cart-note-wrap" hidden>
                     <textarea id="cart-note" class="note-input" maxlength="200" rows="2"
+                        data-i18n-ph="cart.notePlaceholder"
                         placeholder="Contoh: jangan pakai es, pedas sedang"></textarea>
                 </div>
             </div>
 
             <div class="panel" id="cart-suggest-panel" hidden>
-                <h2 class="panel-title">Lengkapi pesanan Anda</h2>
+                <h2 class="panel-title" data-i18n="cart.suggestTitle">Lengkapi pesanan Anda</h2>
                 <div class="suggest-rail" id="cart-suggest"></div>
             </div>
 
@@ -2189,7 +2249,7 @@ html.kb-open .welcome-art { display: none; }
             <div class="page-foot-inner">
                 <div class="who" id="cart-who"></div>
                 <button class="primary" id="cart-submit" type="button">
-                    <span>Order Sekarang</span><span class="num" id="cart-submit-total"></span>
+                    <span data-i18n="cart.submit">Order Sekarang</span><span class="num" id="cart-submit-total"></span>
                 </button>
             </div>
         </div>
@@ -2202,7 +2262,7 @@ html.kb-open .welcome-art { display: none; }
     <button id="cart-open" type="button">
         <span class="cb-left">
             <span class="cb-count num" id="cart-count">0</span>
-            <span>Lihat pesanan</span>
+            <span data-i18n="cart.view">Lihat pesanan</span>
         </span>
         <span class="num" id="cart-total">—</span>
     </button>
@@ -2215,16 +2275,16 @@ html.kb-open .welcome-art { display: none; }
      prominent one is competing with itself, so the tab went and the cart bar
      is now unambiguously the primary action. "Bantuan" went too — it opened a
      sentence, not a screen. -->
-<nav class="tabbar" aria-label="Navigasi">
+<nav class="tabbar" data-i18n-aria="tabs.aria" aria-label="Navigasi">
     <div class="tabbar-inner">
         <button class="tab" type="button" data-tab="menu" aria-current="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h12"/></svg>
-            <span>Menu</span>
+            <span data-i18n="tabs.menu">Menu</span>
         </button>
         <button class="tab" type="button" data-tab="orders" aria-current="false">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1z"/><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M9 11h6M9 15h4"/></svg>
             <span class="tab-badge" id="tab-orders-badge">0</span>
-            <span>Pesanan</span>
+            <span data-i18n="tabs.orders">Pesanan</span>
         </button>
     </div>
 </nav>
@@ -2244,16 +2304,16 @@ html.kb-open .welcome-art { display: none; }
     <div class="sheet-grip"></div>
     <div class="sheet-head">
         <div>
-            <h2 class="sheet-title" id="orders-title">Pesanan Anda</h2>
+            <h2 class="sheet-title" id="orders-title" data-i18n="orders.title">Pesanan Anda</h2>
             <p class="sheet-sub" id="orders-sub">—</p>
         </div>
-        <button class="sheet-close" type="button" data-close aria-label="Tutup">✕</button>
+        <button class="sheet-close" type="button" data-close data-i18n-aria="common.close" aria-label="Tutup">✕</button>
     </div>
     <div class="sheet-body" id="orders-body"></div>
     <div class="sheet-foot" id="orders-foot" hidden>
-        <button class="ghost" id="orders-add" type="button">Tambah pesanan</button>
-        <button class="primary" id="bill-btn" type="button" hidden>Minta bill &amp; bayar</button>
-        <p class="bill-hint" id="bill-hint" hidden>Kasir akan datang ke meja Anda.</p>
+        <button class="ghost" id="orders-add" type="button" data-i18n="orders.addMore">Tambah pesanan</button>
+        <button class="primary" id="bill-btn" type="button" hidden data-i18n="orders.bill">Minta bill &amp; bayar</button>
+        <p class="bill-hint" id="bill-hint" hidden data-i18n="orders.billHint">Kasir akan datang ke meja Anda.</p>
     </div>
 </div>
 
@@ -2270,16 +2330,16 @@ html.kb-open .welcome-art { display: none; }
              the catch-all rewrite serves as 200-with-HTML rather than 404 — it
              would fail while LOOKING like it loaded. -->
         <img class="done-art" src="/assets/images/order-success.png" alt="" decoding="async">
-        <h2 class="done-title" id="done-title">Pesanan terkirim</h2>
-        <p class="done-sub" id="done-sub">Dapur sudah menerima pesanan Anda.</p>
+        <h2 class="done-title" id="done-title" data-i18n="done.title">Pesanan terkirim</h2>
+        <p class="done-sub" id="done-sub" data-i18n="done.sub">Dapur sudah menerima pesanan Anda.</p>
         <div class="done-ticket">
-            <span class="done-ticket-label">Nomor pesanan</span>
+            <span class="done-ticket-label" data-i18n="done.ticket">Nomor pesanan</span>
             <span class="done-ticket-no num" id="done-number">—</span>
         </div>
     </div>
     <div class="sheet-foot">
-        <button class="ghost" id="done-status" type="button">Lihat status pesanan</button>
-        <button class="primary" id="done-more" type="button">Pesan lagi</button>
+        <button class="ghost" id="done-status" type="button" data-i18n="done.status">Lihat status pesanan</button>
+        <button class="primary" id="done-more" type="button" data-i18n="done.more">Pesan lagi</button>
     </div>
 </div>
 
@@ -2294,7 +2354,7 @@ html.kb-open .welcome-art { display: none; }
 <!-- No title and no sub-line by design: the hero stack above the fields
      already says what this is, and two labelled fields say what to do. The
      dialog is named here instead, since there is no heading to point at. -->
-<div id="sheet-welcome" class="sheet sheet-welcome" role="dialog" aria-modal="true" aria-label="Data pemesan">
+<div id="sheet-welcome" class="sheet sheet-welcome" role="dialog" aria-modal="true" data-i18n-aria="welcome.aria" aria-label="Data pemesan">
     <div class="sheet-grip"></div>
     <!-- Hero cluster. Filled by paintWelcomeArt() from the outlet's own
          categories and hidden when it has too few to compose with — an empty
@@ -2307,21 +2367,37 @@ html.kb-open .welcome-art { display: none; }
          data-src="/assets/images/order-welcome.webp" aria-hidden="true" hidden></div>
     <div class="sheet-body">
         <div class="field" id="welcome-name-field">
-            <label for="welcome-name">Nama</label>
+            <label for="welcome-name" data-i18n="welcome.name">Nama</label>
             <input id="welcome-name" type="text" maxlength="80" autocomplete="name"
-                   inputmode="text" placeholder="Nama Anda">
+                   inputmode="text" data-i18n-ph="welcome.namePlaceholder" placeholder="Nama Anda">
         </div>
         <div class="field" id="welcome-phone-field">
-            <label for="welcome-phone">Nomor WhatsApp</label>
+            <label for="welcome-phone" data-i18n="welcome.phone">Nomor WhatsApp</label>
             <input id="welcome-phone" type="tel" maxlength="32" inputmode="tel"
                    autocomplete="tel" placeholder="08…">
         </div>
         <div id="welcome-error"></div>
     </div>
     <div class="sheet-foot">
-        <button class="primary" id="welcome-go" type="button">Mulai pesan</button>
-        <p class="welcome-fine">Untuk memanggil pesanan Anda dan mengabari kalau ada item yang habis.</p>
+        <button class="primary" id="welcome-go" type="button" data-i18n="welcome.go">Mulai pesan</button>
+        <p class="welcome-fine" data-i18n="welcome.fine">Untuk memanggil pesanan Anda dan mengabari kalau ada item yang habis.</p>
     </div>
+</div>
+
+<!-- Language sheet -------------------------------------------------------
+     A bottom sheet like every other choice on this page, rather than a
+     dropdown: the same gesture, the same geometry, and a target a thumb can
+     hit on a phone held one-handed. -->
+<div id="sheet-lang" class="sheet" role="dialog" aria-modal="true" aria-labelledby="lang-title">
+    <div class="sheet-grip"></div>
+    <div class="sheet-head">
+        <div>
+            <h2 class="sheet-title" id="lang-title" data-i18n="lang.title">Bahasa</h2>
+            <p class="sheet-sub" data-i18n="lang.sub">Pilih bahasa untuk menu ini.</p>
+        </div>
+        <button class="sheet-close" type="button" data-close data-i18n-aria="common.close" aria-label="Tutup">✕</button>
+    </div>
+    <div class="sheet-body" id="lang-body"></div>
 </div>
 
 <!-- Item detail sheet ---------------------------------------------------- -->
@@ -2332,7 +2408,7 @@ html.kb-open .welcome-art { display: none; }
             <h2 class="sheet-title" id="item-title">—</h2>
             <p class="sheet-sub num" id="item-price">—</p>
         </div>
-        <button class="sheet-close" type="button" data-close aria-label="Tutup">✕</button>
+        <button class="sheet-close" type="button" data-close data-i18n-aria="common.close" aria-label="Tutup">✕</button>
     </div>
     <div class="sheet-body" id="item-body"></div>
     <!-- Quantity lives HERE, beside the confirm button, so someone ordering
@@ -2340,12 +2416,12 @@ html.kb-open .welcome-art { display: none; }
          up, and coming back. -->
     <div class="sheet-foot sheet-foot-row">
         <div class="stepper" id="item-qty-wrap">
-            <button type="button" id="item-qty-dec" aria-label="Kurangi jumlah">−</button>
+            <button type="button" id="item-qty-dec" data-i18n-aria="item.qtyDec" aria-label="Kurangi jumlah">−</button>
             <span class="qty num" id="item-qty">1</span>
-            <button type="button" id="item-qty-inc" aria-label="Tambah jumlah">+</button>
+            <button type="button" id="item-qty-inc" data-i18n-aria="item.qtyInc" aria-label="Tambah jumlah">+</button>
         </div>
         <button class="primary" id="item-add" type="button">
-            <span>Tambah</span><span class="num" id="item-add-total"></span>
+            <span data-i18n="item.add">Tambah</span><span class="num" id="item-add-total"></span>
         </button>
     </div>
 </div>
@@ -2623,6 +2699,422 @@ html.kb-open .welcome-art { display: none; }
         });
     };
 
+    // =====================================================================
+    // LANGUAGE
+    //
+    // This page is read by a stranger holding their own phone in a restaurant.
+    // It shipped Indonesian-only, which is right for the home market and wrong
+    // for a diner in Bali or Jakarta who does not read it — and they are the
+    // one person in the whole product who cannot ask someone to change a
+    // setting for them.
+    //
+    // ⚠️ TWO AUDIENCES, ONE PAGE. Everything the DINER reads switches. What the
+    // page sends to the KITCHEN does not — the cutlery note is composed into
+    // the ticket a cook reads, and a cook at an Indonesian outlet reads
+    // Indonesian whatever language the diner chose. See `CUTLERY_NOTE`.
+    //
+    // Money never switches either: `FluxyMoney.formatBase` renders the outlet's
+    // base currency, and Rp1.000 is Rp1.000 in every language.
+    //
+    // The dictionary is a plain object rather than the dashboard's
+    // `dashboard-i18n.js` (~3,300 keys) on purpose: that module is loaded
+    // behind auth and carries the whole app's vocabulary, and this page's
+    // budget is restaurant wifi on a cold cache.
+    // =====================================================================
+    var LANG_KEY = 'fluxyos-order-lang';
+    var LANGS = ['en', 'id'];
+
+    // Endonyms — a language is always listed in ITSELF, so someone who cannot
+    // read the current language can still find their own. This is why neither
+    // of these is a translatable key.
+    var LANG_NAMES = { en: 'English', id: 'Bahasa Indonesia' };
+
+    var COPY = {
+        id: {
+            'doc.title': 'Pesan — FluxyOS',
+
+            'loading.menu': 'Memuat menu…',
+            'error.revoked.title': 'Kode ini tidak aktif',
+            'error.revoked.body': 'Minta staf untuk memindai ulang atau memberikan kode meja yang baru.',
+            'error.notfound.title': 'Kode meja tidak ditemukan',
+            'error.notfound.body': 'Pindai ulang kode QR di meja Anda.',
+            'error.nomenu.title': 'Menu belum tersedia',
+            'error.nomenu.body': 'Silakan panggil staf untuk memesan.',
+            'error.rate.title': 'Terlalu banyak permintaan',
+            'error.rate.body': 'Tunggu sebentar lalu muat ulang halaman ini.',
+
+            'outlet.fallback': 'Menu',
+            'outlet.table': 'Meja',
+            'outlet.open': 'Buka',
+            'outlet.openUntil': 'Buka sampai {t}',
+            'outlet.closed': 'Tutup',
+            'outlet.directions': 'Petunjuk arah',
+            'outlet.call': 'Telepon',
+            'day.mon': 'Senin', 'day.tue': 'Selasa', 'day.wed': 'Rabu', 'day.thu': 'Kamis',
+            'day.fri': 'Jumat', 'day.sat': 'Sabtu', 'day.sun': 'Minggu',
+
+            'search.placeholder': 'Cari menu…',
+            'search.aria': 'Cari menu',
+            'chips.aria': 'Kategori',
+            'chips.all': 'Semua',
+
+            'menu.empty': 'Tidak ada menu yang cocok.',
+            'recos.title': 'Rekomendasi Kami',
+            'card.add': 'Tambah {name}',
+
+            'item.required': 'Wajib pilih 1',
+            'item.multi': 'Pilih beberapa',
+            'item.optional': 'Opsional',
+            'item.note': 'Catatan',
+            'item.noteHint': 'Ada permintaan khusus untuk menu ini?',
+            'item.notePlaceholder': 'Contoh: tidak pedas',
+            'item.add': 'Tambah',
+            'item.qtyDec': 'Kurangi jumlah',
+            'item.qtyInc': 'Tambah jumlah',
+            'common.close': 'Tutup',
+            'common.dec': 'Kurangi',
+            'common.inc': 'Tambah',
+
+            'cart.back': 'Kembali ke menu',
+            'cart.addMore': 'Tambah menu',
+            'cart.kitchenNote': 'Catatan dapur',
+            'cart.noCutlery': 'Tanpa sendok garpu',
+            'cart.notePlaceholder': 'Contoh: jangan pakai es, pedas sedang',
+            'cart.suggestTitle': 'Lengkapi pesanan Anda',
+            'cart.submit': 'Order Sekarang',
+            'cart.sending': 'Mengirim pesanan…',
+            'cart.empty': 'Belum ada pesanan.',
+            'cart.for': 'Pesanan atas nama',
+            'cart.view': 'Lihat pesanan',
+
+            'tabs.aria': 'Navigasi',
+            'tabs.menu': 'Menu',
+            'tabs.orders': 'Pesanan',
+
+            'orders.title': 'Pesanan Anda',
+            'orders.addMore': 'Tambah pesanan',
+            'orders.bill': 'Minta bill & bayar',
+            'orders.billHint': 'Kasir akan datang ke meja Anda.',
+            'orders.billConfirm': 'Ketuk lagi untuk konfirmasi',
+            'orders.billFine': 'Setelah dibayar, pesan lagi berarti pindai QR lagi.',
+            'orders.calling': 'Memanggil kasir…',
+            'orders.loading': 'Memuat pesanan…',
+            'orders.loadFail': 'Tidak bisa memuat pesanan. Coba lagi sebentar.',
+            'orders.emptyTitle': 'Belum ada pesanan',
+            'orders.emptyTitlePast': 'Tidak ada pesanan aktif',
+            'orders.emptySub': 'Pesanan di meja ini akan muncul di sini begitu dikirim.',
+            'orders.emptySubPast': 'Pesanan sebelumnya ada di bawah.',
+            'orders.billCalled': 'Bill sudah diminta — bayar di kasir',
+            'orders.paySummary': 'Ringkasan pembayaran',
+            'orders.payFineOpen': 'Setelah dibayar, meja ini kosong lagi. Pindai QR untuk pesan lagi.',
+            'orders.payFineDone': 'Tagihan dibayar di kasir.',
+            'orders.history': 'Pesanan sebelumnya',
+            'orders.reorder': 'Pesan lagi yang ini',
+            'orders.visitTitle': 'Total kunjungan ini',
+            'orders.allOrders': 'Semua pesanan',
+            'orders.tickets': 'Pesanan di meja ini',
+
+            'st.open': 'Menunggu konfirmasi',
+            'st.submitted': 'Menunggu konfirmasi',
+            'st.sent': 'Sedang disiapkan',
+            'st.ready': 'Siap diantar',
+            'st.served': 'Sudah diantar',
+            'st.awaiting_payment': 'Menunggu pembayaran',
+            'st.paid': 'Lunas',
+
+            'stage.1': 'Diterima',
+            'stage.2': 'Disiapkan',
+            'stage.3': 'Siap',
+            'stage.4': 'Diantar',
+            'stage.hint.billed': 'Kasir sedang menuju meja Anda.',
+            'stage.hint.served': 'Selamat menikmati.',
+            'stage.hint.delivering': 'Pesanan Anda sedang diantar ke meja.',
+            'stage.hint.default': 'Kami kabari lewat WhatsApp kalau ada perubahan.',
+
+            'time.now': 'Baru saja',
+            'time.mins': '{n} menit lalu',
+            'time.hours': '{n} jam lalu',
+
+            'total.subtotal': 'Subtotal',
+            'total.discount': 'Diskon',
+            'total.service': 'Layanan',
+            'total.tax': 'Pajak',
+            'total.order': 'Total pesanan',
+            'total.paid': 'Sudah dibayar',
+            'total.remaining': 'Sisa tagihan',
+            'total.included': 'Termasuk {label}',
+            'total.due': 'Perlu dibayar',
+            'total.settled': 'Lunas',
+
+            'welcome.aria': 'Data pemesan',
+            'welcome.name': 'Nama',
+            'welcome.namePlaceholder': 'Nama Anda',
+            'welcome.phone': 'Nomor WhatsApp',
+            'welcome.go': 'Mulai pesan',
+            'welcome.fine': 'Untuk memanggil pesanan Anda dan mengabari kalau ada item yang habis.',
+            'welcome.needName': 'Masukkan nama Anda dulu.',
+            'welcome.needPhone': 'Nomor WhatsApp belum lengkap.',
+            'welcome.noteReceived': 'Dapur menerima pesanan Anda.',
+            'welcome.noteCallAt': 'Kami panggil nama Anda di {table}.',
+            'welcome.noteCall': 'Kami panggil nama Anda.',
+            'welcome.noteDelivered': 'Pesanan diantar ke meja.',
+            'welcome.sittingClosed': 'Pesanan sebelumnya sudah selesai. Isi lagi untuk memesan.',
+
+            'done.title': 'Pesanan terkirim',
+            'done.sub': 'Dapur sudah menerima pesanan Anda.',
+            'done.subPartial': 'Beberapa item sudah tidak tersedia dan tidak dimasukkan.',
+            'done.ticket': 'Nomor pesanan',
+            'done.status': 'Lihat status pesanan',
+            'done.more': 'Pesan lagi',
+
+            'toast.sittingClosed': 'Pesanan sebelumnya sudah selesai. Pesanan berikutnya jadi pesanan baru.',
+            'toast.reorderGone': 'Menu pesanan itu sudah tidak tersedia.',
+            'toast.reorderPartial': '{n} item sudah tidak tersedia dan tidak ditambahkan.',
+            'toast.reorderOk': 'Ditambahkan ke pesanan Anda.',
+            'err.submit': 'Gagal mengirim pesanan. Coba lagi.',
+            'err.sittingEnded': 'Pesanan sebelumnya sudah selesai. Coba kirim lagi untuk membuka pesanan baru.',
+            'err.billRequested': 'Bill meja ini sudah diminta. Panggil staf kalau mau menambah pesanan.',
+            'err.tableClosed': 'Tagihan meja ini baru saja ditutup. Panggil staf untuk membuka pesanan baru.',
+            'err.itemGone': 'Item yang Anda pilih sudah tidak tersedia.',
+            'err.billFail': 'Gagal memanggil kasir. Coba lagi.',
+            'err.orderClosed': 'Pesanan ini sudah ditutup kasir.',
+
+            'lang.open': 'Ganti bahasa',
+            'lang.title': 'Bahasa',
+            'lang.sub': 'Pilih bahasa untuk menu ini.'
+        },
+
+        en: {
+            'doc.title': 'Order — FluxyOS',
+
+            'loading.menu': 'Loading the menu…',
+            'error.revoked.title': 'This code is no longer active',
+            'error.revoked.body': 'Ask a member of staff to scan again, or for a new table code.',
+            'error.notfound.title': 'Table code not found',
+            'error.notfound.body': 'Scan the QR code on your table again.',
+            'error.nomenu.title': 'The menu is not ready yet',
+            'error.nomenu.body': 'Please ask a member of staff to order.',
+            'error.rate.title': 'Too many requests',
+            'error.rate.body': 'Wait a moment, then reload this page.',
+
+            'outlet.fallback': 'Menu',
+            'outlet.table': 'Table',
+            'outlet.open': 'Open',
+            'outlet.openUntil': 'Open until {t}',
+            'outlet.closed': 'Closed',
+            'outlet.directions': 'Directions',
+            'outlet.call': 'Call',
+            'day.mon': 'Monday', 'day.tue': 'Tuesday', 'day.wed': 'Wednesday', 'day.thu': 'Thursday',
+            'day.fri': 'Friday', 'day.sat': 'Saturday', 'day.sun': 'Sunday',
+
+            'search.placeholder': 'Search the menu…',
+            'search.aria': 'Search the menu',
+            'chips.aria': 'Categories',
+            'chips.all': 'All',
+
+            'menu.empty': 'Nothing on the menu matches.',
+            'recos.title': 'Our Recommendations',
+            'card.add': 'Add {name}',
+
+            'item.required': 'Pick 1',
+            'item.multi': 'Pick any',
+            'item.optional': 'Optional',
+            'item.note': 'Note',
+            'item.noteHint': 'Anything special for this dish?',
+            'item.notePlaceholder': 'For example: not spicy',
+            'item.add': 'Add',
+            'item.qtyDec': 'Fewer',
+            'item.qtyInc': 'More',
+            'common.close': 'Close',
+            'common.dec': 'Fewer',
+            'common.inc': 'More',
+
+            'cart.back': 'Back to the menu',
+            'cart.addMore': 'Add more',
+            'cart.kitchenNote': 'Note for the kitchen',
+            'cart.noCutlery': 'No cutlery',
+            'cart.notePlaceholder': 'For example: no ice, medium spicy',
+            'cart.suggestTitle': 'Anything else?',
+            'cart.submit': 'Order Now',
+            'cart.sending': 'Sending your order…',
+            'cart.empty': 'Nothing here yet.',
+            'cart.for': 'Order for',
+            'cart.view': 'View order',
+
+            'tabs.aria': 'Navigation',
+            'tabs.menu': 'Menu',
+            'tabs.orders': 'Orders',
+
+            'orders.title': 'Your Order',
+            'orders.addMore': 'Order more',
+            'orders.bill': 'Ask for the bill',
+            'orders.billHint': 'A cashier will come to your table.',
+            'orders.billConfirm': 'Tap again to confirm',
+            'orders.billFine': 'Once it is paid, ordering again means scanning the QR again.',
+            'orders.calling': 'Calling the cashier…',
+            'orders.loading': 'Loading your order…',
+            'orders.loadFail': 'Could not load your order. Try again in a moment.',
+            'orders.emptyTitle': 'Nothing ordered yet',
+            'orders.emptyTitlePast': 'No order in progress',
+            'orders.emptySub': 'Orders from this table show up here as soon as you send them.',
+            'orders.emptySubPast': 'Your earlier orders are below.',
+            'orders.billCalled': 'Bill requested — pay at the cashier',
+            'orders.paySummary': 'Payment summary',
+            'orders.payFineOpen': 'Once it is paid the table is free again. Scan the QR to order more.',
+            'orders.payFineDone': 'The bill is settled at the cashier.',
+            'orders.history': 'Earlier orders',
+            'orders.reorder': 'Order this again',
+            'orders.visitTitle': 'This visit',
+            'orders.allOrders': 'All orders',
+            'orders.tickets': 'Orders at this table',
+
+            'st.open': 'Waiting to be confirmed',
+            'st.submitted': 'Waiting to be confirmed',
+            'st.sent': 'Being prepared',
+            'st.ready': 'Ready to serve',
+            'st.served': 'Served',
+            'st.awaiting_payment': 'Waiting for payment',
+            'st.paid': 'Paid',
+
+            'stage.1': 'Received',
+            'stage.2': 'Being cooked',
+            'stage.3': 'Ready',
+            'stage.4': 'Served',
+            'stage.hint.billed': 'The cashier is on the way to your table.',
+            'stage.hint.served': 'Enjoy your meal.',
+            'stage.hint.delivering': 'Your order is on its way to the table.',
+            'stage.hint.default': 'We will message you on WhatsApp if anything changes.',
+
+            'time.now': 'Just now',
+            'time.mins': '{n} min ago',
+            'time.hours': '{n} hr ago',
+
+            'total.subtotal': 'Subtotal',
+            'total.discount': 'Discount',
+            'total.service': 'Service',
+            'total.tax': 'Tax',
+            'total.order': 'Order total',
+            'total.paid': 'Already paid',
+            'total.remaining': 'Left to pay',
+            'total.included': 'Includes {label}',
+            'total.due': 'To pay',
+            'total.settled': 'Settled',
+
+            'welcome.aria': 'Your details',
+            'welcome.name': 'Name',
+            'welcome.namePlaceholder': 'Your name',
+            'welcome.phone': 'WhatsApp number',
+            'welcome.go': 'Start ordering',
+            'welcome.fine': 'So we can call your order, and tell you if something has run out.',
+            'welcome.needName': 'Enter your name first.',
+            'welcome.needPhone': 'That WhatsApp number is not complete.',
+            'welcome.noteReceived': 'The kitchen gets your order.',
+            'welcome.noteCallAt': 'We call your name at {table}.',
+            'welcome.noteCall': 'We call your name.',
+            'welcome.noteDelivered': 'Your order comes to the table.',
+            'welcome.sittingClosed': 'Your last order is finished. Fill this in to order again.',
+
+            'done.title': 'Order sent',
+            'done.sub': 'The kitchen has your order.',
+            'done.subPartial': 'Some items had run out and were left off.',
+            'done.ticket': 'Order number',
+            'done.status': 'Track this order',
+            'done.more': 'Order more',
+
+            'toast.sittingClosed': 'Your last order is finished. The next one starts a new order.',
+            'toast.reorderGone': 'Nothing from that order is available any more.',
+            'toast.reorderPartial': '{n} of those have run out and were not added.',
+            'toast.reorderOk': 'Added to your order.',
+            'err.submit': 'Could not send your order. Try again.',
+            'err.sittingEnded': 'Your last order is finished. Send again to start a new one.',
+            'err.billRequested': 'The bill for this table has been asked for. Talk to staff to add anything.',
+            'err.tableClosed': 'This table was just settled. Ask staff to start a new order.',
+            'err.itemGone': 'Something you picked has run out.',
+            'err.billFail': 'Could not call the cashier. Try again.',
+            'err.orderClosed': 'The cashier has already closed this order.',
+
+            'lang.open': 'Change language',
+            'lang.title': 'Language',
+            'lang.sub': 'Choose the language for this menu.'
+        }
+    };
+
+    /**
+     * ⚠️ ENGLISH IS THE DEFAULT, by product decision — this page is a QR menu
+     * and the visitor who cannot read the outlet's own language is the one it
+     * has to work for unaided. A previous choice always wins over the default.
+     */
+    var lang = (function () {
+        try {
+            var saved = localStorage.getItem(LANG_KEY);
+            if (LANGS.indexOf(saved) >= 0) return saved;
+        } catch (_) { /* private mode throws on read as well as write */ }
+        return 'en';
+    })();
+
+    /**
+     * A phrase, in the diner's language.
+     *
+     * Falls back through Indonesian to the KEY, never to blank: a missing
+     * translation should look like a bug in one label, not like a page that
+     * failed to load.
+     */
+    function t(key, vars) {
+        var str = COPY[lang][key];
+        if (str == null) str = COPY.id[key];
+        if (str == null) return key;
+        if (!vars) return str;
+        return str.replace(/\{(\w+)\}/g, function (m, name) {
+            return vars[name] == null ? m : String(vars[name]);
+        });
+    }
+
+    /** "Meja A04" / "Table A04" — the label, wherever the table is named. */
+    function tableLabel() {
+        if (!menu || !menu.table) return t('outlet.table');
+        return t('outlet.table') + ' ' + menu.table;
+    }
+
+    /**
+     * ⚠️ THE ONE STRING THAT DOES NOT TRANSLATE. This rides along on the note
+     * that PRINTS IN THE KITCHEN, and the cook reading it did not switch the
+     * language — the diner did. Translating it would put English on an
+     * Indonesian kitchen ticket, which is the opposite of helping.
+     */
+    var CUTLERY_NOTE = 'Tanpa sendok garpu';
+
+    /**
+     * Static markup carries its copy in `data-i18n` attributes rather than as
+     * text, so the same pass paints the first render and every switch after it.
+     * Three attributes because a placeholder and an aria-label are copy too,
+     * and a switcher that leaves the search box saying "Cari menu…" has only
+     * done the part that is visible in a screenshot.
+     */
+    /**
+     * Set a label AND remember which phrase it is, so the next language switch
+     * repaints it correctly. Plain `textContent` would leave whichever sentence
+     * the JS last chose frozen in the old language — the static pass only knows
+     * about the key that is written in the markup.
+     */
+    function setCopy(el, key, vars) {
+        if (!el) return;
+        el.setAttribute('data-i18n', key);
+        el.textContent = t(key, vars);
+    }
+
+    function applyStaticCopy(root) {
+        var host = root || document;
+        var set = function (attr, apply) {
+            var nodes = host.querySelectorAll('[' + attr + ']');
+            for (var i = 0; i < nodes.length; i += 1) {
+                apply(nodes[i], t(nodes[i].getAttribute(attr)));
+            }
+        };
+        set('data-i18n', function (el, v) { el.textContent = v; });
+        set('data-i18n-ph', function (el, v) { el.setAttribute('placeholder', v); });
+        set('data-i18n-aria', function (el, v) { el.setAttribute('aria-label', v); });
+    }
+
     /**
      * The table token. `/t/<token>` is the printed form — short enough to be a
      * legible QR — and `?t=` is accepted so a link can be pasted or forwarded.
@@ -2631,8 +3123,8 @@ html.kb-open .welcome-art { display: none; }
         var m = window.location.pathname.match(/\/t\/([A-Za-z0-9_-]{8,128})/);
         if (m) return m[1];
         var q = new URLSearchParams(window.location.search);
-        var t = q.get('t') || q.get('token') || '';
-        return /^[A-Za-z0-9_-]{8,128}$/.test(t) ? t : '';
+        var tok = q.get('t') || q.get('token') || '';
+        return /^[A-Za-z0-9_-]{8,128}$/.test(tok) ? tok : '';
     }
 
     function newRef() {
@@ -2804,13 +3296,13 @@ html.kb-open .welcome-art { display: none; }
         }
         host.classList.remove('has-asset');
 
-        var table = menu && menu.table ? ('Meja ' + menu.table) : '';
+        var table = menu && menu.table ? tableLabel() : '';
         var cards = [
-            { i: 0, title: STAGES[0].label, sub: 'Dapur menerima pesanan Anda.', time: '' },
-            { i: 2, title: STAGES[2].label, sub: table
-                ? ('Kami panggil nama Anda di ' + table + '.')
-                : 'Kami panggil nama Anda.', time: '' },
-            { i: 3, title: STAGES[3].label, sub: 'Pesanan diantar ke meja.', time: '' }
+            { i: 0, title: stageLabel(1), sub: t('welcome.noteReceived'), time: '' },
+            { i: 2, title: stageLabel(3), sub: table
+                ? t('welcome.noteCallAt', { table: table })
+                : t('welcome.noteCall'), time: '' },
+            { i: 3, title: stageLabel(4), sub: t('welcome.noteDelivered'), time: '' }
         ];
         host.innerHTML = cards.map(function (c) {
             return '<div class="welcome-note">'
@@ -2859,12 +3351,12 @@ html.kb-open .welcome-art { display: none; }
         var flag = function (id) { welcomeField(id).classList.add('is-invalid'); };
         clearWelcomeInvalid();
 
-        if (!name) { bad = 'Masukkan nama Anda dulu.'; flag('welcome-name'); }
+        if (!name) { bad = t('welcome.needName'); flag('welcome-name'); }
         // Nine digits is the shortest real Indonesian mobile number. Checking
         // DIGITS rather than length lets someone type +62 812-3456-7890 with
         // whatever spacing their keyboard gives them.
         else if (digits.length < 9) {
-            bad = 'Nomor WhatsApp belum lengkap.';
+            bad = t('welcome.needPhone');
             flag('welcome-phone');
         }
 
@@ -2889,17 +3381,25 @@ html.kb-open .welcome-art { display: none; }
         if (view === 'cart' || view === 'menu') window.scrollTo(0, 0);
     }
 
-    function die(title, body) {
-        $('error-title').textContent = title;
-        if (body) $('error-body').textContent = body;
+    // Takes the KEY of a failure, not its wording. The error screen is the one
+    // view that outlives the data — nothing repaints it — so the reason is
+    // remembered rather than the sentence, and a language switch can restate it.
+    var deadReason = null;
+
+    function die(reason) {
+        deadReason = reason;
+        $('error-title').textContent = t(reason + '.title');
+        $('error-body').textContent = t(reason + '.body');
         show('error');
     }
 
     // =====================================================================
     // Boot
     // =====================================================================
+    repaintCopy();
+
     if (!TOKEN) {
-        die('Kode meja tidak ditemukan', 'Pindai ulang kode QR di meja Anda.');
+        die('error.notfound');
         return;
     }
 
@@ -2913,7 +3413,7 @@ html.kb-open .welcome-art { display: none; }
             menu = data;
             if (window.FluxyMoney) window.FluxyMoney.setBaseCurrency(data.currency || 'IDR');
             if (!Array.isArray(data.items) || !data.items.length) {
-                die('Menu belum tersedia', 'Silakan panggil staf untuk memesan.');
+                die('error.nomenu');
                 return;
             }
             paintHeader();
@@ -2952,17 +3452,16 @@ html.kb-open .welcome-art { display: none; }
         })
         .catch(function (err) {
             if (err && err.message === 'busy') {
-                die('Terlalu banyak permintaan', 'Tunggu sebentar lalu muat ulang halaman ini.');
+                die('error.rate');
             } else {
-                die('Kode ini tidak aktif',
-                    'Minta staf untuk memindai ulang atau memberikan kode meja yang baru.');
+                die('error.revoked');
             }
         });
 
     function paintHeader() {
-        var name = menu.outlet || 'Menu';
+        var name = menu.outlet || t('outlet.fallback');
         $('outlet-name').textContent = name;
-        $('table-label').textContent = menu.table ? ('Meja ' + menu.table) : 'Meja';
+        $('table-label').textContent = tableLabel();
         document.title = name + ' — FluxyOS';
         paintHeroGallery();
         paintOutletCard();
@@ -2980,16 +3479,16 @@ html.kb-open .welcome-art { display: none; }
     // 2026-09-05, and the fallback below exists for the same reason.
     // =====================================================================
     function heroSources() {
-        var t = encodeURIComponent(TOKEN);
+        var tok = encodeURIComponent(TOKEN);
         var out = [];
         // The owner's own cover comes first when there is one.
-        if (menu.has_cover) out.push(FN + 'qr-menu-image?token=' + t + '&cover=1');
+        if (menu.has_cover) out.push(FN + 'qr-menu-image?token=' + tok + '&cover=1');
         // Then the outlet's photographed dishes, so a shop that has uploaded no
         // cover still gets a hero that looks like THIS restaurant rather than a
         // gradient. Capped — a hero is an impression, not a catalogue.
         (menu.items || []).forEach(function (i) {
             if (out.length >= 8 || !i || !i.has_image) return;
-            out.push(FN + 'qr-menu-image?token=' + t + '&item=' + encodeURIComponent(i.id));
+            out.push(FN + 'qr-menu-image?token=' + tok + '&item=' + encodeURIComponent(i.id));
         });
         return out;
     }
@@ -3076,10 +3575,9 @@ html.kb-open .welcome-art { display: none; }
     // entered or omitted entirely — nothing here is inferred.
     // =====================================================================
     var DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-    var DAY_LABELS = {
-        mon: 'Senin', tue: 'Selasa', wed: 'Rabu', thu: 'Kamis',
-        fri: 'Jumat', sat: 'Sabtu', sun: 'Minggu'
-    };
+    // Read through `t()` at render, never cached: the labels change under the
+    // switcher and a frozen copy would leave Wednesday in the wrong language.
+    function dayLabel(key) { return t('day.' + key); }
 
     /**
      * Is the outlet open, and until when.
@@ -3149,8 +3647,8 @@ html.kb-open .welcome-art { display: none; }
             sep.hidden = false;
             status.classList.toggle('is-shut', !state.open);
             $('outlet-status-text').textContent = state.open
-                ? (state.until ? 'Buka sampai ' + hhmm(state.until) : 'Buka')
-                : 'Tutup';
+                ? (state.until ? t('outlet.openUntil', { t: hhmm(state.until) }) : t('outlet.open'))
+                : t('outlet.closed');
             paintOutletHours(info.hours);
         }
 
@@ -3178,10 +3676,10 @@ html.kb-open .welcome-art { display: none; }
         host.innerHTML = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map(function (d) {
             var r = byDay[d];
             var text = (!r || r.closed === true || !r.open || !r.close)
-                ? 'Tutup'
+                ? t('outlet.closed')
                 : hhmm(r.open) + ' – ' + hhmm(r.close);
             return '<div class="outlet-hours-row' + (d === todayKey ? ' is-today' : '') + '">'
-                + '<span>' + esc(DAY_LABELS[d]) + '</span><span>' + esc(text) + '</span></div>';
+                + '<span>' + esc(dayLabel(d)) + '</span><span>' + esc(text) + '</span></div>';
         }).join('');
     }
 
@@ -3204,7 +3702,7 @@ html.kb-open .welcome-art { display: none; }
                 + '<span class="cat-ico">' + svg(iconBody) + '</span>'
                 + '<span class="cat-name">' + esc(label) + '</span></button>';
         };
-        var html = tab('', 'Semua', categoryIcon(null), true);
+        var html = tab('', t('chips.all'), categoryIcon(null), true);
         cats.forEach(function (c) { html += tab(c, c, categoryIcon(c), false); });
         $('chips').innerHTML = html;
     }
@@ -3280,7 +3778,7 @@ html.kb-open .welcome-art { display: none; }
         // above this, so "Pilihan <outlet>" restated it in the same viewport —
         // the redundancy CLAUDE.md bans on eyebrows.
         host.innerHTML = '<div class="recos-sparkle" aria-hidden="true">' + STAR('s1') + STAR('s2') + STAR('s3') + '</div>' + '<div class="recos-head">'
-            + '<h2 class="recos-title" id="recos-title">Rekomendasi Kami</h2>'
+            + '<h2 class="recos-title" id="recos-title">' + esc(t('recos.title')) + '</h2>'
             + '</div><div class="recos-rail">' + cards + '</div>';
         host.hidden = false;
         // The rail's photos get the same one-retry treatment as the grid's.
@@ -3324,7 +3822,7 @@ html.kb-open .welcome-art { display: none; }
             + '<div class="card-foot">'
             + '<span class="card-price num">' + esc(money(i.price)) + '</span>'
             + '<button class="add-btn" type="button" data-open="' + esc(i.id) + '"'
-            + ' aria-label="Tambah ' + esc(i.name) + '">'
+            + ' aria-label="' + esc(t('card.add', { name: i.name })) + '">'
             + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"'
             + ' stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>'
             + '</button>'
@@ -3407,7 +3905,7 @@ html.kb-open .welcome-art { display: none; }
         paintRecos();
         var host = $('menu');
         if (!items.length) {
-            host.innerHTML = '<div class="empty">Tidak ada menu yang cocok.</div>';
+            host.innerHTML = '<div class="empty">' + esc(t('menu.empty')) + '</div>';
             return;
         }
 
@@ -3495,7 +3993,7 @@ html.kb-open .welcome-art { display: none; }
                 + '<div class="optgroup-head">'
                 + '<span class="optgroup-name">' + esc(g.name) + '</span>'
                 + '<span class="optgroup-rule' + (required ? '' : ' optional') + '">'
-                + (required ? 'Wajib pilih 1' : (multi ? 'Pilih beberapa' : 'Opsional')) + '</span>'
+                + esc(required ? t('item.required') : (multi ? t('item.multi') : t('item.optional'))) + '</span>'
                 + '</div>';
             g.options.forEach(function (o) {
                 html += '<label class="opt">'
@@ -3511,12 +4009,12 @@ html.kb-open .welcome-art { display: none; }
         });
 
         html += '<div class="optgroup"><div class="optgroup-head">'
-            + '<span class="optgroup-name">Catatan</span>'
-            + '<span class="optgroup-rule optional">Opsional</span></div>'
+            + '<span class="optgroup-name">' + esc(t('item.note')) + '</span>'
+            + '<span class="optgroup-rule optional">' + esc(t('item.optional')) + '</span></div>'
             + (item.modifier_groups.length ? ''
-                : '<p class="opt-hint">Ada permintaan khusus untuk menu ini?</p>')
+                : '<p class="opt-hint">' + esc(t('item.noteHint')) + '</p>')
             + '<textarea class="note-input" id="item-note" maxlength="120" rows="2"'
-            + ' placeholder="Contoh: tidak pedas"></textarea></div>';
+            + ' placeholder="' + esc(t('item.notePlaceholder')) + '"></textarea></div>';
 
         $('item-body').innerHTML = html;
         $('item-body').addEventListener('change', onDetailChange);
@@ -3695,7 +4193,7 @@ html.kb-open .welcome-art { display: none; }
         $('cartbar').classList.toggle('is-open', count > 0 && !$('view-menu').classList.contains('hidden'));
 
         setText($('cart-outlet'), (menu && menu.outlet) || '');
-        setText($('cart-table'), menu && menu.table ? ('Meja ' + menu.table) : '');
+        setText($('cart-table'), menu && menu.table ? tableLabel() : '');
         // ⚠️ THE PRICED TOTAL, which is what they will actually be charged. The
         // subtotal here is the number a diner commits to while looking at a
         // different one.
@@ -3703,7 +4201,7 @@ html.kb-open .welcome-art { display: none; }
         setDisabled($('cart-submit'), count === 0 || submitting);
 
         if (!count) {
-            $('cart-lines').innerHTML = '<div class="empty">Belum ada pesanan.</div>';
+            $('cart-lines').innerHTML = '<div class="empty">' + esc(t('cart.empty')) + '</div>';
             $('cart-totals').innerHTML = '';
             $('cart-who').innerHTML = '';
             $('cart-suggest-panel').hidden = true;
@@ -3751,7 +4249,7 @@ html.kb-open .welcome-art { display: none; }
         // Identity was captured once by the gate; this confirms who the order
         // goes out under rather than asking again.
         $('cart-who').innerHTML = customer
-            ? '<span>Pesanan atas nama</span><strong>' + esc(customer.name) + '</strong>'
+            ? '<span>' + esc(t('cart.for')) + '</span><strong>' + esc(customer.name) + '</strong>'
                 + (customer.phone ? '<span class="num">' + esc(customer.phone) + '</span>' : '')
             : '';
 
@@ -3764,9 +4262,9 @@ html.kb-open .welcome-art { display: none; }
     // addressed by index, so there is nothing to guess.
     function cartStepper(idx, qty) {
         return '<div class="stepper">'
-            + '<button type="button" data-cdec="' + idx + '" aria-label="Kurangi">−</button>'
+            + '<button type="button" data-cdec="' + idx + '" aria-label="' + esc(t('common.dec')) + '">−</button>'
             + '<span class="qty num">' + qty + '</span>'
-            + '<button type="button" data-cinc="' + idx + '" aria-label="Tambah">+</button>'
+            + '<button type="button" data-cinc="' + idx + '" aria-label="' + esc(t('common.inc')) + '">+</button>'
             + '</div>';
     }
 
@@ -3935,10 +4433,83 @@ html.kb-open .welcome-art { display: none; }
         $('sheet-welcome').classList.remove('is-open');
         $('sheet-orders').classList.remove('is-open');
         $('sheet-done').classList.remove('is-open');
+        $('sheet-lang').classList.remove('is-open');
         unlockScroll();
         detail = null;
         setActiveTab('menu');
     }
+    // =====================================================================
+    // The language switcher
+    // =====================================================================
+    var TICK = '<svg class="lang-opt-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
+        + ' stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        + '<path d="M20 6 9 17l-5-5"/></svg>';
+
+    function paintLangButton() {
+        setText($('lang-btn-code'), lang.toUpperCase());
+    }
+
+    function openLang() {
+        $('lang-body').innerHTML = LANGS.map(function (code) {
+            return '<button class="lang-opt" type="button" data-lang="' + code + '"'
+                + ' aria-pressed="' + (code === lang ? 'true' : 'false') + '">'
+                + '<span>' + esc(LANG_NAMES[code]) + '</span>' + TICK + '</button>';
+        }).join('');
+        openSheet('sheet-lang');
+    }
+
+    /**
+     * Repaint EVERY phrase on the page.
+     *
+     * ⚠️ THE STATIC PASS IS NOT ENOUGH. Most of what a diner reads here is
+     * built by a render function into `innerHTML` — the menu, the cart, the
+     * status ladder, the totals — and none of it carries a `data-i18n`. A
+     * switcher that only walked the markup would translate the tab bar and
+     * leave the entire menu behind it in the old language.
+     */
+    function repaintCopy() {
+        document.documentElement.lang = lang;
+        document.title = t('doc.title');
+        applyStaticCopy();
+        paintLangButton();
+
+        // The error screen outlives its data; nothing else repaints it.
+        if (deadReason) die(deadReason);
+        if (!menu) return;
+
+        paintHeader();
+        paintOutletCard();
+        paintChips();
+        // ⚠️ FORCE THE MENU. `paintMenu` skips a repaint when the visible item
+        // ids have not changed, and they have not — but "Tidak ada menu yang
+        // cocok" and every Add button's label just did.
+        menuSignature = null;
+        paintMenu();
+        paintRecos();
+        paintCart();
+        if (lastStatus) { paintOrders(lastStatus); paintOrdersBadge(lastStatus); }
+
+        // Asking for the bill is a two-tap confirm, and the first tap lives in
+        // the button's own label. Repainting that label would leave the page
+        // saying "Ask for the bill" while still armed to send one.
+        billConfirm = false;
+    }
+
+    function setLang(next) {
+        if (LANGS.indexOf(next) < 0 || next === lang) return;
+        lang = next;
+        try { localStorage.setItem(LANG_KEY, lang); } catch (_) { /* private mode */ }
+        repaintCopy();
+    }
+
+    $('lang-btn').addEventListener('click', openLang);
+    $('lang-body').addEventListener('click', function (e) {
+        var opt = e.target.closest ? e.target.closest('.lang-opt') : null;
+        if (!opt) return;
+        setLang(opt.dataset.lang);
+        closeSheets();
+    });
+
     $('scrim').addEventListener('click', function () { closeSheets(); });
     $('welcome-go').addEventListener('click', submitWelcome);
     // Enter on either field submits, the way a one-question form should.
@@ -4057,8 +4628,8 @@ html.kb-open .welcome-art { display: none; }
     }
 
     function setActiveTab(which) {
-        Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) {
-            t.setAttribute('aria-current', String(t.dataset.tab === which));
+        Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (el) {
+            el.setAttribute('aria-current', String(el.dataset.tab === which));
         });
     }
 
@@ -4072,8 +4643,8 @@ html.kb-open .welcome-art { display: none; }
     // correct answer for a shared bill.
     function openOrders() {
         setActiveTab('orders');
-        $('orders-sub').textContent = menu && menu.table ? ('Meja ' + menu.table) : '';
-        $('orders-body').innerHTML = '<p class="orders-loading">Memuat pesanan…</p>';
+        $('orders-sub').textContent = menu && menu.table ? tableLabel() : '';
+        $('orders-body').innerHTML = '<p class="orders-loading">' + esc(t('orders.loading')) + '</p>';
         openSheet('sheet-orders');
         refreshOrders();
     }
@@ -4117,27 +4688,52 @@ html.kb-open .welcome-art { display: none; }
             .catch(function () {
                 if (seq !== ordersSeq) return;
                 $('orders-body').innerHTML =
-                    '<p class="orders-loading">Tidak bisa memuat pesanan. Coba lagi sebentar.</p>';
+                    '<p class="orders-loading">' + esc(t('orders.loadFail')) + '</p>';
             });
     }
 
     // Four steps a diner can act on. The till's ladder has seven and uses
     // operational words — `sent`, `awaiting_payment` — that answer a question
     // nobody at a table is asking.
+    // The ICON is the data; the wording is a phrase, resolved at render so the
+    // ladder speaks the diner's language rather than the one the array was
+    // written in.
     var STAGES = [
-        { label: 'Diterima',  icon: '<path d="M20 6 9 17l-5-5"/>' },
-        { label: 'Disiapkan', icon: '<path d="M6 3v7M10 3v7M8 10v11"/><path d="M17 3c-1.5 3-2 5-2 8h4c0-3-.5-5-2-8z"/><path d="M17 11v10"/>' },
-        { label: 'Siap',      icon: '<path d="M3 17h18"/><path d="M5 17a7 7 0 0 1 14 0"/><path d="M12 7V5"/>' },
-        { label: 'Diantar',   icon: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>' }
+        { icon: '<path d="M20 6 9 17l-5-5"/>' },
+        { icon: '<path d="M6 3v7M10 3v7M8 10v11"/><path d="M17 3c-1.5 3-2 5-2 8h4c0-3-.5-5-2-8z"/><path d="M17 11v10"/>' },
+        { icon: '<path d="M3 17h18"/><path d="M5 17a7 7 0 0 1 14 0"/><path d="M12 7V5"/>' },
+        { icon: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>' }
     ];
+
+    /** The diner-facing name of stage `n` (1-4) on the four-rung track. */
+    function stageLabel(n) {
+        return t('stage.' + Math.min(4, Math.max(1, Number(n) || 1)));
+    }
+
+    /**
+     * The STATUS word, which is a different vocabulary from the track above it.
+     *
+     * ⚠️ THE SERVER'S LADDER IS LONGER THAN THE TRACK. `qr-order-status.js` has
+     * seven statuses; the track has four, because "awaiting_payment" is not a
+     * step towards food arriving. Mapping the status onto the nearest rung
+     * printed "Sudah diantar" over a table that was waiting to pay.
+     *
+     * Keyed on `status`, which is a machine value and stable. `stage_label` is
+     * the server's own Indonesian wording and stays the fallback, so a status
+     * added server-side still reads correctly here before this page knows it.
+     */
+    function statusLabel(status, fallback) {
+        var key = 'st.' + String(status || '');
+        return COPY.id[key] == null ? String(fallback || '') : t(key);
+    }
 
     function timeAgo(ms) {
         if (!ms) return '';
         var mins = Math.max(0, Math.round((Date.now() - ms) / 60000));
-        if (mins < 1) return 'Baru saja';
-        if (mins < 60) return mins + ' menit lalu';
+        if (mins < 1) return t('time.now');
+        if (mins < 60) return t('time.mins', { n: mins });
         var hrs = Math.floor(mins / 60);
-        return hrs + ' jam lalu';
+        return t('time.hours', { n: hrs });
     }
 
     // What the sheet last painted, so a delegated handler can reach the history
@@ -4158,10 +4754,10 @@ html.kb-open .welcome-art { display: none; }
                 '<div class="orders-empty">'
                 + '<div class="orders-empty-mark">' + svg(ICON.plate) + '</div>'
                 + '<p class="orders-empty-title">'
-                + (past ? 'Tidak ada pesanan aktif' : 'Belum ada pesanan') + '</p>'
-                + '<p class="orders-empty-sub">' + (past
-                    ? 'Pesanan sebelumnya ada di bawah.'
-                    : 'Pesanan di meja ini akan muncul di sini begitu dikirim.')
+                + esc(past ? t('orders.emptyTitlePast') : t('orders.emptyTitle')) + '</p>'
+                + '<p class="orders-empty-sub">' + esc(past
+                    ? t('orders.emptySubPast')
+                    : t('orders.emptySub'))
                 + '</p></div>' + sessionSummary(d) + past;
             return;
         }
@@ -4233,12 +4829,12 @@ html.kb-open .welcome-art { display: none; }
             + '<span class="ostat-no num">' + esc(d.order_number || '') + '</span>'
             + '<span class="ostat-time">' + esc(timeAgo(d.placed_at)) + '</span>'
             + '</div>'
-            + '<div class="ostat-now">' + esc(d.stage_label || '') + '</div>'
+            + '<div class="ostat-now">' + esc(statusLabel(d.status, d.stage_label)) + '</div>'
             + '<div class="ostat-hint">' + esc(billed
-                ? 'Kasir sedang menuju meja Anda.'
-                : (step >= 4 ? 'Selamat menikmati.'
-                    : (step === 3 ? 'Pesanan Anda sedang diantar ke meja.'
-                                  : 'Kami kabari lewat WhatsApp kalau ada perubahan.'))) + '</div>'
+                ? t('stage.hint.billed')
+                : (step >= 4 ? t('stage.hint.served')
+                    : (step === 3 ? t('stage.hint.delivering')
+                                  : t('stage.hint.default')))) + '</div>'
             + '</div>';
 
         // ── Track ───────────────────────────────────────────────────────────
@@ -4247,7 +4843,7 @@ html.kb-open .welcome-art { display: none; }
             var cls = n < step ? ' done' : (n === step ? ' done now' : '');
             return '<div class="track-step' + cls + '">'
                 + '<span class="track-dot">' + icon24(st.icon) + '</span>'
-                + '<span class="track-label">' + esc(st.label) + '</span>'
+                + '<span class="track-label">' + esc(stageLabel(n)) + '</span>'
                 + '</div>';
         }).join('') + '</div>';
 
@@ -4283,20 +4879,20 @@ html.kb-open .welcome-art { display: none; }
         var called = billed
             ? '<div class="bill-called">'
                 + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
-                + 'Bill sudah diminta — bayar di kasir</div>'
+                + esc(t('orders.billCalled')) + '</div>'
             : '';
 
         $('orders-body').innerHTML = hero + track + called
             + '<div class="opanel">' + lines + '</div>'
-            + (d.note ? '<div class="onote"><span>Catatan</span><p>' + esc(d.note) + '</p></div>' : '')
+            + (d.note ? '<div class="onote"><span>' + esc(t('item.note')) + '</span><p>' + esc(d.note) + '</p></div>' : '')
             + ticketPanels(d.orders)
-            + '<div class="opanel totals"><div class="osession-head">Ringkasan pembayaran</div>'
+            + '<div class="opanel totals"><div class="osession-head">' + esc(t('orders.paySummary')) + '</div>'
             + rows + '</div>'
             + sessionSummary(d)
             + historyPanel(d.history)
             + '<p class="orders-foot">' + esc(billed
-                ? 'Setelah dibayar, meja ini kosong lagi. Pindai QR untuk pesan lagi.'
-                : 'Tagihan dibayar di kasir.') + '</p>';
+                ? t('orders.payFineOpen')
+                : t('orders.payFineDone')) + '</p>';
     }
 
     /**
@@ -4309,7 +4905,7 @@ html.kb-open .welcome-art { display: none; }
      * exists). Both carry the percentage, because "Layanan Rp5.000" invites the
      * question the percentage answers.
      */
-    function breakdownRows(t, rates) {
+    function breakdownRows(tot, rates) {
         var r = rates || {};
         var pct = function (v) {
             var n = Number(v) || 0;
@@ -4319,15 +4915,15 @@ html.kb-open .welcome-art { display: none; }
             return '<div class="line' + (extra ? ' ' + extra : '') + '"><span>' + label
                 + '</span><span class="num">' + esc(money(amount)) + '</span></div>';
         };
-        var out = row('Subtotal', t.subtotal);
-        if (t.discount) out += row('Diskon', -t.discount);
-        if (t.service > 0) out += row('Layanan' + pct(r.service_rate_percent), t.service);
+        var out = row(esc(t('total.subtotal')), tot.subtotal);
+        if (tot.discount) out += row(esc(t('total.discount')), -tot.discount);
+        if (tot.service > 0) out += row(esc(t('total.service')) + pct(r.service_rate_percent), tot.service);
         // Inclusive tax is already inside the total, so it is stated UNDER the
         // total rather than as a row that would make the arithmetic look wrong.
-        if (t.tax > 0 && !r.tax_inclusive) {
-            out += row(esc(r.tax_label || 'Pajak') + pct(r.tax_rate_percent), t.tax);
+        if (tot.tax > 0 && !r.tax_inclusive) {
+            out += row(esc(r.tax_label || t('total.tax')) + pct(r.tax_rate_percent), tot.tax);
         }
-        var paid = Math.max(0, Number(t.paid) || 0);
+        var paid = Math.max(0, Number(tot.paid) || 0);
         // ⚠️ STATUS IS NOT PAYMENT. An order can be served, delivered and
         // finished while none of it has been settled — the two are separate
         // facts and the sheet must never let one imply the other. So the TOTAL
@@ -4335,18 +4931,18 @@ html.kb-open .welcome-art { display: none; }
         // still owed; and when nothing has been paid the middle two rows are
         // absent rather than printed as zeroes.
         if (paid > 0) {
-            out += '<div class="line grand"><span>Total pesanan</span><span class="num">'
-                + esc(money(t.total)) + '</span></div>';
-            out += row('Sudah dibayar', -paid);
-            out += '<div class="line grand"><span>Sisa tagihan</span><span class="num">'
-                + esc(money(Math.max(0, t.total - paid))) + '</span></div>';
+            out += '<div class="line grand"><span>' + esc(t('total.order')) + '</span><span class="num">'
+                + esc(money(tot.total)) + '</span></div>';
+            out += row(esc(t('total.paid')), -paid);
+            out += '<div class="line grand"><span>' + esc(t('total.remaining')) + '</span><span class="num">'
+                + esc(money(Math.max(0, tot.total - paid))) + '</span></div>';
         } else {
-            out += '<div class="line grand"><span>Total pesanan</span><span class="num">'
-                + esc(money(t.total)) + '</span></div>';
+            out += '<div class="line grand"><span>' + esc(t('total.order')) + '</span><span class="num">'
+                + esc(money(tot.total)) + '</span></div>';
         }
-        if (t.tax > 0 && r.tax_inclusive) {
-            out += row('Termasuk ' + esc(r.tax_label || 'Pajak') + pct(r.tax_rate_percent),
-                t.tax, 'incl');
+        if (tot.tax > 0 && r.tax_inclusive) {
+            out += row(t('total.included', { label: esc(r.tax_label || t('total.tax')) }) + pct(r.tax_rate_percent),
+                tot.tax, 'incl');
         }
         return out;
     }
@@ -4368,7 +4964,7 @@ html.kb-open .welcome-art { display: none; }
         var rows = Array.isArray(history) ? history : [];
         if (!rows.length) return '';
         return '<details class="ohistory">'
-            + '<summary class="ohistory-head">Pesanan sebelumnya'
+            + '<summary class="ohistory-head">' + esc(t('orders.history'))
             + '<span class="ohistory-count num">' + rows.length + '</span></summary>'
             + rows.map(function (h) {
                 var when = h.placed_at ? timeAgo(h.placed_at) : '';
@@ -4389,7 +4985,7 @@ html.kb-open .welcome-art { display: none; }
                         total: h.total_amount
                     }, h.pricing) + '</div>'
                     + '<button type="button" class="ohistory-again" data-reorder="'
-                    + esc(h.order_id) + '">Pesan lagi yang ini</button>'
+                    + esc(h.order_id) + '">' + esc(t('orders.reorder')) + '</button>'
                     + '</div>';
             }).join('')
             + '</details>';
@@ -4420,7 +5016,7 @@ html.kb-open .welcome-art { display: none; }
             added += 1;
         });
         if (!added) {
-            toast('Menu pesanan itu sudah tidak tersedia.');
+            toast(t('toast.reorderGone'));
             return;
         }
         closeSheets();
@@ -4428,8 +5024,8 @@ html.kb-open .welcome-art { display: none; }
         paintMenu();
         goCart();
         toast(missed
-            ? (missed + ' item sudah tidak tersedia dan tidak ditambahkan.')
-            : 'Ditambahkan ke pesanan Anda.');
+            ? t('toast.reorderPartial', { n: missed })
+            : t('toast.reorderOk'));
     }
 
     /**
@@ -4470,10 +5066,10 @@ html.kb-open .welcome-art { display: none; }
                 + '</span><span class="num">' + esc(money(amount)) + '</span></div>';
         };
         return '<div class="opanel totals osession">'
-            + '<div class="osession-head">Total kunjungan ini</div>'
-            + row('Semua pesanan', ordered)
-            + (paid > 0 ? row('Sudah dibayar', -paid) : '')
-            + row(outstanding > 0 ? 'Perlu dibayar' : 'Lunas', outstanding, 'grand')
+            + '<div class="osession-head">' + esc(t('orders.visitTitle')) + '</div>'
+            + row(t('orders.allOrders'), ordered)
+            + (paid > 0 ? row(t('total.paid'), -paid) : '')
+            + row(outstanding > 0 ? t('total.due') : t('total.settled'), outstanding, 'grand')
             + '</div>';
     }
 
@@ -4494,9 +5090,9 @@ html.kb-open .welcome-art { display: none; }
         var list = Array.isArray(orders) ? orders : [];
         if (list.length < 2) return '';
         return '<div class="otickets">'
-            + '<div class="osession-head">Pesanan di meja ini</div>'
+            + '<div class="osession-head">' + esc(t('orders.tickets')) + '</div>'
             + list.map(function (o) {
-                var stageLabel = o.stage_label || (STAGES[Math.max(0, (o.stage || 1) - 1)] || {}).label || '';
+                var stage = statusLabel(o.status, o.stage_label);
                 var items = (o.lines || []).map(function (l) {
                     return '<div class="oticket-line"><span>' + esc(l.item_name)
                         + ' <span class="rate">×' + (Number(l.quantity) || 0) + '</span></span>'
@@ -4505,7 +5101,7 @@ html.kb-open .welcome-art { display: none; }
                 return '<div class="oticket">'
                     + '<div class="oticket-top">'
                     + '<span class="oticket-no num">' + esc(o.order_number || '—') + '</span>'
-                    + '<span class="oticket-stage">' + esc(stageLabel) + '</span>'
+                    + '<span class="oticket-stage">' + esc(stage) + '</span>'
                     + '</div>' + items + '</div>';
             }).join('')
             + '</div>';
@@ -4534,14 +5130,14 @@ html.kb-open .welcome-art { display: none; }
         var btn = $('bill-btn');
         if (!billConfirm) {
             billConfirm = true;
-            setText(btn, 'Ketuk lagi untuk konfirmasi');
-            setText($('bill-hint'), 'Setelah dibayar, pesan lagi berarti pindai QR lagi.');
+            setCopy(btn, 'orders.billConfirm');
+            setCopy($('bill-hint'), 'orders.billFine');
             return;
         }
         billConfirm = false;
         btn.classList.add('is-busy');
         setDisabled(btn, true);
-        setText(btn, 'Memanggil kasir…');
+        setCopy(btn, 'orders.calling');
 
         fetch(FN + 'qr-request-bill', {
             method: 'POST',
@@ -4558,10 +5154,10 @@ html.kb-open .welcome-art { display: none; }
             .catch(function (err) {
                 btn.classList.remove('is-busy');
                 setDisabled(btn, false);
-                setText(btn, 'Minta bill & bayar');
-                setText($('bill-hint'), err && err.error === 'order_closed'
-                    ? 'Pesanan ini sudah ditutup kasir.'
-                    : 'Gagal memanggil kasir. Coba lagi.');
+                setCopy(btn, 'orders.bill');
+                setCopy($('bill-hint'), err && err.error === 'order_closed'
+                    ? 'err.orderClosed'
+                    : 'err.billFail');
             });
     });
 
@@ -4605,12 +5201,12 @@ html.kb-open .welcome-art { display: none; }
             // Said, not asked. The diner needs to know the previous round is
             // settled so a new one does not surprise them on the bill; they do
             // not need a form to acknowledge it.
-            toast('Pesanan sebelumnya sudah selesai. Pesanan berikutnya jadi pesanan baru.');
+            toast(t('toast.sittingClosed'));
         } else if (!welcomeOpen()) {
             // Genuinely a first-time diner on this phone — the gate is the only
             // place the kitchen gets a name to call.
             openWelcome();
-            welcomeNotice('Pesanan sebelumnya sudah selesai. Isi lagi untuk memesan.');
+            welcomeNotice(t('welcome.sittingClosed'));
         }
     }
 
@@ -4620,8 +5216,8 @@ html.kb-open .welcome-art { display: none; }
     // it. Falls back to `lines` for a response that predates `orders`.
     function paintOrdersBadge(d) {
         var tickets = (d && d.orders && d.orders.length) ? d.orders : (d && d.has_order ? [d] : []);
-        var n = tickets.reduce(function (t, o) {
-            return t + (o.lines || []).reduce(function (s, l) { return s + (Number(l.quantity) || 0); }, 0);
+        var n = tickets.reduce(function (sum, o) {
+            return sum + (o.lines || []).reduce(function (s, l) { return s + (Number(l.quantity) || 0); }, 0);
         }, 0);
         var badge = $('tab-orders-badge');
         badge.textContent = String(n);
@@ -4693,7 +5289,7 @@ html.kb-open .welcome-art { display: none; }
         // Folded in here rather than carried as its own field: `pos_orders` has
         // no cutlery flag, and the note is the only thing the kitchen reads.
         var outgoingNote = noCutlery
-            ? (cartNote ? cartNote + ' · Tanpa sendok garpu' : 'Tanpa sendok garpu').slice(0, 200)
+            ? (cartNote ? cartNote + ' · ' + CUTLERY_NOTE : CUTLERY_NOTE).slice(0, 200)
             : cartNote;
 
         submitting = true;
@@ -4709,7 +5305,7 @@ html.kb-open .welcome-art { display: none; }
         // idempotency ref makes a double tap harmless, but this is what stops
         // it happening.
         btn.classList.add('is-busy');
-        btn.querySelector('span').textContent = 'Mengirim pesanan…';
+        setCopy(btn.querySelector('span'), 'cart.sending');
 
         postOrder(outgoingNote)
             .catch(function (err) {
@@ -4743,9 +5339,7 @@ html.kb-open .welcome-art { display: none; }
                 rememberOrder(res.order_id);
                 if (customer) writeSession({ name: customer.name, phone: customer.phone, sitting: sitting });
                 setText($('done-number'), res.order_number || '');
-                setText($('done-sub'), res.rejected_lines
-                    ? 'Beberapa item sudah tidak tersedia dan tidak dimasukkan.'
-                    : 'Dapur sudah menerima pesanan Anda.');
+                setCopy($('done-sub'), res.rejected_lines ? 'done.subPartial' : 'done.sub');
                 cart = [];
                 cartNote = '';
                 noCutlery = false;
@@ -4768,20 +5362,20 @@ html.kb-open .welcome-art { display: none; }
                 confetti();
             })
             .catch(function (err) {
-                var msg = 'Gagal mengirim pesanan. Coba lagi.';
+                var msg = t('err.submit');
                 if (err && err.error === 'sitting_ended') {
                     // Unreachable via the retry above, which sends no sitting at
                     // all — kept so a future caller that skips it still says
                     // something true. The cart is NOT torn down: the diner stays
                     // on it, which is where this notice renders.
-                    msg = 'Pesanan sebelumnya sudah selesai. Coba kirim lagi untuk membuka pesanan baru.';
+                    msg = t('err.sittingEnded');
                     sitting = null;
                 } else if (err && err.error === 'bill_requested') {
-                    msg = 'Bill meja ini sudah diminta. Panggil staf kalau mau menambah pesanan.';
+                    msg = t('err.billRequested');
                 } else if (err && err.error === 'order_closed') {
-                    msg = 'Tagihan meja ini baru saja ditutup. Panggil staf untuk membuka pesanan baru.';
+                    msg = t('err.tableClosed');
                 } else if (err && err.error === 'nothing_orderable') {
-                    msg = 'Item yang Anda pilih sudah tidak tersedia.';
+                    msg = t('err.itemGone');
                 }
                 var host = $('cart-notice');
                 if (host) host.innerHTML = '<div class="notice bad">' + esc(msg) + '</div>';
@@ -4789,7 +5383,7 @@ html.kb-open .welcome-art { display: none; }
             .then(function () {
                 submitting = false;
                 btn.classList.remove('is-busy');
-                btn.querySelector('span').textContent = 'Order Sekarang';
+                setCopy(btn.querySelector('span'), 'cart.submit');
                 btn.disabled = cart.length === 0;
             });
     });

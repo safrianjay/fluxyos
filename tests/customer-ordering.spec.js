@@ -94,14 +94,34 @@ async function stub(page, { menuStatus = 200, capture = {} } = {}) {
 // plausible wrong number on a diner's phone.
 //
 // The query form exercised none of that. Drive what is printed on the card.
-const goTo = (page) => page.goto(`/t/${TOKEN}`);
+// ⚠️ AND PINNED TO INDONESIAN.
+//
+// The page defaults to ENGLISH — a QR menu has to work for the visitor who
+// cannot read the outlet's own language, and they are the one person in the
+// product who cannot ask anyone to change a setting for them. But this suite
+// was written against the Indonesian copy and its ~160 assertions are a record
+// of what the page says, so it pins the language the way the dashboard specs
+// pin theirs rather than restating every sentence.
+//
+// The DEFAULT is not left untested by that: see the language-switcher block.
+const goTo = async (page, lang = 'id') => {
+    // ⚠️ `null` MEANS DO NOT PIN. An init script re-runs on every navigation
+    // including a reload, so a test that pins cannot then observe a switch
+    // surviving one — it would just be re-pinned on the way back in.
+    if (lang !== null) {
+        await page.addInitScript((code) => {
+            try { window.localStorage.setItem('fluxyos-order-lang', code); } catch (_) { /* private mode */ }
+        }, lang);
+    }
+    return page.goto(`/t/${TOKEN}`);
+};
 
 // Adding is a two-step interaction now — every item opens the sheet, even one
 // with nothing to choose, so that a note is always reachable. Tests that care
 // about the CART rather than the sheet go through this.
 async function addPlain(page, name, note) {
     await page.locator('.card', { hasText: name })
-        .getByRole('button', { name: /Tambah/ }).click();
+        .getByRole('button', { name: /Tambah|Add/ }).click();
     await expect(page.locator('#sheet-item')).toHaveClass(/is-open/);
     if (note) await page.locator('#item-note').fill(note);
     // Satisfy any REQUIRED group by taking its first option. Without this the
@@ -118,8 +138,8 @@ async function addPlain(page, name, note) {
 // Load AND clear the identity gate. Almost every test needs the menu, and the
 // gate is deliberately not dismissible any other way — see the dedicated tests
 // below for the gate's own behaviour.
-async function open(page) {
-    await goTo(page);
+async function open(page, lang) {
+    await goTo(page, lang);
     const gate = page.locator('#sheet-welcome');
     await expect(gate).toHaveClass(/is-open/, { timeout: 15_000 });
     await page.locator('#welcome-name').fill('Sinta');
@@ -788,7 +808,7 @@ test.describe('QR customer ordering', () => {
         await stub(page);
         const ticket = (id, no, status, stage, name, amount) => ({
             order_id: id, order_number: no, status, stage,
-            stage_label: stage === 4 ? 'Diantar' : 'Disiapkan',
+            stage_label: stage === 4 ? 'Sudah diantar' : 'Sedang disiapkan',   // the real STAGE map
             lines: [{ item_id: 'i_americano', item_name: name, quantity: 1,
                 gross_amount: amount, note: null, modifiers: [] }],
             subtotal: amount, discount_total: 0, service_charge_amount: 0,
@@ -821,7 +841,7 @@ test.describe('QR customer ordering', () => {
         await expect(tickets.nth(0)).toContainText('2026-09-06-002');
         await expect(tickets.nth(0)).toContainText('Mie Goreng');
         await expect(tickets.nth(1)).toContainText('2026-09-06-001');
-        await expect(tickets.nth(1)).toContainText('Diantar');
+        await expect(tickets.nth(1)).toContainText('Sudah diantar');
 
         // ⚠️ AND ONE BILL. 50.000 + 30.000, never just the newest ticket.
         const totals = page.locator('.opanel.totals').first();
@@ -2183,7 +2203,7 @@ test.describe('QR customer ordering', () => {
         await open(page);
 
         await page.locator('.card', { hasText: 'Es Kopi Susu' })
-            .getByRole('button', { name: /Tambah/ }).click();
+            .getByRole('button', { name: /Tambah|Add/ }).click();
         await page.locator('.opt', { hasText: 'Large' }).locator('input').check();
 
         // Starts at one, and cannot go below it.
@@ -2324,7 +2344,7 @@ test.describe('QR customer ordering', () => {
         // One plain item and one with two options, so the payload covers both.
         await addPlain(page, 'Americano');
         await page.locator('.card', { hasText: 'Es Kopi Susu' })
-            .getByRole('button', { name: /Tambah/ }).click();
+            .getByRole('button', { name: /Tambah|Add/ }).click();
         await page.locator('.opt', { hasText: 'Large' }).locator('input').check();
         await page.locator('.opt', { hasText: 'Extra shot' }).locator('input').check();
         // TYPING THE NOTE BEFORE THE TAP IS THE POINT, not incidental colour.
@@ -2475,7 +2495,119 @@ test.describe('QR customer ordering', () => {
         // Reached by typing the bare domain off a card, which serves order.html
         // with no token segment at all.
         await page.goto('/order.html');
-        await expect(page.locator('#error-title')).toHaveText('Kode meja tidak ditemukan');
+        // ⚠️ IN ENGLISH, because nothing pinned a language here — which makes
+        // this the assertion that the DEFAULT is English. Every other test in
+        // the file goes through `goTo`, which pins Indonesian.
+        await expect(page.locator('#error-title')).toHaveText('Table code not found');
+    });
+
+    // ── Language ────────────────────────────────────────────────────────
+    //
+    // The page shipped Indonesian-only. It is read by a stranger on their own
+    // phone in a restaurant, which makes the diner who cannot read the outlet's
+    // language the one user in the product who cannot ask anyone for help.
+
+    test('ENGLISH IS THE DEFAULT, AND THE WHOLE PAGE IS IN IT', async ({ page }) => {
+        await stub(page);
+        // No pin — the real first visit.
+        await page.goto(`/t/${TOKEN}`);
+
+        const gate = page.locator('#sheet-welcome');
+        await expect(gate).toHaveClass(/is-open/, { timeout: 15_000 });
+        // The gate is the FIRST thing a diner meets, so it is the first thing
+        // that has to be readable.
+        await expect(page.locator('#welcome-go')).toHaveText('Start ordering');
+        await expect(page.locator('label[for="welcome-name"]')).toHaveText('Name');
+        await expect(page.locator('#welcome-name')).toHaveAttribute('placeholder', 'Your name');
+
+        await page.locator('#welcome-name').fill('Sinta');
+        await page.locator('#welcome-phone').fill('0812 3456 7890');
+        await page.locator('#welcome-go').click();
+        await expect(gate).not.toHaveClass(/is-open/);
+
+        // ⚠️ AND THE PARTS NO STATIC PASS REACHES. Almost everything a diner
+        // reads on this page is built into `innerHTML` by a render function and
+        // carries no `data-i18n` — a switcher that walked only the markup would
+        // translate the tab bar and leave the menu behind it in Indonesian.
+        await expect(page.locator('#chips .chip').first()).toContainText('All');
+        await expect(page.locator('#search')).toHaveAttribute('placeholder', 'Search the menu…');
+        await expect(page.locator('.tab[data-tab="orders"]')).toContainText('Orders');
+        await expect(page.locator('#table-label')).toHaveText('Table A04');
+        expect(await page.getAttribute('html', 'lang')).toBe('en');
+    });
+
+    test('THE SWITCHER IS A BOTTOM SHEET, AND IT REPAINTS WHAT IS ALREADY DRAWN', async ({ page }) => {
+        await stub(page);
+        await open(page, 'en');
+
+        // Top-right of the hero, over the scrim rather than under it.
+        const btn = page.locator('#lang-btn');
+        await expect(btn).toBeVisible();
+        await expect(btn).toHaveText(/EN/);
+        const hero = await page.locator('#hero').boundingBox();
+        const box = await btn.boundingBox();
+        expect(box.x + box.width).toBeLessThanOrEqual(hero.x + hero.width);
+        expect(box.x, 'the switcher is not in the right half').toBeGreaterThan(hero.x + hero.width / 2);
+        expect(box.y).toBeLessThan(hero.y + hero.height / 2);
+
+        // A SHEET, like every other choice on this page.
+        await btn.click();
+        const sheet = page.locator('#sheet-lang');
+        await expect(sheet).toHaveClass(/is-open/);
+        await expect(page.locator('#scrim')).toHaveClass(/is-open/);
+        // Each language named in ITSELF, so someone who cannot read the current
+        // one can still find theirs.
+        await expect(sheet.locator('.lang-opt')).toHaveCount(2);
+        await expect(sheet.locator('.lang-opt[data-lang="en"]')).toContainText('English');
+        await expect(sheet.locator('.lang-opt[data-lang="id"]')).toContainText('Bahasa Indonesia');
+        await expect(sheet.locator('.lang-opt[data-lang="en"]')).toHaveAttribute('aria-pressed', 'true');
+
+        await sheet.locator('.lang-opt[data-lang="id"]').click();
+        await expect(sheet).not.toHaveClass(/is-open/);
+
+        // ⚠️ THE MENU BEHIND IT, NOT JUST THE CHROME. This is the assertion the
+        // whole feature rests on: `paintMenu` skips a repaint when the visible
+        // item ids have not changed — and they have not — so a switcher that
+        // trusted it would leave every rendered surface in the old language.
+        await expect(btn).toHaveText(/ID/);
+        await expect(page.locator('#chips .chip').first()).toContainText('Semua');
+        await expect(page.locator('#search')).toHaveAttribute('placeholder', 'Cari menu…');
+        await expect(page.locator('.tab[data-tab="orders"]')).toContainText('Pesanan');
+        await expect(page.locator('#table-label')).toHaveText('Meja A04');
+        expect(await page.getAttribute('html', 'lang')).toBe('id');
+    });
+
+    test('the chosen language survives a reload', async ({ page }) => {
+        await stub(page);
+        await open(page, null);          // the default, unpinned — see goTo
+        await page.locator('#lang-btn').click();
+        await page.locator('.lang-opt[data-lang="id"]').click();
+
+        await page.reload();
+        // ⚠️ NOT BACK TO THE DEFAULT. A diner who switched once should not have
+        // to do it again because the kitchen took a while and the tab reloaded.
+        await expect(page.locator('#welcome-go')).toHaveText('Mulai pesan', { timeout: 15_000 });
+        await expect(page.locator('#lang-btn')).toHaveText(/ID/);
+    });
+
+    test('THE KITCHEN NOTE DOES NOT FOLLOW THE DINER INTO ENGLISH', async ({ page }) => {
+        const capture = {};
+        await stub(page, { capture });
+        await open(page, 'en');
+        await addPlain(page, 'Americano');
+        await page.locator('#cart-open').click();
+
+        await page.locator('#cart-cutlery').check();
+        await page.locator('#cart-submit').click();
+        await expect(page.locator('#sheet-done')).toHaveClass(/is-open/);
+
+        // ⚠️ TWO AUDIENCES, ONE PAGE. This string is composed into the note that
+        // PRINTS IN THE KITCHEN, and the cook reading it did not change the
+        // language — the diner did. Translating it would put English on an
+        // Indonesian kitchen ticket, which is the opposite of helping.
+        expect(capture.body.note).toContain('Tanpa sendok garpu');
+        // The diner's own screen, meanwhile, is in the language they chose.
+        await expect(page.locator('#done-title')).toHaveText('Order sent');
     });
 
     test('the page loads no Tailwind and no Firebase', async ({ page }) => {
