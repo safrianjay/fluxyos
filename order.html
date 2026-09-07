@@ -2547,7 +2547,12 @@ html.kb-open .welcome-art { display: none; }
      prominent one is competing with itself, so the tab went and the cart bar
      is now unambiguously the primary action. "Bantuan" went too — it opened a
      sentence, not a screen. -->
-<nav class="tabbar" data-i18n-aria="tabs.aria" aria-label="Navigasi">
+<!-- ⚠️ `hidden` FROM THE MARKUP. `show()` hides it for every view except the
+     menu, but `show()` does not run until the menu FETCH resolves — so on a
+     first scan the bar sat over the loading screen for as long as restaurant
+     wifi took, offering two destinations that did not exist yet. Reported by
+     Jay. `syncTabbarChrome()` owns it from here on. -->
+<nav class="tabbar" hidden data-i18n-aria="tabs.aria" aria-label="Navigasi">
     <div class="tabbar-inner">
         <button class="tab" type="button" data-tab="menu" aria-current="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h12"/></svg>
@@ -3739,6 +3744,32 @@ html.kb-open .welcome-art { display: none; }
         closeSheets({ force: true });
     }
 
+    /**
+     * The tab bar belongs to a diner who has ARRIVED — not to one still waiting
+     * for the menu, and not to one who has not got past the door yet.
+     *
+     * Three things all mean "not yet", and they were only ever half handled:
+     * `show()` covered the wrong VIEW but does not run until the menu fetch
+     * resolves, so the bar sat over the loading screen; and neither the identity
+     * gate nor the closed-store sheet touched it at all, leaving two
+     * destinations offered underneath a sheet that exists to stop you going
+     * anywhere.
+     */
+    function syncTabbarChrome() {
+        var bar = document.querySelector('.tabbar');
+        if (!bar) return;
+        var onMenu = !$('view-menu').classList.contains('hidden');
+        var blocked = welcomeOpen() || $('sheet-closed').classList.contains('is-open');
+        var wasHidden = bar.hidden;
+        bar.hidden = !onMenu || blocked;
+        // ⚠️ MEASURE IT ON THE WAY IN. `syncTabbarSpace()` reads the bar's own
+        // height and declines when that is zero — which a hidden bar always is —
+        // so once the bar starts life hidden, the space the page reserves for it
+        // has to be taken the moment it appears. Without this the cart bar
+        // floated 6px into the tab bar: `--tabbar-space` had never been set.
+        if (wasHidden && !bar.hidden) syncTabbarSpace();
+    }
+
     function show(view) {
         ['loading', 'error', 'menu', 'cart'].forEach(function (v) {
             $('view-' + v).classList.toggle('hidden', v !== view);
@@ -3748,7 +3779,7 @@ html.kb-open .welcome-art { display: none; }
         // would be the same action twice; on the confirmation screen it would
         // offer to re-send an order that has already gone.
         if (view !== 'menu') $('cartbar').classList.remove('is-open');
-        document.querySelector('.tabbar').hidden = (view !== 'menu');
+        syncTabbarChrome();
         if (view === 'cart' || view === 'menu') window.scrollTo(0, 0);
         // ⚠️ AFTER THE VIEW IS SHOWN, NOT BEFORE. `.page-foot` lives inside the
         // cart section, so while that section is `display: none` it measures
@@ -4920,6 +4951,9 @@ html.kb-open .welcome-art { display: none; }
     function openSheet(id) {
         $('scrim').classList.add('is-open');
         $(id).classList.add('is-open');
+        // The identity gate and the closed-store sheet both mean "you have not
+        // arrived"; every other sheet is something you opened FROM the bar.
+        if (id === 'sheet-welcome' || id === 'sheet-closed') syncTabbarChrome();
         // The page behind a sheet must not scroll under the customer's finger.
         lockScroll();
     }
@@ -4940,6 +4974,7 @@ html.kb-open .welcome-art { display: none; }
         unlockScroll();
         detail = null;
         setActiveTab('menu');
+        syncTabbarChrome();
     }
     // =====================================================================
     // The language switcher

@@ -2770,6 +2770,86 @@ test.describe('QR customer ordering', () => {
             await expect(page.locator('#chips .chip').first()).toContainText('Semua');
         });
 
+    test('THE TAB BAR DOES NOT EXIST UNTIL THE DINER HAS ARRIVED', async ({ page }) => {
+        // ⚠️ IT SAT OVER THE LOADING SCREEN. `show()` hides the bar for every
+        // view except the menu — but `show()` does not run until the menu FETCH
+        // resolves, so on a first scan the bar was up for as long as restaurant
+        // wifi took, offering two destinations that did not exist yet. Reported
+        // by Jay. Nor did the identity gate touch it: two tabs sat under a sheet
+        // whose whole job is to stop you going anywhere.
+        let release;
+        const held = new Promise((r) => { release = r; });
+        await stub(page);
+        await page.route('**/qr-menu?**', async (route) => {
+            await held;
+            await route.fulfill({
+                status: 200, contentType: 'application/json', body: JSON.stringify(MENU)
+            });
+        });
+
+        const nav = page.locator('.tabbar');
+        await page.goto(`/t/${TOKEN}`, { waitUntil: 'domcontentloaded' });
+
+        // Still loading: the menu has not answered.
+        await expect(page.locator('#view-loading')).toBeVisible();
+        await expect(nav, 'the tab bar is up over the loading screen').toBeHidden();
+
+        release();
+        // The menu is here, but the diner has not got past the door.
+        await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/, { timeout: 15_000 });
+        await expect(nav, 'the tab bar is up behind the identity gate').toBeHidden();
+
+        await page.locator('#welcome-name').fill('Sinta');
+        await page.locator('#welcome-phone').fill('0812 3456 7890');
+        await page.locator('#welcome-go').click();
+
+        // Arrived.
+        await expect(nav).toBeVisible();
+        await expect(page.locator('.tab[data-tab="orders"]')).toBeVisible();
+
+        // ⚠️ AND THE SPACE IT RESERVES IS TAKEN ON THE WAY IN. `syncTabbarSpace`
+        // reads the bar's own height and declines when that is zero — which a
+        // hidden bar always is — so starting life hidden meant `--tabbar-space`
+        // was never set at all, and the cart bar floated 6px into the tab bar.
+        // Caught by the spec for that gap, not by this one.
+        const reserved = await page.evaluate(() =>
+            getComputedStyle(document.documentElement).getPropertyValue('--tabbar-space').trim());
+        expect(reserved, '--tabbar-space was never measured').not.toBe('');
+        const barHeight = (await page.locator('.tabbar-inner').boundingBox()).height;
+        expect(await page.evaluate(() => {
+            const v = getComputedStyle(document.documentElement).getPropertyValue('--tabbar-space');
+            const probe = document.createElement('div');
+            probe.style.cssText = `position:absolute;height:${v};visibility:hidden`;
+            document.body.appendChild(probe);
+            const px = probe.getBoundingClientRect().height;
+            probe.remove();
+            return px;
+        }), 'the reserved space is smaller than the bar').toBeGreaterThanOrEqual(barHeight);
+    });
+
+    test('a shut kitchen offers no tabs either', async ({ page }) => {
+        const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+        const tomorrow = DAYS[(new Date().getDay() + 1) % 7];
+        await stub(page);
+        await page.route('**/qr-menu?**', (route) => route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+                ...MENU,
+                outlet_info: {
+                    hours: DAYS.map((day) => (day === tomorrow
+                        ? { day, closed: false, open: '09:00', close: '17:00' }
+                        : { day, closed: true }))
+                }
+            })
+        }));
+        await goTo(page);
+        await expect(page.locator('#sheet-closed')).toHaveClass(/is-open/, { timeout: 15_000 });
+        // The sheet is a hard stop; two tabs under it would be the only things
+        // on screen suggesting there is somewhere to go.
+        await expect(page.locator('.tabbar')).toBeHidden();
+    });
+
     test('a paid sitting is not shown to the next diner', async ({ page }) => {
         // The endpoint excludes paid orders, so a fresh scan sees the empty
         // state rather than the previous party's settled bill. Measured on the
