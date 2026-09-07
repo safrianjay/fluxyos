@@ -1130,24 +1130,36 @@ img { max-width: 100%; display: block; }
    project-wide; a 10% wash reading as a soft banner is the accent use the rule
    exists to allow, and it is what makes this row look deliberate rather than
    like text that fell out of the panel above. */
-/* ⚠️ TUCKED BEHIND THE BUTTON, exactly as the reference does it: a rounded
-   tinted panel, inset a little on each side, whose lower edge is covered by
-   the commit button sitting on top of it. That overlap is what makes the two
-   read as one control rather than as a notice with a button under it — and it
-   is the whole reason for the extra bottom padding and the negative margin,
-   which must stay in step (20 covered by -12 leaves 8 of visible tint). */
+/* ⚠️ ABOVE THE WHITE CARD, NOT INSIDE IT. It sat within the bar, tucked under
+   the button; it now seats flush on the bar's top edge like a tab on a folder,
+   so the identity reads as a label ON the commit card rather than as a second
+   thing inside it.
+
+   Absolutely positioned at `bottom: 100%` — `.page-foot` is `position: fixed`
+   and is therefore its own containing block, so the strip rides with the bar
+   for free instead of needing a second fixed element to keep in sync.
+
+   ⚠️ AND THE FILL IS OPAQUE. At `bottom: 100%` this floats over the MENU, not
+   over the bar's white; a 10% alpha would show cards through the diner's own
+   name. #FDEEE7 is that same tint flattened onto white. */
 .page-foot .who {
-    position: relative;
-    z-index: 0;
+    position: absolute;
+    left: 16px; right: 16px;
+    bottom: 100%;
+    margin-bottom: -1px;              /* over the bar's 1px top border, no seam */
     display: flex; align-items: center; justify-content: center;
     gap: 8px; flex-wrap: wrap;
-    margin: 0 6px -12px;
-    padding: 9px 16px 20px;
+    padding: 8px 16px 9px;
     border: none;
-    border-radius: var(--r-xl);
-    background: rgba(234, 88, 12, 0.10);
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    background: #FDEEE7;
     font-size: 12.5px;
     color: #9A3412;
+}
+/* On a wide screen the bar's content is centred at 640px; the tab follows it
+   rather than stretching to the window. */
+@media (min-width: 672px) {
+    .page-foot .who { left: 50%; right: auto; transform: translateX(-50%); min-width: 260px; }
 }
 .page-foot .who strong { color: #7C2D12; font-weight: 700; }
 /* Empty when nobody has been identified — an empty tinted bar is a shelf with
@@ -1160,8 +1172,6 @@ img { max-width: 100%; display: block; }
    warmth lives. The rounder corner and the amount on the right stay — those
    are the parts of the reference that were working. */
 .page-foot #cart-submit {
-    position: relative;
-    z-index: 1;
     height: 52px;
     border-radius: var(--r-lg);
     font-size: 15.5px;
@@ -2580,11 +2590,18 @@ html.kb-open .welcome-art { display: none; }
 </div>
 
 <!-- Store closed ---------------------------------------------------------
-     Shown once, on arrival, when the outlet's own opening hours say the
-     kitchen has already shut. ⚠️ INFORMATIONAL, NOT A LOCK: the server decides
-     what it will accept, and a scan two minutes after closing while the staff
-     are still clearing tables is a conversation, not an error. So it can be
-     dismissed and the menu read behind it. -->
+     Shown on arrival when the outlet's own opening hours say the kitchen has
+     already shut.
+
+     ⚠️ A HARD STOP, BY DECISION. There is no button, no close, no scrim tap
+     and no Escape — the sheet is the end of the road. Jay's call, overriding
+     an earlier dismissible version: an outlet that is shut does not want to
+     take an order, and a menu you can still browse invites one.
+
+     ⚠️ WHICH MAKES `openState()` LOAD-BEARING. It reads the DEVICE clock, so a
+     phone in the wrong timezone, or hours entered wrongly by the outlet, now
+     locks a paying customer out of the menu entirely with no way past it. That
+     is the trade this makes. -->
 <div id="sheet-closed" class="sheet sheet-closed sheet-warm" role="dialog" aria-modal="true" aria-labelledby="closed-title">
     <div class="sheet-grip"></div>
     <div class="sheet-body closed-body">
@@ -2595,9 +2612,6 @@ html.kb-open .welcome-art { display: none; }
         <h2 class="closed-title" id="closed-title" data-i18n="closed.title">Maaf, kami sudah tutup</h2>
         <p class="closed-sub" data-i18n="closed.sub">Dapur sudah tutup untuk hari ini, jadi pesanan belum bisa kami terima. Mohon maaf atas ketidaknyamanannya.</p>
         <p class="closed-hours num" id="closed-hours" hidden></p>
-    </div>
-    <div class="sheet-foot">
-        <button class="primary" id="closed-go" type="button" data-i18n="closed.go">Lihat menu saja</button>
     </div>
 </div>
 
@@ -3041,7 +3055,6 @@ html.kb-open .welcome-art { display: none; }
             'closed.title': 'Maaf, kami sudah tutup',
             'closed.sub': 'Dapur sudah tutup untuk hari ini, jadi pesanan belum bisa kami terima. Mohon maaf atas ketidaknyamanannya.',
             'closed.opens': 'Buka lagi {day} pukul {t}',
-            'closed.go': 'Lihat menu saja',
 
             'st.open': 'Menunggu konfirmasi',
             'st.submitted': 'Menunggu konfirmasi',
@@ -3204,7 +3217,6 @@ html.kb-open .welcome-art { display: none; }
             'closed.title': 'Sorry, we are closed',
             'closed.sub': 'The kitchen has closed for today, so we cannot take an order right now. We are sorry for the inconvenience.',
             'closed.opens': 'Open again {day} at {t}',
-            'closed.go': 'Just browse the menu',
 
             'st.open': 'Waiting to be confirmed',
             'st.submitted': 'Waiting to be confirmed',
@@ -4748,11 +4760,11 @@ html.kb-open .welcome-art { display: none; }
         // The identity gate closes only when it has been completed. Every other
         // path — scrim, Escape, the close button — leaves it up.
         if (welcomeOpen() && !(opts && opts.force)) return;
-        // Whichever way it was dismissed — the button, the scrim, Escape — the
-        // identity gate is what comes next for a diner who has not been asked.
-        var wasClosed = $('sheet-closed').classList.contains('is-open');
+        // ⚠️ AND THE CLOSED SHEET NEVER CLOSES AT ALL. Not by scrim, not by
+        // Escape, and it has no button. A shut kitchen is not a notice to
+        // acknowledge; it is the end of what this page can do.
+        if ($('sheet-closed').classList.contains('is-open')) return;
         $('scrim').classList.remove('is-open');
-        $('sheet-closed').classList.remove('is-open');
         $('sheet-item').classList.remove('is-open');
         $('sheet-welcome').classList.remove('is-open');
         $('sheet-orders').classList.remove('is-open');
@@ -4761,7 +4773,6 @@ html.kb-open .welcome-art { display: none; }
         unlockScroll();
         detail = null;
         setActiveTab('menu');
-        if (wasClosed && !customer) openWelcome();
     }
     // =====================================================================
     // The language switcher
@@ -4830,7 +4841,6 @@ html.kb-open .welcome-art { display: none; }
         repaintCopy();
     }
 
-    $('closed-go').addEventListener('click', function () { closeSheets(); });
     $('lang-btn').addEventListener('click', openLang);
     $('lang-body').addEventListener('click', function (e) {
         var opt = e.target.closest ? e.target.closest('.lang-opt') : null;
@@ -4974,8 +4984,16 @@ html.kb-open .welcome-art { display: none; }
     function syncFootSpace() {
         var el = document.querySelector('.page-foot');
         if (!el) return;
-        var h = Math.ceil(el.getBoundingClientRect().height);
+        var box = el.getBoundingClientRect();
+        var h = Math.ceil(box.height);
         if (!h) return;
+        // ⚠️ THE IDENTITY TAB IS OUT OF FLOW AND ABOVE THE BAR, so the bar's
+        // own height no longer describes how much of the screen is covered.
+        // Measure from the top of whichever is higher.
+        var who = $('cart-who');
+        if (who && who.getClientRects().length) {
+            h += Math.max(0, Math.ceil(box.top - who.getBoundingClientRect().top));
+        }
         // The measured box already contains the bar's own safe-area padding.
         document.documentElement.style.setProperty('--foot-space', (h + 16) + 'px');
     }

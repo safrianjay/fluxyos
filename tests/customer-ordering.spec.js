@@ -602,15 +602,20 @@ test.describe('QR customer ordering', () => {
         // restyling the bar trapped the last panel under it with nothing to
         // say so. This assertion is what caught that; the guard below is what
         // stops the constant coming back.
+        // ⚠️ MEASURED FROM THE TAB, NOT THE BAR. The identity row now sits
+        // ABOVE the white card, so the bar's own top edge understates how much
+        // of the screen is covered.
         const lastPanel = await page.locator('.page-body > *').last().boundingBox();
+        const whoBox = await page.locator('#cart-who').boundingBox();
+        const coveredFrom = Math.min(box.y, whoBox ? whoBox.y : box.y);
         expect(lastPanel.y + lastPanel.height,
-            'the last panel is hidden behind the commit bar').toBeLessThanOrEqual(box.y + 1);
+            'the last panel is hidden behind the commit bar').toBeLessThanOrEqual(coveredFrom + 1);
         const reserved = await page.evaluate(() =>
             getComputedStyle(document.documentElement).getPropertyValue('--foot-space').trim());
         expect(reserved, '--foot-space was never measured').toMatch(/^\d+px$/);
         expect(parseFloat(reserved),
             'the reserved space is smaller than the bar it is reserving for')
-            .toBeGreaterThanOrEqual(box.height);
+            .toBeGreaterThanOrEqual(box.y + box.height - coveredFrom);
 
         // And it carries who the order is for — the last thing checked before
         // committing belongs beside the commit.
@@ -1055,15 +1060,21 @@ test.describe('QR customer ordering', () => {
     // about the outlet. The card OVERLAPS the image rather than sitting under a
     // hard cut, and it is compact by construction — two rows, and a third is the
     // thing to resist.
-    const HOURS = [
-        { day: 'mon', closed: false, open: '11:00', close: '23:00' },
-        { day: 'tue', closed: false, open: '11:00', close: '23:00' },
-        { day: 'wed', closed: false, open: '11:00', close: '23:00' },
-        { day: 'thu', closed: false, open: '11:00', close: '23:00' },
-        { day: 'fri', closed: false, open: '11:00', close: '01:00' },
-        { day: 'sat', closed: false, open: '11:00', close: '01:00' },
-        { day: 'sun', closed: true, open: null, close: null }
-    ];
+    // ⚠️ RELATIVE TO NOW, NOT A FIXED CLOCK. These were 11:00–23:00 with Sunday
+    // shut, and the suite ran at 23:17: the outlet read as closed, the
+    // closed-store sheet covered the menu, and — now that the sheet is a hard
+    // stop with no way out — every hero test below hung at an identity gate
+    // that would never open. A fixture that only works before 11pm is one that
+    // fails on the evening somebody is working late. Same class of bug as the
+    // nocturnal POS board failures.
+    //
+    // Open all day, every day, except ONE day that is guaranteed not to be
+    // today — so "closed" is still a state the hours panel has to render.
+    const WEEK = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    const SHUT_DAY = WEEK[(new Date().getDay() + 3) % 7];
+    const HOURS = WEEK.map((day) => (day === SHUT_DAY
+        ? { day, closed: true, open: null, close: null }
+        : { day, closed: false, open: '00:00', close: '23:59' }));
     const withHero = (over = {}) => ({
         ...MENU,
         outlet_info: { address: 'Jl. Kemang Raya 1', phone: '021 555 0000', hours: HOURS },
@@ -1160,8 +1171,10 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('.outlet-hours-row')).toHaveCount(7);
         await expect(page.locator('.outlet-hours-row.is-today')).toHaveCount(1);
         await expect(status).toHaveAttribute('aria-expanded', 'true');
-        // Sunday is closed in the fixture, and "Tutup" is a real answer.
-        await expect(page.locator('.outlet-hours-row').last()).toContainText('Tutup');
+        // One day of the week is shut in the fixture, and "Tutup" is a real
+        // answer — asserted by COUNT, because which day it is has to move with
+        // the calendar for the reason described at HOURS.
+        await expect(page.locator('.outlet-hours-row', { hasText: 'Tutup' })).toHaveCount(1);
     });
 
     test('an outlet with no hours claims nothing', async ({ page }) => {
@@ -2141,7 +2154,15 @@ test.describe('QR customer ordering', () => {
             await expect(page.locator('.ostage-pip.done'),
                 `${c.status} fills the wrong number of steps`).toHaveCount(c.step);
             await expect(page.locator('.ostage-pip.now')).toHaveCount(1);
-            await page.locator('#scrim').click({ force: true });
+
+            // ⚠️ ESCAPE, NOT THE SCRIM. A scrim click is hit-tested, and on
+            // WebKit one landed while the sheet was still animating open and
+            // was swallowed — the next iteration then timed out clicking a tab
+            // the still-open sheet was covering. Escape is a document handler
+            // with nothing to hit. Asserted closed before moving on, so a
+            // swallowed dismissal fails here rather than somewhere downstream.
+            await page.keyboard.press('Escape');
+            await expect(page.locator('#sheet-orders')).not.toHaveClass(/is-open/);
         }
 
         // And the gradient panel and the four-glyph track are gone for good.
@@ -2207,13 +2228,21 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('#closed-hours')).toBeVisible();
         await expect(page.locator('#closed-hours')).toContainText('09.00');
 
-        // Dismissable — the server decides what it accepts, and staff clearing
-        // tables ten minutes after closing is a conversation, not an error.
-        await page.locator('#closed-go').click();
-        await expect(closed).not.toHaveClass(/is-open/);
-        // ...and only THEN is the diner asked who they are.
-        await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/);
-        await expect(page.locator('#view-menu')).toBeVisible();
+        // ⚠️ AND THERE IS NO WAY PAST IT. Jay's call, overriding the earlier
+        // dismissible version: an outlet that is shut does not want an order,
+        // and a menu you can still browse invites one. No button, and neither
+        // of the two gestures that close every other sheet on this page does
+        // anything here.
+        await expect(page.locator('#closed-go')).toHaveCount(0);
+        await expect(closed.locator('button')).toHaveCount(0);
+
+        await page.locator('#scrim').click({ force: true });
+        await expect(closed, 'the scrim dismissed a hard stop').toHaveClass(/is-open/);
+        await page.keyboard.press('Escape');
+        await expect(closed, 'Escape dismissed a hard stop').toHaveClass(/is-open/);
+
+        // And the diner is never asked for a name they cannot use.
+        await expect(page.locator('#sheet-welcome')).not.toHaveClass(/is-open/);
     });
 
     test('an open shop, and a shop that set no hours, are never interrupted', async ({ page }) => {
@@ -2308,15 +2337,22 @@ test.describe('QR customer ordering', () => {
 
         // Two blocks that touch read as one, and the panel then looks like the
         // last row of the illustration area. 6px was the floor Jay asked for.
-        const [art, panel] = await Promise.all([
-            page.locator('.ostage').boundingBox(),
-            page.locator('#orders-body .opanel').first().boundingBox()
-        ]);
-        expect(panel.y - (art.y + art.height),
-            'the warm field and the order panel are touching').toBeGreaterThanOrEqual(6);
+        //
+        // ⚠️ ONE EVALUATE, NOT TWO BOUNDING BOXES. The sheet re-renders when a
+        // status refresh lands, and two separate round trips can straddle that
+        // — the numbers then come from different layouts and the gap they
+        // describe never existed. It failed on WebKit only, which is just where
+        // the timing happened to land.
+        const gap = await page.evaluate(() => {
+            const art = document.querySelector('.ostage').getBoundingClientRect();
+            const panel = document.querySelector('#orders-body .opanel').getBoundingClientRect();
+            return panel.top - art.bottom;
+        });
+        expect(gap, 'the warm field and the order panel are touching')
+            .toBeGreaterThanOrEqual(6);
     });
 
-    test('THE COMMIT BAR IS INK, WITH THE IDENTITY TUCKED BEHIND IT', async ({ page }) => {
+    test('THE COMMIT BAR IS INK, WITH THE IDENTITY SEATED ABOVE IT', async ({ page }) => {
         await stub(page);
         await open(page);
         await addPlain(page, 'Americano');
@@ -2333,15 +2369,23 @@ test.describe('QR customer ordering', () => {
         const rgb = fill.match(/[\d.]+/g).map(Number);
         expect(rgb[0], 'the commit button went back to orange').toBeLessThan(60);
 
-        // The tint above it is where the warmth lives, and the button OVERLAPS
-        // its lower edge — that overlap is what makes the two read as one
-        // control rather than as a notice with a button under it.
-        const [wb, bb] = await Promise.all([who.boundingBox(), btn.boundingBox()]);
-        expect(bb.y, 'the button does not overlap the identity panel')
-            .toBeLessThan(wb.y + wb.height);
-        expect(wb.y, 'the identity panel is not above the button').toBeLessThan(bb.y);
+        // ⚠️ ABOVE THE WHITE CARD, seated on its top edge like a tab on a
+        // folder. It used to sit inside the bar tucked under the button.
+        const foot = page.locator('.page-foot');
+        const [wb, fb] = await Promise.all([who.boundingBox(), foot.boundingBox()]);
+        expect(wb.y + wb.height, 'the identity tab is not seated on the card')
+            .toBeLessThanOrEqual(fb.y + 2);
+        expect(wb.y + wb.height, 'the identity tab floats away from the card')
+            .toBeGreaterThan(fb.y - 4);
+        // Inset from the card's own edges, so it reads as a label ON it.
+        expect(wb.x, 'the tab is not inset from the card').toBeGreaterThan(fb.x + 4);
+
+        // ⚠️ OPAQUE. At this position it floats over the MENU, not over the
+        // bar's white — a 10%-alpha fill would show cards through the diner's
+        // own name.
         const tint = await who.evaluate((el) => getComputedStyle(el).backgroundColor.match(/[\d.]+/g).map(Number));
-        expect(tint[0], 'the identity panel lost its warm tint').toBeGreaterThan(tint[2]);
+        expect(tint[0], 'the identity tab lost its warm tint').toBeGreaterThan(tint[2]);
+        expect(tint[3] === undefined || tint[3] === 1, 'the identity tab is see-through').toBe(true);
     });
 
     test('THE TAB BAR GETS OUT OF THE WAY WHILE THE MENU MOVES', async ({ page }) => {
