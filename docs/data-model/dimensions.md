@@ -38,7 +38,7 @@ configures.
 describes ONE outlet — its rates, its hours, its customer photo — so a list of
 all of them sitting among those sections made the page say two different things
 about its own scope. Managing the list is a different job and gets a different
-surface, entered from a store-and-gear button **beside the outlet dropdown**:
+surface, entered from a gear button **beside the outlet dropdown**:
 the control it is about.
 
 ⚠️ **Reachable with zero outlets**, which is why the button lives beside the

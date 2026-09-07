@@ -26,8 +26,8 @@ const RENAMED = `${NAME} Renamed`;
 
 // ⚠️ A DIALOG, NOT A CARD. Every section on that page describes ONE outlet, so
 // a list of all of them sitting among those sections made the page say two
-// different things about its own scope. It is entered from a store-and-gear
-// button beside the outlet dropdown — the control it is about.
+// different things about its own scope. It is entered from a gear button
+// beside the outlet dropdown — the control it is about.
 async function openSettings(page) {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/settings-pos');
