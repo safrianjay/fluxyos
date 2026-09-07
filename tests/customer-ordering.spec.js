@@ -1892,26 +1892,28 @@ test.describe('QR customer ordering', () => {
         await expect(sheet).toHaveClass(/is-open/);
 
         await expect(sheet).toContainText('2026-09-03-004');
-        await expect(sheet).toContainText('Sedang disiapkan');
+        await expect(sheet).toContainText('Sedang dimasak');   // the diner's word, not the till's
         await expect(sheet).toContainText('Kentang Goreng');
         await expect(sheet).toContainText('tidak asin');       // the line note
         await expect(sheet).toContainText('Large');            // the modifier
         await expect(sheet).toContainText('Sendok garpu 2');   // the order note
         await expect(sheet.locator('.totals .grand .num')).toHaveText('Rp68.000');
 
-        // Four steps, two of them reached. The till's ladder has seven and uses
-        // words a diner has no reason to know.
-        await expect(sheet.locator('.track-step')).toHaveCount(4);
-        await expect(sheet.locator('.track-step.done')).toHaveCount(2);
-        // Exactly ONE step is the current one. Three identical filled dots
-        // would say "done, done, done" rather than "you are here".
-        await expect(sheet.locator('.track-step.now')).toHaveCount(1);
+        // ⚠️ THREE STEPS, NOT SEVEN AND NOT FOUR. The till's ladder has seven
+        // because a cook and a cashier need them; a person at a table has three
+        // questions — is it cooking, is it here, what do I owe. `sent` is the
+        // first of the three.
+        await expect(sheet.locator('.ostage-pip')).toHaveCount(3);
+        await expect(sheet.locator('.ostage-pip.done')).toHaveCount(1);
+        // Exactly ONE step is the current one. Three filled rules would say
+        // "done, done, done" rather than "you are here".
+        await expect(sheet.locator('.ostage-pip.now')).toHaveCount(1);
 
-        // The status hero carries the answer the sheet was opened for, plus how
-        // long it has been.
-        await expect(sheet.locator('.ostat-now')).toHaveText('Sedang disiapkan');
-        await expect(sheet.locator('.ostat-no')).toHaveText('2026-09-03-004');
-        await expect(sheet.locator('.ostat-time')).not.toHaveText('');
+        // One illustration, for the step it is actually on.
+        await expect(sheet.locator('.ostage-art')).toHaveAttribute('src', /cooked\.webp$/);
+        await expect(sheet.locator('.ostage-now')).toHaveText('Sedang dimasak');
+        await expect(sheet.locator('.ostage-no')).toHaveText('2026-09-03-004');
+        await expect(sheet.locator('.ostage-time')).not.toHaveText('');
 
         // Lines carry the same thumbnail treatment as the order page, so a
         // diner recognises a dish rather than re-reading its name.
@@ -1981,7 +1983,7 @@ test.describe('QR customer ordering', () => {
         });
         await open(page);
         await page.locator('.tab[data-tab="orders"]').click();
-        await expect(page.locator('.ostat')).toBeVisible();
+        await expect(page.locator('.ostage')).toBeVisible();
 
         const btn = page.locator('#bill-btn');
         await expect(btn).toBeVisible();
@@ -1999,8 +2001,9 @@ test.describe('QR customer ordering', () => {
 
         // Once asked for, there is nothing left to press.
         await expect(btn).toBeHidden();
-        await expect(page.locator('.ostat-now')).toHaveText('Menunggu pembayaran');
-        await expect(page.locator('.ostat-hint')).toContainText('Kasir');
+        await expect(page.locator('.ostage-now')).toHaveText('Pembayaran');
+        await expect(page.locator('.ostage-art')).toHaveAttribute('src', /payment\.webp$/);
+        await expect(page.locator('.ostage-hint')).toContainText('Kasir');
         // And the page says what happens next: paying frees the table, and
         // ordering again means scanning again.
         await expect(page.locator('.orders-foot')).toContainText('Pindai QR');
@@ -2024,7 +2027,7 @@ test.describe('QR customer ordering', () => {
         await stub(page, { capture });
         await open(page);
         await page.locator('.tab[data-tab="orders"]').click();
-        await expect(page.locator('.ostat')).toBeVisible();
+        await expect(page.locator('.ostage')).toBeVisible();
 
         await expect(page.locator('#bill-btn')).toBeHidden();
         await expect(page.locator('#bill-hint')).toBeHidden();
@@ -2052,21 +2055,170 @@ test.describe('QR customer ordering', () => {
         await stub(page, { capture });
         await open(page);
         await page.locator('.tab[data-tab="orders"]').click();
-        await expect(page.locator('.ostat')).toBeVisible();
+        await expect(page.locator('.ostage')).toBeVisible();
 
-        const boxes = await page.locator('.track-dot svg').evaluateAll((els) =>
-            els.map((e) => ({ vb: e.getAttribute('viewBox'), w: Math.round(e.getBoundingClientRect().width) })));
-        expect(boxes).toHaveLength(4);
-        boxes.forEach((b) => {
-            expect(b.vb, 'a line icon in the 48-unit box renders at quarter scale').toBe('0 0 24 24');
-            expect(b.w).toBeGreaterThan(12);
-        });
-        // The glyph must actually fill its dot rather than hiding in a corner.
-        const filled = await page.locator('.track-dot').first().evaluate((dot) => {
-            const d = dot.getBoundingClientRect(), g = dot.querySelector('svg').getBoundingClientRect();
-            return (g.width / d.width) > 0.4;
-        });
-        expect(filled).toBe(true);
+        // ⚠️ THE ILLUSTRATION MUST ACTUALLY DECODE AND HAVE ROOM. It replaced a
+        // drawn glyph with a file, which is a new way for this block to fail —
+        // a wrong path renders a broken-image box and every other assertion
+        // here still passes.
+        const art = page.locator('.ostage-art');
+        const drawn = await art.evaluate((el) => ({
+            ok: el.complete && el.naturalWidth > 0,
+            h: Math.round(el.getBoundingClientRect().height),
+            w: Math.round(el.getBoundingClientRect().width)
+        }));
+        expect(drawn.ok, 'the step illustration did not load').toBe(true);
+        expect(drawn.h, 'the illustration is too small to read').toBeGreaterThan(90);
+        expect(drawn.w).toBeGreaterThan(60);
+        // It is decoration, so it must be out of the accessibility tree — the
+        // step name beside it is the text a screen reader should read.
+        expect(await art.getAttribute('alt')).toBe('');
+    });
+
+    test('THE THREE STEPS MAP THE WHOLE OF THE TILL\'S SEVEN', async ({ page }) => {
+        // ⚠️ EVERY SERVER STATUS LANDS SOMEWHERE. The till has seven and the
+        // diner sees three, so the mapping is the feature — a status that falls
+        // through shows the wrong picture, which is worse than showing none.
+        // `ready` belongs under COOKING on purpose: food plated in the pass is
+        // still food that has not arrived at the table.
+        const cases = [
+            { status: 'open', stage: 1, step: 1, art: /cooked/, label: 'Sedang dimasak' },
+            { status: 'submitted', stage: 1, step: 1, art: /cooked/, label: 'Sedang dimasak' },
+            { status: 'sent', stage: 2, step: 1, art: /cooked/, label: 'Sedang dimasak' },
+            { status: 'ready', stage: 3, step: 1, art: /cooked/, label: 'Sedang dimasak' },
+            { status: 'served', stage: 4, step: 2, art: /served/, label: 'Sudah diantar' },
+            { status: 'awaiting_payment', stage: 5, step: 3, art: /payment/, label: 'Pembayaran' },
+            { status: 'paid', stage: 6, step: 3, art: /payment/, label: 'Pembayaran' }
+        ];
+
+        await stub(page);
+        let live = cases[0];
+        await page.route('**/qr-order-status**', (route) => route.fulfill({
+            status: 200, contentType: 'application/json',
+            body: JSON.stringify({
+                has_order: true, order_id: 'o1', order_number: '2026-09-07-001',
+                status: live.status, stage: live.stage, stage_label: 'x',
+                lines: [{ item_id: 'i_americano', item_name: 'Americano', quantity: 1,
+                    gross_amount: 22000, note: null, modifiers: [] }],
+                note: null, history: [], orders: [],
+                subtotal: 22000, discount_total: 0, service_charge_amount: 0,
+                tax_amount: 0, total_amount: 22000, paid_amount: 0,
+                pricing: null, placed_at: Date.now() - 5 * 60 * 1000
+            })
+        }));
+        await open(page);
+
+        for (const c of cases) {
+            live = c;
+            await page.locator('.tab[data-tab="orders"]').click();
+            await expect(page.locator('.ostage')).toBeVisible({ timeout: 15_000 });
+            await expect(page.locator('.ostage-now'), `${c.status} names the wrong step`)
+                .toHaveText(c.label, { timeout: 15_000 });
+            await expect(page.locator('.ostage-art'), `${c.status} shows the wrong picture`)
+                .toHaveAttribute('src', c.art);
+            await expect(page.locator('.ostage-pip.done'),
+                `${c.status} fills the wrong number of steps`).toHaveCount(c.step);
+            await expect(page.locator('.ostage-pip.now')).toHaveCount(1);
+            await page.locator('#scrim').click({ force: true });
+        }
+
+        // And the gradient panel and the four-glyph track are gone for good.
+        await page.locator('.tab[data-tab="orders"]').click();
+        await expect(page.locator('.ostat')).toHaveCount(0);
+        await expect(page.locator('.track-step')).toHaveCount(0);
+    });
+
+    test('the empty state is the basket, not a grey tile', async ({ page }) => {
+        await stub(page);
+        await open(page);
+        await page.locator('.tab[data-tab="orders"]').click();
+
+        const art = page.locator('.orders-empty-art');
+        await expect(art).toBeVisible({ timeout: 15_000 });
+        await expect(art).toHaveAttribute('src', /emptychart\.webp$/);
+        expect(await art.evaluate((el) => el.complete && el.naturalWidth > 0),
+            'the empty-state illustration did not load').toBe(true);
+        expect(await art.getAttribute('alt'), 'decoration must stay out of the a11y tree').toBe('');
+    });
+
+    // ── Past closing time ───────────────────────────────────────────────
+    //
+    // A QR code on a table is readable at 23.00 by someone who walked past a
+    // dark window. The page used to load a full menu and an ordering form.
+
+    test('A CLOSED SHOP SAYS SO BEFORE IT ASKS FOR A NAME', async ({ page }) => {
+        const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+        const tomorrow = DAYS[(new Date().getDay() + 1) % 7];
+        await stub(page);
+        await page.route('**/qr-menu?**', (route) => route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+                ...MENU,
+                outlet_info: {
+                    // Shut every day except tomorrow, so "now" is closed
+                    // wherever in the week this test happens to run.
+                    hours: DAYS.map((day) => (day === tomorrow
+                        ? { day, closed: false, open: '09:00', close: '17:00' }
+                        : { day, closed: true }))
+                }
+            })
+        }));
+        await goTo(page);
+
+        const closed = page.locator('#sheet-closed');
+        await expect(closed).toHaveClass(/is-open/, { timeout: 15_000 });
+
+        // ⚠️ THE ORDER OF TWO FACTS. Asking for a name and number and only then
+        // saying the kitchen is shut is the wrong way round; the gate waits.
+        await expect(page.locator('#sheet-welcome')).not.toHaveClass(/is-open/);
+
+        await expect(closed).toContainText('tutup');
+        // An apology, because this is the shop's inconvenience, not the diner's.
+        await expect(closed).toContainText(/Mohon maaf|maaf/i);
+        const art = page.locator('#closed-art');
+        await expect(art).toHaveAttribute('src', /storeclose\.webp$/);
+        expect(await art.evaluate((el) => el.complete && el.naturalWidth > 0),
+            'the closed illustration did not load').toBe(true);
+
+        // And WHEN to come back, which is the only useful thing left to say.
+        await expect(page.locator('#closed-hours')).toBeVisible();
+        await expect(page.locator('#closed-hours')).toContainText('09.00');
+
+        // Dismissable — the server decides what it accepts, and staff clearing
+        // tables ten minutes after closing is a conversation, not an error.
+        await page.locator('#closed-go').click();
+        await expect(closed).not.toHaveClass(/is-open/);
+        // ...and only THEN is the diner asked who they are.
+        await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/);
+        await expect(page.locator('#view-menu')).toBeVisible();
+    });
+
+    test('an open shop, and a shop that set no hours, are never interrupted', async ({ page }) => {
+        const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+        const today = DAYS[new Date().getDay()];
+        await stub(page);
+        await page.route('**/qr-menu?**', (route) => route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+                ...MENU,
+                outlet_info: { hours: [{ day: today, closed: false, open: '00:00', close: '23:59' }] }
+            })
+        }));
+        await goTo(page);
+        await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/, { timeout: 15_000 });
+        await expect(page.locator('#sheet-closed')).not.toHaveClass(/is-open/);
+    });
+
+    test('a shop with no hours set makes no claim about being shut', async ({ page }) => {
+        // ⚠️ SILENCE IS NOT "CLOSED". Most outlets have never filled hours in,
+        // and telling every one of their customers the kitchen is shut would be
+        // the single most damaging thing this sheet could do.
+        await stub(page);          // MENU carries no outlet_info at all
+        await goTo(page);
+        await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/, { timeout: 15_000 });
+        await expect(page.locator('#sheet-closed')).not.toHaveClass(/is-open/);
     });
 
     test('a paid sitting is not shown to the next diner', async ({ page }) => {

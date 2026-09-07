@@ -1428,84 +1428,53 @@ img { max-width: 100%; display: block; }
 
 /* The one thing the sheet was opened to answer, given room to be read at a
    glance instead of squeezed into a chip beside an order number. */
-.ostat {
-    margin: 14px 0 4px;
-    padding: 16px 18px 18px;
-    border-radius: 18px;
-    color: #fff;
-    background:
-        radial-gradient(110% 130% at 92% 0%, rgba(234, 88, 12, 0.34) 0%, transparent 60%),
-        linear-gradient(135deg, #0B0F19 0%, #1A1638 58%, #2E1E50 100%);
-}
-.ostat-top {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 12px;
-    font-size: 11.5px;
-    color: rgba(255, 255, 255, 0.62);
-    font-weight: 600;
-}
-.ostat-no { letter-spacing: 0.02em; }
-.ostat-time { flex: 0 0 auto; }
-.ostat-now {
-    font-size: 21px; font-weight: 700; letter-spacing: -0.025em;
-    margin-top: 8px;
-}
-.ostat-hint {
-    font-size: 12.5px;
-    color: rgba(255, 255, 255, 0.66);
-    margin-top: 4px;
-    line-height: 1.45;
-}
+/* ---- Where the order is, in three steps -------------------------------
+   ⚠️ THE DARK GRADIENT PANEL IS GONE, and so is the four-dot track. Both were
+   the till's vocabulary wearing a customer's clothes: seven server statuses
+   squeezed onto four glyphs, under a navy box that read as a system
+   notification in the middle of a warm page. A diner has three questions — is
+   it cooking, is it here, what do I owe — and each now gets a picture.
 
-/* Four steps with their own glyphs. The connecting rule is drawn behind the
-   dots so a completed run reads as one continuous line. */
-.track {
-    display: flex;
-    gap: 2px;
-    margin: 18px 0 16px;
+   ⚠️ ONE ILLUSTRATION AT A TIME. Three at once would be ~50px each, and these
+   are detailed drawings that turn to mush at that size; the step you are ON is
+   the one worth the room. The rule underneath says which of the three it is. */
+.ostage { text-align: center; padding: 4px 0 2px; }
+.ostage-art {
+    /* Sized by HEIGHT, because the three illustrations do not share an aspect
+       ratio and a fixed width would make the block jump as the order advances. */
+    height: 148px; width: auto; max-width: 82%;
+    object-fit: contain;
+    display: block; margin: 0 auto;
 }
-.track-step {
+.ostage-meta {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-top: 10px;
+    font-size: 11.5px; font-weight: 600; color: var(--ink-50);
+}
+.ostage-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--ink-30); }
+.ostage-no { letter-spacing: 0.02em; }
+.ostage-time { flex: 0 0 auto; }
+.ostage-now {
+    font-size: 20px; font-weight: 700; letter-spacing: -0.025em;
+    margin: 5px 0 0;
+}
+.ostage-hint {
+    font-size: 12.5px; color: var(--ink-50);
+    margin: 5px auto 0; max-width: 32ch; line-height: 1.45;
+}
+/* A rule per step rather than dots on a line: it reads as a progress bar cut
+   into three, which is what "step 2 of 3" looks like without saying it. */
+.ostage-steps { display: flex; gap: 6px; margin: 18px 0 2px; }
+.ostage-pip {
     flex: 1 1 0;
     display: flex; flex-direction: column; align-items: center; gap: 7px;
-    font-size: 10.5px; font-weight: 600;
-    color: var(--ink-30);
-    text-align: center;
-    position: relative;
+    font-size: 10.5px; font-weight: 600; color: var(--ink-30);
 }
-.track-step::before {
-    content: "";
-    position: absolute; top: 15px; left: -50%; right: 50%;
-    height: 2px; background: var(--line);
-}
-.track-step:first-child::before { display: none; }
-.track-dot {
-    width: 30px; height: 30px;
-    border-radius: 50%;
-    background: var(--line-soft);
-    border: 1px solid var(--line);
-    color: var(--ink-30);
-    display: flex; align-items: center; justify-content: center;
-    position: relative; z-index: 1;
-    transition: background 0.2s ease, color 0.2s ease;
-}
-.track-dot svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.track-label { max-width: 68px; }
-
-.track-step.done { color: var(--ink); }
-.track-step.done .track-dot {
-    background: var(--accent-soft);
-    border-color: rgba(234, 88, 12, 0.42);
-    color: var(--accent);
-}
-.track-step.done::before { background: rgba(234, 88, 12, 0.42); }
-/* The step it is on RIGHT NOW is the only filled one — everything else is
-   history or future, and three identical orange dots say neither. */
-.track-step.now .track-dot {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-    box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.16);
-}
+.ostage-pip i { display: block; width: 100%; height: 3px; border-radius: 999px; background: var(--line); }
+.ostage-pip em { font-style: normal; }
+.ostage-pip.done i { background: rgba(234, 88, 12, 0.42); }
+.ostage-pip.done em { color: var(--ink); }
+.ostage-pip.now i { background: var(--accent); }
 
 .opanel {
     background: var(--surface);
@@ -1567,19 +1536,35 @@ img { max-width: 100%; display: block; }
 
 /* Nothing ordered yet — a state, not a blank panel. */
 .orders-empty { text-align: center; padding: 34px 20px 26px; }
-.orders-empty-mark {
-    width: 68px; height: 68px;
-    margin: 0 auto 14px;
-    border-radius: 22px;
-    background: var(--line-soft);
-    display: flex; align-items: center; justify-content: center;
+/* An empty basket, not a grey tile with a plate glyph. This is what a diner
+   sees before they have ordered, which is the state they are in longest. */
+.orders-empty-art {
+    height: 136px; width: auto; max-width: 70%;
+    object-fit: contain;
+    display: block; margin: 0 auto 12px;
 }
-.orders-empty-mark svg { width: 38px; height: 38px; opacity: 0.5; }
 .orders-empty-title { font-size: 15px; font-weight: 600; margin: 0; }
 .orders-empty-sub {
     font-size: 13px; color: var(--ink-50); margin: 5px 0 0;
     line-height: 1.5; max-width: 30ch; margin-left: auto; margin-right: auto;
 }
+
+/* ---- Store closed ------------------------------------------------------ */
+/* Taller than a menu sheet needs to be — this one is the whole message, and a
+   half-height panel under a big illustration reads as a card that got cut off. */
+.sheet-closed { max-height: 88vh; }
+.closed-body { text-align: center; padding-top: 4px; }
+.closed-art {
+    height: 172px; width: auto; max-width: 74%;
+    object-fit: contain;
+    display: block; margin: 0 auto 14px;
+}
+.closed-title { font-size: 19px; font-weight: 700; letter-spacing: -0.025em; margin: 0; }
+.closed-sub {
+    font-size: 13.5px; color: var(--ink-50);
+    margin: 7px auto 0; max-width: 34ch; line-height: 1.5;
+}
+.closed-hours { font-size: 13px; font-weight: 600; color: var(--ink); margin: 12px 0 0; }
 
 /* ---- Modifier groups --------------------------------------------------- */
 .detail-hero {
@@ -2458,6 +2443,26 @@ html.kb-open .welcome-art { display: none; }
     </div>
 </div>
 
+<!-- Store closed ---------------------------------------------------------
+     Shown once, on arrival, when the outlet's own opening hours say the
+     kitchen has already shut. ⚠️ INFORMATIONAL, NOT A LOCK: the server decides
+     what it will accept, and a scan two minutes after closing while the staff
+     are still clearing tables is a conversation, not an error. So it can be
+     dismissed and the menu read behind it. -->
+<div id="sheet-closed" class="sheet sheet-closed" role="dialog" aria-modal="true" aria-labelledby="closed-title">
+    <div class="sheet-grip"></div>
+    <div class="sheet-body closed-body">
+        <img class="closed-art" id="closed-art" alt="" decoding="async"
+             src="/assets/images/storeclose.webp" width="313" height="420">
+        <h2 class="closed-title" id="closed-title" data-i18n="closed.title">Maaf, kami sudah tutup</h2>
+        <p class="closed-sub" data-i18n="closed.sub">Dapur sudah tutup untuk hari ini, jadi pesanan belum bisa kami terima. Mohon maaf atas ketidaknyamanannya.</p>
+        <p class="closed-hours num" id="closed-hours" hidden></p>
+    </div>
+    <div class="sheet-foot">
+        <button class="primary" id="closed-go" type="button" data-i18n="closed.go">Lihat menu saja</button>
+    </div>
+</div>
+
 <!-- Language sheet -------------------------------------------------------
      A bottom sheet like every other choice on this page, rather than a
      dropdown: the same gesture, the same geometry, and a target a thumb can
@@ -2888,6 +2893,17 @@ html.kb-open .welcome-art { display: none; }
             'orders.allOrders': 'Semua pesanan',
             'orders.tickets': 'Pesanan di meja ini',
 
+            'ostep.cook': 'Sedang dimasak',
+            'ostep.served': 'Sudah diantar',
+            'ostep.pay': 'Pembayaran',
+            'stage.hint.ready': 'Pesanan Anda siap dan sedang diantar ke meja.',
+            'stage.hint.paid': 'Terima kasih! Tagihan sudah lunas.',
+
+            'closed.title': 'Maaf, kami sudah tutup',
+            'closed.sub': 'Dapur sudah tutup untuk hari ini, jadi pesanan belum bisa kami terima. Mohon maaf atas ketidaknyamanannya.',
+            'closed.opens': 'Buka lagi {day} pukul {t}',
+            'closed.go': 'Lihat menu saja',
+
             'st.open': 'Menunggu konfirmasi',
             'st.submitted': 'Menunggu konfirmasi',
             'st.sent': 'Sedang disiapkan',
@@ -2902,7 +2918,6 @@ html.kb-open .welcome-art { display: none; }
             'stage.4': 'Diantar',
             'stage.hint.billed': 'Kasir sedang menuju meja Anda.',
             'stage.hint.served': 'Selamat menikmati.',
-            'stage.hint.delivering': 'Pesanan Anda sedang diantar ke meja.',
             'stage.hint.default': 'Kami kabari lewat WhatsApp kalau ada perubahan.',
 
             'time.now': 'Baru saja',
@@ -3042,6 +3057,17 @@ html.kb-open .welcome-art { display: none; }
             'orders.allOrders': 'All orders',
             'orders.tickets': 'Orders at this table',
 
+            'ostep.cook': 'Being cooked',
+            'ostep.served': 'Served',
+            'ostep.pay': 'Payment',
+            'stage.hint.ready': 'Your order is ready and on its way to the table.',
+            'stage.hint.paid': 'Thank you — the bill is settled.',
+
+            'closed.title': 'Sorry, we are closed',
+            'closed.sub': 'The kitchen has closed for today, so we cannot take an order right now. We are sorry for the inconvenience.',
+            'closed.opens': 'Open again {day} at {t}',
+            'closed.go': 'Just browse the menu',
+
             'st.open': 'Waiting to be confirmed',
             'st.submitted': 'Waiting to be confirmed',
             'st.sent': 'Being prepared',
@@ -3056,7 +3082,6 @@ html.kb-open .welcome-art { display: none; }
             'stage.4': 'Served',
             'stage.hint.billed': 'The cashier is on the way to your table.',
             'stage.hint.served': 'Enjoy your meal.',
-            'stage.hint.delivering': 'Your order is on its way to the table.',
             'stage.hint.default': 'We will message you on WhatsApp if anything changes.',
 
             'time.now': 'Just now',
@@ -3510,9 +3535,15 @@ html.kb-open .welcome-art { display: none; }
                 placed = placed.slice(-PLACED_MAX);
             }
 
+            // ⚠️ CLOSED FIRST, IDENTITY SECOND. Asking a diner for their name
+            // and number and only then telling them the kitchen shut an hour
+            // ago is the wrong order to deliver two facts in. The gate opens
+            // behind it — see closeSheets().
+            var shut = maybeShowClosed();
+
             // No stored session at all — a fresh scan. Ask immediately rather
             // than waiting on the network; there is nothing to validate.
-            if (!customer) openWelcome();
+            if (!customer && !shut) openWelcome();
 
             // Someone else at this table may have ordered already, or this is a
             // second round. Routed through refreshOrders() rather than its own
@@ -3700,6 +3731,63 @@ html.kb-open .welcome-art { display: none; }
         var crosses = c < o;
         var isOpen = crosses ? (mins >= o) : (mins >= o && mins < c);
         return isOpen ? { open: true, until: today.close } : { open: false, until: null };
+    }
+
+    /**
+     * The next time this outlet opens, for the "we are closed" sheet.
+     *
+     * Walks forward eight days rather than seven so a shop that opens only on
+     * Sunday still answers the question when you scan it on a Sunday night.
+     * Today counts only if its opening time has not already gone by — at 22.00
+     * the answer is tomorrow, not "we opened at 09.00".
+     */
+    function nextOpening(hours) {
+        var rows = Array.isArray(hours) ? hours : [];
+        if (!rows.length) return null;
+        var byDay = {};
+        rows.forEach(function (r) { if (r && r.day) byDay[r.day] = r; });
+
+        var now = new Date();
+        var mins = now.getHours() * 60 + now.getMinutes();
+        for (var i = 0; i < 8; i += 1) {
+            var key = DAY_KEYS[(now.getDay() + i) % 7];
+            var r = byDay[key];
+            if (!r || r.closed === true || !r.open) continue;
+            var m = /^(\d{2}):(\d{2})$/.exec(String(r.open));
+            if (!m) continue;
+            if (i === 0 && (Number(m[1]) * 60 + Number(m[2])) <= mins) continue;
+            return { day: dayLabel(key), at: r.open };
+        }
+        return null;
+    }
+
+    function paintClosedHours() {
+        var line = $('closed-hours');
+        var next = nextOpening(((menu && menu.outlet_info) || {}).hours);
+        if (!next) { line.hidden = true; return; }
+        setText(line, t('closed.opens', { day: next.day, t: hhmm(next.at) }));
+        line.hidden = false;
+    }
+
+    /**
+     * Say so, once, when the kitchen has already shut.
+     *
+     * ⚠️ INFORMATIONAL, NOT A LOCK. The server decides what it will accept, and
+     * a scan two minutes after closing while the staff are still clearing
+     * tables is a conversation rather than an error. It is also silent when the
+     * outlet has set no hours — `openState` returns null there, and a shop that
+     * never told us when it opens has not told us it is shut either.
+     */
+    var closedShown = false;
+
+    function maybeShowClosed() {
+        if (closedShown) return false;
+        var state = openState(((menu && menu.outlet_info) || {}).hours);
+        if (!state || state.open) return false;
+        closedShown = true;
+        paintClosedHours();
+        openSheet('sheet-closed');
+        return true;
     }
 
     // 24h wall clock, the way Indonesian opening hours are written and spoken.
@@ -4517,7 +4605,11 @@ html.kb-open .welcome-art { display: none; }
         // The identity gate closes only when it has been completed. Every other
         // path — scrim, Escape, the close button — leaves it up.
         if (welcomeOpen() && !(opts && opts.force)) return;
+        // Whichever way it was dismissed — the button, the scrim, Escape — the
+        // identity gate is what comes next for a diner who has not been asked.
+        var wasClosed = $('sheet-closed').classList.contains('is-open');
         $('scrim').classList.remove('is-open');
+        $('sheet-closed').classList.remove('is-open');
         $('sheet-item').classList.remove('is-open');
         $('sheet-welcome').classList.remove('is-open');
         $('sheet-orders').classList.remove('is-open');
@@ -4526,6 +4618,7 @@ html.kb-open .welcome-art { display: none; }
         unlockScroll();
         detail = null;
         setActiveTab('menu');
+        if (wasClosed && !customer) openWelcome();
     }
     // =====================================================================
     // The language switcher
@@ -4577,6 +4670,9 @@ html.kb-open .welcome-art { display: none; }
         paintRecos();
         paintCart();
         if (lastStatus) { paintOrders(lastStatus); paintOrdersBadge(lastStatus); }
+        // `applyStaticCopy` cannot repaint this one — it interpolates a day and
+        // a time, and the static pass only knows varless keys.
+        if ($('sheet-closed').classList.contains('is-open')) paintClosedHours();
 
         // Asking for the bill is a two-tap confirm, and the first tap lives in
         // the button's own label. Repainting that label would leave the page
@@ -4591,6 +4687,7 @@ html.kb-open .welcome-art { display: none; }
         repaintCopy();
     }
 
+    $('closed-go').addEventListener('click', function () { closeSheets(); });
     $('lang-btn').addEventListener('click', openLang);
     $('lang-body').addEventListener('click', function (e) {
         var opt = e.target.closest ? e.target.closest('.lang-opt') : null;
@@ -4794,7 +4891,39 @@ html.kb-open .welcome-art { display: none; }
         { icon: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>' }
     ];
 
-    /** The diner-facing name of stage `n` (1-4) on the four-rung track. */
+    /**
+     * THE DINER'S THREE STEPS, mapped from the till's seven statuses.
+     *
+     * ⚠️ THIS IS NOT THE KITCHEN'S LADDER AND MUST NOT BECOME IT. The till has
+     * seven statuses because a cook and a cashier need them; a person at a
+     * table has three questions — is it cooking, is it here, what do I owe —
+     * and every extra rung is a distinction they did not ask for.
+     *
+     * `ready` sits under COOKING on purpose: from the diner's seat food that is
+     * plated in the pass is still food that has not arrived. The nuance is not
+     * lost, it moves into the hint line, which is where a detail belongs when
+     * it does not change the answer.
+     */
+    var OSTEPS = [
+        { key: 'cook',   art: '/assets/images/cooked.webp' },
+        { key: 'served', art: '/assets/images/served.webp' },
+        { key: 'pay',    art: '/assets/images/payment.webp' }
+    ];
+
+    function customerStep(d, billed) {
+        var stage = Number(d && d.stage) || 0;
+        if (billed || (d && d.status === 'paid') || stage >= 5) return 3;
+        if (stage >= 4) return 2;
+        return 1;
+    }
+
+    function customerStepHint(d, billed, step) {
+        if (step === 3) return billed ? t('stage.hint.billed') : t('stage.hint.paid');
+        if (step === 2) return t('stage.hint.served');
+        return (Number(d && d.stage) || 0) >= 3 ? t('stage.hint.ready') : t('stage.hint.default');
+    }
+
+    /** The diner-facing name of stage `n` (1-4) on the welcome sheet's ladder. */
     function stageLabel(n) {
         return t('stage.' + Math.min(4, Math.max(1, Number(n) || 1)));
     }
@@ -4841,7 +4970,8 @@ html.kb-open .welcome-art { display: none; }
             var past = historyPanel(d.history);
             $('orders-body').innerHTML =
                 '<div class="orders-empty">'
-                + '<div class="orders-empty-mark">' + svg(ICON.plate) + '</div>'
+                + '<img class="orders-empty-art" alt="" decoding="async"'
+                + ' src="/assets/images/emptychart.webp" width="313" height="420">'
                 + '<p class="orders-empty-title">'
                 + esc(past ? t('orders.emptyTitlePast') : t('orders.emptyTitle')) + '</p>'
                 + '<p class="orders-empty-sub">' + esc(past
@@ -4910,31 +5040,27 @@ html.kb-open .welcome-art { display: none; }
         setDisabled($('bill-btn'), false);
         billConfirm = false;
 
-        // ── Status hero ─────────────────────────────────────────────────────
-        // The one thing a diner opened this sheet to find out, given the room
-        // to be read at a glance rather than as a chip beside a number.
-        var hero = '<div class="ostat">'
-            + '<div class="ostat-top">'
-            + '<span class="ostat-no num">' + esc(d.order_number || '') + '</span>'
-            + '<span class="ostat-time">' + esc(timeAgo(d.placed_at)) + '</span>'
+        // ── Where the order is ──────────────────────────────────────────────
+        // The one thing a diner opened this sheet to find out, as a picture.
+        var ostep = customerStep(d, billed);
+        var when = timeAgo(d.placed_at);
+        var hero = '<div class="ostage">'
+            + '<img class="ostage-art" alt="" decoding="async" src="'
+            + OSTEPS[ostep - 1].art + '" width="313" height="420">'
+            + '<div class="ostage-meta">'
+            + '<span class="ostage-no num">' + esc(d.order_number || '') + '</span>'
+            + (when ? '<span class="ostage-sep" aria-hidden="true"></span>'
+                + '<span class="ostage-time">' + esc(when) + '</span>' : '')
             + '</div>'
-            + '<div class="ostat-now">' + esc(statusLabel(d.status, d.stage_label)) + '</div>'
-            + '<div class="ostat-hint">' + esc(billed
-                ? t('stage.hint.billed')
-                : (step >= 4 ? t('stage.hint.served')
-                    : (step === 3 ? t('stage.hint.delivering')
-                                  : t('stage.hint.default')))) + '</div>'
+            + '<h3 class="ostage-now">' + esc(t('ostep.' + OSTEPS[ostep - 1].key)) + '</h3>'
+            + '<p class="ostage-hint">' + esc(customerStepHint(d, billed, ostep)) + '</p>'
+            + '<div class="ostage-steps">' + OSTEPS.map(function (st, i) {
+                var n = i + 1;
+                return '<span class="ostage-pip' + (n <= ostep ? ' done' : '')
+                    + (n === ostep ? ' now' : '') + '">'
+                    + '<i></i><em>' + esc(t('ostep.' + st.key)) + '</em></span>';
+            }).join('') + '</div>'
             + '</div>';
-
-        // ── Track ───────────────────────────────────────────────────────────
-        var track = '<div class="track">' + STAGES.map(function (st, i) {
-            var n = i + 1;
-            var cls = n < step ? ' done' : (n === step ? ' done now' : '');
-            return '<div class="track-step' + cls + '">'
-                + '<span class="track-dot">' + icon24(st.icon) + '</span>'
-                + '<span class="track-label">' + esc(stageLabel(n)) + '</span>'
-                + '</div>';
-        }).join('') + '</div>';
 
         // ── Lines ───────────────────────────────────────────────────────────
         var lines = (d.lines || []).map(function (l) {
@@ -4971,7 +5097,7 @@ html.kb-open .welcome-art { display: none; }
                 + esc(t('orders.billCalled')) + '</div>'
             : '';
 
-        $('orders-body').innerHTML = hero + track + called
+        $('orders-body').innerHTML = hero + called
             + '<div class="opanel">' + lines + '</div>'
             + (d.note ? '<div class="onote"><span>' + esc(t('item.note')) + '</span><p>' + esc(d.note) + '</p></div>' : '')
             + ticketPanels(d.orders)
