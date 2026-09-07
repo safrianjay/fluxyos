@@ -17,13 +17,46 @@ reason the line-level field shipped ahead of everything else:
 [`DIMENSION_SEAM_DESIGN.md`](../DIMENSION_SEAM_DESIGN.md).
 
 **Status:** live end to end. The collections, the rollup, the document-level
-pickers and `/outlet-pnl` all ship. Outlets are created from the receive-stock
-drawer; goods receipts, stock adjustments and transactions carry a dimension (see
-the table below), and the per-outlet income statement reads the rollup.
+pickers and `/outlet-pnl` all ship. Goods receipts, stock adjustments and
+transactions carry a dimension (see the table below), and the per-outlet income
+statement reads the rollup.
+
+Outlets are managed on **Settings → Point of Sale** (2026-09-07): add, rename,
+archive, restore. Before that they could only be created as a side effect of
+receiving stock, and `saveDimension`/`archiveDimension` had existed since the
+seam landed with **nothing calling them** — renaming or retiring one meant the
+console.
 
 Still open: **invoices** carry no dimension, so invoiced revenue sits in
-"Unassigned"; and there is no dedicated outlet-management screen — renaming or
-archiving an outlet is DAL-only.
+"Unassigned". Warehouses and branches still have no management screen — the POS
+settings page manages `type: 'outlet'` only, because that is the type it
+configures.
+
+### The outlets card
+
+⚠️ **It sits OUTSIDE the page's settings body**, which is hidden until an outlet
+is selected — inside it, a workspace with no outlets could never create its
+first one.
+
+⚠️ **Nothing is deleted, so the screen must be able to UN-archive.** Rules set
+`delete: if false` because journal lines posted against a dimension are immutable
+and have to keep resolving to it. A screen that could archive but not restore
+would be a one-way door built by accident, so archived outlets are loaded too and
+sorted last — on a workspace with more than a handful, the row you came to
+restore is otherwise the one you cannot find.
+
+⚠️ **An outlet with unsettled orders cannot be archived.** The till filters
+archived outlets out, so those tickets would become unreachable AND unpaid —
+money stranded by a settings click, with nothing anywhere reporting it. The
+screen checks before it archives and says which.
+
+A rename leaves `name_key` alone, so it changes what people read and nothing the
+books resolve through. Archiving takes two taps. The list scrolls at 320px with a
+count and, past eight outlets, a filter — the QA workspace has 112, and a flat
+list pushed the add control and every setting below it off the page.
+
+Spec: `tests/settings-pos-outlets.spec.js` (add → rename → archive → restore,
+and the unsettled-orders guard end to end).
 
 
 ## Which documents carry a dimension

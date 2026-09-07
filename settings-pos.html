@@ -18,6 +18,17 @@
         .pos-set-title { font-size: 14px; font-weight: 700; color: #0F172A; }
         .pos-set-sub { margin-top: 3px; font-size: 12px; color: #64748B; line-height: 1.45; }
         .pos-set-body { padding: 20px; }
+        /* Outlet row actions. Secondary by construction: the page's job is
+           configuring an outlet, and managing the list is the errand you do
+           once. */
+        .pos-outlet-act {
+            min-height: 32px; padding: 0 12px; border-radius: 8px; cursor: pointer;
+            border: 1px solid #E2E8F0; background: #FFFFFF; color: #334155;
+            font-size: 12px; font-weight: 600;
+        }
+        .pos-outlet-act:hover { background: #F8FAFC; }
+        .pos-outlet-act.is-primary { background: #0F172A; border-color: #0F172A; color: #FFFFFF; }
+        .pos-outlet-act.is-primary:hover { background: #1E293B; }
 
         .pos-field-label { display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px; }
         .pos-input {
@@ -134,14 +145,62 @@
                     Loading outlets
                 </div>
 
-                <!-- No outlet at all. A dropdown with nothing in it explains nothing,
-                     and the fix is on a different page. -->
+                <!-- ── OUTLETS ────────────────────────────────────────────────
+                     ⚠️ OUTSIDE `#pos-settings-body`, deliberately. That block is
+                     hidden until an outlet is selected, and this is where the
+                     FIRST one gets created — inside it, a workspace with no
+                     outlets could never make one here.
+
+                     Until now an outlet could only be created as a side effect
+                     of receiving stock, and renaming or archiving one was
+                     DAL-only with no screen at all (dimensions.md said so in
+                     words). This is that screen: the page already picks an
+                     outlet and configures it, so managing the list belongs
+                     directly above the picker's own settings. -->
+                <section id="pos-outlets-card" class="pos-set-card" hidden>
+                    <div class="pos-set-head">
+                        <h2 class="pos-set-title">Outlets</h2>
+                        <p class="pos-set-sub">
+                            The sites this workspace trades from. Archiving one hides it from the till,
+                            the pickers and this page — nothing is ever deleted, because every journal
+                            line already posted against an outlet has to keep resolving to it.
+                        </p>
+                    </div>
+                    <div class="pos-set-body">
+                        <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+                            <p id="pos-outlet-count" class="text-[12px] font-semibold text-gray-500"></p>
+                            <div id="pos-outlet-filter-wrap" class="min-w-[180px]" hidden>
+                                <input id="pos-outlet-filter" class="pos-input" type="search"
+                                       placeholder="Find an outlet" autocomplete="off">
+                            </div>
+                        </div>
+                        <!-- ⚠️ SCROLLS. A workspace with thirty sites pushed the add
+                             control and every setting below it off the page — the list
+                             took the whole screen and the thing you came to do was
+                             somewhere under it. -->
+                        <div id="pos-outlet-list" class="divide-y divide-gray-100 max-h-[320px] overflow-y-auto"></div>
+                        <div class="mt-4 flex flex-wrap items-end gap-2">
+                            <div class="flex-1 min-w-[200px]">
+                                <label class="pos-field-label" for="pos-outlet-new">Add an outlet</label>
+                                <input id="pos-outlet-new" class="pos-input" maxlength="80"
+                                       placeholder="Outlet Kemang" autocomplete="off">
+                            </div>
+                            <button type="button" id="pos-outlet-add"
+                                    class="h-[38px] px-4 rounded-lg bg-gray-900 text-white text-[13px] font-semibold hover:bg-gray-800 disabled:opacity-45">
+                                Add outlet
+                            </button>
+                        </div>
+                        <p id="pos-outlet-error" class="mt-2 text-[12px] font-medium text-red-600" hidden></p>
+                    </div>
+                </section>
+
+                <!-- No outlet at all. A dropdown with nothing in it explains nothing. -->
                 <section id="pos-no-outlet" class="pos-set-card" hidden>
                     <div class="pos-set-body">
                         <p class="pos-set-title">No outlet to configure yet</p>
                         <p class="pos-set-sub">
                             These settings belong to an outlet — rates, opening hours and the customer
-                            photo are all that shop's own. Create one under Inventory → Outlets, then
+                            photo are all that shop's own. Add one above, then
                             come back.
                         </p>
                     </div>
@@ -413,14 +472,228 @@
             el.lastChild.textContent = ' ' + text;
         }
 
+        // ── Outlets: the list, and the three things you can do to one ──────
+        //
+        // ⚠️ ARCHIVED ONES ARE LOADED TOO. Restore has to be reachable, and a
+        // screen that can archive but not un-archive is a one-way door built by
+        // accident.
+        let allOutlets = [];
+
+        async function loadOutlets() {
+            const dims = await ds.getDimensions(uid, { includeArchived: true });
+            // ⚠️ ACTIVE FIRST, archived last. `getDimensions` sorts by name, so
+            // an archived outlet lands wherever the alphabet puts it — and on a
+            // workspace with more than a handful, the one row you came here to
+            // restore is the one you cannot find.
+            allOutlets = dims.filter((d) => d.type === 'outlet').sort((a, b) => {
+                const aa = a.status === 'archived' ? 1 : 0;
+                const bb = b.status === 'archived' ? 1 : 0;
+                if (aa !== bb) return aa - bb;
+                return String(a.name || '').localeCompare(String(b.name || ''));
+            });
+            outlets = allOutlets.filter((d) => d.status !== 'archived');
+        }
+
+        const outletError = (msg) => {
+            const el = $('pos-outlet-error');
+            el.hidden = !msg;
+            el.textContent = msg || '';
+        };
+
+        // Only when the list is long enough to be worth searching. A filter box
+        // above four rows is furniture.
+        const FILTER_FROM = 8;
+        let outletFilter = '';
+
+        function renderOutlets() {
+            $('pos-outlets-card').hidden = false;
+            const host = $('pos-outlet-list');
+            const archivedCount = allOutlets.length - outlets.length;
+            // Stated, not counted. On a workspace with thirty sites "how many do
+            // we have" should not be a scrolling exercise.
+            $('pos-outlet-count').textContent = allOutlets.length
+                ? `${outlets.length} active${archivedCount ? ` · ${archivedCount} archived` : ''}`
+                : '';
+            $('pos-outlet-filter-wrap').hidden = allOutlets.length < FILTER_FROM;
+
+            if (!allOutlets.length) {
+                host.innerHTML = '<p class="py-3 text-[13px] text-gray-500">No outlets yet.</p>';
+                return;
+            }
+            const q = outletFilter.trim().toLowerCase();
+            const shown = q
+                ? allOutlets.filter((o) => String(o.name || '').toLowerCase().includes(q))
+                : allOutlets;
+            if (!shown.length) {
+                host.innerHTML = '<p class="py-3 text-[13px] text-gray-500">No outlet matches that.</p>';
+                return;
+            }
+            host.innerHTML = shown.map((o) => {
+                const archived = o.status === 'archived';
+                return `<div class="flex flex-wrap items-center gap-3 py-3" data-outlet="${esc(o.id)}">
+                    <div class="flex-1 min-w-[160px]">
+                        <p class="text-[14px] font-semibold ${archived ? 'text-gray-400' : 'text-gray-900'}">
+                            ${esc(o.name)}${archived ? ' <span class="text-[12px] font-medium">· archived</span>' : ''}
+                        </p>
+                    </div>
+                    ${archived
+                        ? `<button type="button" class="pos-outlet-act" data-restore="${esc(o.id)}">Restore</button>`
+                        : `<button type="button" class="pos-outlet-act" data-rename="${esc(o.id)}">Rename</button>
+                           <button type="button" class="pos-outlet-act" data-archive="${esc(o.id)}">Archive</button>`}
+                </div>`;
+            }).join('');
+        }
+
+        /** Swap a row's name for an input. Inline, because a dialog for one
+            field is a dialog nobody needs — and the old name is right there to
+            correct rather than retype. */
+        function startRename(id) {
+            const row = $('pos-outlet-list').querySelector(`[data-outlet="${id}"]`);
+            const outlet = allOutlets.find((o) => o.id === id);
+            if (!row || !outlet) return;
+            row.innerHTML = `
+                <div class="flex-1 min-w-[160px]">
+                    <input class="pos-input" data-rename-input maxlength="80" value="${esc(outlet.name)}">
+                </div>
+                <button type="button" class="pos-outlet-act is-primary" data-rename-save="${esc(id)}">Save</button>
+                <button type="button" class="pos-outlet-act" data-rename-cancel>Cancel</button>`;
+            const input = row.querySelector('[data-rename-input]');
+            input.focus();
+            input.select();
+        }
+
+        async function saveRename(id, name) {
+            outletError('');
+            // The dedupe key `name_key` is immutable by design — journal history
+            // posted against this id has to keep resolving to the same site — so
+            // a rename changes what people READ and nothing the books depend on.
+            await ds.saveDimension(uid, { name, type: 'outlet' }, { dimensionId: id });
+            await refreshOutlets();
+            window.showToast('Outlet renamed.', 'success');
+        }
+
+        /** ⚠️ NEVER ARCHIVE AN OUTLET THAT STILL HAS LIVE ORDERS. The till
+            filters archived outlets out, so those tickets would become
+            unreachable AND unpaid — money stranded by a settings click, with
+            nothing anywhere reporting it. */
+        async function archiveOutlet(id) {
+            outletError('');
+            const open = await ds.getPosOrders(uid, {
+                dimensionId: id,
+                statuses: ['open', 'submitted', 'sent', 'ready', 'served', 'awaiting_payment'],
+                limitCount: 5
+            }).catch(() => []);
+            if (open.length) {
+                outletError(`That outlet still has ${open.length === 5 ? '5+' : open.length} unsettled order${open.length === 1 ? '' : 's'}. Close them on the till first — archiving would hide them there.`);
+                return;
+            }
+            await ds.archiveDimension(uid, id);
+            await refreshOutlets();
+            window.showToast('Outlet archived.', 'success');
+        }
+
+        /** Re-read, repaint the list AND the picker, and follow the selection.
+            Archiving the outlet being configured must not leave the page showing
+            settings for something that is no longer there. */
+        async function refreshOutlets() {
+            await loadOutlets();
+            renderOutlets();
+            const sel = $('pos-outlet');
+            sel.innerHTML = outlets
+                .map((o) => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('');
+            if (!outlets.length) {
+                $('pos-settings-body').hidden = true;
+                $('pos-no-outlet').hidden = false;
+                currentOutlet = null;
+                return;
+            }
+            $('pos-no-outlet').hidden = true;
+            const stillThere = outlets.some((o) => o.id === currentOutlet);
+            sel.value = stillThere ? currentOutlet : outlets[0].id;
+            if (!stillThere) await selectOutlet(outlets[0].id);
+        }
+
+        function wireOutlets() {
+            $('pos-outlet-list').addEventListener('click', (e) => {
+                const t = (a) => e.target.closest(`[data-${a}]`);
+                const rename = t('rename');
+                if (rename) return startRename(rename.dataset.rename);
+                if (t('rename-cancel')) return renderOutlets();
+                const save = t('rename-save');
+                if (save) {
+                    const input = $('pos-outlet-list').querySelector('[data-rename-input]');
+                    const name = (input && input.value || '').trim();
+                    if (!name) { outletError('An outlet needs a name.'); return; }
+                    saveRename(save.dataset.renameSave, name)
+                        .catch((err) => outletError(err.message || 'Could not rename that outlet.'));
+                    return;
+                }
+                const archive = t('archive');
+                if (archive) {
+                    // Two taps. Archiving pulls an outlet out of the till, every
+                    // picker and this page, and a mis-tap on a settings screen
+                    // should not do that silently.
+                    if (archive.dataset.confirm !== '1') {
+                        renderOutlets();
+                        const again = $('pos-outlet-list').querySelector(`[data-archive="${archive.dataset.archive}"]`);
+                        if (again) { again.dataset.confirm = '1'; again.textContent = 'Tap again to archive'; }
+                        return;
+                    }
+                    archiveOutlet(archive.dataset.archive)
+                        .catch((err) => outletError(err.message || 'Could not archive that outlet.'));
+                    return;
+                }
+                const restore = t('restore');
+                if (restore) {
+                    ds.archiveDimension(uid, restore.dataset.restore, { restore: true })
+                        .then(refreshOutlets)
+                        .then(() => window.showToast('Outlet restored.', 'success'))
+                        .catch((err) => outletError(err.message || 'Could not restore that outlet.'));
+                }
+            });
+
+            $('pos-outlet-filter').addEventListener('input', (e) => {
+                outletFilter = e.target.value || '';
+                renderOutlets();
+                // Repainting replaces the input, so put the caret back.
+                const box = $('pos-outlet-filter');
+                box.value = outletFilter;
+                box.focus();
+            });
+
+            const add = $('pos-outlet-add');
+            add.addEventListener('click', async () => {
+                const input = $('pos-outlet-new');
+                const name = input.value.trim();
+                if (!name) { outletError('An outlet needs a name.'); return; }
+                add.disabled = true;
+                try {
+                    outletError('');
+                    const created = await ds.saveDimension(uid, { name, type: 'outlet' }, { create: true });
+                    input.value = '';
+                    // A workspace creating its FIRST outlet should land on it
+                    // configured, not have to go and find it in the picker.
+                    const first = !outlets.length;
+                    await refreshOutlets();
+                    if (first) await selectOutlet(created.id);
+                    window.showToast('Outlet added.', 'success');
+                } catch (err) {
+                    outletError(err.message || 'Could not add that outlet.');
+                } finally {
+                    add.disabled = false;
+                }
+            });
+        }
+
         async function boot() {
             try {
-                outlets = (await ds.getDimensions(uid))
-                    .filter((d) => d.type === 'outlet' && d.status !== 'archived');
+                await loadOutlets();
             } catch (e) {
                 setLoadState('error', 'Could not load outlets');
                 return;
             }
+            renderOutlets();
+            wireOutlets();
             if (!outlets.length) {
                 setLoadState('ready', '');
                 $('pos-no-outlet').hidden = false;
