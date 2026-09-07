@@ -1,7 +1,7 @@
 'use strict';
 
 const { allowOriginHeader } = require('./lib/allowed-origins');
-const { consume, ipKey, clientIp, tooManyRequests } = require('./lib/rate-limit');
+const { consumeApprox, ipKey, clientIp, tooManyRequests } = require('./lib/rate-limit');
 
 // =============================================================================
 // FluxyOS — menu photos for a QR customer, who is not signed in.
@@ -162,16 +162,26 @@ exports.handler = async (event) => {
         //    protects against cost and noise, not against a breach, and a
         //    limiter that fails closed turns a database blip into a restaurant
         //    whose customers cannot see the menu.
-        const burst = await consume(db, {
-            key: ipKey(clientIp(event.headers || {})),
-            limit: IP_BURST_LIMIT,
-            windowSeconds: IP_BURST_SECONDS
-        });
+        //
+        // ⚠️ `consumeApprox`, NOT `consume`, AND THE TWO RUN TOGETHER. Every one
+        // of these was a read-modify-write TRANSACTION on a single document, and
+        // one menu fires fifteen-plus image requests at once — all of them
+        // contending on the same `ip_…` doc and the same `tok_…` doc, retrying,
+        // and serialising behind each other. The limiter was the slowest part of
+        // fetching a photograph, and it got worse the more photographs a menu
+        // had. Approximate counting is the right trade on a public image
+        // endpoint that already fails open; see the note on consumeApprox.
+        const [burst, daily] = await Promise.all([
+            consumeApprox(db, {
+                key: ipKey(clientIp(event.headers || {})),
+                limit: IP_BURST_LIMIT,
+                windowSeconds: IP_BURST_SECONDS
+            }),
+            consumeApprox(db, {
+                key: `tok_${token}`, limit: TOKEN_DAILY_LIMIT, windowSeconds: DAY_SECONDS
+            })
+        ]);
         if (!burst.allowed) return tooManyRequests(burst, cors);
-
-        const daily = await consume(db, {
-            key: `tok_${token}`, limit: TOKEN_DAILY_LIMIT, windowSeconds: DAY_SECONDS
-        });
         if (!daily.allowed) return tooManyRequests(daily, cors);
 
         // 1. The token names a table, and the table names a workspace. Deny-all

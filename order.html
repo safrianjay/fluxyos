@@ -9,6 +9,12 @@
 <link rel="icon" type="image/svg+xml" href="/assets/images/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- ⚠️ EVERY MENU PHOTO ENDS UP HERE. `qr-menu-image` answers with a 302 to a
+     signed Storage URL, so the first tile a diner sees pays for a DNS lookup
+     and a TLS handshake to an origin the browser has never met — on restaurant
+     wifi that is most of a second before a byte of JPEG moves. Warming it in
+     the head overlaps that with the menu fetch instead of queueing behind it. -->
+<link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!--

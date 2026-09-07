@@ -135,6 +135,21 @@ const is = (actual, expected, label) => {
     is(/getSignedUrl/.test(menuSrc), false,
         'qr-menu hands out no Storage URL of its own');
 
+    // ── The limiter must not serialise a menu's worth of photographs ───────
+    //
+    // ⚠️ ONE MENU IS FIFTEEN-PLUS IMAGE REQUESTS AT ONCE, and the transactional
+    // `consume` is a read-modify-write on ONE document per dimension — so every
+    // one of those requests contended on the same two docs, retried, and queued
+    // behind the others. The limiter became the slowest part of fetching a
+    // photograph, and it got worse the more photographs a menu had. This
+    // endpoint uses the approximate counter instead; the trade is written up on
+    // `consumeApprox`. Guarded here because the transactional import is the
+    // obvious thing for a future edit to reach for.
+    is(/consumeApprox/.test(src), true,
+        'the image endpoint uses the contention-free counter');
+    is(/[^A-Za-z]consume\s*\(/.test(src), false,
+        'the image endpoint went back to a per-request Firestore transaction');
+
     // ── The cache window cannot outlive the credential it points at ────────
     //
     // ⚠️ THE BROWSER CACHES THE REDIRECT, NOT THE PHOTO. A cached 302 that

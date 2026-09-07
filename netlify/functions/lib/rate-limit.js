@@ -46,6 +46,11 @@
 // =============================================================================
 
 const crypto = require('crypto');
+// The static namespace only — no app, no credentials, nothing initialised. It
+// is here for `FieldValue.increment`, which is what lets consumeApprox() bump a
+// counter without reading it back under a lock.
+const { firestore } = require('firebase-admin');
+const FieldValue = firestore.FieldValue;
 
 /**
  * An IP is personal data and a rate-limit key does not need to be reversible.
@@ -136,4 +141,62 @@ function tooManyRequests(result, extraHeaders = {}) {
     };
 }
 
-module.exports = { consume, ipKey, clientIp, tooManyRequests };
+/**
+ * The same cap, without the transaction.
+ *
+ * ⚠️ WHY THIS EXISTS: `consume` is a read-modify-write TRANSACTION on ONE
+ * document, and a single QR menu fires ~15-20 image requests at once. Every one
+ * of them transacts on the same `ip_<hash>__<window>` doc and the same
+ * `tok_<token>__<day>` doc, so they contend, retry, and serialise — the limiter
+ * becomes the slowest part of loading a photograph, and it gets worse the more
+ * photographs a menu has.
+ *
+ * This reads the counter without a lock and increments it blind, so concurrent
+ * callers never queue behind each other. The write is not awaited: nothing in
+ * the response depends on it, and making the diner wait for a counter to land
+ * is the cost this function exists to avoid.
+ *
+ * ⚠️ IT COUNTS APPROXIMATELY, AND THAT IS THE TRADE. Requests in flight
+ * together read the same value, so a burst can overshoot the limit by roughly
+ * its own size before the count catches up. That is acceptable HERE and only
+ * here: this dimension guards cost and noise on a public image endpoint, it
+ * already fails open on any error, and overshooting by a dozen thumbnails is
+ * not a category of harm. Anything protecting correctness — an order, a
+ * payment, a sitting — keeps `consume`.
+ */
+async function consumeApprox(db, { key, limit, windowSeconds }) {
+    const now = Date.now();
+    const windowMs = Math.max(1, Number(windowSeconds) || 60) * 1000;
+    const windowStart = Math.floor(now / windowMs) * windowMs;
+    const id = `${String(key).replace(/[^A-Za-z0-9_-]/g, '')}__${windowStart}`;
+    const ref = db.collection('rate_limits').doc(id);
+
+    try {
+        const snap = await ref.get();
+        const count = snap.exists ? (Number(snap.data().count) || 0) : 0;
+        if (count >= limit) {
+            return {
+                allowed: false,
+                count,
+                limit,
+                retryAfter: Math.ceil((windowStart + windowMs - now) / 1000)
+            };
+        }
+        // Fire and forget. A dropped increment under-counts by one, which is the
+        // same shape of inaccuracy this function already accepts.
+        ref.set({
+            count: FieldValue.increment(1),
+            key: String(key).slice(0, 200),
+            window_start: new Date(windowStart),
+            expires_at: new Date(windowStart + windowMs * 2)
+        }, { merge: true }).catch((err) => {
+            console.error('[rate-limit] increment dropped:', err && err.message);
+        });
+        return { allowed: true, count: count + 1, limit, retryAfter: 0 };
+    } catch (err) {
+        console.error('[rate-limit] failing open:', err && err.message);
+        return { allowed: true, count: 0, limit, retryAfter: 0, degraded: true };
+    }
+}
+
+module.exports = { consume, consumeApprox, ipKey, clientIp, tooManyRequests };

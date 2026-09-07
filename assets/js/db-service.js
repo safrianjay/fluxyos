@@ -1485,6 +1485,70 @@ class DataService {
     // once by whoever maintains the catalogue, read on every till load, never
     // processed. Filing it as a document would spend a workspace's extraction
     // quota on a thumbnail.
+    /**
+     * Downscale and re-encode a photo before it is ever stored.
+     *
+     * ⚠️ THE SINGLE BIGGEST COST ON THE DINER'S PHONE. Item photos were stored
+     * exactly as the owner picked them — up to 2 MB, at whatever a phone camera
+     * produces — and the QR menu renders each one on a tile that is about
+     * 170x127 CSS px. A menu with fifteen photographs was tens of megabytes over
+     * restaurant wifi to paint a few hundred kilopixels. No amount of caching
+     * fixes a first load like that; the bytes have to not exist.
+     *
+     * 1280px is twice the longest edge any surface in the product shows (the
+     * item sheet's hero is the largest, and it caps at 190px tall), so it still
+     * has room for a retina screen and for a future bigger layout.
+     *
+     * Returns the ORIGINAL file whenever it cannot do better — an image it
+     * cannot decode, or a result that came out heavier. Making a photo worse in
+     * the name of making it smaller is the one outcome worth guarding against.
+     */
+    async _rightSizeImage(file) {
+        const MAX_EDGE = 1280;
+        const QUALITY = 0.82;
+        if (typeof document === 'undefined' || !file) return file;
+
+        let source = null;
+        try {
+            // `from-image` so a portrait photo taken on a phone is drawn the way
+            // it is meant to be read. EXIF orientation is not carried over to a
+            // canvas, so without this a rotated original is baked in sideways.
+            source = await createImageBitmap(file, { imageOrientation: 'from-image' });
+        } catch (_) {
+            source = await new Promise((resolve) => {
+                const img = new Image();
+                const url = URL.createObjectURL(file);
+                img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+                img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+                img.src = url;
+            });
+        }
+        if (!source || !source.width || !source.height) return file;
+
+        const scale = Math.min(1, MAX_EDGE / Math.max(source.width, source.height));
+        const w = Math.max(1, Math.round(source.width * scale));
+        const h = Math.max(1, Math.round(source.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(source, 0, 0, w, h);
+        if (source.close) source.close();
+
+        const encode = (type) => new Promise((resolve) => {
+            try { canvas.toBlob(resolve, type, QUALITY); } catch (_) { resolve(null); }
+        });
+        let blob = await encode('image/webp');
+        // ⚠️ A BROWSER THAT CANNOT ENCODE WEBP RETURNS PNG AND SAYS NOTHING —
+        // and a PNG of a photograph is larger than the JPEG it came from. The
+        // type has to be checked, not assumed from the request.
+        if (!blob || blob.type !== 'image/webp') blob = await encode('image/jpeg');
+        if (!blob || blob.size >= (file.size || Infinity)) return file;
+
+        const base = String(file.name || 'photo').replace(/\.[^.]+$/, '') || 'photo';
+        const ext = blob.type === 'image/webp' ? '.webp' : '.jpg';
+        return new File([blob], base + ext, { type: blob.type });
+    }
+
     async uploadItemImage(userId, itemId, file) {
         if (!userId || !itemId) throw new Error('userId and itemId required');
         if (!file) throw new Error('Pick an image first.');
@@ -1492,13 +1556,18 @@ class DataService {
         if (!ALLOWED.includes(file.type)) {
             throw new Error('That file is not an image. Use a JPG, PNG or WebP.');
         }
-        // Checked here as well as in storage.rules. Rules refuse the upload with
-        // an opaque error; this refuses it with a sentence, before the person has
-        // waited for a 5 MB upload to fail.
+
+        // ⚠️ RESIZED BEFORE THE CAP IS CHECKED, deliberately. A 6 MB photo off a
+        // modern phone used to be refused outright; it is now ~80 KB and simply
+        // works. The cap stays as a backstop for the case the resize could not
+        // improve — storage.rules enforces the same 2 MB either way.
+        const sized = await this._rightSizeImage(file);
         const MAX = 2 * 1024 * 1024;
-        if (file.size > MAX) {
+        if (sized.size > MAX) {
             throw new Error('That image is larger than 2 MB. Use a smaller one.');
         }
+        file = sized;
+
         // The storage quota is a plan limit and applies to any bytes we keep.
         await this.assertCanUseStorage(userId, file.size || 0, { source: 'item_image' });
 
