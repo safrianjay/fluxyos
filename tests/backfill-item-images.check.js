@@ -67,6 +67,27 @@ async function photo(page, w, h, quality = 0.92) {
     ok(!/\s/.test(next), 'spaces in the original name do not survive into a Storage path');
     ok(next !== old, 'the new object never overwrites the original in place');
 
+    // ── The stamp, which is what idempotence actually rests on ──────────────
+    //
+    // ⚠️ SIZE ALONE IS NOT ENOUGH, and believing it was is the bug this
+    // assertion exists for. A photo that lands at 300KB is within bounds and
+    // already ours, but above `ALREADY_SMALL` — so a second run re-encoded it
+    // for a 1% gain, and a tenth run would have taken 1% off nine times. Found
+    // by re-running the dry run against production after the first commit; the
+    // browser assertions below never caught it because they only ever fed the
+    // encoder a small image.
+    const fs = require('fs');
+    const script = fs.readFileSync(
+        path.join(__dirname, '..', 'scripts', 'backfill-item-images.js'), 'utf8');
+    ok(/metadata: \{ metadata: \{ \[RIGHTSIZED_MARK\]: RIGHTSIZED_VERSION \} \}/.test(script),
+        'every object this script writes is stamped');
+    ok(/\(meta\.metadata \|\| \{\}\)\[RIGHTSIZED_MARK\]/.test(script),
+        'a stamped object is skipped at any size');
+    // The stamp must be read BEFORE the size heuristic, or a large stamped
+    // object falls through to the very branch the stamp exists to bypass.
+    ok(script.indexOf('[RIGHTSIZED_MARK]) { skipped') < script.indexOf('size <= ALREADY_SMALL'),
+        'the stamp is checked before the size heuristic');
+
     const browser = await chromium.launch();
     const page = await browser.newPage();
     await page.goto('about:blank');

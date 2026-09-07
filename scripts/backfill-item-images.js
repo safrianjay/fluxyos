@@ -35,9 +35,23 @@ const path = require('path');
 
 const MAX_EDGE = 1280;          // matches `_rightSizeImage` in db-service.js
 const QUALITY = 0.82;
-// A WebP under this is already the shape this backfill produces. Checked before
-// anything is downloaded twice or decoded at all.
+// A WebP under this is already the shape this backfill produces. A cheap skip
+// that avoids downloading and decoding at all — but only a HEURISTIC, and not
+// the thing idempotence rests on. See RIGHTSIZED_MARK.
 const ALREADY_SMALL = 160 * 1024;
+
+// ⚠️ WHAT ACTUALLY MAKES THIS IDEMPOTENT. Size alone is not enough: a photo that
+// comes out at 300KB is within bounds and already ours, but sits above the
+// threshold above — so a second run re-encoded it for a 1% gain, and a tenth run
+// would have taken 1% off nine times. Caught by re-running the dry run against
+// production after the first commit, not by the unit check, which only ever fed
+// it a small image.
+//
+// So every object this script writes is stamped, and a stamped object is never
+// touched again whatever its size. Client uploads carry no stamp, which is
+// correct — they get processed once and stamped on the way through.
+const RIGHTSIZED_MARK = 'rightsized';
+const RIGHTSIZED_VERSION = 'v1';
 
 /**
  * Decode, downscale and re-encode one image, in Chromium.
@@ -173,6 +187,10 @@ async function main() {
                 const file = bucket.file(oldPath);
                 const [meta] = await file.getMetadata();
                 const size = Number(meta.size) || 0;
+                // Already ours: never re-encode, at any size.
+                if ((meta.metadata || {})[RIGHTSIZED_MARK]) { skipped += 1; continue; }
+                // Cheap heuristic for anything this script has not written but
+                // is plainly already the right shape.
                 if (/\.webp$/i.test(oldPath) && size <= ALREADY_SMALL) {
                     skipped += 1;
                     continue;
@@ -201,7 +219,8 @@ async function main() {
                 const newPath = nextPath(oldPath, sized.contentType);
                 await bucket.file(newPath).save(sized.bytes, {
                     contentType: sized.contentType,
-                    resumable: false
+                    resumable: false,
+                    metadata: { metadata: { [RIGHTSIZED_MARK]: RIGHTSIZED_VERSION } }
                 });
                 await doc.ref.update({
                     image_path: newPath,
@@ -230,7 +249,7 @@ async function main() {
     else console.log('');
 }
 
-module.exports = { rightSize, nextPath, MAX_EDGE, QUALITY, ALREADY_SMALL };
+module.exports = { rightSize, nextPath, MAX_EDGE, QUALITY, ALREADY_SMALL, RIGHTSIZED_MARK, RIGHTSIZED_VERSION };
 
 // Only when invoked directly, so the check above can require the encoder
 // without a service-account key.

@@ -582,10 +582,18 @@ than the original is discarded.
 so its output matches a fresh upload rather than merely resembling it. Dry run by
 default; `--commit` writes, `--prune` deletes the original afterwards (it is kept
 otherwise, because the resize is lossy and these are customers' photographs).
-⚠️ It is **idempotent by construction** — an already-in-bounds WebP under 160KB is
-skipped, because re-encoding one shrinks it again and a backfill that re-processes
-its own output loses a little quality every run. Guard:
-`tests/backfill-item-images.check.js`.
+⚠️ It is **idempotent by a STAMP, not by size**. Every object it writes carries
+`metadata.rightsized`, and a stamped object is skipped at any size. A size
+heuristic alone was not enough and shipped once: a photo that lands at 300KB is
+within bounds and already ours but above the 160KB threshold, so a second run
+re-encoded it for a 1% gain — and a tenth run would have taken 1% off nine
+times. Found by re-running the dry run against production after the first
+commit. Guard: `tests/backfill-item-images.check.js`.
+
+**Production run, 2026-09-08:** 28 items with photos across 24 workspaces.
+10 rewritten, 0 failed, 3426KB → 1516KB (56%); the worst offender was a
+4318×4318 photo at 1513KB, now 285KB. A subsequent dry run reports 0 to
+rewrite, which is the convergence proof.
 
 ### Not a `document`
 
