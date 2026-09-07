@@ -2542,6 +2542,154 @@ test.describe('QR customer ordering', () => {
         expect(posts, 'the button re-armed and sent a second doomed order').toBe(1);
     });
 
+    // ── A menu outside Indonesia ────────────────────────────────────────
+    //
+    // The switcher offers Bahasa because Indonesia is the home market. A
+    // Singapore, Malaysian or Philippine outlet has no use for it.
+
+    test('A SINGAPORE MENU IS ENGLISH, WITH NO SWITCH TO GET IT WRONG WITH',
+        async ({ page }) => {
+            const capture = {};
+            await stub(page, { capture });
+            await page.route('**/qr-menu?**', (route) => route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ ...MENU, country: 'SG', currency: 'SGD' })
+            }));
+            // ⚠️ PINNED TO BAHASA, which is the case that matters: a diner who
+            // chose Indonesian in Jakarta must not carry it into a menu whose
+            // staff do not read it, holding a control that only offers the two
+            // languages the home market cares about.
+            await goTo(page, 'id');
+
+            const gate = page.locator('#sheet-welcome');
+            await expect(gate).toHaveClass(/is-open/, { timeout: 15_000 });
+            await expect(page.locator('#welcome-go')).toHaveText('Start ordering');
+
+            await page.locator('#welcome-name').fill('Wei Ling');
+            await page.locator('#welcome-phone').fill('8123 4567');
+            await page.locator('#welcome-go').click();
+            await expect(gate).not.toHaveClass(/is-open/);
+
+            // The switcher is gone — and actually gone, not merely `hidden`:
+            // `[hidden]` is a UA rule and the button's own `display: inline-flex`
+            // beats it without an explicit override.
+            await expect(page.locator('#lang-btn')).toBeHidden();
+
+            // Every rendered surface, not just the static markup.
+            await expect(page.locator('#chips .chip').first()).toContainText('All');
+            await expect(page.locator('#search')).toHaveAttribute('placeholder', 'Search the menu…');
+            await expect(page.locator('.tab[data-tab="orders"]')).toContainText('Orders');
+            await expect(page.locator('#table-label')).toHaveText('Table A04');
+            expect(await page.getAttribute('html', 'lang')).toBe('en');
+
+            // ⚠️ AND THE MONEY IS SINGAPOREAN. A peso or dollar menu printing
+            // rupiah is the silent failure the money seam exists for.
+            const price = await page.locator('.card', { hasText: 'Americano' })
+                .locator('.card-price').innerText();
+            expect(price, `menu still priced in rupiah: ${price}`).not.toContain('Rp');
+            expect(price).toMatch(/\$/);
+        });
+
+    test('THE KITCHEN NOTE FOLLOWS THE KITCHEN, NOT INDONESIA', async ({ page }) => {
+        // The cutlery note prints on the ticket a COOK reads. It never follows
+        // the diner's language — but it was hardcoded Indonesian, so a Singapore
+        // cook was handed "Tanpa sendok garpu" on every order.
+        const capture = {};
+        await stub(page, { capture });
+        await page.route('**/qr-menu?**', (route) => route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ ...MENU, country: 'SG', currency: 'SGD' })
+        }));
+        await open(page);
+        await addPlain(page, 'Americano');
+        await page.locator('#cart-open').click();
+        await page.locator('#cart-cutlery').check();
+        await page.locator('#cart-submit').click();
+        await expect(page.locator('#sheet-done')).toHaveClass(/is-open/);
+
+        expect(capture.body.note).toContain('No cutlery');
+        expect(capture.body.note).not.toContain('Tanpa sendok garpu');
+    });
+
+    test('an Indonesian outlet keeps its switcher and its kitchen Indonesian',
+        async ({ page }) => {
+            const capture = {};
+            await stub(page, { capture });
+            await page.route('**/qr-menu?**', (route) => route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ ...MENU, country: 'ID', currency: 'IDR' })
+            }));
+            await open(page, 'en');
+            await expect(page.locator('#lang-btn')).toBeVisible();
+            await addPlain(page, 'Americano');
+            await page.locator('#cart-open').click();
+            await page.locator('#cart-cutlery').check();
+            await page.locator('#cart-submit').click();
+            await expect(page.locator('#sheet-done')).toHaveClass(/is-open/);
+            expect(capture.body.note).toContain('Tanpa sendok garpu');
+        });
+
+    test('THE PHONE GATE ACCEPTS THE LOCAL NUMBER, NOT INDONESIA\'S', async ({ page }) => {
+        // ⚠️ A SINGAPORE MOBILE IS EIGHT DIGITS (8123 4567) and this gate
+        // demanded nine, which is Indonesia's floor — so a diner in Singapore
+        // could not get past the identity gate at all. Nobody reported it;
+        // writing the Singapore menu spec is what walked into it.
+        await stub(page);
+        await page.route('**/qr-menu?**', (route) => route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ ...MENU, country: 'SG', currency: 'SGD' })
+        }));
+        await goTo(page);
+
+        const gate = page.locator('#sheet-welcome');
+        await expect(gate).toHaveClass(/is-open/, { timeout: 15_000 });
+        await page.locator('#welcome-name').fill('Wei Ling');
+
+        // Seven is short anywhere, and must still be refused.
+        await page.locator('#welcome-phone').fill('812 3456');
+        await page.locator('#welcome-go').click();
+        await expect(gate, 'a seven-digit number was accepted').toHaveClass(/is-open/);
+        await expect(page.locator('#welcome-error')).toContainText(/not complete/i);
+
+        // Eight is a real Singapore mobile.
+        await page.locator('#welcome-phone').fill('8123 4567');
+        await page.locator('#welcome-go').click();
+        await expect(gate, 'a real Singapore mobile was refused').not.toHaveClass(/is-open/);
+    });
+
+    test('Indonesia keeps its own floor', async ({ page }) => {
+        // The loosening must not follow the home market: eight digits is not a
+        // real Indonesian mobile and accepting one would lose the kitchen a way
+        // to reach the diner.
+        await stub(page);
+        await page.route('**/qr-menu?**', (route) => route.fulfill({
+            status: 200, contentType: 'application/json',
+            body: JSON.stringify({ ...MENU, country: 'ID' })
+        }));
+        await goTo(page);
+        const gate = page.locator('#sheet-welcome');
+        await expect(gate).toHaveClass(/is-open/, { timeout: 15_000 });
+        await page.locator('#welcome-name').fill('Sinta');
+        await page.locator('#welcome-phone').fill('0812 345');       // 8 digits
+        await page.locator('#welcome-go').click();
+        await expect(gate).toHaveClass(/is-open/);
+    });
+
+    test('an outlet that never answered the country question is unchanged',
+        async ({ page }) => {
+            // ⚠️ NULL IS NOT "FOREIGN". Most live workspaces predate the field;
+            // treating a missing country as non-Indonesian would take the Bahasa
+            // switcher away from the entire home market.
+            await stub(page);          // MENU carries no `country` at all
+            await open(page, 'id');
+            await expect(page.locator('#lang-btn')).toBeVisible();
+            await expect(page.locator('#chips .chip').first()).toContainText('Semua');
+        });
+
     test('a paid sitting is not shown to the next diner', async ({ page }) => {
         // The endpoint excludes paid orders, so a fresh scan sees the empty
         // state rather than the previous party's settled bill. Measured on the

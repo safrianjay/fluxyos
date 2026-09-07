@@ -217,6 +217,13 @@ exports.handler = async (event) => {
                 // The page renders every amount through FluxyMoney, which needs
                 // the workspace's own currency or a peso menu prints rupiah.
                 currency: ['IDR', 'PHP', 'SGD', 'MYR'].includes(ws.base_currency) ? ws.base_currency : 'IDR',
+                // ⚠️ WHAT LANGUAGE THIS MENU IS FOR. The page offers a Bahasa
+                // switcher because Indonesia is the home market; a diner in
+                // Singapore has no use for it, and a stored 'id' from a Jakarta
+                // restaurant would otherwise follow them into a menu whose staff
+                // do not read it. Free here — the workspace doc is already read
+                // for the currency two lines up.
+                country: ['ID', 'PH', 'SG', 'MY'].includes(ws.country) ? ws.country : null,
                 categories: [...new Set(items.map((i) => i.category).filter(Boolean))],
                 // What this outlet charges on top, so the CART can show the same
                 // breakdown the bill will. Without it a diner reads Rp100.000 in

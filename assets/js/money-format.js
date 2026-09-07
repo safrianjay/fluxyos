@@ -86,21 +86,27 @@
               address: 'Jl. Sudirman No. 1, Jakarta 10210',
               business: 'Kopi Senja Digital', vendor: 'Toko Sinar Jaya',
               taxId: 'NPWP', taxIdSample: '00.000.000.0-000.000',
+              salesTax: 'PPN', salesTaxRate: 11,
               name: 'Indonesia', timezone: 'Asia/Jakarta' },
         PH: { dial: '+63', city: 'Makati', postal: '1200',
               address: '123 Ayala Avenue, Makati 1200',
               business: 'Manila Coffee House', vendor: 'Santos Trading',
               taxId: 'TIN', taxIdSample: '000-000-000-000',
+              salesTax: 'VAT', salesTaxRate: 12,
               name: 'Philippines', timezone: 'Asia/Manila' },
         SG: { dial: '+65', city: 'Singapore', postal: '238823',
               address: '10 Orchard Road, Singapore 238823',
               business: 'Orchard Coffee', vendor: 'Tan Supplies',
               taxId: 'UEN', taxIdSample: '200912345A',
+              salesTax: 'GST', salesTaxRate: 9,
               name: 'Singapore', timezone: 'Asia/Singapore' },
         MY: { dial: '+60', city: 'Kuala Lumpur', postal: '55100',
               address: 'Jalan Bukit Bintang 10, Kuala Lumpur 55100',
               business: 'Kuala Lumpur Coffee Co.', vendor: 'Lim Trading',
+              // Service tax, which is the one a restaurant charges. Malaysia's
+              // 10% sales tax is on goods and does not apply to a dine-in bill.
               taxId: 'Tax Identification No.', taxIdSample: 'C1234567890',
+              salesTax: 'SST', salesTaxRate: 8,
               name: 'Malaysia', timezone: 'Asia/Kuala_Lumpur' }
     };
 
@@ -173,6 +179,19 @@
     // refinement belongs on a per-outlet field if an eastern outlet ever ships,
     // and `settings/company.timezone` already allows those values for when it does.
     function baseTimeZone() { return countryProfile().timezone; }
+
+    /**
+     * What this country calls the tax on a restaurant bill, and at what rate.
+     *
+     * ⚠️ 'PPN' WAS HARDCODED IN FOUR PLACES as the POS default, so a Singapore
+     * outlet's receipts, its settings screen and its diners' bills all said
+     * PPN — an Indonesian tax that shop does not charge. The label is stored per
+     * outlet and snapshotted onto every order, so this is only ever a DEFAULT:
+     * an owner who types something else keeps it, and an order already placed
+     * keeps whatever it was charged under.
+     */
+    function defaultTaxLabel(country) { return countryProfile(country).salesTax; }
+    function defaultTaxRate(country) { return countryProfile(country).salesTaxRate; }
 
     // Offset of `zone` from UTC at a given instant, in ms. Written generically
     // rather than hardcoding +7/+8: none of the four supported zones observes DST
@@ -476,6 +495,8 @@
         COUNTRY_LABELS: COUNTRY_LABELS,
         COUNTRY_PROFILES: COUNTRY_PROFILES,
         countryProfile: countryProfile,
+        defaultTaxLabel: defaultTaxLabel,
+        defaultTaxRate: defaultTaxRate,
         paintCountryExamples: paintCountryExamples,
         DEFAULT_BASE: DEFAULT_BASE,
 

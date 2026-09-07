@@ -241,6 +241,11 @@ function laneBE(changed) {
   // for — is exactly the kind of thing a later refactor re-couples by accident.
   ok = record('be', run('check:pos-payment-latency (payment does not wait on the ledger)', 'node', ['tests/pos-payment-latency.check.js'])) && ok;
   ok = record('be', run('check:qr-image (no public URL, refuses before Firebase)', 'node', ['tests/qr-menu-image.check.js'])) && ok;
+  // Unconditional. Both failures it guards are SILENT — the app renders
+  // perfectly, in the wrong language, naming a tax the shop does not charge —
+  // and the files that cause them (the dictionary, the money seam, the till's
+  // defaults) are rarely the files being edited when one is reintroduced.
+  ok = record('be', run('check:market-i18n (a non-Indonesian workspace gets its own language and tax word)', 'node', ['tests/market-localisation.check.js'])) && ok;
   // Unconditional, and the sharpest of the three. `wsPosOrderKeys` is a
   // `hasOnly`, so a key qr-order writes that the rules do not allow succeeds
   // when written (Admin SDK bypasses rules) and then fails EVERY later till

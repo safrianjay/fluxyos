@@ -370,6 +370,10 @@ img { max-width: 100%; display: block; }
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
 }
+/* ⚠️ `[hidden]` IS A UA RULE AND `display: inline-flex` ABOVE BEATS IT. Without
+   this the switcher stays on screen for a Singapore outlet with `hidden` set and
+   nothing to show for it. */
+.lang-btn[hidden] { display: none; }
 .lang-btn svg { width: 15px; height: 15px; display: block; }
 /* Two letters, so the pill does not resize between EN and ID and shift the
    hero's only control a pixel sideways on every switch. */
@@ -3360,6 +3364,46 @@ html.kb-open .welcome-art { display: none; }
     })();
 
     /**
+     * The country this menu belongs to, from `qr-menu`. Null until it loads.
+     *
+     * ⚠️ ONE SWITCH, ONE MARKET. Bahasa is on offer because Indonesia is the
+     * home market. A Singapore, Malaysian or Philippine outlet has no use for
+     * it — and a stored 'id' from a Jakarta restaurant would otherwise follow a
+     * diner into a menu whose staff do not read it, with a control to change it
+     * that only offers the two languages the home market cares about.
+     */
+    var outletCountry = null;
+    function englishOnly() { return !!outletCountry && outletCountry !== 'ID'; }
+
+    /**
+     * The shortest real mobile number in the outlet's country.
+     *
+     * ID 9 (0812 3456 789), SG 8 (8123 4567), MY 9 (012 345 6789 without the
+     * trunk zero), PH 10 (917 123 4567). An unknown country keeps Indonesia's,
+     * which is what every existing workspace is.
+     */
+    var PHONE_MIN_DIGITS = { ID: 9, SG: 8, MY: 9, PH: 10 };
+    function phoneMinDigits() { return PHONE_MIN_DIGITS[outletCountry] || 9; }
+
+    /**
+     * Settle the language against the outlet, once its country is known.
+     *
+     * The forced value is deliberately NOT written to storage: a diner who
+     * chose Bahasa in Jakarta and then eats in Singapore should find their own
+     * choice waiting when they scan a Jakarta table again.
+     */
+    function applyOutletLanguage(country) {
+        outletCountry = country || null;
+        var btn = $('lang-btn');
+        if (btn) btn.hidden = englishOnly();
+        if (englishOnly() && lang !== 'en') {
+            lang = 'en';
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * A phrase, in the diner's language.
      *
      * Falls back through Indonesian to the KEY, never to blank: a missing
@@ -3383,12 +3427,18 @@ html.kb-open .welcome-art { display: none; }
     }
 
     /**
-     * ⚠️ THE ONE STRING THAT DOES NOT TRANSLATE. This rides along on the note
+     * ⚠️ THIS ONE FOLLOWS THE KITCHEN, NOT THE DINER. It rides along on the note
      * that PRINTS IN THE KITCHEN, and the cook reading it did not switch the
-     * language — the diner did. Translating it would put English on an
-     * Indonesian kitchen ticket, which is the opposite of helping.
+     * language — so it never follows `lang`.
+     *
+     * But it does not follow INDONESIA either, which is what it did at first: a
+     * Singapore cook was being handed "Tanpa sendok garpu" on every ticket. It
+     * follows the outlet's own country, which is the closest this page can get
+     * to the language spoken in that kitchen.
      */
-    var CUTLERY_NOTE = 'Tanpa sendok garpu';
+    function cutleryNote() {
+        return outletCountry && outletCountry !== 'ID' ? 'No cutlery' : 'Tanpa sendok garpu';
+    }
 
     /**
      * Static markup carries its copy in `data-i18n` attributes rather than as
@@ -3659,10 +3709,14 @@ html.kb-open .welcome-art { display: none; }
         clearWelcomeInvalid();
 
         if (!name) { bad = t('welcome.needName'); flag('welcome-name'); }
-        // Nine digits is the shortest real Indonesian mobile number. Checking
-        // DIGITS rather than length lets someone type +62 812-3456-7890 with
-        // whatever spacing their keyboard gives them.
-        else if (digits.length < 9) {
+        // ⚠️ THE FLOOR IS A COUNTRY FACT, and it was Indonesia's. Nine digits is
+        // the shortest real Indonesian mobile — and a Singapore mobile is EIGHT
+        // (8123 4567), so a diner in Singapore could not get past this gate at
+        // all. Found by the spec for the Singapore menu, not by anyone using it.
+        //
+        // Checking DIGITS rather than length is what lets someone type
+        // +62 812-3456-7890 with whatever spacing their keyboard gives them.
+        else if (digits.length < phoneMinDigits()) {
             bad = t('welcome.needPhone');
             flag('welcome-phone');
         }
@@ -3727,6 +3781,12 @@ html.kb-open .welcome-art { display: none; }
                 die('error.nomenu');
                 return;
             }
+            // ⚠️ BEFORE THE FIRST PAINT. Every render below reads `lang`, so a
+            // non-Indonesian outlet has to have settled on English by now or the
+            // menu paints once in the wrong language and again in the right one.
+            if (applyOutletLanguage(data.country)) repaintCopy();
+            else if ($('lang-btn')) $('lang-btn').hidden = englishOnly();
+
             paintHeader();
             paintChips();
             paintMenu();
@@ -4927,6 +4987,7 @@ html.kb-open .welcome-art { display: none; }
     }
 
     function setLang(next) {
+        if (englishOnly()) return;          // the control is hidden; belt and braces
         if (LANGS.indexOf(next) < 0 || next === lang) return;
         lang = next;
         try { localStorage.setItem(LANG_KEY, lang); } catch (_) { /* private mode */ }
@@ -5838,7 +5899,7 @@ html.kb-open .welcome-art { display: none; }
         // Folded in here rather than carried as its own field: `pos_orders` has
         // no cutlery flag, and the note is the only thing the kitchen reads.
         var outgoingNote = noCutlery
-            ? (cartNote ? cartNote + ' · ' + CUTLERY_NOTE : CUTLERY_NOTE).slice(0, 200)
+            ? (cartNote ? cartNote + ' · ' + cutleryNote() : cutleryNote()).slice(0, 200)
             : cartNote;
 
         submitting = true;

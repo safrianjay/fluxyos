@@ -4380,18 +4380,31 @@ function openReceipt(order, { billId = null } = {}) {
     // One ticket's own arithmetic: subtotal → discount → service → tax → total.
     // Rendered per ticket on a merged bill and as the whole totals block on a
     // single one, so the two can never state a charge differently.
+    // ⚠️ AUTHORED IN ENGLISH AND PUT THROUGH `tr()`, like every other surface
+    // here. These four were hardcoded Indonesian — 'Diskon', 'Layanan',
+    // 'Pajak', 'Termasuk' — so a Singapore till printed Indonesian receipts
+    // whatever language the rest of the app was in. The receipt cannot rely on
+    // `translatePage()` either: it is written into a NEW WINDOW, which the
+    // observer never reaches. `tr()` runs here, in this document, before the
+    // markup is handed over.
+    //
+    // The tax WORD still comes off the order's own snapshot first — that is
+    // what the customer was charged under, and it must not change because a
+    // setting did.
+    const taxWord = (x) => (x.pos_pricing || {}).tax_label
+        || (window.FluxyMoney ? window.FluxyMoney.defaultTaxLabel() : tr('Tax'));
     const ticketTotals = (x) => [
-        row('Subtotal', rp(x.subtotal)),
+        row(tr('Subtotal'), rp(x.subtotal)),
         Number(x.discount_total) > 0
-            ? row(x.discount_reason || 'Diskon', `\u2212${rp(x.discount_total)}`, 'dsc') : '',
-        Number(x.service_charge_amount) > 0 ? row('Layanan', rp(x.service_charge_amount)) : '',
+            ? row(x.discount_reason || tr('Discount'), `\u2212${rp(x.discount_total)}`, 'dsc') : '',
+        Number(x.service_charge_amount) > 0 ? row(tr('Service'), rp(x.service_charge_amount)) : '',
         Number(x.tax_amount) > 0 && !(x.pos_pricing || {}).tax_inclusive
-            ? row((x.pos_pricing || {}).tax_label || 'Pajak', rp(x.tax_amount)) : '',
-        row('Total', rp(x.total_amount), 'tot'),
+            ? row(taxWord(x), rp(x.tax_amount)) : '',
+        row(tr('Total'), rp(x.total_amount), 'tot'),
         // Inclusive tax sits INSIDE the prices above, so it is stated after the
         // total rather than added to it.
         Number(x.tax_amount) > 0 && (x.pos_pricing || {}).tax_inclusive
-            ? row(`Termasuk ${(x.pos_pricing || {}).tax_label || 'Pajak'}`, rp(x.tax_amount)) : ''
+            ? row(`${tr('Includes')} ${taxWord(x)}`, rp(x.tax_amount)) : ''
     ].join('');
     // Every settled payment across the bill, with the ones taken TOGETHER folded
     // back into one row. `payPosTableBill` writes a payment per ticket sharing a

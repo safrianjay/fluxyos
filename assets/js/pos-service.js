@@ -627,7 +627,11 @@ export const POS_METHODS = {
             hours: this._normalizeOpeningHours(payload.hours),
             cover_image_path: this._nullableString(payload.cover_image_path, 300),
             tax_enabled: payload.tax_enabled === true,
-            tax_label: this._nullableString(payload.tax_label, 24) || 'PPN',
+            // The country's own word for the tax on a bill, not Indonesia's.
+            // Stored per outlet and snapshotted onto every order, so this is a
+            // default an owner can overwrite and a placed order never re-reads.
+            tax_label: this._nullableString(payload.tax_label, 24)
+                || (window.FluxyMoney ? window.FluxyMoney.defaultTaxLabel() : 'PPN'),
             tax_rate_percent: pct(payload.tax_rate_percent),
             tax_inclusive: payload.tax_inclusive === true,
             service_enabled: payload.service_enabled === true,

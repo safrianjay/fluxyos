@@ -38,6 +38,7 @@
     "check:pos-availability": "node tests/pos-availability.check.js",
     "check:pos-payment-latency": "node tests/pos-payment-latency.check.js",
     "report:grni": "node scripts/grni-match-report.js",
+    "check:market-i18n": "node tests/market-localisation.check.js",
     "check:qr-image": "node tests/qr-menu-image.check.js",
     "check:qr-order": "node tests/qr-order.check.js",
     "check:order-page": "node tests/order-page.check.js",

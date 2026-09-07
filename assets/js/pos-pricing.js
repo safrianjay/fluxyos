@@ -44,6 +44,10 @@
     // stay 0 and the journal is byte-identical to what shipped before.
     var DEFAULTS = {
         tax_enabled: false,
+        // ⚠️ A FALLBACK OF LAST RESORT, not the answer. Every caller that knows
+        // the workspace passes the country's own word — PPN, GST, SST or VAT —
+        // via `FluxyMoney.defaultTaxLabel()`. This module is pure and has no
+        // workspace, so it cannot look it up itself.
         tax_label: 'PPN',
         tax_rate_percent: 0,
         tax_inclusive: false,

@@ -671,6 +671,7 @@
         "Items": "Item",
         "Qty": "Jml",
         "Total": "Total",
+        "Includes": "Termasuk",
         "Subtotal": "Subtotal",
         "Country": "Negara",
         "Email": "Email",
@@ -6583,12 +6584,36 @@
     }
     // ─────────────────────────────────────────────────────────────────────────
 
+    /** An explicit choice from Settings → Language & Region, or null. */
+    function storedLang() {
+        try {
+            var v = localStorage.getItem(STORAGE_KEY);
+            return (v === 'en' || v === 'id') ? v : null;
+        } catch (e) { return null; }
+    }
+
+    /** The workspace's country, once `workspace-service.js` has resolved it. */
+    function workspaceCountry() {
+        var ws = (typeof window !== 'undefined') && window.FluxyWorkspace;
+        return (ws && typeof ws.country === 'string' && ws.country) ? ws.country : null;
+    }
+
     function getLang() {
-        // Bahasa Indonesia is the dashboard default; English is the opt-out
-        // (Settings → Language & Region). Only an explicit stored 'en' switches
-        // the app to English. The landing engine (i18n.js) keeps its own default.
-        try { return localStorage.getItem(STORAGE_KEY) === 'en' ? 'en' : 'id'; }
-        catch (e) { return 'id'; }
+        // An explicit choice always wins, in either direction.
+        var stored = storedLang();
+        if (stored) return stored;
+
+        // ⚠️ THE DEFAULT FOLLOWS THE BUSINESS, NOT THE PRODUCT. Bahasa is the
+        // dashboard's default because Indonesia is the home market — but a
+        // Singapore, Malaysian or Philippine workspace was getting the whole
+        // till and inventory in Indonesian, which is not a translation problem,
+        // it is the wrong language. Reported by Jay.
+        //
+        // Unknown country falls back to Bahasa, because that is the market this
+        // default was written for and a workspace that has not answered the
+        // question is overwhelmingly likely to be in it.
+        var country = workspaceCountry();
+        return (country && country !== 'ID') ? 'en' : 'id';
     }
 
     function setLang(lang) {
@@ -6705,7 +6730,36 @@
     };
 
     function init() {
-        if (getLang() === 'id') translatePage();
+        // ⚠️ THE PAGES ARE AUTHORED IN ENGLISH and `translatePage()` converts
+        // them to Bahasa, which is a ONE-WAY trip — the originals are not kept,
+        // and `setLang` reverts by reloading for exactly that reason. So
+        // translating before the country is known would paint a Singapore till
+        // Indonesian with nothing able to paint it back.
+        //
+        // With an explicit choice, or a country already resolved, decide now.
+        if (storedLang() || workspaceCountry()) {
+            if (getLang() === 'id') translatePage();
+            return;
+        }
+
+        // Otherwise wait for the workspace. This costs nothing visible: every
+        // page that gets here boots under `.fluxy-booting`, which already masks
+        // first paint until the workspace resolves so IDR defaults cannot flash.
+        var decided = false;
+        var decide = function () {
+            if (decided) return;
+            decided = true;
+            if (getLang() === 'id') translatePage();
+        };
+        var ws = (typeof window !== 'undefined') && window.FluxyWorkspace;
+        if (ws && typeof ws.whenReady === 'function') {
+            ws.whenReady().then(decide, decide);
+        }
+        // ⚠️ AND A RESOLUTION THAT NEVER LANDS MUST NOT LEAVE AN INDONESIAN
+        // WORKSPACE IN ENGLISH. Signed out, offline, or a page that never loads
+        // the workspace service at all: fall back to the default rather than
+        // silently changing the language of the app for the home market.
+        setTimeout(decide, 2500);
     }
 
     if (document.readyState === 'loading') {

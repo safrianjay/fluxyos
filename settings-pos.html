@@ -497,6 +497,14 @@
         const ds = new DataService(app);
 
         const $ = (id) => document.getElementById(id);
+        // ⚠️ THE COUNTRY'S OWN WORD FOR THE TAX ON A BILL — PPN, GST, SST, VAT.
+        // 'PPN' was hardcoded here and in three other places, so a Singapore
+        // outlet's settings screen, its receipts and its diners' bills all named
+        // an Indonesian tax it does not charge. Only ever a DEFAULT: whatever an
+        // owner types wins, and an order already placed keeps what it was
+        // charged under.
+        const taxWord = () =>
+            (window.FluxyMoney ? window.FluxyMoney.defaultTaxLabel() : 'PPN');
         const DAYS = [
             ['mon', 'Monday'], ['tue', 'Tuesday'], ['wed', 'Wednesday'], ['thu', 'Thursday'],
             ['fri', 'Friday'], ['sat', 'Saturday'], ['sun', 'Sunday']
@@ -816,7 +824,7 @@
             $('pos-address').value = settings.address || '';
             $('pos-phone').value = settings.phone || '';
             $('pos-tax-enabled').checked = settings.tax_enabled === true;
-            $('pos-tax-label').value = settings.tax_label || 'PPN';
+            $('pos-tax-label').value = settings.tax_label || taxWord();
             $('pos-tax-rate').value = settings.tax_rate_percent || 0;
             $('pos-tax-inclusive').value = settings.tax_inclusive === true ? 'true' : 'false';
             $('pos-service-enabled').checked = settings.service_enabled === true;
@@ -897,7 +905,7 @@
         function readRateForm() {
             return {
                 tax_enabled: $('pos-tax-enabled').checked,
-                tax_label: $('pos-tax-label').value.trim() || 'PPN',
+                tax_label: $('pos-tax-label').value.trim() || taxWord(),
                 tax_rate_percent: Number($('pos-tax-rate').value) || 0,
                 tax_inclusive: $('pos-tax-inclusive').value === 'true',
                 service_enabled: $('pos-service-enabled').checked,
