@@ -597,9 +597,20 @@ test.describe('QR customer ordering', () => {
         expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
 
         // Nothing is trapped underneath it.
+        // ⚠️ THE CLEARANCE IS MEASURED, NOT A CONSTANT. It was a hardcoded
+        // `96px` — exactly the bar's height on the day it was written — so
+        // restyling the bar trapped the last panel under it with nothing to
+        // say so. This assertion is what caught that; the guard below is what
+        // stops the constant coming back.
         const lastPanel = await page.locator('.page-body > *').last().boundingBox();
         expect(lastPanel.y + lastPanel.height,
             'the last panel is hidden behind the commit bar').toBeLessThanOrEqual(box.y + 1);
+        const reserved = await page.evaluate(() =>
+            getComputedStyle(document.documentElement).getPropertyValue('--foot-space').trim());
+        expect(reserved, '--foot-space was never measured').toMatch(/^\d+px$/);
+        expect(parseFloat(reserved),
+            'the reserved space is smaller than the bar it is reserving for')
+            .toBeGreaterThanOrEqual(box.height);
 
         // And it carries who the order is for — the last thing checked before
         // committing belongs beside the commit.
@@ -1912,8 +1923,16 @@ test.describe('QR customer ordering', () => {
         // One illustration, for the step it is actually on.
         await expect(sheet.locator('.ostage-art')).toHaveAttribute('src', /cooked\.webp$/);
         await expect(sheet.locator('.ostage-now')).toHaveText('Sedang dimasak');
-        await expect(sheet.locator('.ostage-no')).toHaveText('2026-09-03-004');
-        await expect(sheet.locator('.ostage-time')).not.toHaveText('');
+        // ⚠️ THE TICKET NUMBER LIVES WITH THE TITLE, not under the picture: it
+        // is the reference a diner reads out to staff, and the illustration is
+        // the answer to a different question.
+        await expect(page.locator('#orders-no')).toHaveText('2026-09-03-004');
+        await expect(page.locator('#orders-no')).toBeVisible();
+        await expect(page.locator('#orders-sub')).toContainText('Meja A04');
+        await expect(page.locator('#orders-sub')).toContainText('lalu');   // how long ago
+        // And no subtitle promising a WhatsApp message on a screen the diner is
+        // already reading.
+        await expect(sheet.locator('.ostage-hint')).toHaveCount(0);
 
         // Lines carry the same thumbnail treatment as the order page, so a
         // diner recognises a dish rather than re-reading its name.
@@ -1996,14 +2015,17 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('#bill-hint')).toContainText('pindai QR lagi');
 
         await btn.click();
-        await expect(page.locator('.bill-called')).toBeVisible();
         expect(billCalls).toBe(1);
 
         // Once asked for, there is nothing left to press.
         await expect(btn).toBeHidden();
         await expect(page.locator('.ostage-now')).toHaveText('Pembayaran');
         await expect(page.locator('.ostage-art')).toHaveAttribute('src', /payment\.webp$/);
-        await expect(page.locator('.ostage-hint')).toContainText('Kasir');
+        // ⚠️ THE GREEN STRIP IS GONE and its sentence is the step's subtitle.
+        // It was answering "what is happening now", which is what this line is
+        // for; below the steps it was a second status making the same claim.
+        await expect(page.locator('.bill-called')).toHaveCount(0);
+        await expect(page.locator('.ostage-hint')).toContainText('bayar di kasir');
         // And the page says what happens next: paying frees the table, and
         // ordering again means scanning again.
         await expect(page.locator('.orders-foot')).toContainText('Pindai QR');

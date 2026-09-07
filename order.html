@@ -78,6 +78,10 @@
     --r-md: 12px;
     --r-lg: 16px;
     --r-xl: 20px;
+    /* The ground the five diner illustrations are drawn on, sampled from their
+       own corner pixels (#FEF4EC on four of five). The sheet's top section
+       carries it so a picture never sits on a white shelf inside a warm frame. */
+    --warm: #FEF4EC;
 
     --shadow-sheet: 0 -8px 40px -12px rgba(11, 15, 25, 0.22);
     --shadow-bar:   0 -2px 16px -8px rgba(11, 15, 25, 0.18);
@@ -981,9 +985,10 @@ img { max-width: 100%; display: block; }
    566px below the fold on a six-line order. */
 .page-body {
     padding: 14px 16px 16px;
-    /* Clears the fixed footer bar, so the last panel is never trapped
-       under it. */
-    padding-bottom: calc(96px + var(--safe-bottom));
+    /* Clears the fixed footer bar, so the last panel is never trapped under it.
+       ⚠️ MEASURED AT RUNTIME by syncFootSpace() — see there for why a constant
+       here is a trap. The fallback is only for the frame before it runs. */
+    padding-bottom: calc(var(--foot-space, 132px) + var(--safe-bottom));
 }
 
 .panel {
@@ -1119,14 +1124,44 @@ img { max-width: 100%; display: block; }
 .page-foot-inner { max-width: 640px; margin: 0 auto; }
 /* Who the order goes out under, in the bar rather than adrift above it. It is
    the last thing a diner checks before committing, so it belongs beside the
-   commit — not scrolled past on the way to it. */
+   commit — not scrolled past on the way to it.
+
+   ⚠️ A TINT, NOT A FILL. Orange as a solid block of brand colour is prohibited
+   project-wide; a 10% wash reading as a soft banner is the accent use the rule
+   exists to allow, and it is what makes this row look deliberate rather than
+   like text that fell out of the panel above. */
 .page-foot .who {
-    padding: 0 2px 8px;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin: 0 0 10px;
+    padding: 10px 14px;
     border: none;
-    background: none;
-    border-radius: 0;
+    border-radius: var(--r-lg);
+    background: rgba(234, 88, 12, 0.09);
     font-size: 12.5px;
+    color: #9A3412;
 }
+.page-foot .who strong { color: #7C2D12; font-weight: 700; }
+/* Empty when nobody has been identified — an empty tinted bar is a shelf with
+   nothing on it, and the gate means that state is rare but reachable. */
+.page-foot .who:empty { display: none; }
+
+/* ⚠️ THE ONE ORANGE BUTTON IN THE PRODUCT, and deliberately so: this is the
+   commit — the tap that sends food to a kitchen — and CLAUDE.md reserves
+   orange for exactly that. Everything else on this page stays ink. Rounder
+   than `--r-md` to match the reference Jay supplied; at 52px tall a 16px
+   radius is the pill-adjacent shape it shows without becoming a lozenge. */
+.page-foot #cart-submit {
+    height: 52px;
+    border-radius: var(--r-lg);
+    background: var(--accent);
+    box-shadow: 0 6px 16px -8px rgba(234, 88, 12, 0.7);
+    font-size: 15.5px;
+    font-weight: 700;
+    justify-content: space-between;
+    padding: 0 20px;
+}
+.page-foot #cart-submit:active { background: #DC5309; }
+.page-foot #cart-submit:disabled { box-shadow: none; }
 
 /* ==========================================================================
    Cart bar — the persistent bottom affordance
@@ -1438,7 +1473,31 @@ img { max-width: 100%; display: block; }
    ⚠️ ONE ILLUSTRATION AT A TIME. Three at once would be ~50px each, and these
    are detailed drawings that turn to mush at that size; the step you are ON is
    the one worth the room. The rule underneath says which of the three it is. */
-.ostage { text-align: center; padding: 4px 0 2px; }
+/* ⚠️ THE PICTURE MUST NOT SIT ON A WHITE SHELF. These illustrations carry
+   their own cream ground, so on `--surface` each one reads as a pasted
+   rectangle with a visible edge. The sheet's whole top section takes the same
+   colour instead — grip, head and the illustration block as one continuous
+   field — and the white page resumes at the first panel below it.
+
+   Full-bleed via negative margins that undo `.sheet-body`'s 20px inset,
+   because the field has to reach the sheet's own edges to read as the top of
+   the sheet rather than as a card inside it. */
+.sheet-warm .sheet-grip { background: rgba(11, 15, 25, 0.14); }
+.sheet-warm .sheet-grip,
+.sheet-warm .sheet-head { background: var(--warm); }
+.sheet-warm .sheet-head { border-bottom-color: rgba(11, 15, 25, 0.06); }
+/* The sheet's own rounded top has to be the warm colour too, or two corners of
+   white peek out above the head. */
+.sheet-warm { background: var(--warm); }
+.sheet-warm .sheet-body { background: var(--surface); }
+
+.ostage {
+    text-align: center;
+    margin: -4px -20px 0;
+    padding: 8px 20px 14px;
+    background: var(--warm);
+    border-radius: 0 0 var(--r-xl) var(--r-xl);
+}
 .ostage-art {
     /* Sized by HEIGHT, because the three illustrations do not share an aspect
        ratio and a fixed width would make the block jump as the order advances. */
@@ -1451,9 +1510,16 @@ img { max-width: 100%; display: block; }
     margin-top: 10px;
     font-size: 11.5px; font-weight: 600; color: var(--ink-50);
 }
-.ostage-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--ink-30); }
-.ostage-no { letter-spacing: 0.02em; }
-.ostage-time { flex: 0 0 auto; }
+.orders-head-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* A tinted chip, not a heavier weight of the title: it is a reference the diner
+   reads out to staff, so it needs to be findable rather than loud. */
+.orders-no {
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(234, 88, 12, 0.12);
+    color: #C2410C;
+    font-size: 11.5px; font-weight: 700; letter-spacing: 0.02em;
+}
 .ostage-now {
     font-size: 20px; font-weight: 700; letter-spacing: -0.025em;
     margin: 5px 0 0;
@@ -1535,7 +1601,13 @@ img { max-width: 100%; display: block; }
 .bill-called svg { width: 18px; height: 18px; flex: 0 0 auto; }
 
 /* Nothing ordered yet — a state, not a blank panel. */
-.orders-empty { text-align: center; padding: 34px 20px 26px; }
+.orders-empty {
+    text-align: center;
+    margin: -4px -20px 0;
+    padding: 22px 20px 26px;
+    background: var(--warm);
+    border-radius: 0 0 var(--r-xl) var(--r-xl);
+}
 /* An empty basket, not a grey tile with a plate glyph. This is what a diner
    sees before they have ordered, which is the state they are in longest. */
 .orders-empty-art {
@@ -1553,11 +1625,20 @@ img { max-width: 100%; display: block; }
 /* Taller than a menu sheet needs to be — this one is the whole message, and a
    half-height panel under a big illustration reads as a card that got cut off. */
 .sheet-closed { max-height: 88vh; }
-.closed-body { text-align: center; padding-top: 4px; }
+.closed-body { text-align: center; padding-top: 0; }
+/* ⚠️ A WRAPPER, NOT THE IMAGE. The warm field needs padding and a full-bleed
+   width; putting either on the <img> itself sets both width and height and
+   stretches the illustration. */
+.closed-artwrap {
+    margin: -4px -20px 14px;
+    padding: 14px 20px 10px;
+    background: var(--warm);
+    border-radius: 0 0 var(--r-xl) var(--r-xl);
+}
 .closed-art {
     height: 172px; width: auto; max-width: 74%;
     object-fit: contain;
-    display: block; margin: 0 auto 14px;
+    display: block; margin: 0 auto;
 }
 .closed-title { font-size: 19px; font-weight: 700; letter-spacing: -0.025em; margin: 0; }
 .closed-sub {
@@ -2359,11 +2440,16 @@ html.kb-open .welcome-art { display: none; }
 <!-- Order status. Read from the server, never from what this phone remembers:
      a cashier can void a line and the kitchen can mark a ticket ready, and a
      remembered list would be a confident lie about both. -->
-<div id="sheet-orders" class="sheet" role="dialog" aria-modal="true" aria-labelledby="orders-title">
+<div id="sheet-orders" class="sheet sheet-warm" role="dialog" aria-modal="true" aria-labelledby="orders-title">
     <div class="sheet-grip"></div>
     <div class="sheet-head">
         <div>
-            <h2 class="sheet-title" id="orders-title" data-i18n="orders.title">Pesanan Anda</h2>
+            <div class="orders-head-row">
+                <h2 class="sheet-title" id="orders-title" data-i18n="orders.title">Pesanan Anda</h2>
+                <!-- The ticket number, up here with the title rather than under
+                     the illustration: it is what a diner reads out to staff. -->
+                <span class="orders-no num" id="orders-no" hidden></span>
+            </div>
             <p class="sheet-sub" id="orders-sub">—</p>
         </div>
         <button class="sheet-close" type="button" data-close data-i18n-aria="common.close" aria-label="Tutup">✕</button>
@@ -2449,11 +2535,13 @@ html.kb-open .welcome-art { display: none; }
      what it will accept, and a scan two minutes after closing while the staff
      are still clearing tables is a conversation, not an error. So it can be
      dismissed and the menu read behind it. -->
-<div id="sheet-closed" class="sheet sheet-closed" role="dialog" aria-modal="true" aria-labelledby="closed-title">
+<div id="sheet-closed" class="sheet sheet-closed sheet-warm" role="dialog" aria-modal="true" aria-labelledby="closed-title">
     <div class="sheet-grip"></div>
     <div class="sheet-body closed-body">
-        <img class="closed-art" id="closed-art" alt="" decoding="async"
-             src="/assets/images/storeclose.webp" width="313" height="420">
+        <div class="closed-artwrap">
+            <img class="closed-art" id="closed-art" alt="" decoding="async"
+                 src="/assets/images/storeclose.webp" width="313" height="420">
+        </div>
         <h2 class="closed-title" id="closed-title" data-i18n="closed.title">Maaf, kami sudah tutup</h2>
         <p class="closed-sub" data-i18n="closed.sub">Dapur sudah tutup untuk hari ini, jadi pesanan belum bisa kami terima. Mohon maaf atas ketidaknyamanannya.</p>
         <p class="closed-hours num" id="closed-hours" hidden></p>
@@ -2873,6 +2961,7 @@ html.kb-open .welcome-art { display: none; }
             'orders.title': 'Pesanan Anda',
             'orders.addMore': 'Tambah pesanan',
             'orders.bill': 'Minta bill & bayar',
+            'orders.billAmount': 'Minta bill · {amt}',
             'orders.billHint': 'Kasir akan datang ke meja Anda.',
             'orders.billConfirm': 'Ketuk lagi untuk konfirmasi',
             'orders.billFine': 'Setelah dibayar, pesan lagi berarti pindai QR lagi.',
@@ -2916,9 +3005,7 @@ html.kb-open .welcome-art { display: none; }
             'stage.2': 'Disiapkan',
             'stage.3': 'Siap',
             'stage.4': 'Diantar',
-            'stage.hint.billed': 'Kasir sedang menuju meja Anda.',
             'stage.hint.served': 'Selamat menikmati.',
-            'stage.hint.default': 'Kami kabari lewat WhatsApp kalau ada perubahan.',
 
             'time.now': 'Baru saja',
             'time.mins': '{n} menit lalu',
@@ -3037,6 +3124,7 @@ html.kb-open .welcome-art { display: none; }
             'orders.title': 'Your Order',
             'orders.addMore': 'Order more',
             'orders.bill': 'Ask for the bill',
+            'orders.billAmount': 'Request bill · {amt}',
             'orders.billHint': 'A cashier will come to your table.',
             'orders.billConfirm': 'Tap again to confirm',
             'orders.billFine': 'Once it is paid, ordering again means scanning the QR again.',
@@ -3080,9 +3168,7 @@ html.kb-open .welcome-art { display: none; }
             'stage.2': 'Being cooked',
             'stage.3': 'Ready',
             'stage.4': 'Served',
-            'stage.hint.billed': 'The cashier is on the way to your table.',
             'stage.hint.served': 'Enjoy your meal.',
-            'stage.hint.default': 'We will message you on WhatsApp if anything changes.',
 
             'time.now': 'Just now',
             'time.mins': '{n} min ago',
@@ -3478,6 +3564,10 @@ html.kb-open .welcome-art { display: none; }
         if (view !== 'menu') $('cartbar').classList.remove('is-open');
         document.querySelector('.tabbar').hidden = (view !== 'menu');
         if (view === 'cart' || view === 'menu') window.scrollTo(0, 0);
+        // ⚠️ AFTER THE VIEW IS SHOWN, NOT BEFORE. `.page-foot` lives inside the
+        // cart section, so while that section is `display: none` it measures
+        // zero and syncFootSpace() correctly declines to reserve nothing.
+        if (view === 'cart') syncFootSpace();
     }
 
     // Takes the KEY of a failure, not its wording. The error screen is the one
@@ -4431,6 +4521,9 @@ html.kb-open .welcome-art { display: none; }
             : '';
 
         paintSuggestions();
+        // The "order for" row appears only once the diner is known, and it
+        // changes the bar's height when it does.
+        syncFootSpace();
     }
 
     // The only stepper left in the product. It was removed from the menu cards
@@ -4813,6 +4906,29 @@ html.kb-open .welcome-art { display: none; }
         document.fonts.ready.then(syncTabbarSpace).catch(function () {});
     }
 
+    /**
+     * How much room the order page's fixed commit bar needs below the content.
+     *
+     * ⚠️ MEASURED, NOT A CONSTANT. It was `96px`, which was exactly the bar's
+     * height at the time it was written — so restyling the bar (a taller
+     * button, a banner above it) silently trapped the last panel underneath.
+     * The height also CHANGES at runtime: the "order for" row is absent until
+     * the diner has been identified. Anything that repaints the bar calls this.
+     */
+    function syncFootSpace() {
+        var el = document.querySelector('.page-foot');
+        if (!el) return;
+        var h = Math.ceil(el.getBoundingClientRect().height);
+        if (!h) return;
+        // The measured box already contains the bar's own safe-area padding.
+        document.documentElement.style.setProperty('--foot-space', (h + 16) + 'px');
+    }
+    syncFootSpace();
+    window.addEventListener('resize', syncFootSpace);
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(syncFootSpace).catch(function () {});
+    }
+
     function setActiveTab(which) {
         Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (el) {
             el.setAttribute('aria-current', String(el.dataset.tab === which));
@@ -4917,10 +5033,22 @@ html.kb-open .welcome-art { display: none; }
         return 1;
     }
 
+    /**
+     * The line under the step name — or nothing.
+     *
+     * ⚠️ RETURNS EMPTY ON PURPOSE for a freshly-sent order. It used to say "we
+     * will message you on WhatsApp if anything changes", which is a promise
+     * about a different channel on a screen the diner is already looking at.
+     * A subtitle that restates the title is worse than no subtitle.
+     *
+     * "Bill requested — pay at the cashier" lives here too, rather than in the
+     * green strip it used to have below the steps. It IS the answer to "what is
+     * happening now", and that is what this line is for.
+     */
     function customerStepHint(d, billed, step) {
-        if (step === 3) return billed ? t('stage.hint.billed') : t('stage.hint.paid');
+        if (step === 3) return billed ? t('orders.billCalled') : t('stage.hint.paid');
         if (step === 2) return t('stage.hint.served');
-        return (Number(d && d.stage) || 0) >= 3 ? t('stage.hint.ready') : t('stage.hint.default');
+        return (Number(d && d.stage) || 0) >= 3 ? t('stage.hint.ready') : '';
     }
 
     /** The diner-facing name of stage `n` (1-4) on the welcome sheet's ladder. */
@@ -4967,6 +5095,8 @@ html.kb-open .welcome-art { display: none; }
             // exactly when a diner opens this sheet to check what they had or
             // to order it again. Returning early left them an empty state
             // holding a receipt.
+            $('orders-no').hidden = true;
+            setText($('orders-sub'), tableLabel());
             var past = historyPanel(d.history);
             $('orders-body').innerHTML =
                 '<div class="orders-empty">'
@@ -5035,7 +5165,9 @@ html.kb-open .welcome-art { display: none; }
         // commit to a number they had to scroll up to read, and on a table that
         // had part-paid it was the wrong number they were remembering. It states
         // the OUTSTANDING amount — what is actually about to be collected.
-        setText($('bill-btn'), 'Minta bill · ' + money(outstanding));
+        // ⚠️ WAS HARDCODED INDONESIAN, and survived the whole i18n pass because
+        // it is built from a phrase and a number rather than being one string.
+        setText($('bill-btn'), t('orders.billAmount', { amt: money(outstanding) }));
         $('bill-btn').classList.remove('is-busy');
         setDisabled($('bill-btn'), false);
         billConfirm = false;
@@ -5044,16 +5176,18 @@ html.kb-open .welcome-art { display: none; }
         // The one thing a diner opened this sheet to find out, as a picture.
         var ostep = customerStep(d, billed);
         var when = timeAgo(d.placed_at);
+        // The ticket number and how long it has been go with the TITLE, not
+        // under the picture: they are reference, and the picture is the answer.
+        setText($('orders-no'), d.order_number || '');
+        $('orders-no').hidden = !d.order_number;
+        setText($('orders-sub'), [tableLabel(), when].filter(Boolean).join(' · '));
+
+        var hint = customerStepHint(d, billed, ostep);
         var hero = '<div class="ostage">'
             + '<img class="ostage-art" alt="" decoding="async" src="'
             + OSTEPS[ostep - 1].art + '" width="313" height="420">'
-            + '<div class="ostage-meta">'
-            + '<span class="ostage-no num">' + esc(d.order_number || '') + '</span>'
-            + (when ? '<span class="ostage-sep" aria-hidden="true"></span>'
-                + '<span class="ostage-time">' + esc(when) + '</span>' : '')
-            + '</div>'
             + '<h3 class="ostage-now">' + esc(t('ostep.' + OSTEPS[ostep - 1].key)) + '</h3>'
-            + '<p class="ostage-hint">' + esc(customerStepHint(d, billed, ostep)) + '</p>'
+            + (hint ? '<p class="ostage-hint">' + esc(hint) + '</p>' : '')
             + '<div class="ostage-steps">' + OSTEPS.map(function (st, i) {
                 var n = i + 1;
                 return '<span class="ostage-pip' + (n <= ostep ? ' done' : '')
@@ -5091,13 +5225,7 @@ html.kb-open .welcome-art { display: none; }
             total: bill.total_amount, paid: bill.paid_amount
         }, d.pricing);
 
-        var called = billed
-            ? '<div class="bill-called">'
-                + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
-                + esc(t('orders.billCalled')) + '</div>'
-            : '';
-
-        $('orders-body').innerHTML = hero + called
+        $('orders-body').innerHTML = hero
             + '<div class="opanel">' + lines + '</div>'
             + (d.note ? '<div class="onote"><span>' + esc(t('item.note')) + '</span><p>' + esc(d.note) + '</p></div>' : '')
             + ticketPanels(d.orders)
