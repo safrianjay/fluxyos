@@ -323,6 +323,13 @@ function laneBE(changed) {
 
   // The event QR is a printed artefact: if it stops decoding it fails silently,
   // in front of people. Only runs when the symbol or its generator changes.
+  // ⚠️ IDEMPOTENCE IS THE ASSERTION. The photo backfill rewrites customers'
+  // photographs in place, and an encoder that shaves a little more off its own
+  // output degrades every image a little on every run. Conditional because it
+  // launches a browser and encodes real images, which is not free.
+  if (FORCE_ALL || touched(/^scripts\/backfill-item-images\.js$|db-service\.js/)) {
+    ok = record('be', run('check:backfill-images (the photo backfill is idempotent)', 'node', ['tests/backfill-item-images.check.js'])) && ok;
+  }
   if (touched(/^assets\/images\/qr-event\.svg$|^scripts\/make-qr\.js$/)) {
     ok = record('be', run('QR decodes (logo composited)', 'bash', ['scripts/qa/verify-qr.sh'])) && ok;
   }

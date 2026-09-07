@@ -559,6 +559,34 @@ returns a `blob:` URL — origin-bound, dead when the tab closes, impossible to
 paste into a chat and open. Guard: `tests/pos-item-image.spec.js` asserts the
 till never receives an `http(s)` URL.
 
+### Right-sized on upload (2026-09-08)
+
+⚠️ **The 2 MB ceiling is a cap, not a target, and for six days it was the size
+photos actually arrived at.** A phone camera produces several megapixels and the
+QR menu renders each photo on a tile about **170×127 CSS px**, so a menu with
+fifteen photographs was tens of megabytes over restaurant wifi to paint a few
+hundred kilopixels. `_rightSizeImage` in `db-service.js` now downscales to
+**1280px on the longest edge** and re-encodes as WebP before upload — twice the
+largest size any surface shows. Measured: 875KB → 107KB on a 3024×4032 JPEG.
+Resizing happens **before** the cap, so a 6 MB photo now simply works where it
+used to be refused.
+
+Three things it guards, each silent if missed: EXIF orientation is not carried
+onto a canvas (needs `imageOrientation: 'from-image'`, or a portrait photo bakes
+in sideways); a browser that cannot encode WebP returns **PNG** with no error,
+which for a photograph is larger than the JPEG it came from; and a result heavier
+than the original is discarded.
+
+**Photos uploaded before that date are still full size.**
+`npm run backfill:item-images` re-encodes them through the same Chromium canvas,
+so its output matches a fresh upload rather than merely resembling it. Dry run by
+default; `--commit` writes, `--prune` deletes the original afterwards (it is kept
+otherwise, because the resize is lossy and these are customers' photographs).
+⚠️ It is **idempotent by construction** — an already-in-bounds WebP under 160KB is
+skipped, because re-encoding one shrinks it again and a backfill that re-processes
+its own output loses a little quality every run. Guard:
+`tests/backfill-item-images.check.js`.
+
 ### Not a `document`
 
 `documents` is for records: a Firestore row, the monthly document-processing
