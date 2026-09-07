@@ -58,11 +58,20 @@ const admin = require('firebase-admin');
 // Long enough for a phone on a restaurant's wifi to load a menu and scroll it;
 // short enough that a URL copied out of a network log is dead before it is
 // useful. The customer never sees it — it lives one redirect deep.
-const URL_TTL_MS = 15 * 60 * 1000;
+//
+// ⚠️ RAISED FROM 15 MIN TO 45. A sitting is a meal, not a page view: a diner
+// scrolls the menu, orders, eats, and opens it again for a second round. Every
+// photo costs a function invocation, a Firestore read, a signature and a 302
+// before a byte of JPEG moves, and at 15 minutes the second round paid all of
+// it again. Menu photos are the least sensitive bytes in the product — anyone
+// holding the QR code is entitled to every one of them — so the window is
+// bounded by cost and staleness, not by exposure.
+const URL_TTL_MS = 45 * 60 * 1000;
 
-// Browsers may cache the redirect target. Kept under the signed URL's own life
-// so a cached response can never outlive the credential inside it.
-const CACHE_SECONDS = 300;
+// Browsers may cache the redirect. ⚠️ MUST STAY UNDER `URL_TTL_MS`, or a cached
+// redirect outlives the credential inside it and points at a dead URL — the
+// photo would then fail for exactly as long as the gap.
+const CACHE_SECONDS = 30 * 60;
 
 // ── What this endpoint can afford to check ──────────────────────────────────
 //

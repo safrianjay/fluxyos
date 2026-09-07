@@ -135,6 +135,27 @@ const is = (actual, expected, label) => {
     is(/getSignedUrl/.test(menuSrc), false,
         'qr-menu hands out no Storage URL of its own');
 
+    // ── The cache window cannot outlive the credential it points at ────────
+    //
+    // ⚠️ THE BROWSER CACHES THE REDIRECT, NOT THE PHOTO. A cached 302 that
+    // outlives the signed URL inside it sends the phone to a dead credential,
+    // and the photo then fails for exactly as long as the gap — silently, on a
+    // diner's screen, with a 200 in every log this repo keeps. The two numbers
+    // are edited for different reasons (cost, and exposure) so nothing but this
+    // holds them in the right order.
+    const ttlSeconds = (() => {
+        const m = /URL_TTL_MS\s*=\s*(\d+)\s*\*\s*60\s*\*\s*1000/.exec(src);
+        return m ? Number(m[1]) * 60 : null;
+    })();
+    const cacheSeconds = (() => {
+        const m = /CACHE_SECONDS\s*=\s*([\d\s*]+);/.exec(src);
+        return m ? m[1].split('*').reduce((a, b) => a * Number(b.trim()), 1) : null;
+    })();
+    is(ttlSeconds !== null && cacheSeconds !== null, true,
+        'both the signed-URL life and the cache window are still readable here');
+    is(cacheSeconds < ttlSeconds, true,
+        `the cached redirect (${cacheSeconds}s) dies before its signed URL (${ttlSeconds}s)`);
+
     console.log(failures ? `\n✗ ${failures} failure(s)\n` : '\nqr menu image: clean\n');
     process.exit(failures ? 1 : 0);
 })().catch((err) => {

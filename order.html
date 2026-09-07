@@ -124,8 +124,26 @@ html, body {
     -webkit-text-size-adjust: 100%;
     /* The backstop for the same bug. `overscroll-behavior-x` stops the CHAIN;
        this stops anything that overflows from creating a pannable page in the
-       first place. Vertical scrolling is untouched. */
+       first place. Vertical scrolling is untouched.
+
+       ⚠️ `clip`, NOT `hidden` — AND THIS IS WHY STICKY NEVER WORKED HERE.
+       `overflow-x: hidden` makes an element a SCROLL CONTAINER in both axes
+       (the computed `overflow-y` becomes `auto`), so `body` became the
+       scrollport that every `position: sticky` descendant measured itself
+       against — and `body` does not scroll, the viewport does. The category
+       tab strip carried `position: sticky; top: 0` for its whole life and
+       never once stuck. `clip` does the same visual job and creates no scroll
+       container, which is exactly the difference the two properties exist to
+       express. Reported by Jay as "make the search bar and category sticky",
+       which turned out to be one line above where the CSS said it already was.
+
+       Declared TWICE on purpose: `clip` is Safari 16+, and a browser that does
+       not know it drops the second line and keeps `hidden`. An old iPhone
+       therefore keeps the pan backstop and loses only the sticky strip, which
+       is the right way round — a pannable menu is a broken page, a strip that
+       scrolls away is merely the page as it shipped last week. */
     overflow-x: hidden;
+    overflow-x: clip;
 }
 
 /* Numbers are Inter with tabular figures and a plain zero. A monospace face is
@@ -469,7 +487,8 @@ img { max-width: 100%; display: block; }
     display: flex;
     align-items: center;
     gap: 10px;
-    margin: 14px 20px 8px;   /* 8px to the tab strip below, and the grid's own 20px inset */
+    margin: 0 20px 8px;      /* 8px to the tab strip below, and the grid's own 20px inset;
+                                the 14px above it is .menu-sticky's padding — see there */
     padding: 0 14px;
     height: 44px;
     border-radius: 14px;
@@ -493,10 +512,17 @@ img { max-width: 100%; display: block; }
 /* ==========================================================================
    Sticky category rail
    ========================================================================== */
-.rail {
+/* The sticky unit. `padding-top` rather than the field's own margin, because a
+   child's top margin collapses OUT of this box and the search would then rest
+   flat against the top of the screen when stuck. */
+.menu-sticky {
     position: sticky;
     top: 0;
     z-index: 20;
+    background: var(--canvas);
+    padding-top: 14px;
+}
+.rail {
     background: var(--canvas);
     padding: 0;
     border-bottom: 1px solid var(--line);
@@ -666,28 +692,51 @@ img { max-width: 100%; display: block; }
     background: linear-gradient(180deg, #FFF3E6 0%, #FFF9F3 68%, var(--canvas) 100%);
     border-bottom: 1px solid var(--line-soft);
 }
-/* ⚠️ z-index: -1, NOT a `> * { z-index: 1 }` opt-in. An animated/decorative
-   pseudo-element paints OVER content in WebKit whatever the source order says —
-   a bug this page has already been bitten by. Behind, and inert. */
+/* ⚠️ z-index 0, NOT -1 — AND THIS IS THE WHOLE BUG. `.recos` is
+   `position: relative` and paints its OWN gradient background, so a child at a
+   negative z-index goes behind THAT, not behind the cards. The stars were
+   drawn, animated, correct in every respect and completely invisible; the spec
+   that "covered" this asserted the z-index VALUE rather than that anything
+   could be seen, which is exactly the assertion that cannot fail usefully.
+   Reported by Jay.
+
+   So the two real children are lifted to 1 instead. That is the opt-in this
+   page normally avoids — a decorative pseudo-element in WebKit paints over
+   content whatever the source order says — but the layer here is a real
+   element with an explicit z-index, ordered against two named siblings rather
+   than against paint-order luck. `pointer-events: none` is the second guard:
+   even mis-stacked it can never eat a tap. */
 .recos-sparkle {
-    position: absolute; inset: 0; z-index: -1;
+    position: absolute; inset: 0; z-index: 0;
     pointer-events: none; overflow: hidden;
     color: #EA580C;
 }
+.recos-head, .recos-rail { position: relative; z-index: 1; }
 .recos-sparkle svg { position: absolute; display: block; }
-/* Three, at three sizes, off the reading line — enough to catch the eye and
-   few enough not to become texture. */
-.recos-sparkle .s1 { top: 10px;  left: 46%; width: 13px; height: 13px; opacity: .30; }
-.recos-sparkle .s2 { top: 30px;  right: 26px; width: 9px;  height: 9px;  opacity: .22; }
-.recos-sparkle .s3 { top: 4px;   right: 74px; width: 7px;  height: 7px;  opacity: .18; }
+/* Five, at four sizes, off the reading line — enough to catch the eye and few
+   enough not to become texture. They live in the ~40px band around the title,
+   because everything below it is covered by opaque cards.
+   ⚠️ NOT FAINTER THAN THIS. The first pass ran .18–.30 against a wash that is
+   itself only a few percent from white; even painted correctly they would have
+   been dust. */
+.recos-sparkle .s1 { top: 9px;   left: 44%;  width: 14px; height: 14px; opacity: .46; }
+.recos-sparkle .s2 { top: 28px;  right: 26px; width: 10px; height: 10px; opacity: .38; }
+.recos-sparkle .s3 { top: 5px;   right: 72px; width: 8px;  height: 8px;  opacity: .30; }
+.recos-sparkle .s4 { top: 22px;  left: 62%;  width: 7px;  height: 7px;  opacity: .34; }
+.recos-sparkle .s5 { top: 12px;  right: 14px; width: 11px; height: 11px; opacity: .42; }
 @media (prefers-reduced-motion: no-preference) {
     .recos-sparkle .s1 { animation: recoTwinkle 3.6s ease-in-out infinite; }
     .recos-sparkle .s2 { animation: recoTwinkle 4.4s ease-in-out .8s infinite; }
     .recos-sparkle .s3 { animation: recoTwinkle 5.2s ease-in-out 1.6s infinite; }
+    .recos-sparkle .s4 { animation: recoTwinkle 4.0s ease-in-out 2.2s infinite; }
+    .recos-sparkle .s5 { animation: recoTwinkle 4.8s ease-in-out .4s infinite; }
 }
+/* ⚠️ RELATIVE TO THE STAR'S OWN OPACITY, via a scale on the whole element
+   rather than a hardcoded opacity pair — the old keyframes overrode every
+   per-star opacity above with the same .12/.34, so five stars twinkled as one. */
 @keyframes recoTwinkle {
-    0%, 100% { opacity: .12; transform: scale(.9); }
-    50%      { opacity: .34; transform: scale(1); }
+    0%, 100% { transform: scale(.82); }
+    50%      { transform: scale(1.06); }
 }
 .recos-head { padding: 0 20px 10px; }
 .recos-title { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
@@ -1534,6 +1583,7 @@ img { max-width: 100%; display: block; }
 
 /* ---- Modifier groups --------------------------------------------------- */
 .detail-hero {
+    position: relative;       /* the photo overlays the loading tint */
     width: 100%;
     aspect-ratio: 4 / 3;
     /* Capped. At full sheet width a 4:3 hero is ~290px on a phone, which pushed
@@ -1546,7 +1596,24 @@ img { max-width: 100%; display: block; }
     margin: 12px 0 4px;
     display: flex; align-items: center; justify-content: center;
 }
-.detail-hero img { width: 100%; height: 100%; object-fit: contain; }
+/* ⚠️ THE PHOTO IS THE SLOWEST THING IN THIS SHEET. It is a Netlify function, a
+   Firestore read, a signed URL and a 302 to storage before a byte of JPEG
+   moves, and on restaurant wifi that is visible — reported by Jay. Nothing can
+   make that instant, but a grey hole reads as a sheet that failed while a warm
+   tint and the dish glyph read as one that is still arriving. Same treatment
+   the grid already gives an unphotographed item. */
+.detail-hero.is-loading { background: var(--tint, linear-gradient(150deg, #FFF1E4, #FDE3CE)); }
+.detail-hero.is-loading > svg { width: 56px; height: 56px; color: rgba(11, 15, 25, 0.22); }
+.detail-hero img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+.detail-hero.is-ready img { opacity: 1; }
+.detail-hero.is-ready > svg { display: none; }
+.detail-hero img.failed { display: none; }
 .detail-hero.is-placeholder {
     background: var(--tint, linear-gradient(150deg, #FFF1E4, #FDE3CE));
 }
@@ -2167,15 +2234,22 @@ html.kb-open .welcome-art { display: none; }
             <div class="outlet-hours" id="outlet-hours" hidden></div>
         </section>
 
-        <div class="menu-search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-            <input id="search" class="search" type="search" inputmode="search"
-                   autocomplete="off" data-i18n-ph="search.placeholder" placeholder="Cari menu…"
-                   data-i18n-aria="search.aria" aria-label="Cari menu">
-        </div>
+        <!-- ⚠️ ONE STICKY BLOCK, not two. The tab strip already stuck on its own
+             and the search field scrolled away above it, so a diner half way
+             down a long menu could change category but not search it without
+             scrolling back to the top. They are the two controls that filter
+             the same list; they belong to each other. -->
+        <div class="menu-sticky">
+            <div class="menu-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <input id="search" class="search" type="search" inputmode="search"
+                       autocomplete="off" data-i18n-ph="search.placeholder" placeholder="Cari menu…"
+                       data-i18n-aria="search.aria" aria-label="Cari menu">
+            </div>
 
-        <div class="rail">
-            <div id="chips" class="chips" role="group" data-i18n-aria="chips.aria" aria-label="Kategori"></div>
+            <div class="rail">
+                <div id="chips" class="chips" role="group" data-i18n-aria="chips.aria" aria-label="Kategori"></div>
+            </div>
         </div>
 
         <!-- Between the chips and the menu, exactly as the reference places it.
@@ -3777,7 +3851,9 @@ html.kb-open .welcome-art { display: none; }
         // Title only. The outlet's name is already stated on the card directly
         // above this, so "Pilihan <outlet>" restated it in the same viewport —
         // the redundancy CLAUDE.md bans on eyebrows.
-        host.innerHTML = '<div class="recos-sparkle" aria-hidden="true">' + STAR('s1') + STAR('s2') + STAR('s3') + '</div>' + '<div class="recos-head">'
+        host.innerHTML = '<div class="recos-sparkle" aria-hidden="true">'
+            + STAR('s1') + STAR('s2') + STAR('s3') + STAR('s4') + STAR('s5') + '</div>'
+            + '<div class="recos-head">'
             + '<h2 class="recos-title" id="recos-title">' + esc(t('recos.title')) + '</h2>'
             + '</div><div class="recos-rail">' + cards + '</div>';
         host.hidden = false;
@@ -3847,8 +3923,16 @@ html.kb-open .welcome-art { display: none; }
      * the card had before photos existed.
      */
     function wireCardImages(host) {
-        Array.prototype.forEach.call(host.querySelectorAll('.card-media img'), function (img) {
+        // ⚠️ THE SHEET'S HERO TOO. It was the one photo on the page with no
+        // retry and no reveal — the surface a diner stares at while deciding.
+        Array.prototype.forEach.call(host.querySelectorAll('.card-media img, .detail-hero img'), function (img) {
             var tries = 0;
+            var reveal = function () {
+                var hero = img.closest ? img.closest('.detail-hero') : null;
+                if (hero) hero.classList.add('is-ready');
+            };
+            if (img.complete && img.naturalWidth > 0) reveal();
+            img.addEventListener('load', reveal);
             img.addEventListener('error', function () {
                 tries += 1;
                 if (tries > 1) { img.classList.add('failed'); return; }
@@ -3978,7 +4062,11 @@ html.kb-open .welcome-art { display: none; }
 
         var html = '';
         if (item.has_image) {
-            html += '<div class="detail-hero"><img alt="" src="'
+            // Identical URL to the one the grid card used, so an item whose
+            // tile is already on screen opens straight out of the cache.
+            html += '<div class="detail-hero is-loading" style="--tint:'
+                + categoryTint(item.category) + '">' + PLACEHOLDER
+                + '<img alt="" decoding="async" src="'
                 + FN + 'qr-menu-image?token=' + encodeURIComponent(TOKEN)
                 + '&item=' + encodeURIComponent(item.id) + '"></div>';
         } else {
@@ -4017,6 +4105,7 @@ html.kb-open .welcome-art { display: none; }
             + ' placeholder="' + esc(t('item.notePlaceholder')) + '"></textarea></div>';
 
         $('item-body').innerHTML = html;
+        wireCardImages($('item-body'));
         $('item-body').addEventListener('change', onDetailChange);
         $('item-body').addEventListener('input', onDetailChange);
         refreshDetailTotal();

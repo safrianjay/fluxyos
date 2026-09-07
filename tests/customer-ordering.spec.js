@@ -470,7 +470,12 @@ test.describe('QR customer ordering', () => {
                 `${sel} lets a swipe chain out to the page`).toBe('contain');
         }
         // And nothing may make the document pannable in the first place.
-        expect(await page.evaluate(() => getComputedStyle(document.body).overflowX)).toBe('hidden');
+        // ⚠️ EITHER PROPERTY. `clip` is what the page wants — `hidden` makes
+        // body a scroll container and silently breaks every `position: sticky`
+        // descendant — but `hidden` is the declared fallback for Safari < 16,
+        // so this pins the job rather than the spelling.
+        expect(await page.evaluate(() => getComputedStyle(document.body).overflowX))
+            .toMatch(/^(hidden|clip)$/);
         expect(await page.evaluate(() =>
             document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     });
@@ -620,6 +625,108 @@ test.describe('QR customer ordering', () => {
             expect(await page.locator(sel).evaluate((el) => getComputedStyle(el).touchAction),
                 `${sel} blocks vertical scrolling over a large area`).not.toBe('pan-x');
         }
+    });
+
+    test('THE SEARCH FIELD AND THE TABS BOTH STAY WHILE THE MENU SCROLLS', async ({ page }) => {
+        // A menu long enough to actually scroll — three cards fit on one screen
+        // and a sticky test on a page that cannot move proves nothing.
+        const LONG = {
+            ...MENU,
+            items: Array.from({ length: 24 }, (_, n) => ({
+                id: `i_${n}`, name: `Dish ${n}`, category: n % 2 ? 'Kopi' : 'Makanan',
+                price: 20000 + n * 1000, has_image: false, modifier_groups: []
+            })).concat([{ id: 'i_solo', name: 'Nasi Uduk Spesial', category: 'Makanan',
+                price: 45000, has_image: false, modifier_groups: [] }])
+        };
+        await stub(page);
+        await page.route('**/qr-menu?**', (route) => route.fulfill({
+            status: 200, contentType: 'application/json', body: JSON.stringify(LONG)
+        }));
+        await open(page);
+        await expect(page.locator('.card').first()).toBeVisible();
+
+        const search = page.locator('.menu-search');
+        const chips = page.locator('#chips');
+        const top = await search.boundingBox();
+
+        // Far enough that the hero and the outlet card are long gone.
+        await page.mouse.wheel(0, 900);
+        await page.waitForTimeout(250);
+
+        const scrolled = await search.boundingBox();
+        const chipBox = await chips.boundingBox();
+        expect(await page.evaluate(() => window.scrollY),
+            'the page did not actually scroll').toBeGreaterThan(300);
+
+        // ⚠️ THE TAB STRIP STUCK ON ITS OWN AND THE SEARCH FIELD DID NOT, so a
+        // diner half way down a long menu could change category but had to
+        // scroll back to the top to search it. They filter the same list.
+        expect(scrolled.y, 'the search field scrolled away with the page')
+            .toBeLessThan(top.y);
+        expect(scrolled.y, 'the search field is off the top of the screen')
+            .toBeGreaterThanOrEqual(0);
+        expect(scrolled.y, 'the search field is not pinned near the top')
+            .toBeLessThan(40);
+        // And in the order they are read: search above tabs, still touching.
+        expect(chipBox.y).toBeGreaterThanOrEqual(scrolled.y + scrolled.height - 1);
+        expect(chipBox.y - (scrolled.y + scrolled.height),
+            'the two halves of the sticky block came apart').toBeLessThan(16);
+
+        // The strip must be OPAQUE, or cards scroll visibly through it.
+        const bg = await page.locator('.menu-sticky')
+            .evaluate((el) => getComputedStyle(el).backgroundColor);
+        expect(bg, 'the sticky strip is see-through').not.toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+
+        // Still usable where it now sits — a pinned control that cannot be
+        // typed into is decoration.
+        await page.locator('#search').fill('Nasi Uduk');
+        await expect(page.locator('.card')).toHaveCount(1);
+    });
+
+    test('THE ITEM SHEET NEVER SHOWS A HOLE WHERE THE PHOTO GOES', async ({ page }) => {
+        // ⚠️ THE SLOWEST THING ON THIS PAGE. A menu photo is a Netlify function,
+        // a Firestore read, a signed URL and a 302 to Storage before a byte of
+        // JPEG moves, and on restaurant wifi that is visible — reported by Jay
+        // as "some image isn't load fast, especially when I open the bottom
+        // sheet". Nothing here makes it instant. What it must not do is look
+        // like a sheet that FAILED while it is merely a sheet that is arriving.
+        await stub(page);
+        await open(page);
+
+        await page.locator('.card', { hasText: 'Es Kopi Susu' }).click();
+        const hero = page.locator('.detail-hero');
+        await expect(page.locator('#sheet-item')).toHaveClass(/is-open/);
+
+        // The holding layer is BEHIND the photo, always present, never removed
+        // — so there is no frame in which the box is empty.
+        await expect(hero).toHaveClass(/is-loading/);
+        const held = await hero.evaluate((el) => ({
+            bg: getComputedStyle(el).backgroundImage,
+            glyph: !!el.querySelector(':scope > svg'),
+            overlaid: getComputedStyle(el.querySelector('img')).position
+        }));
+        expect(held.glyph, 'nothing stands in for the photo while it loads').toBe(true);
+        expect(held.bg, 'the holding state is a bare grey box').not.toBe('none');
+        expect(held.overlaid, 'the photo does not sit over the holding layer').toBe('absolute');
+
+        // Once it arrives it is revealed, and the glyph goes.
+        await expect(hero).toHaveClass(/is-ready/);
+        // Polled, not sampled: the reveal is a 0.18s fade and a single read
+        // lands mid-transition on whatever value the compositor is at.
+        await expect.poll(async () => Number(await hero.locator('img')
+            .evaluate((el) => getComputedStyle(el).opacity))).toBe(1);
+
+        // ⚠️ AND THE STATE BEFORE THAT IS REAL, not a class nobody honours.
+        // Driven from the DOM rather than by starving the network: holding the
+        // image route open also starves the hero gallery, and the page never
+        // finishes loading at all.
+        await hero.evaluate((el) => el.classList.remove('is-ready'));
+        await expect.poll(async () => Number(await hero.locator('img')
+            .evaluate((el) => getComputedStyle(el).opacity)),
+        { message: 'a half-decoded photo is shown instead of fading in' }).toBe(0);
+        expect(await hero.evaluate((el) =>
+            getComputedStyle(el.querySelector(':scope > svg')).display),
+        'the glyph is gone while the photo is still coming').not.toBe('none');
     });
 
     test('a category with no rail still clears the tabs', async ({ page }) => {
@@ -1150,17 +1257,23 @@ test.describe('QR customer ordering', () => {
             document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     });
 
-    test('THE RAIL IS WARM, AND ITS SPARKLE STAYS BEHIND THE CARDS', async ({ page }) => {
+    test('THE RAIL IS WARM, AND THE SPARKLE IS ACTUALLY VISIBLE', async ({ page }) => {
         await stub(page);
         await page.route('**/qr-menu?**', (route) => route.fulfill({
-            status: 200, contentType: 'application/json', body: JSON.stringify(withRecos())
+            status: 200,
+            contentType: 'application/json',
+            // has_image: false throughout — see the three-shot note below.
+            body: JSON.stringify(withRecos({
+                items: MENU.items.map((i) => ({ ...i, recommended: true, has_image: false }))
+            }))
         }));
         await open(page);
-        await expect(page.locator('#recos')).toBeVisible({ timeout: 15_000 });
+        const rail = page.locator('#recos');
+        await expect(rail).toBeVisible({ timeout: 15_000 });
 
         // Warm, not cool. Asserted as a RELATIONSHIP rather than a hex, so
         // retuning the exact tint does not fail a test about the mood.
-        const rgb = await page.locator('#recos').evaluate((el) => {
+        const rgb = await rail.evaluate((el) => {
             const m = getComputedStyle(el).backgroundImage.match(/rgba?\(([^)]+)\)/);
             return m ? m[1].split(',').map((n) => parseFloat(n)) : null;
         });
@@ -1168,27 +1281,66 @@ test.describe('QR customer ordering', () => {
         expect(rgb[0], 'the rail is not warmer than it is cool').toBeGreaterThan(rgb[2]);
 
         // ⚠️ A PALE GRADIENT, NEVER A SOLID ORANGE PANEL. Orange backgrounds are
-        // prohibited project-wide; the gradient is the carve-out, so assert that
-        // the gradient is still what carries the warmth.
-        expect(await page.locator('#recos')
-            .evaluate((el) => getComputedStyle(el).backgroundImage.includes('gradient'))).toBe(true);
+        // prohibited project-wide; the gradient is the carve-out.
+        expect(await rail.evaluate((el) =>
+            getComputedStyle(el).backgroundImage.includes('gradient'))).toBe(true);
 
-        // ⚠️ THE SPARKLE PAINTS BEHIND THE CARDS. A decorative layer in WebKit
-        // sits OVER content whatever the source order says unless it is pushed
-        // back explicitly — this product has been bitten by that once already.
         const spark = page.locator('.recos-sparkle');
         await expect(spark).toHaveCount(1);
         await expect(spark).toHaveAttribute('aria-hidden', 'true');
+        await expect(page.locator('.recos-sparkle svg')).toHaveCount(5);
+
+        // ⚠️ THE ASSERTION THE FIRST VERSION OF THIS TEST WAS MISSING.
+        //
+        // It checked that the layer's z-index was -1 and passed, and the stars
+        // were invisible the entire time: `#recos` is `position: relative` and
+        // paints its OWN gradient, so a negative z-index child goes behind that
+        // background rather than behind the cards. Every property was correct
+        // and nothing could be seen — which is what an assertion about a CSS
+        // VALUE buys you when the claim is about a picture.
+        //
+        // So: render the strip, hide the layer, render it again, and require
+        // the two to differ. That cannot pass on stars nobody can see.
+        // ⚠️ WHERE THE STAR ACTUALLY PAINTS, not what its stylesheet claims.
+        //
+        // The first version of this test asserted `z-index === '-1'` and passed
+        // while the stars were invisible the whole time: `#recos` is
+        // `position: relative` and paints its OWN gradient, so a child at a
+        // negative z-index goes behind THAT rather than behind the cards. Every
+        // property was correct and nothing could be seen — which is what an
+        // assertion about a CSS VALUE buys you when the claim is about a
+        // picture. A pixel diff replaced it and was worse: it passed on a
+        // hidden layer, because a stub photo decoded between the two frames and
+        // that was the difference it found.
+        //
+        // `elementsFromPoint` returns the hit-test stack topmost-first, which
+        // follows paint order. Above `#recos` means in front of the section's
+        // background; that is the whole claim, and it is one integer comparison
+        // on both engines instead of a screenshot that has to hold still.
+        const paint = await spark.evaluate((el) => {
+            el.style.pointerEvents = 'auto';          // hit-testing only, restored below
+            const star = el.querySelector('.s1');
+            const r = star.getBoundingClientRect();
+            const stack = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            el.style.pointerEvents = '';
+            return { star: stack.indexOf(star), section: stack.indexOf(document.getElementById('recos')) };
+        });
+        expect(paint.star, 'the star is not painted at its own coordinates at all')
+            .toBeGreaterThanOrEqual(0);
+        expect(paint.section, 'the star is not inside the rail').toBeGreaterThan(-1);
+        expect(paint.star,
+            'the star paints BEHIND the section background — drawn, animated, invisible')
+            .toBeLessThan(paint.section);
+
+        // And still behind the cards, and still untappable.
         const layer = await spark.evaluate((el) => {
             const cs = getComputedStyle(el);
-            return { z: cs.zIndex, pe: cs.pointerEvents };
+            return { z: Number(cs.zIndex), pe: cs.pointerEvents };
         });
-        expect(layer.z, 'the sparkle can paint over the cards').toBe('-1');
+        const content = await page.locator('.recos-rail')
+            .evaluate((el) => Number(getComputedStyle(el).zIndex));
+        expect(layer.z, 'the sparkle sits above the cards').toBeLessThan(content);
         expect(layer.pe, 'the sparkle can swallow a tap').toBe('none');
-
-        // And it must not be reachable by a screen reader or the tab order.
-        const stars = page.locator('.recos-sparkle svg');
-        await expect(stars).toHaveCount(3);
     });
 
     test('a card in the rail opens the item, like every other card', async ({ page }) => {
