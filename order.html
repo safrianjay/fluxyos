@@ -1142,24 +1142,78 @@ img { max-width: 100%; display: block; }
    ⚠️ AND THE FILL IS OPAQUE. At `bottom: 100%` this floats over the MENU, not
    over the bar's white; a 10% alpha would show cards through the diner's own
    name. #FDEEE7 is that same tint flattened onto white. */
+/* ⚠️ EDGE TO EDGE, and it needs to be. Inset by 16px it read as a floating
+   chip that happened to be near the button; running the full width of the bar
+   it becomes the bar's own top course, which is what makes the two a single
+   block. On a wide screen it inherits `.page-foot`'s 640px centring for free.
+
+   ⚠️ THE FILL IS OPAQUE. At `bottom: 100%` this floats over the MENU, not over
+   the bar's white, and a translucent tint showed menu cards through the diner's
+   own name. Three layers, all opaque or over an opaque base:
+     1. a fine cross-hatch, the texture the reference carries under its copy;
+     2. a warm wash that fades to the right so the number does not sit on the
+        strongest part of the tint;
+     3. the flat ground the other two sit on.
+   Gradients are the accent use the orange-background rule allows — this is a
+   wash, never a block of brand orange. */
 .page-foot .who {
     position: absolute;
-    left: 16px; right: 16px;
+    left: 0; right: 0;
     bottom: 100%;
     margin-bottom: -1px;              /* over the bar's 1px top border, no seam */
-    display: flex; align-items: center; justify-content: center;
-    gap: 8px; flex-wrap: wrap;
-    padding: 8px 16px 9px;
+    display: flex; align-items: center;
+    gap: 10px;
+    padding: 9px 16px 10px;
     border: none;
+    border-top: 1px solid rgba(234, 88, 12, 0.14);
     border-radius: var(--r-lg) var(--r-lg) 0 0;
-    background: #FDEEE7;
+    /* ⚠️ AN EXPLICIT OPAQUE BASE, not "the last gradient layer happens to be
+       opaque". The `background` shorthand sets `background-color: transparent`,
+       so the strip's opacity rested entirely on a decorative layer that a later
+       edit could soften without anyone noticing — over the MENU, that shows
+       cards through the diner's own name. */
+    background-color: #FDEFE6;
+    background-image:
+        repeating-linear-gradient(45deg,
+            rgba(234, 88, 12, 0.045) 0 1px, transparent 1px 11px),
+        repeating-linear-gradient(-45deg,
+            rgba(234, 88, 12, 0.045) 0 1px, transparent 1px 11px),
+        linear-gradient(100deg, #FDE9DC 0%, #FDEFE6 52%, #FEF6F0 100%);
     font-size: 12.5px;
     color: #9A3412;
 }
-/* On a wide screen the bar's content is centred at 640px; the tab follows it
-   rather than stretching to the window. */
-@media (min-width: 672px) {
-    .page-foot .who { left: 50%; right: auto; transform: translateX(-50%); min-width: 260px; }
+/* A filled disc rather than a bare glyph: at 12.5px the row needs one solid
+   shape to start from, the way the reference leads with its coin. */
+.who-badge {
+    flex: 0 0 auto;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+}
+.who-badge svg { width: 15px; height: 15px; }
+.who-body {
+    flex: 1 1 auto; min-width: 0;
+    display: flex; align-items: baseline; gap: 6px;
+    overflow: hidden;
+}
+.who-label { color: rgba(154, 52, 18, 0.72); flex: 0 0 auto; }
+.who-name {
+    color: #7C2D12; font-weight: 700; font-size: 13px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Its own chip on the right — "will they reach me" is a different glance from
+   "is this me", and a phone number that has to be read digit by digit should
+   not be the tail of a sentence. */
+.who-phone {
+    flex: 0 0 auto;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.72);
+    color: #9A3412;
+    font-size: 11.5px; font-weight: 600;
+    letter-spacing: 0.01em;
 }
 .page-foot .who strong { color: #7C2D12; font-weight: 700; }
 /* Empty when nobody has been identified — an empty tinted bar is a shelf with
@@ -4527,7 +4581,24 @@ html.kb-open .welcome-art { display: none; }
         // subtotal here is the number a diner commits to while looking at a
         // different one.
         setText($('cart-submit-total'), money(priced.total));
-        setDisabled($('cart-submit'), count === 0 || submitting);
+
+        // ⚠️ A TABLE THAT HAS ASKED FOR ITS BILL WILL NOT TAKE ANOTHER ORDER.
+        // The server refuses with `bill_requested` and the Pesanan sheet
+        // already hides "add to order" — but this page went on offering a
+        // commit button that could only ever 409. Reported by Jay with two of
+        // them in the console: the failure handler re-enabled the button, so
+        // every tap bought another one.
+        //
+        // Said BEFORE the tap, not after it. The notice is the same sentence
+        // the refusal would have produced.
+        var locked = isBilled(lastStatus);
+        setDisabled($('cart-submit'), count === 0 || submitting || locked);
+        var notice = $('cart-notice');
+        if (notice && !submitting) {
+            notice.innerHTML = locked
+                ? '<div class="notice bad">' + esc(t('err.billRequested')) + '</div>'
+                : '';
+        }
 
         if (!count) {
             $('cart-lines').innerHTML = '<div class="empty">' + esc(t('cart.empty')) + '</div>';
@@ -4577,9 +4648,24 @@ html.kb-open .welcome-art { display: none; }
 
         // Identity was captured once by the gate; this confirms who the order
         // goes out under rather than asking again.
+        // ⚠️ THREE PARTS, NOT A SENTENCE. It was a label, a name and a number
+        // run together on one line, which at 12.5px read as one grey string.
+        // The badge anchors the left, the name is the thing being confirmed,
+        // and the number sits on the right as its own chip — a diner checking
+        // "is this me" reads the name; a diner checking "will they reach me"
+        // reads the number, and they are two different glances.
         $('cart-who').innerHTML = customer
-            ? '<span>' + esc(t('cart.for')) + '</span><strong>' + esc(customer.name) + '</strong>'
-                + (customer.phone ? '<span class="num">' + esc(customer.phone) + '</span>' : '')
+            ? '<span class="who-badge" aria-hidden="true">'
+                + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"'
+                + ' stroke-linecap="round" stroke-linejoin="round">'
+                + '<circle cx="12" cy="8" r="3.4"/><path d="M4.6 20a7.4 7.4 0 0 1 14.8 0"/></svg>'
+                + '</span>'
+                + '<span class="who-body">'
+                + '<span class="who-label">' + esc(t('cart.for')) + '</span>'
+                + '<strong class="who-name">' + esc(customer.name) + '</strong>'
+                + '</span>'
+                + (customer.phone
+                    ? '<span class="who-phone num">' + esc(customer.phone) + '</span>' : '')
             : '';
 
         paintSuggestions();
@@ -5189,6 +5275,22 @@ html.kb-open .welcome-art { display: none; }
     // it is looking at without re-fetching it.
     var lastStatus = null;
 
+    /**
+     * Has this table already asked for its bill?
+     *
+     * ⚠️ ANY LIVE TICKET, NOT THE NEWEST. `d.status` describes the latest round
+     * only, and this is the same test the SERVER applies before refusing a new
+     * order with `bill_requested` — so the two must not be able to disagree.
+     * It was written inline in paintOrders and the cart page did not have it,
+     * which is how the commit button kept offering an order the server would
+     * always refuse.
+     */
+    function isBilled(d) {
+        if (!d) return false;
+        return d.status === 'awaiting_payment'
+            || (d.orders || []).some(function (o) { return o.status === 'awaiting_payment'; });
+    }
+
     function paintOrders(d) {
         lastStatus = d;
         if (!d.has_order || !(d.lines || []).length) {
@@ -5215,12 +5317,7 @@ html.kb-open .welcome-art { display: none; }
         }
 
         var step = Math.min(4, Math.max(1, Number(d.stage) || 1));
-        // ANY live ticket awaiting payment means the bill is called — the same
-        // test the server applies before refusing a new round with
-        // `bill_requested`. Read off `d.status` alone (the newest ticket's) the
-        // page would keep offering "order more" into a refusal.
-        var billed = d.status === 'awaiting_payment'
-            || (d.orders || []).some(function (o) { return o.status === 'awaiting_payment'; });
+        var billed = isBilled(d);
         // ⚠️ COMPUTED BEFORE ANYTHING READS IT. This sat below the footer block
         // that formats it onto the CTA, and `var` hoists the declaration but not
         // the assignment — so the button read "Minta bill · Rp0" on every
@@ -5818,6 +5915,9 @@ html.kb-open .welcome-art { display: none; }
                     sitting = null;
                 } else if (err && err.error === 'bill_requested') {
                     msg = t('err.billRequested');
+                    // The server is ahead of our last poll. Believe it now
+                    // rather than offering the same refusal again.
+                    if (lastStatus) lastStatus.status = 'awaiting_payment';
                 } else if (err && err.error === 'order_closed') {
                     msg = t('err.tableClosed');
                 } else if (err && err.error === 'nothing_orderable') {
@@ -5830,7 +5930,12 @@ html.kb-open .welcome-art { display: none; }
                 submitting = false;
                 btn.classList.remove('is-busy');
                 setCopy(btn.querySelector('span'), 'cart.submit');
-                btn.disabled = cart.length === 0;
+                // ⚠️ `isBilled` AGAIN, because the state can change between the
+                // paint and the tap — somebody else at the table asks for the
+                // bill while this diner is choosing. Re-arming unconditionally
+                // is what turned one refusal into a button the diner could keep
+                // pressing for more of them.
+                btn.disabled = cart.length === 0 || isBilled(lastStatus);
             });
     });
 

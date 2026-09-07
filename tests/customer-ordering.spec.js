@@ -2377,15 +2377,44 @@ test.describe('QR customer ordering', () => {
             .toBeLessThanOrEqual(fb.y + 2);
         expect(wb.y + wb.height, 'the identity tab floats away from the card')
             .toBeGreaterThan(fb.y - 4);
-        // Inset from the card's own edges, so it reads as a label ON it.
-        expect(wb.x, 'the tab is not inset from the card').toBeGreaterThan(fb.x + 4);
+        // ⚠️ EDGE TO EDGE. Inset by 16px it read as a floating chip that
+        // happened to be near the button; full width it is the bar's own top
+        // course, which is what makes the two a single block.
+        expect(Math.round(wb.width), 'the identity strip is not full width')
+            .toBe(Math.round(fb.width));
+        expect(Math.round(wb.x)).toBe(Math.round(fb.x));
 
         // ⚠️ OPAQUE. At this position it floats over the MENU, not over the
-        // bar's white — a 10%-alpha fill would show cards through the diner's
-        // own name.
-        const tint = await who.evaluate((el) => getComputedStyle(el).backgroundColor.match(/[\d.]+/g).map(Number));
-        expect(tint[0], 'the identity tab lost its warm tint').toBeGreaterThan(tint[2]);
-        expect(tint[3] === undefined || tint[3] === 1, 'the identity tab is see-through').toBe(true);
+        // bar's white — a translucent fill shows menu cards through the diner's
+        // own name. The base layer under the wash is what guarantees that.
+        const bg = await who.evaluate((el) => {
+            const cs = getComputedStyle(el);
+            return { colour: cs.backgroundColor, image: cs.backgroundImage };
+        });
+        const tint = bg.colour.match(/[\d.]+/g).map(Number);
+        expect(tint[3] === undefined || tint[3] === 1,
+            'the identity strip is see-through').toBe(true);
+        // A wash and a texture, which is what carries the warmth — never a
+        // solid block of brand orange.
+        expect(bg.image, 'the strip lost its wash').toContain('gradient');
+
+        // Three parts, so "is this me" and "will they reach me" are two glances
+        // rather than one grey string.
+        await expect(who.locator('.who-badge')).toHaveCount(1);
+        await expect(who.locator('.who-name')).toHaveText('Sinta');
+        await expect(who.locator('.who-phone')).toContainText('0812');
+        // The badge is decoration; the name beside it is the text that matters.
+        await expect(who.locator('.who-badge')).toHaveAttribute('aria-hidden', 'true');
+
+        // A long name must not push the number off the strip.
+        const [nameBox, phoneBox] = await Promise.all([
+            who.locator('.who-name').boundingBox(),
+            who.locator('.who-phone').boundingBox()
+        ]);
+        expect(phoneBox.x + phoneBox.width,
+            'the phone chip overflows the strip').toBeLessThanOrEqual(wb.x + wb.width + 1);
+        expect(nameBox.x + nameBox.width,
+            'the name runs under the phone chip').toBeLessThanOrEqual(phoneBox.x + 1);
     });
 
     test('THE TAB BAR GETS OUT OF THE WAY WHILE THE MENU MOVES', async ({ page }) => {
@@ -2440,6 +2469,77 @@ test.describe('QR customer ordering', () => {
         await page.waitForTimeout(500);
         const again = (await bar.boundingBox()).height;
         expect(Math.abs(again - tall), 'the bar never came back').toBeLessThan(1.5);
+    });
+
+    test('A TABLE THAT ASKED FOR ITS BILL CANNOT BE ORDERED INTO', async ({ page }) => {
+        // ⚠️ REPORTED FROM PRODUCTION with two `409 (Conflict)` in the console.
+        // The Pesanan sheet already hid "add to order" once the bill was
+        // called, but the order page went on offering a commit button that the
+        // server could only refuse — and the failure handler re-enabled it, so
+        // every tap bought another 409.
+        let posts = 0;
+        await stub(page);
+        await page.route('**/qr-order', async (route) => {
+            posts += 1;
+            await route.fulfill({
+                status: 409,
+                contentType: 'application/json',
+                body: JSON.stringify({ error: 'bill_requested' })
+            });
+        });
+        await page.route('**/qr-order-status**', (route) => route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+                has_order: true, order_id: 'o1', order_number: '2026-09-08-001',
+                status: 'awaiting_payment', stage: 5, stage_label: 'x',
+                lines: [{ item_id: 'i_americano', item_name: 'Americano', quantity: 1,
+                    gross_amount: 22000, note: null, modifiers: [] }],
+                note: null, history: [], orders: [], subtotal: 22000, discount_total: 0,
+                service_charge_amount: 0, tax_amount: 0, total_amount: 22000,
+                paid_amount: 0, pricing: null, placed_at: Date.now() - 60_000
+            })
+        }));
+        await open(page);
+        await addPlain(page, 'Americano');
+        await page.locator('#cart-open').click();
+
+        // Said BEFORE the tap, and the commit is not offered at all.
+        await expect(page.locator('#cart-notice')).toContainText('sudah diminta', { timeout: 15_000 });
+        await expect(page.locator('#cart-submit')).toBeDisabled();
+        expect(posts, 'the page sent an order it already knew would be refused').toBe(0);
+    });
+
+    test('a refusal does not re-arm the button for another one', async ({ page }) => {
+        // The race the check above cannot cover: somebody else at the table
+        // asks for the bill between this page painting and this diner tapping.
+        // The FIRST 409 is unavoidable; a second one is a bug.
+        let posts = 0;
+        const capture = {};
+        await stub(page, { capture });
+        await page.route('**/qr-order', async (route) => {
+            posts += 1;
+            await route.fulfill({
+                status: 409,
+                contentType: 'application/json',
+                body: JSON.stringify({ error: 'bill_requested' })
+            });
+        });
+        await open(page);                      // status says no live order yet
+        await addPlain(page, 'Americano');
+        await page.locator('#cart-open').click();
+
+        const btn = page.locator('#cart-submit');
+        await expect(btn).toBeEnabled();
+        await btn.click();
+        await expect(page.locator('#cart-notice')).toContainText('sudah diminta');
+        expect(posts).toBe(1);
+
+        // ⚠️ AND IT STAYS DOWN. The server is ahead of our last poll; believing
+        // it is what stops the diner collecting refusals.
+        await expect(btn).toBeDisabled();
+        await page.waitForTimeout(300);
+        expect(posts, 'the button re-armed and sent a second doomed order').toBe(1);
     });
 
     test('a paid sitting is not shown to the next diner', async ({ page }) => {
