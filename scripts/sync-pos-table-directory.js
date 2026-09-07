@@ -21,14 +21,19 @@
 // cannot watch a collection. A table is created once when a restaurant sets up
 // its floor and rarely after, so a reconcile is proportionate.
 //
-// ⚠️ THE INTENDED LONG-TERM PATH IS DIFFERENT, and worth writing down before
-// someone wires this to a cron and calls it done: the directory entry should be
-// written **when the QR is generated**, not on a schedule. A QR cannot exist in
-// the world before somebody generates and prints it, and that is a deliberate
-// action which can call an authenticated function. Registering there means no
-// sync window, and a directory that contains only tables whose codes are
-// actually out there. This script then becomes what its name says — a
-// reconcile — rather than the mechanism.
+// ✅ THAT PATH IS NOW TAKEN — `netlify/functions/pos-table-qr.js` registers every
+// token it prints a card for, so this script is what its name says: a reconcile,
+// not the mechanism.
+//
+// ⚠️ IT WAS THE MECHANISM FOR SIX DAYS AND THAT WAS A BUG. Run once on
+// 2026-09-02, it left every workspace created afterwards with an empty
+// directory — a brand-new Singapore outlet set up its inventory, its products
+// and its settings, printed a card, scanned it, and got "This code is no longer
+// active". Nothing in the product could write this collection; it is deny-all to
+// every client including the owner. Reported 2026-09-08.
+//
+// Still worth running to REVOKE: rotating a token or archiving a table is not a
+// print action, so nothing registers those. That remains this script's job.
 //
 // WHAT IT DOES
 //

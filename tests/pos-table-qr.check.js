@@ -157,6 +157,36 @@ const realToken = () => require('crypto').randomBytes(32).toString('base64url');
         }
     }
 
+    // ── The printed token must RESOLVE, not just scan ─────────────────────
+    //
+    // ⚠️ REPORTED FROM A BRAND-NEW OUTLET: a Singapore restaurant set up its
+    // inventory, products and settings, printed a card, scanned it, and got
+    // "This code is no longer active". `pos_table_directory` is deny-all to
+    // every client, so nothing in the product could write it — it was populated
+    // ONCE by a script, and every table created after that day resolved to a
+    // 404 from `qr-menu`. A card that scans perfectly and resolves to nothing
+    // is the same total, invisible failure as one that does not scan, so it is
+    // guarded in the same file.
+    const qrSrc = fs.readFileSync(path.join(ROOT, 'netlify/functions/pos-table-qr.js'), 'utf8');
+    // The WRITE, not a mention of it — the first version of this assertion was
+    // satisfied by the comment explaining the write.
+    is(/db\.doc\(`pos_table_directory\//.test(qrSrc), true,
+        'generating a card registers its token in the directory');
+    // Before the cards are returned: handing back a card whose registration
+    // failed is the one outcome worse than failing the request.
+    is(qrSrc.indexOf('db.doc(`pos_table_directory/') < qrSrc.indexOf('const cards = []'), true,
+        'the directory is written BEFORE the cards are handed back');
+    is(/dirBatch\.commit\(\)/.test(qrSrc) && /await[\s\S]{0,40}dirBatch\.commit/.test(qrSrc), true,
+        'the registration is awaited rather than fired and forgotten');
+    // The shape the resolvers read. A missing `revoked` reads as undefined,
+    // which `dir.revoked === true` happens to pass — but qr-menu also requires
+    // workspace_id and table_id, and the image endpoint requires dimension_id
+    // for outlet covers.
+    ['workspace_id', 'table_id', 'dimension_id', 'revoked'].forEach((field) => {
+        is(new RegExp(`${field}:`).test(qrSrc), true,
+            `the directory entry carries ${field}, which a resolver reads`);
+    });
+
     console.log(failures ? `\n✗ ${failures} failure(s)\n` : '\npos table qr: clean\n');
     process.exit(failures ? 1 : 0);
 })().catch((err) => {

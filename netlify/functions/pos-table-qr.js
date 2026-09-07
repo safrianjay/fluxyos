@@ -160,6 +160,47 @@ exports.handler = async (event) => {
         tables.sort((a, b) => String(a.zone || '').localeCompare(String(b.zone || ''))
             || String(a.label || '').localeCompare(String(b.label || ''), undefined, { numeric: true }));
 
+        // ── Register every token this call is about to print ────────────────
+        //
+        // ⚠️ THE BUG THIS FIXES, reported from a brand-new Singapore outlet: a
+        // freshly created restaurant set up its inventory, its products and its
+        // settings, printed a card, scanned it, and got "This code is no longer
+        // active". `pos_table_directory` is deny-all to every client, so nothing
+        // in the product could write it — it was populated ONCE by
+        // `scripts/sync-pos-table-directory.js` on 2026-09-02, and every table
+        // created since resolved to a 404 from `qr-menu`. The whole customer
+        // surface was unreachable for any workspace that did not exist that day.
+        //
+        // This is the path `sync-pos-table-directory.js` names in its own header
+        // as the intended one: a QR cannot exist in the world before somebody
+        // generates it, and that is a deliberate, authenticated action. Doing it
+        // here means there is no sync window and no manual step, and the script
+        // goes back to being what its name says — a reconcile.
+        //
+        // ⚠️ BEFORE THE CARDS ARE RETURNED, AND FAILING LOUDLY. A card that
+        // prints and does not resolve is precisely the total, invisible failure
+        // this file is arranged around; handing one back because a write failed
+        // would be the worst outcome available.
+        // ⚠️ CHUNKED AT 400. A Firestore batch caps at 500 writes and a call
+        // with no `tableIds` covers the whole floor — the same 400 the reconcile
+        // script uses, so the two cannot disagree about the limit.
+        const DIR_CHUNK = 400;
+        for (let i = 0; i < tables.length; i += DIR_CHUNK) {
+            const dirBatch = db.batch();
+            for (const t of tables.slice(i, i + DIR_CHUNK)) {
+                dirBatch.set(db.doc(`pos_table_directory/${t.qr_token}`), {
+                    workspace_id: workspaceId,
+                    table_id: t.id,
+                    dimension_id: t.dimension_id || null,
+                    // Reprinting a card un-revokes it, which is the honest
+                    // reading: somebody is putting this token back on a table.
+                    revoked: false,
+                    updated_at: new Date()
+                }, { merge: true });
+            }
+            await dirBatch.commit();
+        }
+
         const cards = [];
         for (const t of tables) {
             const url = cardUrl(t.qr_token);

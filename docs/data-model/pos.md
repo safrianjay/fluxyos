@@ -1218,6 +1218,15 @@ Page: `tests/pos-reservations.spec.js`.
 
 ## 5. `pos_table_directory/{token}` — top-level, deny-all
 
+**Written by `netlify/functions/pos-table-qr.js`,** at the moment a card is
+generated — an authenticated, deliberate action, and a QR cannot be in the world
+before it. ⚠️ It used to be written ONLY by `scripts/sync-pos-table-directory.js`,
+run by hand; between 2026-09-02 and 2026-09-08 every workspace created after that
+single run had an empty directory, so its QR codes resolved to a 404 and the page
+said "This code is no longer active". The script remains the reconcile for the
+cases printing cannot cover: a rotated token, and an archived table's card that
+must be revoked.
+
 `{ workspace_id, table_id, dimension_id, revoked }`. `allow read, write: if false`
 for every client including the owner.
 
