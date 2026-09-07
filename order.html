@@ -718,11 +718,6 @@ img { max-width: 100%; display: block; }
     overflow: hidden;
     text-shadow: 0 1px 2px rgba(11, 15, 25, 0.5);
 }
-.card-opts {
-    font-size: 10.5px; font-weight: 600; margin: -2px 0 6px;
-    color: rgba(255, 255, 255, 0.82);
-    text-shadow: 0 1px 2px rgba(11, 15, 25, 0.5);
-}
 .card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .card-price {
     font-size: 14px; font-weight: 700; letter-spacing: -0.015em;
@@ -731,9 +726,6 @@ img { max-width: 100%; display: block; }
 .card.is-plain .card-name, .reco-card.is-plain .card-name { text-shadow: none; }
 .card.is-plain .card-price, .reco-card.is-plain .card-price {
     text-shadow: none; color: var(--ink);
-}
-.card.is-plain .card-opts, .reco-card.is-plain .card-opts {
-    color: var(--ink-50); text-shadow: none;
 }
 
 /* A "+" rather than "Tambah", so the price gets the room. White pill, ACCENT
@@ -3271,7 +3263,7 @@ html.kb-open .welcome-art { display: none; }
             : '<div class="card-media is-placeholder" style="--tint:'
                 + categoryTint(i.category) + '">' + PLACEHOLDER + '</div>';
         var qty = qtyInCart(i.id);
-        var hasOptions = (i.modifier_groups || []).length > 0;
+
         // ⚠️ NOTHING CART-DEPENDENT IN THE MARKUP EXCEPT THE BADGE, which
         // `syncCartBadges()` then updates in place. The button used to read
         // "2 • Tambah lagi", so every add rebuilt the whole grid to change one
@@ -3286,7 +3278,6 @@ html.kb-open .welcome-art { display: none; }
             + (qty > 0 ? '' : ' hidden') + '>' + esc(String(qty || '')) + '</span>'
             + '<div class="card-body">'
             + '<h3 class="card-name">' + esc(i.name) + '</h3>'
-            + (hasOptions ? '<div class="card-opts">Bisa disesuaikan</div>' : '')
             + '<div class="card-foot">'
             + '<span class="card-price num">' + esc(money(i.price)) + '</span>'
             + '<button class="add-btn" type="button" data-open="' + esc(i.id) + '"'

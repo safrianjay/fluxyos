@@ -24,15 +24,26 @@ test.describe.configure({ timeout: 240_000 });
 const NAME = `QA Outlet ${Date.now()}`;
 const RENAMED = `${NAME} Renamed`;
 
+// ⚠️ A DIALOG, NOT A CARD. Every section on that page describes ONE outlet, so
+// a list of all of them sitting among those sections made the page say two
+// different things about its own scope. It is entered from a store-and-gear
+// button beside the outlet dropdown — the control it is about.
 async function openSettings(page) {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/settings-pos');
-    await page.waitForSelector('#pos-outlets-card:not([hidden])', { timeout: 40000 });
-    await expect(page.locator('#pos-outlet-count')).not.toBeEmpty({ timeout: 20000 });
+    await page.waitForSelector('#pos-outlets-btn', { timeout: 40000 });
+    await expect(page.locator('#pos-outlet-count')).not.toBeEmpty({ timeout: 30000 });
+    await page.locator('#pos-outlets-btn').click();
+    await expect(page.locator('#pos-outlets-dialog')).toBeVisible();
 }
 
 /** The row for one outlet, found by name through the filter. */
 async function rowFor(page, name) {
+    // Actions inside the dialog leave it open; only creating the workspace's
+    // FIRST outlet closes it, to land the user on the settings they came for.
+    if (await page.locator('#pos-outlets-dialog.hidden').count()) {
+        await page.locator('#pos-outlets-btn').click();
+    }
     await page.locator('#pos-outlet-filter').fill(name);
     // The filter only appears once the list is long enough to need it; on a
     // small workspace the row is simply there.
@@ -40,6 +51,30 @@ async function rowFor(page, name) {
     await expect(row).toHaveCount(1, { timeout: 15000 });
     return row;
 }
+
+test('the outlets dialog is entered from beside the outlet dropdown', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/settings-pos');
+    await page.waitForSelector('#pos-outlets-btn', { timeout: 40000 });
+    // ⚠️ THE BUTTON IS STATIC MARKUP; the handler is bound after the outlets
+    // load. Clicking on sight is clicking before it does anything.
+    await expect(page.locator('#pos-outlet-count')).not.toBeEmpty({ timeout: 30000 });
+
+    // Closed until asked for: the page is about the SELECTED outlet.
+    await expect(page.locator('#pos-outlets-dialog')).toBeHidden();
+    // Beside the control it is about, not somewhere else on the page.
+    const near = await page.evaluate(() => {
+        const b = document.getElementById('pos-outlets-btn').getBoundingClientRect();
+        const s = document.getElementById('pos-outlet').getBoundingClientRect();
+        return { toTheRight: b.left >= s.right - 1, sameRow: Math.abs(b.top - s.top) < 24 };
+    });
+    expect(near.toTheRight && near.sameRow, 'the button is not beside the dropdown').toBe(true);
+
+    await page.locator('#pos-outlets-btn').click();
+    await expect(page.locator('#pos-outlets-dialog')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#pos-outlets-dialog')).toBeHidden();
+});
 
 test('AN OUTLET CAN BE ADDED, RENAMED AND RETIRED FROM THE SCREEN', async ({ page }) => {
     await openSettings(page);
@@ -135,7 +170,7 @@ test('AN OUTLET WITH UNSETTLED ORDERS CANNOT BE ARCHIVED', async ({ page }) => {
     // The page reads the guard fresh on each attempt, so the list has to be
     // repainted from the server before trying again.
     await page.reload();
-    await page.waitForSelector('#pos-outlets-card:not([hidden])', { timeout: 40000 });
+    await openSettings(page);
     const again = await rowFor(page, name);
     await again.locator('[data-archive]').click();
     await again.locator('[data-archive]').click();

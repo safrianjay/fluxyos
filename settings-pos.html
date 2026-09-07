@@ -21,6 +21,35 @@
         /* Outlet row actions. Secondary by construction: the page's job is
            configuring an outlet, and managing the list is the errand you do
            once. */
+        /* The control beside the outlet dropdown. Icon-only because it sits in
+           a row of form controls and a labelled button there would read as a
+           second thing to fill in. */
+        .pos-icon-btn {
+            flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+            width: 38px; height: 38px; border-radius: 8px; cursor: pointer;
+            border: 1px solid #E5E7EB; background: #FFFFFF; color: #475569;
+            transition: background-color 140ms ease, color 140ms ease;
+        }
+        .pos-icon-btn svg { width: 20px; height: 20px; }
+        .pos-icon-btn:hover { background: #F8FAFC; color: #0F172A; }
+        .pos-icon-btn:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
+
+        /* Managing the list is a different job from configuring one outlet, so
+           it gets a different surface rather than a card among the sections that
+           all describe the SELECTED outlet. */
+        .pos-dialog-backdrop {
+            position: fixed; inset: 0; z-index: 60;
+            background: rgba(11, 15, 25, 0.45); backdrop-filter: blur(2px);
+        }
+        .pos-dialog {
+            position: fixed; z-index: 61; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: min(560px, calc(100vw - 32px)); max-height: min(80vh, 720px);
+            display: flex; flex-direction: column; overflow: auto;
+            background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px;
+            box-shadow: 0 24px 48px rgba(11, 15, 25, 0.18);
+        }
+
         .pos-outlet-act {
             min-height: 32px; padding: 0 12px; border-radius: 8px; cursor: pointer;
             border: 1px solid #E2E8F0; background: #FFFFFF; color: #334155;
@@ -134,9 +163,37 @@
                     <!-- EVERY setting on this page belongs to ONE outlet: rates vary by
                          regency, hours vary by site, and the photo is that shop's own.
                          So the outlet is picked first and the whole page follows it. -->
-                    <div class="min-w-[220px]">
-                        <label class="pos-field-label" for="pos-outlet">Outlet</label>
-                        <select id="pos-outlet" class="pos-input"></select>
+                    <div class="flex items-end gap-2">
+                        <div class="min-w-[220px]">
+                            <label class="pos-field-label" for="pos-outlet">Outlet</label>
+                            <select id="pos-outlet" class="pos-input"></select>
+                        </div>
+                        <!-- ⚠️ A DIALOG, NOT A CARD ON THE PAGE. Everything below
+                             belongs to the outlet in that dropdown — rates, hours,
+                             the customer photo — so a card listing ALL of them sat
+                             above content that means "the selected one" and made
+                             the page say two different things about scope.
+                             Managing the list is a different job, so it gets a
+                             different surface, entered from beside the control it
+                             is about. -->
+                        <button type="button" id="pos-outlets-btn" class="pos-icon-btn"
+                                title="Manage outlets" aria-label="Manage outlets">
+                            <!-- The store, with a gear on its corner: the subject and
+                                 the verb. A bare gear beside a dropdown says
+                                 "settings" on a page already called Settings; a bare
+                                 store says "outlet" without saying you can change it.
+                                 The gear is drawn as a hub and four teeth rather than
+                                 a real cog — at 20px a cog silhouette is a smudge. -->
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M3.9 5.6a1.8 1.8 0 0 0-.4 1.1V18a1.8 1.8 0 0 0 1.8 1.8h6.4"/>
+                                <path d="M20.5 11.2V6.7a1.8 1.8 0 0 0-.4-1.1l-1.8-2.4a1.8 1.8 0 0 0-1.4-.7H7.1a1.8 1.8 0 0 0-1.4.7z"/>
+                                <path d="M3.6 6.6h16.8"/>
+                                <path d="M14.8 9.6a3.4 3.4 0 0 1-6.8 0"/>
+                                <circle cx="17.5" cy="17.5" r="2.2"/>
+                                <path d="M17.5 13.9v1.2M17.5 19.9v1.2M13.9 17.5h1.2M19.9 17.5h1.2"/>
+                            </svg>
+                        </button>
                     </div>
                 </section>
 
@@ -146,25 +203,36 @@
                 </div>
 
                 <!-- ── OUTLETS ────────────────────────────────────────────────
-                     ⚠️ OUTSIDE `#pos-settings-body`, deliberately. That block is
-                     hidden until an outlet is selected, and this is where the
-                     FIRST one gets created — inside it, a workspace with no
-                     outlets could never make one here.
+                     A DIALOG, not a card in the page flow — see the button that
+                     opens it. Every section below this point describes ONE
+                     outlet; a list of all of them sitting among those sections
+                     made the page's scope ambiguous.
 
-                     Until now an outlet could only be created as a side effect
-                     of receiving stock, and renaming or archiving one was
+                     Until this shipped an outlet could only be created as a side
+                     effect of receiving stock, and renaming or archiving one was
                      DAL-only with no screen at all (dimensions.md said so in
-                     words). This is that screen: the page already picks an
-                     outlet and configures it, so managing the list belongs
-                     directly above the picker's own settings. -->
-                <section id="pos-outlets-card" class="pos-set-card" hidden>
-                    <div class="pos-set-head">
-                        <h2 class="pos-set-title">Outlets</h2>
-                        <p class="pos-set-sub">
-                            The sites this workspace trades from. Archiving one hides it from the till,
-                            the pickers and this page — nothing is ever deleted, because every journal
-                            line already posted against an outlet has to keep resolving to it.
-                        </p>
+                     words).
+
+                     ⚠️ Reachable with ZERO outlets, which is why the button lives
+                     beside the dropdown rather than inside the settings body:
+                     that block is hidden until an outlet is selected, and this is
+                     where the first one gets created. -->
+                <div id="pos-outlets-backdrop" class="pos-dialog-backdrop hidden"></div>
+                <div id="pos-outlets-dialog" class="pos-dialog hidden" role="dialog" aria-modal="true"
+                     aria-labelledby="pos-outlets-dialog-title">
+                    <div class="pos-set-head flex items-start justify-between gap-4">
+                        <div>
+                            <h2 class="pos-set-title" id="pos-outlets-dialog-title">Outlets</h2>
+                            <p class="pos-set-sub">
+                                The sites this workspace trades from. Archiving one hides it from the till,
+                                the pickers and this page — nothing is ever deleted, because every journal
+                                line already posted against an outlet has to keep resolving to it.
+                            </p>
+                        </div>
+                        <button type="button" id="pos-outlets-close" class="pos-icon-btn" aria-label="Close">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round"><path d="M6 18 18 6M6 6l12 12"/></svg>
+                        </button>
                     </div>
                     <div class="pos-set-body">
                         <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -192,7 +260,7 @@
                         </div>
                         <p id="pos-outlet-error" class="mt-2 text-[12px] font-medium text-red-600" hidden></p>
                     </div>
-                </section>
+                </div>
 
                 <!-- No outlet at all. A dropdown with nothing in it explains nothing. -->
                 <section id="pos-no-outlet" class="pos-set-card" hidden>
@@ -200,8 +268,8 @@
                         <p class="pos-set-title">No outlet to configure yet</p>
                         <p class="pos-set-sub">
                             These settings belong to an outlet — rates, opening hours and the customer
-                            photo are all that shop's own. Add one above, then
-                            come back.
+                            photo are all that shop's own. Add one with the store button
+                            beside the Outlet dropdown, then come back.
                         </p>
                     </div>
                 </section>
@@ -506,7 +574,6 @@
         let outletFilter = '';
 
         function renderOutlets() {
-            $('pos-outlets-card').hidden = false;
             const host = $('pos-outlet-list');
             const archivedCount = allOutlets.length - outlets.length;
             // Stated, not counted. On a workspace with thirty sites "how many do
@@ -613,7 +680,26 @@
             if (!stillThere) await selectOutlet(outlets[0].id);
         }
 
+        const openOutlets = () => {
+            outletError('');
+            renderOutlets();
+            $('pos-outlets-backdrop').classList.remove('hidden');
+            $('pos-outlets-dialog').classList.remove('hidden');
+            $('pos-outlet-new').focus();
+        };
+        const closeOutlets = () => {
+            $('pos-outlets-backdrop').classList.add('hidden');
+            $('pos-outlets-dialog').classList.add('hidden');
+        };
+
         function wireOutlets() {
+            $('pos-outlets-btn').addEventListener('click', openOutlets);
+            $('pos-outlets-close').addEventListener('click', closeOutlets);
+            $('pos-outlets-backdrop').addEventListener('click', closeOutlets);
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeOutlets();
+            });
+
             $('pos-outlet-list').addEventListener('click', (e) => {
                 const t = (a) => e.target.closest(`[data-${a}]`);
                 const rename = t('rename');
@@ -675,7 +761,12 @@
                     // configured, not have to go and find it in the picker.
                     const first = !outlets.length;
                     await refreshOutlets();
-                    if (first) await selectOutlet(created.id);
+                    if (first) {
+                        // The first outlet is the one they came to configure, so
+                        // get out of the way and land them on it.
+                        await selectOutlet(created.id);
+                        closeOutlets();
+                    }
                     window.showToast('Outlet added.', 'success');
                 } catch (err) {
                     outletError(err.message || 'Could not add that outlet.');

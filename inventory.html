@@ -20,6 +20,19 @@
          which this page is not. -->
     <link rel="stylesheet" href="assets/css/dashboard.css">
     <style>
+        /* A view option in the table toolbar — quiet by construction. It sits in
+           a row with a search field and a button, and the shared `.inv-check`
+           panel there read as the most important thing in the row. */
+        .inv-toolbar-check {
+            display: inline-flex; align-items: center; gap: 8px;
+            min-height: 40px; padding: 0 2px; cursor: pointer;
+            font-size: 13px; font-weight: 500; color: #475569; white-space: nowrap;
+        }
+        .inv-toolbar-check input {
+            width: 15px; height: 15px; accent-color: #111827; cursor: pointer;
+        }
+        .inv-toolbar-check:hover { color: #0F172A; }
+
         /* ── Metric cells, arranged the way the reference does it ───────
            Value first and centred, with an icon + uppercase caption beneath —
            rather than the label-above-value of the stock strip. Still the shared
@@ -621,10 +634,16 @@
                         </div>
                         <!-- ⚠️ WITHOUT THIS, RESTORE IS UNREACHABLE. Archiving is
                              the only retirement there is, so a list that never
-                             shows an archived item makes it a one-way door. -->
-                        <label class="inv-check" style="margin:0 0 0 12px; white-space:nowrap;">
-                            <input id="inventory-show-archived" type="checkbox" class="inv-check-box">
-                            <span class="inv-check-text">Include archived</span>
+                             shows an archived item makes it a one-way door.
+
+                             NOT `.inv-check`: that is a padded, bordered, filled
+                             PANEL built for the drawer's form questions, and next
+                             to a search field it inflated into a pill that looked
+                             like the loudest control in the toolbar. This is a
+                             view option, so it is quiet. -->
+                        <label class="inv-toolbar-check">
+                            <input id="inventory-show-archived" type="checkbox">
+                            <span>Include archived</span>
                         </label>
                         <!-- Menu groups are not documents — they exist because
                              items name them — so this is the only place a typo'd

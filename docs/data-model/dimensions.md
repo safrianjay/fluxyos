@@ -32,11 +32,19 @@ Still open: **invoices** carry no dimension, so invoiced revenue sits in
 settings page manages `type: 'outlet'` only, because that is the type it
 configures.
 
-### The outlets card
+### The outlets dialog
 
-⚠️ **It sits OUTSIDE the page's settings body**, which is hidden until an outlet
-is selected — inside it, a workspace with no outlets could never create its
-first one.
+⚠️ **A DIALOG, not a card in the page flow.** Every section on that page
+describes ONE outlet — its rates, its hours, its customer photo — so a list of
+all of them sitting among those sections made the page say two different things
+about its own scope. Managing the list is a different job and gets a different
+surface, entered from a store-and-gear button **beside the outlet dropdown**:
+the control it is about.
+
+⚠️ **Reachable with zero outlets**, which is why the button lives beside the
+dropdown rather than inside the settings body — that block is hidden until an
+outlet is selected, and this is where the first one gets created. Creating the
+first one closes the dialog and lands the user on it.
 
 ⚠️ **Nothing is deleted, so the screen must be able to UN-archive.** Rules set
 `delete: if false` because journal lines posted against a dimension are immutable
