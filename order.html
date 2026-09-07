@@ -1130,13 +1130,22 @@ img { max-width: 100%; display: block; }
    project-wide; a 10% wash reading as a soft banner is the accent use the rule
    exists to allow, and it is what makes this row look deliberate rather than
    like text that fell out of the panel above. */
+/* ⚠️ TUCKED BEHIND THE BUTTON, exactly as the reference does it: a rounded
+   tinted panel, inset a little on each side, whose lower edge is covered by
+   the commit button sitting on top of it. That overlap is what makes the two
+   read as one control rather than as a notice with a button under it — and it
+   is the whole reason for the extra bottom padding and the negative margin,
+   which must stay in step (20 covered by -12 leaves 8 of visible tint). */
 .page-foot .who {
-    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-    margin: 0 0 10px;
-    padding: 10px 14px;
+    position: relative;
+    z-index: 0;
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px; flex-wrap: wrap;
+    margin: 0 6px -12px;
+    padding: 9px 16px 20px;
     border: none;
-    border-radius: var(--r-lg);
-    background: rgba(234, 88, 12, 0.09);
+    border-radius: var(--r-xl);
+    background: rgba(234, 88, 12, 0.10);
     font-size: 12.5px;
     color: #9A3412;
 }
@@ -1145,23 +1154,21 @@ img { max-width: 100%; display: block; }
    nothing on it, and the gate means that state is rare but reachable. */
 .page-foot .who:empty { display: none; }
 
-/* ⚠️ THE ONE ORANGE BUTTON IN THE PRODUCT, and deliberately so: this is the
-   commit — the tap that sends food to a kitchen — and CLAUDE.md reserves
-   orange for exactly that. Everything else on this page stays ink. Rounder
-   than `--r-md` to match the reference Jay supplied; at 52px tall a 16px
-   radius is the pill-adjacent shape it shows without becoming a lozenge. */
+/* ⚠️ INK, NOT ORANGE. It was orange for one commit and Jay put it back: every
+   other primary in the product is ink, and one orange button on one screen
+   reads as a mistake rather than as emphasis. The tint above it is where the
+   warmth lives. The rounder corner and the amount on the right stay — those
+   are the parts of the reference that were working. */
 .page-foot #cart-submit {
+    position: relative;
+    z-index: 1;
     height: 52px;
     border-radius: var(--r-lg);
-    background: var(--accent);
-    box-shadow: 0 6px 16px -8px rgba(234, 88, 12, 0.7);
     font-size: 15.5px;
     font-weight: 700;
     justify-content: space-between;
     padding: 0 20px;
 }
-.page-foot #cart-submit:active { background: #DC5309; }
-.page-foot #cart-submit:disabled { box-shadow: none; }
 
 /* ==========================================================================
    Cart bar — the persistent bottom affordance
@@ -1272,6 +1279,37 @@ img { max-width: 100%; display: block; }
     transition: color 0.16s ease, background 0.16s ease;
 }
 .tab svg { width: 21px; height: 21px; }
+
+/* ---- Compact while scrolling ------------------------------------------
+   ⚠️ THE RESERVED SPACE DOES NOT MOVE. `--tabbar-space` keeps the bar's FULL
+   height, so the page never reflows mid-scroll — see syncTabbarSpace(). This
+   is a floating bar over the content, so shrinking it uncovers menu without
+   anything below it needing to know.
+
+   Labels go by collapsing their line-height and opacity rather than
+   `display: none`: a removed element cannot be transitioned, and the bar would
+   snap between two sizes instead of settling. */
+.tabbar-inner,
+.tab,
+.tab svg,
+.tab .tab-label {
+    transition: padding 0.2s ease, gap 0.2s ease, width 0.2s ease,
+                height 0.2s ease, opacity 0.16s ease, max-height 0.2s ease;
+}
+.tabbar.is-compact .tabbar-inner { padding: 5px; gap: 4px; }
+.tabbar.is-compact .tab { padding: 7px 14px; gap: 0; }
+.tabbar.is-compact .tab svg { width: 19px; height: 19px; }
+.tabbar.is-compact .tab .tab-label { opacity: 0; max-height: 0; }
+.tab .tab-label { max-height: 16px; overflow: hidden; }
+
+/* Someone who has asked for less motion gets a bar that simply stays put. */
+@media (prefers-reduced-motion: reduce) {
+    .tabbar-inner, .tab, .tab svg, .tab .tab-label { transition: none; }
+    .tabbar.is-compact .tabbar-inner { padding: 7px; gap: 6px; }
+    .tabbar.is-compact .tab { padding: 8px 12px 7px; gap: 3px; }
+    .tabbar.is-compact .tab svg { width: 21px; height: 21px; }
+    .tabbar.is-compact .tab .tab-label { opacity: 1; max-height: 16px; }
+}
 
 /* The active tab is a solid navy pill with white content — the same ink as the
    cart bar, so the two primary surfaces read as one system. An orange wash was
@@ -1493,7 +1531,10 @@ img { max-width: 100%; display: block; }
 
 .ostage {
     text-align: center;
-    margin: -4px -20px 0;
+    /* ⚠️ THE BOTTOM MARGIN IS THE POINT. The warm field and the first panel
+       were touching, so the two blocks read as one and the panel looked like
+       the last row of the illustration area. */
+    margin: -4px -20px 10px;
     padding: 8px 20px 14px;
     background: var(--warm);
     border-radius: 0 0 var(--r-xl) var(--r-xl);
@@ -1603,7 +1644,7 @@ img { max-width: 100%; display: block; }
 /* Nothing ordered yet — a state, not a blank panel. */
 .orders-empty {
     text-align: center;
-    margin: -4px -20px 0;
+    margin: -4px -20px 10px;
     padding: 22px 20px 26px;
     background: var(--warm);
     border-radius: 0 0 var(--r-xl) var(--r-xl);
@@ -1628,8 +1669,13 @@ img { max-width: 100%; display: block; }
 .closed-body { text-align: center; padding-top: 0; }
 /* ⚠️ A WRAPPER, NOT THE IMAGE. The warm field needs padding and a full-bleed
    width; putting either on the <img> itself sets both width and height and
-   stretches the illustration. */
-.closed-artwrap {
+   stretches the illustration.
+
+   ONE CLASS for every sheet that opens on an illustration — orders, closed,
+   and the confirmation — so a fifth one cannot arrive with its own idea of
+   what the top of a sheet looks like. The negative margins undo
+   `.sheet-body`'s 20px inset; keep those two numbers equal. */
+.art-field {
     margin: -4px -20px 14px;
     padding: 14px 20px 10px;
     background: var(--warm);
@@ -2135,7 +2181,9 @@ html.kb-open .welcome-art { display: none; }
 /* ---- Confirmation ------------------------------------------------------ */
 /* A short sheet: it is an acknowledgement, not a destination. */
 .sheet-done { text-align: center; }
-.done-body { padding: 4px 24px 20px; }
+/* 20px, matching `.sheet-body` and therefore `.art-field`'s reach. At 24 the
+   warm field stopped 4px short of the sheet edge and left a white rim. */
+.done-body { padding: 4px 20px 20px; }
 
 /* Jay's supplied artwork, replacing the drawn tick-in-a-circle. Kept at its
    own proportions and capped, so a later re-export at a different size cannot
@@ -2147,7 +2195,7 @@ html.kb-open .welcome-art { display: none; }
     width: 100%;
     max-width: 200px;
     height: auto;
-    margin: 2px auto 12px;
+    margin: 0 auto;
     animation: donePop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 @keyframes donePop {
@@ -2419,12 +2467,12 @@ html.kb-open .welcome-art { display: none; }
     <div class="tabbar-inner">
         <button class="tab" type="button" data-tab="menu" aria-current="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h12"/></svg>
-            <span data-i18n="tabs.menu">Menu</span>
+            <span class="tab-label" data-i18n="tabs.menu">Menu</span>
         </button>
         <button class="tab" type="button" data-tab="orders" aria-current="false">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1z"/><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M9 11h6M9 15h4"/></svg>
             <span class="tab-badge" id="tab-orders-badge">0</span>
-            <span data-i18n="tabs.orders">Pesanan</span>
+            <span class="tab-label" data-i18n="tabs.orders">Pesanan</span>
         </button>
     </div>
 </nav>
@@ -2467,14 +2515,16 @@ html.kb-open .welcome-art { display: none; }
      is still what the diner wants to be looking at, and taking the whole screen
      away to say "done" made a two-second acknowledgement feel like leaving the
      restaurant. -->
-<div id="sheet-done" class="sheet sheet-done" role="dialog" aria-modal="true" aria-labelledby="done-title">
+<div id="sheet-done" class="sheet sheet-done sheet-warm" role="dialog" aria-modal="true" aria-labelledby="done-title">
     <div class="sheet-grip"></div>
     <div class="sheet-body done-body">
         <!-- Jay's own artwork. ABSOLUTE path: under the printed route
              `/t/<token>` a relative `assets/…` resolves to `/t/assets/…`, which
              the catch-all rewrite serves as 200-with-HTML rather than 404 — it
              would fail while LOOKING like it loaded. -->
-        <img class="done-art" src="/assets/images/order-success.png" alt="" decoding="async">
+        <div class="art-field">
+            <img class="done-art" src="/assets/images/order-success.png" alt="" decoding="async">
+        </div>
         <h2 class="done-title" id="done-title" data-i18n="done.title">Pesanan terkirim</h2>
         <p class="done-sub" id="done-sub" data-i18n="done.sub">Dapur sudah menerima pesanan Anda.</p>
         <div class="done-ticket">
@@ -2538,7 +2588,7 @@ html.kb-open .welcome-art { display: none; }
 <div id="sheet-closed" class="sheet sheet-closed sheet-warm" role="dialog" aria-modal="true" aria-labelledby="closed-title">
     <div class="sheet-grip"></div>
     <div class="sheet-body closed-body">
-        <div class="closed-artwrap">
+        <div class="art-field">
             <img class="closed-art" id="closed-art" alt="" decoding="async"
                  src="/assets/images/storeclose.webp" width="313" height="420">
         </div>
@@ -4892,6 +4942,12 @@ html.kb-open .welcome-art { display: none; }
     function syncTabbarSpace() {
         var el = document.querySelector('.tabbar-inner');
         if (!el) return;
+        // ⚠️ NEVER MEASURE THE COMPACT BAR. This number is the page's bottom
+        // spacer AND the cart bar's offset; taking it while the bar is shrunk
+        // would reserve too little, and re-taking it on every scroll would
+        // reflow the whole page under the reader's thumb. The reserved space
+        // stays at the FULL height and only the bar moves.
+        if (document.querySelector('.tabbar').classList.contains('is-compact')) return;
         var h = Math.ceil(el.getBoundingClientRect().height);
         if (!h) return;
         // The bar's own 10px offset from the bottom edge, plus the safe area,
@@ -4928,6 +4984,35 @@ html.kb-open .welcome-art { display: none; }
     if (document.fonts && document.fonts.ready) {
         document.fonts.ready.then(syncFootSpace).catch(function () {});
     }
+
+    /**
+     * The tab bar shrinks out of the way while the menu is moving.
+     *
+     * A floating bar over a two-column grid of photographs costs a row of
+     * cards on a 390px screen. It only costs that while someone is READING,
+     * though — the moment they are scrolling, the labels are not being read
+     * and the bar can give the space back.
+     *
+     * ⚠️ IDLE, NOT DIRECTION. The obvious version hides the bar on scroll-down
+     * and shows it on scroll-up, and it is wrong here: this bar is how you
+     * reach your order, and a diner who scrolls down to the end of a long menu
+     * would find the way out of it gone. It never disappears — it compacts,
+     * and comes back the moment the page settles.
+     */
+    var tabbarIdle = null;
+    var TABBAR_SETTLE = 240;      // long enough that flick-scrolling does not flicker
+
+    function onMenuScroll() {
+        var bar = document.querySelector('.tabbar');
+        if (!bar || bar.hidden) return;
+        bar.classList.add('is-compact');
+        clearTimeout(tabbarIdle);
+        tabbarIdle = setTimeout(function () {
+            bar.classList.remove('is-compact');
+        }, TABBAR_SETTLE);
+    }
+    // Passive: this must never be able to delay a scroll frame.
+    window.addEventListener('scroll', onMenuScroll, { passive: true });
 
     function setActiveTab(which) {
         Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (el) {

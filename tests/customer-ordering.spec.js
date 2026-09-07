@@ -2243,6 +2243,161 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('#sheet-closed')).not.toHaveClass(/is-open/);
     });
 
+    test('THE WARM FIELD IS THE SAME ONE ON EVERY SHEET THAT OPENS ON A PICTURE',
+        async ({ page }) => {
+            // ⚠️ ONE CLASS, THREE SHEETS. Each of these used to put its
+            // illustration on white, where artwork drawn on its own cream
+            // ground reads as a pasted rectangle. They share `.art-field` so a
+            // fourth sheet cannot arrive with its own idea of the treatment.
+            const capture = {};
+            await stub(page, { capture });
+            await page.route('**/qr-order', (route) => route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ ok: true, order_id: 'ord_1',
+                    order_number: '2026-09-07-007', total_amount: 22000, rejected_lines: 0 })
+            }));
+            await open(page);
+            await addPlain(page, 'Americano');
+            await page.locator('#cart-open').click();
+            await page.locator('#cart-submit').click();
+            await expect(page.locator('#sheet-done')).toHaveClass(/is-open/, { timeout: 15_000 });
+
+            const field = page.locator('#sheet-done .art-field');
+            await expect(field).toHaveCount(1);
+            const warm = await field.evaluate((el) => {
+                const bg = getComputedStyle(el).backgroundColor.match(/[\d.]+/g).map(Number);
+                return { r: bg[0], g: bg[1], b: bg[2] };
+            });
+            expect(warm.r, 'the confirmation art sits on a cool ground')
+                .toBeGreaterThan(warm.b);
+            expect(warm.r - warm.b, 'the tint is too faint to be the warm field')
+                .toBeGreaterThan(8);
+
+            // ⚠️ AND IT REACHES THE SHEET'S EDGES. The field is full-bleed via
+            // negative margins that undo the body's inset; if those two numbers
+            // drift, a white rim appears down each side and the block reads as
+            // a card rather than as the top of the sheet.
+            const [f, sheet] = await Promise.all([
+                field.boundingBox(),
+                page.locator('#sheet-done').boundingBox()
+            ]);
+            expect(Math.abs(f.x - sheet.x), 'a white rim on the left').toBeLessThan(1.5);
+            expect(Math.abs((f.x + f.width) - (sheet.x + sheet.width)),
+                'a white rim on the right').toBeLessThan(1.5);
+        });
+
+    test('the warm field does not touch the panel below it', async ({ page }) => {
+        await stub(page);
+        await page.route('**/qr-order-status**', (route) => route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+                has_order: true, order_id: 'o1', order_number: '2026-09-07-001',
+                status: 'sent', stage: 2, stage_label: 'x',
+                lines: [{ item_id: 'i_americano', item_name: 'Americano', quantity: 1,
+                    gross_amount: 22000, note: null, modifiers: [] }],
+                note: null, history: [], orders: [], subtotal: 22000, discount_total: 0,
+                service_charge_amount: 0, tax_amount: 0, total_amount: 22000,
+                paid_amount: 0, pricing: null, placed_at: Date.now() - 60_000
+            })
+        }));
+        await open(page);
+        await page.locator('.tab[data-tab="orders"]').click();
+        await expect(page.locator('.ostage')).toBeVisible({ timeout: 15_000 });
+
+        // Two blocks that touch read as one, and the panel then looks like the
+        // last row of the illustration area. 6px was the floor Jay asked for.
+        const [art, panel] = await Promise.all([
+            page.locator('.ostage').boundingBox(),
+            page.locator('#orders-body .opanel').first().boundingBox()
+        ]);
+        expect(panel.y - (art.y + art.height),
+            'the warm field and the order panel are touching').toBeGreaterThanOrEqual(6);
+    });
+
+    test('THE COMMIT BAR IS INK, WITH THE IDENTITY TUCKED BEHIND IT', async ({ page }) => {
+        await stub(page);
+        await open(page);
+        await addPlain(page, 'Americano');
+        await page.locator('#cart-open').click();
+
+        const btn = page.locator('#cart-submit');
+        const who = page.locator('#cart-who');
+        await expect(who).toContainText('Sinta');
+
+        // ⚠️ INK, NOT ORANGE. It was orange for exactly one commit; every other
+        // primary in the product is ink and one orange button on one screen
+        // reads as a mistake rather than as emphasis.
+        const fill = await btn.evaluate((el) => getComputedStyle(el).backgroundColor);
+        const rgb = fill.match(/[\d.]+/g).map(Number);
+        expect(rgb[0], 'the commit button went back to orange').toBeLessThan(60);
+
+        // The tint above it is where the warmth lives, and the button OVERLAPS
+        // its lower edge — that overlap is what makes the two read as one
+        // control rather than as a notice with a button under it.
+        const [wb, bb] = await Promise.all([who.boundingBox(), btn.boundingBox()]);
+        expect(bb.y, 'the button does not overlap the identity panel')
+            .toBeLessThan(wb.y + wb.height);
+        expect(wb.y, 'the identity panel is not above the button').toBeLessThan(bb.y);
+        const tint = await who.evaluate((el) => getComputedStyle(el).backgroundColor.match(/[\d.]+/g).map(Number));
+        expect(tint[0], 'the identity panel lost its warm tint').toBeGreaterThan(tint[2]);
+    });
+
+    test('THE TAB BAR GETS OUT OF THE WAY WHILE THE MENU MOVES', async ({ page }) => {
+        // A floating bar over a two-column grid of photographs costs a row of
+        // cards on a 390px screen — but only while someone is READING. The
+        // moment they are scrolling, the labels are not being read.
+        const LONG = {
+            ...MENU,
+            items: Array.from({ length: 24 }, (_, n) => ({
+                id: `i_${n}`, name: `Dish ${n}`, category: 'Kopi',
+                price: 20000 + n * 500, has_image: false, modifier_groups: []
+            }))
+        };
+        await stub(page);
+        await page.route('**/qr-menu?**', (route) => route.fulfill({
+            status: 200, contentType: 'application/json', body: JSON.stringify(LONG)
+        }));
+        await open(page);
+        await expect(page.locator('.card').first()).toBeVisible();
+
+        const bar = page.locator('.tabbar-inner');
+        const tall = (await bar.boundingBox()).height;
+        const reserved = () => page.evaluate(() =>
+            getComputedStyle(document.documentElement).getPropertyValue('--tabbar-space').trim());
+        const spaceBefore = await reserved();
+
+        // Keep it moving through its own transition — one wheel tick and an
+        // immediate read lands mid-animation and measures nothing.
+        for (let i = 0; i < 6; i += 1) {
+            await page.mouse.wheel(0, 120);
+            await page.waitForTimeout(60);
+        }
+        await page.waitForTimeout(120);
+        const short = (await bar.boundingBox()).height;
+        expect(short, 'the tab bar did not shrink while scrolling').toBeLessThan(tall - 10);
+
+        // ⚠️ IT COMPACTS, IT NEVER LEAVES. This bar is how a diner reaches
+        // their order; the hide-on-scroll-down pattern would take the way out
+        // of a long menu away at the bottom of that menu, which is where they
+        // are most likely to want it.
+        await expect(page.locator('.tabbar')).toBeVisible();
+        await expect(page.locator('.tab[data-tab="orders"]')).toBeVisible();
+
+        // ⚠️ AND THE PAGE MUST NOT REFLOW. `--tabbar-space` is the bottom
+        // spacer AND the cart bar's offset; re-measuring it against the shrunk
+        // bar would move the whole page under the reader's thumb on every
+        // scroll frame. It stays at the full height.
+        expect(await reserved(), 'the reserved space moved with the bar')
+            .toBe(spaceBefore);
+
+        // It comes back when the page settles.
+        await page.waitForTimeout(500);
+        const again = (await bar.boundingBox()).height;
+        expect(Math.abs(again - tall), 'the bar never came back').toBeLessThan(1.5);
+    });
+
     test('a paid sitting is not shown to the next diner', async ({ page }) => {
         // The endpoint excludes paid orders, so a fresh scan sees the empty
         // state rather than the previous party's settled bill. Measured on the
