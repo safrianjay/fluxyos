@@ -619,6 +619,19 @@
                             <svg class="inv-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                             <input id="inventory-search" type="text" class="inv-search" placeholder="Search by name, shelf, or SKU" autocomplete="off">
                         </div>
+                        <!-- ⚠️ WITHOUT THIS, RESTORE IS UNREACHABLE. Archiving is
+                             the only retirement there is, so a list that never
+                             shows an archived item makes it a one-way door. -->
+                        <label class="inv-check" style="margin:0 0 0 12px; white-space:nowrap;">
+                            <input id="inventory-show-archived" type="checkbox" class="inv-check-box">
+                            <span class="inv-check-text">Include archived</span>
+                        </label>
+                        <!-- Menu groups are not documents — they exist because
+                             items name them — so this is the only place a typo'd
+                             one can be fixed without opening every item. -->
+                        <button id="inventory-groups-btn" type="button"
+                                class="px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 whitespace-nowrap"
+                                style="margin-left:auto">Menu groups</button>
                     </div>
 
                     <div id="inventory-table-container" class="fluxy-table-scroll hidden">
@@ -720,6 +733,32 @@
 
     <!-- ITEM DRAWER — create / edit -->
     <div id="item-drawer-backdrop" class="fixed inset-0 bg-black/50 z-40 hidden"></div>
+    <!-- ── MENU GROUPS ────────────────────────────────────────────────────────
+         A menu group is not a document. It exists because items name it in
+         `pos_category`, and the till builds its category tabs from the distinct
+         values — so a typo'd group could only be fixed by opening every item in
+         it, one at a time, and a group with no items simply stops existing.
+
+         Renaming onto a name already in use is a MERGE, which is what actually
+         fixes "Minuman" and "minuman" showing up as two tabs. It says so before
+         it does it. -->
+    <div id="groups-backdrop" class="fixed inset-0 bg-black/40 z-40 hidden"></div>
+    <div id="groups-drawer" class="fixed top-0 right-0 h-full w-full max-w-[420px] bg-white fluxy-drawer-floating z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col" role="dialog" aria-modal="true" aria-labelledby="groups-title">
+        <div class="fluxy-drawer-header">
+            <div>
+                <h2 id="groups-title" class="fluxy-drawer-title">Menu groups</h2>
+                <p class="fluxy-drawer-desc">The tabs the till shows. A group exists while an item uses it — rename one onto another to merge them, or clear the name to leave those items ungrouped.</p>
+            </div>
+            <button id="groups-close" type="button" class="fluxy-drawer-close" aria-label="Close">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div class="fluxy-drawer-body">
+            <div id="groups-error" class="fluxy-drawer-callout fluxy-drawer-callout--warning hidden"></div>
+            <div id="groups-list"></div>
+        </div>
+    </div>
+
     <div id="item-drawer" class="fixed top-0 right-0 h-full w-full max-w-[480px] bg-white fluxy-drawer-floating z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col" role="dialog" aria-modal="true" aria-labelledby="item-drawer-title">
         <div class="fluxy-drawer-header">
             <div>
@@ -980,6 +1019,15 @@
         </form>
 
         <div class="fluxy-drawer-footer">
+            <!-- ⚠️ RETIRING AN ITEM LIVES WITH EDITING IT. `archiveItem` has
+                 existed since inventory shipped and NOTHING called it — an item
+                 could be created and changed but never taken off the list except
+                 from the console. It is left-aligned and secondary: this drawer
+                 is for editing, and archiving is the thing you do once.
+                 There is no delete. Stock movements, goods receipts and posted
+                 journals reference the item, and posted journals are immutable. -->
+            <button id="item-archive-btn" type="button"
+                    class="fluxy-drawer-btn fluxy-drawer-btn--secondary" style="margin-right:auto" hidden></button>
             <button id="item-cancel-btn" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--secondary">Cancel</button>
             <button id="item-save-btn" type="button" class="fluxy-drawer-btn fluxy-drawer-btn--primary" disabled>Save item</button>
         </div>
@@ -1155,6 +1203,7 @@
         let currentUid = null;
         let allRows = [];        // items joined with their stock
         let menuGroups = [];     // distinct pos_category values across ALL items
+        let showArchived = false;
         let editingItem = null;  // null = create mode
         // The item's CURRENT photo path, and a file chosen but not yet uploaded.
         //
@@ -1248,7 +1297,7 @@
             // the raw rows serve on-hand AND the alerts AND the activity feed AND
             // the trend from one read — fewer than the page made before.
             const [items, onHand, dims, movements] = await Promise.all([
-                ds.getItems(currentUid),
+                ds.getItems(currentUid, { includeArchived: showArchived }),
                 ds.getStockOnHand(currentUid, { byDimension: true }),
                 ds.getDimensions(currentUid),
                 ds.getStockMovements(currentUid, { limitCount: 500 })
@@ -1643,7 +1692,8 @@
             const meta = [];
             if (item.storage_location) meta.push(esc(item.storage_location));
             if (item.sku) meta.push(esc(item.sku));
-            const tag = item.type === 'composite' ? '<span class="inv-tag">Recipe</span>' : '';
+            const tag = (item.type === 'composite' ? '<span class="inv-tag">Recipe</span>' : '')
+                + (item.status === 'archived' ? '<span class="inv-tag">Archived</span>' : '');
 
             const onHand = stock
                 ? `<span class="inv-qty">${qty(stock.quantity)}</span><span class="inv-qty-unit">${esc(item.base_unit || '')}</span>`
@@ -1679,6 +1729,12 @@
             const emptyHost = document.getElementById('inventory-empty-state');
 
             if (!rows.length) {
+                // ⚠️ CLEARED, NOT JUST HIDDEN. The tbody kept the previous
+                // render behind `.hidden`, so an item that had just been
+                // archived was still in the DOM — reachable by a screen reader,
+                // and by anything else that queries the table. It looked gone
+                // and was not.
+                document.getElementById('inventory-body').innerHTML = '';
                 container.classList.add('hidden');
                 document.getElementById('inventory-pagination').classList.add('hidden');
                 emptyHost.innerHTML = '';
@@ -2538,6 +2594,7 @@
             const isEdit = Boolean(item);
 
             document.getElementById('item-drawer-title').textContent = isEdit ? 'Edit item' : 'New item';
+            renderArchiveBtn(isEdit ? item : null);
             document.getElementById('item-drawer-desc').textContent = isEdit
                 ? 'Changes apply from now on. Quantities already recorded are not affected.'
                 : 'Ingredients and goods you buy and hold. Once an item exists you can receive stock against it and count it.';
@@ -3246,6 +3303,178 @@
 
         // ── Wiring ───────────────────────────────────────────────────────────
         document.getElementById('new-item-btn').addEventListener('click', () => openDrawer(null));
+        // ── Archive / restore ────────────────────────────────────────────────
+        function renderArchiveBtn(item) {
+            const btn = document.getElementById('item-archive-btn');
+            btn.hidden = !item;
+            if (!item) return;
+            btn.dataset.confirm = '';
+            btn.dataset.mode = item.status === 'archived' ? 'restore' : 'archive';
+            btn.textContent = item.status === 'archived' ? 'Restore item' : 'Archive item';
+        }
+
+        /**
+         * ⚠️ AN INGREDIENT INSIDE A LIVE RECIPE IS NOT SAFE TO ARCHIVE.
+         *
+         * Nothing downstream refuses it: `saveItem` validates a recipe's graph
+         * when the RECIPE is written, not when a component is retired later. So
+         * the composite would go on costing against an item that has vanished
+         * from every picker — and the first person to open that recipe could not
+         * put the ingredient back.
+         *
+         * Free to check: every item is already in memory for the table.
+         *
+         * Deliberately NOT guarded against live POS orders. An order line
+         * snapshots `item_name` and `unit_price`, so archiving the item leaves
+         * it intact — a guard there would be ceremony protecting nothing.
+         */
+        function recipesUsing(itemId) {
+            return allRows
+                .map((r) => r.item)
+                .filter((i) => i.status !== 'archived'
+                    && (i.components || []).some((c) => c.item_id === itemId))
+                .map((i) => i.name);
+        }
+
+        document.getElementById('item-archive-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('item-archive-btn');
+            const item = editingItem;
+            if (!item) return;
+            const restoring = btn.dataset.mode === 'restore';
+
+            if (!restoring) {
+                const used = recipesUsing(item.id);
+                if (used.length) {
+                    showError(`${item.name} is an ingredient in ${used.slice(0, 3).join(', ')}${used.length > 3 ? ` and ${used.length - 3} more` : ''}. Take it out of the recipe first — archiving it would leave the recipe costing against an item nobody can pick again.`);
+                    return;
+                }
+                // Two taps. It disappears from the till menu and every picker.
+                if (btn.dataset.confirm !== '1') {
+                    btn.dataset.confirm = '1';
+                    btn.textContent = 'Tap again to archive';
+                    return;
+                }
+            }
+
+            btn.disabled = true;
+            try {
+                await ds.archiveItem(currentUid, item.id, { restore: restoring });
+                closeDrawer();
+                // ⚠️ THE TOAST MEANS DONE, NOT STARTED. Announcing before the
+                // reload lands leaves the row still on screen underneath a
+                // message saying it is gone — and anything watching for the
+                // confirmation is watching the wrong moment.
+                await loadInventory();
+                window.showToast(restoring ? 'Item restored.' : 'Item archived.', 'success');
+            } catch (err) {
+                showError(err.message || 'Could not update that item.');
+                renderArchiveBtn(item);
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        // ── Menu groups ──────────────────────────────────────────────────────
+        const groupsError = (msg) => {
+            const el = document.getElementById('groups-error');
+            el.textContent = msg || '';
+            el.classList.toggle('hidden', !msg);
+        };
+
+        function renderGroups() {
+            const host = document.getElementById('groups-list');
+            // Counted from the SAME list the drawer's dropdown is built from, so
+            // the two can never disagree about what exists.
+            const counts = new Map();
+            allRows.forEach(({ item }) => {
+                const g = String(item.pos_category || '').trim();
+                if (!g) return;
+                const key = g.toLowerCase();
+                const at = counts.get(key) || { name: g, n: 0 };
+                at.n += 1;
+                counts.set(key, at);
+            });
+            const groups = [...counts.values()].sort((a, b) => a.name.localeCompare(b.name));
+            if (!groups.length) {
+                host.innerHTML = '<p class="inv-muted" style="font-size:13px">No item names a menu group yet. Set one on an item and it appears here.</p>';
+                return;
+            }
+            host.innerHTML = groups.map((g) => `
+                <div class="flex items-center gap-2 py-2 border-b border-gray-100" data-group="${escAttr(g.name)}">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-[14px] font-semibold text-gray-900 truncate">${escHtml(g.name)}</p>
+                        <p class="text-[12px] text-gray-500">${g.n} item${g.n === 1 ? '' : 's'}</p>
+                    </div>
+                    <button type="button" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-700 hover:bg-gray-50"
+                            data-rename-group="${escAttr(g.name)}">Rename</button>
+                </div>`).join('');
+        }
+
+        function startGroupRename(name) {
+            const row = document.querySelector(`#groups-list [data-group="${CSS.escape(name)}"]`);
+            if (!row) return;
+            row.innerHTML = `
+                <input class="fluxy-drawer-input" data-group-input maxlength="40" value="${escAttr(name)}">
+                <button type="button" class="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[12px] font-bold" data-group-save="${escAttr(name)}">Save</button>
+                <button type="button" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[12px] font-bold text-gray-700" data-group-cancel>Cancel</button>`;
+            const input = row.querySelector('[data-group-input]');
+            input.focus();
+            input.select();
+        }
+
+        async function saveGroupRename(from, to) {
+            groupsError('');
+            // ⚠️ SAY THAT IT IS A MERGE. Renaming onto a name already in use
+            // folds two tabs into one, which is usually the point — but a person
+            // who did not mean it should be told before it happens, not after.
+            const exists = [...new Set(allRows
+                .map(({ item }) => String(item.pos_category || '').trim())
+                .filter(Boolean))]
+                .find((g) => g.toLowerCase() === to.toLowerCase() && g.toLowerCase() !== from.toLowerCase());
+            const btn = document.querySelector(`[data-group-save="${CSS.escape(from)}"]`);
+            if (exists && btn && btn.dataset.confirm !== '1') {
+                btn.dataset.confirm = '1';
+                btn.textContent = `Merge into ${exists}?`;
+                return;
+            }
+            const res = await ds.renamePosCategory(currentUid, from, to);
+            closeGroups();
+            // Same rule: the count is only true once the table has been re-read.
+            await loadInventory();
+            window.showToast(`${res.renamed} item${res.renamed === 1 ? '' : 's'} moved.`, 'success');
+        }
+
+        function openGroups() {
+            groupsError('');
+            renderGroups();
+            document.getElementById('groups-backdrop').classList.remove('hidden');
+            document.getElementById('groups-drawer').classList.remove('translate-x-full');
+        }
+        function closeGroups() {
+            document.getElementById('groups-drawer').classList.add('translate-x-full');
+            document.getElementById('groups-backdrop').classList.add('hidden');
+        }
+
+        document.getElementById('inventory-groups-btn').addEventListener('click', openGroups);
+        document.getElementById('groups-close').addEventListener('click', closeGroups);
+        document.getElementById('groups-backdrop').addEventListener('click', closeGroups);
+        document.getElementById('groups-list').addEventListener('click', (e) => {
+            const rename = e.target.closest('[data-rename-group]');
+            if (rename) return startGroupRename(rename.dataset.renameGroup);
+            if (e.target.closest('[data-group-cancel]')) return renderGroups();
+            const save = e.target.closest('[data-group-save]');
+            if (!save) return;
+            const input = document.querySelector('[data-group-input]');
+            const to = (input && input.value || '').trim();
+            saveGroupRename(save.dataset.groupSave, to)
+                .catch((err) => groupsError(err.message || 'Could not rename that group.'));
+        });
+
+        document.getElementById('inventory-show-archived').addEventListener('change', async (e) => {
+            showArchived = !!e.target.checked;
+            await loadInventory();
+        });
+
         document.getElementById('item-drawer-close').addEventListener('click', closeDrawer);
         document.getElementById('item-cancel-btn').addEventListener('click', closeDrawer);
         document.getElementById('item-drawer-backdrop').addEventListener('click', closeDrawer);

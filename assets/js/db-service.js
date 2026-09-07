@@ -7089,6 +7089,58 @@ class DataService {
         return recipeCost(byId, unitCostByItemId, itemId, quantityBase);
     }
 
+    // ── Renaming a menu group, everywhere at once ───────────────────────────
+    //
+    // A menu group is not a document. It exists only because items name it in
+    // `pos_category`, and the till builds its category tabs from the distinct
+    // values — so renaming one means rewriting every item that carries it, and
+    // there was no way to do that short of opening each item in turn.
+    //
+    // ⚠️ RENAMING ONTO AN EXISTING GROUP IS A MERGE, and deliberately so: that
+    // is what fixes "Minuman" and "minuman" existing as two tabs. The caller is
+    // the one that has to say it out loud to the user.
+    //
+    // ⚠️ NOT `saveItem`. That rebuilds the WHOLE normalized field set from what
+    // it is handed, so calling it with one field would blank the rest. This
+    // writes exactly `pos_category`, which `items` permits because it has no
+    // `hasOnly` in rules.
+    async renamePosCategory(userId, from, to) {
+        if (!userId) throw new Error('userId required');
+        const source = String(from || '').trim();
+        if (!source) throw new Error('Which group are you renaming?');
+        // Empty is a real answer — it moves those items to "No group".
+        const target = this._nullableString(to, 40);
+        if (target && target.toLowerCase() === source.toLowerCase() && target === source) {
+            return { renamed: 0, from: source, to: target };
+        }
+
+        const all = await this.getItems(userId, { includeArchived: true });
+        // Case-insensitive, because the whole reason to rename is usually that
+        // two spellings became two tabs.
+        const hits = all.filter((i) => String(i.pos_category || '').trim().toLowerCase() === source.toLowerCase());
+        if (!hits.length) return { renamed: 0, from: source, to: target };
+
+        const scope = this._scope(userId);
+        // Firestore caps a batch at 500 writes; a catalogue can exceed that.
+        for (let i = 0; i < hits.length; i += 400) {
+            const batch = writeBatch(this.db);
+            hits.slice(i, i + 400).forEach((item) => {
+                batch.update(doc(this.db, `${scope}/items/${item.id}`), {
+                    pos_category: target, updated_at: serverTimestamp()
+                });
+            });
+            // eslint-disable-next-line no-await-in-loop
+            await batch.commit();
+        }
+
+        await this.addAuditLog(userId, {
+            action: 'item.category_renamed', target_collection: 'items', target_id: 'pos_category',
+            before: { pos_category: source }, after: { pos_category: target, items: hits.length },
+            source: 'dashboard'
+        });
+        return { renamed: hits.length, from: source, to: target };
+    }
+
     async archiveItem(userId, itemId, { restore = false } = {}) {
         if (!userId || !itemId) throw new Error('userId and itemId required');
         const status = restore ? 'active' : 'archived';

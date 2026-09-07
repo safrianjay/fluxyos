@@ -17,8 +17,57 @@ stock and usage, recipe/menu COGS, waste, and stock per outlet.
 
 **Status:** steps 2–5 are live — the collection, the DAL, unit conversion,
 recipes, stock movements and costing. `inventory.html` is the writing surface:
-items are created and edited there, and it shows each item's on-hand quantity
-and value alongside the master. The recipe editor is still v2, so the drawer
+items are created, edited, **archived and restored** there, and it shows each
+item's on-hand quantity and value alongside the master.
+
+### Retiring an item (2026-09-07)
+
+⚠️ **There is no delete and there cannot be.** Stock movements, goods receipts
+and posted journals reference the item, and posted journals are immutable. The
+only retirement is `status: 'archived'`.
+
+`archiveItem` had existed since inventory shipped with **nothing calling it** —
+an item could be created and edited but never taken off the list except from the
+console. It now lives in the item drawer, next to editing, behind two taps
+because it removes the item from the till menu and every picker. The Items table
+carries an **Include archived** toggle, without which restore would be
+unreachable and archiving a one-way door.
+
+⚠️ **An ingredient inside a live recipe is refused.** `saveItem` validates a
+composite's graph when the RECIPE is written, not when a component is retired
+later — so the composite would go on costing against an item that had vanished
+from every picker, and the first person to open that recipe could not put the
+ingredient back. Checked in memory against the loaded catalogue, so it costs no
+read, and the message names the recipes.
+
+Deliberately **not** guarded against live POS orders: an order line snapshots
+`item_name` and `unit_price`, so archiving leaves it intact. A guard there would
+be ceremony protecting nothing. (Contrast an **outlet**, where archiving hides
+the whole outlet from the till and stranding is real — see `dimensions.md`.)
+
+### Menu groups are not documents
+
+`pos_category` is a string on the item, and the till builds its category tabs
+from the distinct values — so a group exists exactly while an item names it, and
+disappears when the last one leaves. There is nothing to create and nothing to
+delete.
+
+What there was no way to do was **rename** one: a typo'd group meant opening
+every item in it. `renamePosCategory(userId, from, to)` rewrites them in batches
+of 400 (Firestore caps a batch at 500) and is reached from **Menu groups** on the
+Items tab, which lists each group with its item count.
+
+⚠️ **Renaming onto a name already in use is a MERGE**, which is the point — it is
+what fixes "Minuman" and "minuman" being two tabs — and the control says so
+before it does it, not after.
+
+⚠️ **Not `saveItem`.** That rebuilds the whole normalized field set from what it
+is handed, so calling it with one field would blank the rest. `renamePosCategory`
+writes exactly `pos_category`, which `items` permits because it has no `hasOnly`
+in rules.
+
+Spec: `tests/inventory-item-lifecycle.spec.js` (archive → restore, the recipe
+guard, and a rename that becomes a merge). The recipe editor is still v2, so the drawer
 creates `stock` items and preserves — but does not edit — a `composite`'s
 `components`.
 
