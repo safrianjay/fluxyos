@@ -602,6 +602,17 @@ test.describe('QR customer ordering', () => {
         }
     });
 
+    test('a category with no rail still clears the tabs', async ({ page }) => {
+        // ⚠️ THE ONE PLACE TWO BLOCKS TOUCHED. The rail carries its own 8px to
+        // the tabs; without it the first row of cards sat almost against them.
+        // Every other gap between a control and the content it filters is 8.
+        await stub(page);
+        await open(page);
+        const gap = await page.locator('#menu')
+            .evaluate((el) => parseFloat(getComputedStyle(el).paddingTop));
+        expect(gap).toBe(8);
+    });
+
     test('EVERY TOTAL ON THE CART PAGE IS THE SAME NUMBER', async ({ page }) => {
         // ⚠️ THE BUTTON PRINTED THE SUBTOTAL. The panel said "Total Rp232.000"
         // and the order button directly beneath it said Rp200.000 — a diner
@@ -1117,6 +1128,47 @@ test.describe('QR customer ordering', () => {
         expect(overflows, 'the rail does not scroll — cards were wrapped or shrunk').toBe(true);
         expect(await page.evaluate(() =>
             document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    });
+
+    test('THE RAIL IS WARM, AND ITS SPARKLE STAYS BEHIND THE CARDS', async ({ page }) => {
+        await stub(page);
+        await page.route('**/qr-menu?**', (route) => route.fulfill({
+            status: 200, contentType: 'application/json', body: JSON.stringify(withRecos())
+        }));
+        await open(page);
+        await expect(page.locator('#recos')).toBeVisible({ timeout: 15_000 });
+
+        // Warm, not cool. Asserted as a RELATIONSHIP rather than a hex, so
+        // retuning the exact tint does not fail a test about the mood.
+        const rgb = await page.locator('#recos').evaluate((el) => {
+            const m = getComputedStyle(el).backgroundImage.match(/rgba?\(([^)]+)\)/);
+            return m ? m[1].split(',').map((n) => parseFloat(n)) : null;
+        });
+        expect(rgb, 'the rail lost its gradient').not.toBeNull();
+        expect(rgb[0], 'the rail is not warmer than it is cool').toBeGreaterThan(rgb[2]);
+
+        // ⚠️ A PALE GRADIENT, NEVER A SOLID ORANGE PANEL. Orange backgrounds are
+        // prohibited project-wide; the gradient is the carve-out, so assert that
+        // the gradient is still what carries the warmth.
+        expect(await page.locator('#recos')
+            .evaluate((el) => getComputedStyle(el).backgroundImage.includes('gradient'))).toBe(true);
+
+        // ⚠️ THE SPARKLE PAINTS BEHIND THE CARDS. A decorative layer in WebKit
+        // sits OVER content whatever the source order says unless it is pushed
+        // back explicitly — this product has been bitten by that once already.
+        const spark = page.locator('.recos-sparkle');
+        await expect(spark).toHaveCount(1);
+        await expect(spark).toHaveAttribute('aria-hidden', 'true');
+        const layer = await spark.evaluate((el) => {
+            const cs = getComputedStyle(el);
+            return { z: cs.zIndex, pe: cs.pointerEvents };
+        });
+        expect(layer.z, 'the sparkle can paint over the cards').toBe('-1');
+        expect(layer.pe, 'the sparkle can swallow a tap').toBe('none');
+
+        // And it must not be reachable by a screen reader or the tab order.
+        const stars = page.locator('.recos-sparkle svg');
+        await expect(stars).toHaveCount(3);
     });
 
     test('a card in the rail opens the item, like every other card', async ({ page }) => {

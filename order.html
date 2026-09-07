@@ -556,7 +556,12 @@ img { max-width: 100%; display: block; }
    which matters on a phone held over a table, and it gives the photo real
    estate a list row cannot: a 4:3 tile the width of the card rather than an
    84px thumbnail. */
-.menu { padding: 4px 0 0; }
+/* ⚠️ 8px TO THE TAB STRIP, matching the search field above it and the
+   recommendation rail's own top gap. It was 4, and on a category with no
+   recommendation rail the first row of cards sat almost against the tabs — the
+   one place on the page where two blocks touched. Every other gap between a
+   control and the content it filters is 8. */
+.menu { padding: 8px 0 0; }
 
 .group-head {
     padding: 18px 20px 8px;
@@ -602,9 +607,39 @@ img { max-width: 100%; display: block; }
    orange (banned as a background project-wide) and not the hero's purple, which
    at this scale would read as a second header. */
 .recos {
+    position: relative;       /* the sparkles are absolutely placed inside */
     padding: 8px 0 14px;      /* 8px to the tabs above, as specified */
-    background: linear-gradient(180deg, #EAF2FA 0%, #F5FAFD 68%, var(--canvas) 100%);
+    /* ⚠️ A PALE GRADIENT, NOT AN ORANGE PANEL. "Orange backgrounds are
+       PROHIBITED project-wide" (CLAUDE.md) and the design linter enforces it —
+       but on the SOLID surface: `bg-orange-*` and `#EA580C` as a background.
+       Gradients are explicitly allowed, because the ban is on a block of brand
+       orange, not on a warm wash. This is the second: the top stop is barely
+       tinted and it fades to the page in 68%. */
+    background: linear-gradient(180deg, #FFF3E6 0%, #FFF9F3 68%, var(--canvas) 100%);
     border-bottom: 1px solid var(--line-soft);
+}
+/* ⚠️ z-index: -1, NOT a `> * { z-index: 1 }` opt-in. An animated/decorative
+   pseudo-element paints OVER content in WebKit whatever the source order says —
+   a bug this page has already been bitten by. Behind, and inert. */
+.recos-sparkle {
+    position: absolute; inset: 0; z-index: -1;
+    pointer-events: none; overflow: hidden;
+    color: #EA580C;
+}
+.recos-sparkle svg { position: absolute; display: block; }
+/* Three, at three sizes, off the reading line — enough to catch the eye and
+   few enough not to become texture. */
+.recos-sparkle .s1 { top: 10px;  left: 46%; width: 13px; height: 13px; opacity: .30; }
+.recos-sparkle .s2 { top: 30px;  right: 26px; width: 9px;  height: 9px;  opacity: .22; }
+.recos-sparkle .s3 { top: 4px;   right: 74px; width: 7px;  height: 7px;  opacity: .18; }
+@media (prefers-reduced-motion: no-preference) {
+    .recos-sparkle .s1 { animation: recoTwinkle 3.6s ease-in-out infinite; }
+    .recos-sparkle .s2 { animation: recoTwinkle 4.4s ease-in-out .8s infinite; }
+    .recos-sparkle .s3 { animation: recoTwinkle 5.2s ease-in-out 1.6s infinite; }
+}
+@keyframes recoTwinkle {
+    0%, 100% { opacity: .12; transform: scale(.9); }
+    50%      { opacity: .34; transform: scale(1); }
 }
 .recos-head { padding: 0 20px 10px; }
 .recos-title { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
@@ -3205,6 +3240,14 @@ html.kb-open .welcome-art { display: none; }
         }, 0);
     }
 
+    // A four-point sparkle. Drawn rather than a character, so it keeps its
+    // weight at 7px where an emoji star turns into a blob.
+    var STAR = function (cls) {
+        return '<svg class="' + cls + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'
+            + '<path d="M12 0c.6 6.2 5.2 10.8 12 12-6.8 1.2-11.4 5.8-12 12-.6-6.2-5.2-10.8-12-12C6.8 10.8 11.4 6.2 12 0z"/>'
+            + '</svg>';
+    };
+
     /**
      * "Rekomendasi Kami" — the owner's own picks, marked per item in
      * Inventory → the item drawer.
@@ -3236,7 +3279,7 @@ html.kb-open .welcome-art { display: none; }
         // Title only. The outlet's name is already stated on the card directly
         // above this, so "Pilihan <outlet>" restated it in the same viewport —
         // the redundancy CLAUDE.md bans on eyebrows.
-        host.innerHTML = '<div class="recos-head">'
+        host.innerHTML = '<div class="recos-sparkle" aria-hidden="true">' + STAR('s1') + STAR('s2') + STAR('s3') + '</div>' + '<div class="recos-head">'
             + '<h2 class="recos-title" id="recos-title">Rekomendasi Kami</h2>'
             + '</div><div class="recos-rail">' + cards + '</div>';
         host.hidden = false;
