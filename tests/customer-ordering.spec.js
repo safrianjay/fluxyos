@@ -2471,6 +2471,86 @@ test.describe('QR customer ordering', () => {
         expect(Math.abs(again - tall), 'the bar never came back').toBeLessThan(1.5);
     });
 
+    test('THE VIEW ORDER BUTTON GETS OUT OF THE WAY TOO, ON THE SAME BEAT',
+        async ({ page }) => {
+            const LONG = {
+                ...MENU,
+                items: Array.from({ length: 24 }, (_, n) => ({
+                    id: `i_${n}`, name: `Dish ${n}`, category: 'Kopi',
+                    price: 20000 + n * 500, has_image: false, modifier_groups: []
+                }))
+            };
+            await stub(page);
+            await page.route('**/qr-menu?**', (route) => route.fulfill({
+                status: 200, contentType: 'application/json', body: JSON.stringify(LONG)
+            }));
+            await open(page);
+            await addPlain(page, 'Dish 0');
+
+            const cart = page.locator('#cartbar');
+            const viewport = page.viewportSize();
+            await expect(cart).toHaveClass(/is-open/);
+            // ⚠️ POLLED FOR REST, NOT FOR "ON SCREEN". It slides in over 0.24s,
+            // so the first frame that satisfies "visible" is still moving — and
+            // a baseline captured there is a position the bar never settles at.
+            await expect.poll(async () => {
+                const b = await cart.boundingBox();
+                return Math.round(b.y + b.height) <= viewport.height;
+            }, { message: 'the cart bar never came up' }).toBe(true);
+
+            // ⚠️ CLASS AND TRANSFORM IN ONE EVALUATE, taken while the page is
+            // still moving. The bar returns 240ms after the last scroll and
+            // slides for 240ms, so anything measured across two round trips is
+            // reading a different moment than the one it is asserting about.
+            let tucked = null;
+            for (let i = 0; i < 8; i += 1) {
+                await page.mouse.wheel(0, 120);
+                tucked = await cart.evaluate((el) => ({
+                    open: el.classList.contains('is-open'),
+                    tuckedNow: el.classList.contains('is-tucked'),
+                    // The rule that does the moving, rather than a box measured
+                    // mid-animation.
+                    shifted: getComputedStyle(el).transform !== 'none'
+                        && getComputedStyle(el).transform !== 'matrix(1, 0, 0, 1, 0, 0)'
+                }));
+                if (tucked.tuckedNow) break;
+                await page.waitForTimeout(40);
+            }
+            expect(tucked.tuckedNow, 'the View Order button did not get out of the way').toBe(true);
+            expect(tucked.shifted, 'the class is set but moves nothing').toBe(true);
+            // ⚠️ AND `is-open` IS UNTOUCHED. `paintCart` owns that class — it
+            // means "there is something in the cart" — so tucking has to be a
+            // separate fact or the next repaint puts the bar straight back up
+            // mid-scroll.
+            expect(tucked.open, 'tucking clobbered the cart bar\'s own state').toBe(true);
+
+            // Both bars return together. Two settle timers on one scroll would
+            // bring the chrome back in two steps, which reads as a stutter.
+            await expect(cart).not.toHaveClass(/is-tucked/);
+            await expect(page.locator('.tabbar')).not.toHaveClass(/is-compact/);
+            await expect.poll(async () => {
+                const b = await cart.boundingBox();
+                return Math.round(b.y + b.height) <= viewport.height;
+            }, { message: 'the View Order button never came back' }).toBe(true);
+        });
+
+    test('a cart bar that is down does not come back tucked', async ({ page }) => {
+        // ⚠️ ADDING THE FIRST ITEM IS A TAP, NOT A SCROLL — but the two overlap,
+        // and a bar that appears already translated off screen is waiting for a
+        // scroll that may never come.
+        await stub(page);
+        await open(page);
+        const cart = page.locator('#cartbar');
+        await expect(cart).not.toHaveClass(/is-open/);
+        await page.mouse.wheel(0, 400);
+        await page.waitForTimeout(80);
+        await addPlain(page, 'Americano');
+        await expect(cart).toHaveClass(/is-open/);
+        await page.waitForTimeout(500);
+        const box = await cart.boundingBox();
+        expect(box.y, 'the cart bar arrived off screen').toBeLessThan(page.viewportSize().height);
+    });
+
     test('A TABLE THAT ASKED FOR ITS BILL CANNOT BE ORDERED INTO', async ({ page }) => {
         // ⚠️ REPORTED FROM PRODUCTION with two `409 (Conflict)` in the console.
         // The Pesanan sheet already hid "add to order" once the bill was

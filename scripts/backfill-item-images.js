@@ -28,7 +28,20 @@
 //   ... --workspace <wsId>     just one workspace
 //   ... --limit <n>            stop after n items (a careful first run)
 //   ... --commit               default is a DRY RUN — nothing is written
-//   ... --prune                delete the original after a successful swap
+//   ... --prune                delete the original as part of a swap
+//   ... --prune-orphans        delete photos in an item's folder that its
+//                              `image_path` does not point at (see below)
+// =============================================================================
+//
+// ⚠️ `--prune-orphans` IS THE IRREVERSIBLE ONE. The swap keeps the original by
+// default, so after a backfill each item's folder holds the photo in use plus
+// every superseded one. This deletes the superseded ones — and a deleted object
+// is gone, there is no recycle bin behind Cloud Storage.
+//
+// Its rule is deliberately the tightest one that does the job: for an item whose
+// `image_path` names an object, delete that object's SIBLINGS and nothing else.
+// An item with NO `image_path` is left completely alone and merely reported —
+// there is nothing to compare its files against, so "orphan" would be a guess.
 // =============================================================================
 
 const path = require('path');
@@ -146,6 +159,7 @@ async function main() {
     const LIMIT = Number(argVal('--limit', '0')) || 0;
     const COMMIT = args.includes('--commit');
     const PRUNE = args.includes('--prune');
+    const PRUNE_ORPHANS = args.includes('--prune-orphans');
 
     if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
         console.error('Set GOOGLE_APPLICATION_CREDENTIALS to a service-account key first.');
@@ -160,12 +174,52 @@ async function main() {
     const db = admin.firestore();
     const bucket = admin.storage().bucket();
 
+    const wsIdsFor = async () => (ONLY_WS
+        ? [ONLY_WS]
+        : (await db.collection('workspaces').get()).docs.map((d) => d.id));
+
+    if (PRUNE_ORPHANS) {
+        const ids = await wsIdsFor();
+        let kept = 0; let orphans = 0; let freed = 0; let unreferenced = 0;
+        console.log(`\n${COMMIT ? 'COMMIT' : 'DRY RUN'} · pruning superseded photos`
+            + ` · ${ids.length} workspace(s)\n`);
+        for (const wsId of ids) {
+            const items = await db.collection(`workspaces/${wsId}/items`).get();
+            for (const doc of items.docs) {
+                const inUse = typeof (doc.data() || {}).image_path === 'string'
+                    ? doc.data().image_path : '';
+                const prefix = `workspaces/${wsId}/items/${doc.id}/`;
+                const [files] = await bucket.getFiles({ prefix });
+                if (!files.length) continue;
+                if (!inUse) {
+                    // Nothing to compare against — say so, delete nothing.
+                    unreferenced += files.length;
+                    console.log(`  ? ${wsId}/${doc.id}: ${files.length} file(s), `
+                        + 'no image_path — left alone');
+                    continue;
+                }
+                for (const f of files) {
+                    if (f.name === inUse) { kept += 1; continue; }
+                    orphans += 1;
+                    freed += Number((f.metadata || {}).size) || 0;
+                    console.log(`  ${COMMIT ? '✓' : '·'} delete ${f.name}`
+                        + ` (${kb(Number((f.metadata || {}).size) || 0)})`);
+                    if (COMMIT) await f.delete().catch((e) => console.log(`     ✗ ${e.message}`));
+                }
+            }
+        }
+        console.log(`\n${kept} in use · ${orphans} superseded`
+            + ` ${COMMIT ? 'deleted' : 'would be deleted'} · ${kb(freed)} freed`
+            + (unreferenced ? ` · ${unreferenced} left alone (no image_path)` : ''));
+        if (!COMMIT) console.log('\nDRY RUN — nothing was deleted. Re-run with --commit.\n');
+        else console.log('');
+        return;
+    }
+
     const browser = await chromium.launch();
     const page = await browser.newPage();
 
-    const wsIds = ONLY_WS
-        ? [ONLY_WS]
-        : (await db.collection('workspaces').get()).docs.map((d) => d.id);
+    const wsIds = await wsIdsFor();
 
     let seen = 0; let done = 0; let skipped = 0; let failed = 0;
     let bytesBefore = 0; let bytesAfter = 0;

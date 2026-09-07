@@ -1262,6 +1262,16 @@ img { max-width: 100%; display: block; }
     transition: transform 0.24s cubic-bezier(0.32, 0.72, 0, 1);
 }
 .cartbar.is-open { transform: translateY(0); }
+/* ⚠️ A SECOND CLASS, NOT A TOGGLE OF `is-open`. `is-open` means "there is
+   something in the cart" and `paintCart` owns it — a repaint mid-scroll (a
+   badge sync, a status refresh) would put the bar straight back up. Tucking is
+   a separate fact about the page moving, so the two cannot fight.
+
+   It rides the same 0.24s transform the bar already animates with, so it slides
+   out the way it slid in rather than blinking. */
+.cartbar.is-open.is-tucked {
+    transform: translateY(calc(100% + var(--tabbar-space) + 16px));
+}
 
 .cartbar button {
     width: 100%;
@@ -4639,7 +4649,12 @@ html.kb-open .welcome-art { display: none; }
         // where the detail lives.
         setText($('cart-count'), String(count));
         setText($('cart-total'), money(priced.total));
-        $('cartbar').classList.toggle('is-open', count > 0 && !$('view-menu').classList.contains('hidden'));
+        var bar = $('cartbar');
+        bar.classList.toggle('is-open', count > 0 && !$('view-menu').classList.contains('hidden'));
+        // ⚠️ NEVER ARRIVE TUCKED. Adding the first item is a tap, not a scroll,
+        // but the two can overlap — and a bar that appears already translated
+        // off screen waits for a scroll that may never come.
+        if (!bar.classList.contains('is-open')) bar.classList.remove('is-tucked');
 
         setText($('cart-outlet'), (menu && menu.outlet) || '');
         setText($('cart-table'), menu && menu.table ? tableLabel() : '');
@@ -5173,13 +5188,32 @@ html.kb-open .welcome-art { display: none; }
     var tabbarIdle = null;
     var TABBAR_SETTLE = 240;      // long enough that flick-scrolling does not flicker
 
+    /**
+     * ⚠️ ONE LISTENER AND ONE TIMER FOR BOTH BARS. The tab bar compacts and the
+     * cart bar tucks away entirely, and they have to do it on the same beat —
+     * two independent settle timers on the same scroll would let the chrome
+     * come back in two steps, which reads as a stutter rather than a return.
+     *
+     * The cart bar goes all the way rather than shrinking, because it is a
+     * single button: there is no label to drop and half a button is not a
+     * smaller control, it is a broken one.
+     */
     function onMenuScroll() {
         var bar = document.querySelector('.tabbar');
-        if (!bar || bar.hidden) return;
-        bar.classList.add('is-compact');
+        var cart = $('cartbar');
+        var live = false;
+        if (bar && !bar.hidden) { bar.classList.add('is-compact'); live = true; }
+        // Only when it is actually up — tucking a bar nobody can see would leave
+        // `is-tucked` set for whenever it next appears.
+        if (cart && cart.classList.contains('is-open')) {
+            cart.classList.add('is-tucked');
+            live = true;
+        }
+        if (!live) return;
         clearTimeout(tabbarIdle);
         tabbarIdle = setTimeout(function () {
-            bar.classList.remove('is-compact');
+            if (bar) bar.classList.remove('is-compact');
+            if (cart) cart.classList.remove('is-tucked');
         }, TABBAR_SETTLE);
     }
     // Passive: this must never be able to delay a scroll frame.
