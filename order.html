@@ -2677,10 +2677,12 @@ html.kb-open .welcome-art { display: none; }
      an earlier dismissible version: an outlet that is shut does not want to
      take an order, and a menu you can still browse invites one.
 
-     ⚠️ WHICH MAKES `openState()` LOAD-BEARING. It reads the DEVICE clock, so a
-     phone in the wrong timezone, or hours entered wrongly by the outlet, now
-     locks a paying customer out of the menu entirely with no way past it. That
-     is the trade this makes. -->
+     ⚠️ WHICH MADE `openState()` LOAD-BEARING, and it was reading the DEVICE
+     clock — so a traveller's phone on the wrong timezone locked a paying
+     customer out of a menu. It reads the OUTLET's clock now (`outletClock()`),
+     and a diner who has already ordered is never blocked at all: the sheet
+     would take away the only screen showing what they owe. Hours entered
+     wrongly by the outlet remain the one way this can still be wrong. -->
 <div id="sheet-closed" class="sheet sheet-closed sheet-warm" role="dialog" aria-modal="true" aria-labelledby="closed-title">
     <div class="sheet-grip"></div>
     <div class="sheet-body closed-body">
@@ -4012,20 +4014,61 @@ html.kb-open .welcome-art { display: none; }
      * closing at 02.00 is not a typo, and treating it as one would tell every
      * late diner the place was shut.
      */
+    /**
+     * What time it is AT THE RESTAURANT, not on the phone.
+     *
+     * ⚠️ THE DEVICE CLOCK WAS DECIDING WHETHER A SHOP WAS OPEN, and since the
+     * closed sheet became a hard stop that is a paying customer locked out of a
+     * menu because their phone is on the wrong timezone. A traveller landing in
+     * Singapore with a phone still on Jakarta time is two hours out — enough to
+     * be told a shop that is serving them is shut.
+     *
+     * Falls back to the device clock when the country is unknown or `Intl`
+     * cannot resolve the zone: that is exactly today's behaviour, so the
+     * fallback can only be as wrong as what it replaces.
+     */
+    var WEEKDAY_INDEX = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+    function outletClock() {
+        var d = new Date();
+        var local = { day: d.getDay(), mins: d.getHours() * 60 + d.getMinutes() };
+        var zone = null;
+        try {
+            if (outletCountry && window.FluxyMoney && window.FluxyMoney.countryProfile) {
+                zone = window.FluxyMoney.countryProfile(outletCountry).timezone;
+            }
+        } catch (_) { /* fall through to the device */ }
+        if (!zone || typeof Intl === 'undefined' || !Intl.DateTimeFormat) return local;
+        try {
+            var parts = new Intl.DateTimeFormat('en-GB', {
+                timeZone: zone, weekday: 'short',
+                hour: '2-digit', minute: '2-digit', hour12: false
+            }).formatToParts(d);
+            var got = {};
+            parts.forEach(function (p) { got[p.type] = p.value; });
+            var day = WEEKDAY_INDEX[got.weekday];
+            var hh = Number(got.hour);
+            var mm = Number(got.minute);
+            if (day === undefined || !isFinite(hh) || !isFinite(mm)) return local;
+            // 24:00 is midnight in some engines' 2-digit hour output.
+            return { day: day, mins: (hh % 24) * 60 + mm };
+        } catch (_) { return local; }
+    }
+
     function openState(hours) {
         var rows = Array.isArray(hours) ? hours : [];
         if (!rows.length) return null;
         var byDay = {};
         rows.forEach(function (r) { if (r && r.day) byDay[r.day] = r; });
 
-        var now = new Date();
-        var mins = now.getHours() * 60 + now.getMinutes();
+        var now = outletClock();
+        var mins = now.mins;
         var toMin = function (v) {
             var m = /^(\d{2}):(\d{2})$/.exec(String(v || ''));
             return m ? (Number(m[1]) * 60 + Number(m[2])) : null;
         };
         var dayAt = function (offset) {
-            return byDay[DAY_KEYS[(now.getDay() + offset + 7) % 7]] || null;
+            return byDay[DAY_KEYS[(now.day + offset + 7) % 7]] || null;
         };
 
         // Yesterday's window may still be running: 18.00–02.00 on Friday is open
@@ -4060,10 +4103,10 @@ html.kb-open .welcome-art { display: none; }
         var byDay = {};
         rows.forEach(function (r) { if (r && r.day) byDay[r.day] = r; });
 
-        var now = new Date();
-        var mins = now.getHours() * 60 + now.getMinutes();
+        var now = outletClock();
+        var mins = now.mins;
         for (var i = 0; i < 8; i += 1) {
-            var key = DAY_KEYS[(now.getDay() + i) % 7];
+            var key = DAY_KEYS[(now.day + i) % 7];
             var r = byDay[key];
             if (!r || r.closed === true || !r.open) continue;
             var m = /^(\d{2}):(\d{2})$/.exec(String(r.open));
@@ -4095,12 +4138,43 @@ html.kb-open .welcome-art { display: none; }
 
     function maybeShowClosed() {
         if (closedShown) return false;
+        // ⚠️ A DINER MID-MEAL IS NOT A WALK-UP. The sheet is a hard stop with no
+        // way out, and this device has already sent orders at this table — so
+        // blocking it takes away the only screen showing what they owe and the
+        // only button that calls a cashier. Someone still eating when the
+        // kitchen shuts is the normal case, not the edge one.
+        //
+        // `placed` is read from this browser's own storage, so this costs
+        // nothing and is known before the first network answer.
+        if (placed.length) return false;
         var state = openState(((menu && menu.outlet_info) || {}).hours);
         if (!state || state.open) return false;
         closedShown = true;
         paintClosedHours();
         openSheet('sheet-closed');
         return true;
+    }
+
+    /**
+     * Let a blocked diner through once the SERVER says this table has an order.
+     *
+     * The check above covers the common case from local storage alone. This
+     * covers the rest: a phone whose storage was cleared, a second diner
+     * scanning a table someone else ordered at, a browser in private mode. They
+     * are all sitting at a table with food coming, and none of them should be
+     * looking at a shutter.
+     */
+    function releaseClosedForLiveOrder(d) {
+        if (!d || !d.has_order) return;
+        var sheet = $('sheet-closed');
+        if (!sheet.classList.contains('is-open')) return;
+        sheet.classList.remove('is-open');
+        $('scrim').classList.remove('is-open');
+        unlockScroll();
+        syncTabbarChrome();
+        // The gate never opened behind the hard stop; it does now, unless this
+        // phone is already known.
+        if (!customer) openWelcome();
     }
 
     // 24h wall clock, the way Indonesian opening hours are written and spoken.
@@ -4147,7 +4221,7 @@ html.kb-open .welcome-art { display: none; }
         (Array.isArray(hours) ? hours : []).forEach(function (r) {
             if (r && r.day) byDay[r.day] = r;
         });
-        var todayKey = DAY_KEYS[new Date().getDay()];
+        var todayKey = DAY_KEYS[outletClock().day];
         host.innerHTML = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map(function (d) {
             var r = byDay[d];
             var text = (!r || r.closed === true || !r.open || !r.close)
@@ -5308,6 +5382,7 @@ html.kb-open .welcome-art { display: none; }
             .then(function (data) {
                 if (seq !== ordersSeq) return;      // a newer request has overtaken this one
                 if (!data) throw new Error('gone');
+                releaseClosedForLiveOrder(data);
                 paintOrders(data);
                 paintOrdersBadge(data);
                 if (reconcile) reconcileSitting(data);

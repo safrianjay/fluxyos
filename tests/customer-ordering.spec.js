@@ -2245,6 +2245,177 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('#sheet-welcome')).not.toHaveClass(/is-open/);
     });
 
+    test('A DINER MID-MEAL IS NOT SHUT OUT OF THEIR OWN BILL', async ({ page }) => {
+        // ⚠️ THE HARD STOP HAS NO WAY OUT, so blocking someone who has already
+        // ordered takes away the only screen showing what they owe and the only
+        // button that calls a cashier. Someone still eating when the kitchen
+        // shuts is the normal case, not the edge one.
+        const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+        const tomorrow = DAYS[(new Date().getDay() + 1) % 7];
+        const shutMenu = {
+            ...MENU,
+            country: 'ID',
+            outlet_info: {
+                hours: DAYS.map((day) => (day === tomorrow
+                    ? { day, closed: false, open: '09:00', close: '17:00' }
+                    : { day, closed: true }))
+            }
+        };
+        await stub(page);
+        await page.route('**/qr-menu?**', (route) => route.fulfill({
+            status: 200, contentType: 'application/json', body: JSON.stringify(shutMenu)
+        }));
+        // This browser has ordered at this table before — the same thing
+        // `readSession` restores from storage on a reload.
+        await page.addInitScript((token) => {
+            try {
+                // The key `readSession()` actually reads — token-scoped, so one
+                // phone can sit at two restaurants without them colliding.
+                window.localStorage.setItem(`fluxyos_customer_session_${token}`, JSON.stringify({
+                    name: 'Sinta', phone: '0812 3456 7890', sitting: 'ord_live',
+                    placed: ['ord_live']
+                }));
+            } catch (_) { /* private mode */ }
+        }, TOKEN);
+        await goTo(page);
+
+        await expect(page.locator('.card').first()).toBeVisible({ timeout: 15_000 });
+        await expect(page.locator('#sheet-closed'),
+            'a diner who has already ordered was shut out of their own bill')
+            .not.toHaveClass(/is-open/);
+        // And the way to the bill is still there.
+        await expect(page.locator('.tabbar')).toBeVisible();
+        await page.locator('.tab[data-tab="orders"]').click();
+        await expect(page.locator('#sheet-orders')).toHaveClass(/is-open/);
+    });
+
+    test('and the server can let one through that storage did not know about',
+        async ({ page }) => {
+            // A phone whose storage was cleared, a second diner at a table
+            // someone else ordered at, a private window. All sitting in front of
+            // food, none of them should be looking at a shutter.
+            const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+            const tomorrow = DAYS[(new Date().getDay() + 1) % 7];
+            let release;
+            const held = new Promise((r) => { release = r; });
+            await stub(page);
+            await page.route('**/qr-menu?**', (route) => route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    ...MENU,
+                    country: 'ID',
+                    outlet_info: {
+                        hours: DAYS.map((day) => (day === tomorrow
+                            ? { day, closed: false, open: '09:00', close: '17:00' }
+                            : { day, closed: true }))
+                    }
+                })
+            }));
+            await page.route('**/qr-order-status**', async (route) => {
+                await held;
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({
+                        has_order: true, order_id: 'o1', order_number: '2026-09-08-001',
+                        status: 'sent', stage: 2, stage_label: 'x',
+                        lines: [{ item_id: 'i_americano', item_name: 'Americano', quantity: 1,
+                            gross_amount: 22000, note: null, modifiers: [] }],
+                        note: null, history: [], orders: [], subtotal: 22000,
+                        discount_total: 0, service_charge_amount: 0, tax_amount: 0,
+                        total_amount: 22000, paid_amount: 0, pricing: null,
+                        placed_at: Date.now() - 60_000
+                    })
+                });
+            });
+            await goTo(page);
+
+            // Storage knows nothing, so the shutter goes up first.
+            const closed = page.locator('#sheet-closed');
+            await expect(closed).toHaveClass(/is-open/, { timeout: 15_000 });
+
+            // Then the server says this table has food coming.
+            release();
+            await expect(closed, 'the server said there was a live order and the shutter stayed')
+                .not.toHaveClass(/is-open/);
+
+            // ⚠️ AND THE IDENTITY GATE TAKES ITS PLACE, because this phone has
+            // no stored name — it never opened behind the hard stop, and the
+            // diner is about to order. The scrim stays up FOR THE GATE, which is
+            // why "the scrim is down" is the wrong thing to assert here.
+            await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/);
+            await page.locator('#welcome-name').fill('Wira');
+            await page.locator('#welcome-phone').fill('0812 3456 7890');
+            await page.locator('#welcome-go').click();
+
+            // Through to the menu, with the way to the bill on it.
+            await expect(page.locator('#scrim')).not.toHaveClass(/is-open/);
+            await expect(page.locator('.tabbar')).toBeVisible();
+        });
+
+    test('OPENING HOURS ARE THE RESTAURANT\'S CLOCK, NOT THE PHONE\'S', async ({ page }) => {
+        // ⚠️ THE DEVICE CLOCK WAS DECIDING WHETHER A SHOP WAS SHUT, and since
+        // the closed sheet became a hard stop with no way out, that is a paying
+        // customer locked out of a menu because of where their phone thinks it
+        // is. A traveller landing in Singapore on Jakarta time is two hours out
+        // — enough to be told a shop that is serving them is closed.
+        //
+        // Driven by moving the BROWSER's zone while the outlet stays in
+        // Singapore: the outlet's answer must not move with it.
+        const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+        const sgMenu = (hours) => ({ ...MENU, country: 'SG', currency: 'SGD', outlet_info: { hours } });
+
+        // Open 10:00–22:00 every day, in Singapore.
+        const hours = DAYS.map((day) => ({ day, closed: false, open: '10:00', close: '22:00' }));
+
+        // Read what the page concludes, from a browser pinned to a zone far
+        // enough away to fall outside that window at a chosen instant.
+        const stateIn = async (timezoneId, whenUTC) => {
+            const ctx = await page.context().browser().newContext({
+                timezoneId, viewport: { width: 390, height: 844 }
+            });
+            const p2 = await ctx.newPage();
+            // Freeze the clock so the assertion does not depend on when it runs.
+            await p2.addInitScript((iso) => {
+                const fixed = new Date(iso).getTime();
+                const RealDate = Date;
+                // eslint-disable-next-line no-global-assign
+                Date = class extends RealDate {
+                    constructor(...a) { return a.length ? new RealDate(...a) : new RealDate(fixed); }
+                    static now() { return fixed; }
+                };
+            }, whenUTC);
+            await stub(p2);
+            await p2.route('**/qr-menu?**', (r) => r.fulfill({
+                status: 200, contentType: 'application/json', body: JSON.stringify(sgMenu(hours))
+            }));
+            await p2.goto(`/t/${TOKEN}`);
+            await p2.waitForSelector('#outlet-status, #sheet-closed', { timeout: 15_000 });
+            const shut = await p2.locator('#sheet-closed').evaluate(
+                (el) => el.classList.contains('is-open'));
+            await ctx.close();
+            return shut;
+        };
+
+        // 12:00 in Singapore — the shop is open. The same instant is 04:00 in
+        // London and 21:00 in Auckland, both outside 10:00–22:00, so a page
+        // reading the DEVICE clock would call it shut from either.
+        const noonSG = '2026-09-08T04:00:00Z';
+        expect(await stateIn('Asia/Singapore', noonSG),
+            'the shop was called shut at noon in its own city').toBe(false);
+        expect(await stateIn('Europe/London', noonSG),
+            'a London phone decided a Singapore shop was shut').toBe(false);
+        expect(await stateIn('Pacific/Auckland', noonSG),
+            'an Auckland phone decided a Singapore shop was shut').toBe(false);
+
+        // And it still closes when the RESTAURANT is closed: 23:00 in Singapore.
+        expect(await stateIn('Asia/Singapore', '2026-09-08T15:00:00Z'),
+            'the shop stayed open an hour after its own closing time').toBe(true);
+        expect(await stateIn('Europe/London', '2026-09-08T15:00:00Z'),
+            'a London phone kept a closed Singapore shop open').toBe(true);
+    });
+
     test('an open shop, and a shop that set no hours, are never interrupted', async ({ page }) => {
         const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
         const today = DAYS[new Date().getDay()];
