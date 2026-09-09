@@ -594,7 +594,8 @@ export const POS_METHODS = {
         if (!userId || !dimensionId) return null;
         const scope = this._scope(userId);
         const snap = await getDoc(doc(this.db, `${scope}/pos_outlet_settings/${dimensionId}`));
-        const base = { dimension_id: dimensionId, address: null, phone: null, hours: [], cover_image_path: null };
+        const base = { dimension_id: dimensionId, address: null, phone: null, hours: [],
+            cover_image_path: null, logo_image_path: null };
         if (!snap.exists()) return { ...base, ...this._pricing().DEFAULTS, exists: false };
         return { ...base, ...this._pricing().DEFAULTS, ...snap.data(), exists: true };
     },
@@ -626,6 +627,9 @@ export const POS_METHODS = {
             phone: this._nullableString(payload.phone, 32),
             hours: this._normalizeOpeningHours(payload.hours),
             cover_image_path: this._nullableString(payload.cover_image_path, 300),
+            // The mark at the top of a printed receipt. Same posture as the
+            // cover: a Storage PATH, never a URL.
+            logo_image_path: this._nullableString(payload.logo_image_path, 300),
             tax_enabled: payload.tax_enabled === true,
             // The country's own word for the tax on a bill, not Indonesia's.
             // Stored per outlet and snapshotted onto every order, so this is a
@@ -714,6 +718,63 @@ export const POS_METHODS = {
             target_id: dimensionId
         });
         return { storagePath, fileName: safeName, fileSize: file.size || 0 };
+    },
+
+    /**
+     * The outlet's LOGO — the mark printed at the top of a receipt.
+     *
+     * Shares a folder, a ceiling and a Storage rule with the cover, so it needs
+     * no rules change of its own; what it does need is `logo_image_path` in
+     * `wsPosOutletKeys`, which is a `hasOnly` — without that deploy EVERY write
+     * to this document fails, not just one carrying a logo.
+     */
+    async uploadPosOutletLogo(userId, dimensionId, file) {
+        if (!userId || !dimensionId) throw new Error('userId and dimensionId required');
+        if (!file) throw new Error('Pick an image first.');
+        const MAX = 2 * 1024 * 1024;
+        if (file.size > MAX) throw new Error('That image is larger than 2 MB. Use a smaller one.');
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(String(file.type))) {
+            throw new Error('Use a JPEG, PNG or WebP image.');
+        }
+        await this.assertCanUseStorage(userId, file.size || 0, { source: 'pos_outlet_logo' });
+
+        const { getStorage, ref, uploadBytes } =
+            await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
+        if (!this._storage) this._storage = getStorage(this.app);
+
+        const safeName = String(file.name || 'logo').replace(/[^\w.\-]+/g, '_').slice(0, 120) || 'logo';
+        const storagePath = `${this._scope(userId)}/pos_outlets/${dimensionId}/${Date.now()}_${safeName}`;
+        await uploadBytes(ref(this._storage, storagePath), file, this._uploadMetadata(file.type));
+        this._auditCreateBestEffort(userId, {
+            action: 'pos_outlet_settings.logo_uploaded',
+            target_collection: 'pos_outlet_settings',
+            target_id: dimensionId
+        });
+        return { storagePath, fileName: safeName, fileSize: file.size || 0 };
+    },
+
+    /**
+     * The logo as a data: URI, for the RECEIPT.
+     *
+     * ⚠️ NOT A blob: URL, and that is the whole point of this second function.
+     * The receipt is written into a NEW WINDOW with `document.write` and printed
+     * immediately; a blob: URL belongs to the document that created it, and the
+     * print job races its lifetime. A data: URI is part of the markup, so it is
+     * there when the print dialog reads the page and cannot be revoked out from
+     * under it.
+     */
+    async getPosOutletLogoDataURL(userId, storagePath) {
+        if (!storagePath) return null;
+        const { getStorage, ref, getBlob } =
+            await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js");
+        if (!this._storage) this._storage = getStorage(this.app);
+        const blob = await getBlob(ref(this._storage, storagePath));
+        return await new Promise((resolve, reject) => {
+            const fr = new FileReader();
+            fr.onload = () => resolve(String(fr.result || '') || null);
+            fr.onerror = () => reject(new Error('Could not read the logo.'));
+            fr.readAsDataURL(blob);
+        });
     },
 
     // A blob: URL for the dashboard preview. Origin-bound and dead when the tab

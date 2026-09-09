@@ -79,10 +79,35 @@ const stripComments = (src) => src.split('\n')
         return !(t.startsWith('//') || t.startsWith('*') || t.startsWith('/*'));
     })
     .join('\n');
-const pos = stripComments(fs.readFileSync(path.join(ROOT, 'assets/js/pos.js'), 'utf8'));
-["'Diskon'", "'Layanan'", "'Pajak'", 'Termasuk '].forEach((literal) => {
+// ⚠️ AND NOT THE DICTIONARY EITHER. `RECEIPT_COPY.id` is the legitimate home
+// for these words; what must not exist is one of them written inline in the
+// template, where no country can reach it.
+const stripReceiptDict = (src) => {
+    const at = src.indexOf('const RECEIPT_COPY');
+    if (at < 0) return src;
+    const end = src.indexOf('\n};', at);
+    return end < 0 ? src : src.slice(0, at) + src.slice(end + 3);
+};
+const posSrc = fs.readFileSync(path.join(ROOT, 'assets/js/pos.js'), 'utf8');
+const pos = stripReceiptDict(stripComments(posSrc));
+["'Diskon'", "'Layanan'", "'Pajak'", 'Termasuk ', "'Tunai'", "'Kembalian'",
+    "'Bawa pulang'", 'Terima kasih', "'Cetak'"].forEach((literal) => {
     is(pos.includes(literal), false, `the receipt no longer hardcodes ${literal}`);
 });
+
+// ⚠️ THE RECEIPT FOLLOWS THE OUTLET'S COUNTRY, not the staff UI language. It
+// used to print Bahasa unconditionally — right while every outlet was
+// Indonesian, wrong in BOTH directions now: a Singapore diner handed an
+// Indonesian receipt, or an Indonesian diner handed an English one because
+// their cashier prefers English.
+is(/function receiptLang\(\)/.test(posSrc), true,
+    'the receipt has a language of its own');
+is(/window\.FluxyWorkspace && window\.FluxyWorkspace\.country/.test(posSrc), true,
+    'the receipt language is read from the workspace country');
+// The totals block followed `tr()` — the staff's own setting, which is the one
+// thing this surface must not follow.
+is(/row\(tr\('/.test(posSrc), false,
+    'the receipt totals no longer follow the cashier\'s UI language');
 const dict = fs.readFileSync(path.join(ROOT, 'assets/js/dashboard-i18n.js'), 'utf8');
 [['Subtotal', 'Subtotal'], ['Discount', 'Diskon'], ['Service', 'Layanan'],
     ['Tax', 'Pajak'], ['Total', 'Total'], ['Includes', 'Termasuk']].forEach(([en, id]) => {

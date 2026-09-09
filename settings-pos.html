@@ -88,6 +88,19 @@
             display: flex; align-items: center; justify-content: center;
         }
         .pos-cover-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        /* ⚠️ `contain` AND A LIGHT GROUND, unlike the cover. A logo is a mark with
+           its own margins and often a transparent background; cropping it to fill,
+           or previewing it on dark, shows the owner something the receipt will
+           never print. */
+        .pos-logo-frame {
+            width: 168px; height: 112px; flex: 0 0 auto;
+            border: 1px solid #E2E8F0; border-radius: 12px;
+            background: #FFFFFF;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        .pos-logo-frame img { max-width: 82%; max-height: 76%; object-fit: contain; display: block; }
+        .pos-logo-frame .pos-cover-empty { color: #94A3B8; }
         .pos-cover-empty { color: rgba(255,255,255,0.72); font-size: 12px; font-weight: 600; text-align: center; padding: 0 20px; line-height: 1.5; }
 
         /* The bill preview. Deliberately looks like a receipt rather than a form
@@ -333,6 +346,38 @@
                                         <button type="button" id="pos-cover-clear" class="pos-mini-btn is-danger" hidden>Remove</button>
                                     </div>
                                     <p id="pos-cover-status" class="mt-2 text-[12px] text-gray-500" aria-live="polite"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 3b. RECEIPT LOGO -->
+                    <section class="pos-set-card">
+                        <div class="pos-set-head">
+                            <h2 class="pos-set-title">Receipt logo</h2>
+                            <p class="pos-set-sub">
+                                Printed at the top of every receipt, above the outlet's address.
+                                Without one the receipt starts with the outlet name.
+                            </p>
+                        </div>
+                        <div class="pos-set-body">
+                            <div class="flex flex-wrap items-start gap-5">
+                                <div class="pos-logo-frame" id="pos-logo-frame">
+                                    <span class="pos-cover-empty" id="pos-logo-empty">No logo set</span>
+                                </div>
+                                <div class="flex-1 min-w-[220px]">
+                                    <p class="text-[12px] text-gray-500 leading-relaxed">
+                                        JPEG, PNG or WebP, up to 2&nbsp;MB. A thermal printer is 58&nbsp;mm
+                                        wide and prints in black and white, so a simple high-contrast mark
+                                        reads and a photograph comes out as a grey smudge.
+                                        Uploading saves straight away.
+                                    </p>
+                                    <div class="mt-3 flex items-center gap-2 flex-wrap">
+                                        <input id="pos-logo-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+                                        <button type="button" id="pos-logo-pick" class="pos-mini-btn">Upload logo</button>
+                                        <button type="button" id="pos-logo-clear" class="pos-mini-btn is-danger" hidden>Remove</button>
+                                    </div>
+                                    <p id="pos-logo-status" class="mt-2 text-[12px] text-gray-500" aria-live="polite"></p>
                                 </div>
                             </div>
                         </div>
@@ -832,6 +877,7 @@
             $('pos-service-taxable').value = settings.service_taxable === false ? 'false' : 'true';
             renderHours();
             renderCover();
+            renderLogo();
             renderPresets();
             renderPreview();
         }
@@ -914,6 +960,10 @@
             };
         }
 
+        // Revoked on every repaint, like the cover's — a blob URL left behind is a
+        // copy of the image held for the life of the tab.
+        let logoObjectUrl = null;
+
         async function renderCover() {
             const frame = $('pos-cover-frame');
             const empty = $('pos-cover-empty');
@@ -933,6 +983,29 @@
                 // beats a black rectangle the owner cannot explain.
                 empty.hidden = false;
                 empty.textContent = 'The saved image could not be loaded';
+            }
+        }
+
+        async function renderLogo() {
+            const frame = $('pos-logo-frame');
+            const empty = $('pos-logo-empty');
+            frame.querySelectorAll('img').forEach((n) => n.remove());
+            if (logoObjectUrl) { URL.revokeObjectURL(logoObjectUrl); logoObjectUrl = null; }
+            $('pos-logo-clear').hidden = !settings.logo_image_path;
+            empty.textContent = 'No logo set';
+            if (!settings.logo_image_path) { empty.hidden = false; return; }
+            try {
+                logoObjectUrl = await ds.getPosOutletCoverObjectURL(uid, settings.logo_image_path);
+                const img = document.createElement('img');
+                img.alt = '';
+                img.src = logoObjectUrl;
+                frame.appendChild(img);
+                empty.hidden = true;
+            } catch (e) {
+                // A stored path that will not resolve is a real state, and saying
+                // so beats an empty box the owner cannot explain.
+                empty.hidden = false;
+                empty.textContent = 'The saved logo could not be loaded';
             }
         }
 
@@ -979,6 +1052,20 @@
                 renderCover();
             });
 
+            $('pos-logo-pick').addEventListener('click', () => $('pos-logo-input').click());
+            $('pos-logo-input').addEventListener('change', uploadLogo);
+            $('pos-logo-clear').addEventListener('click', async () => {
+                const ok = await window.showConfirmDialog({
+                    title: 'Remove the receipt logo?',
+                    body: 'Receipts will start with the outlet name instead.',
+                    confirmLabel: 'Remove logo', tone: 'danger'
+                });
+                if (!ok) return;
+                settings.logo_image_path = null;
+                await persist('Logo removed');
+                renderLogo();
+            });
+
             $('pos-preset-add').addEventListener('click', () => openPresetForm(null));
             $('pos-preset-cancel').addEventListener('click', () => { $('pos-preset-form').hidden = true; });
             $('pos-preset-form').addEventListener('submit', savePreset);
@@ -1002,6 +1089,24 @@
                 status.textContent = 'Image saved.';
             } catch (err) {
                 status.textContent = (err && err.message) || 'Could not upload that image.';
+            }
+        }
+
+        async function uploadLogo(e) {
+            const file = e.target.files && e.target.files[0];
+            e.target.value = '';
+            if (!file) return;
+            const status = $('pos-logo-status');
+            status.textContent = 'Uploading…';
+            try {
+                const { storagePath } = await ds.uploadPosOutletLogo(uid, currentOutlet, file);
+                settings.logo_image_path = storagePath;
+                // Saved with the upload, like the cover: a file is its own action.
+                await persist(null);
+                await renderLogo();
+                status.textContent = 'Logo saved.';
+            } catch (err) {
+                status.textContent = (err && err.message) || 'Could not upload that logo.';
             }
         }
 

@@ -1486,8 +1486,29 @@ must never mean touching the validator the posting engine depends on.
 | `address` / `phone` | string ≤200 / ≤32 \| null | Shown on the customer's order page |
 | `hours` | list ≤7 | One row per weekday: `{day, closed, open, close}`. `closed` is a real answer and the default |
 | `cover_image_path` | string ≤300 \| null | A Storage PATH, never a URL — same rule as `items.image_path` |
+| `logo_image_path` | string ≤300 \| null | Added 2026-09-09. Printed at the top of every RECEIPT, above the address. Shares the cover's Storage folder and rule, so it needed no `storage.rules` change — but it DID need adding to `wsPosOutletKeys`, which is a `hasOnly` |
 | `tax_enabled` / `tax_label` / `tax_rate_percent` / `tax_inclusive` | bool / string ≤24 / number 0–100 / bool | |
 | `service_enabled` / `service_rate_percent` / `service_taxable` | bool / number 0–100 / bool | `service_taxable` defaults TRUE |
+
+### The receipt letterhead (2026-09-09)
+
+`logo_image_path` and `address` are what a printed receipt puts above the order:
+the logo, then the outlet name, then the address. Three things about it are
+easy to get wrong and silent when you do:
+
+- ⚠️ **The popup is opened BEFORE the first `await`.** Fetching the letterhead
+  made `openReceipt` async; a `window.open` below that await has lost its user
+  activation and browsers block it, so nothing prints and there is no error.
+- ⚠️ **The logo reaches the print window as a `data:` URI**, not a `blob:` URL. A
+  blob URL belongs to the document that created it and the print job races its
+  lifetime.
+- ⚠️ **The letterhead is keyed on the ORDER's `dimension_id`**, not the selected
+  outlet. A reprint is routinely pulled up hours later, and a cashier who has
+  since switched outlets would otherwise print the wrong shop's address.
+
+The receipt's own words follow the **outlet's country**, not the staff UI
+language and not Indonesia (`RECEIPT_COPY` in `pos.js`): the reader is the
+customer holding the paper. Guard: `npm run check:receipt-head`.
 
 ⚠️ **The rates are bounded in RULES, not only in the form.** They multiply every
 bill the outlet ever rings up, and a rate typed as `1100` instead of `11` does

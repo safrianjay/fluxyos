@@ -131,6 +131,55 @@ const state = {
 // for itself. Falls back to English when the dictionary has not loaded.
 const tr = (s) => (window.FluxyI18n && window.FluxyI18n.t ? window.FluxyI18n.t(s) : s);
 
+/**
+ * The RECEIPT's vocabulary, which is not the staff UI's.
+ *
+ * ⚠️ IT FOLLOWS THE OUTLET'S COUNTRY. The comment this replaces said "printed in
+ * Bahasa regardless of the staff UI language — the reader is the customer, not
+ * the cashier", and the principle was right while every outlet was Indonesian.
+ * It is wrong in two directions now: a Singapore diner should not be handed an
+ * Indonesian receipt because Indonesia is the home market, and an Indonesian
+ * diner should not be handed an English one because their cashier prefers
+ * English. Same idea as the diner app's kitchen note, pointing the other way —
+ * the language belongs to the person holding the paper.
+ *
+ * Deliberately NOT `tr()`: that reads the staff's own setting, which is the one
+ * thing this surface must not follow. QRIS and Transfer are the same word in
+ * both, and stay as they are.
+ */
+const RECEIPT_COPY = {
+    id: {
+        cash: 'Tunai', card: 'Kartu', other: 'Lainnya',
+        table: 'Meja', takeaway: 'Bawa pulang',
+        partOf: 'Bagian {n} dari {m}', partBill: 'Bagian dari tagihan meja',
+        paid: 'Dibayar', paidPart: 'Dibayar bagian ini', change: 'Kembalian',
+        refunded: 'DIREFUND', thanks: 'Terima kasih', print: 'Cetak',
+        subtotal: 'Subtotal', discount: 'Diskon', service: 'Layanan',
+        tax: 'Pajak', total: 'Total', includes: 'Termasuk'
+    },
+    en: {
+        cash: 'Cash', card: 'Card', other: 'Other',
+        table: 'Table', takeaway: 'Takeaway',
+        partOf: 'Part {n} of {m}', partBill: 'Part of the table bill',
+        paid: 'Paid', paidPart: 'Paid for this part', change: 'Change',
+        refunded: 'REFUNDED', thanks: 'Thank you', print: 'Print',
+        subtotal: 'Subtotal', discount: 'Discount', service: 'Service',
+        tax: 'Tax', total: 'Total', includes: 'Includes'
+    }
+};
+
+function receiptLang() {
+    const c = (window.FluxyWorkspace && window.FluxyWorkspace.country) || 'ID';
+    return c === 'ID' ? 'id' : 'en';
+}
+
+const rc = (key, vars) => {
+    const dict = RECEIPT_COPY[receiptLang()] || RECEIPT_COPY.id;
+    const out = dict[key] != null ? dict[key] : (RECEIPT_COPY.id[key] != null ? RECEIPT_COPY.id[key] : key);
+    if (!vars) return out;
+    return out.replace(/\{(\w+)\}/g, (m, n) => (vars[n] == null ? m : String(vars[n])));
+};
+
 const POS_PROFILES = {
     fnb: {
         ladder: { open: 'sent', submitted: 'sent', sent: 'ready', ready: 'served', served: 'awaiting_payment' },
@@ -476,6 +525,45 @@ function allBoardOrders(ov) {
 }
 
 // ── Outlets ──────────────────────────────────────────────────────────────────
+
+/**
+ * What a receipt prints above the order: the outlet's logo and its address.
+ *
+ * ⚠️ KEYED BY THE ORDER'S OWN OUTLET, not the selected one. A reprint is
+ * routinely pulled up hours later, and a cashier who has since switched outlets
+ * would otherwise print one shop's address on another shop's receipt.
+ *
+ * Cached per dimension for the life of the page: it is two small fields that
+ * change about never, and a receipt is printed from a counter with a customer
+ * standing at it.
+ */
+const receiptHeadCache = new Map();
+
+async function receiptHead(dimensionId) {
+    if (!dimensionId) return { logo: null, address: null };
+    if (receiptHeadCache.has(dimensionId)) return receiptHeadCache.get(dimensionId);
+    // Cache the PROMISE, not the result: two receipts printed in the same
+    // breath would otherwise both miss and fetch.
+    const p = (async () => {
+        try {
+            const cfg = await ds.getPosOutletSettings(state.uid, dimensionId);
+            const address = (cfg && cfg.address) ? String(cfg.address) : null;
+            let logo = null;
+            if (cfg && cfg.logo_image_path) {
+                // ⚠️ A data: URI, not a blob: one — see getPosOutletLogoDataURL.
+                logo = await ds.getPosOutletLogoDataURL(state.uid, cfg.logo_image_path)
+                    .catch(() => null);
+            }
+            return { logo: logo, address: address };
+        } catch (_) {
+            // A receipt that prints without its letterhead is a receipt; one that
+            // does not print because the letterhead failed is a queue.
+            return { logo: null, address: null };
+        }
+    })();
+    receiptHeadCache.set(dimensionId, p);
+    return p;
+}
 
 async function loadOutlets() {
     const dims = await ds.getDimensions(state.uid).catch(() => []);
@@ -4239,10 +4327,22 @@ function openDiscountDrawer(lineId = null) {
 // above the total in one case and below it in the other. Since a second ticket
 // inherits the sitting's `pos_pricing` (pos.md) that cannot happen within a
 // sitting any more; it survives for bills opened before that rule existed.
-function openReceipt(order, { billId = null } = {}) {
+async function openReceipt(order, { billId = null } = {}) {
     const list = (Array.isArray(order) ? order : [order]).filter(Boolean);
     if (!list.length) return;
     const o = list[0];
+
+    // ⚠️ THE WINDOW IS OPENED IN THE CLICK, BEFORE ANY await. A popup opened
+    // after a network round trip has lost its user activation and browsers
+    // block it — so this is the one thing that must not move below the fetch
+    // for the letterhead. It is written to at the end, as before.
+    const w = window.open('', '_blank', 'width=380,height=640');
+    if (!w) { toast('Allow pop-ups for this site to print the receipt.', 'error'); return; }
+
+    // The logo and address for THIS order's outlet. Cached, so only the first
+    // receipt of a session waits at all, and a failure here prints a receipt
+    // without a letterhead rather than not printing one.
+    const head = await receiptHead(o.dimension_id);
 
     // ── A SPLIT'S RECEIPT IS THEIR ITEMS, AND THEIR OWN ARITHMETIC ──────────
     //
@@ -4392,19 +4492,19 @@ function openReceipt(order, { billId = null } = {}) {
     // what the customer was charged under, and it must not change because a
     // setting did.
     const taxWord = (x) => (x.pos_pricing || {}).tax_label
-        || (window.FluxyMoney ? window.FluxyMoney.defaultTaxLabel() : tr('Tax'));
+        || (window.FluxyMoney ? window.FluxyMoney.defaultTaxLabel() : rc('tax'));
     const ticketTotals = (x) => [
-        row(tr('Subtotal'), rp(x.subtotal)),
+        row(rc('subtotal'), rp(x.subtotal)),
         Number(x.discount_total) > 0
-            ? row(x.discount_reason || tr('Discount'), `\u2212${rp(x.discount_total)}`, 'dsc') : '',
-        Number(x.service_charge_amount) > 0 ? row(tr('Service'), rp(x.service_charge_amount)) : '',
+            ? row(x.discount_reason || rc('discount'), `\u2212${rp(x.discount_total)}`, 'dsc') : '',
+        Number(x.service_charge_amount) > 0 ? row(rc('service'), rp(x.service_charge_amount)) : '',
         Number(x.tax_amount) > 0 && !(x.pos_pricing || {}).tax_inclusive
             ? row(taxWord(x), rp(x.tax_amount)) : '',
-        row(tr('Total'), rp(x.total_amount), 'tot'),
+        row(rc('total'), rp(x.total_amount), 'tot'),
         // Inclusive tax sits INSIDE the prices above, so it is stated after the
         // total rather than added to it.
         Number(x.tax_amount) > 0 && (x.pos_pricing || {}).tax_inclusive
-            ? row(`${tr('Includes')} ${taxWord(x)}`, rp(x.tax_amount)) : ''
+            ? row(`${rc('includes')} ${taxWord(x)}`, rp(x.tax_amount)) : ''
     ].join('');
     // Every settled payment across the bill, with the ones taken TOGETHER folded
     // back into one row. `payPosTableBill` writes a payment per ticket sharing a
@@ -4422,10 +4522,11 @@ function openReceipt(order, { billId = null } = {}) {
         }));
         return [...groups.values()];
     })();
-    // Printed in Bahasa regardless of the staff UI language — the reader is the
-    // customer, not the cashier.
-    const ID_METHOD = { cash: 'Tunai', qris: 'QRIS', transfer: 'Transfer', card: 'Kartu', other: 'Lainnya' };
-    const methodLabel = (id) => ID_METHOD[id] || id;
+    // QRIS and Transfer are the same word in both markets; the rest follow the
+    // outlet's country — see RECEIPT_COPY.
+    const METHOD = { cash: rc('cash'), qris: 'QRIS', transfer: 'Transfer',
+        card: rc('card'), other: rc('other') };
+    const methodLabel = (id) => METHOD[id] || id;
     const when = o.paid_at && typeof o.paid_at.toDate === 'function' ? o.paid_at.toDate() : new Date();
     const outlet = state.outlets.find((x) => x.id === o.dimension_id);
 
@@ -4438,6 +4539,17 @@ function openReceipt(order, { billId = null } = {}) {
          font-size: 11px; line-height: 1.4; color: #000;
          font-variant-numeric: tabular-nums; }
   h1 { font-size: 13px; margin: 0 0 2px; text-align: center; }
+  /* CAPPED IN mm, NOT px. The paper is 58mm wide and this is the one image on
+     the page; a logo exported at 2000px would otherwise run off the roll.
+     object-fit keeps a mark's own proportions, and a thermal printer renders it
+     in black and white whatever it was uploaded as.
+     NOTE: no backticks anywhere in this block. It lives inside a template
+     literal, so one would end the string and the CSS after it becomes JS. */
+  .logo { text-align: center; margin: 0 0 4px; }
+  .logo img { max-width: 40mm; max-height: 18mm; object-fit: contain; display: inline-block; }
+  /* The address wraps: it is one field and an owner may well have typed three
+     lines of it into a textarea. */
+  .addr { white-space: pre-line; margin-bottom: 2px; }
   .c { text-align: center; }
   .m { color: #555; font-size: 10px; }
   .r { text-align: right; white-space: nowrap; }
@@ -4456,11 +4568,13 @@ function openReceipt(order, { billId = null } = {}) {
   }
   @media print { .noprint { display: none; } }
 </style></head><body>
+  ${head.logo ? `<div class="logo"><img src="${head.logo}" alt=""></div>` : ''}
   <h1>${esc((outlet && outlet.name) || 'FluxyOS')}</h1>
+  ${head.address ? `<div class="c m addr">${esc(head.address)}</div>` : ''}
   <div class="c m">${esc((() => {
       const labels = [...new Set(list.map((x) => x.table_label).filter(Boolean))];
-      if (labels.length > 1) return `Meja ${labels.join(', ')}`;
-      return labels[0] ? `Meja ${labels[0]}` : 'Bawa pulang';
+      if (labels.length > 1) return `${rc('table')} ${labels.join(', ')}`;
+      return labels[0] ? `${rc('table')} ${labels[0]}` : rc('takeaway');
   })())} · ${esc(
       // EVERY ticket's number, whether or not the body is sectioned. The lines
       // are one bill now, so the header is the only place the customer can see
@@ -4469,9 +4583,9 @@ function openReceipt(order, { billId = null } = {}) {
       list.map((x) => x.order_number || '').filter(Boolean).join(' + '))}</div>
   <div class="c m">${when.toLocaleString(window.FluxyMoney.baseLocale())}</div>
   <hr>
-  ${evenShare ? `<div class="c m">Bagian ${esc(String(evenShare.split_index || ''))} dari ${esc(String(evenShare.split_ways))}</div>` : ''}
+  ${evenShare ? `<div class="c m">${esc(rc('partOf', { n: evenShare.split_index || '', m: evenShare.split_ways }))}</div>` : ''}
   ${isSplit ? `
-  <div class="c m">Bagian dari tagihan meja</div>
+  <div class="c m">${esc(rc('partBill'))}</div>
   <table>${splitLines.map(line).join('')}</table>
   <hr>
   <table>${splitParts && splitParts.breakdown ? ticketTotals({
@@ -4482,15 +4596,15 @@ function openReceipt(order, { billId = null } = {}) {
       tax_amount: splitParts.tax,
       total_amount: splitTotal,
       pos_pricing: o.pos_pricing
-  }) : row('Dibayar', rp(splitTotal), 'tot')}</table>` : split ? `${list.map((x) => `
+  }) : row(rc('paid'), rp(splitTotal), 'tot')}</table>` : split ? `${list.map((x) => `
     <div class="tk">${esc(x.order_number || '')}</div>
     <table>${(x.lines || []).map(line).join('')}</table>
     <table>${ticketTotals(x)}</table>
-    <hr>`).join('')}<table>${row('Total', rp(grand), 'tot')}</table>` : `
+    <hr>`).join('')}<table>${row(rc('total'), rp(grand), 'tot')}</table>` : `
   <table>${bill.lines.map(line).join('')}</table>
   <hr>
   <table>${ticketTotals(bill)}</table>`}
-  ${evenShare ? `<table>${row('Dibayar bagian ini',
+  ${evenShare ? `<table>${row(rc('paidPart'),
       rp(evenPay.reduce((t, p) => t + (Number(p.amount) || 0), 0)), 'tot')}</table>` : ''}
   <table>
     ${(isSplit ? splitPay : evenShare ? evenPay : paid).map((p) => row(methodLabel(p.method), rp(p.amount))).join('')}
@@ -4502,18 +4616,15 @@ function openReceipt(order, { billId = null } = {}) {
         // Older payments carry neither field; they fall out rather than
         // rendering "Rp0" against a sale nobody can now check.
         (isSplit ? splitPay : evenShare ? evenPay : paid).filter((p) => Number(p.change_given) > 0).map((p) =>
-            row('Tunai', rp(p.amount_received)) + row('Kembalian', rp(p.change_given))).join('')
+            row(rc('cash'), rp(p.amount_received)) + row(rc('change'), rp(p.change_given))).join('')
     }
   </table>
-  ${list.some((x) => x.refund_transaction_id) ? '<hr><div class="c"><strong>DIREFUND</strong></div>' : ''}
-  <div class="foot">Terima kasih 🙏</div>
-  <div class="noprint"><button onclick="window.print()">Cetak</button></div>
+  ${list.some((x) => x.refund_transaction_id) ? `<hr><div class="c"><strong>${esc(rc('refunded'))}</strong></div>` : ''}
+  <div class="foot">${esc(rc('thanks'))} 🙏</div>
+  <div class="noprint"><button onclick="window.print()">${esc(rc('print'))}</button></div>
 <script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 250); });</` + `script>
 </body></html>`;
 
-    // A blocked popup must not fail silently — say what happened and what to do.
-    const w = window.open('', '_blank', 'width=380,height=640');
-    if (!w) { toast('Allow pop-ups for this site to print the receipt.', 'error'); return; }
     w.document.write(html);
     w.document.close();
 }

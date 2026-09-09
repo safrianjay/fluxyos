@@ -245,6 +245,12 @@ function laneBE(changed) {
   // perfectly, in the wrong language, naming a tax the shop does not charge —
   // and the files that cause them (the dictionary, the money seam, the till's
   // defaults) are rarely the files being edited when one is reintroduced.
+  // Unconditional. The receipt is written into a popup and printed at once, so
+  // almost none of it is reachable from a spec — and its two sharpest failures
+  // are silent: a popup opened after an `await` is BLOCKED and simply never
+  // appears, and a `logo_image_path` missing from the rules `hasOnly` breaks
+  // EVERY write to outlet settings, not just one carrying a logo.
+  ok = record('be', run('check:receipt-head (logo, address, and the popup that must not be blocked)', 'node', ['tests/pos-receipt-letterhead.check.js'])) && ok;
   ok = record('be', run('check:market-i18n (a non-Indonesian workspace gets its own language and tax word)', 'node', ['tests/market-localisation.check.js'])) && ok;
   // Unconditional, and the sharpest of the three. `wsPosOrderKeys` is a
   // `hasOnly`, so a key qr-order writes that the rules do not allow succeeds

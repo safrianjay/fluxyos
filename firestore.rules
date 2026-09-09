@@ -2837,6 +2837,7 @@ service cloud.firestore {
     function wsPosOutletKeys(data) {
       return data.keys().hasOnly([
           'dimension_id', 'address', 'phone', 'hours', 'cover_image_path',
+          'logo_image_path',
           'tax_enabled', 'tax_label', 'tax_rate_percent', 'tax_inclusive',
           'service_enabled', 'service_rate_percent', 'service_taxable',
           'created_at', 'updated_at', 'updated_by'
@@ -2855,6 +2856,20 @@ service cloud.firestore {
         && data.hours.size() <= 7
         && (data.cover_image_path == null
             || (data.cover_image_path is string && data.cover_image_path.size() <= 300))
+        // The mark printed at the top of a receipt. Same rule as the cover and
+        // as items.image_path: a Storage PATH, never a URL.
+        //
+        // ⚠️ `in` FIRST, AND THAT IS NOT DECORATION. Reading a key that is not on
+        // the map THROWS in rules — it does not evaluate to null — so a payload
+        // omitting this field fails the whole validator. Every field above it
+        // gets away with the shorter form only because every client has always
+        // sent them. This one is NEW: the moment it deploys, any tab still
+        // running yesterday's JS would be denied on saving its opening hours or
+        // its tax rate, with `permission-denied` and nothing to say why. Caught
+        // by the emulator suite before it shipped.
+        && (!('logo_image_path' in data)
+            || data.logo_image_path == null
+            || (data.logo_image_path is string && data.logo_image_path.size() <= 300))
         && data.tax_enabled is bool
         && data.tax_label is string
         && data.tax_label.size() <= 24

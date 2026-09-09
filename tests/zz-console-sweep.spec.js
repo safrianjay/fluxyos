@@ -34,6 +34,13 @@ const CORE_PAGES = [
     'accounting.html',
     'budget.html',
     'reports.html',
+    // ⚠️ THE TILL WAS NOT SWEPT, and it is the page where a parse error costs a
+    // restaurant its cash register. On 2026-09-09 a backtick inside a CSS
+    // comment — in a comment, inside the receipt's template literal — ended the
+    // string early and took the whole of pos.js down. `node --check` PASSED it;
+    // only a browser saw it, and nothing in QA was loading this page in one.
+    'pos.html',
+    'settings-pos.html',
 ];
 
 const pages = (process.env.QA_SWEEP_PAGES || '')
