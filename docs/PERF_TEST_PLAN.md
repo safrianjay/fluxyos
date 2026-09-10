@@ -302,7 +302,7 @@ confirm or adjust after S1.
 
 ## 7. The harness
 
-**Built 2026-09-11** except `collect.js` and `report.js` (below). Everything
+**Built 2026-09-11** except `collect.js` (below). Everything
 runs from the repo root; the local app server starts itself when needed.
 
 | Command | What it does |
@@ -311,13 +311,20 @@ runs from the repo root; the local app server starts itself when needed.
 | `npm run perf:s1` | S1: page loads, journey, till probe → `perf/out/s1-*/report.md` |
 | `npm run perf:reset` | Void every live order in the load workspace (till path) |
 | `npm run perf:cashier -- --run s3 --minutes 90` | The scripted cashier and kitchen, alongside S3/S4 |
-| `k6 run -e RUN=s3-1x --console-output perf/out/s3-1x/orders.log perf/k6/s3-lunch-rush.js` | Any k6 scenario (S2–S10); `-e TIME=0.05` compresses a run for a smoke test |
+| `k6 run -e RUN=s3-1x --console-output perf/out/s3-1x/orders.log --summary-export perf/out/s3-1x/summary.json --summary-trend-stats "avg,min,med,max,p(90),p(95),p(99)" perf/k6/s3-lunch-rush.js` | Any k6 scenario (S2–S10); `-e TIME=0.05` compresses a run for a smoke test. Without `--summary-trend-stats` the summary has no p99 |
+| `node perf/till-watch.js --run s3-1x --minutes 105 --tabs 2 --outlet "Kelapa Gading"` | Instrumented till tabs through the run (H2) |
 | `npm run perf:verify -- --log perf/out/s3-1x/orders.log` | The hard budgets: lost, doubled, misrouted, mispriced orders, number gaps |
+| `node perf/report.js --run s3-1x --reads-per-refresh 433` | One markdown report for the run folder |
+| `node perf/qr-contract.js` | Before any change to a `qr-*` function ships: the five real handlers against the load workspace, 38 assertions |
 
-⚠️ **Until F1 is fixed, every k6 scenario that browses photos from one machine
-gets its orders refused by the shared limiter**, so S2, S3, S5, S7 and S9
-measure the limiter rather than the system. Fix F1 (or add the perf allowance)
-before running them. S4, S6 and S10 do not load photos and run as-is.
+⚠️ **Keep the load machine awake: prefix every long-running command with
+`caffeinate -i`.** The first S3 run (2026-09-11) was invalidated because the
+Mac went to idle sleep three minutes in — see `docs/perf/LOAD_2026-09-11.md`.
+
+F1 is fixed (`327e2df`), so photo browsing no longer spends the order
+allowance. From ONE machine each endpoint is still capped per IP (orders
+20/min, menu 60, photos 300): S2, S5, S7 and S9 above those rates need the perf
+allowance or several machines; S3 at 1× stays under them.
 
 ### Originally planned (≈ 1 day)
 
@@ -472,10 +479,10 @@ a single hot document; serve photos from a cacheable URL.
 - [ ] (optional) `qa+sg` created with `seed-qa-account.js --country SG` and seeded the same way
 - [ ] `Server-Timing` and perf allowance deployed, both off by default
 - [x] S1 baseline recorded (2026-09-11) — see docs/perf/S1_BASELINE_2026-09-11.md
-- [ ] S6 — the 50-order window
-- [ ] S4 — four phones, one table
+- [x] S6 — the 50-order window: proven under load in the first S3 run (36 of 39 `sitting_ended` were live sittings) — docs/perf/LOAD_2026-09-11.md
+- [x] S4 — four phones, one table (after the fix: p95 5.6 s, integrity ✓; new finding F7)
 - [ ] S5 — new-table burst
-- [ ] S10 — retries on a flaky network
+- [x] S10 — retries on a flaky network (after the fix: 5 of 5 retries answered with the same order)
 - [ ] S2 + S7 — scan stampede, one wifi
 - [ ] S3 + S11 — lunch rush at 1× and 3×, with the cashier
 - [ ] S9 + S8 — step-to-break and soak, off-peak
