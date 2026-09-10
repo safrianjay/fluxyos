@@ -449,7 +449,8 @@ test.describe('QR customer ordering', () => {
         // ⚠️ ABSOLUTE. Under `/t/<token>` a relative `assets/…` resolves to
         // `/t/assets/…`, which the catch-all rewrite serves as 200-with-HTML —
         // it would fail while LOOKING like it loaded.
-        expect(await art.getAttribute('src')).toBe('/assets/images/order-success.png');
+        // WebP since 2026-09-11: the re-exported PNG master is 941KB; this is 4KB.
+        expect(await art.getAttribute('src')).toBe('/assets/images/order-success.webp');
         // And it DECODES — a broken image passes every assertion above.
         expect(await art.evaluate((el) => el.naturalWidth)).toBeGreaterThan(0);
         // The drawn tick it replaced is gone.

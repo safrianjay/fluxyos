@@ -68,3 +68,6 @@ assets/images/served.png
 assets/images/payment.png
 assets/images/emptychart.png
 assets/images/storeclose.png
+# Also a master now: the success sheet loads order-success.webp (4KB); the
+# re-exported PNG is 941KB and must not ride on every deploy.
+assets/images/order-success.png

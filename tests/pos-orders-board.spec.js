@@ -172,15 +172,15 @@ test('the Completed tab reads newest first, not longest settled', async ({ page 
     ]);
     expect(rows).toHaveLength(2);
     expect(rows.every((r) => r.level === null), 'a settled order carries no clock').toBe(true);
-    const ages = await page.locator('.pos-ocard-when').allInnerTexts();
-    const times = ages.map((t) => t.trim()).filter(Boolean);
-    // The newest is first: its timestamp is later in the day than the other's.
-    expect(times.length).toBe(2);
-    const mins = times.map((t) => {
-        const m = t.match(/(\d{1,2})[.:](\d{2})/);
-        return m ? Number(m[1]) * 60 + Number(m[2]) : 0;
-    });
-    expect(mins[0], 'the Completed tab is sorted oldest-first').toBeGreaterThan(mins[1]);
+    // ⚠️ BY WHICH ORDER, NOT BY WHAT THE CLOCK SAYS. This compared the printed
+    // times as minutes-past-midnight — so between midnight and 01:30 the sale
+    // rung up 3 minutes ago read "00:14" (14) against "22:47" (1367) for the one
+    // from 90 minutes ago, and a correctly sorted tab failed as oldest-first.
+    // It failed QA at 00:17. Same nocturnal class as __posSeedBoard's own fix.
+    // seed-1 is the 3-minute sale; newest first means its card leads.
+    const order = await page.locator('#pos-orders-grid .pos-ocard')
+        .evaluateAll((els) => els.map((e) => e.dataset.orderCard));
+    expect(order, 'the Completed tab is sorted oldest-first').toEqual(['seed-1', 'seed-0']);
 });
 
 test('the filter panel is the dashboard component, and sorts what it says', async ({ page }) => {
