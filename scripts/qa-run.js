@@ -284,6 +284,10 @@ function laneBE(changed) {
   // public endpoint with no ceiling or a restaurant whose customers are refused
   // their own menu, and neither states itself at runtime.
   ok = record('be', run('check:rate-limit (counts, refuses, fails open)', 'node', ['tests/rate-limit.check.js'])) && ok;
+  // Unconditional, for the same reason: the QR functions answer from this
+  // cache, and a cached refusal or a cache that never expires is a card that
+  // looks dead, or a price that never changes — neither says so at runtime.
+  ok = record('be', run('check:warm-cache (expires, never caches a refusal)', 'node', ['tests/warm-cache.check.js'])) && ok;
   // Unconditional. The arithmetic is invisible at runtime: relieving too little
   // inflates gross margin, relieving too much invents cost, and neither raises
   // anything. It also crosses FOUR explicit field lists between the item and the

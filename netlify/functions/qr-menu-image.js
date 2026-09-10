@@ -2,6 +2,7 @@
 
 const { allowOriginHeader } = require('./lib/allowed-origins');
 const { consumeApprox, ipKey, clientIp, tooManyRequests } = require('./lib/rate-limit');
+const { createCache, directoryEntry } = require('./lib/warm-cache');
 
 // =============================================================================
 // FluxyOS — menu photos for a QR customer, who is not signed in.
@@ -96,6 +97,24 @@ const DAY_SECONDS = 24 * 60 * 60;
 const IP_BURST_LIMIT = 300;
 const IP_BURST_SECONDS = 60;
 
+// ── Remembered between requests (docs/perf/S1_BASELINE_2026-09-11.md, F2) ──
+//
+// A photo cost three Firestore round trips in a row — limiter, token, item —
+// at ~200 ms each from us-east-2, before the signature. A warm instance now
+// remembers the item's photo path and the signed URL it minted.
+//
+// Photo path: 60 s. A dish taken off the menu keeps its picture for a minute
+// on an instance that already served it; a changed photo is a NEW object
+// (items.md §9), so the old path still points at real bytes meanwhile.
+const pathCache = createCache({ ttlMs: 60 * 1000, max: 5000 });
+// Signed URL: 10 min, and the redirect's cache lifetime is SHORTENED by the
+// URL's age (see `redirect` below). A reused URL is handed out with at most
+// CACHE_SECONDS of browser/edge life left, and URL_TTL_MS − 10 min is still
+// 35 minutes — longer than CACHE_SECONDS — so a cached redirect can never
+// outlive the credential inside it.
+const SIGNED_MS = 10 * 60 * 1000;
+const signedCache = createCache({ ttlMs: SIGNED_MS, max: 5000 });
+
 let _initialized = false;
 function initAdmin() {
     if (!_initialized) {
@@ -116,6 +135,41 @@ function initAdmin() {
 // Bounded and character-restricted before they reach a document path, because a
 // path segment containing `/` or `..` is how one becomes a different read.
 const SAFE = /^[A-Za-z0-9_-]{1,128}$/;
+
+/**
+ * A signed read URL for `path`, reused for up to SIGNED_MS. Returns
+ * `{ url, signedAt }` so the redirect can age its own cache lifetime.
+ */
+function signed(path) {
+    return signedCache.get(path, async () => {
+        const file = initAdmin().storage().bucket().file(path);
+        const signedAt = Date.now();
+        const [url] = await file.getSignedUrl({
+            action: 'read',
+            expires: Date.now() + URL_TTL_MS,
+        });
+        return { url, signedAt };
+    });
+}
+
+/**
+ * The 302. Its cache lifetime is CACHE_SECONDS MINUS the URL's age, so a
+ * redirect handed out from the signed-URL cache still expires, in every
+ * browser and at the edge, well before the credential inside it does.
+ */
+function redirect({ url, signedAt }, cors) {
+    const age = Math.floor((Date.now() - signedAt) / 1000);
+    const maxAge = Math.max(60, CACHE_SECONDS - age);
+    return {
+        statusCode: 302,
+        headers: {
+            ...cors,
+            Location: url,
+            'Cache-Control': `public, max-age=${maxAge}`,
+        },
+        body: '',
+    };
+}
 
 exports.handler = async (event) => {
     const origin = (event.headers && (event.headers.origin || event.headers.Origin)) || '';
@@ -171,24 +225,26 @@ exports.handler = async (event) => {
         // fetching a photograph, and it got worse the more photographs a menu
         // had. Approximate counting is the right trade on a public image
         // endpoint that already fails open; see the note on consumeApprox.
-        const [burst, daily] = await Promise.all([
+        //
+        // The token lookup runs WITH them: nothing in it depends on the limits,
+        // and on a warm instance it is answered from memory anyway.
+        const [burst, daily, dir] = await Promise.all([
             consumeApprox(db, {
-                key: ipKey(clientIp(event.headers || {})),
+                key: ipKey(clientIp(event.headers || {}), 'img'),
                 limit: IP_BURST_LIMIT,
                 windowSeconds: IP_BURST_SECONDS
             }),
             consumeApprox(db, {
                 key: `tok_${token}`, limit: TOKEN_DAILY_LIMIT, windowSeconds: DAY_SECONDS
-            })
+            }),
+            // 1. The token names a table, and the table names a workspace.
+            //    Deny-all to clients, so this mapping only exists server-side.
+            //    Read from `pos_table_directory` (via lib/warm-cache.js).
+            directoryEntry(db, token)
         ]);
         if (!burst.allowed) return tooManyRequests(burst, cors);
         if (!daily.allowed) return tooManyRequests(daily, cors);
-
-        // 1. The token names a table, and the table names a workspace. Deny-all
-        //    to clients, so this mapping only exists server-side.
-        const dirSnap = await db.doc(`pos_table_directory/${token}`).get();
-        if (!dirSnap.exists) return notFound;
-        const dir = dirSnap.data() || {};
+        if (!dir) return notFound;
         // A REVOKED entry is a token whose card is out in the world and must
         // stop working: the table was archived, or the token was rotated. The
         // entry is kept rather than deleted precisely so this check exists — a
@@ -205,37 +261,33 @@ exports.handler = async (event) => {
         if (wantsCover) {
             const dimensionId = dir.dimension_id;
             if (!dimensionId || !SAFE.test(String(dimensionId))) return notFound;
-            const cfgSnap = await db
-                .doc(`workspaces/${workspaceId}/pos_outlet_settings/${dimensionId}`).get();
-            if (!cfgSnap.exists) return notFound;
-            const coverPath = typeof (cfgSnap.data() || {}).cover_image_path === 'string'
-                ? cfgSnap.data().cover_image_path : '';
+            const coverPath = await pathCache.get(`cover/${workspaceId}/${dimensionId}`, async () => {
+                const cfgSnap = await db
+                    .doc(`workspaces/${workspaceId}/pos_outlet_settings/${dimensionId}`).get();
+                if (!cfgSnap.exists) return null;
+                const p = (cfgSnap.data() || {}).cover_image_path;
+                return typeof p === 'string' && p ? p : null;
+            });
             if (!coverPath) return notFound;
             // Same belt and braces as the item path below: a string on a
             // document becomes a file read for an anonymous caller exactly here.
             if (!coverPath.startsWith(`workspaces/${workspaceId}/pos_outlets/${dimensionId}/`)) {
                 return notFound;
             }
-            const coverFile = initAdmin().storage().bucket().file(coverPath);
-            const [coverUrl] = await coverFile.getSignedUrl({
-                action: 'read', expires: Date.now() + URL_TTL_MS
-            });
-            return {
-                statusCode: 302,
-                headers: { ...cors, Location: coverUrl, 'Cache-Control': `public, max-age=${CACHE_SECONDS}` },
-                body: ''
-            };
+            return redirect(await signed(coverPath), cors);
         }
 
         // 2. The item, IN THAT WORKSPACE. This is the check a Storage rule
         //    cannot make: scoping a photo to the restaurant whose QR code was
         //    scanned, and to items actually on its menu.
-        const itemSnap = await db.doc(`workspaces/${workspaceId}/items/${itemId}`).get();
-        if (!itemSnap.exists) return notFound;
-        const item = itemSnap.data() || {};
-        if (item.pos_visible !== true) return notFound;
-        if (item.status === 'archived') return notFound;
-        const path = typeof item.image_path === 'string' ? item.image_path : '';
+        const path = await pathCache.get(`item/${workspaceId}/${itemId}`, async () => {
+            const itemSnap = await db.doc(`workspaces/${workspaceId}/items/${itemId}`).get();
+            if (!itemSnap.exists) return null;
+            const item = itemSnap.data() || {};
+            if (item.pos_visible !== true) return null;
+            if (item.status === 'archived') return null;
+            return typeof item.image_path === 'string' && item.image_path ? item.image_path : null;
+        });
         if (!path) return notFound;
 
         // Belt and braces. `image_path` is written by our own DAL, but it is a
@@ -245,21 +297,7 @@ exports.handler = async (event) => {
         if (!path.startsWith(`workspaces/${workspaceId}/items/${itemId}/`)) return notFound;
 
         // 3. A signed URL with a life measured in minutes, and a redirect to it.
-        const file = initAdmin().storage().bucket().file(path);
-        const [url] = await file.getSignedUrl({
-            action: 'read',
-            expires: Date.now() + URL_TTL_MS,
-        });
-
-        return {
-            statusCode: 302,
-            headers: {
-                ...cors,
-                Location: url,
-                'Cache-Control': `public, max-age=${CACHE_SECONDS}`,
-            },
-            body: '',
-        };
+        return redirect(await signed(path), cors);
     } catch (err) {
         // Logged, never returned. The message can name a workspace or a path.
         console.error('[qr-menu-image]', err && err.message);

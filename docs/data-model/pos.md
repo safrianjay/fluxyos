@@ -1282,6 +1282,42 @@ directory holding only tables whose codes are actually out there. Firestore
 triggers are not an option — they are Cloud Functions, and this backend is
 Netlify Functions, which are HTTP and cannot watch a collection.
 
+## 5a. `qr_order_refs/{token}_{clientRef}` — top-level, deny-all
+
+The idempotency record for a QR order: `{ order_id, order_number,
+total_amount, workspace_id, created_at, expires_at }`. A diner's page sends a
+`client_ref` with each order; a retry carrying the same one is answered with
+the original order (`duplicate: true`) instead of becoming a second ticket.
+
+**Written INSIDE the order's own transaction (2026-09-11).** It used to be
+written after the transaction committed, so a retry arriving while the first
+request was still writing read no record and wrote the order twice — two
+identical taps a moment apart doubled the dish. Now the transaction reads the
+record and writes it alongside the order: a racing retry sees one or the other,
+never neither. Proven by `perf/qr-contract.js` (two simultaneous copies of one
+order add the dish once).
+
+Admin SDK only (the ruleset's final catch-all). `expires_at` is meant for a
+Firestore TTL policy, which is **not yet set** — the same gap as `rate_limits`.
+
+### What the QR functions remember between requests (2026-09-11)
+
+The functions run in `us-east-2` and Firestore in `asia-southeast1`, so each
+read is a ~200 ms round trip (`docs/perf/S1_BASELINE_2026-09-11.md`, F2). A warm
+function instance keeps some answers in memory (`netlify/functions/lib/warm-cache.js`);
+each has a staleness budget, and nothing invalidates them early:
+
+| What | Where | For | Consequence of staleness |
+|---|---|---|---|
+| Token → workspace, table, outlet, revoked | every QR endpoint | 60 s | a revoked card works up to a minute longer |
+| Outlet menu (items, rates, hours, name) | `qr-menu` | 30 s (+60 s browser/edge) | a price or sold-out change reaches the table within ~90 s |
+| Table (label, status, outlet) | `qr-menu` | 30 s | an archived table's menu shows up to 30 s longer |
+| Dish → photo path | `qr-menu-image` | 60 s | a removed dish's photo serves a minute longer |
+| Signed photo URL | `qr-menu-image` | 10 min | the 302's cache life is shortened by the URL's age, so it never outlives the signature |
+
+Orders never read prices, tables or settings from memory: `qr-order` reads
+them fresh every time. Only the token lookup is shared.
+
 ## 6. Tax is deliberately absent
 
 Indonesian F&B is generally liable for a **regional** tax — historically PB1

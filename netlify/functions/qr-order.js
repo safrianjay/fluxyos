@@ -1,7 +1,8 @@
 'use strict';
 
 const { allowOriginHeader } = require('./lib/allowed-origins');
-const { consume, ipKey, clientIp, tooManyRequests } = require('./lib/rate-limit');
+const { consumeApprox, ipKey, clientIp, tooManyRequests } = require('./lib/rate-limit');
+const { directoryEntry } = require('./lib/warm-cache');
 // ⚠️ THE SAME FILE THE TILL RUNS. `pos-pricing.js` is UMD precisely so this
 // CommonJS function and the ES-module client can share it — a diner's phone
 // and the cashier's screen pricing one outlet's bill differently is the
@@ -111,9 +112,19 @@ exports.handler = async (event) => {
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type'
     };
+    // Where the time went, per stage, on every answer — readable in the
+    // browser's network panel and by perf/s1-baseline.js. This endpoint once
+    // spent 4-7.6 s before a diner heard back and nothing said which part.
+    const t0 = Date.now();
+    const marks = [];
+    let last = t0;
+    const mark = (name) => { const now = Date.now(); marks.push(`${name};dur=${now - last}`); last = now; };
     const json = (statusCode, body) => ({
         statusCode,
-        headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+        headers: {
+            ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'no-store',
+            'Server-Timing': [...marks, `total;dur=${Date.now() - t0}`].join(', ')
+        },
         body: JSON.stringify(body)
     });
 
@@ -132,24 +143,6 @@ exports.handler = async (event) => {
     try {
         const db = initAdmin().firestore();
 
-        const burst = await consume(db, {
-            key: ipKey(clientIp(event.headers || {})),
-            limit: IP_BURST_LIMIT, windowSeconds: IP_BURST_SECONDS
-        });
-        if (!burst.allowed) return tooManyRequests(burst, cors);
-        const perToken = await consume(db, {
-            key: `order_${token}`, limit: TOKEN_HOURLY_LIMIT, windowSeconds: HOUR_SECONDS
-        });
-        if (!perToken.allowed) return tooManyRequests(perToken, cors);
-
-        const dirSnap = await db.doc(`pos_table_directory/${token}`).get();
-        if (!dirSnap.exists) return json(404, { error: 'not_found' });
-        const dir = dirSnap.data() || {};
-        if (dir.revoked === true) return json(404, { error: 'not_found' });
-        const workspaceId = dir.workspace_id;
-        const tableId = dir.table_id;
-        if (!workspaceId || !tableId) return json(404, { error: 'not_found' });
-
         // ── Idempotency ─────────────────────────────────────────────────────
         //
         // A phone on restaurant wifi retries. Without this, one tap of "Place
@@ -159,33 +152,83 @@ exports.handler = async (event) => {
         // rather than on the order, because `pos_orders` has a `hasOnly` and an
         // extra key there would break every later till write (see the header).
         // Denied to all clients by the ruleset's final catch-all, Admin SDK only.
+        //
+        // ⚠️ READ HERE AND AGAIN INSIDE THE WRITE. The read below answers an
+        // ordinary retry fast. It cannot answer a retry that arrives while the
+        // first request is still writing — both would see no record and both
+        // would write. So the record is also read and WRITTEN inside the order
+        // transaction itself (below), where a second writer cannot slip past.
         const clientRef = SAFE.test(String(body.client_ref || '')) ? String(body.client_ref) : null;
-        const refDoc = clientRef ? db.doc(`qr_order_refs/${token}_${clientRef}`) : null;
-        if (refDoc) {
-            const seen = await refDoc.get();
-            if (seen.exists) {
-                const prior = seen.data() || {};
-                return json(200, {
-                    ok: true, duplicate: true,
-                    order_id: prior.order_id, order_number: prior.order_number,
-                    total_amount: prior.total_amount
-                });
-            }
-        }
+        const idemRef = clientRef ? db.doc(`qr_order_refs/${token}_${clientRef}`) : null;
+        const duplicateOf = (prior) => json(200, {
+            ok: true, duplicate: true,
+            order_id: prior.order_id, order_number: prior.order_number,
+            total_amount: prior.total_amount
+        });
 
-        const tableSnap = await db.doc(`workspaces/${workspaceId}/pos_tables/${tableId}`).get();
+        // ⚠️ ROUND TRIPS ARE THE COST (docs/perf/S1_BASELINE_2026-09-11.md,
+        // F2): each Firestore call from us-east-2 is ~200 ms, and this endpoint
+        // made fourteen of them one after another — 4 to 7.6 s for a diner to
+        // hear their order was taken. Nothing in this first group depends on
+        // anything else in it, so it is ONE round trip. `consumeApprox` rather
+        // than a transaction: see its note in lib/rate-limit.js — the limiter
+        // guards volume; the transaction below is what guards the order.
+        const [burst, perToken, dir, seen] = await Promise.all([
+            consumeApprox(db, {
+                key: ipKey(clientIp(event.headers || {}), 'order'),
+                limit: IP_BURST_LIMIT, windowSeconds: IP_BURST_SECONDS
+            }),
+            consumeApprox(db, {
+                key: `order_${token}`, limit: TOKEN_HOURLY_LIMIT, windowSeconds: HOUR_SECONDS
+            }),
+            directoryEntry(db, token),
+            idemRef ? idemRef.get() : Promise.resolve(null)
+        ]);
+        mark('limits');
+        if (!burst.allowed) return tooManyRequests(burst, cors);
+        if (!perToken.allowed) return tooManyRequests(perToken, cors);
+
+        // `pos_table_directory` names the table (read via lib/warm-cache.js).
+        if (!dir || dir.revoked === true) return json(404, { error: 'not_found' });
+        const workspaceId = dir.workspace_id;
+        const tableId = dir.table_id;
+        if (!workspaceId || !tableId) return json(404, { error: 'not_found' });
+
+        if (seen && seen.exists) return duplicateOf(seen.data() || {});
+
+        // ── Resolve every price from the menu, never from the request ───────
+        const ids = [...new Set(requested.map((l) => String((l && l.item_id) || '')).filter(Boolean))];
+        if (!ids.length) return json(400, { error: 'empty_order' });
+
+        // The second round trip: everything the decision needs, together — the
+        // table, every requested item (prices come from HERE), the table's
+        // recent orders, and the outlet's rates in case this opens a new
+        // ticket. The rates are read speculatively from the outlet the
+        // directory names; the table is checked against it below.
+        const settingsFor = (dim) => db
+            .doc(`workspaces/${workspaceId}/pos_outlet_settings/${dim}`).get()
+            .catch((e) => {
+                console.warn('[qr-order] outlet pricing unreadable; billing at zero rates', e);
+                return null;
+            });
+        const [tableSnap, itemSnaps, recent, guessedSettings] = await Promise.all([
+            db.doc(`workspaces/${workspaceId}/pos_tables/${tableId}`).get(),
+            db.getAll(...ids.map((id) => db.doc(`workspaces/${workspaceId}/items/${id}`))),
+            // Find the order already on this table. Ordered and filtered in
+            // memory rather than by a compound query, matching `getPosOrders`
+            // — there is no pos_orders index in firestore.indexes.json and a
+            // live order is recent by definition.
+            db.collection(`workspaces/${workspaceId}/pos_orders`)
+                .orderBy('created_at', 'desc').limit(50).get(),
+            dir.dimension_id ? settingsFor(dir.dimension_id) : Promise.resolve(null)
+        ]);
+        mark('reads');
+
         if (!tableSnap.exists) return json(404, { error: 'not_found' });
         const table = tableSnap.data() || {};
         if (table.status === 'archived') return json(404, { error: 'not_found' });
         const dimensionId = table.dimension_id;
         if (!dimensionId) return json(409, { error: 'table_not_configured' });
-
-        // ── Resolve every price from the menu, never from the request ───────
-        const ids = [...new Set(requested.map((l) => String((l && l.item_id) || '')).filter(Boolean))];
-        if (!ids.length) return json(400, { error: 'empty_order' });
-        const itemSnaps = await db.getAll(
-            ...ids.map((id) => db.doc(`workspaces/${workspaceId}/items/${id}`))
-        );
         const menu = new Map();
         itemSnaps.forEach((s) => {
             if (!s.exists) return;
@@ -301,12 +344,6 @@ exports.handler = async (event) => {
         const guestRaw = Number(body.guest_count);
         const guestCount = Number.isInteger(guestRaw) && guestRaw > 0 ? Math.min(999, guestRaw) : null;
 
-        // Find the order already on this table. Ordered and filtered in memory
-        // rather than by a compound query, matching `getPosOrders` — there is no
-        // pos_orders index in firestore.indexes.json and a live order is recent
-        // by definition.
-        const recent = await db.collection(`workspaces/${workspaceId}/pos_orders`)
-            .orderBy('created_at', 'desc').limit(50).get();
         // ⚠️ THE KITCHEN IS THE BOUNDARY, and this is the whole rule.
         //
         // A round merges into the live order only while NOTHING HAS BEEN
@@ -360,6 +397,20 @@ exports.handler = async (event) => {
 
         let orderId; let orderNumber; let totalAmount;
 
+        // The idempotency record, written INSIDE whichever transaction writes
+        // the order — so the order and the proof it exists land together, and
+        // a racing retry reads one or the other, never neither.
+        const idemRecord = (id, number, total) => ({
+            order_id: id,
+            order_number: number,
+            total_amount: total,
+            workspace_id: workspaceId,
+            created_at: admin.firestore.FieldValue.serverTimestamp(),
+            // A retry arrives within seconds, not days. Read by the same
+            // Firestore TTL policy `rate_limits` uses.
+            expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000)
+        });
+
         // TWO REFUSALS, and conflating them costs the diner an explanation.
         // `sitting_ended` means the table moved on and a new order is the right
         // answer — the page retries as one. `bill_requested` is the opposite:
@@ -403,7 +454,9 @@ exports.handler = async (event) => {
             // ── APPEND to the sitting's order ───────────────────────────────
             const ref = openDoc.ref;
             const result = await db.runTransaction(async (tx) => {
-                const snap = await tx.get(ref);
+                const [snap, prior] = idemRef ? await tx.getAll(ref, idemRef) : [await tx.get(ref), null];
+                // A retry that raced the first request: it already landed.
+                if (prior && prior.exists) return { duplicate: prior.data() || {} };
                 const o = snap.data() || {};
                 // It may have been sent to the kitchen, paid or voided between
                 // the read above and here — a cook picking up the ticket, or a
@@ -475,10 +528,13 @@ exports.handler = async (event) => {
                 if (guestCount && !o.guest_count) patch.guest_count = guestCount;
 
                 tx.update(ref, patch);
+                if (idemRef) tx.set(idemRef, idemRecord(ref.id, o.order_number, total));
                 return { number: o.order_number, total };
             });
 
+            mark('append');
             if (!result) return json(409, { error: 'order_closed' });
+            if (result.duplicate) return duplicateOf(result.duplicate);
             orderId = ref.id;
             orderNumber = result.number;
             totalAmount = result.total;
@@ -513,20 +569,20 @@ exports.handler = async (event) => {
             if (sittingRates) {
                 posPricing = pricing.normalizeSettings(sittingRates);
             } else {
-                try {
-                    const cfg = await db
-                        .doc(`workspaces/${workspaceId}/pos_outlet_settings/${dimensionId}`).get();
-                    if (cfg.exists) posPricing = pricing.normalizeSettings(cfg.data());
-                } catch (e) {
-                    console.warn('[qr-order] outlet pricing unreadable; billing at zero rates', e);
-                }
+                // Already read, alongside the table — unless the table has moved
+                // to another outlet since its card was printed, in which case
+                // the TABLE's outlet is the one that charges.
+                const cfg = dimensionId === dir.dimension_id ? guessedSettings : await settingsFor(dimensionId);
+                if (cfg && cfg.exists) posPricing = pricing.normalizeSettings(cfg.data());
             }
             const newTotals = pricing.computeBillTotals({
                 subtotal, discountTotal: 0, settings: posPricing
             });
 
-            await db.runTransaction(async (tx) => {
-                const snap = await tx.get(counterRef);
+            const opened = await db.runTransaction(async (tx) => {
+                const [snap, prior] = idemRef ? await tx.getAll(counterRef, idemRef) : [await tx.get(counterRef), null];
+                // A retry that raced the first request: it already landed.
+                if (prior && prior.exists) return { duplicate: prior.data() || {} };
                 const next = (snap.exists ? (Number(snap.data().seq) || 0) : 0) + 1;
                 tx.set(counterRef, {
                     seq: next,
@@ -580,7 +636,11 @@ exports.handler = async (event) => {
                     created_by: 'qr',
                     updated_by: 'qr'
                 });
+                if (idemRef) tx.set(idemRef, idemRecord(orderRef.id, orderNumber, newTotals.total));
+                return null;
             });
+            mark('open');
+            if (opened && opened.duplicate) return duplicateOf(opened.duplicate);
 
             orderId = orderRef.id;
             // The PRICED total, not the subtotal. This is what the diner's phone
@@ -588,19 +648,6 @@ exports.handler = async (event) => {
             // order document holds the taxed one is the same bug in miniature:
             // one number on the screen, a different one in the books.
             totalAmount = newTotals.total;
-        }
-
-        if (refDoc) {
-            await refDoc.set({
-                order_id: orderId,
-                order_number: orderNumber,
-                total_amount: totalAmount,
-                workspace_id: workspaceId,
-                created_at: admin.firestore.FieldValue.serverTimestamp(),
-                // A retry arrives within seconds, not days. Read by the same
-                // Firestore TTL policy `rate_limits` uses.
-                expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000)
-            });
         }
 
         return json(200, {

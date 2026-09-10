@@ -2,7 +2,8 @@
 
 const admin = require('firebase-admin');
 const { allowOriginHeader } = require('./lib/allowed-origins');
-const { consume, ipKey, clientIp, tooManyRequests } = require('./lib/rate-limit');
+const { consumeApprox, ipKey, clientIp, tooManyRequests } = require('./lib/rate-limit');
+const { directoryEntry } = require('./lib/warm-cache');
 
 // =============================================================================
 // FluxyOS — the diner says they are done and wants to pay.
@@ -88,20 +89,24 @@ exports.handler = async (event) => {
     try {
         const db = initAdmin().firestore();
 
-        const burst = await consume(db, {
-            key: ipKey(clientIp(event.headers || {})),
-            limit: IP_BURST_LIMIT, windowSeconds: IP_BURST_SECONDS
-        });
+        // The limits and the token lookup together — one round trip instead of
+        // five, each ~200 ms from us-east-2 (docs/perf/S1_BASELINE_2026-09-11.md,
+        // F2). What keeps a bill correct is the transaction below, not the
+        // limiter; see consumeApprox in lib/rate-limit.js.
+        const [burst, perToken, dir] = await Promise.all([
+            consumeApprox(db, {
+                key: ipKey(clientIp(event.headers || {}), 'bill'),
+                limit: IP_BURST_LIMIT, windowSeconds: IP_BURST_SECONDS
+            }),
+            consumeApprox(db, {
+                key: `bill_${token}`, limit: TOKEN_HOURLY_LIMIT, windowSeconds: HOUR_SECONDS
+            }),
+            directoryEntry(db, token)
+        ]);
         if (!burst.allowed) return tooManyRequests(burst, cors);
-        const perToken = await consume(db, {
-            key: `bill_${token}`, limit: TOKEN_HOURLY_LIMIT, windowSeconds: HOUR_SECONDS
-        });
         if (!perToken.allowed) return tooManyRequests(perToken, cors);
 
-        const dirSnap = await db.doc(`pos_table_directory/${token}`).get();
-        if (!dirSnap.exists) return json(404, { error: 'not_found' });
-        const dir = dirSnap.data() || {};
-        if (dir.revoked === true) return json(404, { error: 'not_found' });
+        if (!dir || dir.revoked) return json(404, { error: 'not_found' });
         const workspaceId = dir.workspace_id;
         const tableId = dir.table_id;
         if (!workspaceId || !tableId) return json(404, { error: 'not_found' });

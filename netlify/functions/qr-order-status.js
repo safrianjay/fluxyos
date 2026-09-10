@@ -2,7 +2,8 @@
 
 const admin = require('firebase-admin');
 const { allowOriginHeader } = require('./lib/allowed-origins');
-const { consume, ipKey, clientIp, tooManyRequests } = require('./lib/rate-limit');
+const { consumeApprox, ipKey, clientIp, tooManyRequests } = require('./lib/rate-limit');
+const { directoryEntry } = require('./lib/warm-cache');
 
 // =============================================================================
 // FluxyOS — what has been ordered at this table, and how far along it is.
@@ -108,17 +109,23 @@ function lineOf(l) {
  */
 const HISTORY_MAX = 10;
 
-async function historyFor(db, workspaceId, tableId, raw, currentId) {
-    const ids = String(raw || '')
+/**
+ * The ids the page sent, cleaned. Read BEFORE the table's current order is
+ * known — so the history can be fetched in the same round trip as the table's
+ * orders — and the current one is dropped afterwards, in `historyFrom`.
+ */
+function historyIds(raw) {
+    return [...new Set(String(raw || '')
         .split(',')
         .map((v) => v.trim())
-        .filter((v) => SAFE.test(v) && v !== currentId)
-        .slice(-HISTORY_MAX);
-    if (!ids.length) return [];
+        .filter((v) => SAFE.test(v)))]
+        .slice(-(HISTORY_MAX + 1));
+}
 
-    const snaps = await db.getAll(
-        ...ids.map((id) => db.doc(`workspaces/${workspaceId}/pos_orders/${id}`)));
+function historyFrom(snaps, tableId, currentId) {
     return snaps
+        .filter((snap) => snap.id !== currentId)
+        .slice(-HISTORY_MAX)
         .map((snap) => {
             if (!snap.exists) return null;
             const o = snap.data() || {};
@@ -195,20 +202,25 @@ exports.handler = async (event) => {
     try {
         const db = initAdmin().firestore();
 
-        const burst = await consume(db, {
-            key: ipKey(clientIp(event.headers || {})),
-            limit: IP_BURST_LIMIT, windowSeconds: IP_BURST_SECONDS
-        });
+        // ⚠️ ROUND TRIPS ARE THE COST (docs/perf/S1_BASELINE_2026-09-11.md,
+        // F2): every Firestore call from here crosses the Pacific. The limits
+        // and the token lookup do not depend on each other, so they go
+        // together; so do the table's orders and the diner's own history.
+        // Two round trips where there were seven.
+        const [burst, perToken, dir] = await Promise.all([
+            consumeApprox(db, {
+                key: ipKey(clientIp(event.headers || {}), 'status'),
+                limit: IP_BURST_LIMIT, windowSeconds: IP_BURST_SECONDS
+            }),
+            consumeApprox(db, {
+                key: `status_${token}`, limit: TOKEN_HOURLY_LIMIT, windowSeconds: HOUR_SECONDS
+            }),
+            directoryEntry(db, token)
+        ]);
         if (!burst.allowed) return tooManyRequests(burst, cors);
-        const perToken = await consume(db, {
-            key: `status_${token}`, limit: TOKEN_HOURLY_LIMIT, windowSeconds: HOUR_SECONDS
-        });
         if (!perToken.allowed) return tooManyRequests(perToken, cors);
 
-        const dirSnap = await db.doc(`pos_table_directory/${token}`).get();
-        if (!dirSnap.exists) return json(404, { error: 'not_found' });
-        const dir = dirSnap.data() || {};
-        if (dir.revoked === true) return json(404, { error: 'not_found' });
+        if (!dir || dir.revoked) return json(404, { error: 'not_found' });
         const workspaceId = dir.workspace_id;
         const tableId = dir.table_id;
         if (!workspaceId || !tableId) return json(404, { error: 'not_found' });
@@ -216,8 +228,14 @@ exports.handler = async (event) => {
         // Same index-free shape `qr-order` and `getPosOrders` use: order by
         // created_at, filter in memory. There is no pos_orders composite index,
         // and a live order is recent by definition.
-        const recent = await db.collection(`workspaces/${workspaceId}/pos_orders`)
-            .orderBy('created_at', 'desc').limit(50).get();
+        const ids = historyIds(q.ids);
+        const [recent, historySnaps] = await Promise.all([
+            db.collection(`workspaces/${workspaceId}/pos_orders`)
+                .orderBy('created_at', 'desc').limit(50).get(),
+            ids.length
+                ? db.getAll(...ids.map((id) => db.doc(`workspaces/${workspaceId}/pos_orders/${id}`)))
+                : Promise.resolve([])
+        ]);
 
         // A SITTING, not a table's whole history.
         //
@@ -283,7 +301,7 @@ exports.handler = async (event) => {
         // So the page sends the ids IT holds, and each is returned only if it
         // belongs to THIS table. A guessed id from another table resolves to
         // nothing, and nobody ever sees a bill they did not place.
-        const history = await historyFor(db, workspaceId, tableId, q.ids, doc && doc.id);
+        const history = historyFrom(historySnaps, tableId, doc && doc.id);
 
         if (!doc) {
             return json(200, {

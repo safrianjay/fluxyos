@@ -1211,6 +1211,17 @@ each a write — and must check all three, including the per-workspace daily cap
 this section originally called for. Do not copy the image endpoint's choice into
 one that writes.
 
+⚠️ **ONE IP BUCKET PER ENDPOINT (2026-09-11).** `ipKey(ip, scope)` takes the
+endpoint — `menu`, `img`, `order`, `status`, `bill` — and throws without one.
+Until then all five shared ONE document per IP per minute while each applied its
+own limit, so photo requests (limit 300) spent the order allowance (limit 20):
+a lone diner who scrolled the menu was refused their first order, in 4 of 4
+load-test baselines and in production history (8 IP-minutes over 20, 7–9 Sep).
+See `docs/perf/S1_BASELINE_2026-09-11.md` F1. The 429 is JSON
+(`{ error: 'rate_limited', retry_after }`) so the diner page can say "try again
+in N seconds" instead of "could not send". `check:rate-limit` fails if two
+endpoints ever share a scope again.
+
 ⚠️ **No `firestore.rules` block is needed.** The ruleset ends with
 `match /{document=**} { allow read, write: if false; }`, so `rate_limits` is
 denied to every client by default and only the Admin SDK can touch it.

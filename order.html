@@ -3197,6 +3197,8 @@ html.kb-open .welcome-art { display: none; }
             'err.tableClosed': 'Tagihan meja ini baru saja ditutup. Panggil staf untuk membuka pesanan baru.',
             'err.itemGone': 'Item yang Anda pilih sudah tidak tersedia.',
             'err.billFail': 'Gagal memanggil kasir. Coba lagi.',
+            'err.busy': 'Lagi banyak pesanan masuk bersamaan. Coba lagi dalam {s} detik.',
+            'err.billBusy': 'Lagi banyak permintaan bersamaan. Coba lagi dalam {s} detik.',
             'err.orderClosed': 'Pesanan ini sudah ditutup kasir.',
 
             'lang.open': 'Ganti bahasa',
@@ -3359,6 +3361,8 @@ html.kb-open .welcome-art { display: none; }
             'err.tableClosed': 'This table was just settled. Ask staff to start a new order.',
             'err.itemGone': 'Something you picked has run out.',
             'err.billFail': 'Could not call the cashier. Try again.',
+            'err.busy': 'Lots of orders are coming in at once. Try again in {s} seconds.',
+            'err.billBusy': 'Lots of requests at once. Try again in {s} seconds.',
             'err.orderClosed': 'The cashier has already closed this order.',
 
             'lang.open': 'Change language',
@@ -3473,6 +3477,11 @@ html.kb-open .welcome-art { display: none; }
     function setCopy(el, key, vars) {
         if (!el) return;
         el.setAttribute('data-i18n', key);
+        // Kept beside the key: applyStaticCopy re-resolves every [data-i18n] on
+        // a language switch, and without the values "{s} seconds" would come
+        // back literally.
+        if (vars) el.setAttribute('data-i18n-vars', JSON.stringify(vars));
+        else el.removeAttribute('data-i18n-vars');
         el.textContent = t(key, vars);
     }
 
@@ -3484,7 +3493,13 @@ html.kb-open .welcome-art { display: none; }
                 apply(nodes[i], t(nodes[i].getAttribute(attr)));
             }
         };
-        set('data-i18n', function (el, v) { el.textContent = v; });
+        set('data-i18n', function (el, v) {
+            var vars = el.getAttribute('data-i18n-vars');
+            if (vars) {
+                try { v = t(el.getAttribute('data-i18n'), JSON.parse(vars)); } catch (_) { /* keep v */ }
+            }
+            el.textContent = v;
+        });
         set('data-i18n-ph', function (el, v) { el.setAttribute('placeholder', v); });
         set('data-i18n-aria', function (el, v) { el.setAttribute('aria-label', v); });
     }
@@ -5898,7 +5913,7 @@ html.kb-open .welcome-art { display: none; }
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token: TOKEN })
         })
-            .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+            .then(readReply)
             .then(function (res) {
                 if (!res.ok || !res.body.ok) throw res.body || {};
                 // Repaint from the SERVER rather than assuming: the cashier may
@@ -5909,9 +5924,13 @@ html.kb-open .welcome-art { display: none; }
                 btn.classList.remove('is-busy');
                 setDisabled(btn, false);
                 setCopy(btn, 'orders.bill');
-                setCopy($('bill-hint'), err && err.error === 'order_closed'
-                    ? 'err.orderClosed'
-                    : 'err.billFail');
+                if (err && err.error === 'rate_limited') {
+                    setCopy($('bill-hint'), 'err.billBusy', { s: waitSeconds(err.retry_after) });
+                } else {
+                    setCopy($('bill-hint'), err && err.error === 'order_closed'
+                        ? 'err.orderClosed'
+                        : 'err.billFail');
+                }
             });
     });
 
@@ -5993,6 +6012,31 @@ html.kb-open .welcome-art { display: none; }
     // =====================================================================
 
     /**
+     * A response as `{ ok, body }`, whatever the body is.
+     *
+     * ⚠️ A 429 IS "WAIT", NOT "FAILED". The limiter's refusal was plain text
+     * until 2026-09-11, `r.json()` threw on it, and the diner read "Could not
+     * send your order" with no hint that a few seconds was the whole fix. The
+     * status decides even when the body cannot be parsed, so a refusal from an
+     * older deploy still reads as one.
+     */
+    function readReply(r) {
+        return r.json().catch(function () { return {}; }).then(function (b) {
+            var body = b || {};
+            if (r.status === 429 && !body.error) {
+                body = { error: 'rate_limited', retry_after: Number(r.headers.get('Retry-After')) || 0 };
+            }
+            return { ok: r.ok, body: body };
+        });
+    }
+
+    // Seconds to tell a refused diner, never 0 and never a minute of nothing.
+    function waitSeconds(n) {
+        var s = Math.round(Number(n) || 0);
+        return s >= 1 && s <= 60 ? s : 10;
+    }
+
+    /**
      * One POST of the current cart, resolving with the response body and
      * rejecting with it — so a caller can read `err.error` and decide.
      *
@@ -6024,7 +6068,7 @@ html.kb-open .welcome-art { display: none; }
                 })
             })
         })
-            .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+            .then(readReply)
             .then(function (res) {
                 if (!res.ok || !res.body.ok) throw res.body || {};
                 return res.body;
@@ -6133,6 +6177,10 @@ html.kb-open .welcome-art { display: none; }
                     msg = t('err.tableClosed');
                 } else if (err && err.error === 'nothing_orderable') {
                     msg = t('err.itemGone');
+                } else if (err && err.error === 'rate_limited') {
+                    // Nothing was written — the limiter refuses before any
+                    // read — so tapping again with the same client_ref is safe.
+                    msg = t('err.busy', { s: waitSeconds(err.retry_after) });
                 }
                 var host = $('cart-notice');
                 if (host) host.innerHTML = '<div class="notice bad">' + esc(msg) + '</div>';

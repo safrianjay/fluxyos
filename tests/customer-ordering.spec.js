@@ -3745,3 +3745,94 @@ test.describe('QR customer ordering', () => {
         expect(errors).toEqual([]);
     });
 });
+
+// ⚠️ A 429 IS "WAIT", NOT "FAILED" (2026-09-11).
+//
+// Every QR endpoint shared one per-IP rate-limit bucket while applying its own
+// limit, so a diner who scrolled the menu had their first order refused — 4 of
+// 4 load-test baselines at zero load (docs/perf/S1_BASELINE_2026-09-11.md, F1).
+// The buckets are separate now, but a refusal can still happen, and it used to
+// arrive as plain text: `r.json()` threw and the diner read "Could not send your
+// order", with no hint that a few seconds was the whole fix.
+test.describe('a refused request says how long to wait', () => {
+    const busy = (seconds) => ({
+        status: 429, contentType: 'application/json', headers: { 'Retry-After': String(seconds) },
+        body: JSON.stringify({ error: 'rate_limited', retry_after: seconds })
+    });
+    const accepted = {
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({ ok: true, order_id: 'ord_rl', order_number: '2026-09-11-001', total_amount: 45000, rejected_lines: 0 })
+    };
+
+    test('a rate-limited order names the wait, keeps the cart, and the next tap goes through', async ({ page }) => {
+        await stub(page);
+        await open(page);
+        const sent = [];
+        await page.route('**/qr-order', async (route) => {
+            sent.push(JSON.parse(route.request().postData() || '{}'));
+            return route.fulfill(sent.length === 1 ? busy(12) : accepted);
+        });
+
+        await addPlain(page, 'Nasi Goreng');
+        await page.locator('#cart-open').click();
+        await page.locator('#cart-submit').click();
+
+        await expect(page.locator('#cart-notice .notice'))
+            .toHaveText('Lagi banyak pesanan masuk bersamaan. Coba lagi dalam 12 detik.');
+        await expect(page.locator('#sheet-done')).not.toHaveClass(/is-open/);
+
+        await page.locator('#cart-submit').click();
+        await expect(page.locator('#sheet-done')).toHaveClass(/is-open/, { timeout: 15_000 });
+        await expect(page.locator('#done-number')).toHaveText('2026-09-11-001');
+        // The same client_ref: the limiter refuses before anything is written,
+        // so the retry cannot become a second order.
+        expect(sent).toHaveLength(2);
+        expect(sent[1].client_ref).toBe(sent[0].client_ref);
+        expect(sent[1].lines, 'the cart survived the refusal').toEqual(sent[0].lines);
+    });
+
+    test('a plain-text 429 from an older deploy still reads as a wait', async ({ page }) => {
+        await stub(page);
+        await open(page);
+        await page.route('**/qr-order', (route) => route.fulfill({
+            status: 429, contentType: 'text/plain', headers: { 'Retry-After': '7' }, body: 'Too many requests'
+        }));
+        await addPlain(page, 'Nasi Goreng');
+        await page.locator('#cart-open').click();
+        await page.locator('#cart-submit').click();
+        await expect(page.locator('#cart-notice .notice'))
+            .toHaveText('Lagi banyak pesanan masuk bersamaan. Coba lagi dalam 7 detik.');
+    });
+
+    test('a rate-limited bill request names the wait, in whichever language the diner switches to', async ({ page }) => {
+        await stub(page);
+        await page.route('**/qr-order-status**', (route) => route.fulfill({
+            status: 200, contentType: 'application/json',
+            body: JSON.stringify({
+                has_order: true, order_id: 'o_now', order_number: '2026-09-11-002',
+                status: 'served', stage: 4, stage_label: 'Diantar',
+                lines: [{ item_id: 'i_americano', item_name: 'Americano', quantity: 1, gross_amount: 22000, note: null, modifiers: [] }],
+                subtotal: 22000, discount_total: 0, service_charge_amount: 0, tax_amount: 0,
+                total_amount: 22000, paid_amount: 0, pricing: null, placed_at: Date.now() - 5 * 60 * 1000, history: []
+            })
+        }));
+        await page.route('**/qr-request-bill', (route) => route.fulfill(busy(9)));
+        await open(page);
+        await page.locator('.tab[data-tab="orders"]').click();
+
+        const bill = page.locator('#bill-btn');
+        await expect(bill).toBeVisible({ timeout: 15_000 });
+        await bill.click();
+        await bill.click();
+        const hint = page.locator('#bill-hint');
+        await expect(hint).toHaveText('Lagi banyak permintaan bersamaan. Coba lagi dalam 9 detik.');
+        await expect(bill, 'the button is usable again').toBeEnabled();
+
+        // A language switch re-resolves every [data-i18n] from its key. Without
+        // the stored values it would print "{s}" instead of the number.
+        await page.locator('#scrim').click({ position: { x: 10, y: 10 } });
+        await page.locator('#lang-btn').click();
+        await page.locator('.lang-opt[data-lang="en"]').click();
+        await expect(hint).toHaveText('Lots of requests at once. Try again in 9 seconds.');
+    });
+});

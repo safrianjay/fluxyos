@@ -6,7 +6,8 @@ const { allowOriginHeader } = require('./lib/allowed-origins');
 // another — which is the whole reason this module is shared rather than
 // reimplemented per surface.
 const pricing = require('../../assets/js/pos-pricing.js');
-const { consume, ipKey, clientIp, tooManyRequests } = require('./lib/rate-limit');
+const { consumeApprox, ipKey, clientIp, tooManyRequests } = require('./lib/rate-limit');
+const { createCache, directoryEntry } = require('./lib/warm-cache');
 
 // =============================================================================
 // FluxyOS — the menu a QR customer sees. Public, unauthenticated, read-only.
@@ -45,6 +46,20 @@ const IP_BURST_SECONDS = 60;
 // couple of minutes.
 const CACHE_SECONDS = 60;
 
+// ── Remembered between diners (docs/perf/S1_BASELINE_2026-09-11.md, F2) ────
+//
+// Each Firestore read from this function crosses the Pacific (~200 ms), and
+// this endpoint made eight of them in a row: 2.9 s of server time before a
+// diner saw anything. Every table of an outlet shares one menu, so a warm
+// instance answers the second table's scan from memory.
+//
+// Staleness budget: 30 s in memory, then up to CACHE_SECONDS in a browser or
+// at Netlify's edge — ninety seconds end to end, inside the "couple of
+// minutes" promised above for a price change or a sold-out dish.
+const MEMO_MS = 30 * 1000;
+const outletCache = createCache({ ttlMs: MEMO_MS, max: 500 });
+const tableCache = createCache({ ttlMs: MEMO_MS, max: 5000 });
+
 const SAFE = /^[A-Za-z0-9_-]{1,128}$/;
 
 let _initialized = false;
@@ -58,6 +73,124 @@ function initAdmin() {
         _initialized = true;
     }
     return admin;
+}
+
+/**
+ * The diner-facing items, projected and sorted. The same two gates
+ * `getPosMenu` applies, and nothing a customer must not receive.
+ */
+function projectItems(itemsSnap) {
+    const items = [];
+    itemsSnap.forEach((d) => {
+        const i = d.data() || {};
+        const price = Number(i.sales_price);
+        // The same two conditions `getPosMenu` applies. An item marked
+        // visible with no price is a button that cannot be rung up.
+        if (!Number.isInteger(price) || price <= 0) return;
+        if (i.status === 'archived') return;
+        items.push({
+            id: d.id,
+            name: String(i.name || '').slice(0, 120),
+            // `pos_category` IS the taxonomy — a free string on the item,
+            // the same one the till builds its chips from. There is no
+            // category entity and the customer menu must not invent a
+            // second one (docs/CUSTOMER_ORDERING_PLAN_REVIEW.md §2.1).
+            category: i.pos_category ? String(i.pos_category).slice(0, 40) : null,
+            price,
+            // Whether a photo EXISTS, never where it lives. The page asks
+            // qr-menu-image for the bytes, so no storage path reaches a
+            // customer and no public URL is ever minted.
+            has_image: typeof i.image_path === 'string' && !!i.image_path,
+            // ⚠️ THE SECOND WHITELIST. `getPosMenu` has one for the till and
+            // this one serves the diner; a field added to only one of them
+            // works on one surface and silently does nothing on the other.
+            recommended: i.pos_recommended === true,
+            // Options the customer chooses, with their price deltas. What
+            // each option CONSUMES is deliberately stripped — that is stock
+            // and cost, and none of a diner's business.
+            modifier_groups: (Array.isArray(i.pos_modifier_groups) ? i.pos_modifier_groups : [])
+                .slice(0, 10)
+                .map((g) => ({
+                    id: String(g.id || ''),
+                    name: String(g.name || '').slice(0, 40),
+                    select: ['one_required', 'one_optional', 'many'].includes(g.select)
+                        ? g.select : 'one_optional',
+                    options: (Array.isArray(g.options) ? g.options : []).slice(0, 20).map((o) => ({
+                        id: String(o.id || ''),
+                        name: String(o.name || '').slice(0, 40),
+                        price_delta: Math.round(Number(o.price_delta) || 0)
+                    })).filter((o) => o.id && o.name)
+                }))
+                .filter((g) => g.name && g.options.length)
+        });
+    });
+    // Sorted here rather than in the page, so every client agrees and the
+    // order survives a page that forgets to sort.
+    items.sort((a, b) => String(a.category || '￿').localeCompare(String(b.category || '￿'))
+        || a.name.localeCompare(b.name));
+    return items;
+}
+
+/**
+ * Everything about an outlet a menu needs, in ONE round trip: the workspace
+ * (currency, country, fallback name), the outlet's own name, its settings, and
+ * the visible items. Nothing here depends on the table, so every table of the
+ * outlet shares the answer.
+ */
+async function loadOutlet(db, workspaceId, dimensionId) {
+    const docs = [db.doc(`workspaces/${workspaceId}`)];
+    if (dimensionId) docs.push(db.doc(`workspaces/${workspaceId}/dimensions/${dimensionId}`));
+    const [snaps, itemsSnap, cfg] = await Promise.all([
+        db.getAll(...docs),
+        db.collection(`workspaces/${workspaceId}/items`).where('pos_visible', '==', true).get(),
+        // Best-effort, on its own: a menu is what a hungry person is waiting
+        // for, and failing it because a configuration document could not be
+        // read would be the wrong trade at a table. Settings are keyed BY the
+        // outlet, and a table without one has no rates to apply.
+        dimensionId
+            ? db.doc(`workspaces/${workspaceId}/pos_outlet_settings/${dimensionId}`).get().catch((e) => {
+                console.warn('[qr-menu] outlet settings unreadable; menu prices at zero rates', e && e.message);
+                return null;
+            })
+            : Promise.resolve(null)
+    ]);
+    const ws = snaps[0].exists ? (snaps[0].data() || {}) : {};
+    // The outlet, not the workspace, is what a diner recognises — they are
+    // sitting in one branch, not in a company.
+    let outletName = ws.name || 'Menu';
+    if (snaps[1] && snaps[1].exists && snaps[1].data().name) outletName = snaps[1].data().name;
+
+    let outletPricing = pricing.normalizeSettings(null);
+    let hasCover = false;
+    // What the hero card states about the place itself. Every field is
+    // optional and the card drops the control it belongs to when it is
+    // missing — a Call button on an outlet with no number is an affordance
+    // that lies (DESIGN_SYSTEM 3c).
+    let outletInfo = { address: null, phone: null, hours: [] };
+    if (cfg && cfg.exists) {
+        const data = cfg.data() || {};
+        outletPricing = pricing.normalizeSettings(data);
+        hasCover = typeof data.cover_image_path === 'string' && !!data.cover_image_path;
+        outletInfo = {
+            address: typeof data.address === 'string' ? data.address.slice(0, 200) : null,
+            phone: typeof data.phone === 'string' ? data.phone.slice(0, 32) : null,
+            // Wall-clock strings, exactly as the owner typed them. NOT
+            // resolved to "open now" here: the diner is sitting in the
+            // restaurant, so their own device clock IS the outlet's local
+            // time, and computing it server-side would mean carrying a
+            // timezone this endpoint has no better source for.
+            hours: Array.isArray(data.hours) ? data.hours.slice(0, 7) : []
+        };
+    }
+    return {
+        outletName,
+        currency: ['IDR', 'PHP', 'SGD', 'MYR'].includes(ws.base_currency) ? ws.base_currency : 'IDR',
+        country: ['ID', 'PH', 'SG', 'MY'].includes(ws.country) ? ws.country : null,
+        pricing: outletPricing,
+        hasCover,
+        outletInfo,
+        items: projectItems(itemsSnap)
+    };
 }
 
 exports.handler = async (event) => {
@@ -80,150 +213,86 @@ exports.handler = async (event) => {
     };
     if (!SAFE.test(token)) return notFound;
 
+    const t0 = Date.now();
     try {
         const db = initAdmin().firestore();
 
-        const burst = await consume(db, {
-            key: ipKey(clientIp(event.headers || {})),
-            limit: IP_BURST_LIMIT, windowSeconds: IP_BURST_SECONDS
-        });
+        // ⚠️ ONE ROUND TRIP, NOT FOUR. The two limits and the token lookup do
+        // not depend on each other, so they run together — each of them used
+        // to wait for the one before it, at ~200 ms a leg. `consumeApprox`
+        // rather than a transaction: see its note in lib/rate-limit.js.
+        const [burst, daily, dir] = await Promise.all([
+            consumeApprox(db, {
+                key: ipKey(clientIp(event.headers || {}), 'menu'),
+                limit: IP_BURST_LIMIT, windowSeconds: IP_BURST_SECONDS
+            }),
+            consumeApprox(db, {
+                key: `menu_${token}`, limit: TOKEN_DAILY_LIMIT, windowSeconds: DAY_SECONDS
+            }),
+            directoryEntry(db, token)
+        ]);
+        const tLimits = Date.now();
         if (!burst.allowed) return tooManyRequests(burst, cors);
-        const daily = await consume(db, {
-            key: `menu_${token}`, limit: TOKEN_DAILY_LIMIT, windowSeconds: DAY_SECONDS
-        });
         if (!daily.allowed) return tooManyRequests(daily, cors);
 
-        const dirSnap = await db.doc(`pos_table_directory/${token}`).get();
-        if (!dirSnap.exists) return notFound;
-        const dir = dirSnap.data() || {};
         // A revoked token is a printed card that must stop working — the table
         // was archived, or the token rotated. See sync-pos-table-directory.js.
-        if (dir.revoked === true) return notFound;
+        if (!dir || dir.revoked) return notFound;
         const workspaceId = dir.workspace_id;
         const tableId = dir.table_id;
         if (!workspaceId || !tableId) return notFound;
 
-        const [wsSnap, tableSnap, itemsSnap] = await Promise.all([
-            db.doc(`workspaces/${workspaceId}`).get(),
-            db.doc(`workspaces/${workspaceId}/pos_tables/${tableId}`).get(),
-            db.collection(`workspaces/${workspaceId}/items`).where('pos_visible', '==', true).get()
+        // The table and its outlet TOGETHER. The directory already names the
+        // outlet, so nothing waits on the table document to learn it.
+        const [table, guessed] = await Promise.all([
+            tableCache.get(`${workspaceId}/${tableId}`, async () => {
+                const snap = await db.doc(`workspaces/${workspaceId}/pos_tables/${tableId}`).get();
+                return snap.exists ? (snap.data() || {}) : null;
+            }),
+            outletCache.get(`${workspaceId}/${dir.dimension_id || ''}`,
+                () => loadOutlet(db, workspaceId, dir.dimension_id || null))
         ]);
-        if (!tableSnap.exists) return notFound;
-        const table = tableSnap.data() || {};
+        if (!table) return notFound;
         // An archived table's card should already have been revoked, but the
         // directory is a projection and a stale one must not seat anybody.
         if (table.status === 'archived') return notFound;
 
-        const ws = wsSnap.exists ? (wsSnap.data() || {}) : {};
-        // The outlet, not the workspace, is what a diner recognises — they are
-        // sitting in one branch, not in a company.
-        let outletName = ws.name || 'Menu';
-        if (table.dimension_id) {
-            const dim = await db.doc(`workspaces/${workspaceId}/dimensions/${table.dimension_id}`).get();
-            if (dim.exists && dim.data().name) outletName = dim.data().name;
-        }
-
-        const items = [];
-        itemsSnap.forEach((d) => {
-            const i = d.data() || {};
-            const price = Number(i.sales_price);
-            // The same two conditions `getPosMenu` applies. An item marked
-            // visible with no price is a button that cannot be rung up.
-            if (!Number.isInteger(price) || price <= 0) return;
-            if (i.status === 'archived') return;
-            items.push({
-                id: d.id,
-                name: String(i.name || '').slice(0, 120),
-                // `pos_category` IS the taxonomy — a free string on the item,
-                // the same one the till builds its chips from. There is no
-                // category entity and the customer menu must not invent a
-                // second one (docs/CUSTOMER_ORDERING_PLAN_REVIEW.md §2.1).
-                category: i.pos_category ? String(i.pos_category).slice(0, 40) : null,
-                price,
-                // Whether a photo EXISTS, never where it lives. The page asks
-                // qr-menu-image for the bytes, so no storage path reaches a
-                // customer and no public URL is ever minted.
-                has_image: typeof i.image_path === 'string' && !!i.image_path,
-                // ⚠️ THE SECOND WHITELIST. `getPosMenu` has one for the till and
-                // this one serves the diner; a field added to only one of them
-                // works on one surface and silently does nothing on the other.
-                recommended: i.pos_recommended === true,
-                // Options the customer chooses, with their price deltas. What
-                // each option CONSUMES is deliberately stripped — that is stock
-                // and cost, and none of a diner's business.
-                modifier_groups: (Array.isArray(i.pos_modifier_groups) ? i.pos_modifier_groups : [])
-                    .slice(0, 10)
-                    .map((g) => ({
-                        id: String(g.id || ''),
-                        name: String(g.name || '').slice(0, 40),
-                        select: ['one_required', 'one_optional', 'many'].includes(g.select)
-                            ? g.select : 'one_optional',
-                        options: (Array.isArray(g.options) ? g.options : []).slice(0, 20).map((o) => ({
-                            id: String(o.id || ''),
-                            name: String(o.name || '').slice(0, 40),
-                            price_delta: Math.round(Number(o.price_delta) || 0)
-                        })).filter((o) => o.id && o.name)
-                    }))
-                    .filter((g) => g.name && g.options.length)
-            });
-        });
-
-        // Sorted here rather than in the page, so every client agrees and the
-        // order survives a page that forgets to sort.
-        items.sort((a, b) => String(a.category || '￿').localeCompare(String(b.category || '￿'))
-            || a.name.localeCompare(b.name));
-
-        // Best-effort, both of them. A menu is what a hungry person is waiting
-        // for; failing it because a configuration document or a photo could not
-        // be read would be the wrong trade at a table.
-        let outletPricing = pricing.normalizeSettings(null);
-        let hasCover = false;
-        // What the hero card states about the place itself. Every field is
-        // optional and the card drops the control it belongs to when it is
-        // missing — a Call button on an outlet with no number is an affordance
-        // that lies (DESIGN_SYSTEM 3c).
-        let outletInfo = { address: null, phone: null, hours: [] };
-        try {
-            // Settings are keyed BY the outlet, and a table without one has no
-            // rates to apply — the same table that cannot attribute its revenue.
-            const cfg = table.dimension_id
-                ? await db.doc(`workspaces/${workspaceId}/pos_outlet_settings/${table.dimension_id}`).get()
-                : null;
-            if (cfg && cfg.exists) {
-                const data = cfg.data() || {};
-                outletPricing = pricing.normalizeSettings(data);
-                hasCover = typeof data.cover_image_path === 'string' && !!data.cover_image_path;
-                outletInfo = {
-                    address: typeof data.address === 'string' ? data.address.slice(0, 200) : null,
-                    phone: typeof data.phone === 'string' ? data.phone.slice(0, 32) : null,
-                    // Wall-clock strings, exactly as the owner typed them. NOT
-                    // resolved to "open now" here: the diner is sitting in the
-                    // restaurant, so their own device clock IS the outlet's local
-                    // time, and computing it server-side would mean carrying a
-                    // timezone this endpoint has no better source for.
-                    hours: Array.isArray(data.hours) ? data.hours.slice(0, 7) : []
-                };
-            }
-        } catch (e) {
-            console.warn('[qr-menu] outlet settings unreadable; menu prices at zero rates', e && e.message);
-        }
+        // The TABLE says which outlet it is in; the directory is a projection
+        // written when the card was printed. A table moved to another outlet
+        // since then is served that outlet's menu and rates, never the old one.
+        const outlet = (table.dimension_id || null) === (dir.dimension_id || null)
+            ? guessed
+            : await outletCache.get(`${workspaceId}/${table.dimension_id || ''}`,
+                () => loadOutlet(db, workspaceId, table.dimension_id || null));
+        const items = outlet.items;
+        const tDone = Date.now();
 
         return {
             statusCode: 200,
-            headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${CACHE_SECONDS}` },
+            headers: {
+                ...cors,
+                'Content-Type': 'application/json',
+                'Cache-Control': `public, max-age=${CACHE_SECONDS}`,
+                // Netlify's edge nearest the diner may answer the next scan of
+                // this table itself, and keep answering for another minute
+                // while it refetches — the same couple-of-minutes budget.
+                'Netlify-CDN-Cache-Control': `public, s-maxage=${CACHE_SECONDS}, stale-while-revalidate=${CACHE_SECONDS}`,
+                // Where the time went — see qr-order for why this exists.
+                'Server-Timing': `limits;dur=${tLimits - t0}, menu;dur=${tDone - tLimits}, total;dur=${Date.now() - t0}`
+            },
             body: JSON.stringify({
-                outlet: outletName,
+                outlet: outlet.outletName,
                 table: String(table.label || '').slice(0, 40),
                 // The page renders every amount through FluxyMoney, which needs
                 // the workspace's own currency or a peso menu prints rupiah.
-                currency: ['IDR', 'PHP', 'SGD', 'MYR'].includes(ws.base_currency) ? ws.base_currency : 'IDR',
+                currency: outlet.currency,
                 // ⚠️ WHAT LANGUAGE THIS MENU IS FOR. The page offers a Bahasa
                 // switcher because Indonesia is the home market; a diner in
                 // Singapore has no use for it, and a stored 'id' from a Jakarta
                 // restaurant would otherwise follow them into a menu whose staff
                 // do not read it. Free here — the workspace doc is already read
-                // for the currency two lines up.
-                country: ['ID', 'PH', 'SG', 'MY'].includes(ws.country) ? ws.country : null,
+                // for the currency.
+                country: outlet.country,
                 categories: [...new Set(items.map((i) => i.category).filter(Boolean))],
                 // What this outlet charges on top, so the CART can show the same
                 // breakdown the bill will. Without it a diner reads Rp100.000 in
@@ -232,13 +301,13 @@ exports.handler = async (event) => {
                 //
                 // Absent settings send the module's defaults — every flag off —
                 // which is exactly what this endpoint described before.
-                pricing: outletPricing,
+                pricing: outlet.pricing,
                 // WHETHER there is a header photo, never a URL to it.
                 //
                 // ⚠️ This returned a signed URL for about an hour on 2026-09-05,
                 // and it never worked: `initAdmin()` here sets no `storageBucket`
                 // (qr-menu-image does), so `admin.storage().bucket()` threw on
-                // every request and the catch above turned it into "no photo".
+                // every request and the catch turned it into "no photo".
                 // Silent, and indistinguishable from an outlet that had not set
                 // one.
                 //
@@ -248,9 +317,9 @@ exports.handler = async (event) => {
                 // limiter, the revoked-token check and the path guard that
                 // `qr-menu-image` applies to every menu photo. The page asks
                 // that endpoint for `?cover=1` instead.
-                has_cover: hasCover,
+                has_cover: outlet.hasCover,
                 // Address, phone and opening hours — the hero card's own data.
-                outlet_info: outletInfo,
+                outlet_info: outlet.outletInfo,
                 items
             })
         };

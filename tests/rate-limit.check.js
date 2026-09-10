@@ -106,11 +106,45 @@ function fakeDb({ throwOnTransaction = false } = {}) {
     is(broken.degraded, true, '…and says so, so it is visible rather than assumed');
 
     // ── The IP key is hashed, never the address ─────────────────────────────
-    const k = ipKey('203.0.113.7');
-    is(k.startsWith('ip_'), true, 'the IP key is namespaced');
+    const k = ipKey('203.0.113.7', 'order');
+    is(k.startsWith('ip_order_'), true, 'the IP key is namespaced by endpoint');
     is(k.includes('203.0.113.7'), false, 'the address itself is never the key');
-    is(ipKey('203.0.113.7') === k, true, 'the same address hashes the same way');
-    is(ipKey('203.0.113.8') === k, false, 'a different address hashes differently');
+    is(ipKey('203.0.113.7', 'order') === k, true, 'the same address hashes the same way');
+    is(ipKey('203.0.113.8', 'order') === k, false, 'a different address hashes differently');
+
+    // ── ONE BUCKET PER ENDPOINT (docs/perf/S1_BASELINE_2026-09-11.md, F1) ───
+    // Every endpoint shared one per-IP document while applying its own limit,
+    // so photos (300/min) spent the order allowance (20/min) and a diner who
+    // scrolled the menu was refused their first order.
+    is(ipKey('203.0.113.7', 'img') === k, false, 'photos and orders never share a bucket');
+    let threw = false;
+    try { ipKey('203.0.113.7'); } catch (_) { threw = true; }
+    is(threw, true, 'a key without an endpoint scope throws rather than sharing one');
+
+    // The same bug proven end to end on the fake: spend the photo bucket to its
+    // limit, then order from the same address.
+    const shared = fakeDb();
+    for (let i = 0; i < 300; i += 1) await consume(shared, { key: ipKey('198.51.100.1', 'img'), limit: 300, windowSeconds: 60 });
+    const order = await consume(shared, { key: ipKey('198.51.100.1', 'order'), limit: 20, windowSeconds: 60 });
+    is(order.allowed, true, '300 photos from one address leave its order allowance untouched');
+    is(order.count, 1, '…which starts from zero');
+
+    // And structurally: every endpoint passes a LITERAL scope, and no two share
+    // one. A new endpoint copying another's line is exactly how the bug returns.
+    const fs = require('fs');
+    const fnDir = path.join(__dirname, '..', 'netlify', 'functions');
+    const scopes = new Map();
+    for (const f of fs.readdirSync(fnDir).filter((x) => x.endsWith('.js'))) {
+        const src = fs.readFileSync(path.join(fnDir, f), 'utf8');
+        const calls = src.match(/ipKey\([^)]*\)[^)]*\)/g) || [];
+        for (const c of calls) {
+            const m = /,\s*'([a-z][a-z0-9]{0,15})'\s*\)$/.exec(c);
+            if (!m) { fail(`${f}: ipKey without a literal endpoint scope — ${c}`); continue; }
+            if (scopes.has(m[1]) && scopes.get(m[1]) !== f) fail(`${f} and ${scopes.get(m[1])} share the IP bucket '${m[1]}'`);
+            scopes.set(m[1], f);
+        }
+    }
+    is(scopes.size >= 5, true, `every QR endpoint has its own IP bucket (${[...scopes.keys()].join(', ')})`);
 
     // ── Only the FIRST x-forwarded-for entry is the client ──────────────────
     // The rest are proxy hops. Keying on the whole chain would let a caller add
@@ -127,6 +161,13 @@ function fakeDb({ throwOnTransaction = false } = {}) {
     is(res.headers['Retry-After'], String(r4.retryAfter), 'it carries Retry-After');
     is(res.headers['Cache-Control'], 'no-store', 'and is never cached');
     is(res.headers['X-Test'], '1', 'the caller\'s headers survive (CORS must)');
+    // JSON, so the diner page can tell "wait" from "failed" — plain text made
+    // `r.json()` throw and the diner saw a generic "could not send".
+    let body = null;
+    try { body = JSON.parse(res.body); } catch (_) { /* asserted below */ }
+    is(res.headers['Content-Type'], 'application/json', 'the refusal is JSON');
+    is(body && body.error, 'rate_limited', '…naming itself rate_limited');
+    is(body && body.retry_after, r4.retryAfter, '…with the same wait as Retry-After');
 
     console.log(failures ? `\n✗ ${failures} failure(s)\n` : '\nrate limit: clean\n');
     process.exit(failures ? 1 : 0);

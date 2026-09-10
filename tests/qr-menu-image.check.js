@@ -101,7 +101,11 @@ const is = (actual, expected, label) => {
     // which needs a service account this check deliberately does not have. They
     // are the three conditions that make a token for one restaurant unable to
     // fetch another's photo.
-    is(/pos_table_directory/.test(src), true,
+    // The lookup moved into lib/warm-cache.js (shared by every QR endpoint,
+    // 2026-09-11), so the assertion follows it there: this endpoint must call
+    // directoryEntry, and directoryEntry must read the deny-all directory.
+    const cacheSrc = fs.readFileSync(path.join(ROOT, 'netlify/functions/lib/warm-cache.js'), 'utf8');
+    is(/directoryEntry\(db, token\)/.test(src) && /pos_table_directory\/\$\{token\}/.test(cacheSrc), true,
         'resolves the table token through the deny-all directory');
     is(/pos_visible\s*!==\s*true/.test(src), true,
         'refuses an item that is not on the menu');

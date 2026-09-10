@@ -57,10 +57,26 @@ const FieldValue = firestore.FieldValue;
  * Hashed with a salt so the collection cannot be mined for who visited which
  * restaurant, and truncated because 128 bits of a SHA-256 is far past collision
  * concerns for a counter.
+ *
+ * ⚠️ ONE BUCKET PER ENDPOINT — `scope` IS REQUIRED. Until 2026-09-11 every QR
+ * endpoint called `ipKey(ip)` and so shared ONE document per IP per minute,
+ * while each compared that shared count with its OWN limit: photos 300, status
+ * 90, menu 60, order 20, bill 20. A diner scrolling the menu spent the order
+ * allowance on photos, and their order came back 429. Reproduced in 4 of 4
+ * load-test baselines at zero load, and found in production history — 8
+ * IP-minutes over 20 between 7 and 9 Sep (docs/perf/S1_BASELINE_2026-09-11.md,
+ * F1). A limit only means what it says when the counter holds only the
+ * requests it limits, so the endpoint is part of the key and cannot be left
+ * out: a call without one throws instead of quietly sharing a bucket.
  */
-function ipKey(ip) {
+const SCOPE = /^[a-z][a-z0-9]{0,15}$/;
+
+function ipKey(ip, scope) {
+    if (!SCOPE.test(String(scope || ''))) {
+        throw new Error(`ipKey needs an endpoint scope (got ${JSON.stringify(scope)})`);
+    }
     const salt = process.env.RATE_LIMIT_SALT || 'fluxyos-rate-limit';
-    return 'ip_' + crypto.createHash('sha256').update(salt + '|' + String(ip || 'unknown'))
+    return `ip_${scope}_` + crypto.createHash('sha256').update(salt + '|' + String(ip || 'unknown'))
         .digest('hex').slice(0, 32);
 }
 
@@ -128,16 +144,26 @@ async function consume(db, { key, limit, windowSeconds }) {
     }
 }
 
-/** The 429 body and headers, so every endpoint refuses identically. */
+/**
+ * The 429 body and headers, so every endpoint refuses identically.
+ *
+ * JSON, like every other refusal these endpoints make. It was the plain text
+ * "Too many requests", which `order.html` fed to `r.json()` — the parse threw,
+ * and the diner was told "Could not send your order" with no hint that waiting
+ * a few seconds was the whole fix. `retry_after` is in the body as well as the
+ * header so the page never depends on reading a response header.
+ */
 function tooManyRequests(result, extraHeaders = {}) {
+    const retryAfter = Math.max(1, result.retryAfter || 1);
     return {
         statusCode: 429,
         headers: {
             ...extraHeaders,
-            'Retry-After': String(Math.max(1, result.retryAfter || 1)),
+            'Content-Type': 'application/json',
+            'Retry-After': String(retryAfter),
             'Cache-Control': 'no-store'
         },
-        body: 'Too many requests'
+        body: JSON.stringify({ error: 'rate_limited', retry_after: retryAfter })
     };
 }
 
@@ -158,11 +184,18 @@ function tooManyRequests(result, extraHeaders = {}) {
  *
  * ⚠️ IT COUNTS APPROXIMATELY, AND THAT IS THE TRADE. Requests in flight
  * together read the same value, so a burst can overshoot the limit by roughly
- * its own size before the count catches up. That is acceptable HERE and only
- * here: this dimension guards cost and noise on a public image endpoint, it
- * already fails open on any error, and overshooting by a dozen thumbnails is
- * not a category of harm. Anything protecting correctness — an order, a
- * payment, a sitting — keeps `consume`.
+ * its own size before the count catches up.
+ *
+ * ⚠️ EVERY QR ENDPOINT USES THIS NOW, ORDERS AND BILLS INCLUDED (2026-09-11).
+ * This note used to say an order or a bill must keep `consume`. The load test
+ * measured what that cost: four phones at one table ordering in the same
+ * second queued on the same limiter document, and `qr-order` took 8.2 s at
+ * p95 with nobody else on the system (docs/perf/S1_BASELINE_2026-09-11.md,
+ * F4). The limiter was never what kept an order correct — the order's own
+ * transaction and the `qr_order_refs` idempotency record do that. What the
+ * limiter guards is VOLUME (spam, enumeration, cost), and for volume an
+ * overshoot the size of one table's simultaneous taps is not a harm.
+ * `consume` remains for any future caller that genuinely needs an exact count.
  */
 async function consumeApprox(db, { key, limit, windowSeconds }) {
     const now = Date.now();
