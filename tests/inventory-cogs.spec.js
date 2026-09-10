@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { archiveQaOutlets } = require('./helpers/qa-outlets');
 
 // The whole F&B chain, end to end against the real QA workspace:
 //
@@ -16,11 +17,19 @@ const { test, expect } = require('@playwright/test');
 //   - waste and the count do not double-count the same stock
 //   - the outlet P&L is built by the SAME engine as the company statement
 
+// HOISTED out of the page.evaluate below, where it used to be built, so that the
+// cleanup can see it. A tag that only exists inside the browser is a fixture
+// Node cannot retire — which is exactly how this spec leaked an outlet per run.
+const TAG = `QA-COGS-${Date.now()}`;
+
+// ⚠️ RETIRE WHAT THIS RUN CREATED — see tests/helpers/qa-outlets.js.
+test.afterAll(async ({ browser }) => { await archiveQaOutlets(browser, TAG); });
+
 test('receipt → waste → count produces COGS, waste and an outlet P&L', async ({ page }) => {
     await page.goto('/dashboard.html');
     await page.waitForFunction(() => window.FluxyWorkspace && window.FluxyWorkspace.id, { timeout: 30000 });
 
-    const r = await page.evaluate(async () => {
+    const r = await page.evaluate(async (tag) => {
         const { getApps } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
         const { getAuth, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
         const DataService = (await import('/assets/js/db-service.js')).default;
@@ -33,7 +42,6 @@ test('receipt → waste → count produces COGS, waste and an outlet P&L', async
         const ds = new DataService(app);
         ds.actorUid = uid;
 
-        const tag = `QA-COGS-${Date.now()}`;
         const out = { error: null };
         try {
             // A dedicated outlet, so this run cannot be confused with any other.
@@ -82,7 +90,7 @@ test('receipt → waste → count produces COGS, waste and an outlet P&L', async
             out.error = `${e.code || ''} ${e.message || e}`.trim();
         }
         return out;
-    });
+    }, TAG);
 
     expect(r.error).toBeNull();
 

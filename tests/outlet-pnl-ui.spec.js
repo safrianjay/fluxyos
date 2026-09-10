@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { archiveQaOutlets } = require('./helpers/qa-outlets');
 
 // These specs run serially against REAL Firebase, and the QA workspace has grown
 // large enough (49 items, 20+ outlets, 70+ movements) that page boot alone can
@@ -17,6 +18,13 @@ test.describe.configure({ timeout: 150_000 });
 //     profitable outlet as a loss-maker and closes it
 
 const TAG = `QA-PNL-${Date.now()}`;
+
+// ⚠️ RETIRE WHAT THIS RUN CREATED. Outlets can never be deleted, only archived,
+// and a spec that leaves one behind on every run is how the QA workspace reached
+// 115 live outlets. afterAll, not a final test: serial mode stops at the first
+// failure, so a cleanup written as the last test is skipped exactly when needed.
+// THIS run's TAG only — a prefix-wide sweep would retire another spec's fixture.
+test.afterAll(async ({ browser }) => { await archiveQaOutlets(browser, TAG); });
 
 function rpToInt(text) {
     const negative = /^-/.test(text.trim());

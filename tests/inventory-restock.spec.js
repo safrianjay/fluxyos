@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { archiveQaOutlets } = require('./helpers/qa-outlets');
 
 test.describe.configure({ timeout: 180_000 });
 
@@ -10,6 +11,13 @@ test.describe.configure({ timeout: 180_000 });
 // item the system cannot judge has to be excluded and said so — not guessed at.
 
 const TAG = `QA-RST-${Date.now()}`;
+
+// ⚠️ RETIRE WHAT THIS RUN CREATED. Outlets can never be deleted, only archived,
+// and a spec that leaves one behind on every run is how the QA workspace reached
+// 115 live outlets. afterAll, not a final test: serial mode stops at the first
+// failure, so a cleanup written as the last test is skipped exactly when needed.
+// THIS run's TAG only — a prefix-wide sweep would retire another spec's fixture.
+test.afterAll(async ({ browser }) => { await archiveQaOutlets(browser, TAG); });
 const ITEM = `${TAG} Kacang`;
 const SUPPLIER = `${TAG} Sumber Pangan`;
 
