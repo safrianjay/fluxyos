@@ -146,7 +146,20 @@ in §7.
 
 ---
 
-## 4. Suspected bottlenecks (hypotheses)
+## 4. Findings so far, and the original hypotheses
+
+**S1 ran on 2026-09-11 — results in [`docs/perf/S1_BASELINE_2026-09-11.md`](perf/S1_BASELINE_2026-09-11.md).**
+It found two problems the hypotheses below did not predict, and both outrank them:
+
+| | Finding | Evidence |
+|---|---|---|
+| **F1 · Critical** | All five endpoints share ONE per-IP counter but apply their own limits, so photo traffic spends the order allowance: a single diner who scrolls the menu is refused their first order (429) | 4 of 4 S1 runs; 3 of 3 in the k6 smoke; 8 IP-minutes over the limit in production, 7–9 Sep |
+| **F2 · High** | Functions run in `us-east-2` (Ohio); Firestore is `asia-southeast1` | `qr-menu` 2.9 s, `qr-order` 4–7.6 s at zero load, vs 113–136 ms for the till's direct writes |
+| **F3 · High** | Card and hero photos are sent at 1280 px | first photo 8.2 s on mobile 4G, 5.0 s of it the download; 4.5 MB to scroll the menu |
+| **F4 · High** | Four phones at one table: `qr-order` p95 8.2 s | k6 S4 smoke, all orders correct |
+| **F5 · Medium** | H2 confirmed at small scale: 425 reads per till refresh here, ~1,660 on a mature outlet | till probe |
+
+### The original hypotheses
 
 Ranked by what happens to a diner or the business if true. Each maps to the
 scenario that confirms or rules it out.
@@ -287,7 +300,26 @@ confirm or adjust after S1.
 
 ---
 
-## 7. What to build first (≈ 1 day)
+## 7. The harness
+
+**Built 2026-09-11** except `collect.js` and `report.js` (below). Everything
+runs from the repo root; the local app server starts itself when needed.
+
+| Command | What it does |
+|---|---|
+| `npm run perf:seed -- --commit` | Build / refresh the restaurant and `perf/.fixtures.json` |
+| `npm run perf:s1` | S1: page loads, journey, till probe → `perf/out/s1-*/report.md` |
+| `npm run perf:reset` | Void every live order in the load workspace (till path) |
+| `npm run perf:cashier -- --run s3 --minutes 90` | The scripted cashier and kitchen, alongside S3/S4 |
+| `k6 run -e RUN=s3-1x --console-output perf/out/s3-1x/orders.log perf/k6/s3-lunch-rush.js` | Any k6 scenario (S2–S10); `-e TIME=0.05` compresses a run for a smoke test |
+| `npm run perf:verify -- --log perf/out/s3-1x/orders.log` | The hard budgets: lost, doubled, misrouted, mispriced orders, number gaps |
+
+⚠️ **Until F1 is fixed, every k6 scenario that browses photos from one machine
+gets its orders refused by the shared limiter**, so S2, S3, S5, S7 and S9
+measure the limiter rather than the system. Fix F1 (or add the perf allowance)
+before running them. S4, S6 and S10 do not load photos and run as-is.
+
+### Originally planned (≈ 1 day)
 
 Everything lives under `perf/` and stays out of `npm run qa`. The two server
 changes are small, stay off unless their env vars are set, and ship before
@@ -439,7 +471,7 @@ a single hot document; serve photos from a cacheable URL.
 - [x] `qa+id` workspace seeded: 120 tables, 60 dishes with photos, 120 tokens registered via `pos-table-qr` (2026-09-11)
 - [ ] (optional) `qa+sg` created with `seed-qa-account.js --country SG` and seeded the same way
 - [ ] `Server-Timing` and perf allowance deployed, both off by default
-- [ ] S1 baseline recorded; budgets confirmed; estimated rates replaced
+- [x] S1 baseline recorded (2026-09-11) — see docs/perf/S1_BASELINE_2026-09-11.md
 - [ ] S6 — the 50-order window
 - [ ] S4 — four phones, one table
 - [ ] S5 — new-table burst
