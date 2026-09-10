@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { archiveQaOutlets } = require('./helpers/qa-outlets');
 
 // =============================================================================
 // Outlets can be renamed and retired from a screen.
@@ -175,4 +176,19 @@ test('AN OUTLET WITH UNSETTLED ORDERS CANNOT BE ARCHIVED', async ({ page }) => {
     await again.locator('[data-archive]').click();
     await again.locator('[data-archive]').click();
     await expect(await rowFor(page, name)).toContainText('archived');
+});
+
+// ⚠️ RETIRE WHAT THIS FILE CREATED — see tests/helpers/qa-outlets.js. `NAME` also
+// covers `${NAME} Renamed`; the guard outlet is swept by its prefix because its
+// timestamp is taken inside the test, and a failed run is exactly the case where
+// it never reached the line that archives it.
+//
+// This hook was held back on 2026-09-10 because adding it seemed to make a test
+// bounce to /login on every run. The hook was innocent: settings-pos (like 22
+// other pages) sent users to /login if their session took over 2s to restore,
+// and those runs were on a loaded machine. Fixed at the source; see
+// tests/auth-guard-slow-restore.spec.js.
+test.afterAll(async ({ browser }) => {
+    await archiveQaOutlets(browser, NAME);
+    await archiveQaOutlets(browser, 'QA Guard ');
 });

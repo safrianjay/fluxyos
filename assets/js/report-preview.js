@@ -1109,9 +1109,13 @@ function bindEvents() {
 
 bindEvents();
 
-let authCheckTimeout = setTimeout(() => {
-    window.location.replace('/login');
-}, 2000);
+let authCheckTimeout = setTimeout(async () => {
+            // Wait for Firebase to FINISH restoring the session, then redirect only if
+            // there is genuinely nobody signed in. A fixed guess sent signed-in users to
+            // /login whenever restore ran long — see tests/auth-guard.check.js.
+            try { if (typeof auth.authStateReady === 'function') await auth.authStateReady(); } catch (_) { /* fall through */ }
+            if (!auth.currentUser) window.location.replace('/login');
+        }, 2000);
 
 onAuthStateChanged(auth, async (user) => {
     if (user) {

@@ -40,6 +40,7 @@
     "report:grni": "node scripts/grni-match-report.js",
     "backfill:item-images": "node scripts/backfill-item-images.js",
     "check:backfill-images": "node tests/backfill-item-images.check.js",
+    "check:auth-guard": "node tests/auth-guard.check.js",
     "check:pos-busy": "node tests/pos-busy-guard.check.js && node tests/pos-qty-queue.check.js && node tests/pos-order-staleness.check.js",
     "check:receipt-head": "node tests/pos-receipt-letterhead.check.js",
     "check:market-i18n": "node tests/market-localisation.check.js",

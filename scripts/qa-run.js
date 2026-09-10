@@ -253,6 +253,10 @@ function laneBE(changed) {
   // Unconditional. once() refuses a call made during another write by returning
   // null, silently; the only thing standing between that and a cashier tapping a
   // dead button is a hand-kept CSS list, and it had already drifted twice.
+  // Unconditional. A timer that sends users to /login without asking Firebase
+  // bounces SIGNED-IN people whenever their session restores slowly. 23 pages
+  // did it; the file that reintroduces it is rarely the one being reviewed.
+  ok = record('be', run('check:auth-guard (no page signs users out by stopwatch)', 'node', ['tests/auth-guard.check.js'])) && ok;
   ok = record('be', run('check:pos-busy (no till control is dropped in silence)', 'npm', ['run', '-s', 'check:pos-busy'])) && ok;
   ok = record('be', run('check:receipt-head (logo, address, and the popup that must not be blocked)', 'node', ['tests/pos-receipt-letterhead.check.js'])) && ok;
   ok = record('be', run('check:market-i18n (a non-Indonesian workspace gets its own language and tax word)', 'node', ['tests/market-localisation.check.js'])) && ok;
