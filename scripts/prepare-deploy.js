@@ -204,7 +204,9 @@ const SCHEDULED_FUNCTIONS = [
 //   package*.json   read during the functions-bundling phase, which runs AFTER
 //                   the build command — removing it risks breaking the bundle
 //   netlify.toml    build/deploy configuration
-const PRIVATE_DIRS = ['docs', 'tests', 'scripts', 'seo', '.githooks', 'cbm-extracted'];
+// perf/ is the load-test harness (docs/PERF_TEST_PLAN.md) — local tooling that
+// signs in as a QA account, and nothing a visitor should be able to fetch.
+const PRIVATE_DIRS = ['docs', 'tests', 'scripts', 'perf', 'seo', '.githooks', 'cbm-extracted'];
 const PRIVATE_FILES = [
     'firestore.rules',
     'storage.rules',

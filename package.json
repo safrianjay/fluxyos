@@ -29,6 +29,7 @@
     "seo:build-id": "node scripts/build-id-mirrors.js",
     "seo:check-id": "node scripts/build-id-mirrors.js --check",
     "qa": "node scripts/qa-run.js",
+    "perf:seed": "node perf/seed.js",
     "qa:design": "node scripts/qa/lint-design.js",
     "cbm:extract": "node scripts/cbm-extract-inline.js",
     "cbm:check": "node scripts/cbm-extract-inline.js --check",
