@@ -428,15 +428,45 @@ function fail(err, fallback) {
 // controls means a press can no longer be swallowed — it cannot be made at all,
 // and the control is visibly unavailable while the write is in flight. The
 // dimming is delayed in CSS so a 200ms write does not flash the till grey.
-async function once(fn) {
-    if (state.busy) return null;
+// The write currently holding `state.busy`, so a queued call can wait for it.
+let posInFlight = null;
+
+/**
+ * Run `fn` unless another till write is already in flight.
+ *
+ * By default a call made while busy is REFUSED — it returns null. That is right
+ * for a button: the busy guard in pos.html takes the pointer off every control
+ * that calls this, so the press cannot be made, and a second tap on "Pay" must
+ * never become a second payment.
+ *
+ * ⚠️ `{ queue: true }` IS FOR THE ONE CASE WHERE REFUSING LIES. A typed
+ * quantity commits on blur, and the blur is usually caused by tapping the next
+ * dish — whose add-line write is then in flight. Refused, the commit vanished
+ * while the field went on showing "12" over an order that held 1: the screen
+ * stating a number the order did not. Queued, it waits for that write and then
+ * runs. Only safe for work that is idempotent against the state it reads at run
+ * time — setting an absolute quantity is; adding a line is not.
+ *
+ * ⚠️ NEVER queue from inside another once(): it would wait on itself.
+ */
+async function once(fn, { queue = false } = {}) {
+    if (state.busy) {
+        if (!queue) return null;
+        try { await posInFlight; } catch (_) { /* its own caller reported it */ }
+        // Another queued call may have taken the slot while this one waited.
+        return once(fn, { queue });
+    }
     state.busy = true;
     document.body.dataset.posBusy = '1';
-    try { return await fn(); }
-    finally {
-        state.busy = false;
-        delete document.body.dataset.posBusy;
-    }
+    const run = (async () => {
+        try { return await fn(); }
+        finally {
+            state.busy = false;
+            delete document.body.dataset.posBusy;
+        }
+    })();
+    posInFlight = run;
+    return run;
 }
 
 // ── Status vocabulary ────────────────────────────────────────────────────────
@@ -568,6 +598,10 @@ async function receiptHead(dimensionId) {
 async function loadOutlets() {
     const dims = await ds.getDimensions(state.uid).catch(() => []);
     state.outlets = (dims || []).filter((d) => d.type === 'outlet' && d.status !== 'archived');
+    // Warm the receipt letterhead now, off the critical path, so the first
+    // receipt of the day does not stand a customer at the counter watching a
+    // placeholder while a logo downloads.
+    setTimeout(() => { if (state.outletId) receiptHead(state.outletId); }, 1500);
 
     const sel = $('pos-outlet');
     if (!sel) return false;
@@ -2630,6 +2664,7 @@ function renderOrder() {
     // The steppers stay — most lines are one or two — but the number itself is
     // now a field.
     lines.querySelectorAll('[data-qty]').forEach((input) => {
+        // Queued, not refused — see once(). The value is read when it RUNS.
         const commit = () => once(async () => {
             const id = input.dataset.qty;
             const line = (state.order.lines || []).find((l) => l.line_id === id);
@@ -2650,7 +2685,7 @@ function renderOrder() {
                 fail(err, 'Could not change that quantity.');
                 input.value = String(Number(line.quantity) || 0);
             }
-        });
+        }, { queue: true });
         input.addEventListener('input', () => { input.value = input.value.replace(/\D/g, ''); });
         input.addEventListener('blur', commit);
         input.addEventListener('keydown', (e) => {
@@ -4338,6 +4373,12 @@ async function openReceipt(order, { billId = null } = {}) {
     // for the letterhead. It is written to at the end, as before.
     const w = window.open('', '_blank', 'width=380,height=640');
     if (!w) { toast('Allow pop-ups for this site to print the receipt.', 'error'); return; }
+    // Never a blank white window: if the letterhead is still loading, the
+    // cashier sees that something is happening. Replaced wholesale below.
+    w.document.write('<!doctype html><title>Receipt</title>'
+        + '<p style="font:13px -apple-system,Segoe UI,sans-serif;color:#64748b;text-align:center;margin-top:48px">'
+        + esc(rc('print')) + '…</p>');
+    w.document.close();
 
     // The logo and address for THIS order's outlet. Cached, so only the first
     // receipt of a session waits at all, and a failure here prints a receipt
@@ -4625,6 +4666,8 @@ async function openReceipt(order, { billId = null } = {}) {
 <script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 250); });</` + `script>
 </body></html>`;
 
+    // open() REPLACES the placeholder rather than appending to it.
+    w.document.open();
     w.document.write(html);
     w.document.close();
 }
@@ -6277,6 +6320,21 @@ function showShiftResult(s) {
 
 // ── Load ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Of two copies of the SAME order, the one to keep on screen.
+ *
+ * `version` is incremented inside every order transaction, so it orders copies
+ * exactly — unlike `updated_at`, which a just-written copy carries as an
+ * unresolved server timestamp. Equal versions take the incoming copy: it is the
+ * server's, with its timestamps resolved.
+ */
+function newerOrder(held, incoming) {
+    if (!held || !incoming || held.id !== incoming.id) return incoming;
+    const h = Number(held.version) || 0;
+    const n = Number(incoming.version) || 0;
+    return n < h ? held : incoming;
+}
+
 async function refresh({ keepOrder = false } = {}) {
     // A seeded board must not be repainted from the server — see __posSeedBoard.
     if (state.frozen) return;
@@ -6316,10 +6374,23 @@ async function refresh({ keepOrder = false } = {}) {
 
     // Re-bind the open order to the freshly-read copy, so the panel can never
     // show a stale version and lose the concurrency race on the next write.
+    //
+    // ⚠️ "FRESHLY READ" IS NOT "NEWER". The live watcher calls refresh() on
+    // every snapshot, and the write that CAUSED the snapshot is often not yet in
+    // what `getPosOverview` returns. So the first press on a new order — "Process
+    // to Kitchen" — stepped the button forward to "Mark as Ready", then this line
+    // repainted it BACK to "Process to Kitchen" and released the busy guard,
+    // leaving a live button offering a step the order had already taken. It
+    // corrected itself about a second later. Found by recording every label
+    // change on the button; it reproduced on every run, and it is what made the
+    // reprint spec fail one run in two.
+    //
+    // Every order write bumps `version` inside its transaction, so the rule is
+    // exact: a copy with a LOWER version than the one on screen is stale.
     if (state.orderId && !keepOrder) {
         const live = allBoardOrders(overview)
             .find((o) => o.id === state.orderId);
-        if (live) state.order = live;
+        if (live) state.order = newerOrder(state.order, live);
         else if (state.order && !['paid', 'void'].includes(state.order.status)) {
             // ABSENT FROM THE OVERVIEW IS NOT GONE.
             //
@@ -6335,7 +6406,7 @@ async function refresh({ keepOrder = false } = {}) {
             // miss, and it still clears for the case this branch is FOR: an
             // order voided on another device really is gone.
             const fresh = await ds.getPosOrder(state.uid, state.orderId).catch(() => null);
-            if (fresh && fresh.status !== 'void') state.order = fresh;
+            if (fresh && fresh.status !== 'void') state.order = newerOrder(state.order, fresh);
             else { state.orderId = null; state.order = null; }
         }
     }

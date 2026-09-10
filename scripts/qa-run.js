@@ -250,6 +250,10 @@ function laneBE(changed) {
   // are silent: a popup opened after an `await` is BLOCKED and simply never
   // appears, and a `logo_image_path` missing from the rules `hasOnly` breaks
   // EVERY write to outlet settings, not just one carrying a logo.
+  // Unconditional. once() refuses a call made during another write by returning
+  // null, silently; the only thing standing between that and a cashier tapping a
+  // dead button is a hand-kept CSS list, and it had already drifted twice.
+  ok = record('be', run('check:pos-busy (no till control is dropped in silence)', 'npm', ['run', '-s', 'check:pos-busy'])) && ok;
   ok = record('be', run('check:receipt-head (logo, address, and the popup that must not be blocked)', 'node', ['tests/pos-receipt-letterhead.check.js'])) && ok;
   ok = record('be', run('check:market-i18n (a non-Indonesian workspace gets its own language and tax word)', 'node', ['tests/market-localisation.check.js'])) && ok;
   // Unconditional, and the sharpest of the three. `wsPosOrderKeys` is a
@@ -516,14 +520,25 @@ function laneFE(changed) {
   // The static check proves the source is clean; only a real browser proves the
   // page never paints the wrong currency, that the boot mask lifts, and that the
   // seam is initialised wherever money renders.
+  // ⚠️ THE TILL'S OWN BEHAVIOUR, WHEN THE TILL CHANGES. On 2026-09-09 a receipt
+  // change (opening the popup before an await, to keep its user activation)
+  // broke three reprint specs in pos-orders-board — and QA was green, because
+  // nothing here ran that file. It is self-contained (it seeds the board
+  // through a test hook, no shared-workspace data), so it rides in THIS
+  // invocation rather than a second one — see the note above on why two
+  // invocations contend.
+  const posTouched = FORCE_ALL || changed.some((f) =>
+    /^assets\/js\/(pos|pos-service|pos-pricing)\.js$|^pos\.html$/.test(f));
   ok = record('fe', run(
-    'browser: console sweep + currency render',
+    posTouched ? 'browser: console sweep + currency render + till board'
+      : 'browser: console sweep + currency render',
     'npx',
     ['playwright', 'test',
       'tests/zz-console-sweep.spec.js',
       'tests/base-currency-render.spec.js',
+      ...(posTouched ? ['tests/pos-orders-board.spec.js'] : []),
       '--project=chromium', '--reporter=line'],
-    { env, timeout: 12 * 60_000 }
+    { env, timeout: (posTouched ? 18 : 12) * 60_000 }
   )) && ok;
 
   // Second pass on the NON-IDR workspace. A separate invocation because it needs

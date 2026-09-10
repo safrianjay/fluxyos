@@ -304,12 +304,12 @@ test.describe('Point of Sale', () => {
 
         // open → sent → served → awaiting_payment.
         //
-        // The press has to be RETRIED, not just awaited. `once()` in pos.js
-        // returns immediately when `state.busy` is set and leaves no trace in
-        // the DOM, so a press that lands during the previous write is swallowed
-        // in silence — this loop hung on "Mark served" for twenty seconds
-        // because of exactly that. (Worth noting the cashier gets the same
-        // silence at a counter; that is a product gap, not a test one.)
+        // Retried rather than just awaited. The product gap this used to work
+        // around is closed: while a write is in flight `body[data-pos-busy]`
+        // takes the pointer off the primary button and dims it, so a press
+        // cannot be swallowed — it cannot be made. The retry stays as cheap
+        // insurance against a click that lands in the instant before the
+        // attribute is set.
         const primary = page.locator('#pos-primary');
         const advance = async () => {
             const before = (await primary.textContent() || '').trim();
@@ -416,10 +416,17 @@ test.describe('Point of Sale', () => {
         // Matched on the status the card carries, not on position in the grid —
         // a filter that silently failed to apply can no longer feed this spec a
         // non-paid order.
-        const paidCards = page.locator('#pos-orders-grid .pos-ocard[data-status="paid"]');
-        await expect(paidCards.first(), 'the sale just rung up is not on the Completed tab')
+        //
+        // ⚠️ AND BY ITS ID, NOT ITS POSITION. `.first()` opened whichever paid
+        // card sorted to the top — on a shared QA workspace that is routinely
+        // an EARLIER run's sale, already refunded by that run's cleanup, whose
+        // refund button is correctly hidden. The assertion below then failed on
+        // a correct screen about the wrong order, roughly one run in three.
+        const thisSale = page.locator(
+            `#pos-orders-grid .pos-ocard[data-status="paid"][data-order-card="${rec.id}"]`);
+        await expect(thisSale, 'the sale just rung up is not on the Completed tab')
             .toBeVisible({ timeout: 20000 });
-        await paidCards.first().click();
+        await thisSale.click();
         await expect(page.locator('#pos-refund-btn'),
             'reopened from the board, the refund button must still be there').toBeVisible();
 

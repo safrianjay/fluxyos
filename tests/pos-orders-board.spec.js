@@ -693,7 +693,11 @@ test('a merged bill REPRINTS AS THE BILL, not as one ticket', async ({ page }) =
     const popup = page.waitForEvent('popup', { timeout: 30000 });
     await page.locator('[data-print]').first().click();
     const sheet = await popup;
-    await sheet.waitForLoadState('domcontentloaded').catch(() => {});
+    // ⚠️ WAIT FOR THE RECEIPT, NOT FOR A LOAD EVENT. The popup is opened in the
+    // click (to keep its user activation) and written after the letterhead
+    // loads, so its first document is a placeholder that is 'loaded' at once.
+    // Reading the body on domcontentloaded read that — an empty string.
+    await sheet.waitForSelector('h1', { timeout: 15000 });
     const text = (await sheet.locator('body').innerText()).replace(/\s+/g, ' ');
     await sheet.close();
 
@@ -1090,7 +1094,11 @@ test('EACH SPLIT REPRINTS ITS OWN ITEMS, VAT AND SERVICE — NOT THE TABLE\'S', 
     const popup = page.waitForEvent('popup', { timeout: 30000 });
     await picker.locator('[data-bill]').first().click();
     const sheet = await popup;
-    await sheet.waitForLoadState('domcontentloaded').catch(() => {});
+    // ⚠️ WAIT FOR THE RECEIPT, NOT FOR A LOAD EVENT. The popup is opened in the
+    // click (to keep its user activation) and written after the letterhead
+    // loads, so its first document is a placeholder that is 'loaded' at once.
+    // Reading the body on domcontentloaded read that — an empty string.
+    await sheet.waitForSelector('h1', { timeout: 15000 });
     const text = (await sheet.locator('body').innerText()).replace(/\s+/g, ' ');
     await sheet.close();
 
@@ -1122,7 +1130,11 @@ test('the other share reprints as its own bill too', async ({ page }) => {
     const popup = page.waitForEvent('popup', { timeout: 30000 });
     await page.locator('#pos-rcpt-modal [data-bill]').nth(1).click();
     const sheet = await popup;
-    await sheet.waitForLoadState('domcontentloaded').catch(() => {});
+    // ⚠️ WAIT FOR THE RECEIPT, NOT FOR A LOAD EVENT. The popup is opened in the
+    // click (to keep its user activation) and written after the letterhead
+    // loads, so its first document is a placeholder that is 'loaded' at once.
+    // Reading the body on domcontentloaded read that — an empty string.
+    await sheet.waitForSelector('h1', { timeout: 15000 });
     const text = (await sheet.locator('body').innerText()).replace(/\s+/g, ' ');
     await sheet.close();
 

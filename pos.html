@@ -1639,6 +1639,16 @@
         body[data-pos-busy] .pos-card,
         body[data-pos-busy] .pos-table,
         body[data-pos-busy] .pos-ocard-btn,
+        /* The order-search results call once() too, and were the one control
+           missing from this list — a tap on a result during a write went
+           nowhere and said nothing, which is the exact failure this rule exists
+           to prevent. tests/pos-busy-guard.check.js now holds the list to the
+           code, so the next omission fails a check instead of a cashier. */
+        body[data-pos-busy] .pos-order-result,
+        /* The shift bar is cloned into every view, and the clones' buttons swap
+           their ids for data-act — so "Close shift" on any view but the first
+           called once() with nothing on this list covering it. */
+        body[data-pos-busy] [data-act],
         body[data-pos-busy] #pos-new-order,
         body[data-pos-busy] #pos-post-now,
         body[data-pos-busy] [data-arrange],
