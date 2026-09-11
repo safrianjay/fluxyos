@@ -15,10 +15,20 @@
 // restaurant meets.
 //
 // WHEN: `*/5 22,23,0-15 * * *` UTC = 05:00–22:59 WIB, 06:00–23:59 SGT/MYT/PHT.
-// Every 5 minutes because an idle Lambda instance is reclaimed within minutes
-// and 10 would miss often. Outside those hours nobody is ordering.
-// COST: 216 runs a day here, 1,080 warm invocations a day on the order site
-// (~32k a month), 5 reads of a missing document and 1 heartbeat write per run.
+// Outside those hours nobody is ordering.
+//
+// ⚠️ MEASURED 2026-09-11: an instance stays warm 2.5–4 minutes after its last
+// request (a function hit 1 and 2.5 min after a ping read in ~260 ms; at 4 min
+// it was cold again, 1,392 ms). So at a 5-minute cadence the ping itself always
+// meets a cold instance (every heartbeat shows ~1,370 ms) and pays the start-up
+// FOR the next diner: one who arrives within ~2.5 min of a ping is warm, one
+// after ~4 min is not — roughly half to three-quarters of first diners.
+// Covering all of them needs every 2 minutes (~97k invocations a month),
+// which the Free plan's 125k, shared by every function on the team, cannot
+// carry. The real fix is where the functions run (docs/perf/LOAD_2026-09-11.md).
+// COST at this cadence: 216 runs a day here + 1,080 warm invocations a day on
+// the order site ≈ 39k a month, 5 reads of a missing document and 1 heartbeat
+// write per run.
 //
 // ON BY DEFAULT, unlike the sweeps beside it, whose default-off flags exist
 // because they email people or change data. This does neither. Opt out with
