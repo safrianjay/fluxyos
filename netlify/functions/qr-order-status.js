@@ -4,6 +4,8 @@ const admin = require('firebase-admin');
 const { allowOriginHeader } = require('./lib/allowed-origins');
 const { consumeApprox, ipKey, clientIp, tooManyRequests } = require('./lib/rate-limit');
 const { directoryEntry } = require('./lib/warm-cache');
+// This table's orders — never the workspace's newest 50 (H1). See the header there.
+const { tableOrders } = require('./lib/table-orders');
 
 // =============================================================================
 // FluxyOS — what has been ordered at this table, and how far along it is.
@@ -225,13 +227,12 @@ exports.handler = async (event) => {
         const tableId = dir.table_id;
         if (!workspaceId || !tableId) return json(404, { error: 'not_found' });
 
-        // Same index-free shape `qr-order` and `getPosOrders` use: order by
-        // created_at, filter in memory. There is no pos_orders composite index,
-        // and a live order is recent by definition.
+        // THIS TABLE's orders, not the workspace's newest 50 — a live order is
+        // NOT "recent" at a busy outlet, and assuming it was lost tables
+        // mid-meal (H1; lib/table-orders.js).
         const ids = historyIds(q.ids);
         const [recent, historySnaps] = await Promise.all([
-            db.collection(`workspaces/${workspaceId}/pos_orders`)
-                .orderBy('created_at', 'desc').limit(50).get(),
+            tableOrders(db, workspaceId, tableId),
             ids.length
                 ? db.getAll(...ids.map((id) => db.doc(`workspaces/${workspaceId}/pos_orders/${id}`)))
                 : Promise.resolve([])

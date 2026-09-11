@@ -1282,6 +1282,34 @@ directory holding only tables whose codes are actually out there. Firestore
 triggers are not an option — they are Cloud Functions, and this backend is
 Netlify Functions, which are HTTP and cannot watch a collection.
 
+## 5b. Finding a table's orders — by table, never by recency (2026-09-11)
+
+`qr-order`, `qr-order-status` and `qr-request-bill` read **this table's** 25
+newest orders (`lib/table-orders.js`): `where('table_id', '==', …)
+.orderBy('created_at', 'desc')`, served by the composite index
+`pos_orders (table_id ASC, created_at DESC)` in `firestore.indexes.json`
+(deployed and stamped 2026-09-11).
+
+They used to read the **workspace's** 50 newest orders and filter in memory, on
+the assumption that "a live order is recent by definition". It is not, at a busy
+outlet: in the load test's lunch rush, 36 of 39 `sitting_ended` refusals were
+tables still mid-meal that had fallen behind 50–88 newer orders — their next
+round became a separate sitting, their first order disappeared from the diner's
+phone, and a ticket could open behind a requested bill
+(`docs/perf/LOAD_2026-09-11.md`, H1).
+
+⚠️ **If the index is ever missing, the helper falls back to the old window**
+(and logs once per instance) rather than failing every QR order with
+`FAILED_PRECONDITION`. That keeps ordering alive and brings H1 back, so
+`check:qr-order` pins both the per-table query and the index declaration.
+
+⚠️ **The till has the same pattern, still unfixed.** `watchPosOrders` listens to
+the workspace's 120 newest orders and `getPosOverview` reads the newest 300,
+both filtered by outlet on the device. At a single outlet that is hours of
+trade; in a multi-outlet workspace at ~80 orders/hour/outlet, three outlets
+push a table off the board after ~75 minutes. The equivalent fix is
+`where('dimension_id', '==', …)` with its own index.
+
 ## 5a. `qr_order_refs/{token}_{clientRef}` — top-level, deny-all
 
 The idempotency record for a QR order: `{ order_id, order_number,

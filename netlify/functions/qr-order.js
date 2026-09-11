@@ -3,6 +3,8 @@
 const { allowOriginHeader } = require('./lib/allowed-origins');
 const { consumeApprox, ipKey, clientIp, tooManyRequests } = require('./lib/rate-limit');
 const { directoryEntry } = require('./lib/warm-cache');
+// This table's orders — never the workspace's newest 50 (H1). See the header there.
+const { tableOrders } = require('./lib/table-orders');
 // ⚠️ THE SAME FILE THE TILL RUNS. `pos-pricing.js` is UMD precisely so this
 // CommonJS function and the ES-module client can share it — a diner's phone
 // and the cashier's screen pricing one outlet's bill differently is the
@@ -214,12 +216,11 @@ exports.handler = async (event) => {
         const [tableSnap, itemSnaps, recent, guessedSettings] = await Promise.all([
             db.doc(`workspaces/${workspaceId}/pos_tables/${tableId}`).get(),
             db.getAll(...ids.map((id) => db.doc(`workspaces/${workspaceId}/items/${id}`))),
-            // Find the order already on this table. Ordered and filtered in
-            // memory rather than by a compound query, matching `getPosOrders`
-            // — there is no pos_orders index in firestore.indexes.json and a
-            // live order is recent by definition.
-            db.collection(`workspaces/${workspaceId}/pos_orders`)
-                .orderBy('created_at', 'desc').limit(50).get(),
+            // Find the order already on this table: THIS TABLE's orders, not the
+            // workspace's newest 50. A live order is not "recent" at a busy
+            // outlet, and assuming it was is how tables vanished mid-meal (H1;
+            // lib/table-orders.js).
+            tableOrders(db, workspaceId, tableId),
             dir.dimension_id ? settingsFor(dir.dimension_id) : Promise.resolve(null)
         ]);
         mark('reads');

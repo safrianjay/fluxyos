@@ -4,6 +4,8 @@ const admin = require('firebase-admin');
 const { allowOriginHeader } = require('./lib/allowed-origins');
 const { consumeApprox, ipKey, clientIp, tooManyRequests } = require('./lib/rate-limit');
 const { directoryEntry } = require('./lib/warm-cache');
+// This table's orders — never the workspace's newest 50 (H1). See the header there.
+const { tableOrders } = require('./lib/table-orders');
 
 // =============================================================================
 // FluxyOS — the diner says they are done and wants to pay.
@@ -113,8 +115,7 @@ exports.handler = async (event) => {
 
         // The same three exclusions qr-order-status applies — voided, paid,
         // and older than a service. What is left IS the active dining session.
-        const recent = await db.collection(`workspaces/${workspaceId}/pos_orders`)
-            .orderBy('created_at', 'desc').limit(50).get();
+        const recent = await tableOrders(db, workspaceId, tableId);
         // ⚠️ EVERY LIVE TICKET, NOT THE NEWEST ONE.
         //
         // Since tickets split at the kitchen (2026-09-06) a table can be

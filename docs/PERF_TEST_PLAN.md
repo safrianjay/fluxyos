@@ -158,6 +158,7 @@ It found two problems the hypotheses below did not predict, and both outrank the
 | **F3 · High** | Card and hero photos are sent at 1280 px | first photo 8.2 s on mobile 4G, 5.0 s of it the download; 4.5 MB to scroll the menu |
 | **F4 · High** | Four phones at one table: `qr-order` p95 8.2 s | k6 S4 smoke, all orders correct |
 | **F5 · Medium** | H2 confirmed at small scale: 425 reads per till refresh here, ~1,660 on a mature outlet | till probe |
+| **H1 · Critical → FIXED** | Proven under load (36 of 39 `sitting_ended` were live sittings), then fixed: the QR functions read the table's own orders via a new index | `docs/perf/LOAD_2026-09-11.md`; `perf/qr-contract.js` H1 block |
 
 ### The original hypotheses
 

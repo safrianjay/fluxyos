@@ -52,10 +52,11 @@ const is = (actual, expected, label) => {
 const IP = `198.51.100.${Math.floor(Math.random() * 200) + 20}`;
 const headers = { 'x-nf-client-connection-ip': IP, origin: 'https://order.fluxyos.com' };
 const timings = {};
-async function call(name, { query = null, body = null } = {}) {
+async function call(name, { query = null, body = null, ip = null } = {}) {
     const t0 = Date.now();
     const res = await H[name]({
-        httpMethod: body ? 'POST' : 'GET', headers,
+        httpMethod: body ? 'POST' : 'GET',
+        headers: ip ? { ...headers, 'x-nf-client-connection-ip': ip } : headers,
         queryStringParameters: query, body: body ? JSON.stringify(body) : null
     });
     (timings[name] = timings[name] || []).push(Date.now() - t0);
@@ -177,6 +178,32 @@ const ref = (tag) => `contract${tag}${Date.now().toString(36)}`;
     is([b2.status, b2.json.already], [200, true], 'a second tap moves nothing and says so');
     const behind = await call('order', { body: { token: T.token, client_ref: ref('f'), sitting: null, lines: lines2 } });
     is([behind.status, behind.json.error], [409, 'bill_requested'], 'no new ticket opens behind a requested bill');
+
+    // ── H1: a table must not vanish behind 50 newer orders ──────────────────
+    // The lunch rush lost 36 live sittings this way (docs/perf/LOAD_2026-09-11.md).
+    // Open a sitting, push 52 newer orders onto OTHER tables, then ask the
+    // three questions the diner's phone asks.
+    await reset({ log: () => {} });
+    const Hn = outlet.tables[outlet.tables.length - 2];
+    const hState = await call('order', { body: { token: Hn.token, client_ref: ref('h1'), sitting: null, lines: lines2 } });
+    is(hState.status, 200, 'H1: table opens a sitting');
+    const others = fx.outlets.flatMap((o) => o.tables).filter((t) => t.token !== Hn.token && t.token !== T.token).slice(0, 52);
+    let placed = 0;
+    for (let i = 0; i < others.length; i += 1) {
+        // A different address per order: this is 52 restaurants' worth of
+        // diners, not one phone, and the per-IP order limit is 20 a minute.
+        const r = await call('order', { body: { token: others[i].token, client_ref: ref(`n${i}`), sitting: null, lines: lines2 }, ip: `203.0.113.${(i % 200) + 1}` });
+        if (r.status === 200) placed += 1;
+    }
+    is(placed, 52, 'H1: 52 newer orders land on other tables');
+    const hStatus = await call('status', { query: { token: Hn.token, ids: hState.json.order_id } });
+    is(hStatus.json && hStatus.json.order_id, hState.json.order_id, 'H1: after 52 newer orders the table still sees its own order');
+    const hRound = await call('order', { body: { token: Hn.token, client_ref: ref('h2'), sitting: hState.json.order_id, lines: lines2 } });
+    is([hRound.status, hRound.json.order_id], [200, hState.json.order_id], 'H1: round two joins the sitting instead of being told it ended');
+    const hBill = await call('bill', { body: { token: Hn.token } });
+    is([hBill.status, hBill.json.ok], [200, true], 'H1: the table can still ask for its bill');
+    const hBehind = await call('order', { body: { token: Hn.token, client_ref: ref('h3'), sitting: null, lines: lines2 } });
+    is([hBehind.status, hBehind.json.error], [409, 'bill_requested'], 'H1: and nothing opens behind that bill');
 
     // ── Round trips, for the record (from Jakarta, ~50 ms each — not prod) ──
     console.log('\n  local timings (ms):', JSON.stringify(Object.fromEntries(Object.entries(timings).map(([k, v]) => [k, v]))));

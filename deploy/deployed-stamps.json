@@ -13,15 +13,15 @@
   "artifacts": {
     "firestore.rules": {
       "sha256": "2f6b413da5acdd2f99a7c21af1644e093a72219f53f7ba09472e7eb332b82254",
-      "stamped_at": "2026-09-09"
+      "stamped_at": "2026-09-11"
     },
     "firestore.indexes.json": {
-      "sha256": "f5c43867e16c54fccec0cf1ddf3bf67b0f0b49c54ec7ddc165eac128f1c24685",
-      "stamped_at": "2026-09-09"
+      "sha256": "a0ae2679ed6d4c72d0d331d220b43f4c8279d21500e03f011fbb5fa69bb3f640",
+      "stamped_at": "2026-09-11"
     },
     "storage.rules": {
       "sha256": "65a0cba16c8a5eb76a2ef7dc6c66ccdc0cf324cc2e1bf1827c71658943db32f6",
-      "stamped_at": "2026-09-09"
+      "stamped_at": "2026-09-11"
     }
   }
 }

@@ -286,5 +286,32 @@ is(/pos_recommended:\s*i\.pos_recommended/.test(posSvc), true,
 is(/recommended:\s*i\.pos_recommended/.test(qrMenuSrc), true,
     'qr-menu projects it to the diner (the rail never renders otherwise)');
 
+// ── H1: a table's orders, never the workspace's newest 50 ───────────────────
+// The lunch-rush load test lost 36 live sittings to a workspace-wide window
+// (docs/perf/LOAD_2026-09-11.md): past 50 newer orders anywhere in the
+// workspace, a table mid-meal was refused `sitting_ended`, lost its first order
+// from the diner's phone, and could open a ticket behind its own bill. All
+// three QR writers/readers now ask for THIS table's orders, which needs a
+// composite index; both halves are pinned here, because removing either one
+// quietly brings the bug back (the fallback in lib/table-orders.js keeps
+// ordering alive without the index — and reintroduces H1).
+{
+    const WINDOW = /\.orderBy\('created_at', 'desc'\)\.limit\(50\)/;
+    const users = { 'qr-order': SRC, 'qr-order-status': STATUS, 'qr-request-bill': BILL };
+    Object.entries(users).forEach(([name, src]) => {
+        is(WINDOW.test(src), false, `${name} does not scan the workspace's newest 50 orders`);
+        is(/tableOrders\(db, workspaceId, tableId\)/.test(src), true, `${name} reads THIS table's orders`);
+    });
+    const helper = fs.readFileSync(path.join(ROOT, 'netlify/functions/lib/table-orders.js'), 'utf8');
+    is(/where\('table_id', '==', tableId\)\s*\.orderBy\('created_at', 'desc'\)/.test(helper), true,
+        'the helper queries by table, newest first');
+    const idx = JSON.parse(fs.readFileSync(path.join(ROOT, 'firestore.indexes.json'), 'utf8')).indexes;
+    const has = idx.some((i) => i.collectionGroup === 'pos_orders' && i.queryScope === 'COLLECTION'
+        && i.fields.length === 2
+        && i.fields[0].fieldPath === 'table_id' && i.fields[0].order === 'ASCENDING'
+        && i.fields[1].fieldPath === 'created_at' && i.fields[1].order === 'DESCENDING');
+    is(has, true, 'firestore.indexes.json declares pos_orders (table_id ASC, created_at DESC)');
+}
+
 console.log(failures ? `\n✗ ${failures} failure(s)\n` : '\nqr-order: clean\n');
 process.exit(failures ? 1 : 0);
