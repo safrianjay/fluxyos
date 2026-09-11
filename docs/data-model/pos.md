@@ -1313,6 +1313,31 @@ retried once on the Netlify copy — safe for an order, its idempotency record i
 in the shared database. The CSP's `connect-src` lists the Cloud Run origin.
 **Rollback:** set `var FN` to `FN_NETLIFY` in `order.html` and push.
 
+**Who deploys (2026-09-11).** Not a person's login. `scripts/deploy-qr-service.sh`
+authenticates as **`qr-deployer@`** from the key `.qa/gcp-qr-deployer.json`
+(gitignored, mode 600), passed per command so the active gcloud account stays
+the Firebase service account. Its roles, all as narrow as the deploy allows:
+
+| Identity | Roles | For |
+|---|---|---|
+| `qr-deployer@` | `run.developer` on **the `qr-diner` service only**; `iam.serviceAccountUser` on `qr-diner@` and `qr-builder@` only; `cloudbuild.builds.editor`; `storage.admin` on the source bucket `run-sources-fluxyos-asia-southeast1` only; `artifactregistry.reader` on the repo `cloud-run-source-deploy` only; `storage.bucketViewer` and `serviceusage.serviceUsageConsumer` (project) | deploying new revisions |
+| `qr-builder@` | `logging.logWriter`; `artifactregistry.writer` on `cloud-run-source-deploy`; `storage.objectViewer` on the source bucket | running the build (`--build-service-account`) |
+
+Verified with `testIamPermissions`: the deployer cannot change project IAM,
+read or write Firestore, create keys, create or change the access of any
+service, or read stored objects. ⚠️ `run.developer` does include DELETING
+`qr-diner`; a leaked key could take it down, and the page would then fall back
+to the Netlify copies. A custom role without `run.services.delete` would close
+that.
+
+Builds run as `qr-builder@`, NOT the default compute account (which holds
+Editor): a deployer allowed to start builds as that account would have Editor
+by the side door. `--allow-unauthenticated` is not passed — the public-invoker
+binding was set once and persists, and the deployer may not change it.
+`DEPLOY_AS_OWNER=1` deploys with the ADC login instead, for repairing this setup
+only. Rotate the key with `gcloud iam service-accounts keys create/delete` (as
+an owner).
+
 ⚠️ **CHANGING A QR HANDLER NOW NEEDS A CLOUD RUN DEPLOY.** A `git push` updates
 only the Netlify copies, which diners no longer use. `check:deploy-stamp`
 tracks the bundle as the artifact `qr-service` and blocks the push until:
