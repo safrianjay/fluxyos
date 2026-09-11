@@ -102,6 +102,23 @@ const ref = (tag) => `contract${tag}${Date.now().toString(36)}`;
     is(maxAge <= 1800 && maxAge >= 60, true, `…with a cache life no longer than 30 min (${maxAge}s)`);
     is((await call('image', { query: { token: T.token, item: 'contractNoSuchItem' } })).status, 404, 'an unknown dish is 404');
 
+    // ── The small copy (F3) ─────────────────────────────────────────────────
+    const th = await call('image', { query: { token: T.token, item: dish.id, size: 'thumb' } });
+    is([th.status, /__w640\.(webp|jpg)\?/.test(th.headers.Location || '')], [302, true], 'size=thumb redirects to the 640px copy');
+    is(/__w640/.test(p1.headers.Location || ''), false, '…and without it, the full photo');
+    // A dish with no copy yet (every photo before the backfill) must still
+    // show — the full photo, never a 404.
+    const bare = fx.items.find((i) => i.has_photo && i.id !== dish.id);
+    const bareRef = admin.firestore().doc(`workspaces/${fx.workspace_id}/items/${bare.id}`);
+    const kept = (await bareRef.get()).data().image_thumb_path;
+    await bareRef.update({ image_thumb_path: null });
+    try {
+        const t2 = await call('image', { query: { token: T.token, item: bare.id, size: 'thumb' } });
+        is([t2.status, /__w640/.test(t2.headers.Location || '')], [302, false], 'a dish with no copy falls back to its full photo');
+    } finally {
+        await bareRef.update({ image_thumb_path: kept || null });
+    }
+
     // ── Status before anything is ordered ───────────────────────────────────
     const s0 = await call('status', { query: { token: T.token } });
     is(s0.status === 200 && s0.json.has_order, false, 'qr-order-status: an empty table has no order');

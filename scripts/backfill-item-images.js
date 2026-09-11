@@ -31,6 +31,8 @@
 //   ... --prune                delete the original as part of a swap
 //   ... --prune-orphans        delete photos in an item's folder that its
 //                              `image_path` does not point at (see below)
+//   ... --thumbs               give every photo its 640px copy, for cards,
+//                              cart/order lines and till tiles (2026-09-11)
 // =============================================================================
 //
 // ⚠️ `--prune-orphans` IS THE IRREVERSIBLE ONE. The swap keeps the original by
@@ -66,6 +68,21 @@ const ALREADY_SMALL = 160 * 1024;
 const RIGHTSIZED_MARK = 'rightsized';
 const RIGHTSIZED_VERSION = 'v1';
 
+// ── The small copy (`--thumbs`, 2026-09-11) ─────────────────────────────────
+// Cards, cart and order lines and till tiles render at ~50-170 CSS px and all
+// downloaded the 1280px photo (docs/perf/S1_BASELINE_2026-09-11.md, F3). New
+// uploads store a 640px copy beside the photo (`uploadItemImage`); this gives
+// every EXISTING photo the same one, named the same way, and records it in
+// `image_thumb_path`. The photo itself is never touched.
+const THUMB_EDGE = 640;
+const THUMB_QUALITY = 0.8;
+const THUMB_MARK = 'thumb';
+
+/** `…/1757300000000_photo.webp` → `…/1757300000000_photo__w640.webp` — as the client names it. */
+function thumbPathFor(photoPath, contentType) {
+    return photoPath.replace(/\.[^./]+$/, '') + '__w640' + (/webp/i.test(contentType || '') ? '.webp' : '.jpg');
+}
+
 /**
  * Decode, downscale and re-encode one image, in Chromium.
  *
@@ -76,7 +93,7 @@ const RIGHTSIZED_VERSION = 'v1';
  * Returns null when it cannot improve on the input, which the caller treats as
  * "leave this one alone".
  */
-async function rightSize(page, buffer, contentType) {
+async function rightSize(page, buffer, contentType, { maxEdge = MAX_EDGE, quality = QUALITY, thumb = false } = {}) {
     const out = await page.evaluate(async ({ b64, type, MAX, Q }) => {
         const blob = await (await fetch(`data:${type};base64,${b64}`)).blob();
         let src;
@@ -108,8 +125,8 @@ async function rightSize(page, buffer, contentType) {
     }, {
         b64: buffer.toString('base64'),
         type: contentType || 'image/jpeg',
-        MAX: MAX_EDGE,
-        Q: QUALITY
+        MAX: maxEdge,
+        Q: quality
     });
 
     if (!out) return null;
@@ -121,8 +138,11 @@ async function rightSize(page, buffer, contentType) {
     // them; this is the same rule at the layer that can actually see the
     // dimensions, so the guarantee does not depend on the caller getting it
     // right.
-    const withinBounds = Math.max(out.before.w, out.before.h) <= MAX_EDGE;
-    if (withinBounds && /webp/i.test(contentType || '') && buffer.length <= ALREADY_SMALL) {
+    const withinBounds = Math.max(out.before.w, out.before.h) <= maxEdge;
+    // A photo already no bigger than a copy would be IS its own copy: readers
+    // fall back to it, and a second object would be the same bytes twice.
+    if (thumb && withinBounds) return null;
+    if (!thumb && withinBounds && /webp/i.test(contentType || '') && buffer.length <= ALREADY_SMALL) {
         return null;
     }
 
@@ -160,6 +180,7 @@ async function main() {
     const COMMIT = args.includes('--commit');
     const PRUNE = args.includes('--prune');
     const PRUNE_ORPHANS = args.includes('--prune-orphans');
+    const THUMBS = args.includes('--thumbs');
 
     if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
         console.error('Set GOOGLE_APPLICATION_CREDENTIALS to a service-account key first.');
@@ -188,6 +209,11 @@ async function main() {
             for (const doc of items.docs) {
                 const inUse = typeof (doc.data() || {}).image_path === 'string'
                     ? doc.data().image_path : '';
+                // ⚠️ THE SMALL COPY IS IN USE TOO (2026-09-11). It lives in the
+                // same folder, and "every sibling of image_path" would delete
+                // every card photo on every menu.
+                const thumbInUse = typeof (doc.data() || {}).image_thumb_path === 'string'
+                    ? doc.data().image_thumb_path : '';
                 const prefix = `workspaces/${wsId}/items/${doc.id}/`;
                 const [files] = await bucket.getFiles({ prefix });
                 if (!files.length) continue;
@@ -199,7 +225,7 @@ async function main() {
                     continue;
                 }
                 for (const f of files) {
-                    if (f.name === inUse) { kept += 1; continue; }
+                    if (f.name === inUse || (thumbInUse && f.name === thumbInUse)) { kept += 1; continue; }
                     orphans += 1;
                     freed += Number((f.metadata || {}).size) || 0;
                     console.log(`  ${COMMIT ? '✓' : '·'} delete ${f.name}`
@@ -220,6 +246,62 @@ async function main() {
     const page = await browser.newPage();
 
     const wsIds = await wsIdsFor();
+
+    if (THUMBS) {
+        let seenT = 0; let made = 0; let already = 0; let smallEnough = 0; let failedT = 0; let bytes = 0;
+        console.log(`\n${COMMIT ? 'COMMIT' : 'DRY RUN'} · 640px copies · ${wsIds.length} workspace(s)\n`);
+        for (const wsId of wsIds) {
+            const items = await db.collection(`workspaces/${wsId}/items`).get();
+            for (const doc of items.docs) {
+                if (LIMIT && seenT >= LIMIT) break;
+                const item = doc.data() || {};
+                const photo = typeof item.image_path === 'string' ? item.image_path : '';
+                if (!photo) continue;
+                seenT += 1;
+                if (item.image_thumb_path) { already += 1; continue; }
+                const label = `${wsId}/${doc.id} ${String(item.name || '').slice(0, 28)}`;
+                try {
+                    const file = bucket.file(photo);
+                    const [meta] = await file.getMetadata();
+                    const [buf] = await file.download();
+                    const small = await rightSize(page, buf, meta.contentType,
+                        { maxEdge: THUMB_EDGE, quality: THUMB_QUALITY, thumb: true });
+                    if (!small) { smallEnough += 1; continue; }
+                    const target = thumbPathFor(photo, small.contentType);
+                    bytes += small.bytes.length;
+                    console.log(`  ${COMMIT ? '✓' : '·'} ${label}: ${kb(Number(meta.size) || buf.length)} → ${kb(small.bytes.length)} copy`);
+                    if (!COMMIT) { made += 1; continue; }
+                    await bucket.file(target).save(small.bytes, {
+                        contentType: small.contentType,
+                        resumable: false,
+                        metadata: { metadata: { [THUMB_MARK]: 'v1' } }
+                    });
+                    // Recorded only if the photo is STILL the one copied — an
+                    // owner replacing it mid-run must not get the old dish on
+                    // their cards.
+                    const attached = await db.runTransaction(async (tx) => {
+                        const now = (await tx.get(doc.ref)).data() || {};
+                        if (now.image_path !== photo || now.image_thumb_path) return false;
+                        tx.update(doc.ref, { image_thumb_path: target });
+                        return true;
+                    });
+                    if (attached) made += 1;
+                    else console.log(`    – ${label}: photo changed during the run, copy left unattached`);
+                } catch (err) {
+                    failedT += 1;
+                    console.log(`  ✗ ${label}: ${err && err.message}`);
+                }
+            }
+            if (LIMIT && seenT >= LIMIT) break;
+        }
+        await browser.close();
+        console.log(`\n${seenT} with photos · ${made} ${COMMIT ? 'copies made' : 'would get a copy'}`
+            + ` · ${already} already have one · ${smallEnough} already small enough · ${failedT} failed`
+            + (bytes ? ` · ${kb(bytes)} of copies` : ''));
+        if (!COMMIT) console.log('\nDRY RUN — nothing was written. Re-run with --commit.\n');
+        else console.log('');
+        return;
+    }
 
     let seen = 0; let done = 0; let skipped = 0; let failed = 0;
     let bytesBefore = 0; let bytesAfter = 0;
@@ -303,7 +385,10 @@ async function main() {
     else console.log('');
 }
 
-module.exports = { rightSize, nextPath, MAX_EDGE, QUALITY, ALREADY_SMALL, RIGHTSIZED_MARK, RIGHTSIZED_VERSION };
+module.exports = {
+    rightSize, nextPath, thumbPathFor,
+    MAX_EDGE, QUALITY, ALREADY_SMALL, RIGHTSIZED_MARK, RIGHTSIZED_VERSION, THUMB_EDGE, THUMB_QUALITY
+};
 
 // Only when invoked directly, so the check above can require the encoder
 // without a service-account key.

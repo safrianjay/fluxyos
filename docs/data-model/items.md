@@ -595,6 +595,36 @@ commit. Guard: `tests/backfill-item-images.check.js`.
 4318×4318 photo at 1513KB, now 285KB. A subsequent dry run reports 0 to
 rewrite, which is the convergence proof.
 
+### A 640px copy for everything that renders small (2026-09-11)
+
+`image_thumb_path` (string ≤400 | null) — a second object in the SAME folder,
+`…/{ts}_{name}__w640.webp`, written by `uploadItemImage` beside the photo and
+recorded by `setItemImage(…, { thumbPath })` (cleared whenever the photo is).
+
+**Why.** Menu cards, cart lines, order lines and till tiles render at ~50–170
+CSS px, and every one of them downloaded the 1280px photo — on a 4G phone the
+diner's first screen pulled 1.24 MB of photos and the first painted at 8.2 s
+(`docs/perf/S1_BASELINE_2026-09-11.md`, F3). A 640px copy covers a 3× screen at
+card size and is ~12 KB where the photo is ~75 KB.
+
+| Reader | Uses |
+|---|---|
+| `order.html` cards, recommendations, cart lines, cart suggestions, order lines | `qr-menu-image?…&size=thumb` |
+| `order.html` hero gallery, dish sheet | the photo (full-width); the first hero slide `fetchpriority="high"`, the rest `low` |
+| Till tiles (`pos.js` via `getPosMenu`) | `image_thumb_path \|\| image_path` |
+| Item drawer preview | the photo |
+
+**Optional everywhere.** A photo with no copy — every photo before the backfill,
+or an upload whose copy failed — is served in full: `qr-menu-image` falls back
+to `image_path` when the copy is missing or outside the item's own tree, so a
+missing copy can never become a missing picture.
+
+**Existing photos:** `node scripts/backfill-item-images.js --thumbs [--commit]`
+makes the copies (never touches the photo; re-checks inside a transaction that
+the photo is still the one copied). ⚠️ `--prune-orphans` keeps
+`image_thumb_path` as well as `image_path` — before this it would have deleted
+every card photo's copy as a "superseded sibling".
+
 ### Not a `document`
 
 `documents` is for records: a Firestore row, the monthly document-processing

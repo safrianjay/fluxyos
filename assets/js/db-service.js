@@ -1503,9 +1503,9 @@ class DataService {
      * cannot decode, or a result that came out heavier. Making a photo worse in
      * the name of making it smaller is the one outcome worth guarding against.
      */
-    async _rightSizeImage(file) {
-        const MAX_EDGE = 1280;
-        const QUALITY = 0.82;
+    async _rightSizeImage(file, { maxEdge = 1280, quality = 0.82 } = {}) {
+        const MAX_EDGE = maxEdge;
+        const QUALITY = quality;
         if (typeof document === 'undefined' || !file) return file;
 
         let source = null;
@@ -1582,8 +1582,28 @@ class DataService {
         // would make a mis-click unrecoverable.
         const storagePath = `${this._scope(userId)}/items/${itemId}/${Date.now()}_${safeName}`;
         await uploadBytes(ref(this._storage, storagePath), file, this._uploadMetadata(file.type));
+
+        // ⚠️ A SMALL COPY FOR EVERYTHING THAT IS NOT FULL-WIDTH (2026-09-11).
+        // A menu card, a cart line, an order line and a till tile render at
+        // ~50-170 CSS px, and every one of them downloaded the 1280px photo: on
+        // a 4G phone the first screen pulled 1.24 MB of photos and the first
+        // one painted at 8.2 s (docs/perf/S1_BASELINE_2026-09-11.md, F3).
+        // 640px covers a 3x screen at card size. Optional by design: a copy
+        // that fails costs nothing but bytes — every reader falls back to
+        // `image_path` — so the upload never fails because of it.
+        let thumbPath = null;
+        try {
+            const thumb = await this._rightSizeImage(file, { maxEdge: 640, quality: 0.8 });
+            if (thumb && thumb !== file && thumb.size < file.size) {
+                thumbPath = storagePath.replace(/\.[^./]+$/, '') + '__w640' + (thumb.type === 'image/webp' ? '.webp' : '.jpg');
+                await uploadBytes(ref(this._storage, thumbPath), thumb, this._uploadMetadata(thumb.type));
+            }
+        } catch (err) {
+            console.warn('[items] small copy not stored; readers fall back to the full photo', err && err.message);
+            thumbPath = null;
+        }
         await this._auditCreateBestEffort(userId, 'item.image_uploaded', 'items', itemId, {});
-        return { storagePath, fileName: safeName, fileSize: file.size || 0 };
+        return { storagePath, thumbPath, fileName: safeName, fileSize: file.size || 0 };
     }
 
     // Attach or detach an item's photo, WITHOUT going through saveItem.
@@ -1596,10 +1616,13 @@ class DataService {
     // A targeted update is also what keeps the rules happy: `items` validates
     // explicit fields, and for an update `request.resource.data` is the MERGED
     // document, so name and base_unit are still there to be checked.
-    async setItemImage(userId, itemId, storagePath) {
+    async setItemImage(userId, itemId, storagePath, { thumbPath = null } = {}) {
         if (!userId || !itemId) throw new Error('userId and itemId required');
         await updateDoc(doc(this.db, `${this._scope(userId)}/items/${itemId}`), {
             image_path: this._nullableString(storagePath, 400),
+            // Written with the photo, and cleared with it: a small copy of a
+            // photo that was replaced would show the OLD dish on the cards.
+            image_thumb_path: storagePath ? this._nullableString(thumbPath, 400) : null,
             updated_at: serverTimestamp()
         });
         await this._auditCreateBestEffort(userId,

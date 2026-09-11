@@ -22,17 +22,28 @@ const SRC = path.join(__dirname, '..', 'assets', 'js', 'db-service.js');
 /** Lift `_rightSizeImage` from source, so this tests the shipped code. */
 function methodUnder(name) {
     const src = fs.readFileSync(SRC, 'utf8');
-    const start = src.indexOf(`    async ${name}(file) {`);
+    const start = src.indexOf(`    async ${name}(`);
     if (start < 0) throw new Error(`${name} not found — was it renamed?`);
-    // Walk braces from the method's opening brace to its match.
+    // The parameter list first, by parentheses — it can hold braces of its own
+    // (`{ maxEdge = 1280, quality = 0.82 } = {}` since 2026-09-11), and a brace
+    // walk started there would lift the options object instead of the body.
+    const open = src.indexOf('(', start);
     let depth = 0;
-    let i = src.indexOf('{', start);
+    let i = open;
+    for (; i < src.length; i += 1) {
+        if (src[i] === '(') depth += 1;
+        else if (src[i] === ')') { depth -= 1; if (depth === 0) break; }
+    }
+    const params = src.slice(open, i + 1);
+    // Then the body, by braces, from its opening brace to its match.
+    depth = 0;
+    i = src.indexOf('{', i);
     const from = i;
     for (; i < src.length; i += 1) {
         if (src[i] === '{') depth += 1;
         else if (src[i] === '}') { depth -= 1; if (depth === 0) break; }
     }
-    return `async function ${name}(file) ${src.slice(from, i + 1)}`;
+    return `async function ${name}${params} ${src.slice(from, i + 1)}`;
 }
 
 test.describe('item photos are right-sized before upload', () => {
@@ -93,6 +104,39 @@ test.describe('item photos are right-sized before upload', () => {
             expect(out.name.endsWith('.webp') || out.name.endsWith('.jpg')).toBe(true);
             expect(['image/webp', 'image/jpeg']).toContain(out.type);
         });
+
+    // The 640px copy (2026-09-11): what a card, a cart line and a till tile
+    // actually load. Made from the RIGHT-SIZED photo, exactly as
+    // uploadItemImage does, so this measures the real second step.
+    test('the small copy is 640px on its longest edge and a fraction of the photo', async ({ page }) => {
+        await page.goto('/order.html');
+        const fn = methodUnder('_rightSizeImage');
+        const out = await page.evaluate(async (fnSrc) => {
+            // eslint-disable-next-line no-eval
+            const rightSize = eval(`(${fnSrc.replace(/^async function _rightSizeImage/, 'async function')})`);
+            const c = document.createElement('canvas');
+            c.width = 3024; c.height = 4032;
+            const x = c.getContext('2d');
+            x.fillStyle = '#7a4a2a'; x.fillRect(0, 0, 3024, 4032);
+            for (let n = 0; n < 4000; n += 1) {
+                x.fillStyle = `hsl(${(n * 37) % 360} 70% ${30 + (n % 50)}%)`;
+                x.fillRect((n * 71) % 3024, (n * 131) % 4032, 26, 26);
+            }
+            const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.92));
+            const photo = await rightSize(new File([blob], 'IMG_1.jpg', { type: 'image/jpeg' }));
+            const copy = await rightSize(photo, { maxEdge: 640, quality: 0.8 });
+            const bmp = await createImageBitmap(copy);
+            const res = { photo: photo.size, copy: copy.size, w: bmp.width, h: bmp.height, same: copy === photo };
+            bmp.close && bmp.close();
+            return res;
+        }, fn);
+        // eslint-disable-next-line no-console
+        console.log(`  photo ${(out.photo / 1024).toFixed(0)}KB -> copy ${(out.copy / 1024).toFixed(0)}KB (${out.w}x${out.h})`);
+        expect(out.same, 'the copy is a new file, not the photo handed back').toBe(false);
+        expect(Math.max(out.w, out.h)).toBe(640);
+        expect(out.h, 'portrait stays portrait').toBeGreaterThan(out.w);
+        expect(out.copy, 'the copy must be well under half the photo').toBeLessThan(out.photo / 2);
+    });
 
     test('an already-small photo is handed back untouched', async ({ page }) => {
         // ⚠️ NEVER MAKE IT WORSE. Re-encoding a 20KB thumbnail can easily

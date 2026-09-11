@@ -3836,3 +3836,43 @@ test.describe('a refused request says how long to wait', () => {
         await expect(hint).toHaveText('Lots of requests at once. Try again in 9 seconds.');
     });
 });
+
+// ⚠️ SMALL PHOTOS WHERE PHOTOS ARE SMALL (2026-09-11).
+//
+// Every card, cart line and order line downloaded the 1280px photo: on a 4G
+// phone the first screen pulled 1.24 MB and the first photo painted at 8.2 s
+// (docs/perf/S1_BASELINE_2026-09-11.md, F3). Those now ask `qr-menu-image` for
+// the 640px copy; the hero and the dish sheet — full-width — keep the photo,
+// and the first hero slide goes first.
+test.describe('small photos where photos are small', () => {
+    test('cards ask for the 640px copy; the hero and the dish sheet ask for the full photo', async ({ page }) => {
+        await stub(page);
+        await open(page);
+
+        const cards = await page.locator('#menu .card-media img').evaluateAll((els) => els.map((e) => e.getAttribute('src')));
+        expect(cards.length, 'the fixture menu has a photographed dish').toBeGreaterThan(0);
+        expect(cards.every((src) => /[?&]size=thumb(&|$)/.test(src)), `card photos: ${cards.join(' | ')}`).toBe(true);
+
+        const heroes = page.locator('#hero-rail img');
+        await expect(heroes.first()).toHaveAttribute('fetchpriority', 'high');
+        const heroSrcs = await heroes.evaluateAll((els) => els.map((e) => e.getAttribute('src')));
+        expect(heroSrcs.some((src) => /size=thumb/.test(src)), 'the hero is full-width: full photo').toBe(false);
+        const later = await heroes.evaluateAll((els) => els.slice(1).map((e) => e.getAttribute('fetchpriority')));
+        expect(later.every((p) => p === 'low'), 'slides nobody has swiped to yet wait their turn').toBe(true);
+
+        await page.locator('.card', { hasText: 'Es Kopi Susu' }).getByRole('button', { name: /Tambah|Add/ }).click();
+        await expect(page.locator('#sheet-item')).toHaveClass(/is-open/);
+        const sheetSrc = await page.locator('#sheet-item .detail-hero img').getAttribute('src');
+        expect(sheetSrc, 'the dish sheet shows the full photo').not.toMatch(/size=thumb/);
+    });
+
+    test('the cart line asks for the copy too', async ({ page }) => {
+        const capture = {};
+        await stub(page, { capture });
+        await open(page);
+        await addPlain(page, 'Es Kopi Susu');
+        await page.locator('#cart-open').click();
+        const cartSrc = await page.locator('#cart-lines img').first().getAttribute('src');
+        expect(cartSrc).toMatch(/[?&]size=thumb(&|$)/);
+    });
+});

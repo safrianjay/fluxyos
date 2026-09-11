@@ -197,6 +197,11 @@ exports.handler = async (event) => {
     // token check, and a path guard — and so there stays ONE way a diner's phone
     // reaches Storage.
     const wantsCover = String(q.cover || '') === '1';
+    // `?size=thumb` asks for the item's 640px copy — for a card, a cart line or
+    // an order line, which render at ~50-170 CSS px (docs/perf/S1_BASELINE_2026-09-11.md,
+    // F3). Anything else, or an item with no copy, gets the full photo: a
+    // missing copy must never become a missing picture.
+    const wantsThumb = String(q.size || '') === 'thumb';
 
     // One shape of refusal for every failure below. A customer holding a valid
     // token for table 4 must not be able to learn, from the difference between
@@ -280,15 +285,23 @@ exports.handler = async (event) => {
         // 2. The item, IN THAT WORKSPACE. This is the check a Storage rule
         //    cannot make: scoping a photo to the restaurant whose QR code was
         //    scanned, and to items actually on its menu.
-        const path = await pathCache.get(`item/${workspaceId}/${itemId}`, async () => {
+        const photo = await pathCache.get(`item/${workspaceId}/${itemId}`, async () => {
             const itemSnap = await db.doc(`workspaces/${workspaceId}/items/${itemId}`).get();
             if (!itemSnap.exists) return null;
             const item = itemSnap.data() || {};
             if (item.pos_visible !== true) return null;
             if (item.status === 'archived') return null;
-            return typeof item.image_path === 'string' && item.image_path ? item.image_path : null;
+            if (!(typeof item.image_path === 'string' && item.image_path)) return null;
+            return {
+                full: item.image_path,
+                thumb: typeof item.image_thumb_path === 'string' && item.image_thumb_path ? item.image_thumb_path : null
+            };
         });
-        if (!path) return notFound;
+        if (!photo) return notFound;
+        // The small copy only when asked for AND it lives in this item's own
+        // tree; otherwise the full photo, never nothing.
+        const itemTree = `workspaces/${workspaceId}/items/${itemId}/`;
+        const path = wantsThumb && photo.thumb && photo.thumb.startsWith(itemTree) ? photo.thumb : photo.full;
 
         // Belt and braces. `image_path` is written by our own DAL, but it is a
         // string on a document and this is the one place it becomes a file read

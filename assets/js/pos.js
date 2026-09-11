@@ -2181,7 +2181,7 @@ function renderMenu() {
                      (No backticks in this comment - it sits inside a template
                      literal and one would end the string.) -->
                 <span class="pos-card-initial">${esc(initials(m.name))}</span>
-                ${m.image_path ? `<img alt="" hidden data-img="${esc(m.image_path)}">` : ''}
+                ${m.image_path ? `<img alt="" hidden data-img="${esc(m.image_thumb_path || m.image_path)}">` : ''}
             </span>
             <span class="pos-card-name">${esc(m.name)}</span>
             <span class="pos-card-price">${rp(m.sales_price)}</span>

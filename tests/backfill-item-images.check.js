@@ -13,7 +13,7 @@
 // =============================================================================
 const path = require('path');
 const { chromium } = require(path.join(__dirname, '..', 'node_modules', '@playwright', 'test'));
-const { rightSize, nextPath, MAX_EDGE } = require(
+const { rightSize, nextPath, thumbPathFor, MAX_EDGE, THUMB_EDGE, THUMB_QUALITY } = require(
     path.join(__dirname, '..', 'scripts', 'backfill-item-images.js'));
 
 let failures = 0;
@@ -121,6 +121,31 @@ async function photo(page, w, h, quality = 0.92) {
     const junk = Buffer.from([0x00, 0x01, 0x02, 0x03, 0x04]);
     is(await rightSize(page, junk, 'image/jpeg'), null,
         'a file that will not decode is left alone rather than replaced with nothing');
+
+    // ── The small copy (`--thumbs`, 2026-09-11) ─────────────────────────────
+    // The realistic input is a photo that is ALREADY right-sized (1280px WebP):
+    // that is what every item holds after the 2026-09-08 backfill.
+    const thumbOpts = { maxEdge: THUMB_EDGE, quality: THUMB_QUALITY, thumb: true };
+    if (sized) {
+        const copy = await rightSize(page, sized.bytes, sized.contentType, thumbOpts);
+        ok(copy, 'a right-sized 1280px photo gets a small copy');
+        if (copy) {
+            is(Math.max(copy.width, copy.height), THUMB_EDGE, `the copy's longest edge is ${THUMB_EDGE}`);
+            ok(copy.height > copy.width, '…still portrait');
+            ok(copy.bytes.length < sized.bytes.length / 2, `…and well under half the bytes (${(sized.bytes.length / 1024).toFixed(0)}KB → ${(copy.bytes.length / 1024).toFixed(0)}KB)`);
+            is(copy.contentType, 'image/webp', '…as WebP');
+        }
+    }
+    is(await rightSize(page, small, 'image/jpeg', thumbOpts), null,
+        'a photo no bigger than a copy gets no copy — readers fall back to it');
+    is(thumbPathFor('workspaces/w/items/i/1757300000000_nasi.webp', 'image/webp'),
+        'workspaces/w/items/i/1757300000000_nasi__w640.webp',
+        'the copy is named exactly as uploadItemImage names it');
+    const client = require('fs').readFileSync(path.join(__dirname, '..', 'assets/js/db-service.js'), 'utf8');
+    ok(/storagePath\.replace\(\/\\\.\[\^\.\/\]\+\$\/, ''\) \+ '__w640'/.test(client),
+        '…and the client still names it that way');
+    ok(/f\.name === inUse \|\| \(thumbInUse && f\.name === thumbInUse\)/.test(script),
+        '--prune-orphans keeps the small copy — it is in use too');
 
     await browser.close();
 

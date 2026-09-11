@@ -2944,7 +2944,7 @@
                         // setItemImage, not saveItem: saveItem validates a whole
                         // draft (name, base unit, the recipe graph) and would
                         // throw on a payload carrying only a photo.
-                        await ds.setItemImage(currentUid, saved.id, up.storagePath);
+                        await ds.setItemImage(currentUid, saved.id, up.storagePath, { thumbPath: up.thumbPath });
                     } catch (imgErr) {
                         // Named, never swallowed. The item saved; the photo did
                         // not, and a person who is not told will assume it did

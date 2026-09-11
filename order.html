@@ -2748,6 +2748,10 @@ html.kb-open .welcome-art { display: none; }
     // Playwright, and a hardcoded host would break one of them.
     // =====================================================================
     var FN = '/.netlify/functions/';
+    // The 640px copy of an item photo, for everything that renders small:
+    // cards, cart and order lines. The hero and the dish sheet stay full size.
+    // `qr-menu-image` falls back to the full photo when an item has no copy.
+    var THUMB = '&size=thumb';
     var TOKEN = readToken();
 
     var menu = null;         // the endpoint's payload
@@ -3943,9 +3947,14 @@ html.kb-open .welcome-art { display: none; }
             return;
         }
 
+        // ⚠️ THE FIRST SLIDE FIRST. The slide a diner sees is the page's
+        // largest paint, and on 4G it shared the link with seven more slides
+        // and every card photo: painted at 8.2 s in the load-test baseline
+        // (docs/perf/S1_BASELINE_2026-09-11.md, F3). High priority for it, low
+        // for the slides nobody has swiped to yet.
         rail.innerHTML = srcs.map(function (src, n) {
             return '<div class="hero-slide"><img alt="" decoding="async"'
-                + (n === 0 ? '' : ' loading="lazy"')
+                + (n === 0 ? ' fetchpriority="high"' : ' loading="lazy" fetchpriority="low"')
                 + ' src="' + esc(src) + '"></div>';
         }).join('');
 
@@ -4366,7 +4375,7 @@ html.kb-open .welcome-art { display: none; }
         var media = i.has_image
             ? '<div class="card-media"><img loading="lazy" decoding="async" alt="" src="'
                 + FN + 'qr-menu-image?token=' + encodeURIComponent(TOKEN)
-                + '&item=' + encodeURIComponent(i.id) + '"></div>'
+                + '&item=' + encodeURIComponent(i.id) + THUMB + '"></div>'
             : '<div class="card-media is-placeholder" style="--tint:'
                 + categoryTint(i.category) + '">' + PLACEHOLDER + '</div>';
         var qty = qtyInCart(i.id);
@@ -4816,7 +4825,7 @@ html.kb-open .welcome-art { display: none; }
             var it = itemById(l.item_id);
             var media = (it && it.has_image)
                 ? '<img loading="lazy" decoding="async" alt="" src="' + FN + 'qr-menu-image?token='
-                    + encodeURIComponent(TOKEN) + '&item=' + encodeURIComponent(l.item_id) + '">'
+                    + encodeURIComponent(TOKEN) + '&item=' + encodeURIComponent(l.item_id) + THUMB + '">'
                 : PLACEHOLDER;
             return '<div class="cartline">'
                 + '<div class="cartline-thumb" style="--tint:'
@@ -4914,7 +4923,7 @@ html.kb-open .welcome-art { display: none; }
         $('cart-suggest').innerHTML = picks.map(function (i) {
             var media = i.has_image
                 ? '<img loading="lazy" decoding="async" alt="" src="' + FN + 'qr-menu-image?token='
-                    + encodeURIComponent(TOKEN) + '&item=' + encodeURIComponent(i.id) + '">'
+                    + encodeURIComponent(TOKEN) + '&item=' + encodeURIComponent(i.id) + THUMB + '">'
                 : PLACEHOLDER;
             return '<button class="suggest" type="button" data-suggest="' + esc(i.id) + '">'
                 + '<span class="suggest-media" style="--tint:' + categoryTint(i.category) + '">'
@@ -5627,7 +5636,7 @@ html.kb-open .welcome-art { display: none; }
             var it = itemById(l.item_id);
             var media = (it && it.has_image)
                 ? '<img loading="lazy" decoding="async" alt="" src="' + FN + 'qr-menu-image?token='
-                    + encodeURIComponent(TOKEN) + '&item=' + encodeURIComponent(l.item_id) + '">'
+                    + encodeURIComponent(TOKEN) + '&item=' + encodeURIComponent(l.item_id) + THUMB + '">'
                 : PLACEHOLDER;
             var meta = [];
             if (l.modifiers && l.modifiers.length) meta.push(l.modifiers.join(', '));

@@ -569,7 +569,12 @@ export const POS_METHODS = {
                 // authenticated read, so a menu photo can never become a public
                 // link. Optional: most items have none, and the card is designed
                 // for that being the common case rather than the exception.
-                image_path: i.image_path || null
+                image_path: i.image_path || null,
+                // Its 640px copy, for the tile (2026-09-11). A tile is ~100 CSS
+                // px, and a till loading sixty 1280px photos on restaurant wifi
+                // was paying ~70% more than it shows. Null for photos that
+                // predate the copy — the tile then uses `image_path`.
+                image_thumb_path: i.image_thumb_path || null
             }))
             .sort((a, b) => (a.pos_sort - b.pos_sort)
                 || String(a.pos_category || '').localeCompare(String(b.pos_category || ''))
