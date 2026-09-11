@@ -625,6 +625,17 @@ the photo is still the one copied). ⚠️ `--prune-orphans` keeps
 `image_thumb_path` as well as `image_path` — before this it would have deleted
 every card photo's copy as a "superseded sibling".
 
+**Production run, 2026-09-11:** 88 items with photos across 24 workspaces. 72
+now have a copy (60 load-test, 12 real — 8 in one workspace, 4 in another), 16
+were already ≤640px and serve as their own copy, 0 failed, 530 KB of copies. A
+re-run reports 0 to do. Checked end to end on a real menu: a card now loads a
+74 KB copy of a 121 KB photo.
+
+**Measured (S1, production, after `f255afc`):** scrolling a 60-dish menu 4.5 MB
+→ **1.2 MB** of photos; first screen on 4G 1.4 MB → **467 KB**; first photo on
+4G median **3.9 s** (8.2 s at the baseline) — what remains is mostly the menu
+itself arriving (the functions' region, and cold starts).
+
 ### Not a `document`
 
 `documents` is for records: a Firestore row, the monthly document-processing
