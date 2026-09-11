@@ -3876,3 +3876,49 @@ test.describe('small photos where photos are small', () => {
         expect(cartSrc).toMatch(/[?&]size=thumb(&|$)/);
     });
 });
+
+// ⚠️ ON fluxyos.com THE DINER CALLS CLOUD RUN, AND FALLS BACK (2026-09-11).
+//
+// Every other test here runs on 127.0.0.1, where the page keeps the relative
+// Netlify path — so none of them can see the switch. These serve the page AS
+// order.fluxyos.com (every request to that host answered from this checkout)
+// and watch where the API calls go.
+test.describe('on fluxyos.com the QR API is Cloud Run, with the Netlify copy behind it', () => {
+    const nodePath = require('path');
+    const HOST = 'https://order.fluxyos.com';
+    const RUN = 'https://qr-diner-1084252368929.asia-southeast1.run.app';
+    const ROOT_DIR = nodePath.join(__dirname, '..');
+
+    async function asProduction(page) {
+        // Registered AFTER stub(), so it is asked first; API paths fall through
+        // to the stubs, everything else is this checkout's file.
+        await page.route(`${HOST}/**`, (route) => {
+            const u = new URL(route.request().url());
+            if (u.pathname.startsWith('/.netlify/functions/')) return route.fallback();
+            const file = u.pathname.startsWith('/t/') ? 'order.html' : decodeURIComponent(u.pathname.slice(1));
+            return route.fulfill({ path: nodePath.join(ROOT_DIR, file) });
+        });
+    }
+    const TOK = 'tok_playwright_fixture_0001';
+
+    test('the menu is asked of Cloud Run', async ({ page }) => {
+        const asked = [];
+        page.on('request', (r) => { if (/qr-menu\?/.test(r.url())) asked.push(new URL(r.url()).origin); });
+        await stub(page);
+        await asProduction(page);
+        await page.goto(`${HOST}/t/${TOK}`);
+        await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/, { timeout: 15_000 });
+        expect(asked[0], `menu requests went to: ${asked.join(', ')}`).toBe(RUN);
+    });
+
+    test('when Cloud Run fails, the same request goes to the Netlify copy and the menu still loads', async ({ page }) => {
+        const asked = [];
+        page.on('request', (r) => { if (/qr-menu\?/.test(r.url())) asked.push(new URL(r.url()).origin); });
+        await stub(page);
+        await page.route(`${RUN}/qr-menu?**`, (route) => route.fulfill({ status: 503, body: 'unavailable' }));
+        await asProduction(page);
+        await page.goto(`${HOST}/t/${TOK}`);
+        await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/, { timeout: 15_000 });
+        expect(asked, 'Cloud Run first, then the Netlify copy').toEqual([RUN, HOST]);
+    });
+});

@@ -15,6 +15,10 @@
      wifi that is most of a second before a byte of JPEG moves. Warming it in
      the head overlaps that with the menu fetch instead of queueing behind it. -->
 <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
+<!-- The QR diner API on Cloud Run (asia-southeast1) — see the Endpoints note
+     in the script. Opened early so the menu request does not pay the TLS
+     handshake. -->
+<link rel="preconnect" href="https://qr-diner-1084252368929.asia-southeast1.run.app" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!--
@@ -2743,11 +2747,38 @@ html.kb-open .welcome-art { display: none; }
     'use strict';
 
     // =====================================================================
-    // Endpoints. Relative, never absolute: this page is served from the order
-    // origin AND from the monolith (SITE_ROLE unset) for local dev and
-    // Playwright, and a hardcoded host would break one of them.
+    // Endpoints.
+    //
+    // ⚠️ ON fluxyos.com THE DINER TALKS TO CLOUD RUN (2026-09-11). The five QR
+    // functions run in asia-southeast1 beside Firestore with one instance
+    // always up (services/qr): a menu in ~0.1 s and an order in ~0.1-0.4 s
+    // from Jakarta, where the Netlify copies in us-east-2 took ~0.6 s and
+    // ~1.6 s warm and 4-12 s cold (docs/perf/LOAD_2026-09-11.md). Same code:
+    // services/qr wraps netlify/functions/qr-*.js unchanged.
+    //
+    // Everywhere else — local dev, Playwright, deploy previews (SITE_ROLE
+    // unset) — the relative path, exactly as before: a hardcoded host there
+    // would send tests and previews to production, and the specs stub these
+    // routes by path on any host anyway.
+    //
+    // FALLBACK: the Netlify copies stay deployed. A call that fails on the
+    // network (or is blocked) or answers 5xx is sent once more to them —
+    // safe for an order, whose idempotency record lives in the shared
+    // database. Rolling back entirely is setting QR_API to FN_NETLIFY.
     // =====================================================================
-    var FN = '/.netlify/functions/';
+    var FN_NETLIFY = '/.netlify/functions/';
+    var QR_API = 'https://qr-diner-1084252368929.asia-southeast1.run.app/';
+    var FN = /(^|\.)fluxyos\.com$/.test(window.location.hostname) ? QR_API : FN_NETLIFY;
+
+    /** fetch(FN + path), retried once on the Netlify copy if Cloud Run fails. */
+    function qrFetch(path, init) {
+        if (FN === FN_NETLIFY) return fetch(FN + path, init);
+        return fetch(FN + path, init).then(function (r) {
+            return r.status >= 500 ? fetch(FN_NETLIFY + path, init) : r;
+        }, function () {
+            return fetch(FN_NETLIFY + path, init);
+        });
+    }
     // The 640px copy of an item photo, for everything that renders small:
     // cards, cart and order lines. The hero and the dish sheet stay full size.
     // `qr-menu-image` falls back to the full photo when an item has no copy.
@@ -3830,7 +3861,7 @@ html.kb-open .welcome-art { display: none; }
         return;
     }
 
-    fetch(FN + 'qr-menu?token=' + encodeURIComponent(TOKEN))
+    qrFetch('qr-menu?token=' + encodeURIComponent(TOKEN))
         .then(function (r) {
             if (r.status === 429) throw new Error('busy');
             if (!r.ok) throw new Error('gone');
@@ -5400,7 +5431,7 @@ html.kb-open .welcome-art { display: none; }
     function refreshOrders(opts) {
         var reconcile = !!(opts && opts.reconcile);
         var seq = ++ordersSeq;
-        return fetch(FN + 'qr-order-status?token=' + encodeURIComponent(TOKEN)
+        return qrFetch('qr-order-status?token=' + encodeURIComponent(TOKEN)
             + (placed.length ? '&ids=' + encodeURIComponent(placed.join(',')) : ''))
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (data) {
@@ -5917,7 +5948,7 @@ html.kb-open .welcome-art { display: none; }
         setDisabled(btn, true);
         setCopy(btn, 'orders.calling');
 
-        fetch(FN + 'qr-request-bill', {
+        qrFetch('qr-request-bill', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token: TOKEN })
@@ -6053,7 +6084,7 @@ html.kb-open .welcome-art { display: none; }
      * send it a second time as a new sitting without duplicating the payload.
      */
     function postOrder(outgoingNote) {
-        return fetch(FN + 'qr-order', {
+        return qrFetch('qr-order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

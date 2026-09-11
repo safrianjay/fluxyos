@@ -37,8 +37,11 @@ function main() {
     const ok = [];
 
     for (const [file, deployCmd] of Object.entries(ARTIFACTS)) {
-        if (!fs.existsSync(path.join(REPO_ROOT, file))) continue;
+        // A computed artifact (the Cloud Run bundle, `qr-service`) is not a
+        // file on disk — it must never be skipped for "not existing", or the
+        // check that exists to catch an undeployed handler change passes it.
         const hash = sha256(file);
+        if (!hash) continue;
         const stamped = (stamps[file] || {}).sha256;
 
         if (!stamped) {

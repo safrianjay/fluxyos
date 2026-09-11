@@ -187,8 +187,6 @@ const SCHEDULED_FUNCTIONS = [
     'notify-sweep.js',
     'storage-token-sweep.js',
     'payment-reminders.js',
-    // Pings the ORDER site's functions; runs from the dashboard site only.
-    'qr-warm.js',
     'trial-reminders.js',
     'weekly-digest.js',
 ];
@@ -208,7 +206,8 @@ const SCHEDULED_FUNCTIONS = [
 //   netlify.toml    build/deploy configuration
 // perf/ is the load-test harness (docs/PERF_TEST_PLAN.md) — local tooling that
 // signs in as a QA account, and nothing a visitor should be able to fetch.
-const PRIVATE_DIRS = ['docs', 'tests', 'scripts', 'perf', 'seo', '.githooks', 'cbm-extracted'];
+// services/ is source for Cloud Run (services/qr), deployed with gcloud, not Netlify.
+const PRIVATE_DIRS = ['docs', 'tests', 'scripts', 'perf', 'services', 'seo', '.githooks', 'cbm-extracted'];
 const PRIVATE_FILES = [
     'firestore.rules',
     'storage.rules',

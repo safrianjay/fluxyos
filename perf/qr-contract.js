@@ -24,10 +24,19 @@
 
 const admin = require('firebase-admin');
 admin.initializeApp({ projectId: 'fluxyos', storageBucket: 'fluxyos.firebasestorage.app' });
-const { File } = require('@google-cloud/storage');
-File.prototype.getSignedUrl = async function fakeSign() {
-    return [`https://signed.test/${this.name}?at=${Date.now()}`];
-};
+
+// QR_BASE_URL=https://… runs the same checks OVER HTTP against a deployed
+// service (the Cloud Run bundle, services/qr) instead of calling the handlers
+// in-process. Checks that need to reach inside the process — the forced
+// kitchen race, the 52-order window (it needs many client addresses), the fake
+// signer — run in-process only; they test the handlers, which are the same code.
+const REMOTE = (process.env.QR_BASE_URL || '').replace(/\/+$/, '') || null;
+if (!REMOTE) {
+    const { File } = require('@google-cloud/storage');
+    File.prototype.getSignedUrl = async function fakeSign() {
+        return [`https://signed.test/${this.name}?at=${Date.now()}`];
+    };
+}
 
 const pricing = require('../assets/js/pos-pricing.js');
 const { readFixtures } = require('./lib/session');
@@ -52,7 +61,29 @@ const is = (actual, expected, label) => {
 const IP = `198.51.100.${Math.floor(Math.random() * 200) + 20}`;
 const headers = { 'x-nf-client-connection-ip': IP, origin: 'https://order.fluxyos.com' };
 const timings = {};
-async function call(name, { query = null, body = null, ip = null } = {}) {
+async function callRemote(name, { query = null, body = null }) {
+    const t0 = Date.now();
+    const qs = query ? `?${new URLSearchParams(query)}` : '';
+    const r = await fetch(`${REMOTE}/${name}${qs}`, {
+        method: body ? 'POST' : 'GET',
+        headers: { Origin: 'https://order.fluxyos.com', ...(body ? { 'Content-Type': 'application/json' } : {}) },
+        body: body ? JSON.stringify(body) : undefined,
+        redirect: 'manual'
+    });
+    const text = await r.text();
+    (timings[name] = timings[name] || []).push(Date.now() - t0);
+    const raw = {};
+    r.headers.forEach((v, k) => { raw[k] = v; });
+    const hdrs = new Proxy(raw, { get: (t, k) => t[String(k).toLowerCase()] });
+    let json = null;
+    try { json = JSON.parse(text); } catch (_) { /* image / empty */ }
+    if (process.env.TRACE && raw['server-timing']) console.log(`    ${name} ${r.status} ${Date.now() - t0}ms · ${raw['server-timing']}`);
+    return { status: r.status, headers: hdrs, json };
+}
+
+async function call(name, opts = {}) {
+    if (REMOTE) return callRemote({ menu: 'qr-menu', image: 'qr-menu-image', order: 'qr-order', status: 'qr-order-status', bill: 'qr-request-bill' }[name], opts);
+    const { query = null, body = null, ip = null } = opts;
     const t0 = Date.now();
     const res = await H[name]({
         httpMethod: body ? 'POST' : 'GET',
@@ -98,13 +129,18 @@ const ref = (tag) => `contract${tag}${Date.now().toString(36)}`;
     is((await call('menu', { query: { token: 'contractNoSuchToken123' } })).status, 404, 'an unknown token is 404');
 
     // ── Photo ───────────────────────────────────────────────────────────────
+    // SKIP_PHOTOS=1 for a LOCAL HTTP run only: a personal gcloud login cannot
+    // sign URLs (no client_email); the deployed service signs as its own account.
+    if (!process.env.SKIP_PHOTOS) {
     const dish = fx.items.find((i) => i.has_photo);
     const p1 = await call('image', { query: { token: T.token, item: dish.id } });
     is(p1.status, 302, 'a photo redirects');
-    is(/^https:\/\/signed\.test\/workspaces\//.test(p1.headers.Location || ''), true, '…to a signed URL for this workspace');
+    is(REMOTE
+        ? /^https:\/\/storage\.googleapis\.com\/[^/]+\/workspaces%2F|^https:\/\/storage\.googleapis\.com\/[^/]+\/workspaces\//.test(p1.headers.Location || '') && /[?&](X-Goog-Signature|Signature)=/.test(p1.headers.Location || '')
+        : /^https:\/\/signed\.test\/workspaces\//.test(p1.headers.Location || ''), true, '…to a signed URL for this workspace');
     const p2 = await call('image', { query: { token: T.token, item: dish.id } });
     is(p2.headers.Location, p1.headers.Location, 'a second request reuses the signed URL');
-    const maxAge = Number(/max-age=(\d+)/.exec(p2.headers['Cache-Control'] || '')[1]);
+    const maxAge = Number((/max-age=(\d+)/.exec(p2.headers['Cache-Control'] || '') || [])[1] || NaN);
     is(maxAge <= 1800 && maxAge >= 60, true, `…with a cache life no longer than 30 min (${maxAge}s)`);
     is((await call('image', { query: { token: T.token, item: 'contractNoSuchItem' } })).status, 404, 'an unknown dish is 404');
 
@@ -124,6 +160,8 @@ const ref = (tag) => `contract${tag}${Date.now().toString(36)}`;
     } finally {
         await bareRef.update({ image_thumb_path: kept || null });
     }
+
+    }   // photos
 
     // ── Status before anything is ordered ───────────────────────────────────
     const s0 = await call('status', { query: { token: T.token } });
@@ -202,6 +240,7 @@ const ref = (tag) => `contract${tag}${Date.now().toString(36)}`;
     const behind = await call('order', { body: { token: T.token, client_ref: ref('f'), sitting: null, lines: lines2 } });
     is([behind.status, behind.json.error], [409, 'bill_requested'], 'no new ticket opens behind a requested bill');
 
+    if (!REMOTE) {
     // ── H1: a table must not vanish behind 50 newer orders ──────────────────
     // The lunch rush lost 36 live sittings this way (docs/perf/LOAD_2026-09-11.md).
     // Open a sitting, push 52 newer orders onto OTHER tables, then ask the
@@ -262,7 +301,9 @@ const ref = (tag) => `contract${tag}${Date.now().toString(36)}`;
         { token: K.token, client_ref: ref('v2'), sitting: v1.json.order_id, lines: lines2 });
     is([kVoid.status, kVoid.json.error], [409, 'order_closed'], 'F7: a ticket voided mid-flight is still refused order_closed');
 
-    // ── Round trips, for the record (from Jakarta, ~50 ms each — not prod) ──
+    }   // in-process only
+
+    // ── Round trips, for the record ────────────────────────────────────────
     console.log('\n  local timings (ms):', JSON.stringify(Object.fromEntries(Object.entries(timings).map(([k, v]) => [k, v]))));
     console.log('  reset:', JSON.stringify(await reset({ log: () => {} })));
     console.log(failures ? `\n✗ ${failures} failure(s)\n` : '\nqr contract: clean\n');

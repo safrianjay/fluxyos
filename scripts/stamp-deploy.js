@@ -40,9 +40,20 @@ const ARTIFACTS = {
     'firestore.rules': 'firebase deploy --only firestore:rules',
     'firestore.indexes.json': 'firebase deploy --only firestore:indexes',
     'storage.rules': 'firebase deploy --only storage',
+    // Not a file: the Cloud Run bundle of the five QR diner functions
+    // (services/qr, 2026-09-11). Diners are served by Cloud Run, so a handler
+    // change pushed to git reaches only the Netlify copies. Its hash covers
+    // every source file in the bundle (scripts/build-qr-service.js).
+    'qr-service': 'bash scripts/deploy-qr-service.sh',
+};
+
+// Artifacts whose "content" is computed rather than read from one file.
+const COMPUTED = {
+    'qr-service': () => require('./build-qr-service.js').bundleHash(),
 };
 
 function sha256(file) {
+    if (COMPUTED[file]) return COMPUTED[file]();
     const abs = path.join(REPO_ROOT, file);
     if (!fs.existsSync(abs)) return null;
     return crypto.createHash('sha256').update(fs.readFileSync(abs)).digest('hex');
@@ -59,7 +70,7 @@ function main() {
     stamps._comment = [
         'Hash of each deploy-gated artifact AS LAST DEPLOYED. Written by',
         '`npm run deploy:stamp`, verified by tests/deploy-stamp.check.js in the QA',
-        'BE lane. A mismatch means the working tree expects a Firebase deploy that',
+        'BE lane. A mismatch means the working tree expects a Firebase (or Cloud Run) deploy that',
         'has not happened — push that code and it can break production, because',
         'these files do NOT ship with git push.',
         '',

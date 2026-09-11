@@ -1282,6 +1282,47 @@ directory holding only tables whose codes are actually out there. Firestore
 triggers are not an option — they are Cloud Functions, and this backend is
 Netlify Functions, which are HTTP and cannot watch a collection.
 
+## 5c. Where the QR diner functions run — Cloud Run, Singapore (2026-09-11)
+
+The five functions a diner's phone calls — `qr-menu`, `qr-menu-image`,
+`qr-order`, `qr-order-status`, `qr-request-bill` — are served to diners by
+**Cloud Run service `qr-diner` in `asia-southeast1`**, beside Firestore:
+`https://qr-diner-1084252368929.asia-southeast1.run.app`.
+
+**Why.** On Netlify they ran in `us-east-2`: ~200 ms per Firestore round trip,
+~0.3 s edge-to-Ohio per request, and a 4–12 s cold start after 2.5–4 idle
+minutes. The Netlify region is a paid setting; a scheduled warm-up cost a third
+of the Free plan's 125k monthly invocations and still missed a quarter to half
+of first diners (it was removed). Measured from Jakarta after the move: menu
+**~0.1 s** (server 19–45 ms), order **0.1–0.4 s**, status and bill ~0.1–0.2 s.
+
+| | |
+|---|---|
+| Code | `services/qr/server.js` adapts a Node request into the Netlify event and calls the SAME handlers, copied unchanged into `.qr-service/` by `scripts/build-qr-service.js` (which fails if any `require` would not resolve in the bundle) |
+| Runtime | Node 22 (buildpacks), 1 vCPU, 512 MiB, **min 1 / max 10 instances**, 80 concurrent requests per instance (a menu's photo burst does not start new instances), 30 s timeout |
+| Identity | service account `qr-diner@` — `roles/datastore.user` (project), `roles/storage.objectViewer` (the photo bucket), `roles/iam.serviceAccountTokenCreator` on itself (it signs photo URLs through IAM; no key exists) |
+| Access | public (`allUsers` invoker) — diners are anonymous; every endpoint is token-gated and rate-limited as before |
+| Client IP | the LAST `X-Forwarded-For` entry, which Google's front end appends; client-supplied entries and any client `x-nf-client-connection-ip` are ignored. Proven: 21 requests each claiming a different address — the 21st is refused 429 |
+| Health | `GET /health` (not `/healthz` — Cloud Run reserves paths ending in `z`) |
+| CORS | the handlers' own (`lib/allowed-origins.js`); preflights cached 2 h (`Access-Control-Max-Age`) |
+
+**The page.** `order.html` calls `QR_API` (Cloud Run) when served from
+`*.fluxyos.com`, and the relative `/.netlify/functions/` everywhere else (local,
+Playwright, deploy previews). A call that fails on the network or answers 5xx is
+retried once on the Netlify copy — safe for an order, its idempotency record is
+in the shared database. The CSP's `connect-src` lists the Cloud Run origin.
+**Rollback:** set `var FN` to `FN_NETLIFY` in `order.html` and push.
+
+⚠️ **CHANGING A QR HANDLER NOW NEEDS A CLOUD RUN DEPLOY.** A `git push` updates
+only the Netlify copies, which diners no longer use. `check:deploy-stamp`
+tracks the bundle as the artifact `qr-service` and blocks the push until:
+
+```sh
+bash scripts/deploy-qr-service.sh
+QR_BASE_URL=https://qr-diner-1084252368929.asia-southeast1.run.app node perf/qr-contract.js
+node scripts/stamp-deploy.js qr-service && git add deploy/deployed-stamps.json
+```
+
 ## 5b. Finding a table's orders — by table, never by recency (2026-09-11)
 
 `qr-order`, `qr-order-status` and `qr-request-bill` read **this table's** 25

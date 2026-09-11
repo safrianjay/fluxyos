@@ -75,3 +75,6 @@ assets/images/order-success.png
 # Lunch Rush load-test outputs (perf/seed.js): tokens, cards, run data
 perf/.fixtures.json
 perf/out/
+
+# Cloud Run bundle for the QR diner functions (scripts/build-qr-service.js)
+.qr-service/

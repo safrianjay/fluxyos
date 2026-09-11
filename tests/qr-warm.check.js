@@ -9,9 +9,8 @@
 //     POST endpoint (qr-order, qr-request-bill) — 405, still cold
 //   - a warm-up that touches the rate limiter leaves a counter document per
 //     ping in `rate_limits`, which has no TTL
-//   - the cron in code drifting from netlify.toml (storage-token-sweep did)
-//   - qr-warm dropping out of SCHEDULED_FUNCTIONS: it would run from all four
-//     sites and ping four times over
+//   - the warm-up scheduler coming back and spending the Free plan's function
+//     quota again (it was removed on 2026-09-11; Cloud Run keeps one instance up)
 //
 // No credentials, no network. Run: node tests/qr-warm.check.js
 // =============================================================================
@@ -53,19 +52,16 @@ const is = (a, b, label) => (JSON.stringify(a) === JSON.stringify(b) ? ok(label)
     const broken = await warmup(() => { throw new Error('no credentials'); });
     is(broken.statusCode, 503, 'a warm-up that cannot reach Firestore says so (503) instead of throwing');
 
-    // ── The schedule, and where it runs ─────────────────────────────────────
-    const warmSrc = FN('qr-warm.js');
-    const cron = (/const CRON = '([^']+)'/.exec(warmSrc) || [])[1];
+    // ── The scheduler is OFF (2026-09-11) ────────────────────────────────────
+    // `qr-warm` pinged all five every 5 minutes and cost ~39k of the Free
+    // plan's 125k monthly invocations (team-wide) while warming only half to
+    // three-quarters of first diners (instances stay warm 2.5-4 min). The
+    // diner functions moved to Cloud Run with one always-on instance instead
+    // (services/qr, docs/perf/LOAD_2026-09-11.md). A scheduler brought back
+    // would spend that quota again, so its return is a deliberate act.
+    is(fs.existsSync(path.join(ROOT, 'netlify/functions/qr-warm.js')), false, 'no warm-up scheduler is deployed');
     const toml = fs.readFileSync(path.join(ROOT, 'netlify.toml'), 'utf8');
-    const tomlCron = (/\[functions\."qr-warm"\]\s*\n\s*schedule = "([^"]+)"/.exec(toml) || [])[1];
-    is(!!cron && cron === tomlCron, true, `the cron in code equals netlify.toml (${cron} / ${tomlCron})`);
-    is(/schedule\(CRON,/.test(warmSrc), true, '…and the in-code wrapper uses it');
-    const deploy = fs.readFileSync(path.join(ROOT, 'scripts/prepare-deploy.js'), 'utf8');
-    const listed = (deploy.match(/const SCHEDULED_FUNCTIONS = \[([\s\S]*?)\];/) || [])[1] || '';
-    is(/'qr-warm\.js'/.test(listed), true, 'qr-warm is in SCHEDULED_FUNCTIONS — it runs from the dashboard site only');
-    is(/order\.fluxyos\.com/.test(warmSrc), true, 'it warms the ORDER site, where diners call');
-    is(FIVE.every((f) => warmSrc.includes(`'${f}'`)), true, 'it warms all five diner functions');
-    is(/ops_heartbeats\/qr-warm/.test(warmSrc), true, 'every run leaves a heartbeat, so a cron that never registered is visible');
+    is(/\[functions\."qr-warm"\]/.test(toml), false, '…and no cron for one is declared');
 
     console.log(failures ? `\n✗ ${failures} failure(s)\n` : '\nqr warm: clean\n');
     process.exit(failures ? 1 : 0);

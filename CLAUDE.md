@@ -274,6 +274,13 @@ list. A page may be served by several roles: `pos.html` and `login.html` are
 `['app', 'till']` during the migration, which is what makes the cutover a
 one-line reversible edit (drop `'app'` and the dashboard starts 301ing `/pos`).
 
+**The five QR diner functions are served from Cloud Run, not Netlify**
+(service `qr-diner`, `asia-southeast1`, since 2026-09-11 — `docs/data-model/pos.md`
+§5c). Their code stays in `netlify/functions/qr-*.js` and the Netlify copies
+remain as the fallback, but **a change to them needs `bash
+scripts/deploy-qr-service.sh`** as well as a push; `check:deploy-stamp` blocks the
+push until the `qr-service` stamp matches.
+
 **Function CORS comes from one list** —
 `netlify/functions/lib/allowed-origins.js`. Ten functions used to carry their own
 hardcoded array and had already drifted. `npm run check:origins` fails the build
