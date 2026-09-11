@@ -317,6 +317,8 @@ runs from the repo root; the local app server starts itself when needed.
 | `npm run perf:verify -- --log perf/out/s3-1x/orders.log` | The hard budgets: lost, doubled, misrouted, mispriced orders, number gaps |
 | `node perf/report.js --run s3-1x --reads-per-refresh 433` | One markdown report for the run folder |
 | `node perf/qr-contract.js` | Before any change to a `qr-*` function ships: the five real handlers against the load workspace, 38 assertions |
+| `node perf/waterfall.js [url] --runs 5` | One cold page load on Lighthouse's 4G, printed as a request waterfall with first photo / LCP — S1 gives the medians, this shows why |
+| `node perf/serve-order.js --doc-delay 750` + `node perf/waterfall.js --map 127.0.0.1:8766` | A change to `order.html` measured BEFORE it ships: order.fluxyos.com is served from this checkout (HTTP/2, brotli, first byte held back like production's), against the real Cloud Run API, fonts and storage. `--page perf/out/order.head.html` (from `git show HEAD:order.html`) is the A side |
 
 ⚠️ **Keep the load machine awake: prefix every long-running command with
 `caffeinate -i`.** The first S3 run (2026-09-11) was invalidated because the

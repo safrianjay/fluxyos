@@ -6,6 +6,140 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#0B0F19">
 <title>Pesan — FluxyOS</title>
+<!-- ⚠️ THE MENU IS ASKED FOR HERE, AT THE TOP OF <head> — not at the end of the
+     page script. That script is the last thing in this file, so it could not
+     run until all of it had arrived, and until the Google Fonts stylesheet
+     had: a parser-inserted stylesheet holds back every script after it, and
+     this one comes from an origin the phone has never met. On Lighthouse's 4G
+     the menu request left at 2.1 s for a 0.35 s answer, and the first photo
+     painted at 3.8 s (docs/perf/LOAD_2026-09-11.md, "The first photo on 4G"). From here it
+     leaves with the first packet of the page; the page script picks up the
+     SAME request (`FluxyOrderBoot.menu`) when it boots.
+     The fonts stylesheet is injected from here for the same reason: a
+     stylesheet added by script holds back neither rendering nor scripts, and
+     `display=swap` already meant text shows in the fallback face until Inter
+     lands. -->
+<script>
+(function () {
+    'use strict';
+
+    // =====================================================================
+    // Endpoints.
+    //
+    // ⚠️ ON fluxyos.com THE DINER TALKS TO CLOUD RUN (2026-09-11). The five QR
+    // functions run in asia-southeast1 beside Firestore with one instance
+    // always up (services/qr): a menu in ~0.1 s and an order in ~0.1-0.4 s
+    // from Jakarta, where the Netlify copies in us-east-2 took ~0.6 s and
+    // ~1.6 s warm and 4-12 s cold (docs/perf/LOAD_2026-09-11.md). Same code:
+    // services/qr wraps netlify/functions/qr-*.js unchanged.
+    //
+    // Everywhere else — local dev, Playwright, deploy previews (SITE_ROLE
+    // unset) — the relative path, exactly as before: a hardcoded host there
+    // would send tests and previews to production, and the specs stub these
+    // routes by path on any host anyway.
+    //
+    // FALLBACK: the Netlify copies stay deployed. A call that fails on the
+    // network (or is blocked) or answers 5xx is sent once more to them —
+    // safe for an order, whose idempotency record lives in the shared
+    // database. Rolling back entirely is setting QR_API to FN_NETLIFY.
+    // =====================================================================
+    var FN_NETLIFY = '/.netlify/functions/';
+    var QR_API = 'https://qr-diner-1084252368929.asia-southeast1.run.app/';
+    var FN = /(^|\.)fluxyos\.com$/.test(window.location.hostname) ? QR_API : FN_NETLIFY;
+
+    /** fetch(FN + path), retried once on the Netlify copy if Cloud Run fails. */
+    function qrFetch(path, init) {
+        if (FN === FN_NETLIFY) return fetch(FN + path, init);
+        return fetch(FN + path, init).then(function (r) {
+            return r.status >= 500 ? fetch(FN_NETLIFY + path, init) : r;
+        }, function () {
+            return fetch(FN_NETLIFY + path, init);
+        });
+    }
+    /**
+     * The table token. `/t/<token>` is the printed form — short enough to be a
+     * legible QR — and `?t=` is accepted so a link can be pasted or forwarded.
+     */
+    function readToken() {
+        var m = window.location.pathname.match(/\/t\/([A-Za-z0-9_-]{8,128})/);
+        if (m) return m[1];
+        var q = new URLSearchParams(window.location.search);
+        var tok = q.get('t') || q.get('token') || '';
+        return /^[A-Za-z0-9_-]{8,128}$/.test(tok) ? tok : '';
+    }
+
+    var token = readToken();
+    var menu = token ? qrFetch('qr-menu?token=' + encodeURIComponent(token)) : null;
+    // Marked handled HERE: a failure that lands before the page script has
+    // attached its own handler would otherwise be logged as an unhandled
+    // rejection (a console error the sweep fails on). The page script's own
+    // chain on the same promise still receives it and shows the error screen.
+    if (menu) menu.catch(function () {});
+
+    // The 640px copy of an item photo, for everything that renders small:
+    // cards, cart and order lines — and the hero's first slide until its full
+    // photo is in (leadSrc). The dish sheet stays full size. `qr-menu-image`
+    // falls back to the full photo when an item has no copy.
+    var THUMB = '&size=thumb';
+
+    /**
+     * What the hero's first slide is shown from FIRST: a dish's 640px copy
+     * (~12 KB, against ~70 KB for the full photo, which the page swaps in once
+     * it has loaded — see paintHeroGallery). A cover has no small copy: the
+     * endpoint would answer the second URL with the same full photo, so it
+     * would download twice. It leads as itself.
+     */
+    function leadSrc(src) {
+        return /[?&]item=/.test(src) ? src + THUMB : src;
+    }
+
+    /**
+     * The hero's slides. The owner's own cover comes first when there is one;
+     * then the outlet's photographed dishes, so a shop that has uploaded no
+     * cover still gets a hero that looks like THIS restaurant rather than a
+     * gradient. Capped — a hero is an impression, not a catalogue.
+     */
+    function heroSources(data) {
+        var tok = encodeURIComponent(token);
+        var out = [];
+        if (data.has_cover) out.push(FN + 'qr-menu-image?token=' + tok + '&cover=1');
+        (data.items || []).forEach(function (i) {
+            if (out.length >= 8 || !i || !i.has_image) return;
+            out.push(FN + 'qr-menu-image?token=' + tok + '&item=' + encodeURIComponent(i.id));
+        });
+        return out;
+    }
+
+    var boot = window.FluxyOrderBoot = {
+        FN: FN, qrFetch: qrFetch, token: token, menu: menu, THUMB: THUMB,
+        heroSources: heroSources, leadSrc: leadSrc, lead: null
+    };
+
+    // ⚠️ THE FIRST SLIDE IS ASKED FOR THE MOMENT THE MENU LANDS — not when the
+    // page script paints, which waits for the rest of this file to download
+    // and parse (on 4G the menu was back ~0.3 s before the script could use
+    // it). The page script renders the same URL and the browser attaches it to
+    // this download. Registered before the page script's handler, so the body
+    // is cloned before that handler reads it.
+    if (menu) {
+        menu.then(function (r) {
+            return r.ok ? r.clone().json() : null;
+        }).then(function (data) {
+            var first = data && heroSources(data)[0];
+            if (!first) return;
+            var img = new Image();
+            img.fetchPriority = 'high';
+            img.src = leadSrc(first);
+            boot.lead = img;            // held, so it is not collected mid-download
+        }).catch(function () { /* the page script reports menu failures */ });
+    }
+
+    var fonts = document.createElement('link');
+    fonts.rel = 'stylesheet';
+    fonts.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
+    document.head.appendChild(fonts);
+})();
+</script>
 <link rel="icon" type="image/svg+xml" href="/assets/images/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,7 +153,6 @@
      in the script. Opened early so the menu request does not pay the TLS
      handshake. -->
 <link rel="preconnect" href="https://qr-diner-1084252368929.asia-southeast1.run.app" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!--
   FluxyOS — the surface a diner sees after scanning the QR on their table.
@@ -2746,44 +2879,14 @@ html.kb-open .welcome-art { display: none; }
 (function () {
     'use strict';
 
-    // =====================================================================
-    // Endpoints.
-    //
-    // ⚠️ ON fluxyos.com THE DINER TALKS TO CLOUD RUN (2026-09-11). The five QR
-    // functions run in asia-southeast1 beside Firestore with one instance
-    // always up (services/qr): a menu in ~0.1 s and an order in ~0.1-0.4 s
-    // from Jakarta, where the Netlify copies in us-east-2 took ~0.6 s and
-    // ~1.6 s warm and 4-12 s cold (docs/perf/LOAD_2026-09-11.md). Same code:
-    // services/qr wraps netlify/functions/qr-*.js unchanged.
-    //
-    // Everywhere else — local dev, Playwright, deploy previews (SITE_ROLE
-    // unset) — the relative path, exactly as before: a hardcoded host there
-    // would send tests and previews to production, and the specs stub these
-    // routes by path on any host anyway.
-    //
-    // FALLBACK: the Netlify copies stay deployed. A call that fails on the
-    // network (or is blocked) or answers 5xx is sent once more to them —
-    // safe for an order, whose idempotency record lives in the shared
-    // database. Rolling back entirely is setting QR_API to FN_NETLIFY.
-    // =====================================================================
-    var FN_NETLIFY = '/.netlify/functions/';
-    var QR_API = 'https://qr-diner-1084252368929.asia-southeast1.run.app/';
-    var FN = /(^|\.)fluxyos\.com$/.test(window.location.hostname) ? QR_API : FN_NETLIFY;
-
-    /** fetch(FN + path), retried once on the Netlify copy if Cloud Run fails. */
-    function qrFetch(path, init) {
-        if (FN === FN_NETLIFY) return fetch(FN + path, init);
-        return fetch(FN + path, init).then(function (r) {
-            return r.status >= 500 ? fetch(FN_NETLIFY + path, init) : r;
-        }, function () {
-            return fetch(FN_NETLIFY + path, init);
-        });
-    }
-    // The 640px copy of an item photo, for everything that renders small:
-    // cards, cart and order lines. The hero and the dish sheet stay full size.
-    // `qr-menu-image` falls back to the full photo when an item has no copy.
-    var THUMB = '&size=thumb';
-    var TOKEN = readToken();
+    // Endpoints, the table's token and the menu request are set up by the boot
+    // script at the top of <head> — see "Endpoints" there. By the time this
+    // runs the menu request has usually been in flight for a second or more.
+    var BOOT = window.FluxyOrderBoot;
+    var FN = BOOT.FN;
+    var qrFetch = BOOT.qrFetch;
+    var THUMB = BOOT.THUMB;
+    var TOKEN = BOOT.token;
 
     var menu = null;         // the endpoint's payload
     var cart = [];           // [{ item_id, name, unit_price, options:[], modAmount, note, qty, key }]
@@ -3539,18 +3642,6 @@ html.kb-open .welcome-art { display: none; }
         set('data-i18n-aria', function (el, v) { el.setAttribute('aria-label', v); });
     }
 
-    /**
-     * The table token. `/t/<token>` is the printed form — short enough to be a
-     * legible QR — and `?t=` is accepted so a link can be pasted or forwarded.
-     */
-    function readToken() {
-        var m = window.location.pathname.match(/\/t\/([A-Za-z0-9_-]{8,128})/);
-        if (m) return m[1];
-        var q = new URLSearchParams(window.location.search);
-        var tok = q.get('t') || q.get('token') || '';
-        return /^[A-Za-z0-9_-]{8,128}$/.test(tok) ? tok : '';
-    }
-
     function newRef() {
         var a = new Uint8Array(12);
         (window.crypto || {}).getRandomValues
@@ -3861,7 +3952,8 @@ html.kb-open .welcome-art { display: none; }
         return;
     }
 
-    qrFetch('qr-menu?token=' + encodeURIComponent(TOKEN))
+    // The SAME request the boot script sent — never a second one.
+    BOOT.menu
         .then(function (r) {
             if (r.status === 429) throw new Error('busy');
             if (!r.ok) throw new Error('gone');
@@ -3948,20 +4040,46 @@ html.kb-open .welcome-art { display: none; }
     // nothing to say why. That is how the cover failed silently for an hour on
     // 2026-09-05, and the fallback below exists for the same reason.
     // =====================================================================
-    function heroSources() {
-        var tok = encodeURIComponent(TOKEN);
-        var out = [];
-        // The owner's own cover comes first when there is one.
-        if (menu.has_cover) out.push(FN + 'qr-menu-image?token=' + tok + '&cover=1');
-        // Then the outlet's photographed dishes, so a shop that has uploaded no
-        // cover still gets a hero that looks like THIS restaurant rather than a
-        // gradient. Capped — a hero is an impression, not a catalogue.
-        (menu.items || []).forEach(function (i) {
-            if (out.length >= 8 || !i || !i.has_image) return;
-            out.push(FN + 'qr-menu-image?token=' + tok + '&item=' + encodeURIComponent(i.id));
-        });
-        return out;
+    // ⚠️ THE FIRST SLIDE LOADS ALONE. Every other photo on the page waits for
+    // it. On 4G the hero shared the link with two more slides, fifteen card
+    // photos, the font and the welcome art, and painted at 5.4 s though it was
+    // asked for at 2.5 s (docs/perf/LOAD_2026-09-11.md, "The first photo on 4G") — the
+    // `fetchpriority` below did not save it, because downloads in flight
+    // together share a slow link roughly equally whatever their priority. And
+    // nothing held back is on screen: the first card sits below the fold, and
+    // under the welcome sheet on a first visit.
+    //
+    // A held photo carries its URL in `data-held-src` and gets its `src` when
+    // the first slide is in at full size (or has failed), when the diner first
+    // scrolls, taps or types, or after HOLD_MS — whichever comes first.
+    // Anything rendered after that renders with `src` straight away.
+    var photosHeld = true;
+    var HOLD_MS = 4000;
+
+    /** ` src="…"` — or, until the first slide is in, the same URL parked. The caller escapes `url`. */
+    function photoSrc(url) {
+        return (photosHeld ? ' data-held-src="' : ' src="') + url + '"';
     }
+
+    function releasePhotos() {
+        if (!photosHeld) return;
+        photosHeld = false;
+        Array.prototype.forEach.call(document.querySelectorAll('img[data-held-src]'), function (img) {
+            img.src = img.getAttribute('data-held-src');
+            img.removeAttribute('data-held-src');
+        });
+    }
+
+    // Capture phase, so a swipe on the hero rail counts too — scroll events do
+    // not bubble, but they do pass through window on the way down.
+    ['scroll', 'pointerdown', 'keydown'].forEach(function (type) {
+        window.addEventListener(type, releasePhotos, { capture: true, passive: true, once: true });
+    });
+
+    // The slide list lives in the boot script, which asks for the first slide
+    // before this script has even arrived — one list, so both ask for the same
+    // URL and the browser serves them from one download.
+    function heroSources() { return BOOT.heroSources(menu); }
 
     function paintHeroGallery() {
         var rail = $('hero-rail');
@@ -3975,6 +4093,7 @@ html.kb-open .welcome-art { display: none; }
             rail.innerHTML = '<div class="hero-slide is-empty"></div>';
             dots.innerHTML = '';
             count.hidden = true;
+            releasePhotos();        // nothing to wait for
             return;
         }
 
@@ -3985,9 +4104,11 @@ html.kb-open .welcome-art { display: none; }
         // for the slides nobody has swiped to yet.
         rail.innerHTML = srcs.map(function (src, n) {
             return '<div class="hero-slide"><img alt="" decoding="async"'
-                + (n === 0 ? ' fetchpriority="high"' : ' loading="lazy" fetchpriority="low"')
-                + ' src="' + esc(src) + '"></div>';
+                + (n === 0 ? ' fetchpriority="high" src="' + esc(BOOT.leadSrc(src)) + '"'
+                    : ' loading="lazy" fetchpriority="low"' + photoSrc(esc(src)))
+                + '></div>';
         }).join('');
+        leadThenFull(rail.querySelector('img'), srcs[0]);
 
         // A slide whose image will not decode is REMOVED, along with its dot —
         // a blank panel in a gallery is worse than a shorter gallery.
@@ -4001,6 +4122,40 @@ html.kb-open .welcome-art { display: none; }
 
         syncHeroIndicators();
         rail.addEventListener('scroll', onHeroScroll, { passive: true });
+    }
+
+    /**
+     * The first slide's order of work: its small copy, then its full photo,
+     * then every other photo on the page (releasePhotos).
+     *
+     * ⚠️ THE FULL PHOTO LOADS IN A DETACHED IMAGE AND REPLACES THE ELEMENT ONLY
+     * ONCE IT HAS LOADED. Setting the shown element's `src` instead would make
+     * a failed upgrade break the image — and a broken slide is removed (above),
+     * so a diner would lose a photo that was on screen. The small copy stays if
+     * the full one never comes. The swap reuses the same download: the
+     * endpoint's 302 is cacheable, and the detached image already holds it.
+     */
+    function leadThenFull(lead, full) {
+        var upgrade = function () {
+            if (BOOT.leadSrc(full) === full) { releasePhotos(); return; }   // a cover: already full
+            var sharp = new Image();
+            sharp.alt = '';
+            sharp.decoding = 'async';
+            sharp.onload = function () {
+                if (lead.parentNode) lead.parentNode.replaceChild(sharp, lead);
+                releasePhotos();
+            };
+            sharp.onerror = releasePhotos;
+            sharp.src = full;
+        };
+        setTimeout(releasePhotos, HOLD_MS);
+        if (lead.complete) {
+            // A cached image, or one that has already failed.
+            if (lead.naturalWidth > 0) upgrade(); else releasePhotos();
+            return;
+        }
+        lead.addEventListener('load', upgrade);
+        lead.addEventListener('error', releasePhotos);
     }
 
     function heroSlideCount() { return $('hero-rail').querySelectorAll('.hero-slide').length; }
@@ -4404,9 +4559,9 @@ html.kb-open .welcome-art { display: none; }
      */
     function productCard(i, extra) {
         var media = i.has_image
-            ? '<div class="card-media"><img loading="lazy" decoding="async" alt="" src="'
-                + FN + 'qr-menu-image?token=' + encodeURIComponent(TOKEN)
-                + '&item=' + encodeURIComponent(i.id) + THUMB + '"></div>'
+            ? '<div class="card-media"><img loading="lazy" decoding="async" alt=""'
+                + photoSrc(FN + 'qr-menu-image?token=' + encodeURIComponent(TOKEN)
+                    + '&item=' + encodeURIComponent(i.id) + THUMB) + '></div>'
             : '<div class="card-media is-placeholder" style="--tint:'
                 + categoryTint(i.category) + '">' + PLACEHOLDER + '</div>';
         var qty = qtyInCart(i.id);

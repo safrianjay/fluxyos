@@ -610,7 +610,7 @@ card size and is ~12 KB where the photo is ~75 KB.
 | Reader | Uses |
 |---|---|
 | `order.html` cards, recommendations, cart lines, cart suggestions, order lines | `qr-menu-image?…&size=thumb` |
-| `order.html` hero gallery, dish sheet | the photo (full-width); the first hero slide `fetchpriority="high"`, the rest `low` |
+| `order.html` hero gallery, dish sheet | the photo (full-width). The hero's FIRST slide leads with the copy — asked for by the boot script the moment the menu lands — and swaps to the photo once that has loaded; every other photo on the page waits for it (`order.html`, "THE FIRST SLIDE LOADS ALONE"). A cover has no copy and leads as itself |
 | Till tiles (`pos.js` via `getPosMenu`) | `image_thumb_path \|\| image_path` |
 | Item drawer preview | the photo |
 

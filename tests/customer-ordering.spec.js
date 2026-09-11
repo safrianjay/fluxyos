@@ -104,7 +104,7 @@ async function stub(page, { menuStatus = 200, capture = {} } = {}) {
 // pin theirs rather than restating every sentence.
 //
 // The DEFAULT is not left untested by that: see the language-switcher block.
-const goTo = async (page, lang = 'id') => {
+const goTo = async (page, lang = 'id', { waitUntil = 'load' } = {}) => {
     // ⚠️ `null` MEANS DO NOT PIN. An init script re-runs on every navigation
     // including a reload, so a test that pins cannot then observe a switch
     // surviving one — it would just be re-pinned on the way back in.
@@ -113,7 +113,7 @@ const goTo = async (page, lang = 'id') => {
             try { window.localStorage.setItem('fluxyos-order-lang', code); } catch (_) { /* private mode */ }
         }, lang);
     }
-    return page.goto(`/t/${TOKEN}`);
+    return page.goto(`/t/${TOKEN}`, { waitUntil });
 };
 
 // Adding is a two-step interaction now — every item opens the sheet, even one
@@ -146,6 +146,31 @@ async function open(page, lang) {
     await page.locator('#welcome-phone').fill('0812 3456 7890');
     await page.locator('#welcome-go').click();
     await expect(gate).not.toHaveClass(/is-open/);
+}
+
+// Undeclare the shipped welcome artwork the moment its element is PARSED. This
+// used to wait for DOMContentLoaded, which the menu can now beat — the request
+// leaves from the top of <head> (2026-09-11), and on WebKit the sheet painted,
+// artwork and all, before the event fired.
+async function undeclareArt(page) {
+    await page.addInitScript(() => {
+        new MutationObserver((_, obs) => {
+            const el = document.getElementById('welcome-art');
+            if (el) { el.dataset.src = ''; obs.disconnect(); }
+        }).observe(document, { childList: true, subtree: true });
+    });
+}
+
+// The first screen's photos are all asked for: nothing parked behind the hero's
+// first slide, and that slide on its full photo (order.html, "THE FIRST SLIDE
+// LOADS ALONE"). A test that COUNTS image requests starts from here, or the
+// page's own ordering lands inside its window.
+async function photosSettled(page) {
+    await expect.poll(() => page.evaluate(() => {
+        const lead = document.querySelector('#hero-rail img');
+        return !document.querySelector('img[data-held-src]')
+            && (!lead || !/[?&]size=thumb/.test(lead.getAttribute('src') || ''));
+    }), { timeout: 10_000, message: 'the first screen\'s photos never settled' }).toBe(true);
 }
 
 test.describe('QR customer ordering', () => {
@@ -301,12 +326,7 @@ test.describe('QR customer ordering', () => {
         await stub(page);
         // Artwork ships for this outlet, so undeclare it — the card stack is
         // what every outlet without one gets, and it has to stand on its own.
-        await page.addInitScript(() => {
-            document.addEventListener('DOMContentLoaded', () => {
-                const el = document.getElementById('welcome-art');
-                if (el) el.dataset.src = '';
-            });
-        });
+        await undeclareArt(page);
         await goTo(page);
         await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/, { timeout: 15_000 });
 
@@ -365,6 +385,11 @@ test.describe('QR customer ordering', () => {
         });
         await open(page);
         await expect(page.locator('.card').first()).toBeVisible();
+        await photosSettled(page);
+        // …and every request that caused has arrived.
+        let seen = -1;
+        await expect.poll(() => { const same = seen === imageRequests; seen = imageRequests; return same; },
+            { intervals: [300], timeout: 5_000 }).toBe(true);
 
         // Identity of the actual DOM NODES, not a count — a rebuild replaces
         // every one of them, and that is what re-requests the photos. Stamped
@@ -418,10 +443,12 @@ test.describe('QR customer ordering', () => {
         // blip on restaurant wifi cost that dish its picture for the life of the
         // page — with nothing on screen to say why.
         await stub(page);
-        let hits = 0;
+        // EVERY first attempt fails; only a retry — which the card marks `r=1` —
+        // succeeds. "The first request fails" stopped meaning "a card's first
+        // request" on 2026-09-11: the hero's first slide now leads, from the
+        // same small copy as the first card, and it has no retry of its own.
         await page.route('**/qr-menu-image**', (route) => {
-            hits += 1;
-            if (hits === 1) return route.fulfill({ status: 503, body: 'nope' });
+            if (!/[?&]r=1(&|$)/.test(route.request().url())) return route.fulfill({ status: 503, body: 'nope' });
             return route.fulfill({
                 status: 200,
                 contentType: 'image/svg+xml',
@@ -1115,6 +1142,61 @@ test.describe('QR customer ordering', () => {
             document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     });
 
+    test('THE FIRST SLIDE LOADS ALONE — every other photo waits for it', async ({ page }) => {
+        // On 4G the hero shared the link with two more slides and fifteen card
+        // photos, and painted at 5.4 s though it was asked for at 2.5 s —
+        // `fetchpriority` does not help when downloads share a slow link
+        // (docs/perf/LOAD_2026-09-11.md, "The first photo on 4G"). Held here until checked.
+        await stub(page);
+        await heroMenu(page, withHero({ items: MENU.items.map((i) => ({ ...i, has_image: true })) }));
+        const asked = [];
+        let letLeadThrough;
+        const leadGate = new Promise((resolve) => { letLeadThrough = resolve; });
+        await page.route('**/qr-menu-image?**', async (route) => {
+            asked.push(new URL(route.request().url()).search);
+            if (asked.length === 1) await leadGate;
+            return route.fulfill({ status: 200, contentType: 'image/png', body: PNG });
+        });
+        // Not `load`: that waits for the very image being held.
+        await goTo(page, 'id', { waitUntil: 'domcontentloaded' });
+        await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/, { timeout: 15_000 });
+
+        // Every card is on the page with its photo PARKED…
+        const cardImgs = page.locator('#menu .card-media img');
+        await expect(cardImgs).toHaveCount(3);
+        await expect(page.locator('#menu .card-media img[data-held-src]')).toHaveCount(3);
+        // …and the only photo asked for is the first slide's small copy.
+        expect([...new Set(asked)]).toEqual([`?token=${TOKEN}&item=i_latte&size=thumb`]);
+
+        letLeadThrough();
+        // Then its full photo, then everything else.
+        await photosSettled(page);
+        await expect(page.locator('#menu .card-media img[src*="size=thumb"]')).toHaveCount(3);
+        expect(asked, 'the full photo was never asked for').toContain(`?token=${TOKEN}&item=i_latte`);
+    });
+
+    test('THE MENU IS ASKED FOR ONCE, FROM THE TOP OF <head>', async ({ page }) => {
+        // It used to leave from the end of the page script, which waited for the
+        // whole file AND the Google Fonts stylesheet: at 2.1 s on 4G, for a
+        // 0.35 s answer. The page script now takes over that same request.
+        await stub(page);
+        const menus = [];
+        page.on('request', (r) => { if (/\/qr-menu\?/.test(r.url())) menus.push(r.url()); });
+        await open(page);
+        await expect(page.locator('.card')).toHaveCount(3);
+        expect(menus.length, 'the menu was asked for twice').toBe(1);
+
+        const html = require('fs').readFileSync(require('path').join(__dirname, '..', 'order.html'), 'utf8');
+        const head = html.slice(0, html.indexOf('</head>'));
+        expect(head.indexOf("qrFetch('qr-menu?token="), 'the menu request is not in the boot script')
+            .toBeGreaterThan(-1);
+        expect(head.indexOf("qrFetch('qr-menu?token="), 'something loads before the menu is asked for')
+            .toBeLessThan(head.search(/<link[^>]+rel="(stylesheet|icon)"|<script src=|<style>/));
+        // A parser-inserted stylesheet from another origin holds back every
+        // script after it — the fonts are injected by the boot script instead.
+        expect(head, 'the fonts stylesheet is back in the markup').not.toMatch(/<link[^>]*fonts\.googleapis\.com\/css2/);
+    });
+
     test('the gallery swipes, and the indicators follow', async ({ page }) => {
         await stub(page);
         await heroMenu(page, withHero({ has_cover: true }));
@@ -1445,12 +1527,7 @@ test.describe('QR customer ordering', () => {
         // Artwork now ships, so undeclare it — this test is about the outlet
         // that has none, which is what every other outlet is until one is made
         // for it.
-        await page.addInitScript(() => {
-            document.addEventListener('DOMContentLoaded', () => {
-                const el = document.getElementById('welcome-art');
-                if (el) el.dataset.src = '';
-            });
-        });
+        await undeclareArt(page);
         await goTo(page);
         await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/, { timeout: 15_000 });
 
@@ -3845,20 +3922,28 @@ test.describe('a refused request says how long to wait', () => {
 // the 640px copy; the hero and the dish sheet — full-width — keep the photo,
 // and the first hero slide goes first.
 test.describe('small photos where photos are small', () => {
-    test('cards ask for the 640px copy; the hero and the dish sheet ask for the full photo', async ({ page }) => {
+    test('cards ask for the 640px copy; the hero leads with it, then shows the full photo; the dish sheet asks for the full photo', async ({ page }) => {
         await stub(page);
+        const photos = [];
+        page.on('request', (r) => { if (r.url().includes('qr-menu-image')) photos.push(r.url()); });
         await open(page);
+        await photosSettled(page);
 
         const cards = await page.locator('#menu .card-media img').evaluateAll((els) => els.map((e) => e.getAttribute('src')));
         expect(cards.length, 'the fixture menu has a photographed dish').toBeGreaterThan(0);
         expect(cards.every((src) => /[?&]size=thumb(&|$)/.test(src)), `card photos: ${cards.join(' | ')}`).toBe(true);
 
+        // ⚠️ THE FIRST SLIDE LEADS WITH THE SMALL COPY (2026-09-11): it is the
+        // photo the diner is waiting for, and the full one is ~6x the bytes. It
+        // is the first photo the page asks for at all…
+        expect(photos[0], `photo requests: ${photos.join(' | ')}`).toMatch(/[?&]item=i_latte&size=thumb$/);
+        // …and the full photo then takes the slide — the hero is full-width.
         const heroes = page.locator('#hero-rail img');
-        await expect(heroes.first()).toHaveAttribute('fetchpriority', 'high');
-        const heroSrcs = await heroes.evaluateAll((els) => els.map((e) => e.getAttribute('src')));
-        expect(heroSrcs.some((src) => /size=thumb/.test(src)), 'the hero is full-width: full photo').toBe(false);
-        const later = await heroes.evaluateAll((els) => els.slice(1).map((e) => e.getAttribute('fetchpriority')));
-        expect(later.every((p) => p === 'low'), 'slides nobody has swiped to yet wait their turn').toBe(true);
+        expect(await heroes.first().getAttribute('src'), 'the hero never reached its full photo')
+            .not.toMatch(/size=thumb/);
+        const later = await heroes.evaluateAll((els) => els.slice(1).map((e) => [e.getAttribute('fetchpriority'), e.getAttribute('src')]));
+        expect(later.every(([p, src]) => p === 'low' && !/size=thumb/.test(src)),
+            'slides nobody has swiped to yet wait their turn, at full size').toBe(true);
 
         await page.locator('.card', { hasText: 'Es Kopi Susu' }).getByRole('button', { name: /Tambah|Add/ }).click();
         await expect(page.locator('#sheet-item')).toHaveClass(/is-open/);
