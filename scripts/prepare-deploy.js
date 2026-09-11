@@ -187,6 +187,8 @@ const SCHEDULED_FUNCTIONS = [
     'notify-sweep.js',
     'storage-token-sweep.js',
     'payment-reminders.js',
+    // Pings the ORDER site's functions; runs from the dashboard site only.
+    'qr-warm.js',
     'trial-reminders.js',
     'weekly-digest.js',
 ];

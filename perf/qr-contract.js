@@ -78,6 +78,12 @@ const ref = (tag) => `contract${tag}${Date.now().toString(36)}`;
     console.log(`\nqr contract — ${outlet.name} table ${T.label}, as ${IP}\n`);
     console.log('  reset:', JSON.stringify(await reset({ log: () => {} })));
 
+    // ── Warm-up (lib/warmup.js): every endpoint, GET ?warm=1, no body ────────
+    for (const name of Object.keys(H)) {
+        const w = await call(name, { query: { warm: '1' } });
+        is([w.status, /^warm;dur=\d+$/.test(w.headers['Server-Timing'] || '')], [204, true], `${name} answers a warm-up (204, timed)`);
+    }
+
     // ── Menu ────────────────────────────────────────────────────────────────
     const m1 = await call('menu', { query: { token: T.token } });
     is(m1.status, 200, 'qr-menu answers 200');

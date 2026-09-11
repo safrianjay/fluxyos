@@ -292,6 +292,10 @@ function laneBE(changed) {
   // cache, and a cached refusal or a cache that never expires is a card that
   // looks dead, or a price that never changes — neither says so at runtime.
   ok = record('be', run('check:warm-cache (expires, never caches a refusal)', 'node', ['tests/warm-cache.check.js'])) && ok;
+  // Unconditional: a POST endpoint that checks its method first is never
+  // warmed, and a cron that drifts from netlify.toml or loses its
+  // SCHEDULED_FUNCTIONS entry fails silently or runs four times.
+  ok = record('be', run('check:qr-warm (answered first, cheap, scheduled once)', 'node', ['tests/qr-warm.check.js'])) && ok;
   // Unconditional. The arithmetic is invisible at runtime: relieving too little
   // inflates gross margin, relieving too much invents cost, and neither raises
   // anything. It also crosses FOUR explicit field lists between the item and the

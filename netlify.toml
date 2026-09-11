@@ -58,6 +58,13 @@
 [functions."weekly-digest"]
   schedule = "0 * * * *"    # every hour, on the hour
 
+# Keeps the five QR diner functions warm on the order site — see
+# netlify/functions/qr-warm.js. Every 5 minutes, 05:00–22:59 WIB. Declared here
+# for the same reason as the sweeps above (the in-code wrapper is not reliably
+# picked up); the in-code CRON must stay equal to this value.
+[functions."qr-warm"]
+  schedule = "*/5 22,23,0-15 * * *"
+
 [functions."invoice-email-background"]
   node_bundler = "esbuild"
   external_node_modules = ["@sparticuz/chromium", "puppeteer-core"]

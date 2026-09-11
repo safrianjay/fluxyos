@@ -3,6 +3,7 @@
 const { allowOriginHeader } = require('./lib/allowed-origins');
 const { consumeApprox, ipKey, clientIp, tooManyRequests } = require('./lib/rate-limit');
 const { createCache, directoryEntry } = require('./lib/warm-cache');
+const { isWarmup, warmup } = require('./lib/warmup');
 
 // =============================================================================
 // FluxyOS — menu photos for a QR customer, who is not signed in.
@@ -184,6 +185,9 @@ exports.handler = async (event) => {
         'Access-Control-Allow-Headers': 'Content-Type',
     };
     if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors, body: '' };
+    // Kept warm by the scheduled `qr-warm` — see lib/warmup.js. Before the method
+    // check, so the POST endpoints can be warmed with a GET.
+    if (isWarmup(event)) return warmup(() => initAdmin().firestore(), cors);
     if (event.httpMethod !== 'GET') {
         return { statusCode: 405, headers: cors, body: 'Method not allowed' };
     }

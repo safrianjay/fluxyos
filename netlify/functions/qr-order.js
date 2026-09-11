@@ -3,6 +3,7 @@
 const { allowOriginHeader } = require('./lib/allowed-origins');
 const { consumeApprox, ipKey, clientIp, tooManyRequests } = require('./lib/rate-limit');
 const { directoryEntry } = require('./lib/warm-cache');
+const { isWarmup, warmup } = require('./lib/warmup');
 // This table's orders — never the workspace's newest 50 (H1). See the header there.
 const { tableOrders } = require('./lib/table-orders');
 // ⚠️ THE SAME FILE THE TILL RUNS. `pos-pricing.js` is UMD precisely so this
@@ -131,6 +132,9 @@ exports.handler = async (event) => {
     });
 
     if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors, body: '' };
+    // Kept warm by the scheduled `qr-warm` — see lib/warmup.js. Before the method
+    // check, so the POST endpoints can be warmed with a GET.
+    if (isWarmup(event)) return warmup(() => initAdmin().firestore(), cors);
     if (event.httpMethod !== 'POST') return json(405, { error: 'method_not_allowed' });
 
     let body;
