@@ -39,10 +39,11 @@
 // collection is denied to every client by default and only the Admin SDK can
 // touch it. Adding an explicit block would be the same statement twice.
 //
-// ⚠️ THE COLLECTION GROWS. Each key/window pair is its own document and nothing
-// deletes them. Set a Firestore TTL policy on `expires_at` (a project setting,
-// not a rules change) before this carries real traffic, or the collection
-// accumulates one document per key per window forever.
+// THE COLLECTION WOULD GROW: each key/window pair is its own document. A
+// Firestore TTL policy on `rate_limits.expires_at` deletes them within about a
+// day of expiry — declared in firestore.indexes.json (fieldOverrides, `ttl`)
+// and ACTIVE since 2026-09-11. Every write here must keep setting
+// `expires_at`, or its document is never collected.
 // =============================================================================
 
 const crypto = require('crypto');

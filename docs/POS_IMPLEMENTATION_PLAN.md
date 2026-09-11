@@ -1226,9 +1226,9 @@ endpoints ever share a scope again.
 `match /{document=**} { allow read, write: if false; }`, so `rate_limits` is
 denied to every client by default and only the Admin SDK can touch it.
 
-⚠️ **Set a Firestore TTL policy on `rate_limits.expires_at`** before this carries
-real traffic. Nothing deletes these documents; the field is written for a policy
-that is a project setting, not a rules change.
+**A Firestore TTL policy on `rate_limits.expires_at` deletes these documents**
+(ACTIVE since 2026-09-11, declared in `firestore.indexes.json` `fieldOverrides`).
+Before that nothing deleted them — one document per key per window, forever.
 
 Guard: `tests/rate-limit.check.js` (28 assertions, unconditional in the BE lane).
 

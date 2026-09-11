@@ -13,9 +13,9 @@
 //
 // WHAT A WARM-UP DOES: exactly the cold part — initialise the admin app and make
 // ONE Firestore read (a document that does not exist), which opens the
-// connection — and nothing else. No rate limiter (it would leave a counter
-// document per ping in `rate_limits`, which has no TTL), no cache entries, no
-// response a CDN may keep.
+// connection — and nothing else. No rate limiter (it would write a counter
+// document per ping to `rate_limits` — collected by TTL, but still a write for
+// nothing), no cache entries, no response a CDN may keep.
 //
 // Open to anyone, deliberately: the most it costs is one read of a missing
 // document per request, less than a request with a well-formed bogus token, which

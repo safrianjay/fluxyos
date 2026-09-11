@@ -238,7 +238,7 @@ share a cached copy.
 
 ### H6 — Low: slow growth
 
-`rate_limits` has no TTL; `qr-menu` returns the whole visible menu with no
+`rate_limits` had no TTL (fixed 2026-09-11 — see `LOAD_2026-09-11.md`); `qr-menu` returns the whole visible menu with no
 paging; `order.html` is 285 KB uncompressed (mostly comments) and all of it
 downloads before first render.
 

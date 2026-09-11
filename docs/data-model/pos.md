@@ -1323,12 +1323,25 @@ the Firebase service account. Its roles, all as narrow as the deploy allows:
 | `qr-deployer@` | `run.developer` on **the `qr-diner` service only**; `iam.serviceAccountUser` on `qr-diner@` and `qr-builder@` only; `cloudbuild.builds.editor`; `storage.admin` on the source bucket `run-sources-fluxyos-asia-southeast1` only; `artifactregistry.reader` on the repo `cloud-run-source-deploy` only; `storage.bucketViewer` and `serviceusage.serviceUsageConsumer` (project) | deploying new revisions |
 | `qr-builder@` | `logging.logWriter`; `artifactregistry.writer` on `cloud-run-source-deploy`; `storage.objectViewer` on the source bucket | running the build (`--build-service-account`) |
 
-Verified with `testIamPermissions`: the deployer cannot change project IAM,
-read or write Firestore, create keys, create or change the access of any
-service, or read stored objects. ⚠️ `run.developer` does include DELETING
-`qr-diner`; a leaked key could take it down, and the page would then fall back
-to the Netlify copies. A custom role without `run.services.delete` would close
-that.
+On `qr-diner` the deployer holds the custom role **`qrServiceDeployer`** —
+an explicit allow-list (get/update the service, read revisions, configurations,
+routes and operations, upload source), NOT `run.developer`, which also allows
+deleting the service and `sshRoot` into its instances (a side door to
+`qr-diner@`'s Firestore access). Verified with `testIamPermissions`: it can
+update `qr-diner` and cannot delete it or its revisions, change who may call
+it, open a shell in it, change project IAM, read or write Firestore, create
+keys, create services, or read stored objects.
+
+**Watching it.** A Cloud Monitoring uptime check hits `/health` every minute
+from Singapore, Belgium and Oregon; alert **"qr-diner is down (uptime)"** fires
+when more than one region fails. Because `/health` never touches Firestore,
+**"qr-diner server errors (5xx)"** fires on more than 5 server errors in 5
+minutes — the one that sees a broken database permission or a bad handler.
+Both email the ops channel with a runbook. The project budget ("Firebase
+Project fluxyos") is Rp300.000/month — raised from Rp50.000, which the always-on
+instance alone would pass every month — with 50/90/100% and a forecasted-100%
+warning. The image registry keeps the 5 newest images and deletes older than
+30 days.
 
 Builds run as `qr-builder@`, NOT the default compute account (which holds
 Editor): a deployer allowed to start builds as that account would have Editor
@@ -1407,8 +1420,11 @@ record and writes it alongside the order: a racing retry sees one or the other,
 never neither. Proven by `perf/qr-contract.js` (two simultaneous copies of one
 order add the dish once).
 
-Admin SDK only (the ruleset's final catch-all). `expires_at` is meant for a
-Firestore TTL policy, which is **not yet set** — the same gap as `rate_limits`.
+Admin SDK only (the ruleset's final catch-all). Deleted by a Firestore TTL policy
+on `expires_at` (24 h after the order), as `rate_limits` is — both declared in
+`firestore.indexes.json` `fieldOverrides` with `"ttl": true` and ACTIVE since
+2026-09-11 (the same entries exempt `expires_at` from indexing, as Google
+recommends for TTL fields).
 
 ### What the QR functions remember between requests (2026-09-11)
 
