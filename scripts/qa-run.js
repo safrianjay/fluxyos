@@ -267,6 +267,10 @@ function laneBE(changed) {
   // the ledger on 2026-08-31. Nothing about it is visible until a cashier
   // touches the order.
   ok = record('be', run('check:qr-order (rules-shaped doc, server-resolved price)', 'node', ['tests/qr-order.check.js'])) && ok;
+  // Unconditional. A windowed read of "the newest N orders" loses busy tables
+  // from the till's board, short-counts a long shift's drawer, and lets an
+  // outlet with open bills be archived — all silent (pos.md §5b).
+  ok = record('be', run('check:pos-outlet-orders (one outlet, never the newest N)', 'node', ['tests/pos-outlet-orders.check.js'])) && ok;
   // Unconditional. A string-slice edit to order.html deleted a whole CSS
   // section TWICE in one day and shipped the second time — every input in every
   // sheet rendered unstyled, and a customer found it before any check did. The

@@ -51,6 +51,7 @@
     "check:market-i18n": "node tests/market-localisation.check.js",
     "check:qr-image": "node tests/qr-menu-image.check.js",
     "check:qr-order": "node tests/qr-order.check.js",
+    "check:pos-outlet-orders": "node tests/pos-outlet-orders.check.js",
     "check:order-page": "node tests/order-page.check.js",
     "check:pos-table-qr": "node tests/pos-table-qr.check.js",
     "check:rate-limit": "node tests/rate-limit.check.js",

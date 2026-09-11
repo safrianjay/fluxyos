@@ -205,6 +205,40 @@ const ref = (tag) => `contract${tag}${Date.now().toString(36)}`;
     const hBehind = await call('order', { body: { token: Hn.token, client_ref: ref('h3'), sitting: null, lines: lines2 } });
     is([hBehind.status, hBehind.json.error], [409, 'bill_requested'], 'H1: and nothing opens behind that bill');
 
+    // ── F7: the ticket changes between the function's read and its write ──
+    // A cashier's tap lands in that sub-second gap. Forced here by flipping the
+    // ticket's status as the order transaction starts (one-shot), which is the
+    // same interleaving, on demand.
+    await reset({ log: () => {} });
+    const fsdb = admin.firestore();
+    const raceOn = async (orderId, patch, body) => {
+        const orig = fsdb.runTransaction;
+        fsdb.runTransaction = async function (...a) {
+            fsdb.runTransaction = orig;
+            await orderDoc(orderId).update({ ...patch, status_changed_at: admin.firestore.Timestamp.now() });
+            return orig.apply(this, a);
+        };
+        try { return await call('order', { body }); } finally { fsdb.runTransaction = orig; }
+    };
+    const K = outlet.tables[outlet.tables.length - 3];
+    const k1 = await call('order', { body: { token: K.token, client_ref: ref('k1'), sitting: null, lines: lines2 } });
+    const kSent = await raceOn(k1.json.order_id, { status: 'sent' },
+        { token: K.token, client_ref: ref('k2'), sitting: k1.json.order_id, lines: lines2 });
+    is(kSent.status, 200, 'F7: the kitchen took the ticket mid-flight — the round is accepted, not "table settled"');
+    is(kSent.json.order_id !== k1.json.order_id, true, '…as a NEW ticket, never merged into food already cooking');
+    const k1doc = (await orderDoc(k1.json.order_id).get()).data();
+    const k2doc = (await orderDoc(kSent.json.order_id).get()).data();
+    is(k1doc.lines.reduce((t, l) => t + l.quantity, 0), 1, '…and the cooking ticket kept only its own line');
+    is(JSON.stringify(k2doc.pos_pricing), JSON.stringify(k1doc.pos_pricing), '…at the sitting\'s rates');
+    const kBill = await raceOn(kSent.json.order_id, { status: 'awaiting_payment' },
+        { token: K.token, client_ref: ref('k3'), sitting: k1.json.order_id, lines: lines2 });
+    is([kBill.status, kBill.json.error], [409, 'bill_requested'], 'F7: a bill requested mid-flight is refused bill_requested, by its real name');
+    await reset({ log: () => {} });
+    const v1 = await call('order', { body: { token: K.token, client_ref: ref('v1'), sitting: null, lines: lines2 } });
+    const kVoid = await raceOn(v1.json.order_id, { status: 'void', voided_at: admin.firestore.Timestamp.now(), void_reason: 'contract' },
+        { token: K.token, client_ref: ref('v2'), sitting: v1.json.order_id, lines: lines2 });
+    is([kVoid.status, kVoid.json.error], [409, 'order_closed'], 'F7: a ticket voided mid-flight is still refused order_closed');
+
     // ── Round trips, for the record (from Jakarta, ~50 ms each — not prod) ──
     console.log('\n  local timings (ms):', JSON.stringify(Object.fromEntries(Object.entries(timings).map(([k, v]) => [k, v]))));
     console.log('  reset:', JSON.stringify(await reset({ log: () => {} })));

@@ -699,13 +699,21 @@
             nothing anywhere reporting it. */
         async function archiveOutlet(id) {
             outletError('');
-            const open = await ds.getPosOrders(uid, {
-                dimensionId: id,
-                statuses: ['open', 'submitted', 'sent', 'ready', 'served', 'awaiting_payment'],
-                limitCount: 5
-            }).catch(() => []);
+            // ⚠️ EXACT, NOT A WINDOW (2026-09-11). This read the WORKSPACE's
+            // five newest orders and kept this outlet's live ones — so it found
+            // nothing whenever any other order was more recent, and waved the
+            // archive through with bills still open. And a check that could
+            // not run used to count as "nothing open"; now it refuses.
+            let open;
+            try {
+                open = await ds.getLivePosOrders(uid, id, { limitCount: 6 });
+            } catch (e) {
+                console.error('[settings-pos] could not check open orders before archiving', e);
+                outletError('Could not check this outlet for unsettled orders. Try again in a moment.');
+                return;
+            }
             if (open.length) {
-                outletError(`That outlet still has ${open.length === 5 ? '5+' : open.length} unsettled order${open.length === 1 ? '' : 's'}. Close them on the till first — archiving would hide them there.`);
+                outletError(`That outlet still has ${open.length > 5 ? '5+' : open.length} unsettled order${open.length === 1 ? '' : 's'}. Close them on the till first — archiving would hide them there.`);
                 return;
             }
             await ds.archiveDimension(uid, id);

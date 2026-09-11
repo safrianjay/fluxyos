@@ -4702,6 +4702,7 @@
         "This shift is already closed.": "Shift ini sudah ditutup.",
         "This outlet already has a shift open. Close it before starting another.": "Outlet ini sudah punya shift terbuka. Tutup dulu sebelum membuka yang baru.",
         "Pick an outlet before opening a shift.": "Pilih outlet dulu sebelum membuka shift.",
+        "Could not check this outlet for unsettled orders. Try again in a moment.": "Tidak bisa memeriksa pesanan yang belum selesai di outlet ini. Coba lagi sebentar lagi.",
         "The opening float cannot be negative.": "Modal awal laci tidak boleh negatif.",
         "Cash counted in the drawer": "Kas yang dihitung di laci",
         "Count it before you look. FluxyOS shows what it expected only after you submit — a count taken against a number you were already shown cannot tell you anything.": "Hitung dulu sebelum melihat. FluxyOS baru menampilkan angka yang diharapkan setelah Anda submit — hitungan yang dibuat sambil melihat angkanya tidak memberi tahu apa pun.",

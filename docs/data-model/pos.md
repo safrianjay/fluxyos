@@ -1303,12 +1303,28 @@ phone, and a ticket could open behind a requested bill
 `FAILED_PRECONDITION`. That keeps ordering alive and brings H1 back, so
 `check:qr-order` pins both the per-table query and the index declaration.
 
-⚠️ **The till has the same pattern, still unfixed.** `watchPosOrders` listens to
-the workspace's 120 newest orders and `getPosOverview` reads the newest 300,
-both filtered by outlet on the device. At a single outlet that is hours of
-trade; in a multi-outlet workspace at ~80 orders/hour/outlet, three outlets
-push a table off the board after ~75 minutes. The equivalent fix is
-`where('dimension_id', '==', …)` with its own index.
+**The till had the same pattern — fixed the same day.** `watchPosOrders`
+listened to the workspace's 120 newest orders and `getPosOverview` read the
+newest 300, both filtered by outlet on the device; in a multi-outlet workspace
+the other outlets spent those windows and a table seated an hour earlier fell
+off the board and read as free. Both now query the outlet —
+`where('dimension_id', '==', …).orderBy('created_at', 'desc')` — through
+`pos_orders (dimension_id ASC, created_at DESC)`, with the same missing-index
+fallback (an empty board would show every table free). Listening to one outlet
+also stops other outlets' orders from triggering full refreshes here (perf F5).
+`perf/till-contract.js`: a live Kemang order, 310 newer orders at the other
+outlets — without the index the order is gone from the board and its changes are
+never heard; with it, all five checks pass.
+
+Two neighbours had the same shape, fixed with it:
+
+| | Was | Now |
+|---|---|---|
+| `getPosShiftTally` | the workspace's newest 300 orders, filtered by shift — a long shift's early sales dropped out and the drawer's shortfall posted to 6700 as a loss | `where('shift_id', '==', shiftId)`: exactly the shift's orders; errors propagate so a close cannot count zero |
+| Archive-outlet guard (`settings-pos.html`) | the workspace's newest **five** orders; `.catch(() => [])` counted "could not check" as "nothing open" | `getLivePosOrders(uid, outlet)` — `dimension_id ==` + `status in [live]`, exact; a failed check refuses |
+
+`check:pos-outlet-orders` pins all of it (falsified against the previous code:
+10 of 11 assertions fail).
 
 ## 5a. `qr_order_refs/{token}_{clientRef}` — top-level, deny-all
 

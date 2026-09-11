@@ -193,7 +193,12 @@ const appendStart = SRC.indexOf('if (openDoc) {');
 // contains its own, more deeply indented, and stopping there cuts the block in
 // half — before `tx.update`, so the assertions below would report a defect that
 // is not there.
-const appendBlock = SRC.slice(appendStart, SRC.indexOf('\n        } else {', appendStart));
+// Ended at the NEW-ticket branch's own marker (2026-09-11): the append path
+// now falls through to it when the kitchen takes the ticket mid-flight (F7),
+// so the two are no longer an if/else and no `} else {` bounds the block.
+const appendEnd = SRC.indexOf('// ── OPEN a new order for the table', appendStart);
+is(appendStart > 0 && appendEnd > appendStart, true, 'the append block is found and bounded');
+const appendBlock = SRC.slice(appendStart, appendEnd);
 is(/tx\.update\(ref, patch\)/.test(appendBlock), true,
     'appending to an open order is a targeted update');
 is(/tx\.set\(ref/.test(appendBlock), false,
@@ -285,6 +290,17 @@ is(/pos_recommended:\s*i\.pos_recommended/.test(posSvc), true,
     'getPosMenu projects pos_recommended (undefined at the till otherwise)');
 is(/recommended:\s*i\.pos_recommended/.test(qrMenuSrc), true,
     'qr-menu projects it to the diner (the rail never renders otherwise)');
+
+// ── F7: the kitchen took the ticket while the round was in flight ─────────
+// It was refused `order_closed` and the page said "This table was just
+// settled". A live ticket that moved into the kitchen must fall through to a
+// new ticket; only a sitting that is over is refused (docs/perf/LOAD_2026-09-11.md).
+is(/if \(!APPENDABLE\.includes\(o\.status\)\) return \{ moved: o \};/.test(SRC), true,
+    'a ticket that left APPENDABLE mid-flight is handed back, not refused inside the write');
+is(/if \(!isLive\(nowDoc\) \|\| !KITCHEN\.includes\(nowDoc\.status\)\)/.test(SRC), true,
+    '…and only a sitting that is over (or not in the kitchen) is refused order_closed');
+is(/if \(!orderId\) \{\s*\/\/ ── OPEN a new order for the table/.test(SRC), true,
+    '…a live one falls through to a new ticket');
 
 // ── H1: a table's orders, never the workspace's newest 50 ───────────────────
 // The lunch-rush load test lost 36 live sittings to a workspace-wide window

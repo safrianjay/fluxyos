@@ -365,6 +365,8 @@ exports.handler = async (event) => {
         // consolidated across the session in `qr-order-status`, which is the
         // separation this model turns on: one bill, many tickets.
         const APPENDABLE = ['open', 'submitted'];
+        // The kitchen has it: being cooked, ready, or on the table.
+        const KITCHEN = ['sent', 'ready', 'served'];
 
         // What counts as part of the sitting happening at this table right now.
         // Three exclusions, the same three `qr-order-status` applies, so the
@@ -461,8 +463,9 @@ exports.handler = async (event) => {
                 const o = snap.data() || {};
                 // It may have been sent to the kitchen, paid or voided between
                 // the read above and here — a cook picking up the ticket, or a
-                // cashier closing the bill, while a customer taps.
-                if (!APPENDABLE.includes(o.status)) return null;
+                // cashier closing the bill, while a customer taps. Handed back
+                // as it is NOW, so the decision below is made on the truth.
+                if (!APPENDABLE.includes(o.status)) return { moved: o };
 
                 const merged = [...(Array.isArray(o.lines) ? o.lines : [])];
                 for (const add of lines) {
@@ -534,12 +537,33 @@ exports.handler = async (event) => {
             });
 
             mark('append');
-            if (!result) return json(409, { error: 'order_closed' });
             if (result.duplicate) return duplicateOf(result.duplicate);
-            orderId = ref.id;
-            orderNumber = result.number;
-            totalAmount = result.total;
-        } else {
+            if (result.moved) {
+                // ⚠️ THE KITCHEN TOOK THE TICKET WHILE THIS ROUND WAS IN FLIGHT
+                // (docs/perf/LOAD_2026-09-11.md, F7). This refused `order_closed`,
+                // and the page told a diner mid-meal "This table was just
+                // settled" — false, and alarming. By the rule this whole file
+                // turns on, a round the kitchen did not get in time is a NEW
+                // TICKET in the same sitting: exactly what happens when the read
+                // above already sees the ticket in the kitchen. So it falls
+                // through to the branch below, inheriting the sitting's rates.
+                // Only a sitting that is genuinely over — paid, voided, or
+                // waiting on a bill — is refused, and by its real name.
+                const nowDoc = result.moved;
+                if (isLive(nowDoc) && nowDoc.status === 'awaiting_payment') {
+                    return json(409, { error: 'bill_requested' });
+                }
+                if (!isLive(nowDoc) || !KITCHEN.includes(nowDoc.status)) {
+                    return json(409, { error: 'order_closed' });
+                }
+            } else {
+                orderId = ref.id;
+                orderNumber = result.number;
+                totalAmount = result.total;
+            }
+        }
+
+        if (!orderId) {
             // ── OPEN a new order for the table ─────────────────────────────
             const dayKey = dayKeyFor(now, table.timezone);
             const counterRef = db.doc(

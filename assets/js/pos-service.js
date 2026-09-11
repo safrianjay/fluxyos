@@ -105,6 +105,34 @@ export const POS_PAYMENT_METHODS = [
 // Mixed onto DataService.prototype by db-service.js. Written as an object of
 // methods rather than a class so `this` stays the DataService instance and not
 // one call site changed.
+// ⚠️ ONE OUTLET'S ORDERS, NEVER "THE WORKSPACE'S NEWEST N" (2026-09-11).
+//
+// The till read the workspace's 120 newest orders (the live listener) and 300
+// newest (the overview), then kept the current outlet's on the device. Every
+// order at every OTHER outlet spent that window, so in a busy multi-outlet
+// workspace a table seated an hour ago fell off the board and the floor plan
+// read it as free — the till's copy of the bug that lost 36 live sittings in
+// the QR load test (docs/perf/LOAD_2026-09-11.md, H1). The queries now ask for
+// the outlet's orders, through the composite index
+// `pos_orders (dimension_id ASC, created_at DESC)` in firestore.indexes.json.
+//
+// ⚠️ A MISSING INDEX FALLS BACK, IT NEVER EMPTIES THE BOARD. `getPosOrders`
+// swallows errors into `[]`, so a query failing for lack of an index would show
+// every table free. It falls back to the old workspace window instead (bug
+// included), and says so once.
+function posIndexMissing(err) {
+    return !!err && (err.code === 'failed-precondition'
+        || /requires an index|index is currently building/i.test(String(err.message || '')));
+}
+let posIndexWarned = false;
+function warnPosIndex(err) {
+    if (posIndexWarned) return;
+    posIndexWarned = true;
+    console.error('[pos] ⚠️ pos_orders (dimension_id, created_at) index missing or building — '
+        + 'falling back to the workspace window, which loses busy outlets\' older orders. '
+        + 'Deploy firestore.indexes.json.', err && err.message);
+}
+
 export const POS_METHODS = {
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -2101,11 +2129,23 @@ export const POS_METHODS = {
         // §3), and it is the one thing the shift exists to get right.
         //
         // `void` is the only status excluded: a voided order took nothing.
-        const orders = await this.getPosOrders(userId, {
-            statuses: ['open', 'submitted', 'sent', 'ready', 'served', 'awaiting_payment', 'paid'],
-            limitCount: 300
-        });
-        const mine = orders.filter((o) => o.shift_id === shiftId && this._posSettled(o));
+        //
+        // ⚠️ THE SHIFT'S ORDERS, BY SHIFT — NOT THE WORKSPACE'S NEWEST 300
+        // (2026-09-11). This filtered the 300 most recent orders of every
+        // outlet for this shift, so on a busy day a long shift's early sales
+        // fell out of the window: the drawer would be expected SHORT by them
+        // and the difference posted to 6700 as a loss — the same shape as the
+        // two bugs above. A shift's orders are exactly those carrying its id,
+        // so ask for them; no window, no index beyond the automatic one.
+        // And no swallowed error: a close that cannot read its sales must
+        // refuse, not count zero and post the whole drawer as a variance.
+        const TALLY_STATUSES = ['open', 'submitted', 'sent', 'ready', 'served', 'awaiting_payment', 'paid'];
+        const shiftSnap = await getDocs(query(
+            collection(this.db, `${this._scope(userId)}/pos_orders`),
+            where('shift_id', '==', shiftId)
+        ));
+        const mine = shiftSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
+            .filter((o) => TALLY_STATUSES.includes(o.status) && this._posSettled(o));
         // TENDER, not settlement. A bank transfer settles to the same account as
         // cash and puts nothing in the drawer — counting it here made the blind
         // count short by every transfer taken. See POS_PAYMENT_METHODS.
@@ -2552,10 +2592,22 @@ export const POS_METHODS = {
 
     async getPosOrders(userId, { dimensionId = null, statuses = null, sinceDate = null, limitCount = 200 } = {}) {
         try {
-            const snap = await getDocs(query(
-                collection(this.db, `${this._scope(userId)}/pos_orders`),
-                orderBy('created_at', 'desc'), limit(limitCount)
-            ));
+            const col = collection(this.db, `${this._scope(userId)}/pos_orders`);
+            const workspaceWindow = () => getDocs(query(col, orderBy('created_at', 'desc'), limit(limitCount)));
+            let snap;
+            if (dimensionId) {
+                // THIS OUTLET's newest `limitCount` — see the note above POS_METHODS.
+                try {
+                    snap = await getDocs(query(col, where('dimension_id', '==', dimensionId),
+                        orderBy('created_at', 'desc'), limit(limitCount)));
+                } catch (err) {
+                    if (!posIndexMissing(err)) throw err;
+                    warnPosIndex(err);
+                    snap = await workspaceWindow();
+                }
+            } else {
+                snap = await workspaceWindow();
+            }
             const since = sinceDate ? sinceDate.getTime() : null;
             return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
                 .filter((o) => !dimensionId || o.dimension_id === dimensionId)
@@ -2568,6 +2620,24 @@ export const POS_METHODS = {
         } catch (_) { return []; }
     },
 
+    // The LIVE orders at one outlet, found by outlet and status — exact, never a
+    // window. Used where "is there anything unsettled here?" must not miss an
+    // old ticket: archiving an outlet hides its orders from the till, so an
+    // unpaid one would be stranded (settings-pos.html). Equality + `in` with no
+    // ordering, which Firestore serves from its automatic single-field indexes.
+    // Throws on failure — a guard that cannot check must not wave the action
+    // through.
+    async getLivePosOrders(userId, dimensionId, { limitCount = 6 } = {}) {
+        if (!userId || !dimensionId) throw new Error('userId and dimensionId required');
+        const snap = await getDocs(query(
+            collection(this.db, `${this._scope(userId)}/pos_orders`),
+            where('dimension_id', '==', dimensionId),
+            where('status', 'in', ['open', 'submitted', 'sent', 'ready', 'served', 'awaiting_payment']),
+            limit(limitCount)
+        ));
+        return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    },
+
     // A live listener, and the ONLY one in the app outside the internal console.
     //
     // shared-dashboard.js records a deliberate decision AGAINST onSnapshot: live
@@ -2578,16 +2648,36 @@ export const POS_METHODS = {
     //
     // Kept narrow on purpose: one query, today's orders for one outlet, on the
     // POS page only. Logged under the DESIGN_SYSTEM Exception Protocol.
+    //
+    // ⚠️ THE OUTLET'S 120, NOT THE WORKSPACE'S (2026-09-11). A change to an
+    // order outside the listened window never reaches the till at all, and at a
+    // multi-outlet workspace the other outlets filled that window. Listening to
+    // one outlet also stops every other outlet's order from triggering a full
+    // refresh here — each of which reads the whole outlet again (perf F5).
     watchPosOrders(userId, { dimensionId = null } = {}, onChange) {
-        const q = query(
-            collection(this.db, `${this._scope(userId)}/pos_orders`),
-            orderBy('created_at', 'desc'), limit(120)
-        );
-        return onSnapshot(q, (snap) => {
+        const col = collection(this.db, `${this._scope(userId)}/pos_orders`);
+        const workspaceWindow = query(col, orderBy('created_at', 'desc'), limit(120));
+        const outletWindow = dimensionId
+            ? query(col, where('dimension_id', '==', dimensionId), orderBy('created_at', 'desc'), limit(120))
+            : null;
+        const deliver = (snap) => {
             const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
                 .filter((o) => !dimensionId || o.dimension_id === dimensionId);
             try { onChange(rows); } catch (err) { console.error('[pos] watcher handler threw:', err); }
-        }, (err) => console.error('[pos] live orders unavailable:', err && err.message));
+        };
+        let stop = null;
+        const listen = (q, canFallBack) => onSnapshot(q, deliver, (err) => {
+            // A listener's error arrives HERE, not as a throw: re-listen on the
+            // old window rather than leaving the till deaf to new orders.
+            if (canFallBack && posIndexMissing(err)) {
+                warnPosIndex(err);
+                stop = listen(workspaceWindow, false);
+                return;
+            }
+            console.error('[pos] live orders unavailable:', err && err.message);
+        });
+        stop = listen(outletWindow || workspaceWindow, !!outletWindow);
+        return () => { if (stop) stop(); };
     },
 
     // The operational picture for one outlet, right now.
