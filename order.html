@@ -2114,6 +2114,13 @@ img { max-width: 100%; display: block; }
        keyboard is up, so the extra 30px never competes with the fields. */
     max-height: 200px;
     height: auto;
+    /* ⚠️ THE SLOT IS RESERVED BEFORE THE FILE ARRIVES. With `height: auto`
+       alone the image is 0px tall until it loads (~2.8 s on 4G), and then the
+       sheet grew 200px and pushed the name field down under a diner's thumb —
+       0.16 of layout shift, over the page's 0.1 budget, on every first visit
+       (docs/perf/LOAD_2026-09-11.md). Artwork of another shape still fits:
+       `contain` letterboxes it inside the 3:2 slot. */
+    aspect-ratio: 3 / 2;
     object-fit: contain;
 }
 

@@ -37,6 +37,16 @@ test('integration center renders shell, cards, and tabs', async ({ page }) => {
     await expect(page.locator('[data-platform-card="tokopedia"]')).toContainText('Tokopedia');
     await expect(page.locator('[data-commerce-skeleton]')).toHaveCount(0);
 
+    // The reference-inspired content experience remains grounded in FluxyOS's
+    // actual commerce pipeline: it starts empty and shows its two useful views.
+    await expect(page.locator('#integration-data-heading')).toContainText('One financial picture');
+    await expect(page.locator('#data-model-flow')).toBeVisible();
+    await expect(page.locator('#data-model-objects')).toBeHidden();
+    await page.locator('[data-data-model-view="objects"]').click();
+    await expect(page.locator('#data-model-objects')).toBeVisible();
+    await expect(page.locator('#data-model-flow')).toBeHidden();
+    await expect(page.locator('#data-model-objects')).toContainText('Ledger transaction');
+
     // QA account is the workspace owner → managing role → Connect buttons
     // (unless an account is already connected, then Manage appears instead).
     const tiktokCard = page.locator('[data-platform-card="tiktok_shop"]');
@@ -45,28 +55,28 @@ test('integration center renders shell, cards, and tabs', async ({ page }) => {
     expect(pageErrors, `page errors:\n${pageErrors.join('\n')}`).toEqual([]);
 });
 
-test('category tabs switch panels; coming-soon panels have no dead buttons', async ({ page }) => {
+test('commerce is the only available integration category', async ({ page }) => {
     await page.goto('/integration.html');
-    // The tab strip is static HTML, but its click handlers attach in
-    // initIntegrationPage (post-auth). Rendered platform cards prove init ran.
     await expect(page.locator('[data-platform-card]')).toHaveCount(3, { timeout: 20000 });
 
-    // Commerce visible by default, others hidden.
+    // The page deliberately exposes the shipped commerce connection surface.
+    // Future categories do not advertise unavailable actions or empty panels.
     await expect(page.locator('[data-category-panel="commerce"]')).toBeVisible();
-    await expect(page.locator('[data-category-panel="payment"]')).toBeHidden();
+    await expect(page.locator('#integration-tabs [data-category="commerce"]')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#integration-tabs [data-category]')).toHaveCount(1);
+});
 
-    for (const category of ['payment', 'accounting', 'bank', 'marketing', 'communication']) {
-        await page.locator(`#integration-tabs [data-category="${category}"]`).click();
-        const panel = page.locator(`[data-category-panel="${category}"]`);
-        await expect(panel).toBeVisible();
-        await expect(page.locator('[data-category-panel="commerce"]')).toBeHidden();
-        // Coming soon badge + provider chips, and NO buttons anywhere in the panel.
-        await expect(panel).toContainText('Coming soon');
-        await expect(panel.locator('[data-provider-chips] span').first()).toBeVisible();
-        await expect(panel.locator('button')).toHaveCount(0);
-    }
+test('financial data model stacks cleanly on mobile', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/integration.html');
+    await expect(page.locator('[data-platform-card]')).toHaveCount(3, { timeout: 20000 });
 
-    // Back to Commerce.
-    await page.locator('#integration-tabs [data-category="commerce"]').click();
-    await expect(page.locator('[data-category-panel="commerce"]')).toBeVisible();
+    await expect(page.locator('#integration-data-heading')).toBeVisible();
+    await expect(page.locator('#data-model-flow')).toBeVisible();
+    const nodeTops = await page.locator('#data-model-flow .integration-flow-node').evaluateAll((nodes) =>
+        nodes.map((node) => Math.round(node.getBoundingClientRect().top))
+    );
+    expect(nodeTops[1]).toBeGreaterThan(nodeTops[0]);
+    expect(nodeTops[2]).toBeGreaterThan(nodeTops[1]);
+    await expect(page.locator('html')).toHaveJSProperty('scrollWidth', 390);
 });

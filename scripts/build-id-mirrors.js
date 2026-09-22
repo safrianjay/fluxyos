@@ -43,6 +43,11 @@ const SITE = 'https://fluxyos.com';
 // slug -> pretty path served for the root page; title/description are the
 // Indonesian head copy (titles match the runtime dictionary).
 const PAGES = {
+    'point-of-sale.html': {
+        slug: 'point-of-sale', rootPath: '/point-of-sale',
+        title: "Point of Sale untuk Restoran & Kafe | FluxyOS",
+        description: "Hubungkan pesanan meja, menu QR, layanan dapur, dan catatan pembayaran dengan persediaan serta akuntansi melalui FluxyOS Point of Sale.",
+    },
     'fluxyos.html': {
         slug: 'fluxyos', rootPath: '/',
         title: 'FluxyOS — Sistem Operasi Keuangan Cerdas',
@@ -233,6 +238,11 @@ function main() {
         // chevron; the chevron's w-3.5 class is distinctive).
         html = html.replace(/(<\/svg>\s*)EN(\s*<svg class="w-3\.5)/g, '$1ID$2');
 
+        if (meta.slug === 'point-of-sale') {
+            html = html.replace(/pos-qr-(menu|customize|basket)-en\.jpg/g, 'pos-qr-$1-id.jpg');
+            html = html.replace(/(<meta property="og:locale:alternate" content=")[^"]*(")/, '$1en_US$2');
+        }
+
         // Restore shielded blocks.
         html = html.replace(/ SHIELD(\d+) /g, (_, i) => shields[Number(i)]);
 
@@ -243,6 +253,15 @@ function main() {
         // the pair disagree and disqualifies the snippet. Localize those, and the
         // reviewer-facing strings beside them, so the two stay identical.
         html = html.replace(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g, (block, json) => {
+            // The POS FAQ and product description must match the visible locale.
+            if (meta.slug === 'point-of-sale') {
+                const localize = (value) => {
+                    if (Array.isArray(value)) return value.map(localize);
+                    if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, localize(v)]));
+                    return typeof value === 'string' && Object.prototype.hasOwnProperty.call(dict, value) ? dict[value] : value;
+                };
+                return '<script type="application/ld+json">' + JSON.stringify(localize(JSON.parse(json)), null, 2) + '</script>';
+            }
             const localized = json.replace(/"reviewBody":\s*"((?:[^"\\]|\\.)*)"/g, (m2, body) => {
                 const plain = body.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
                 const t = translate(plain, meta.slug);

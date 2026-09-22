@@ -137,6 +137,10 @@ The 8 `id/use-cases/*.html` pages are hand-maintained and are *not* generated.
 | English | Indonesian (canonical) | Notes |
 |---------|------------------------|-------|
 | Intelligent Finance Operating System | Sistem Operasi Keuangan Cerdas | **The product category.** The one exception to "brand names stay English": translate it, with the English in parentheses on first mention per page — *Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System)*. Canonical source: `PRODUCT_STRATEGY.md` §1 |
+| Point of Sale | Point of Sale (keep) | Product name; POS for the abbreviation |
+| Cost of goods sold | Harga pokok penjualan | HPP for the abbreviation |
+| Shift | Shift | Cashier working session |
+| Table service | Layanan meja | Dine-in POS workflow |
 | Vendor Spend | Vendor Spend (keep) | Product name |
 | Revenue Sync | Revenue Sync (keep) | Product name |
 | Receipt Capture | Receipt Capture (keep) | Product name |

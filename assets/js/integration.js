@@ -121,6 +121,7 @@ export function initIntegrationPage({ ds, user }) {
     }
 
     initTabs();
+    initDataModel();
     initDrawerChrome();
     handleCallbackParams();
 
@@ -133,6 +134,7 @@ export function initIntegrationPage({ ds, user }) {
             if (!state.accounts.has(acc.platform)) state.accounts.set(acc.platform, acc);
         });
         renderCommerceGrid();
+        renderDataModel();
         if (state.drawerAccountId) refreshDrawerFromState();
     });
     // If the first snapshot never arrives (rules not deployed / offline), the
@@ -161,6 +163,39 @@ export function initIntegrationPage({ ds, user }) {
                 panel.classList.toggle('hidden', panel.getAttribute('data-category-panel') !== btn.getAttribute('data-category'));
             });
         });
+    }
+
+    // ---------------------------------------------------------- data model
+    function initDataModel() {
+        const tabs = document.querySelectorAll('[data-data-model-view]');
+        tabs.forEach((tab) => {
+            tab.addEventListener('click', () => {
+                const view = tab.getAttribute('data-data-model-view');
+                tabs.forEach((candidate) => {
+                    candidate.setAttribute('aria-selected', String(candidate === tab));
+                });
+                document.querySelectorAll('[data-data-model-panel]').forEach((panel) => {
+                    panel.hidden = panel.getAttribute('data-data-model-panel') !== view;
+                });
+            });
+        });
+        renderDataModel();
+    }
+
+    function renderDataModel() {
+        const connectedCount = state.accounts.size;
+        const count = document.querySelector('[data-connected-count]');
+        if (count) count.textContent = t('{count} of 3 connected', { count: connectedCount });
+
+        const source = document.querySelector('[data-flow-source]');
+        source?.classList.toggle('is-connected', connectedCount > 0);
+
+        const status = document.getElementById('data-model-status');
+        if (status) {
+            status.textContent = connectedCount
+                ? t('{count} connected channel(s) feed financial events into FluxyOS.', { count: connectedCount })
+                : t('Connect a sales channel to start your financial data flow.');
+        }
     }
 
     // ----------------------------------------------------------------- cards

@@ -1,161 +1,150 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Intelligent Finance OS for Retail & Franchise | FluxyOS</title>
-    <meta name="description" content="Control supplier costs, receipts, budgets, bank reconciliation, and month-end close for retail and franchise businesses.">
-    <link rel="canonical" href="https://fluxyos.com/use-cases/retail-franchises">
-    <link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/retail-franchises">
-    <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/retail-franchises">
-    <link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/retail-franchises">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://fluxyos.com/use-cases/retail-franchises">
-    <meta property="og:title" content="Intelligent Finance OS for Retail & Franchise | FluxyOS">
-    <meta property="og:description" content="Bring supplier costs, store expenses, budgets, receipts, and bank reconciliation into one finance operations view.">
-    <meta property="og:image" content="https://fluxyos.com/assets/images/og-retail-franchises.png">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:site_name" content="FluxyOS">
-    <meta property="og:locale" content="en_US">
-    <meta property="og:locale:alternate" content="id_ID">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Intelligent Finance OS for Retail & Franchise | FluxyOS">
-    <meta name="twitter:description" content="Know which outlets are making money, not just making sales.">
-    <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-retail-franchises.png">
-    <link rel="stylesheet" href="/assets/css/tailwind.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/fluxyos.css">
-    <style>
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }
-        .font-mono { font-family: 'Fira Code', monospace; }
-        .retail-hero {
-            background:
-                radial-gradient(circle at 12% 10%, rgba(234, 88, 12, 0.10), transparent 26%),
-                radial-gradient(circle at 84% 22%, rgba(11, 15, 25, 0.07), transparent 28%),
-                linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
-        }
-        .retail-grid {
-            background-image:
-                linear-gradient(rgba(11, 15, 25, 0.055) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(11, 15, 25, 0.055) 1px, transparent 1px);
-            background-size: 36px 36px;
-        }
-        .dashboard-shadow { box-shadow: 0 30px 100px -56px rgba(11, 15, 25, 0.76); }
-        .soft-card { transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
-        .soft-card:hover { transform: translateY(-2px); border-color: rgba(234, 88, 12, 0.32); box-shadow: 0 22px 55px -38px rgba(11, 15, 25, 0.48); }
-        .status-healthy { background: #DCFCE7; color: #166534; }
-        .status-review { background: #FEF3C7; color: #92400E; }
-        .status-track { background: #DBEAFE; color: #1E40AF; }
-        .step-card { position: relative; }
-        .step-card::after { content: ""; position: absolute; top: 50%; right: -28px; width: 28px; height: 1px; background: #D1D5DB; }
-        .step-card:last-child::after { display: none; }
-        @media (max-width: 1023px) { .step-card::after { display: none; } }
-    </style>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZN7J6DRD2L"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-ZN7J6DRD2L');
-    </script>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Point of Sale for Restaurants &amp; Cafés | FluxyOS</title>
+    <meta name="description" content="Connect table orders, QR menus, kitchen service, and recorded payments to inventory and accounting with FluxyOS Point of Sale." />
+    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href="https://fluxyos.com/point-of-sale" />
+    <link rel="alternate" hreflang="en" href="https://fluxyos.com/point-of-sale" />
+    <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/point-of-sale" />
+    <link rel="alternate" hreflang="x-default" href="https://fluxyos.com/point-of-sale" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/assets/css/tailwind.min.css" />
+    <link rel="stylesheet" href="/assets/css/fluxyos.css" />
+    <link rel="stylesheet" href="/assets/css/pos-landing.css" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Point of Sale for Restaurants &amp; Cafés | FluxyOS" />
+    <meta property="og:description" content="Connect table orders, QR menus, kitchen service, and recorded payments to inventory and accounting with FluxyOS Point of Sale." />
+    <meta property="og:url" content="https://fluxyos.com/point-of-sale" />
+    <meta property="og:site_name" content="FluxyOS" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="id_ID" />
+    <meta property="og:image" content="https://fluxyos.com/assets/images/og-point-of-sale.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Point of Sale for Restaurants &amp; Cafés | FluxyOS" />
+    <meta name="twitter:description" content="Connect table orders, QR menus, kitchen service, and recorded payments to inventory and accounting with FluxyOS Point of Sale." />
+    <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-point-of-sale.png" />
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "@id": "https://fluxyos.com/#organization",
-      "name": "FluxyOS",
-      "legalName": "PT SAF Teknologi Maju",
-      "url": "https://fluxyos.com",
-      "logo": "https://fluxyos.com/assets/images/favicon.svg",
-      "description": "Intelligent Finance Operating System connecting financial operations, accounting, business operations, and intelligence into one system, for businesses at every growth stage.",
-      "foundingDate": "2026",
-      "areaServed": {
-        "@type": "Country",
-        "name": "Indonesia"
-      },
-      "address": {
-        "@type": "PostalAddress",
-        "streetAddress": "Plaza Indonesia, Level 5 Unit E021AB, Jl. M.H. Thamrin No. Kav. 28-30",
-        "addressLocality": "Jakarta Pusat",
-        "addressRegion": "DKI Jakarta",
-        "postalCode": "10350",
-        "addressCountry": "ID"
-      },
-      "sameAs": [
-        "https://www.linkedin.com/company/fluxyos/",
-        "https://www.instagram.com/fluxy_os/"
-      ],
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "contactType": "customer support",
-        "email": "support@fluxyos.com",
-        "availableLanguage": [
-          "English",
-          "Indonesian"
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "@id": "https://fluxyos.com/#organization",
+        "name": "FluxyOS",
+        "legalName": "PT SAF Teknologi Maju",
+        "url": "https://fluxyos.com",
+        "logo": "https://fluxyos.com/assets/images/favicon.svg",
+        "description": "Intelligent Finance Operating System connecting financial operations, accounting, business operations, and intelligence into one system, for businesses at every growth stage.",
+        "foundingDate": "2026",
+        "areaServed": {
+          "@type": "Country",
+          "name": "Indonesia"
+        },
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "Plaza Indonesia, Level 5 Unit E021AB, Jl. M.H. Thamrin No. Kav. 28-30",
+          "addressLocality": "Jakarta Pusat",
+          "addressRegion": "DKI Jakarta",
+          "postalCode": "10350",
+          "addressCountry": "ID"
+        },
+        "sameAs": [
+          "https://www.linkedin.com/company/fluxyos/",
+          "https://www.instagram.com/fluxy_os/"
         ]
       }
-    }
     </script>
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "FluxyOS for Retail and Franchises",
-      "applicationCategory": "BusinessApplication",
-      "applicationSubCategory": "Retail Finance Operations Software",
-      "operatingSystem": "Web, iOS, Android",
-      "url": "https://fluxyos.com/use-cases/retail-franchises",
-      "inLanguage": "en-US",
-      "description": "FluxyOS is a finance operations system for retail and franchise businesses. It consolidates bank settlements, supplier invoices, receipts, budgets, vendor payments, and month-end close.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "IDR",
-        "availability": "https://schema.org/InStock"
-      },
-      "featureList": [
-        "Bank settlement reconciliation",
-        "Supplier cost tracking",
-        "Store budget control",
-        "Receipt capture via WhatsApp, email, and upload",
-        "Duplicate vendor payment detection",
-        "Franchise performance comparison",
-        "Month-end close preparation"
-      ],
-      "publisher": {
-        "@id": "https://fluxyos.com/#organization"
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "FluxyOS Point of Sale",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "url": "https://fluxyos.com/point-of-sale",
+        "description": "Connect table orders, QR menus, kitchen service, and recorded payments to inventory and accounting with FluxyOS Point of Sale.",
+        "publisher": {
+          "@id": "https://fluxyos.com/#organization"
+        }
       }
-    }
     </script>
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://fluxyos.com/" },
-        { "@type": "ListItem", "position": 2, "name": "Use Cases", "item": "https://fluxyos.com/use-cases/retail-franchises" },
-        { "@type": "ListItem", "position": 3, "name": "Retail & Franchises", "item": "https://fluxyos.com/use-cases/retail-franchises" }
-      ]
-    }
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is FluxyOS Point of Sale?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Point of Sale is the FluxyOS workspace for taking orders, managing table service, and recording payments. Sales connect to accounting and, with configured items and recipes, inventory and cost of goods sold."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can guests order from a table QR?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Guests scan the table QR to open the menu, choose items and options, submit an order, and follow its status. Orders enter the outlet’s service workflow."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does the POS process card or QRIS payments?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Staff can record cash, card, and QRIS payments at the till. Integrated payment-provider processing is not available yet; your team confirms payment through its existing payment service."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does it work without an internet connection?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "An internet connection is required. Offline order taking and queued offline payments are not supported."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How can I get access?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Talk to our team about your outlet and service workflow. Point of Sale access is enabled for eligible workspaces, and we can help you review the setup for your business."
+            }
+          }
+        ]
+      }
     </script>
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "inLanguage": "en-US",
-      "mainEntity": [
-        { "@type": "Question", "name": "How does FluxyOS help retail and franchise owners?", "acceptedAnswer": { "@type": "Answer", "text": "FluxyOS brings supplier invoices, store expenses, receipts, budgets, vendor payments, and bank settlements into one finance operations view, so owners know what the month really cost before the books close." } },
-        { "@type": "Question", "name": "Can FluxyOS compare outlet profitability?", "acceptedAnswer": { "@type": "Answer", "text": "Not yet. Comparing branches means carrying an outlet dimension on every posting, and that is on the roadmap rather than in the product today. Figures are currently kept per workspace, so they are consolidated rather than split by branch." } },
-        { "@type": "Question", "name": "Does FluxyOS track customer footfall or CCTV analytics?", "acceptedAnswer": { "@type": "Answer", "text": "No. FluxyOS is focused on finance operations: bank settlement, supplier costs, store expenses, receipts, budgets, reconciliation, and month-end close." } },
-        { "@type": "Question", "name": "Can store managers submit receipts from WhatsApp?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Store teams can send receipts through WhatsApp, email, or upload. FluxyOS extracts vendor, amount, tax, and category for finance review." } }
-      ]
-    }
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "FluxyOS",
+            "item": "https://fluxyos.com/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Point of Sale",
+            "item": "https://fluxyos.com/point-of-sale"
+          }
+        ]
+      }
     </script>
-</head>
-<body class="min-h-screen flex flex-col bg-white">
-    <nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
+  </head>
+  <body>
+    <a class="pos-skip" href="#main-content">Skip to content</a>
+    <nav class="home-hero-nav bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
         <div class="max-w-[1280px] mx-auto px-6 h-[80px] flex items-center justify-between">
             <div class="flex items-center gap-12 h-full">
                 <a href="/fluxyos" class="flex items-center gap-2.5 cursor-pointer group">
@@ -466,7 +455,7 @@
                             English (EN)
                             <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
                         </a>
-                        <a href="/fluxyos" class="block px-4 py-2.5 text-[14px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">Bahasa (ID)</a>
+                        <a href="/id/point-of-sale" class="block px-4 py-2.5 text-[14px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">Bahasa (ID)</a>
                     </div>
                 </div>
 
@@ -532,184 +521,668 @@
             </div>
         </div>
     </nav>
-
-    <main>
-        <section class="retail-hero retail-grid pt-12 md:pt-20 pb-14 md:pb-20 px-6">
-            <div class="max-w-[1280px] mx-auto grid lg:grid-cols-[0.92fr_1.08fr] gap-12 items-center">
+    <main id="main-content" class="pos-landing">
+      <section class="pos-hero landing-hero">
+        <div class="pos-hero-copy">
+          <h1>Every order.<br /><span>Connected to your books.</span></h1>
+          <p class="pos-lead">FluxyOS is an Intelligent Finance Operating System. Point of Sale connects your tables, kitchen orders, payments, and books.</p>
+          <div class="pos-actions">
+            <a class="pos-button pos-primary" href="/contact-sales"
+              >Talk to sales<svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M5 12h14m-5-5 5 5-5 5" /></svg></a
+            ><a class="pos-button" href="#pos-experience"
+              >Explore Point of Sale<svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M5 12h14m-5-5 5 5-5 5" /></svg
+            ></a>
+          </div>
+        </div>
+        <div
+          class="pos-connections"
+          aria-label="From order to financial records"
+        >
+          <svg
+            class="pos-wires"
+            viewBox="0 0 1100 240"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M115 70V160Q115 180 135 180H965Q985 180 985 160V70M330 150v30m220-30v30m220-30v30"
+            />
+          </svg>
+          <div class="pos-node edge">
+            <div class="pos-node-title">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M4 7h16v10H4z M8 3v4m8-4v4M8 17v4m8-4v4" /></svg
+              ><strong>Table</strong><span class="pos-node-dot"></span>
+            </div>
+            <p>Table 08 · Dine-in</p>
+            <p class="pos-muted">2 guests</p>
+          </div>
+          <div class="pos-node">
+            <div class="pos-node-title">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M8 3h8v3H8z M6 5H4v16h16V5h-2M8 11h8m-8 4h5" /></svg
+              ><strong>Order</strong><span class="pos-node-dot"></span>
+            </div>
+            <p>2 × Nasi goreng</p>
+            <p class="pos-muted">Sent to kitchen</p>
+          </div>
+          <div class="pos-node center">
+            <div class="pos-node-title">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M3 5h18v14H3z M3 10h18M7 15h3" /></svg
+              ><strong>Payment</strong><span class="pos-node-dot"></span>
+            </div>
+            <p>Rp90.000</p>
+            <p class="pos-muted">Recorded at the till</p>
+          </div>
+          <div class="pos-node">
+            <div class="pos-node-title">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="m3 7 9-4 9 4-9 4z M3 7v10l9 4 9-4V7M12 11v10" /></svg
+              ><strong>Inventory</strong><span class="pos-node-dot"></span>
+            </div>
+            <p>Recipe ingredients</p>
+            <p class="pos-muted">Stock movement</p>
+          </div>
+          <div class="pos-node edge">
+            <div class="pos-node-title">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M4 3h16v18H4z M8 7h8m-8 5h8m-8 5h5" /></svg
+              ><strong>Ledger</strong><span class="pos-node-dot"></span>
+            </div>
+            <p>Revenue + cost</p>
+            <p class="pos-muted">Attributed to your outlet</p>
+          </div>
+        </div>
+        <div id="pos-experience" class="pos-experience" data-pos-tabs>
+          <div class="pos-demo-caption">
+            <span>A connected service, from the first order.</span
+            ><span>Illustrative product view</span>
+          </div>
+          <div class="pos-app">
+            <div class="pos-app-top">
+              <span class="pos-app-brand"
+                ><img
+                  src="/assets/images/favicon.svg"
+                  width="24"
+                  height="24"
+                  alt=""
+                />FluxyOS <span>Point of Sale</span></span
+              ><span class="pos-outlet"
+                >Senopati outlet
+                <span class="pos-live">● Shift open</span></span
+              >
+            </div>
+            <div role="tabpanel" tabindex="0" id="service-floor" aria-labelledby="service-tab-floor"><div class="pos-floor-layout"><div class="pos-floor-main"><div class="pos-view-heading"><h3>Your floor, at a glance.</h3><span>Main floor</span></div><div class="pos-floor-grid"><div class="pos-table "><i></i><strong>01</strong><span>Available</span><i></i></div><div class="pos-table "><i></i><strong>02</strong><span>Dining</span><i></i></div><div class="pos-table "><i></i><strong>03</strong><span>Available</span><i></i></div><div class="pos-table "><i></i><strong>04</strong><span>Reserved</span><i></i></div><div class="pos-table "><i></i><strong>05</strong><span>Dining</span><i></i></div><div class="pos-table "><i></i><strong>06</strong><span>Available</span><i></i></div><div class="pos-table "><i></i><strong>07</strong><span>Available</span><i></i></div><div class="pos-table selected"><i></i><strong>08</strong><span>Selected</span><i></i></div><div class="pos-table "><i></i><strong>09</strong><span>Dining</span><i></i></div></div><div class="pos-floor-legend"><span>○ Available</span><span>◉ Dining</span><span>◷ Reserved</span></div></div><aside class="pos-ticket"><div class="pos-ticket-head"><div><small>Current order</small><h3>Table 08</h3></div><span class="pos-tag">Dine-in</span></div><p class="pos-muted">2 guests · Order #024</p><div class="pos-row"><span>2 × Nasi goreng</span><strong>Rp70.000</strong></div><div class="pos-row"><span>2 × Es teh</span><strong>Rp20.000</strong></div><div class="pos-ticket-note">Less spicy · No ice</div><div class="pos-ticket-total"><div class="pos-row"><span>Subtotal</span><strong>Rp90.000</strong></div></div><div class="pos-demo-status"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg>Sent to kitchen</div></aside></div></div>
+<div
+              role="tabpanel"
+              tabindex="0"
+              id="service-kitchen"
+              aria-labelledby="service-tab-kitchen"
+              hidden
+            >
+              <div class="pos-kitchen">
+                <div class="pos-view-heading">
+                  <h3>Every ticket has its place.</h3>
+                  <span>Kitchen orders</span>
+                </div>
+                <div class="pos-kitchen-grid">
+                  <div class="pos-kitchen-column">
+                    <div class="pos-column-title">Preparing <span>1</span></div>
+                    <div class="pos-kitchen-ticket">
+                      <strong>Table 08</strong><small>Dine-in</small>
+                      <p>2 × Nasi goreng</p>
+                      <p>2 × Es teh</p>
+                      <div class="pos-ticket-note">
+                        Order notes stay with the ticket.
+                      </div>
+                    </div>
+                  </div>
+                  <div class="pos-kitchen-column">
+                    <div class="pos-column-title">Ready <span>1</span></div>
+                    <div class="pos-kitchen-ticket">
+                      <strong>Table 02</strong><small>Dine-in</small>
+                      <p>1 × Mie goreng</p>
+                      <p>1 × Kopi susu</p>
+                      <div class="pos-ticket-note">
+                        Order notes stay with the ticket.
+                      </div>
+                    </div>
+                  </div>
+                  <div class="pos-kitchen-column">
+                    <div class="pos-column-title">Served <span>1</span></div>
+                    <div class="pos-kitchen-ticket">
+                      <strong>Table 05</strong><small>Dine-in</small>
+                      <p>2 × Nasi ayam</p>
+                      <p>2 × Es teh</p>
+                      <div class="pos-ticket-note">
+                        Order notes stay with the ticket.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div
+              role="tabpanel"
+              tabindex="0"
+              id="service-payment"
+              aria-labelledby="service-tab-payment"
+              hidden
+            >
+              <div class="pos-payment">
                 <div>
-                    <h1 class="text-[44px] md:text-[56px] leading-[1.03] font-bold tracking-tight text-gray-950 mb-6">Know which outlets are making money, not just making sales.</h1>
-                    <p class="text-[18px] md:text-[20px] text-gray-600 leading-relaxed mb-8 max-w-2xl">FluxyOS brings supplier invoices, store expenses, receipts, budgets, and payouts into one finance operations view, so retail and franchise owners know what the month really cost before it closes.</p>
-                    <div class="grid sm:grid-cols-2 gap-3 mb-8 text-[15px] text-gray-700">
-                        <div class="flex items-center gap-3"><span class="h-2.5 w-2.5 rounded-full bg-[#16A34A]"></span> Compare outlet profitability</div>
-                        <div class="flex items-center gap-3"><span class="h-2.5 w-2.5 rounded-full bg-[#3B82F6]"></span> Match POS to bank settlement</div>
-                        <div class="flex items-center gap-3"><span class="h-2.5 w-2.5 rounded-full bg-gray-950"></span> Control supplier and store costs</div>
-                        <div class="flex items-center gap-3"><span class="h-2.5 w-2.5 rounded-full bg-gray-950"></span> Reduce spreadsheet close work</div>
-                    </div>
-                    <div class="flex flex-col sm:flex-row gap-4"><a href="/pricing" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[16px] px-8 py-4 rounded-md transition-all shadow-sm text-center">Try FluxyOS</a><a href="/pricing" class="bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 font-semibold text-[16px] px-8 py-4 rounded-md transition-all shadow-sm text-center">Book a demo</a></div>
+                  <span class="pos-section-label">At checkout</span>
+                  <h3>One table. A clear bill.</h3>
+                  <p>
+                    Review the table bill, split by item or share, and record
+                    each payment at the till.
+                  </p>
+                  <div class="pos-payment-methods">
+                    <span>Cash</span><span>Card</span><span>QRIS</span>
+                  </div>
+                  <small
+                    >Payment methods are recorded manually. Provider processing
+                    is not included.</small
+                  >
                 </div>
-                <div class="dashboard-shadow rounded-[28px] border border-gray-200 bg-white p-4 md:p-5">
-                    <div class="flex items-center justify-between border-b border-gray-200 pb-4 mb-4"><div><p class="text-[12px] font-bold text-[#EA580C] uppercase tracking-wider">Multi-outlet P&L</p><h2 class="text-[22px] font-bold text-gray-950">Retail finance cockpit</h2></div><span class="rounded-full bg-gray-950 text-white text-[12px] font-semibold px-3 py-1">Live close</span></div>
-                    <div class="grid md:grid-cols-3 gap-3">
-                        <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-4"><div class="flex items-center justify-between mb-3"><h3 class="font-bold text-gray-950">Outlet A - Kemang</h3><span class="status-healthy rounded-full px-2 py-1 text-[11px] font-bold">Healthy</span></div><p class="text-[12px] text-gray-500">Revenue</p><p class="font-mono text-[22px] font-bold">Rp 128.4M</p><div class="mt-3 grid grid-cols-2 gap-2 text-[12px]"><span class="text-gray-500">Operating cost</span><strong class="text-right">Rp 82.1M</strong><span class="text-gray-500">Net margin</span><strong class="text-right text-[#16A34A]">18.6%</strong></div></div>
-                        <div class="rounded-2xl border border-[#EA580C]/35 bg-white p-4"><div class="flex items-center justify-between mb-3"><h3 class="font-bold text-gray-950">Outlet B - Senopati</h3><span class="status-review rounded-full px-2 py-1 text-[11px] font-bold">Review</span></div><p class="text-[12px] text-gray-500">Revenue</p><p class="font-mono text-[22px] font-bold">Rp 96.2M</p><div class="mt-3 grid grid-cols-2 gap-2 text-[12px]"><span class="text-gray-500">Operating cost</span><strong class="text-right">Rp 89.7M</strong><span class="text-gray-500">Net margin</span><strong class="text-right text-[#EA580C]">4.1%</strong></div></div>
-                        <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-4"><div class="flex items-center justify-between mb-3"><h3 class="font-bold text-gray-950">Outlet C - Bandung</h3><span class="status-track rounded-full px-2 py-1 text-[11px] font-bold">On track</span></div><p class="text-[12px] text-gray-500">Revenue</p><p class="font-mono text-[22px] font-bold">Rp 142.8M</p><div class="mt-3 grid grid-cols-2 gap-2 text-[12px]"><span class="text-gray-500">Operating cost</span><strong class="text-right">Rp 101.5M</strong><span class="text-gray-500">Net margin</span><strong class="text-right text-[#16A34A]">16.9%</strong></div></div>
+                <div class="pos-receipt">
+                  <span class="pos-receipt-brand">FluxyOS</span>
+                  <p>Table 08 · Order #024</p>
+                  <div class="pos-row">
+                    <span>2 × Nasi goreng</span><strong>Rp70.000</strong>
+                  </div>
+                  <div class="pos-row">
+                    <span>2 × Es teh</span><strong>Rp20.000</strong>
+                  </div>
+                  <div class="pos-ticket-total">
+                    <div class="pos-row">
+                      <span>Total</span><strong>Rp90.000</strong>
                     </div>
-                    <div class="mt-4 grid md:grid-cols-[1fr_1fr_1.2fr] gap-3">
-                        <div class="rounded-2xl border border-gray-200 p-4"><p class="text-[12px] text-gray-500 mb-1">Supplier cost</p><p class="font-mono text-[20px] font-bold">Rp 117.6M</p><div class="mt-3 h-2 rounded-full bg-gray-100 overflow-hidden"><span class="block h-full w-[64%] bg-gray-950"></span></div></div>
-                        <div class="rounded-2xl border border-gray-200 p-4"><p class="text-[12px] text-gray-500 mb-1">Rent & utilities</p><p class="font-mono text-[20px] font-bold">Rp 48.3M</p><p class="mt-3 text-[12px] font-semibold text-[#92400E]">Senopati utility spend +18%</p></div>
-                        <div class="rounded-2xl bg-gray-950 p-4 text-white"><div class="flex items-center justify-between mb-3"><h3 class="font-bold">AI finance insight</h3><span class="text-[11px] rounded-full bg-white/10 px-2 py-1">Needs review</span></div><p class="text-[14px] text-gray-200 leading-relaxed">Senopati margin dropped after supplier cost increased 12% and rent was posted twice. Review duplicate payment before close.</p></div>
-                    </div>
-                    <div class="mt-4 grid md:grid-cols-3 gap-3 text-[13px]">
-                        <div class="rounded-xl border border-gray-200 bg-[#F8FAFC] p-3"><strong>POS settlement</strong><p class="text-gray-500 mt-1">BCA deposit matched for 2 of 3 outlets.</p></div>
-                        <div class="rounded-xl border border-[#F59E0B]/30 bg-[#FFFBEB] p-3"><strong>Missing receipt</strong><p class="text-gray-600 mt-1">Repairs receipt missing from Bandung.</p></div>
-                        <div class="rounded-xl border border-[#EF4444]/25 bg-[#FEF2F2] p-3"><strong>Duplicate payment</strong><p class="text-gray-600 mt-1">Rent invoice repeated in Senopati.</p></div>
-                    </div>
+                  </div>
+                  <div class="pos-paid">
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m5 12 4 4L19 6" /></svg
+                    >Payment recorded
+                  </div>
+                  <div class="pos-receipt-lines" aria-hidden="true"></div>
                 </div>
+              </div>
             </div>
-        </section>
-
-        <section class="py-10 px-6 bg-white border-y border-gray-200">
-            <div class="max-w-[1180px] mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="rounded-2xl border border-gray-200 p-5"><p class="text-[20px] font-bold text-gray-950">TikTok Shop &middot; Shopee</p><p class="text-[14px] text-gray-600 mt-1">Marketplace orders and settlements sync to the ledger</p></div>
-                <div class="rounded-2xl border border-gray-200 p-5"><p class="text-[20px] font-bold text-gray-950">Per outlet</p><p class="text-[14px] text-gray-600 mt-1">Revenue and spend split by business, not just in total</p></div>
-                <div class="rounded-2xl border border-gray-200 p-5"><p class="text-[20px] font-bold text-gray-950">SAK-aligned</p><p class="text-[14px] text-gray-600 mt-1">Trial balance and period close your accountant can defend</p></div>
-                <div class="rounded-2xl border border-gray-950 bg-gray-950 p-5 text-white"><p class="font-mono text-[28px] font-bold">P&L</p><p class="text-[14px] text-gray-300 mt-1">Multi-outlet visibility</p></div>
+          </div>
+          <div class="pos-tabs" role="tablist" aria-label="Explore the POS">
+            <button
+              type="button"
+              role="tab"
+              id="service-tab-floor"
+              aria-controls="service-floor"
+              aria-selected="true"
+              tabindex="0"
+              data-pos-tab="floor"
+            >
+              Table service</button
+            ><button
+              type="button"
+              role="tab"
+              id="service-tab-kitchen"
+              aria-controls="service-kitchen"
+              aria-selected="false"
+              tabindex="-1"
+              data-pos-tab="kitchen"
+            >
+              Kitchen orders</button
+            ><button
+              type="button"
+              role="tab"
+              id="service-tab-payment"
+              aria-controls="service-payment"
+              aria-selected="false"
+              tabindex="-1"
+              data-pos-tab="payment"
+            >
+              Payment recording
+            </button>
+          </div>
+        </div>
+      </section>
+      <section class="pos-section pos-intro">
+        <p>
+          FluxyOS is an Intelligent Finance Operating System that connects
+          financial operations, accounting, business operations, enterprise
+          workflows, and intelligence into one continuously connected system.
+        </p>
+      </section>
+      <section class="pos-section">
+        <div class="pos-section-heading">
+          <h2>
+            Built around your service.
+            <span>From a quick coffee to a full table.</span>
+          </h2>
+        </div>
+        <div class="pos-feature-grid">
+          <article class="pos-feature">
+            <span class="pos-feature-number">[01]</span>
+            <div class="pos-feature-art"><svg class="pos-service-scene" aria-hidden="true" viewBox="0 0 220 140" fill="#f3f5f8" stroke="#526075" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="91" y="12" width="38" height="16" rx="7"/><rect x="91" y="112" width="38" height="16" rx="7"/><rect x="43" y="51" width="16" height="38" rx="7"/><rect x="161" y="51" width="16" height="38" rx="7"/><rect x="66" y="35" width="88" height="70" rx="16" fill="white"/><circle cx="87" cy="57" r="9"/><circle cx="133" cy="83" r="9"/><path d="M82 57h10m41 21v10" stroke="#cbd1da"/><text x="110" y="78">08</text><circle cx="165" cy="32" r="15" fill="white" stroke="#EA580C"/><path d="m159 32 4 4 8-9" stroke="#EA580C"/></svg><span>Dine-in → Table → Order</span>
             </div>
-        </section>
-
-        <section class="py-16 md:py-24 px-6 bg-[#F8FAFC]">
-            <div class="max-w-[1180px] mx-auto">
-                <div class="grid lg:grid-cols-[0.88fr_1.12fr] gap-10 items-start">
-                    <div>
-                        <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Sales reports do not tell the whole story.</h2>
-                        <p class="text-[18px] text-gray-600 leading-relaxed">POS shows revenue. Bank accounts show cash. Supplier invoices show costs. Spreadsheets try to connect everything. But owners still struggle to know which branch is actually profitable.</p>
-                        <div class="mt-8 grid sm:grid-cols-2 gap-4">
-                            <div class="soft-card rounded-2xl border border-gray-200 bg-white p-5"><h3 class="text-[17px] font-bold text-gray-950 mb-2">Revenue is separated from settlement</h3><p class="text-[14px] text-gray-600 leading-relaxed">Sales can look healthy while fees, refunds, and payout timing hide the cash gap.</p></div>
-                            <div class="soft-card rounded-2xl border border-gray-200 bg-white p-5"><h3 class="text-[17px] font-bold text-gray-950 mb-2">Supplier costs move faster than review</h3><p class="text-[14px] text-gray-600 leading-relaxed">Inventory, packaging, and operating invoices often land after the sales report is already shared.</p></div>
-                            <div class="soft-card rounded-2xl border border-gray-200 bg-white p-5"><h3 class="text-[17px] font-bold text-gray-950 mb-2">Outlet expenses are scattered</h3><p class="text-[14px] text-gray-600 leading-relaxed">Receipts arrive through WhatsApp, email, cash boxes, and manager uploads without a clean branch tag.</p></div>
-                            <div class="soft-card rounded-2xl border border-gray-200 bg-white p-5"><h3 class="text-[17px] font-bold text-gray-950 mb-2">Month-end depends on spreadsheets</h3><p class="text-[14px] text-gray-600 leading-relaxed">Finance teams rebuild branch P&L from fragments instead of reviewing a clean operating view.</p></div>
-                        </div>
-                    </div>
-                    <div class="dashboard-shadow rounded-[28px] border border-gray-200 bg-white p-5">
-                        <div class="flex items-center justify-between border-b border-gray-200 pb-4 mb-5"><div><p class="text-[12px] font-bold uppercase tracking-wider text-[#EA580C]">Cashflow gap</p><h3 class="text-[22px] font-bold text-gray-950">Sales vs cash after costs</h3></div><span class="rounded-full bg-[#FEF3C7] px-3 py-1 text-[12px] font-bold text-[#92400E]">Senopati review</span></div>
-                        <div class="space-y-4">
-                            <div>
-                                <div class="flex items-center justify-between text-[13px] mb-2"><span class="font-semibold text-gray-700">POS sales reported</span><span class="font-mono font-bold">Rp 96.2M</span></div>
-                                <div class="h-3 rounded-full bg-gray-100 overflow-hidden"><span class="block h-full w-[92%] bg-[#16A34A]"></span></div>
-                            </div>
-                            <div>
-                                <div class="flex items-center justify-between text-[13px] mb-2"><span class="font-semibold text-gray-700">Bank settlement received</span><span class="font-mono font-bold">Rp 88.4M</span></div>
-                                <div class="h-3 rounded-full bg-gray-100 overflow-hidden"><span class="block h-full w-[78%] bg-[#3B82F6]"></span></div>
-                            </div>
-                            <div>
-                                <div class="flex items-center justify-between text-[13px] mb-2"><span class="font-semibold text-gray-700">Supplier + outlet costs</span><span class="font-mono font-bold">Rp 89.7M</span></div>
-                                <div class="h-3 rounded-full bg-gray-100 overflow-hidden"><span class="block h-full w-[84%] bg-gray-950"></span></div>
-                            </div>
-                        </div>
-                        <div class="mt-6 grid grid-cols-3 gap-3 text-center">
-                            <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Cash variance</p><p class="font-mono text-[20px] font-bold text-[#EA580C]">Rp 7.8M</p></div>
-                            <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Missing proof</p><p class="font-mono text-[20px] font-bold">5</p></div>
-                            <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Budget used</p><p class="font-mono text-[20px] font-bold">91%</p></div>
-                        </div>
-                        <div class="mt-5 rounded-2xl bg-gray-950 p-4 text-white"><p class="text-[14px] leading-relaxed"><strong>Finance note:</strong> sales volume is not the issue. Settlement timing, duplicated rent, and supplier price increases explain the weak branch margin.</p></div>
-                    </div>
-                </div>
+            <h3>Make room for every guest.</h3>
+            <p>
+              See available tables, keep track of reservations, and open dine-in
+              or takeaway orders from the same till.
+            </p>
+          </article>
+          <article class="pos-feature">
+            <span class="pos-feature-number">[02]</span>
+            <div class="pos-feature-art"><svg class="pos-service-scene" aria-hidden="true" viewBox="0 0 220 140" fill="#f3f5f8" stroke="#526075" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M70 55h67l-6 51H77z" fill="white"/><path d="M137 63h9a13 13 0 0 1 0 26h-12M63 112h83M85 38c-9-9 9-12 0-21m20 21c-9-9 9-12 0-21"/><path d="M83 80h41" stroke="#EA580C"/><rect x="145" y="25" width="56" height="32" rx="10" fill="white"/><path d="M155 41h13m-6-6v12" stroke="#EA580C"/><path d="M178 36h13m-13 9h8"/><circle cx="66" cy="88" r="15" fill="white" stroke="#EA580C"/><path d="m60 88 4 4 8-9" stroke="#EA580C"/></svg><span>Less sugar · Extra shot</span>
             </div>
-        </section>
-
-        <section class="py-16 md:py-24 px-6 bg-[#0B0F19] text-white">
-            <div class="max-w-[1280px] mx-auto">
-                <div class="grid lg:grid-cols-[0.78fr_1.22fr] gap-10 items-start">
-                    <div>
-                        <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight mb-5">Finance workflows built for stores, outlets, and franchise locations.</h2>
-                        <p class="text-[18px] text-gray-300 leading-relaxed">FluxyOS turns scattered retail finance activity into one review flow: money comes in, costs are assigned to the right outlet, risks are flagged, and finance closes with clean branch records.</p>
-                    </div>
-                    <div class="rounded-[28px] border border-white/10 bg-white/5 p-5">
-                        <div class="grid md:grid-cols-4 gap-3 text-[13px]">
-                            <div class="rounded-2xl bg-white text-gray-950 p-4"><span class="font-mono text-[12px] text-[#EA580C]">01</span><h3 class="font-bold mt-2">Revenue</h3><p class="text-gray-600 mt-1">POS sales, payment gateway settlement, and bank deposits.</p></div>
-                            <div class="rounded-2xl bg-white/10 border border-white/10 p-4"><span class="font-mono text-[12px] text-orange-200">02</span><h3 class="font-bold mt-2">Costs</h3><p class="text-gray-300 mt-1">Supplier invoices, rent, payroll, utilities, repairs, and petty cash.</p></div>
-                            <div class="rounded-2xl bg-white/10 border border-white/10 p-4"><span class="font-mono text-[12px] text-orange-200">03</span><h3 class="font-bold mt-2">Controls</h3><p class="text-gray-300 mt-1">Budgets, missing receipts, duplicate payment checks, and category review.</p></div>
-                            <div class="rounded-2xl bg-white/10 border border-[#EA580C]/60 text-white p-4"><span class="font-mono text-[12px] text-orange-200">04</span><h3 class="font-bold mt-2">Branch P&L</h3><p class="text-gray-300 mt-1">Revenue, expenses, cost ratio, and net margin by outlet.</p></div>
-                        </div>
-                        <div class="mt-5 rounded-2xl bg-[#0B0F19] border border-white/10 p-4">
-                            <div class="grid md:grid-cols-[1fr_auto_1fr_auto_1fr] gap-3 items-center text-[13px]">
-                                <div class="rounded-xl bg-white/10 p-3"><strong>Store manager</strong><p class="text-gray-300 mt-1">Submits receipts via WhatsApp or upload.</p></div>
-                                <span class="hidden md:block text-gray-500">→</span>
-                                <div class="rounded-xl bg-white/10 p-3"><strong>FluxyOS</strong><p class="text-gray-300 mt-1">Extracts vendor, amount, tax, outlet, and category.</p></div>
-                                <span class="hidden md:block text-gray-500">→</span>
-                                <div class="rounded-xl bg-white/10 p-3"><strong>Finance team</strong><p class="text-gray-300 mt-1">Reviews duplicates, settlement gaps, and month-end reports.</p></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <h3>Take the order their way.</h3>
+            <p>
+              Capture sizes, add-ons, notes, and discounts alongside each order,
+              so the details travel with the ticket.
+            </p>
+          </article>
+          <article class="pos-feature">
+            <span class="pos-feature-number">[03]</span>
+            <div class="pos-feature-art"><svg class="pos-service-scene" aria-hidden="true" viewBox="0 0 220 140" fill="#f3f5f8" stroke="#526075" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M77 13h66v63l-8-5-8 5-8-5-9 5-9-5-8 5-8-5-8 5z" fill="white"/><path d="M90 29h40m-40 12h24"/><path d="M96 56h28" stroke="#EA580C"/><path d="M110 81v10H59v11m51-11h51v11" stroke="#EA580C"/><rect x="28" y="103" width="63" height="27" rx="7" fill="white"/><rect x="130" y="103" width="63" height="27" rx="7" fill="white"/><path d="M38 114h12m-12 7h7m95-7h12m-12 7h7"/><circle cx="77" cy="116" r="5" stroke="#EA580C"/><circle cx="179" cy="116" r="5" stroke="#EA580C"/></svg><span>Rp90.000 → Rp45.000 + Rp45.000</span>
             </div>
-        </section>
-
-        <section class="py-16 md:py-24 px-6 bg-white">
-            <div class="max-w-[1280px] mx-auto">
-                <div class="grid lg:grid-cols-[0.8fr_1.2fr] gap-10 items-start">
-                    <div><h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">A larger dashboard for the questions owners ask every week.</h2><p class="text-[18px] text-gray-600 leading-relaxed">Outlet Senopati has healthy sales volume, but net margin is below other branches because supplier cost and utility spend increased faster than revenue.</p></div>
-                    <div class="dashboard-shadow rounded-[28px] border border-gray-200 bg-[#F8FAFC] p-5">
-                        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                            <div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Total outlet revenue</p><p class="font-mono text-[22px] font-bold">Rp 367.4M</p></div>
-                            <div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Outlet net margin</p><p class="font-mono text-[22px] font-bold">13.2%</p></div>
-                            <div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Cost ratio</p><p class="font-mono text-[22px] font-bold">71.9%</p></div>
-                            <div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Supplier spend</p><p class="font-mono text-[22px] font-bold">Rp 117.6M</p></div>
-                        </div>
-                        <div class="grid lg:grid-cols-[1.15fr_0.85fr] gap-4">
-                            <div class="rounded-2xl bg-white border border-gray-200 overflow-hidden"><div class="grid grid-cols-5 bg-gray-50 text-[11px] uppercase tracking-wider text-gray-500 font-bold px-4 py-3"><span>Outlet</span><span>Revenue</span><span>Expenses</span><span>Margin</span><span>Status</span></div><div class="divide-y divide-gray-100 text-[13px]"><div class="grid grid-cols-5 px-4 py-3"><strong>Kemang</strong><span>Rp 128.4M</span><span>Rp 82.1M</span><span class="text-[#16A34A] font-bold">18.6%</span><span>Matched</span></div><div class="grid grid-cols-5 px-4 py-3"><strong>Senopati</strong><span>Rp 96.2M</span><span>Rp 89.7M</span><span class="text-[#EA580C] font-bold">4.1%</span><span>Review</span></div><div class="grid grid-cols-5 px-4 py-3"><strong>Bandung</strong><span>Rp 142.8M</span><span>Rp 101.5M</span><span class="text-[#16A34A] font-bold">16.9%</span><span>Matched</span></div></div></div>
-                            <div class="space-y-3"><div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Budget remaining</p><p class="font-mono text-[22px] font-bold">Rp 54.8M</p></div><div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Missing receipts</p><p class="font-mono text-[22px] font-bold text-[#EA580C]">7</p></div><div class="rounded-2xl bg-gray-950 text-white p-4"><p class="text-[12px] text-gray-400">AI finance insight</p><p class="text-[14px] leading-relaxed mt-2">Supplier cost and utility spend increased faster than revenue in Senopati. Review rent duplication before close.</p></div></div>
-                        </div>
-                    </div>
-                </div>
+            <h3>Keep checkout clear.</h3>
+            <p>
+              Bring table orders into one bill, split payments, and print a
+              receipt with the details your guest needs.
+            </p>
+          </article>
+          <article class="pos-feature">
+            <span class="pos-feature-number">[04]</span>
+            <div class="pos-feature-art"><svg class="pos-service-scene" aria-hidden="true" viewBox="0 0 220 140" fill="#f3f5f8" stroke="#526075" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="49" y="47" width="119" height="77" rx="12" fill="white"/><path d="M49 89h119M86 104h44"/><path d="M75 47V17h68v30" fill="white"/><path d="M87 29h18m-18 9h34"/><rect x="64" y="59" width="34" height="17" rx="4"/><path d="M113 63h7m10 0h7m-24 10h7m10 0h7"/><circle cx="166" cy="41" r="20" fill="white" stroke="#EA580C"/><path d="m157 41 6 6 12-13" stroke="#EA580C"/></svg><span>Expected cash = Counted cash + Difference</span>
             </div>
-        </section>
-
-        <section class="py-16 md:py-24 px-6 bg-white">
-            <div class="max-w-[1180px] mx-auto">
-                <div class="max-w-3xl mb-10"><h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">How it works</h2><p class="text-[18px] text-gray-600">Three steps turn scattered retail finance data into branch-level operating clarity.</p></div>
-                <div class="grid lg:grid-cols-3 gap-4">
-                    <div class="step-card rounded-2xl border border-gray-200 bg-[#F8FAFC] p-6"><span class="font-mono text-[12px] text-[#EA580C]">01</span><h3 class="text-[22px] font-bold text-gray-950 mt-3 mb-2">Connect your money sources</h3><p class="text-[15px] text-gray-600">POS, bank accounts, payment gateways, supplier invoices, receipts, and vendor payments flow into FluxyOS.</p></div>
-                    <div class="step-card rounded-2xl border border-gray-200 bg-[#F8FAFC] p-6"><span class="font-mono text-[12px] text-[#EA580C]">02</span><h3 class="text-[22px] font-bold text-gray-950 mt-3 mb-2">FluxyOS organizes transactions by outlet</h3><p class="text-[15px] text-gray-600">AI categorizes revenue, expenses, supplier costs, receipts, and budgets by location.</p></div>
-                    <div class="step-card rounded-2xl border border-gray-950 bg-gray-950 text-white p-6"><span class="font-mono text-[12px] text-orange-200">03</span><h3 class="text-[22px] font-bold mt-3 mb-2">Review where the money actually went</h3><p class="text-[15px] text-gray-300">Owners and finance teams see supplier spend, budget variance, and reconciliation issues in one place.</p></div>
-                </div>
+            <h3>Close the shift with confidence.</h3>
+            <p>
+              Count the drawer against expected cash. Keep cash movements and
+              any difference visible at shift close.
+            </p>
+          </article>
+        </div>
+      </section>
+      <section id="qr-ordering" class="pos-section pos-qr-section">
+        <div class="pos-section-heading">
+          <h2>
+            A little less waiting.
+            <span>A closer connection to your guests.</span>
+          </h2>
+          <p>
+            Let guests scan the table QR, browse your menu, and send an order
+            from their phone. Your team sees it in the same service workflow.
+          </p>
+        </div>
+        <div class="pos-qr-stage" data-pos-tabs data-autoplay>
+          <div class="pos-qr-copy">
+            <span class="pos-section-label">QR ordering</span>
+            <h3>Their phone. Your menu.</h3>
+            <p>
+              Menu photos, item options, and order status help guests order with
+              less back-and-forth.
+            </p>
+<div class="pos-qr-steps" role="tablist" aria-label="Explore QR ordering" aria-orientation="vertical"><button type="button" role="tab" id="qr-tab-menu" aria-controls="qr-menu" aria-selected="true" tabindex="0" data-pos-tab="menu"><span class="pos-qr-step-number" aria-hidden="true">01</span><span><strong>Browse the menu</strong><span>See photos, categories, and prices.</span></span></button><button type="button" role="tab" id="qr-tab-customize" aria-controls="qr-customize" aria-selected="false" tabindex="-1" data-pos-tab="customize"><span class="pos-qr-step-number" aria-hidden="true">02</span><span><strong>Make it yours</strong><span>Choose options and add a note.</span></span></button><button type="button" role="tab" id="qr-tab-basket" aria-controls="qr-basket" aria-selected="false" tabindex="-1" data-pos-tab="basket"><span class="pos-qr-step-number" aria-hidden="true">03</span><span><strong>Review your order</strong><span>Check items and totals before sending.</span></span></button></div>
+            <button type="button" class="pos-autoplay" aria-pressed="false" hidden><span aria-hidden="true">Ⅱ</span><span class="pos-autoplay-label">Pause slideshow</span></button>
+          </div>
+          <div class="pos-qr-device">
+            <div class="pos-phone pos-phone-real">
+              <div class="pos-phone-camera" aria-hidden="true"></div>
+              <div role="tabpanel" id="qr-menu" aria-labelledby="qr-tab-menu" tabindex="0">
+                <a href="/assets/images/pos-qr-menu-en.jpg" target="_blank" rel="noopener" data-qr-screen="menu" aria-label="Open this ordering-app screenshot at full size">
+                  <img src="/assets/images/pos-qr-menu-en.jpg" width="780" height="1688" loading="lazy" decoding="async" data-qr-screen="menu" alt="Actual FluxyOS QR ordering app showing the Senopati demo menu and recommended dishes.">
+                </a>
+              </div>
+              <div role="tabpanel" id="qr-customize" aria-labelledby="qr-tab-customize" tabindex="0" hidden>
+                <a href="/assets/images/pos-qr-customize-en.jpg" target="_blank" rel="noopener" data-qr-screen="customize" aria-label="Open this ordering-app screenshot at full size">
+                  <img src="/assets/images/pos-qr-customize-en.jpg" width="780" height="1688" loading="lazy" decoding="async" data-qr-screen="customize" alt="Actual FluxyOS QR ordering app showing item options before adding a drink to the order.">
+                </a>
+              </div>
+              <div role="tabpanel" id="qr-basket" aria-labelledby="qr-tab-basket" tabindex="0" hidden>
+                <a href="/assets/images/pos-qr-basket-en.jpg" target="_blank" rel="noopener" data-qr-screen="basket" aria-label="Open this ordering-app screenshot at full size">
+                  <img src="/assets/images/pos-qr-basket-en.jpg" width="780" height="1688" loading="lazy" decoding="async" data-qr-screen="basket" alt="Actual FluxyOS QR ordering app showing the order review, item prices, and total before sending.">
+                </a>
+              </div>
             </div>
-        </section>
-
-        <section class="py-12 px-6 bg-[#F8FAFC] border-y border-gray-200">
-            <div class="max-w-[1180px] mx-auto">
-                <p class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-2">The systems retail finance data tends to live in today</p>
-                <p class="text-[14px] text-gray-600 mb-5 max-w-2xl">Bank statements, WhatsApp, and email upload flow into FluxyOS today. Marketplace connectors are rolling out. POS and accounting-tool links are not built yet — these are shown as where the data starts, not as live integrations.</p>
-                <div class="flex flex-wrap gap-3">
-                    <span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Moka POS</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Qasir</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Majoo</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Pawoon</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Tokopedia</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Shopee</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">TikTok Shop</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Midtrans</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Xendit</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Bank BCA</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Bank Mandiri</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Jurnal</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Accurate</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">WhatsApp</span><span class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[14px] font-semibold">Email Upload</span>
-                </div>
-                <p class="text-[13px] text-gray-500 mt-4">Shown as example source categories for retail finance workflows, not a confirmed live integration list.</p>
+            <p class="pos-qr-capture-note">Actual ordering app · Demo menu<br><span>Tap the screen to view full size.</span></p>
+          </div>
+        </div>
+      </section>
+      <section class="pos-section pos-finance">
+        <div class="pos-section-heading">
+          <h2>
+            The sale is only the beginning.
+            <span>Keep the financial story connected.</span>
+          </h2>
+        </div>
+        <div class="pos-finance-grid">
+          <div class="pos-finance-copy">
+            <span class="pos-section-label">From the till to the ledger</span>
+            <h3>Every dish has a cost. Make it count.</h3>
+            <p>
+              Configured recipes connect sold dishes to ingredient stock and
+              cost of goods sold. POS sales feed the same accounting foundation
+              as the rest of your business.
+            </p>
+            <p>
+              Revenue and costs carry the outlet, so you can follow the result
+              through to your outlet profit and loss.
+            </p>
+          </div>
+          <div class="pos-recipe">
+            <div class="pos-recipe-title">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="m3 7 9-4 9 4-9 4z M3 7v10l9 4 9-4V7M12 11v10" /></svg
+              ><strong>Nasi goreng</strong><span>Recipe</span>
             </div>
-        </section>
-
-        <section id="faq" class="py-16 md:py-20 px-6 border-y border-gray-200 bg-[#F8FAFC]">
-            <div class="max-w-[1120px] mx-auto">
-                <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-8">Frequently asked questions</h2>
-                <div class="grid md:grid-cols-2 gap-4">
-                    <details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">How does FluxyOS help retail and franchise owners?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">FluxyOS brings supplier invoices, store expenses, receipts, budgets, vendor payments, and bank settlements into one finance operations view, so owners know what the month really cost before the books close.</p></details>
-                    <details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Can FluxyOS compare outlet profitability?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Not yet. Comparing branches means carrying an outlet dimension on every posting, and that is on the roadmap rather than in the product today. Figures are currently kept per workspace, so they are consolidated rather than split by branch.</p></details>
-                    <details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Does FluxyOS track footfall or CCTV analytics?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">No. FluxyOS is focused on finance operations: bank settlement, supplier costs, store expenses, receipts, budgets, reconciliation, and month-end close.</p></details>
-                    <details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Can store managers submit receipts from WhatsApp?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Yes. Store teams can send receipts through WhatsApp, email, or upload. FluxyOS extracts vendor, amount, tax, and category for finance review.</p></details>
-                </div>
+            <div class="pos-row"><span>Rice</span><strong>200 g</strong></div>
+            <div class="pos-row"><span>Egg</span><strong>1 piece</strong></div>
+            <div class="pos-row">
+              <span>Seasoning</span><strong>30 g</strong>
             </div>
-        </section>
-
-        <section class="bg-[#0B0F19] py-16 md:py-24 px-6 text-white">
-            <div class="max-w-[1280px] mx-auto text-center">
-                <h2 class="text-[36px] md:text-[44px] font-bold tracking-tight mb-5">See the real financial picture across every outlet.</h2>
-                <p class="text-[17px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">FluxyOS helps retail and franchise owners connect revenue, expenses, budgets, suppliers, receipts, and reconciliation in one operating view.</p>
-                <div class="flex flex-col sm:flex-row gap-4 justify-center"><a href="/pricing" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-sm inline-block text-center">Try FluxyOS</a><a href="/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">Book a demo</a></div>
+            <div class="pos-recipe-connection">↓</div>
+            <div class="pos-recipe-bottom">
+              <div>
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="m3 7 9-4 9 4-9 4z M3 7v10l9 4 9-4V7M12 11v10" /></svg
+                >Stock movement
+              </div>
+              <div>
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M4 3h16v18H4z M8 7h8m-8 5h8m-8 5h5" /></svg
+                >Cost of goods sold
+              </div>
             </div>
-        </section>
+            <p class="pos-muted">
+              Linked by the sale. Recorded for the outlet.
+            </p>
+          </div>
+        </div>
+      </section>
+      <section class="pos-section pos-reports" data-pos-tabs>
+        <div class="pos-section-heading">
+          <h2>From service to a clearer picture.</h2>
+          <p>
+            Read revenue, cost, and gross profit together. The same sale tells
+            the same story across your financial reports.
+          </p>
+        </div>
+        <div class="pos-profit-equation" aria-label="Weekly gross profit calculation"><div><span>Revenue</span><strong>Rp4.800.000</strong></div><b aria-hidden="true">−</b><div><span>Cost of goods sold</span><strong>Rp1.920.000</strong></div><b aria-hidden="true">=</b><div><span>Gross profit</span><strong>Rp2.880.000</strong></div><span class="pos-margin">60% gross margin</span></div>
+        <div class="pos-tabs" role="tablist" aria-label="Financial views">
+          <button
+            type="button"
+            role="tab"
+            id="report-tab-revenue"
+            aria-controls="report-revenue"
+            aria-selected="true"
+            tabindex="0"
+            data-pos-tab="revenue"
+          >
+            Revenue</button
+          ><button
+            type="button"
+            role="tab"
+            id="report-tab-cost"
+            aria-controls="report-cost"
+            aria-selected="false"
+            tabindex="-1"
+            data-pos-tab="cost"
+          >
+            Cost of goods sold</button
+          ><button
+            type="button"
+            role="tab"
+            id="report-tab-profit"
+            aria-controls="report-profit"
+            aria-selected="false"
+            tabindex="-1"
+            data-pos-tab="profit"
+          >
+            Gross profit
+          </button>
+        </div>
+        <div
+          role="tabpanel"
+          tabindex="0"
+          id="report-revenue"
+          aria-labelledby="report-tab-revenue"
+        >
+          <div class="pos-report-card">
+            <div class="pos-report-summary">
+              <small>Senopati outlet · Example week</small>
+              <h3>Revenue</h3>
+              <strong class="pos-report-value">Rp4.800.000</strong>
+              <p>Sales posted to the selected outlet.</p>
+              <span class="pos-tag">Illustrative data</span>
+            </div>
+            <div class="pos-week-chart pos-week-revenue">
+              <div class="pos-chart-heading"><span>Daily breakdown</span><span>14–20 Sep 2026</span></div>
+              <p class="pos-chart-unit">Amounts in Rp thousands · Same scale in every view</p>
+              <div class="pos-plot"><div class="pos-axis" aria-hidden="true"><span>1.200</span><span>900</span><span>600</span><span>300</span><span>0</span></div><div class="pos-daily-bars"><div class="pos-daily-column" data-value="480000"><div class="pos-daily-bar" style="--value:40.00%"><strong>480</strong></div><span>Mon</span></div><div class="pos-daily-column" data-value="560000"><div class="pos-daily-bar" style="--value:46.67%"><strong>560</strong></div><span>Tue</span></div><div class="pos-daily-column" data-value="520000"><div class="pos-daily-bar" style="--value:43.33%"><strong>520</strong></div><span>Wed</span></div><div class="pos-daily-column" data-value="640000"><div class="pos-daily-bar" style="--value:53.33%"><strong>640</strong></div><span>Thu</span></div><div class="pos-daily-column" data-value="700000"><div class="pos-daily-bar" style="--value:58.33%"><strong>700</strong></div><span>Fri</span></div><div class="pos-daily-column" data-value="900000"><div class="pos-daily-bar" style="--value:75.00%"><strong>900</strong></div><span>Sat</span></div><div class="pos-daily-column" data-value="1000000"><div class="pos-daily-bar" style="--value:83.33%"><strong>1.000</strong></div><span>Sun</span></div></div></div>
+            </div>
+          </div>
+        </div>
+        <div
+          role="tabpanel"
+          tabindex="0"
+          id="report-cost"
+          aria-labelledby="report-tab-cost"
+          hidden
+        >
+          <div class="pos-report-card">
+            <div class="pos-report-summary">
+              <small>Senopati outlet · Example week</small>
+              <h3>Cost of goods sold</h3>
+              <strong class="pos-report-value">Rp1.920.000</strong>
+              <p>
+                Ingredient costs from configured recipes and stock movements.
+              </p>
+              <span class="pos-tag">Illustrative data</span>
+            </div>
+            <div class="pos-week-chart pos-week-cost">
+              <div class="pos-chart-heading"><span>Daily breakdown</span><span>14–20 Sep 2026</span></div>
+              <p class="pos-chart-unit">Amounts in Rp thousands · Same scale in every view</p>
+              <div class="pos-plot"><div class="pos-axis" aria-hidden="true"><span>1.200</span><span>900</span><span>600</span><span>300</span><span>0</span></div><div class="pos-daily-bars"><div class="pos-daily-column" data-value="192000"><div class="pos-daily-bar" style="--value:16.00%"><strong>192</strong></div><span>Mon</span></div><div class="pos-daily-column" data-value="224000"><div class="pos-daily-bar" style="--value:18.67%"><strong>224</strong></div><span>Tue</span></div><div class="pos-daily-column" data-value="208000"><div class="pos-daily-bar" style="--value:17.33%"><strong>208</strong></div><span>Wed</span></div><div class="pos-daily-column" data-value="256000"><div class="pos-daily-bar" style="--value:21.33%"><strong>256</strong></div><span>Thu</span></div><div class="pos-daily-column" data-value="280000"><div class="pos-daily-bar" style="--value:23.33%"><strong>280</strong></div><span>Fri</span></div><div class="pos-daily-column" data-value="360000"><div class="pos-daily-bar" style="--value:30.00%"><strong>360</strong></div><span>Sat</span></div><div class="pos-daily-column" data-value="400000"><div class="pos-daily-bar" style="--value:33.33%"><strong>400</strong></div><span>Sun</span></div></div></div>
+            </div>
+          </div>
+        </div>
+        <div
+          role="tabpanel"
+          tabindex="0"
+          id="report-profit"
+          aria-labelledby="report-tab-profit"
+          hidden
+        >
+          <div class="pos-report-card">
+            <div class="pos-report-summary">
+              <small>Senopati outlet · Example week</small>
+              <h3>Gross profit</h3>
+              <strong class="pos-report-value">Rp2.880.000</strong>
+              <p>Revenue less cost of goods sold, before operating expenses.</p>
+              <span class="pos-tag">Illustrative data</span>
+            </div>
+            <div class="pos-week-chart pos-week-profit">
+              <div class="pos-chart-heading"><span>Daily breakdown</span><span>14–20 Sep 2026</span></div>
+              <p class="pos-chart-unit">Amounts in Rp thousands · Same scale in every view</p>
+              <div class="pos-plot"><div class="pos-axis" aria-hidden="true"><span>1.200</span><span>900</span><span>600</span><span>300</span><span>0</span></div><div class="pos-daily-bars"><div class="pos-daily-column" data-value="288000"><div class="pos-daily-bar" style="--value:24.00%"><strong>288</strong></div><span>Mon</span></div><div class="pos-daily-column" data-value="336000"><div class="pos-daily-bar" style="--value:28.00%"><strong>336</strong></div><span>Tue</span></div><div class="pos-daily-column" data-value="312000"><div class="pos-daily-bar" style="--value:26.00%"><strong>312</strong></div><span>Wed</span></div><div class="pos-daily-column" data-value="384000"><div class="pos-daily-bar" style="--value:32.00%"><strong>384</strong></div><span>Thu</span></div><div class="pos-daily-column" data-value="420000"><div class="pos-daily-bar" style="--value:35.00%"><strong>420</strong></div><span>Fri</span></div><div class="pos-daily-column" data-value="540000"><div class="pos-daily-bar" style="--value:45.00%"><strong>540</strong></div><span>Sat</span></div><div class="pos-daily-column" data-value="600000"><div class="pos-daily-bar" style="--value:50.00%"><strong>600</strong></div><span>Sun</span></div></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="pos-section pos-faq">
+        <div class="pos-section-heading">
+          <h2>A few things worth knowing.</h2>
+        </div>
+        <div>
+          <details>
+            <summary>
+              What is FluxyOS Point of Sale?<span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              Point of Sale is the FluxyOS workspace for taking orders, managing
+              table service, and recording payments. Sales connect to accounting
+              and, with configured items and recipes, inventory and cost of
+              goods sold.
+            </p>
+          </details>
+          <details>
+            <summary>
+              Can guests order from a table QR?<span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              Yes. Guests scan the table QR to open the menu, choose items and
+              options, submit an order, and follow its status. Orders enter the
+              outlet’s service workflow.
+            </p>
+          </details>
+          <details>
+            <summary>
+              Does the POS process card or QRIS payments?<span
+                aria-hidden="true"
+                >+</span
+              >
+            </summary>
+            <p>
+              Staff can record cash, card, and QRIS payments at the till.
+              Integrated payment-provider processing is not available yet; your
+              team confirms payment through its existing payment service.
+            </p>
+          </details>
+          <details>
+            <summary>
+              Does it work without an internet connection?<span
+                aria-hidden="true"
+                >+</span
+              >
+            </summary>
+            <p>
+              An internet connection is required. Offline order taking and
+              queued offline payments are not supported.
+            </p>
+          </details>
+          <details>
+            <summary>
+              How can I get access?<span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              Talk to our team about your outlet and service workflow. Point of
+              Sale access is enabled for eligible workspaces, and we can help
+              you review the setup for your business.
+            </p>
+          </details>
+        </div>
+      </section>
+      <section class="pos-closing">
+        <span class="pos-section-label">FluxyOS Point of Sale</span>
+        <h2>Great service.<br />A connected business.</h2>
+        <p>Bring your next order into the bigger picture.</p>
+        <a class="pos-button pos-primary" href="/contact-sales"
+          >Talk to sales<svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M5 12h14m-5-5 5 5-5 5" /></svg></a
+        ><a class="pos-text-link" href="/pricing">Explore FluxyOS plans →</a>
+      </section>
     </main>
-
     <script src="/assets/js/universe-canvas.js" defer></script>
     <script src="/assets/js/footer-loader.js" defer></script>
     <script src="/assets/js/fluxyos.js" defer></script>
-</body>
+    <script src="/assets/js/i18n.js" defer></script>
+    <script src="/assets/js/pos-landing.js" defer></script>
+  </body>
 </html>

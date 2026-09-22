@@ -1,188 +1,35 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Budgeting untuk Bisnis Modern | FluxyOS</title>
-    <link rel="stylesheet" href="/assets/css/tailwind.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
-    
-    <style>
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: #0B0F19; /* Dark premium background for the landing page */
-            color: #F3F4F6;
-            -webkit-font-smoothing: antialiased;
-            overflow-x: clip;
-        }
-        @supports not (overflow: clip) {
-            body { overflow-x: hidden; }
-        }
-        .font-mono { font-family: 'Fira Code', monospace; }
-
-        nav[data-animate="nav"] {
-            position: -webkit-sticky !important;
-            position: sticky !important;
-            top: var(--promo-banner-height, 0px) !important;
-            z-index: 50 !important;
-        }
-
-        .promo-banner {
-            position: -webkit-sticky;
-            position: sticky;
-            top: 0;
-            z-index: 60;
-            overflow: hidden;
-            isolation: isolate;
-            background: #fff;
-            border-bottom: 1px solid rgba(17, 24, 39, 0.08);
-        }
-
-        .promo-banner::before {
-            content: "";
-            position: absolute;
-            inset: -120% -10%;
-            z-index: -2;
-            background:
-                radial-gradient(circle at 80% 48%, rgba(255, 224, 151, 0.76) 0%, rgba(247, 140, 45, 0.34) 14%, rgba(228, 77, 14, 0.15) 30%, transparent 48%),
-                radial-gradient(circle at 24% 44%, rgba(234, 88, 12, 0.13) 0%, rgba(251, 146, 60, 0.08) 32%, transparent 54%),
-                linear-gradient(135deg, rgba(255, 247, 237, 0.64) 0%, rgba(255, 237, 213, 0.38) 52%, rgba(184, 38, 20, 0.08) 100%);
-        }
-
-        .promo-banner::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            z-index: -1;
-            background: linear-gradient(90deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.82) 48%, rgba(255, 255, 255, 0.6) 100%);
-        }
-
-        .promo-banner__inner {
-            max-width: 1280px;
-            min-height: 44px;
-            margin: 0 auto;
-            padding: 8px 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 14px;
-            text-align: center;
-        }
-
-        .promo-banner__copy {
-            margin: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 8px;
-            color: #111827;
-            font-size: 13px;
-            font-weight: 600;
-            line-height: 1.35;
-        }
-
-        .promo-banner__icon {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 26px;
-            height: 26px;
-            flex: 0 0 auto;
-            border-radius: 9px;
-            background: linear-gradient(145deg, #FFE7BF 0%, #F97316 48%, #C2410C 100%);
-            border: 1px solid rgba(154, 52, 18, 0.18);
-            box-shadow:
-                inset 0 1px 0 rgba(255, 255, 255, 0.65),
-                inset 0 -5px 10px rgba(154, 52, 18, 0.18),
-                0 6px 14px rgba(234, 88, 12, 0.2);
-            transform: rotate(-8deg);
-        }
-
-        .promo-banner__icon-mark {
-            color: #fff;
-            font-size: 15px;
-            font-weight: 900;
-            line-height: 1;
-            text-shadow: 0 1px 2px rgba(154, 52, 18, 0.45);
-        }
-
-        .promo-banner__link {
-            color: #C2410C;
-            font-size: 13px;
-            font-weight: 800;
-            line-height: 1.35;
-            text-decoration: none;
-            white-space: nowrap;
-        }
-
-        .promo-banner__link:hover {
-            color: #9A3412;
-        }
-
-        .mobile-menu-panel {
-            /* Panel is a child of the backdrop-filtered nav, so its fixed-position
-               containing block is the nav. top:100% pins it flush to the nav bottom;
-               100% = nav height, minus the promo banner the nav sits below. */
-            top: 100% !important;
-            max-height: calc(100dvh - 100% - var(--promo-banner-height, 0px));
-        }
-        
-        /* Subtle Grid Background for Hero */
-        .hero-bg {
-            background-image: 
-                radial-gradient(circle at 15% 50%, rgba(234, 88, 12, 0.08), transparent 25%),
-                radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.08), transparent 25%);
-        }
-
-        /* Glassmorphism for UI mockups */
-        .glass-card {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .gradient-text {
-            background: linear-gradient(to right, #F97316, #EA580C);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-    </style>
-    <meta name="description" content="Alokasikan, pantau, dan sesuaikan anggaran secara real-time. Visibilitas pengeluaran live untuk setiap kategori anggaran. Dibuat untuk bisnis Indonesia.">
-    <link rel="canonical" href="https://fluxyos.com/id/budgetlanding">
-    <link rel="alternate" hreflang="en" href="https://fluxyos.com/budgetlanding">
-    <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/budgetlanding">
-    <link rel="alternate" hreflang="x-default" href="https://fluxyos.com/budgetlanding">
-
-    <!-- Open Graph -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://fluxyos.com/id/budgetlanding">
-    <meta property="og:title" content="Dynamic Budgeting untuk Bisnis Modern | FluxyOS">
-    <meta property="og:description" content="Alokasikan, pantau, dan sesuaikan anggaran secara real-time. Visibilitas pengeluaran live untuk setiap kategori anggaran. Dibuat untuk bisnis Indonesia.">
-    <meta property="og:image" content="https://fluxyos.com/assets/images/og-budget.png">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:site_name" content="FluxyOS">
-    <meta property="og:locale" content="id_ID">
-    <meta property="og:locale:alternate" content="id_ID">
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Dynamic Budgeting untuk Bisnis Modern | FluxyOS">
-    <meta name="twitter:description" content="Alokasikan, pantau, dan sesuaikan anggaran secara real-time. Visibilitas pengeluaran live untuk setiap kategori anggaran. Dibuat untuk bisnis Indonesia.">
-    <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-budget.png">
-
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZN7J6DRD2L"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-ZN7J6DRD2L');
-    </script>
-
-    <!-- Schema.org structured data -->
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Point of Sale untuk Restoran & Kafe | FluxyOS</title>
+    <meta name="description" content="Hubungkan pesanan meja, menu QR, layanan dapur, dan catatan pembayaran dengan persediaan serta akuntansi melalui FluxyOS Point of Sale." />
+    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href="https://fluxyos.com/id/point-of-sale" />
+    <link rel="alternate" hreflang="en" href="https://fluxyos.com/point-of-sale" />
+    <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/point-of-sale" />
+    <link rel="alternate" hreflang="x-default" href="https://fluxyos.com/point-of-sale" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/assets/css/tailwind.min.css" />
+    <link rel="stylesheet" href="/assets/css/fluxyos.css" />
+    <link rel="stylesheet" href="/assets/css/pos-landing.css" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Point of Sale untuk Restoran & Kafe | FluxyOS" />
+    <meta property="og:description" content="Hubungkan pesanan meja, menu QR, layanan dapur, dan catatan pembayaran dengan persediaan serta akuntansi melalui FluxyOS Point of Sale." />
+    <meta property="og:url" content="https://fluxyos.com/id/point-of-sale" />
+    <meta property="og:site_name" content="FluxyOS" />
+    <meta property="og:locale" content="id_ID" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:image" content="https://fluxyos.com/assets/images/og-point-of-sale.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Point of Sale untuk Restoran & Kafe | FluxyOS" />
+    <meta name="twitter:description" content="Hubungkan pesanan meja, menu QR, layanan dapur, dan catatan pembayaran dengan persediaan serta akuntansi melalui FluxyOS Point of Sale." />
+    <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-point-of-sale.png" />
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -209,127 +56,89 @@
       "sameAs": [
         "https://www.linkedin.com/company/fluxyos/",
         "https://www.instagram.com/fluxy_os/"
-      ],
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "contactType": "customer support",
-        "email": "support@fluxyos.com",
-        "availableLanguage": [
-          "English",
-          "Indonesian"
-        ]
-      }
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "FluxyOS Dynamic Budgeting",
-      "applicationCategory": "BusinessApplication",
-      "applicationSubCategory": "Finance Operations Software",
-      "operatingSystem": "Web, iOS, Android",
-      "url": "https://fluxyos.com/budgetlanding",
-      "description": "Allocate, track, and adjust budgets in real-time. Live spend visibility against every budget category. Built for Indonesian businesses.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "IDR",
-        "availability": "https://schema.org/InStock"
-      },
-      "featureList": [
-        "Live budget allocation",
-        "Real-time spend tracking",
-        "Department + project budgeting",
-        "Variance alerts",
-        "Multi-currency budgets",
-        "Burn rate + runway projections"
-      ],
-      "publisher": {
-        "@id": "https://fluxyos.com/#organization"
-      }
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Home",
-          "item": "https://fluxyos.com/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Dynamic Budgeting",
-          "item": "https://fluxyos.com/budgetlanding"
-        }
       ]
     }
     </script>
-    <script type="application/ld+json">
+    <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "FluxyOS Point of Sale",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "url": "https://fluxyos.com/point-of-sale",
+  "description": "Hubungkan pesanan meja, menu QR, layanan dapur, dan catatan pembayaran dengan persediaan serta akuntansi melalui FluxyOS Point of Sale.",
+  "publisher": {
+    "@id": "https://fluxyos.com/#organization"
+  }
+}</script>
+    <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
     {
-          "@context": "https://schema.org",
-          "@type": "FAQPage",
-          "mainEntity": [
-                {
-                      "@type": "Question",
-                      "name": "What is Dynamic Budgeting?",
-                      "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "Dynamic Budgeting is a FluxyOS feature that lets businesses allocate, track, and adjust budgets in real time as spend changes. Instead of waiting for spreadsheet updates, teams can see available budget, burn rate, and variance as transactions arrive."
-                      }
-                },
-                {
-                      "@type": "Question",
-                      "name": "How does Dynamic Budgeting help Indonesian businesses?",
-                      "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "Dynamic Budgeting helps Indonesian businesses control spending by connecting budgets to live vendor, receipt, and ledger data. Owners can see when marketing, operations, SaaS, or project budgets are moving off plan before month end."
-                      }
-                },
-                {
-                      "@type": "Question",
-                      "name": "Can FluxyOS track budgets by department or project?",
-                      "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "Yes. FluxyOS can organize budgets by department, project, entity, or operating category so teams can compare planned spend against actual spend. This is useful for agencies, e-commerce teams, restaurants, and multi-location operators."
-                      }
-                },
-                {
-                      "@type": "Question",
-                      "name": "Does Dynamic Budgeting send alerts?",
-                      "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "Yes. Dynamic Budgeting can surface variance and burn-rate alerts when a budget is being used faster than expected. The goal is to help teams reallocate funds or pause spend before a budget problem becomes urgent."
-                      }
-                },
-                {
-                      "@type": "Question",
-                      "name": "Can Dynamic Budgeting work with multi-currency spend?",
-                      "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "Yes. Dynamic Budgeting is designed for IDR-first reporting while supporting multi-currency spend across vendors, cards, and international platforms. This helps teams manage local budgets even when some tools bill in USD or SGD."
-                      }
-                },
-                {
-                      "@type": "Question",
-                      "name": "Is Dynamic Budgeting different from a spreadsheet budget?",
-                      "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "Yes. A spreadsheet budget is usually static and updated manually, while Dynamic Budgeting updates from live finance operations data. That makes it easier to monitor runway, category spend, and budget variance without rebuilding reports each week."
-                      }
-                }
-          ]
+      "@type": "Question",
+      "name": "Apa itu FluxyOS Point of Sale?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Point of Sale adalah ruang kerja FluxyOS untuk menerima pesanan, mengelola layanan meja, dan mencatat pembayaran. Penjualan terhubung ke akuntansi serta, dengan item dan resep yang sudah diatur, persediaan dan harga pokok penjualan."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Apakah tamu bisa memesan lewat QR meja?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ya. Tamu scan QR meja untuk membuka menu, memilih item dan opsi, mengirim pesanan, serta memantau statusnya. Pesanan masuk ke alur layanan outlet."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Apakah POS memproses pembayaran kartu atau QRIS?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Staf bisa mencatat pembayaran tunai, kartu, dan QRIS di kasir. Pemrosesan terintegrasi dengan penyedia pembayaran belum tersedia; tim Anda mengonfirmasi pembayaran melalui layanan pembayaran yang digunakan."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Apakah POS bisa digunakan tanpa koneksi internet?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Koneksi internet diperlukan. Penerimaan pesanan dan antrean pembayaran saat offline belum didukung."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Bagaimana cara mendapatkan akses?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Hubungi tim kami untuk membahas outlet dan alur layanan Anda. Akses Point of Sale diaktifkan untuk workspace yang memenuhi syarat, dan kami dapat membantu meninjau pengaturan untuk bisnis Anda."
+      }
     }
-    </script>
-</head>
-<body class="min-h-screen flex flex-col">
-
-    <nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
+  ]
+}</script>
+    <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "FluxyOS",
+      "item": "https://fluxyos.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Point of Sale",
+      "item": "https://fluxyos.com/point-of-sale"
+    }
+  ]
+}</script>
+  </head>
+  <body>
+    <a class="pos-skip" href="#main-content">Langsung ke konten</a>
+    <nav class="home-hero-nav bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
         <div class="max-w-[1280px] mx-auto px-6 h-[80px] flex items-center justify-between">
             <div class="flex items-center gap-12 h-full">
                 <a href="/id/fluxyos" class="flex items-center gap-2.5 cursor-pointer group">
@@ -345,23 +154,23 @@
                     </div>
                     <span class="font-bold text-xl tracking-tight text-gray-900">FluxyOS</span>
                 </a>
-                
+
                 <div class="hidden lg:flex items-center gap-8 h-full">
-                    
+
                     <!-- Platform Mega Menu Trigger -->
                     <div class="group h-full flex items-center">
                         <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 group-hover:text-gray-900 transition-colors h-full">
-                            Platform 
+                            Platform
                             <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
                         </button>
 
                         <!-- Platform Dropdown Panel -->
                         <div class="absolute left-0 top-[80px] w-full bg-white border-b border-gray-200 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                             <div class="max-w-[1280px] mx-auto flex">
-                                
+
                                 <!-- Columns Area -->
                                 <div class="flex-1 py-10 px-6 flex gap-12">
-                                    
+
                                     <!-- Features Column -->
                                     <div class="flex-[2]">
                                         <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Fitur</h4>
@@ -452,19 +261,19 @@
                                 <!-- Right Sidebar: New Release -->
                                 <div class="w-[340px] bg-[#F8F9FB] border-l border-gray-200 p-8 flex-shrink-0">
                                     <h4 class="text-[13px] font-bold text-gray-900 mb-5 uppercase tracking-wider">Rilis Terbaru</h4>
-                                    
+
                                     <a href="/id/fluxyos" class="block group/release cursor-pointer mb-4">
                                         <div class="bg-black rounded-xl h-[160px] p-6 flex items-end relative overflow-hidden mb-4 shadow-md group-hover/release:shadow-lg transition-all">
                                             <!-- Grainy Overlay Simulation -->
                                             <div class="absolute inset-0 opacity-40 mix-blend-overlay bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiAvPgo8cGF0aCBkPSJNMCAwSDRWNEgwWiIgZmlsbD0ibm9uZSIvPjwvc3ZnPg==')]"></div>
                                             <!-- Gradient -->
                                             <div class="absolute inset-0 bg-gradient-to-tr from-gray-900 via-black to-gray-800"></div>
-                                            
+
                                             <h3 class="relative z-10 text-white font-bold text-[36px] leading-[0.9] tracking-tighter">
                                                 SPRING<br/>RELEASE<br/><span class="text-gray-400">2026</span>
                                             </h3>
                                         </div>
-                                        
+
                                         <h5 class="text-[14px] font-bold text-gray-900 mb-1 group-hover/release:text-[#EA580C] transition-colors flex items-center gap-1.5">
                                             WhatsApp AI Agents →
                                         </h5>
@@ -481,17 +290,17 @@
                     <!-- NEW: Use Cases Mega Menu Trigger -->
                     <div class="group h-full flex items-center">
                         <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 group-hover:text-gray-900 transition-colors h-full">
-                            Studi Kasus 
+                            Studi Kasus
                             <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
                         </button>
 
                         <!-- Use Cases Dropdown Panel -->
                         <div class="absolute left-0 top-[80px] w-full bg-white border-b border-gray-200 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                             <div class="max-w-[1280px] mx-auto flex">
-                                
+
                                 <!-- Columns Area -->
                                 <div class="flex-1 py-10 px-6 flex gap-12">
-                                    
+
                                     <!-- Industry Column -->
                                     <div class="flex-[2]">
                                         <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Berdasarkan Industri</h4>
@@ -594,13 +403,13 @@
                                 <!-- Right Sidebar: Featured Case Study -->
                                 <div class="w-[340px] bg-[#F8F9FB] border-l border-gray-200 p-8 flex-shrink-0">
                                     <h4 class="text-[13px] font-bold text-gray-900 mb-5 uppercase tracking-wider">Cerita Pilihan</h4>
-                                    
+
                                     <a href="/id/fluxyos" class="block group/release cursor-pointer mb-4">
                                         <div class="bg-gray-100 rounded-xl h-[160px] p-6 flex items-end relative overflow-hidden mb-4 shadow-sm border border-gray-200 group-hover/release:shadow-md transition-all">
                                             <!-- Simple Abstract Image Replacement -->
                                             <div class="absolute inset-0 bg-gradient-to-tr from-gray-200 to-gray-50 z-0"></div>
                                             <svg class="absolute top-4 right-4 w-24 h-24 text-gray-300 opacity-50 z-0 transform -rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
-                                            
+
                                             <div class="relative z-10 w-full">
                                                 <span class="bg-[#EA580C] text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wide inline-block mb-2">Studi Kasus</span>
                                                 <h3 class="text-gray-900 font-bold text-[18px] leading-[1.2] tracking-tight">
@@ -608,7 +417,7 @@
                                                 </h3>
                                             </div>
                                         </div>
-                                        
+
                                         <h5 class="text-[14px] font-bold text-gray-900 mb-1 group-hover/release:text-[#EA580C] transition-colors flex items-center gap-1.5">
                                             Baca selengkapnya →
                                         </h5>
@@ -626,7 +435,7 @@
                     <a href="/id/pricing" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Harga</a>
                 </div>
             </div>
-            
+
             <div class="flex items-center gap-6">
                 <!-- Language Dropdown -->
                 <div class="relative group cursor-pointer hidden sm:block h-full py-2">
@@ -636,10 +445,8 @@
                         <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
                     <div class="absolute right-0 top-[100%] mt-2 w-36 bg-white border border-gray-100 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden py-1">
-                        <a href="/budgetlanding" class="block px-4 py-2.5 text-[14px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">English (EN)</a>
-<a href="/budgetlanding" class="block px-4 py-2.5 text-[14px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">English (EN)</a>
-                        <a href="/id/budgetlanding" class="flex items-center justify-between px-4 py-2.5 text-[14px] font-medium text-gray-900 bg-gray-50">Bahasa (ID)<svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg></a>
-<a href="/id/budgetlanding" class="flex items-center justify-between px-4 py-2.5 text-[14px] font-medium text-gray-900 bg-gray-50">Bahasa (ID)<svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg></a>
+                        <a href="/point-of-sale" class="block px-4 py-2.5 text-[14px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">English (EN)</a>
+                        <a href="/id/point-of-sale" class="flex items-center justify-between px-4 py-2.5 text-[14px] font-medium text-gray-900 bg-gray-50">Bahasa (ID)<svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg></a>
                     </div>
                 </div>
 
@@ -705,367 +512,644 @@
             </div>
         </div>
     </nav>
-
-    <main class="flex-grow pt-32 pb-20 hero-bg">
-        <div class="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-16 items-center">
-            
-            <div class="space-y-8 relative z-10">
-                <h1 class="text-5xl lg:text-6xl font-bold leading-[1.1] tracking-tight text-white">
-                    Anggaran yang bergerak <br />
-                    <span class="gradient-text">secepat bisnis Anda tumbuh.</span>
-                </h1>
-                
-                <p class="text-lg text-gray-400 leading-relaxed max-w-xl">
-                    Berhenti menunggu laporan akhir bulan untuk tahu burn rate Anda. Dynamic Budgeting FluxyOS tersinkron dengan buku besar secara real-time, memantau unit economics dan pengeluaran vendor supaya Anda bisa scale-up dengan percaya diri penuh.
-                </p>
-
-                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-4">
-                    <button class="bg-white text-gray-900 px-6 py-3.5 rounded-lg text-sm font-bold hover:bg-gray-100 transition shadow-xl w-full sm:w-auto text-center">
-                        Mulai uji coba gratis
-                    </button>
-                    <button class="bg-transparent border border-gray-700 text-white px-6 py-3.5 rounded-lg text-sm font-bold hover:bg-gray-800 transition w-full sm:w-auto text-center flex items-center justify-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        Lihat cara kerjanya
-                    </button>
-                </div>
-            </div>
-
-            <div class="relative w-full max-w-lg mx-auto lg:ml-auto">
-                <div class="bg-white rounded-2xl p-6 relative shadow-[0_24px_64px_rgba(0,0,0,0.35)] border border-gray-200/80">
-
-                    <div class="flex items-center justify-between mb-5 pb-4 border-b border-gray-100">
-                        <div class="flex items-center gap-2">
-                            <div class="w-2 h-2 rounded-full bg-green-500"></div>
-                            <h3 class="text-gray-900 font-bold text-[15px]">Anggaran Aktif</h3>
-                        </div>
-                        <span class="text-[11px] font-medium text-gray-400 bg-gray-100 px-2.5 py-1 rounded-md">Akun IDR</span>
-                    </div>
-
-                    <div class="space-y-3">
-                        <!-- Q3 Ops row -->
-                        <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 relative overflow-hidden">
-                            <div class="absolute top-0 left-0 w-1 h-full bg-red-500 rounded-l-xl"></div>
-                            <div class="flex justify-between items-start mb-3 pl-3">
-                                <div>
-                                    <h4 class="text-[13px] font-semibold text-gray-900">Ops &amp; Manufaktur Q3</h4>
-                                    <p class="text-[11px] text-gray-500 mt-0.5">Mitra Tekstil, Logistics</p>
-                                </div>
-                                <div class="text-right">
-                                    <p class="text-[13px] font-mono font-bold text-gray-900">Rp 276.0M</p>
-                                    <p class="text-[10px] text-gray-400 uppercase tracking-widest mt-0.5">Terpakai</p>
-                                </div>
-                            </div>
-                            <div class="pl-3">
-                                <div class="flex items-center justify-between mb-1.5">
-                                    <span class="text-[10px] font-semibold text-red-600 flex items-center gap-1.5">
-                                        <div class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></div>92% Terpakai
-                                    </span>
-                                    <span class="text-[10px] text-gray-400">Limit: Rp 300.0M</span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-1.5">
-                                    <div class="bg-red-500 h-1.5 rounded-full w-[92%]"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- TikTok Ads row -->
-                        <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 relative overflow-hidden">
-                            <div class="absolute top-0 left-0 w-1 h-full bg-[#EA580C] rounded-l-xl"></div>
-                            <div class="flex justify-between items-start mb-3 pl-3">
-                                <div>
-                                    <h4 class="text-[13px] font-semibold text-gray-900">Anggaran TikTok Ads</h4>
-                                    <p class="text-[11px] text-gray-500 mt-0.5">Marketing &amp; Pertumbuhan</p>
-                                </div>
-                                <div class="text-right">
-                                    <p class="text-[13px] font-mono font-bold text-gray-900">Rp 120.5M</p>
-                                    <p class="text-[10px] text-gray-400 uppercase tracking-widest mt-0.5">Terpakai</p>
-                                </div>
-                            </div>
-                            <div class="pl-3">
-                                <div class="flex items-center justify-between mb-1.5">
-                                    <span class="text-[10px] font-semibold text-[#EA580C] flex items-center gap-1.5">
-                                        <div class="w-1.5 h-1.5 rounded-full bg-[#EA580C]"></div>75% Terpakai
-                                    </span>
-                                    <span class="text-[10px] text-gray-400">Limit: Rp 160.0M</span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-1.5">
-                                    <div class="bg-[#EA580C] h-1.5 rounded-full w-[75%]"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Alert row -->
-                        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-3">
-                            <div class="w-6 h-6 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600 flex-shrink-0 mt-0.5">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                            </div>
-                            <div>
-                                <h4 class="text-[11px] font-bold text-amber-800">Peringatan Anggaran</h4>
-                                <p class="text-[11px] text-amber-700 mt-0.5 leading-snug">
-                                    Anggaran ops terkuras lebih cepat dari proyeksi. Alokasikan ulang dana surplus agar tidak dibekukan.
-                                </p>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-            </div>
+    <main id="main-content" class="pos-landing">
+      <section class="pos-hero landing-hero">
+        <div class="pos-hero-copy">
+          <h1>Setiap pesanan.<br /><span>Terhubung ke pembukuan Anda.</span></h1>
+          <p class="pos-lead">FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System). Point of Sale menghubungkan meja, pesanan dapur, pembayaran, dan pembukuan Anda.</p>
+          <div class="pos-actions">
+            <a class="pos-button pos-primary" href="/contact-sales"
+              >Hubungi sales<svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M5 12h14m-5-5 5 5-5 5" /></svg></a
+            ><a class="pos-button" href="#pos-experience"
+              >Jelajahi Point of Sale<svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M5 12h14m-5-5 5 5-5 5" /></svg
+            ></a>
+          </div>
         </div>
+        <div
+          class="pos-connections"
+          aria-label="Dari pesanan ke catatan keuangan"
+        >
+          <svg
+            class="pos-wires"
+            viewBox="0 0 1100 240"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M115 70V160Q115 180 135 180H965Q985 180 985 160V70M330 150v30m220-30v30m220-30v30"
+            />
+          </svg>
+          <div class="pos-node edge">
+            <div class="pos-node-title">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M4 7h16v10H4z M8 3v4m8-4v4M8 17v4m8-4v4" /></svg
+              ><strong>Meja</strong><span class="pos-node-dot"></span>
+            </div>
+            <p>Meja 08 · Makan di tempat</p>
+            <p class="pos-muted">2 tamu</p>
+          </div>
+          <div class="pos-node">
+            <div class="pos-node-title">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M8 3h8v3H8z M6 5H4v16h16V5h-2M8 11h8m-8 4h5" /></svg
+              ><strong>Pesanan</strong><span class="pos-node-dot"></span>
+            </div>
+            <p>2 × Nasi goreng</p>
+            <p class="pos-muted">Dikirim ke dapur</p>
+          </div>
+          <div class="pos-node center">
+            <div class="pos-node-title">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M3 5h18v14H3z M3 10h18M7 15h3" /></svg
+              ><strong>Pembayaran</strong><span class="pos-node-dot"></span>
+            </div>
+            <p>Rp90.000</p>
+            <p class="pos-muted">Dicatat di kasir</p>
+          </div>
+          <div class="pos-node">
+            <div class="pos-node-title">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="m3 7 9-4 9 4-9 4z M3 7v10l9 4 9-4V7M12 11v10" /></svg
+              ><strong>Persediaan</strong><span class="pos-node-dot"></span>
+            </div>
+            <p>Bahan dalam resep</p>
+            <p class="pos-muted">Pergerakan stok</p>
+          </div>
+          <div class="pos-node edge">
+            <div class="pos-node-title">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M4 3h16v18H4z M8 7h8m-8 5h8m-8 5h5" /></svg
+              ><strong>Buku besar</strong><span class="pos-node-dot"></span>
+            </div>
+            <p>Pendapatan + biaya</p>
+            <p class="pos-muted">Dicatat untuk outlet Anda</p>
+          </div>
+        </div>
+        <div id="pos-experience" class="pos-experience" data-pos-tabs>
+          <div class="pos-demo-caption">
+            <span>Layanan terhubung, sejak pesanan pertama.</span
+            ><span>Ilustrasi tampilan produk</span>
+          </div>
+          <div class="pos-app">
+            <div class="pos-app-top">
+              <span class="pos-app-brand"
+                ><img
+                  src="/assets/images/favicon.svg"
+                  width="24"
+                  height="24"
+                  alt=""
+                />FluxyOS <span>Point of Sale</span></span
+              ><span class="pos-outlet"
+                >Outlet Senopati
+                <span class="pos-live">● Shift open</span></span
+              >
+            </div>
+            <div role="tabpanel" tabindex="0" id="service-floor" aria-labelledby="service-tab-floor"><div class="pos-floor-layout"><div class="pos-floor-main"><div class="pos-view-heading"><h3>Pantau semua meja Anda.</h3><span>Ruang utama</span></div><div class="pos-floor-grid"><div class="pos-table "><i></i><strong>01</strong><span>Tersedia</span><i></i></div><div class="pos-table "><i></i><strong>02</strong><span>Sedang makan</span><i></i></div><div class="pos-table "><i></i><strong>03</strong><span>Tersedia</span><i></i></div><div class="pos-table "><i></i><strong>04</strong><span>Direservasi</span><i></i></div><div class="pos-table "><i></i><strong>05</strong><span>Sedang makan</span><i></i></div><div class="pos-table "><i></i><strong>06</strong><span>Tersedia</span><i></i></div><div class="pos-table "><i></i><strong>07</strong><span>Tersedia</span><i></i></div><div class="pos-table selected"><i></i><strong>08</strong><span>Dipilih</span><i></i></div><div class="pos-table "><i></i><strong>09</strong><span>Sedang makan</span><i></i></div></div><div class="pos-floor-legend"><span>○ Available</span><span>◉ Dining</span><span>◷ Reserved</span></div></div><aside class="pos-ticket"><div class="pos-ticket-head"><div><small>Pesanan saat ini</small><h3>Meja 08</h3></div><span class="pos-tag">Makan di tempat</span></div><p class="pos-muted">2 tamu · Pesanan #024</p><div class="pos-row"><span>2 × Nasi goreng</span><strong>Rp70.000</strong></div><div class="pos-row"><span>2 × Es teh</span><strong>Rp20.000</strong></div><div class="pos-ticket-note">Tidak terlalu pedas · Tanpa es</div><div class="pos-ticket-total"><div class="pos-row"><span>Subtotal</span><strong>Rp90.000</strong></div></div><div class="pos-demo-status"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg>Dikirim ke dapur</div></aside></div></div>
+<div
+              role="tabpanel"
+              tabindex="0"
+              id="service-kitchen"
+              aria-labelledby="service-tab-kitchen"
+              hidden
+            >
+              <div class="pos-kitchen">
+                <div class="pos-view-heading">
+                  <h3>Setiap pesanan jelas statusnya.</h3>
+                  <span>Pesanan dapur</span>
+                </div>
+                <div class="pos-kitchen-grid">
+                  <div class="pos-kitchen-column">
+                    <div class="pos-column-title">Sedang disiapkan <span>1</span></div>
+                    <div class="pos-kitchen-ticket">
+                      <strong>Meja 08</strong><small>Makan di tempat</small>
+                      <p>2 × Nasi goreng</p>
+                      <p>2 × Es teh</p>
+                      <div class="pos-ticket-note">
+                        Catatan tetap terhubung ke pesanan.
+                      </div>
+                    </div>
+                  </div>
+                  <div class="pos-kitchen-column">
+                    <div class="pos-column-title">Siap disajikan <span>1</span></div>
+                    <div class="pos-kitchen-ticket">
+                      <strong>Meja 02</strong><small>Makan di tempat</small>
+                      <p>1 × Mie goreng</p>
+                      <p>1 × Kopi susu</p>
+                      <div class="pos-ticket-note">
+                        Catatan tetap terhubung ke pesanan.
+                      </div>
+                    </div>
+                  </div>
+                  <div class="pos-kitchen-column">
+                    <div class="pos-column-title">Sudah disajikan <span>1</span></div>
+                    <div class="pos-kitchen-ticket">
+                      <strong>Meja 05</strong><small>Makan di tempat</small>
+                      <p>2 × Nasi ayam</p>
+                      <p>2 × Es teh</p>
+                      <div class="pos-ticket-note">
+                        Catatan tetap terhubung ke pesanan.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div
+              role="tabpanel"
+              tabindex="0"
+              id="service-payment"
+              aria-labelledby="service-tab-payment"
+              hidden
+            >
+              <div class="pos-payment">
+                <div>
+                  <span class="pos-section-label">Saat pembayaran</span>
+                  <h3>Satu meja. Tagihan yang jelas.</h3>
+                  <p>
+                    Periksa tagihan meja, bagi per item atau rata, lalu catat setiap pembayaran di kasir.
+                  </p>
+                  <div class="pos-payment-methods">
+                    <span>Tunai</span><span>Kartu</span><span>QRIS</span>
+                  </div>
+                  <small
+                    >Metode pembayaran dicatat manual. Pemrosesan oleh penyedia pembayaran belum tersedia.</small
+                  >
+                </div>
+                <div class="pos-receipt">
+                  <span class="pos-receipt-brand">FluxyOS</span>
+                  <p>Meja 08 · Pesanan #024</p>
+                  <div class="pos-row">
+                    <span>2 × Nasi goreng</span><strong>Rp70.000</strong>
+                  </div>
+                  <div class="pos-row">
+                    <span>2 × Es teh</span><strong>Rp20.000</strong>
+                  </div>
+                  <div class="pos-ticket-total">
+                    <div class="pos-row">
+                      <span>Total</span><strong>Rp90.000</strong>
+                    </div>
+                  </div>
+                  <div class="pos-paid">
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m5 12 4 4L19 6" /></svg
+                    >Pembayaran dicatat
+                  </div>
+                  <div class="pos-receipt-lines" aria-hidden="true"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="pos-tabs" role="tablist" aria-label="Jelajahi POS">
+            <button
+              type="button"
+              role="tab"
+              id="service-tab-floor"
+              aria-controls="service-floor"
+              aria-selected="true"
+              tabindex="0"
+              data-pos-tab="floor"
+            >
+              Layanan meja</button
+            ><button
+              type="button"
+              role="tab"
+              id="service-tab-kitchen"
+              aria-controls="service-kitchen"
+              aria-selected="false"
+              tabindex="-1"
+              data-pos-tab="kitchen"
+            >
+              Pesanan dapur</button
+            ><button
+              type="button"
+              role="tab"
+              id="service-tab-payment"
+              aria-controls="service-payment"
+              aria-selected="false"
+              tabindex="-1"
+              data-pos-tab="payment"
+            >
+              Pencatatan pembayaran
+            </button>
+          </div>
+        </div>
+      </section>
+      <section class="pos-section pos-intro">
+        <p>
+          FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System) yang menghubungkan operasional keuangan, akuntansi, operasional bisnis, alur kerja perusahaan, dan intelligence dalam satu sistem yang terus terhubung.
+        </p>
+      </section>
+      <section class="pos-section">
+        <div class="pos-section-heading">
+          <h2>
+            Mengikuti cara Anda melayani.
+            <span>Dari secangkir kopi hingga satu meja penuh.</span>
+          </h2>
+        </div>
+        <div class="pos-feature-grid">
+          <article class="pos-feature">
+            <span class="pos-feature-number">[01]</span>
+            <div class="pos-feature-art"><svg class="pos-service-scene" aria-hidden="true" viewBox="0 0 220 140" fill="#f3f5f8" stroke="#526075" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="91" y="12" width="38" height="16" rx="7"/><rect x="91" y="112" width="38" height="16" rx="7"/><rect x="43" y="51" width="16" height="38" rx="7"/><rect x="161" y="51" width="16" height="38" rx="7"/><rect x="66" y="35" width="88" height="70" rx="16" fill="white"/><circle cx="87" cy="57" r="9"/><circle cx="133" cy="83" r="9"/><path d="M82 57h10m41 21v10" stroke="#cbd1da"/><text x="110" y="78">08</text><circle cx="165" cy="32" r="15" fill="white" stroke="#EA580C"/><path d="m159 32 4 4 8-9" stroke="#EA580C"/></svg><span>Makan di tempat → Meja → Pesanan</span>
+            </div>
+            <h3>Siapkan meja untuk setiap tamu.</h3>
+            <p>
+              Lihat meja tersedia, pantau reservasi, dan buka pesanan makan di tempat atau bawa pulang dari kasir yang sama.
+            </p>
+          </article>
+          <article class="pos-feature">
+            <span class="pos-feature-number">[02]</span>
+            <div class="pos-feature-art"><svg class="pos-service-scene" aria-hidden="true" viewBox="0 0 220 140" fill="#f3f5f8" stroke="#526075" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M70 55h67l-6 51H77z" fill="white"/><path d="M137 63h9a13 13 0 0 1 0 26h-12M63 112h83M85 38c-9-9 9-12 0-21m20 21c-9-9 9-12 0-21"/><path d="M83 80h41" stroke="#EA580C"/><rect x="145" y="25" width="56" height="32" rx="10" fill="white"/><path d="M155 41h13m-6-6v12" stroke="#EA580C"/><path d="M178 36h13m-13 9h8"/><circle cx="66" cy="88" r="15" fill="white" stroke="#EA580C"/><path d="m60 88 4 4 8-9" stroke="#EA580C"/></svg><span>Kurangi gula · Extra shot</span>
+            </div>
+            <h3>Catat pesanan sesuai keinginan tamu.</h3>
+            <p>
+              Catat ukuran, tambahan, catatan, dan diskon pada setiap pesanan agar detailnya ikut sampai ke dapur.
+            </p>
+          </article>
+          <article class="pos-feature">
+            <span class="pos-feature-number">[03]</span>
+            <div class="pos-feature-art"><svg class="pos-service-scene" aria-hidden="true" viewBox="0 0 220 140" fill="#f3f5f8" stroke="#526075" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M77 13h66v63l-8-5-8 5-8-5-9 5-9-5-8 5-8-5-8 5z" fill="white"/><path d="M90 29h40m-40 12h24"/><path d="M96 56h28" stroke="#EA580C"/><path d="M110 81v10H59v11m51-11h51v11" stroke="#EA580C"/><rect x="28" y="103" width="63" height="27" rx="7" fill="white"/><rect x="130" y="103" width="63" height="27" rx="7" fill="white"/><path d="M38 114h12m-12 7h7m95-7h12m-12 7h7"/><circle cx="77" cy="116" r="5" stroke="#EA580C"/><circle cx="179" cy="116" r="5" stroke="#EA580C"/></svg><span>Rp90.000 → Rp45.000 + Rp45.000</span>
+            </div>
+            <h3>Selesaikan pembayaran dengan jelas.</h3>
+            <p>
+              Satukan pesanan meja dalam satu tagihan, bagi pembayaran, dan cetak struk dengan detail yang dibutuhkan tamu.
+            </p>
+          </article>
+          <article class="pos-feature">
+            <span class="pos-feature-number">[04]</span>
+            <div class="pos-feature-art"><svg class="pos-service-scene" aria-hidden="true" viewBox="0 0 220 140" fill="#f3f5f8" stroke="#526075" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="49" y="47" width="119" height="77" rx="12" fill="white"/><path d="M49 89h119M86 104h44"/><path d="M75 47V17h68v30" fill="white"/><path d="M87 29h18m-18 9h34"/><rect x="64" y="59" width="34" height="17" rx="4"/><path d="M113 63h7m10 0h7m-24 10h7m10 0h7"/><circle cx="166" cy="41" r="20" fill="white" stroke="#EA580C"/><path d="m157 41 6 6 12-13" stroke="#EA580C"/></svg><span>Kas seharusnya = Kas terhitung + Selisih</span>
+            </div>
+            <h3>Tutup shift dengan yakin.</h3>
+            <p>
+              Cocokkan uang di laci dengan kas yang seharusnya. Lihat pergerakan kas dan selisih saat menutup shift.
+            </p>
+          </article>
+        </div>
+      </section>
+      <section id="qr-ordering" class="pos-section pos-qr-section">
+        <div class="pos-section-heading">
+          <h2>
+            Kurangi waktu menunggu.
+            <span>Lebih dekat dengan tamu Anda.</span>
+          </h2>
+          <p>
+            Tamu cukup scan QR meja, lihat menu, dan kirim pesanan dari ponsel. Tim Anda menerima pesanan dalam alur layanan yang sama.
+          </p>
+        </div>
+        <div class="pos-qr-stage" data-pos-tabs data-autoplay>
+          <div class="pos-qr-copy">
+            <span class="pos-section-label">Pemesanan QR</span>
+            <h3>Ponsel tamu. Menu Anda.</h3>
+            <p>
+              Foto menu, pilihan item, dan status pesanan membantu tamu memesan dengan lebih mudah.
+            </p>
+<div class="pos-qr-steps" role="tablist" aria-label="Jelajahi pemesanan QR" aria-orientation="vertical"><button type="button" role="tab" id="qr-tab-menu" aria-controls="qr-menu" aria-selected="true" tabindex="0" data-pos-tab="menu"><span class="pos-qr-step-number" aria-hidden="true">01</span><span><strong>Jelajahi menu</strong><span>Lihat foto, kategori, dan harga.</span></span></button><button type="button" role="tab" id="qr-tab-customize" aria-controls="qr-customize" aria-selected="false" tabindex="-1" data-pos-tab="customize"><span class="pos-qr-step-number" aria-hidden="true">02</span><span><strong>Sesuaikan pesanan</strong><span>Pilih opsi dan tambahkan catatan.</span></span></button><button type="button" role="tab" id="qr-tab-basket" aria-controls="qr-basket" aria-selected="false" tabindex="-1" data-pos-tab="basket"><span class="pos-qr-step-number" aria-hidden="true">03</span><span><strong>Periksa pesanan</strong><span>Periksa item dan total sebelum dikirim.</span></span></button></div>
+            <button type="button" class="pos-autoplay" aria-pressed="false" hidden><span aria-hidden="true">Ⅱ</span><span class="pos-autoplay-label">Jeda tayangan</span></button>
+          </div>
+          <div class="pos-qr-device">
+            <div class="pos-phone pos-phone-real">
+              <div class="pos-phone-camera" aria-hidden="true"></div>
+              <div role="tabpanel" id="qr-menu" aria-labelledby="qr-tab-menu" tabindex="0">
+                <a href="/assets/images/pos-qr-menu-id.jpg" target="_blank" rel="noopener" data-qr-screen="menu" aria-label="Buka tangkapan layar aplikasi pemesanan ini dalam ukuran penuh">
+                  <img src="/assets/images/pos-qr-menu-id.jpg" width="780" height="1688" loading="lazy" decoding="async" data-qr-screen="menu" alt="Aplikasi pemesanan QR FluxyOS asli yang menampilkan menu demo Senopati dan rekomendasi hidangan.">
+                </a>
+              </div>
+              <div role="tabpanel" id="qr-customize" aria-labelledby="qr-tab-customize" tabindex="0" hidden>
+                <a href="/assets/images/pos-qr-customize-id.jpg" target="_blank" rel="noopener" data-qr-screen="customize" aria-label="Buka tangkapan layar aplikasi pemesanan ini dalam ukuran penuh">
+                  <img src="/assets/images/pos-qr-customize-id.jpg" width="780" height="1688" loading="lazy" decoding="async" data-qr-screen="customize" alt="Aplikasi pemesanan QR FluxyOS asli yang menampilkan pilihan item sebelum menambahkan minuman ke pesanan.">
+                </a>
+              </div>
+              <div role="tabpanel" id="qr-basket" aria-labelledby="qr-tab-basket" tabindex="0" hidden>
+                <a href="/assets/images/pos-qr-basket-id.jpg" target="_blank" rel="noopener" data-qr-screen="basket" aria-label="Buka tangkapan layar aplikasi pemesanan ini dalam ukuran penuh">
+                  <img src="/assets/images/pos-qr-basket-id.jpg" width="780" height="1688" loading="lazy" decoding="async" data-qr-screen="basket" alt="Aplikasi pemesanan QR FluxyOS asli yang menampilkan ringkasan pesanan, harga item, dan total sebelum dikirim.">
+                </a>
+              </div>
+            </div>
+            <p class="pos-qr-capture-note">Aplikasi pemesanan asli · Menu demo<br><span>Ketuk layar untuk melihat ukuran penuh.</span></p>
+          </div>
+        </div>
+      </section>
+      <section class="pos-section pos-finance">
+        <div class="pos-section-heading">
+          <h2>
+            Penjualan baru permulaan.
+            <span>Hubungkan seluruh cerita keuangannya.</span>
+          </h2>
+        </div>
+        <div class="pos-finance-grid">
+          <div class="pos-finance-copy">
+            <span class="pos-section-label">Dari kasir ke buku besar</span>
+            <h3>Setiap hidangan punya biaya. Catat dengan tepat.</h3>
+            <p>
+              Resep yang sudah diatur menghubungkan hidangan terjual dengan stok bahan dan harga pokok penjualan. Penjualan POS masuk ke fondasi akuntansi yang sama dengan bisnis Anda.
+            </p>
+            <p>
+              Pendapatan dan biaya menyertakan outlet, sehingga Anda bisa menelusuri hasilnya hingga laporan laba rugi outlet.
+            </p>
+          </div>
+          <div class="pos-recipe">
+            <div class="pos-recipe-title">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="m3 7 9-4 9 4-9 4z M3 7v10l9 4 9-4V7M12 11v10" /></svg
+              ><strong>Nasi goreng</strong><span>Resep</span>
+            </div>
+            <div class="pos-row"><span>Nasi</span><strong>200 g</strong></div>
+            <div class="pos-row"><span>Telur</span><strong>1 butir</strong></div>
+            <div class="pos-row">
+              <span>Bumbu</span><strong>30 g</strong>
+            </div>
+            <div class="pos-recipe-connection">↓</div>
+            <div class="pos-recipe-bottom">
+              <div>
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="m3 7 9-4 9 4-9 4z M3 7v10l9 4 9-4V7M12 11v10" /></svg
+                >Pergerakan stok
+              </div>
+              <div>
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M4 3h16v18H4z M8 7h8m-8 5h8m-8 5h5" /></svg
+                >Harga pokok penjualan
+              </div>
+            </div>
+            <p class="pos-muted">
+              Terhubung lewat penjualan. Dicatat untuk outlet.
+            </p>
+          </div>
+        </div>
+      </section>
+      <section class="pos-section pos-reports" data-pos-tabs>
+        <div class="pos-section-heading">
+          <h2>Dari layanan ke gambaran yang lebih jelas.</h2>
+          <p>
+            Baca pendapatan, biaya, dan laba kotor bersama. Penjualan yang sama menghasilkan catatan yang selaras di laporan keuangan Anda.
+          </p>
+        </div>
+        <div class="pos-profit-equation" aria-label="Perhitungan laba kotor mingguan"><div><span>Pendapatan</span><strong>Rp4.800.000</strong></div><b aria-hidden="true">−</b><div><span>Harga pokok penjualan</span><strong>Rp1.920.000</strong></div><b aria-hidden="true">=</b><div><span>Laba kotor</span><strong>Rp2.880.000</strong></div><span class="pos-margin">Margin kotor 60%</span></div>
+        <div class="pos-tabs" role="tablist" aria-label="Tampilan keuangan">
+          <button
+            type="button"
+            role="tab"
+            id="report-tab-revenue"
+            aria-controls="report-revenue"
+            aria-selected="true"
+            tabindex="0"
+            data-pos-tab="revenue"
+          >
+            Pendapatan</button
+          ><button
+            type="button"
+            role="tab"
+            id="report-tab-cost"
+            aria-controls="report-cost"
+            aria-selected="false"
+            tabindex="-1"
+            data-pos-tab="cost"
+          >
+            Harga pokok penjualan</button
+          ><button
+            type="button"
+            role="tab"
+            id="report-tab-profit"
+            aria-controls="report-profit"
+            aria-selected="false"
+            tabindex="-1"
+            data-pos-tab="profit"
+          >
+            Laba kotor
+          </button>
+        </div>
+        <div
+          role="tabpanel"
+          tabindex="0"
+          id="report-revenue"
+          aria-labelledby="report-tab-revenue"
+        >
+          <div class="pos-report-card">
+            <div class="pos-report-summary">
+              <small>Outlet Senopati · Contoh mingguan</small>
+              <h3>Pendapatan</h3>
+              <strong class="pos-report-value">Rp4.800.000</strong>
+              <p>Penjualan yang dibukukan untuk outlet terpilih.</p>
+              <span class="pos-tag">Data ilustrasi</span>
+            </div>
+            <div class="pos-week-chart pos-week-revenue">
+              <div class="pos-chart-heading"><span>Rincian harian</span><span>14–20 Sep 2026</span></div>
+              <p class="pos-chart-unit">Nilai dalam ribuan Rp · Skala sama di setiap tampilan</p>
+              <div class="pos-plot"><div class="pos-axis" aria-hidden="true"><span>1.200</span><span>900</span><span>600</span><span>300</span><span>0</span></div><div class="pos-daily-bars"><div class="pos-daily-column" data-value="480000"><div class="pos-daily-bar" style="--value:40.00%"><strong>480</strong></div><span>Sen</span></div><div class="pos-daily-column" data-value="560000"><div class="pos-daily-bar" style="--value:46.67%"><strong>560</strong></div><span>Sel</span></div><div class="pos-daily-column" data-value="520000"><div class="pos-daily-bar" style="--value:43.33%"><strong>520</strong></div><span>Rab</span></div><div class="pos-daily-column" data-value="640000"><div class="pos-daily-bar" style="--value:53.33%"><strong>640</strong></div><span>Kam</span></div><div class="pos-daily-column" data-value="700000"><div class="pos-daily-bar" style="--value:58.33%"><strong>700</strong></div><span>Jum</span></div><div class="pos-daily-column" data-value="900000"><div class="pos-daily-bar" style="--value:75.00%"><strong>900</strong></div><span>Sab</span></div><div class="pos-daily-column" data-value="1000000"><div class="pos-daily-bar" style="--value:83.33%"><strong>1.000</strong></div><span>Min</span></div></div></div>
+            </div>
+          </div>
+        </div>
+        <div
+          role="tabpanel"
+          tabindex="0"
+          id="report-cost"
+          aria-labelledby="report-tab-cost"
+          hidden
+        >
+          <div class="pos-report-card">
+            <div class="pos-report-summary">
+              <small>Outlet Senopati · Contoh mingguan</small>
+              <h3>Harga pokok penjualan</h3>
+              <strong class="pos-report-value">Rp1.920.000</strong>
+              <p>
+                Biaya bahan dari resep yang sudah diatur dan pergerakan stok.
+              </p>
+              <span class="pos-tag">Data ilustrasi</span>
+            </div>
+            <div class="pos-week-chart pos-week-cost">
+              <div class="pos-chart-heading"><span>Rincian harian</span><span>14–20 Sep 2026</span></div>
+              <p class="pos-chart-unit">Nilai dalam ribuan Rp · Skala sama di setiap tampilan</p>
+              <div class="pos-plot"><div class="pos-axis" aria-hidden="true"><span>1.200</span><span>900</span><span>600</span><span>300</span><span>0</span></div><div class="pos-daily-bars"><div class="pos-daily-column" data-value="192000"><div class="pos-daily-bar" style="--value:16.00%"><strong>192</strong></div><span>Sen</span></div><div class="pos-daily-column" data-value="224000"><div class="pos-daily-bar" style="--value:18.67%"><strong>224</strong></div><span>Sel</span></div><div class="pos-daily-column" data-value="208000"><div class="pos-daily-bar" style="--value:17.33%"><strong>208</strong></div><span>Rab</span></div><div class="pos-daily-column" data-value="256000"><div class="pos-daily-bar" style="--value:21.33%"><strong>256</strong></div><span>Kam</span></div><div class="pos-daily-column" data-value="280000"><div class="pos-daily-bar" style="--value:23.33%"><strong>280</strong></div><span>Jum</span></div><div class="pos-daily-column" data-value="360000"><div class="pos-daily-bar" style="--value:30.00%"><strong>360</strong></div><span>Sab</span></div><div class="pos-daily-column" data-value="400000"><div class="pos-daily-bar" style="--value:33.33%"><strong>400</strong></div><span>Min</span></div></div></div>
+            </div>
+          </div>
+        </div>
+        <div
+          role="tabpanel"
+          tabindex="0"
+          id="report-profit"
+          aria-labelledby="report-tab-profit"
+          hidden
+        >
+          <div class="pos-report-card">
+            <div class="pos-report-summary">
+              <small>Outlet Senopati · Contoh mingguan</small>
+              <h3>Laba kotor</h3>
+              <strong class="pos-report-value">Rp2.880.000</strong>
+              <p>Pendapatan dikurangi harga pokok penjualan, sebelum biaya operasional.</p>
+              <span class="pos-tag">Data ilustrasi</span>
+            </div>
+            <div class="pos-week-chart pos-week-profit">
+              <div class="pos-chart-heading"><span>Rincian harian</span><span>14–20 Sep 2026</span></div>
+              <p class="pos-chart-unit">Nilai dalam ribuan Rp · Skala sama di setiap tampilan</p>
+              <div class="pos-plot"><div class="pos-axis" aria-hidden="true"><span>1.200</span><span>900</span><span>600</span><span>300</span><span>0</span></div><div class="pos-daily-bars"><div class="pos-daily-column" data-value="288000"><div class="pos-daily-bar" style="--value:24.00%"><strong>288</strong></div><span>Sen</span></div><div class="pos-daily-column" data-value="336000"><div class="pos-daily-bar" style="--value:28.00%"><strong>336</strong></div><span>Sel</span></div><div class="pos-daily-column" data-value="312000"><div class="pos-daily-bar" style="--value:26.00%"><strong>312</strong></div><span>Rab</span></div><div class="pos-daily-column" data-value="384000"><div class="pos-daily-bar" style="--value:32.00%"><strong>384</strong></div><span>Kam</span></div><div class="pos-daily-column" data-value="420000"><div class="pos-daily-bar" style="--value:35.00%"><strong>420</strong></div><span>Jum</span></div><div class="pos-daily-column" data-value="540000"><div class="pos-daily-bar" style="--value:45.00%"><strong>540</strong></div><span>Sab</span></div><div class="pos-daily-column" data-value="600000"><div class="pos-daily-bar" style="--value:50.00%"><strong>600</strong></div><span>Min</span></div></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="pos-section pos-faq">
+        <div class="pos-section-heading">
+          <h2>Beberapa hal yang perlu Anda tahu.</h2>
+        </div>
+        <div>
+          <details>
+            <summary>
+              Apa itu FluxyOS Point of Sale?<span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              Point of Sale adalah ruang kerja FluxyOS untuk menerima pesanan, mengelola layanan meja, dan mencatat pembayaran. Penjualan terhubung ke akuntansi serta, dengan item dan resep yang sudah diatur, persediaan dan harga pokok penjualan.
+            </p>
+          </details>
+          <details>
+            <summary>
+              Apakah tamu bisa memesan lewat QR meja?<span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              Ya. Tamu scan QR meja untuk membuka menu, memilih item dan opsi, mengirim pesanan, serta memantau statusnya. Pesanan masuk ke alur layanan outlet.
+            </p>
+          </details>
+          <details>
+            <summary>
+              Apakah POS memproses pembayaran kartu atau QRIS?<span
+                aria-hidden="true"
+                >+</span
+              >
+            </summary>
+            <p>
+              Staf bisa mencatat pembayaran tunai, kartu, dan QRIS di kasir. Pemrosesan terintegrasi dengan penyedia pembayaran belum tersedia; tim Anda mengonfirmasi pembayaran melalui layanan pembayaran yang digunakan.
+            </p>
+          </details>
+          <details>
+            <summary>
+              Apakah POS bisa digunakan tanpa koneksi internet?<span
+                aria-hidden="true"
+                >+</span
+              >
+            </summary>
+            <p>
+              Koneksi internet diperlukan. Penerimaan pesanan dan antrean pembayaran saat offline belum didukung.
+            </p>
+          </details>
+          <details>
+            <summary>
+              Bagaimana cara mendapatkan akses?<span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              Hubungi tim kami untuk membahas outlet dan alur layanan Anda. Akses Point of Sale diaktifkan untuk workspace yang memenuhi syarat, dan kami dapat membantu meninjau pengaturan untuk bisnis Anda.
+            </p>
+          </details>
+        </div>
+      </section>
+      <section class="pos-closing">
+        <span class="pos-section-label">FluxyOS Point of Sale</span>
+        <h2>Layanan yang baik.<br />Bisnis yang terhubung.</h2>
+        <p>Jadikan pesanan berikutnya bagian dari gambaran bisnis Anda.</p>
+        <a class="pos-button pos-primary" href="/contact-sales"
+          >Hubungi sales<svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M5 12h14m-5-5 5 5-5 5" /></svg></a
+        ><a class="pos-text-link" href="/id/pricing">Lihat paket FluxyOS →</a>
+      </section>
     </main>
-
-    <section class="bg-gray-50 text-gray-900 py-24 border-t border-gray-200">
-        <div class="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-16 items-center">
-            
-            <div>
-                <div class="text-[#EA580C] text-xs font-bold uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    PERCEPAT PERTUMBUHAN ANDA
-                </div>
-                <h2 class="text-4xl md:text-5xl font-bold tracking-tight text-gray-900 mb-6">Lejitkan potensi bisnis Anda</h2>
-                <p class="text-lg text-gray-600 mb-10">Lihat bagaimana FluxyOS meningkatkan operasional keuangan dan membuka peluang scaling baru.</p>
-
-                <div class="grid sm:grid-cols-2 gap-x-8 gap-y-10">
-                    <div>
-                        <div class="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-[#EA580C] mb-4 shadow-sm">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                        </div>
-                        <h4 class="font-bold text-lg mb-2">Efisiensi</h4>
-                        <p class="text-sm text-gray-600 leading-relaxed">Sederhanakan proses keuangan dan hemat waktu dengan fitur sinkronisasi buku besar otomatis kami.</p>
-                    </div>
-                    <div>
-                        <div class="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-blue-600 mb-4 shadow-sm">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-                        </div>
-                        <h4 class="font-bold text-lg mb-2">Keamanan</h4>
-                        <p class="text-sm text-gray-600 leading-relaxed">Lindungi data dan operasi multi-entitas Anda dengan keamanan kelas atas, dibangun agar Anda tenang.</p>
-                    </div>
-                    <div>
-                        <div class="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-indigo-600 mb-4 shadow-sm">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                        </div>
-                        <h4 class="font-bold text-lg mb-2">Wawasan</h4>
-                        <p class="text-sm text-gray-600 leading-relaxed">Manfaatkan analitik real-time untuk mengambil keputusan yang mendorong unit economics bisnis Anda.</p>
-                    </div>
-                    <div>
-                        <div class="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-purple-600 mb-4 shadow-sm">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path></svg>
-                        </div>
-                        <h4 class="font-bold text-lg mb-2">Kustomisasi</h4>
-                        <p class="text-sm text-gray-600 leading-relaxed">Sesuaikan setiap aspek dashboard dengan struktur departemen startup Anda.</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-2xl border border-gray-200 shadow-xl p-6 sm:p-8 relative">
-                <div class="border border-gray-100 rounded-xl p-4 shadow-sm mb-6 bg-gray-50/50">
-                    <div class="flex justify-between items-center mb-6">
-                        <div class="flex items-center gap-2">
-                            <div class="w-6 h-6 rounded-md bg-blue-100 text-blue-600 flex items-center justify-center">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            </div>
-                            <span class="font-bold text-sm text-gray-900">Saldo</span>
-                        </div>
-                        <div class="flex gap-2">
-                            <div class="w-6 h-6 rounded border border-gray-200 flex items-center justify-center text-gray-400 bg-white"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg></div>
-                            <div class="w-6 h-6 rounded border border-gray-200 flex items-center justify-center text-gray-400 bg-white"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg></div>
-                        </div>
-                    </div>
-                    <div class="mb-4">
-                        <h3 class="text-3xl font-bold text-gray-900 font-mono">Rp 350.245.000</h3>
-                        <div class="flex items-center gap-2 mt-1">
-                            <span class="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full">&uarr; 12%</span>
-                            <span class="text-xs text-gray-500">vs tahun lalu</span>
-                        </div>
-                    </div>
-                    <div class="h-32 w-full flex items-end justify-between gap-1 mt-6 border-b border-gray-200 pb-2 relative">
-                        <div class="absolute bottom-6 left-0 w-full border-t border-dashed border-gray-300 z-0"></div>
-                        <span class="absolute bottom-6 left-0 bg-gray-900 text-white text-[9px] px-1.5 py-0.5 rounded-md -translate-y-1/2 z-10">Avg 6.8%</span>
-                        
-                        <div class="w-full bg-blue-100 rounded-t-sm relative z-10" style="height: 30%"></div>
-                        <div class="w-full bg-blue-100 rounded-t-sm relative z-10" style="height: 40%"></div>
-                        <div class="w-full bg-blue-200 rounded-t-sm relative z-10" style="height: 60%"></div>
-                        <div class="w-full bg-blue-300 rounded-t-sm relative z-10" style="height: 80%"></div>
-                        <div class="w-full bg-blue-200 rounded-t-sm relative z-10" style="height: 75%"></div>
-                        <div class="w-full bg-blue-100 rounded-t-sm relative z-10" style="height: 45%"></div>
-                        <div class="w-full bg-blue-400 rounded-t-sm relative z-10" style="height: 90%"></div>
-                        <div class="w-full bg-blue-300 rounded-t-sm relative z-10" style="height: 85%"></div>
-                        <div class="w-full bg-blue-100 rounded-t-sm relative z-10" style="height: 50%"></div>
-                        <div class="w-full bg-blue-100 rounded-t-sm relative z-10" style="height: 35%"></div>
-                        <div class="w-full bg-blue-200 rounded-t-sm relative z-10" style="height: 55%"></div>
-                        <div class="w-full bg-blue-100 rounded-t-sm relative z-10" style="height: 40%"></div>
-                        <div class="w-full bg-blue-300 rounded-t-sm relative z-10" style="height: 70%"></div>
-                        <div class="w-full bg-blue-100 rounded-t-sm relative z-10" style="height: 25%"></div>
-                    </div>
-                </div>
-
-                <div class="border border-gray-100 rounded-xl p-4 shadow-sm bg-gray-50/50">
-                    <div class="flex justify-between items-center mb-6">
-                        <div class="flex items-center gap-2">
-                            <div class="w-6 h-6 rounded-md bg-purple-100 text-purple-600 flex items-center justify-center">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
-                            </div>
-                            <span class="font-bold text-sm text-gray-900">Proyeksi Runway</span>
-                        </div>
-                        <div class="flex gap-2">
-                            <div class="w-6 h-6 rounded border border-gray-200 flex items-center justify-center text-gray-400 bg-white"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg></div>
-                            <div class="w-6 h-6 rounded border border-gray-200 flex items-center justify-center text-gray-400 bg-white"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg></div>
-                        </div>
-                    </div>
-                    <div>
-                        <p class="text-xs text-gray-500 mb-1">Berdasarkan arus kas saat ini</p>
-                        <h3 class="text-3xl font-bold text-gray-900 font-mono">18<span class="text-xl text-gray-500 font-sans ml-1 mr-2">mo</span> 2<span class="text-xl text-gray-500 font-sans ml-1">w</span></h3>
-                    </div>
-                </div>
-                </div>
-        </div>
-    </section>
-
-    <section class="bg-white text-gray-900 py-24 border-t border-gray-200 text-center">
-        <div class="max-w-7xl mx-auto px-6">
-            <div class="flex flex-col items-center mb-16">
-                <div class="text-blue-600 text-xs font-bold uppercase tracking-wider mb-4 flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                    DIPERCAYA PARA FOUNDER
-                </div>
-                <h2 class="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl mb-6">Dibuat untuk pemilik bisnis</h2>
-                <p class="text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                    Memberi founder dan CEO kejelasan keuangan untuk scale-up dengan percaya diri, tanpa terjebak spreadsheet manual.
-                </p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-16 max-w-5xl mx-auto relative">
-                <div class="hidden md:block absolute top-1/2 left-0 w-full h-px bg-gray-200"></div>
-                <div class="hidden md:block absolute top-0 left-1/2 w-px h-full bg-gray-200"></div>
-                
-                <div class="p-4 bg-white relative z-10">
-                    <h3 class="text-5xl md:text-6xl font-bold text-gray-900 font-mono tracking-tight mb-4">1,200+</h3>
-                    <p class="text-blue-600 text-sm font-bold uppercase tracking-widest mb-3">FOUNDER TERBANTU</p>
-                    <p class="text-gray-600 text-sm max-w-xs mx-auto">CEO dan pemilik bisnis yang mengembangkan operasinya dengan visibilitas penuh.</p>
-                </div>
-                
-                <div class="p-4 bg-white relative z-10">
-                    <h3 class="text-5xl md:text-6xl font-bold text-gray-900 font-mono tracking-tight mb-4">Rp 500B+</h3>
-                    <p class="text-blue-600 text-sm font-bold uppercase tracking-widest mb-3">MODAL TERKELOLA</p>
-                    <p class="text-gray-600 text-sm max-w-xs mx-auto">Total anggaran bisnis yang dioptimalkan dan dipantau real-time di platform kami.</p>
-                </div>
-                
-                <div class="p-4 bg-white relative z-10">
-                    <h3 class="text-5xl md:text-6xl font-bold text-gray-900 font-mono tracking-tight mb-4">20+</h3>
-                    <p class="text-blue-600 text-sm font-bold uppercase tracking-widest mb-3">JAM DIHEMAT PER BULAN</p>
-                    <p class="text-gray-600 text-sm max-w-xs mx-auto">Rata-rata waktu yang kembali ke founder setelah menghapus update spreadsheet manual.</p>
-                </div>
-                
-                <div class="p-4 bg-white relative z-10">
-                    <h3 class="text-5xl md:text-6xl font-bold text-gray-900 font-mono tracking-tight mb-4">98%</h3>
-                    <p class="text-blue-600 text-sm font-bold uppercase tracking-widest mb-3">KEPUASAN PEMILIK</p>
-                    <p class="text-gray-600 text-sm max-w-xs mx-auto">Dinilai kelas atas oleh para pemimpin bisnis untuk ROI instan dan kejelasan keuangan.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="bg-gray-50 text-gray-900 py-24 border-t border-gray-200">
-        <div class="max-w-7xl mx-auto px-6">
-            <div class="text-center max-w-2xl mx-auto mb-16">
-                <h2 class="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">Visibilitas keuangan total, otomatis.</h2>
-                <p class="mt-4 text-lg text-gray-600">Spreadsheet manual membunuh momentum. FluxyOS menyatukan data transaksi, anggaran departemen, dan buku besar multi-entitas dalam satu ekosistem yang hidup.</p>
-            </div>
-
-            <div class="grid md:grid-cols-3 gap-10">
-                <div class="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition">
-                    <div class="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#EA580C] mb-6">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3 text-gray-900">Pelacakan Burn Real-Time</h3>
-                    <p class="text-gray-600 text-sm leading-relaxed">
-                        Setiap invoice yang diproses dan kartu yang digesek langsung memperbarui anggaran Anda. Lihat progress bar bergerak real-time — kejutan akhir bulan hilang total.
-                    </p>
-                </div>
-
-                <div class="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition">
-                    <div class="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 mb-6">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3 text-gray-900">Skala Unit Economics</h3>
-                    <p class="text-gray-600 text-sm leading-relaxed">
-                        Sedang scale-up? Ikat anggaran ketat ke limit manufaktur, tools SaaS, dan biaya marketing supaya unit economics tetap untung saat volume naik.
-                    </p>
-                </div>
-
-                <div class="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition">
-                    <div class="w-12 h-12 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-800 mb-6">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3 text-gray-900">Pemetaan Multi-Entitas</h3>
-                    <p class="text-gray-600 text-sm leading-relaxed">
-                        Pas untuk struktur B2B. Petakan anggaran terpisah untuk cabang regional, lini produk tertentu, atau akun mata uang berbeda dari satu pusat komando.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- FAQ SECTION -->
-    <section id="faq-budgeting" class="bg-[#0B0F19] text-white py-20 px-6 border-t border-white/10">
-        <div class="max-w-4xl mx-auto">
-            <div class="mb-10">
-                <p class="text-orange-300 text-xs font-bold uppercase tracking-wider mb-3">Pertanyaan yang sering ditanyakan</p>
-                <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight">Pertanyaan tentang Dynamic Budgeting, terjawab</h2>
-            </div>
-
-            <details class="group border-b border-white/10 py-5">
-                <summary class="flex cursor-pointer list-none items-center justify-between gap-6">
-                    <h3 class="text-[17px] font-bold text-white">Apa itu Dynamic Budgeting?</h3>
-                    <span class="text-orange-300 text-2xl leading-none transition-transform group-open:rotate-45">+</span>
-                </summary>
-                <p class="mt-3 text-[15px] leading-relaxed text-gray-300">Dynamic Budgeting adalah fitur FluxyOS untuk mengalokasikan, memantau, dan menyesuaikan anggaran secara real-time saat pengeluaran berubah. Tanpa menunggu update spreadsheet, tim bisa melihat sisa anggaran, burn rate, dan selisih begitu transaksi masuk.</p>
-            </details>
-
-            <details class="group border-b border-white/10 py-5">
-                <summary class="flex cursor-pointer list-none items-center justify-between gap-6">
-                    <h3 class="text-[17px] font-bold text-white">Bagaimana Dynamic Budgeting membantu bisnis Indonesia?</h3>
-                    <span class="text-orange-300 text-2xl leading-none transition-transform group-open:rotate-45">+</span>
-                </summary>
-                <p class="mt-3 text-[15px] leading-relaxed text-gray-300">Dynamic Budgeting membantu bisnis Indonesia mengendalikan pengeluaran dengan menghubungkan anggaran ke data vendor, struk, dan buku besar yang live. Pemilik bisa melihat kapan anggaran marketing, operasional, SaaS, atau proyek mulai keluar jalur sebelum akhir bulan.</p>
-            </details>
-
-            <details class="group border-b border-white/10 py-5">
-                <summary class="flex cursor-pointer list-none items-center justify-between gap-6">
-                    <h3 class="text-[17px] font-bold text-white">Bisakah FluxyOS memantau anggaran per departemen atau proyek?</h3>
-                    <span class="text-orange-300 text-2xl leading-none transition-transform group-open:rotate-45">+</span>
-                </summary>
-                <p class="mt-3 text-[15px] leading-relaxed text-gray-300">Bisa. FluxyOS dapat menata anggaran per departemen, proyek, entitas, atau kategori operasional, jadi tim bisa membandingkan rencana dengan pengeluaran aktual. Berguna untuk agensi, tim e-commerce, restoran, dan operator multi-lokasi.</p>
-            </details>
-
-            <details class="group border-b border-white/10 py-5">
-                <summary class="flex cursor-pointer list-none items-center justify-between gap-6">
-                    <h3 class="text-[17px] font-bold text-white">Apakah Dynamic Budgeting mengirim peringatan?</h3>
-                    <span class="text-orange-300 text-2xl leading-none transition-transform group-open:rotate-45">+</span>
-                </summary>
-                <p class="mt-3 text-[15px] leading-relaxed text-gray-300">Ya. Dynamic Budgeting memunculkan peringatan selisih dan burn rate saat anggaran terpakai lebih cepat dari perkiraan. Tujuannya membantu tim mengalokasikan ulang dana atau menahan pengeluaran sebelum masalah anggaran jadi mendesak.</p>
-            </details>
-
-            <details class="group border-b border-white/10 py-5">
-                <summary class="flex cursor-pointer list-none items-center justify-between gap-6">
-                    <h3 class="text-[17px] font-bold text-white">Bisakah Dynamic Budgeting bekerja dengan pengeluaran multi-mata-uang?</h3>
-                    <span class="text-orange-300 text-2xl leading-none transition-transform group-open:rotate-45">+</span>
-                </summary>
-                <p class="mt-3 text-[15px] leading-relaxed text-gray-300">Bisa. Dynamic Budgeting dirancang IDR-first sambil mendukung pengeluaran multi-mata-uang lintas vendor, kartu, dan platform internasional. Anggaran lokal tetap terkelola meski sebagian tools menagih dalam USD atau SGD.</p>
-            </details>
-
-            <details class="group border-b border-white/10 py-5">
-                <summary class="flex cursor-pointer list-none items-center justify-between gap-6">
-                    <h3 class="text-[17px] font-bold text-white">Apa bedanya Dynamic Budgeting dengan anggaran spreadsheet?</h3>
-                    <span class="text-orange-300 text-2xl leading-none transition-transform group-open:rotate-45">+</span>
-                </summary>
-                <p class="mt-3 text-[15px] leading-relaxed text-gray-300">Beda. Anggaran spreadsheet biasanya statis dan diperbarui manual, sedangkan Dynamic Budgeting terbarui dari data operasional keuangan yang live. Runway, pengeluaran per kategori, dan selisih anggaran jadi lebih mudah dipantau tanpa menyusun ulang laporan tiap minggu.</p>
-            </details>
-        </div>
-    </section>
-
-    <script src="/assets/js/fluxyos.js" defer></script>
     <script src="/assets/js/universe-canvas.js" defer></script>
     <script src="/assets/js/footer-loader.js" defer></script>
+    <script src="/assets/js/fluxyos.js" defer></script>
     <script src="/assets/js/i18n.js" defer></script>
-</body>
+    <script src="/assets/js/pos-landing.js" defer></script>
+  </body>
 </html>

@@ -1513,6 +1513,39 @@ test.describe('QR customer ordering', () => {
         await expect(page.locator('.reco-card')).toHaveCount(0);
     });
 
+    test('THE NAME FIELD DOES NOT MOVE WHEN THE ARTWORK ARRIVES', async ({ page }) => {
+        // The image had no reserved height: it loaded ~2.8 s in on 4G, the sheet
+        // grew 200px, and the name field dropped out from under a diner about to
+        // tap it — 0.16 of layout shift, every first visit (the page's budget is
+        // 0.1). Held here until the field has been measured.
+        await stub(page);
+        let letArtThrough;
+        const artGate = new Promise((resolve) => { letArtThrough = resolve; });
+        await page.route('**/assets/images/order-welcome.*', async (route) => {
+            await artGate;
+            return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: ART_SVG });
+        });
+        // Not `load`: that waits for the very image being held.
+        await goTo(page, 'id', { waitUntil: 'domcontentloaded' });
+        await expect(page.locator('#sheet-welcome')).toHaveClass(/is-open/, { timeout: 15_000 });
+        const field = page.locator('#welcome-name-field');
+        // The sheet slides up; measure once it has come to rest.
+        let prev = null;
+        await expect.poll(async () => {
+            const y = Math.round((await field.boundingBox()).y);
+            const settled = y === prev;
+            prev = y;
+            return settled;
+        }, { intervals: [250], timeout: 5_000 }).toBe(true);
+        const before = (await field.boundingBox()).y;
+
+        letArtThrough();
+        const img = page.locator('#welcome-art img');
+        await expect.poll(() => img.evaluate((el) => el.complete && el.naturalWidth > 0)).toBe(true);
+        const after = (await field.boundingBox()).y;
+        expect(Math.abs(after - before), 'the artwork pushed the name field when it loaded').toBeLessThanOrEqual(1);
+    });
+
     test('THE GATE NEVER GOES LOOKING FOR ARTWORK THAT WAS NOT DECLARED', async ({ page }) => {
         // ⚠️ DECLARED, NOT PROBED. The obvious build — try `.svg`, then `.png`,
         // then `.webp` — costs every diner three or four 404s on restaurant
