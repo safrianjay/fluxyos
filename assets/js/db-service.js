@@ -6665,12 +6665,12 @@ class DataService {
     //
     // Bounded, unlike getStockOnHand. Ordering is on a single field, so no
     // composite index is required.
-    async getStockMovements(userId, { limitCount = 500 } = {}) {
+    async getStockMovements(userId, { limitCount = 500, sinceDate = null } = {}) {
         try {
-            const q = query(
-                collection(this.db, `${this._scope(userId)}/stock_movements`),
-                orderBy('created_at', 'desc'), limit(limitCount)
-            );
+            const parts = [collection(this.db, `${this._scope(userId)}/stock_movements`)];
+            if (sinceDate instanceof Date) parts.push(where('created_at', '>=', Timestamp.fromDate(sinceDate)));
+            parts.push(orderBy('created_at', 'desc'), limit(limitCount));
+            const q = query(...parts);
             const snap = await getDocs(q);
             return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         } catch (_) { return []; }

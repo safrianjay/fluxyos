@@ -14,6 +14,7 @@
     "check:money-seam": "node tests/money-seam.check.js",
     "check:price-book": "node tests/billing-price-book.check.js",
     "check:module-parse": "node tests/module-parse.check.js",
+    "check:inventory-variance": "node tests/inventory-variance.check.mjs",
     "check:feature-category": "node tests/feature-access-category.check.js",
     "rules:build": "node scripts/build-rules.js",
     "rules:deploy": "node scripts/build-rules.js && firebase deploy --only firestore:rules --config .rules-build/firebase.json",

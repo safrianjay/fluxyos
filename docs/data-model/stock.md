@@ -198,6 +198,17 @@ and one that hides the problem (`PRODUCT_STRATEGY.md` §7).
 the system quantity, so the next count's variance is what the kitchen actually
 consumed.
 
+### Recipe use versus physical count
+
+Inventory's variance view is a read model over this immutable subledger. It
+groups POS-originated `issue` movements (theoretical recipe consumption) and
+later `count` corrections by item and `dimension_id`. A negative count movement
+means the shelf was short, so the view presents its inverse as positive
+unexplained use; a positive correction is an overage. This is not a second stock
+balance and it never writes back to an item. `waste` movements are deliberately
+excluded: they are already recorded operational loss in `5150`, while the
+variance view identifies use the saved recipe and recorded waste did not explain.
+
 **Costing is weighted average, derived not stored.** Unit cost is value on hand ÷
 quantity on hand, both sums over `stock_movements`. There is no cached cost to
 drift. The rate is fractional on purpose; money is rounded **once per line**,

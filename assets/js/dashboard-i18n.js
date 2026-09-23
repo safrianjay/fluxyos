@@ -4789,6 +4789,18 @@
         "Never counted": "Belum pernah dihitung",
         "Their quantity is what the system believes, not what anyone has seen.": "Kuantitasnya adalah yang diyakini sistem, bukan yang benar-benar dilihat orang.",
 
+        "Recipe use vs physical count": "Penggunaan resep vs stock opname",
+        "This month’s POS recipe consumption compared with count corrections. Waste recorded during service stays separate.": "Penggunaan resep POS bulan ini dibandingkan dengan koreksi stock opname. Susut yang dicatat saat layanan tetap terpisah.",
+        "Start stock count": "Mulai stock opname",
+        "Ingredient · outlet": "Bahan · outlet",
+        "Recipe use": "Penggunaan resep",
+        "Physical difference": "Selisih fisik",
+        "Cost impact": "Dampak biaya",
+        "Unknown outlet": "Outlet tidak dikenal",
+        "Unassigned": "Belum ditetapkan",
+        "Not counted this month": "Belum dihitung bulan ini",
+        "Matches": "Sesuai",
+
         "Where the stock went": "Ke mana stoknya pergi",
         // Redesigned Overview: chips, KPI strip, month card, outlet bars
         "out of stock": "stok habis",
@@ -5718,6 +5730,18 @@
               return 'Stok tersedia' + (m[1] ? ' di ' + m[1] + ' outlet' : '')
                   + ' · ' + m[2] + ' item · saldo 1200 Persediaan';
           } },
+        { re: /^(Rp[\d.]+) theoretical POS cost · (\d+) counted ingredients?$/,
+          id: function (m) { return m[1] + ' biaya POS berdasarkan resep · ' + m[2] + ' bahan sudah dihitung'; } },
+        { re: /^(Rp[\d.]+) more cost than recipes explain$/,
+          id: function (m) { return m[1] + ' biaya lebih besar dari yang dijelaskan resep'; } },
+        { re: /^(Rp[\d.]+) less cost than recipes expected$/,
+          id: function (m) { return m[1] + ' biaya lebih kecil dari yang diperkirakan resep'; } },
+        { re: /^Physical counts match recipe use$/,
+          id: function () { return 'Stock opname sesuai dengan penggunaan resep'; } },
+        { re: /^Short ([\d.]+)$/,
+          id: function (m) { return 'Kurang ' + m[1]; } },
+        { re: /^Over ([\d.]+)$/,
+          id: function (m) { return 'Lebih ' + m[1]; } },
         // Outlet cell when one item sits in more than one place: "3 outlets".
         { re: /^(\d+) outlets$/,
           id: function (m) { return m[1] + ' outlet'; } },

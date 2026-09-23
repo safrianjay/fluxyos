@@ -574,6 +574,28 @@
                         </section>
                     </div>
 
+                    <section id="inv-variance-card" class="fluxy-table-card hidden">
+                        <div class="fluxy-table-card-header">
+                            <div>
+                                <h2 class="fluxy-table-title">Recipe use vs physical count</h2>
+                                <p class="fluxy-table-subtitle">This month’s POS recipe consumption compared with count corrections. Waste recorded during service stays separate.</p>
+                            </div>
+                            <a href="/inventory-count" class="fluxy-table-action">Start stock count</a>
+                        </div>
+                        <div id="inv-variance-summary" class="px-5 py-4 border-t border-gray-100"></div>
+                        <div class="fluxy-table-scroll">
+                            <table class="fluxy-table">
+                                <thead><tr class="fluxy-table-header">
+                                    <th>Ingredient · outlet</th>
+                                    <th class="fluxy-table-money">Recipe use</th>
+                                    <th class="fluxy-table-money">Physical difference</th>
+                                    <th class="fluxy-table-money">Cost impact</th>
+                                </tr></thead>
+                                <tbody id="inv-variance-body"></tbody>
+                            </table>
+                        </div>
+                    </section>
+
                     <!-- 3. What happened recently, and where does it all sit? -->
                     <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.9fr)] gap-4">
                         <section id="receipts-card" class="fluxy-table-card hidden">
@@ -1161,6 +1183,7 @@
         // "kg → g" is a second place for the arithmetic behind COGS to be wrong.
         import { itemUnits, toBase, INV, reorderPointOf, recipeCost, unitCostOf } from './assets/js/inventory-engine.js';
         import { mountInventoryImport } from './assets/js/inventory-bulk-import.js';
+        import { buildInventoryVariance, inventoryVarianceSummary } from './assets/js/inventory-variance.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyDNynZIawmUQkTAVv71r4r9Sg661XvHVsA",
@@ -1374,11 +1397,13 @@
             // getStockOnHand reads every movement and discards the detail, so
             // the raw rows serve on-hand AND the alerts AND the activity feed AND
             // the trend from one read — fewer than the page made before.
-            const [items, onHand, dims, movements] = await Promise.all([
+            const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+            const [items, onHand, dims, movements, varianceMovements] = await Promise.all([
                 ds.getItems(currentUid, { includeArchived: showArchived }),
                 ds.getStockOnHand(currentUid, { byDimension: true }),
                 ds.getDimensions(currentUid),
-                ds.getStockMovements(currentUid, { limitCount: 500 })
+                ds.getStockMovements(currentUid, { limitCount: 500 }),
+                ds.getStockMovements(currentUid, { sinceDate: monthStart, limitCount: 2000 })
             ]);
 
             dimensions = dims;
@@ -1462,6 +1487,7 @@
             renderCommerceCogs();
             renderKpis(allRows);
             renderMonth(movements);
+            renderVariance(varianceMovements, dimName);
             renderTrend(movements);
             renderActivity(movements, dimName);
             renderOutlets(onHand, dimName);
@@ -1650,6 +1676,48 @@
                 + row('Consumed', consumed, 'From counts. Posts to <a href="/accounting?tab=income">5100 Cost of Goods Sold</a>.')
                 + row('Wasted', wasted, 'Kept out of COGS on purpose, in <a href="/accounting?tab=income">5150</a>, so gross margin still shows the loss. <a href="/outlet-pnl">See it per outlet</a>.');
         }
+
+        // ── Recipe use vs physical count ───────────────────────────────────
+        // The POS creates `issue` movements from saved recipes. A physical count
+        // writes a separate `count` correction when the shelf differs. The gap is
+        // unexplained use (over-portioning, theft, or missed waste), not a second
+        // inventory balance and not an estimate stored on the item.
+        function renderVariance(movements, dimName) {
+            const card = document.getElementById('inv-variance-card');
+            const now = new Date();
+            const sinceMs = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+            const rows = buildInventoryVariance(movements, { sinceMs });
+            const summary = inventoryVarianceSummary(rows);
+            if (!rows.length) { card.classList.add('hidden'); return; }
+
+            card.classList.remove('hidden');
+            const impact = summary.unexplained_cost;
+            const impactWords = impact > 0
+                ? `${rp(impact)} more cost than recipes explain`
+                : impact < 0
+                    ? `${rp(Math.abs(impact))} less cost than recipes expected`
+                    : 'Physical counts match recipe use';
+            document.getElementById('inv-variance-summary').innerHTML = `
+                <div class="flex flex-wrap items-baseline justify-between gap-2 text-[13px]">
+                    <span class="text-slate-600"><strong class="text-slate-900">${rp(summary.theoretical_cost)}</strong> theoretical POS cost · ${summary.counted_items} counted ingredient${summary.counted_items === 1 ? '' : 's'}</span>
+                    <span class="font-semibold ${impact > 0 ? 'text-rose-700' : impact < 0 ? 'text-emerald-700' : 'text-slate-700'}">${esc(impactWords)}</span>
+                </div>`;
+            document.getElementById('inv-variance-body').innerHTML = rows.slice(0, 12).map((row) => {
+                const outlet = row.dimension_id ? (dimName[row.dimension_id] || 'Unknown outlet') : 'Unassigned';
+                const q = Math.abs(row.physical_variance_quantity).toLocaleString(window.FluxyMoney.baseLocale());
+                const direction = row.physical_variance_quantity > 0 ? `Short ${q}`
+                    : row.physical_variance_quantity < 0 ? `Over ${q}` : 'Matches';
+                const impactClass = row.physical_variance_cost > 0 ? 'text-rose-700' : row.physical_variance_cost < 0 ? 'text-emerald-700' : 'text-slate-600';
+                return `<tr class="fluxy-table-row">
+                    <td class="fluxy-table-cell"><span class="fluxy-table-cell-primary">${esc(row.item_name)}</span><span class="fluxy-table-cell-meta">${esc(outlet)} · ${row.count_events ? `${row.count_events} count${row.count_events === 1 ? '' : 's'}` : 'Not counted this month'}</span></td>
+                    <td class="fluxy-table-cell fluxy-table-money">${row.theoretical_quantity.toLocaleString(window.FluxyMoney.baseLocale())} ${esc(row.base_unit)}</td>
+                    <td class="fluxy-table-cell fluxy-table-money">${esc(direction)}${row.physical_variance_quantity ? ` ${esc(row.base_unit)}` : ''}</td>
+                    <td class="fluxy-table-cell fluxy-table-money font-semibold ${impactClass}">${row.physical_variance_cost > 0 ? '−' : row.physical_variance_cost < 0 ? '+' : ''}${rp(Math.abs(row.physical_variance_cost))}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        window.__invBuildVariance = buildInventoryVariance;
 
         // ── Value over time ─────────────────────────────────────────────────
         // Cumulative: each point is what the stock was worth on that day, built

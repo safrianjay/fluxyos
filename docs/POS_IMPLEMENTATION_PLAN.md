@@ -925,8 +925,11 @@ cross-outlet access.
 
 ### Phase 4 — Inventory closure
 
-Theoretical-vs-actual variance reporting. Menu engineering (margin × popularity).
-Waste attribution against POS consumption.
+Theoretical-vs-actual variance reporting is shipped. Inventory compares POS
+recipe `issue` movements with physical-count corrections by ingredient and
+outlet; recorded waste remains separate from that explanation gap. Menu
+engineering (margin × popularity) and waste attribution against POS consumption
+remain.
 
 ### Phase 5 — Payment providers
 
