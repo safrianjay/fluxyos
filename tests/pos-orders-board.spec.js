@@ -26,8 +26,21 @@ test.describe.configure({ timeout: 240_000 });
 
 async function openBoard(page) {
     await page.setViewportSize({ width: 1440, height: 900 });
+    // The QA outlet can deliberately be missing its setup marker. Its setup
+    // modal may finish loading after any later board action, so make Playwright
+    // dismiss it whenever it would block an interaction, rather than guessing a
+    // delay that happens to cover one Firebase response time.
+    await page.addLocatorHandler(page.locator('#pos-onboarding:not(.hidden)'), async () => {
+        await page.locator('#pos-onboarding-close').click();
+    });
     await page.goto('/pos');
     await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
+    // `data-till-nav` is installed before the first outlet refresh completes.
+    // A fixture seeded in that gap can be replaced by the tail of that refresh,
+    // which only shows up after a busy, serial browser run. The enabled Create
+    // Order control is the till's own ready signal, so wait for it before
+    // freezing a board fixture.
+    await expect(page.locator('#pos-new-order')).toBeEnabled({ timeout: 40_000 });
     await page.click('#nav-container [data-view="orders"]');
     await expect(page.locator('.pos-view[data-view="orders"]')).toBeVisible();
     await page.waitForTimeout(1200);
