@@ -1906,6 +1906,18 @@
         .pos-table.is-reserved { border-color: #C4B5FD; background: #F5F3FF; }
         .pos-table.is-reserved .pos-table-free { color: #6D28D9; font-weight: 600; }
         .pos-dot.is-reserved { background: #A78BFA; }
+        .pos-onboarding-backdrop { position:fixed; inset:0; z-index:80; background:rgba(11,15,25,.5); backdrop-filter:blur(3px); }
+        .pos-onboarding { position:fixed; z-index:81; top:50%; left:50%; transform:translate(-50%,-50%); width:min(620px,calc(100vw - 32px)); max-height:min(88vh,760px); overflow:auto; background:#fff; border:1px solid #e2e8f0; border-radius:16px; box-shadow:0 28px 64px rgba(11,15,25,.25); }
+        .pos-onboarding-head { display:flex; justify-content:space-between; align-items:flex-start; padding:24px 28px 18px; border-bottom:1px solid #e5e7eb; }
+        .pos-onboarding-kicker { font-size:10px; font-weight:700; letter-spacing:.12em; color:#64748b; } .pos-onboarding h2 { margin-top:5px; font-size:23px; font-weight:700; color:#0f172a; }
+        .pos-onboarding-close { width:34px; height:34px; border:1px solid #e2e8f0; border-radius:8px; background:#fff; color:#475569; font-size:24px; line-height:1; cursor:pointer; }
+        .pos-onboarding-progress { display:flex; gap:8px; padding:16px 28px; border-bottom:1px solid #f1f5f9; overflow:auto; } .pos-onboarding-progress span { white-space:nowrap; padding:6px 9px; border-radius:999px; font-size:11px; font-weight:600; color:#64748b; background:#f1f5f9; } .pos-onboarding-progress .is-active { color:#fff; background:#0b0f19; }
+        .pos-onboarding-step { padding:26px 28px 10px; } .pos-onboarding-step h3 { font-size:18px; font-weight:700; color:#0f172a; } .pos-onboarding-step > p { margin:7px 0 20px; font-size:13px; line-height:1.55; color:#64748b; }
+        .pos-onboarding label { display:block; margin:14px 0; font-size:12px; font-weight:600; color:#334155; } .pos-onboarding input:not([type=checkbox]), .pos-onboarding textarea { width:100%; box-sizing:border-box; display:block; margin-top:6px; padding:10px 11px; border:1px solid #cbd5e1; border-radius:8px; color:#0f172a; font:inherit; background:#fff; }
+        .pos-onboarding-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } .pos-onboarding-check { display:flex !important; align-items:center; gap:9px; padding:12px; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer; } .pos-onboarding-check input { width:16px; height:16px; accent-color:#0b0f19; }
+        .pos-onboarding-note { padding:11px 12px; border-left:3px solid #EA580C; background:#fffaf6; color:#64748b; font-size:12px; line-height:1.5; } .pos-onboarding-review { padding:16px; border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc; font-size:13px; line-height:1.75; color:#334155; }
+        .pos-onboarding-error { min-height:18px; margin:4px 28px; color:#b91c1c; font-size:12px; } .pos-onboarding-footer { display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; padding:18px 28px 26px; }
+        @media (max-width:560px) { .pos-onboarding-head,.pos-onboarding-step,.pos-onboarding-footer { padding-left:20px; padding-right:20px; } .pos-onboarding-progress { padding-left:20px; padding-right:20px; } .pos-onboarding-grid { grid-template-columns:1fr; gap:0; } }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden text-gray-900 bg-gray-50">
@@ -1943,6 +1955,10 @@
                 <p class="pos-topbar-sub" id="pos-view-sub">Ring up a sale — scan, search or tap a product.</p>
             </div>
             <div class="pos-topbar-actions">
+                <button id="pos-settings-btn" type="button" class="pos-btn-ghost" aria-label="Configure this outlet">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06A1.7 1.7 0 0 0 15.74 19l-.3.12a1.7 1.7 0 0 0-1.04 1.56v.08h-3v-.08A1.7 1.7 0 0 0 10.36 19l-.3-.12a1.7 1.7 0 0 0-1.88.34l-.06.06L6 17.16l.06-.06A1.7 1.7 0 0 0 6.4 15l-.12-.3A1.7 1.7 0 0 0 4.72 13.66h-.08v-3h.08A1.7 1.7 0 0 0 6.28 9.62l.12-.3A1.7 1.7 0 0 0 6.06 7.44L6 7.38l2.12-2.12.06.06a1.7 1.7 0 0 0 1.88.34l.3-.12A1.7 1.7 0 0 0 11.4 4v-.08h3V4a1.7 1.7 0 0 0 1.04 1.56l.3.12a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.12 2.12-.06.06a1.7 1.7 0 0 0-.34 1.88l.12.3a1.7 1.7 0 0 0 1.56 1.04h.08v3h-.08a1.7 1.7 0 0 0-1.56 1.06z"/></svg>
+                    <span>Outlet setup</span>
+                </button>
                 <button id="pos-tables-btn" type="button" class="pos-btn-ghost">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="7" rx="2"/><path d="M7 11v9M17 11v9"/></svg>
                     <span>Table Order</span>
@@ -2258,6 +2274,44 @@
             </div>
         </div>
     </main>
+
+    <div id="pos-onboarding-backdrop" class="pos-onboarding-backdrop hidden"></div>
+    <section id="pos-onboarding" class="pos-onboarding hidden" role="dialog" aria-modal="true" aria-labelledby="pos-onboarding-title">
+        <header class="pos-onboarding-head">
+            <div><p class="pos-onboarding-kicker">POINT OF SALE SETUP</p><h2 id="pos-onboarding-title">Set up your outlet</h2></div>
+            <button type="button" id="pos-onboarding-close" class="pos-onboarding-close" aria-label="Close setup">×</button>
+        </header>
+        <div class="pos-onboarding-progress" aria-label="Setup progress"><span data-step="1" class="is-active">1. Outlet</span><span data-step="2">2. Tables</span><span data-step="3">3. Charges</span><span data-step="4">4. Ready</span></div>
+        <form id="pos-onboarding-form">
+            <div class="pos-onboarding-step" data-step="1">
+                <h3>Where will this till operate?</h3><p>These details appear on receipts and help keep this outlet’s sales separate.</p>
+                <label>Outlet name<input id="pos-onboard-name" required maxlength="80" autocomplete="organization"></label>
+                <label>Address<textarea id="pos-onboard-address" maxlength="200" rows="2" autocomplete="street-address"></textarea></label>
+                <label>Phone<input id="pos-onboard-phone" maxlength="32" type="tel" autocomplete="tel"></label>
+            </div>
+            <div class="pos-onboarding-step hidden" data-step="2">
+                <h3>Start with your tables.</h3><p>We create numbered tables now. You can rename, add, arrange, and print their QR codes later.</p>
+                <div class="pos-onboarding-grid"><label>Number of tables<input id="pos-onboard-table-count" type="number" min="0" max="50" value="10"></label><label>Seats per table<input id="pos-onboard-seats" type="number" min="1" max="30" value="4"></label></div>
+                <label>Table label prefix<input id="pos-onboard-table-prefix" maxlength="20" value="Table " placeholder="Table "></label>
+                <p class="pos-onboarding-note">Choose 0 for counter or takeaway service. Table QR ordering can be enabled after setup.</p>
+            </div>
+            <div class="pos-onboarding-step hidden" data-step="3">
+                <h3>Set how bills are calculated.</h3><p>These are defaults for new orders. Existing orders keep the rates they started with.</p>
+                <label class="pos-onboarding-check"><input id="pos-onboard-tax-enabled" type="checkbox"> Add tax to bills</label>
+                <div class="pos-onboarding-grid"><label>Tax label<input id="pos-onboard-tax-label" maxlength="24" value="PPN"></label><label>Tax rate (%)<input id="pos-onboard-tax-rate" type="number" min="0" max="100" step="0.01" value="0"></label></div>
+                <label class="pos-onboarding-check"><input id="pos-onboard-service-enabled" type="checkbox"> Add service charge</label>
+                <label>Service charge (%)<input id="pos-onboard-service-rate" type="number" min="0" max="100" step="0.01" value="0"></label>
+            </div>
+            <div class="pos-onboarding-step hidden" data-step="4">
+                <h3>Your outlet is ready to open.</h3><p>Finish setup to save the outlet and tables. Open a shift only when the till is staffed and cash is in the drawer.</p>
+                <div class="pos-onboarding-review" id="pos-onboarding-review"></div>
+                <label class="pos-onboarding-check"><input id="pos-onboard-open-shift" type="checkbox"> Open a shift now</label>
+                <label id="pos-onboard-float-wrap" class="hidden">Opening cash (Rp)<input id="pos-onboard-float" inputmode="numeric" value="0"></label>
+            </div>
+            <p id="pos-onboarding-error" class="pos-onboarding-error" role="alert"></p>
+            <footer class="pos-onboarding-footer"><button type="button" id="pos-onboarding-back" class="pos-btn-ghost" hidden>Back</button><span></span><button type="button" id="pos-onboarding-next" class="pos-btn-primary">Continue</button></footer>
+        </form>
+    </section>
 
     <div id="toast-container" class="fixed bottom-6 right-6 z-[100] flex flex-col gap-3"></div>
 

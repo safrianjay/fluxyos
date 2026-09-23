@@ -622,9 +622,8 @@ async function loadOutlets() {
     if (!state.outlets.length) {
         sel.innerHTML = '<option value="">No outlets yet</option>';
         sel.disabled = true;
-        // Not a dead end: say exactly where an outlet comes from. Outlets are
-        // created in the receive-stock drawer today, which nobody would guess.
-        setHint('Create one from <a href="/inventory" class="underline font-semibold">Inventory → Receive stock</a> first — a sale with no outlet cannot be attributed.');
+        setHint('Set up your first outlet to start taking orders. <button type="button" id="pos-create-outlet" class="underline font-semibold">Set up outlet</button>');
+        $('pos-create-outlet')?.addEventListener('click', () => openOutletOnboarding());
         return false;
     }
     setHint('');
@@ -639,6 +638,137 @@ async function loadOutlets() {
     sel.innerHTML = state.outlets.map((o) =>
         `<option value="${esc(o.id)}"${o.id === state.outletId ? ' selected' : ''}>${esc(o.name)}</option>`).join('');
     return true;
+}
+
+// ── Outlet onboarding ───────────────────────────────────────────────────────
+// This is deliberately inside the authenticated till, not account onboarding:
+// tables, charges and a cash drawer belong to one outlet and can differ at the
+// next outlet. Settings remains the durable place to edit them after launch.
+let onboardingStep = 1;
+let onboardingOutlet = null;
+
+const onboarding = (id) => $('pos-onboarding')?.querySelector(id);
+const onboardingNum = (id, fallback = 0) => {
+    const n = Number(onboarding(id)?.value);
+    return Number.isFinite(n) ? n : fallback;
+};
+
+function setOnboardingStep(step) {
+    onboardingStep = Math.min(4, Math.max(1, step));
+    document.querySelectorAll('.pos-onboarding-step').forEach((el) => {
+        el.classList.toggle('hidden', Number(el.dataset.step) !== onboardingStep);
+    });
+    document.querySelectorAll('.pos-onboarding-progress [data-step]').forEach((el) => {
+        el.classList.toggle('is-active', Number(el.dataset.step) === onboardingStep);
+    });
+    $('pos-onboarding-back').hidden = onboardingStep === 1;
+    $('pos-onboarding-next').textContent = onboardingStep === 4 ? 'Finish setup' : 'Continue';
+    $('pos-onboarding-error').textContent = '';
+    if (onboardingStep === 4) renderOnboardingReview();
+}
+
+function renderOnboardingReview() {
+    const count = Math.round(onboardingNum('#pos-onboard-table-count', 0));
+    const name = onboarding('#pos-onboard-name')?.value.trim() || 'This outlet';
+    const tax = onboarding('#pos-onboard-tax-enabled')?.checked
+        ? `${onboardingNum('#pos-onboard-tax-rate')}% ${onboarding('#pos-onboard-tax-label').value.trim() || 'tax'}` : 'No tax added';
+    const service = onboarding('#pos-onboard-service-enabled')?.checked
+        ? `${onboardingNum('#pos-onboard-service-rate')}% service charge` : 'No service charge';
+    onboarding('#pos-onboarding-review').innerHTML = `<strong>${esc(name)}</strong><br>${count ? `${count} table${count === 1 ? '' : 's'} will be created.` : 'Counter or takeaway service — no tables yet.'}<br>${esc(tax)} · ${esc(service)}`;
+}
+
+async function openOutletOnboarding(outletId = state.outletId) {
+    onboardingOutlet = outletId || null;
+    const existing = onboardingOutlet ? await ds.getPosOutletSettings(state.uid, onboardingOutlet).catch(() => null) : null;
+    const outlet = state.outlets.find((o) => o.id === onboardingOutlet);
+    onboarding('#pos-onboard-name').value = outlet?.name || '';
+    onboarding('#pos-onboard-address').value = existing?.address || '';
+    onboarding('#pos-onboard-phone').value = existing?.phone || '';
+    onboarding('#pos-onboard-tax-enabled').checked = existing?.tax_enabled === true;
+    onboarding('#pos-onboard-tax-label').value = existing?.tax_label || (window.FluxyMoney?.defaultTaxLabel?.() || 'PPN');
+    onboarding('#pos-onboard-tax-rate').value = existing?.tax_rate_percent || 0;
+    onboarding('#pos-onboard-service-enabled').checked = existing?.service_enabled === true;
+    onboarding('#pos-onboard-service-rate').value = existing?.service_rate_percent || 0;
+    $('pos-onboarding-backdrop').classList.remove('hidden');
+    $('pos-onboarding').classList.remove('hidden');
+    setOnboardingStep(1);
+    setTimeout(() => onboarding('#pos-onboard-name')?.focus(), 0);
+}
+
+function closeOutletOnboarding() {
+    $('pos-onboarding-backdrop').classList.add('hidden');
+    $('pos-onboarding').classList.add('hidden');
+}
+
+function validateOnboardingStep() {
+    if (onboardingStep === 1 && !onboarding('#pos-onboard-name').value.trim()) return 'Enter an outlet name.';
+    const count = onboardingNum('#pos-onboard-table-count');
+    if (onboardingStep === 2 && (!Number.isInteger(count) || count < 0 || count > 50)) return 'Use a whole number from 0 to 50 tables.';
+    if (onboardingStep === 2 && count && (!Number.isInteger(onboardingNum('#pos-onboard-seats')) || onboardingNum('#pos-onboard-seats') < 1 || onboardingNum('#pos-onboard-seats') > 30)) return 'Seats per table must be from 1 to 30.';
+    if (onboardingStep === 3 && (onboardingNum('#pos-onboard-tax-rate') < 0 || onboardingNum('#pos-onboard-tax-rate') > 100 || onboardingNum('#pos-onboard-service-rate') < 0 || onboardingNum('#pos-onboard-service-rate') > 100)) return 'A rate must be between 0 and 100%.';
+    return null;
+}
+
+async function finishOutletOnboarding() {
+    const button = $('pos-onboarding-next');
+    button.disabled = true;
+    try {
+        const name = onboarding('#pos-onboard-name').value.trim();
+        if (!onboardingOutlet) {
+            const made = await ds.saveDimension(state.uid, { name, type: 'outlet' }, { create: true });
+            onboardingOutlet = made.id;
+        } else {
+            await ds.saveDimension(state.uid, { name, type: 'outlet' }, { dimensionId: onboardingOutlet });
+        }
+        await ds.savePosOutletSettings(state.uid, onboardingOutlet, {
+            address: onboarding('#pos-onboard-address').value,
+            phone: onboarding('#pos-onboard-phone').value,
+            tax_enabled: onboarding('#pos-onboard-tax-enabled').checked,
+            tax_label: onboarding('#pos-onboard-tax-label').value,
+            tax_rate_percent: onboardingNum('#pos-onboard-tax-rate'),
+            service_enabled: onboarding('#pos-onboard-service-enabled').checked,
+            service_rate_percent: onboardingNum('#pos-onboard-service-rate'),
+            service_taxable: true,
+            tax_inclusive: false
+        });
+        const currentTables = await ds.getPosTables(state.uid, { dimensionId: onboardingOutlet });
+        const count = Math.round(onboardingNum('#pos-onboard-table-count'));
+        if (!currentTables.length && count) {
+            const prefix = onboarding('#pos-onboard-table-prefix').value.trim() || 'Table ';
+            const seats = Math.round(onboardingNum('#pos-onboard-seats'));
+            for (let i = 1; i <= count; i += 1) await ds.savePosTable(state.uid, { label: `${prefix}${String(i).padStart(2, '0')}`, dimension_id: onboardingOutlet, seats, sort: i }, { create: true });
+        }
+        if (onboarding('#pos-onboard-open-shift').checked) {
+            const raw = String(onboarding('#pos-onboard-float').value || '0').replace(/[^0-9]/g, '');
+            await ds.openPosShift(state.uid, { dimensionId: onboardingOutlet, openingFloat: Number(raw || 0) });
+        }
+        localStorage.setItem(OUTLET_KEY, onboardingOutlet);
+        closeOutletOnboarding();
+        await loadOutlets();
+        state.outletId = onboardingOutlet;
+        await refresh();
+        toast('Outlet setup saved.');
+    } catch (err) {
+        $('pos-onboarding-error').textContent = err?.message || 'Could not save outlet setup.';
+    } finally { button.disabled = false; }
+}
+
+function wireOutletOnboarding() {
+    $('pos-onboarding-close')?.addEventListener('click', closeOutletOnboarding);
+    $('pos-onboarding-backdrop')?.addEventListener('click', closeOutletOnboarding);
+    $('pos-onboarding-back')?.addEventListener('click', () => setOnboardingStep(onboardingStep - 1));
+    $('pos-onboarding-next')?.addEventListener('click', async () => {
+        const error = validateOnboardingStep();
+        if (error) { $('pos-onboarding-error').textContent = error; return; }
+        if (onboardingStep < 4) setOnboardingStep(onboardingStep + 1); else await finishOutletOnboarding();
+    });
+    $('pos-onboard-open-shift')?.addEventListener('change', (event) => $('pos-onboard-float-wrap').classList.toggle('hidden', !event.target.checked));
+    $('pos-settings-btn')?.addEventListener('click', async () => {
+        if (!state.outletId) return openOutletOnboarding();
+        const config = await ds.getPosOutletSettings(state.uid, state.outletId).catch(() => null);
+        if (!config?.exists) return openOutletOnboarding(state.outletId);
+        window.location.href = `/settings-pos?outlet=${encodeURIComponent(state.outletId)}`;
+    });
 }
 
 // ── Rendering ────────────────────────────────────────────────────────────────
@@ -6924,6 +7054,7 @@ onAuthStateChanged(auth, async (user) => {
     // said the same thing twice.
 
     wire();
+    wireOutletOnboarding();
 
     // The outlet <select> lives in the sidebar now, which sidebar-loader.js
     // paints asynchronously. Waiting on the mount beats a timer: a fixed delay
@@ -6933,8 +7064,14 @@ onAuthStateChanged(auth, async (user) => {
     if (!hasOutlet) {
         $('pos-metrics').innerHTML = '';
         renderOrder();
+        openOutletOnboarding();
         return;
     }
     await refresh();
     watch();
+    const outletConfig = await ds.getPosOutletSettings(state.uid, state.outletId).catch(() => null);
+    // A completed counter/takeaway outlet can deliberately have zero tables.
+    // The settings document is the durable completion marker; using the table
+    // count here would reopen setup on every visit for that valid service mode.
+    if (!outletConfig?.exists) openOutletOnboarding(state.outletId);
 });

@@ -857,7 +857,8 @@
                 .map((o) => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('');
             sel.addEventListener('change', () => selectOutlet(sel.value));
             wire();
-            await selectOutlet(outlets[0].id);
+            const requested = new URLSearchParams(window.location.search).get('outlet');
+            await selectOutlet(outlets.some((outlet) => outlet.id === requested) ? requested : outlets[0].id);
         }
 
         async function selectOutlet(dimensionId) {
