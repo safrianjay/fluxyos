@@ -41,8 +41,9 @@ const body = (name) => {
 console.log('\npos outlet orders\n');
 
 const getOrders = body('getPosOrders');
-is(/where\('dimension_id', '==', dimensionId\),\s*orderBy\('created_at', 'desc'\), limit\(limitCount\)/.test(getOrders), true,
-    'getPosOrders asks for the OUTLET\'s newest orders when given an outlet');
+is(/where\('dimension_id', '==', dimensionId\)/.test(getOrders)
+    && /orderBy\('created_at', 'desc'\), limit\(limitCount\)/.test(getOrders), true,
+    'getPosOrders asks for the OUTLET\'s newest orders when given an outlet (and can bound them by period)');
 is(/posIndexMissing\(err\)/.test(getOrders) && /workspaceWindow\(\)/.test(getOrders), true,
     '…and falls back to the old window (never an empty board) if the index is missing');
 

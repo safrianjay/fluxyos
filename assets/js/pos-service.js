@@ -2798,12 +2798,16 @@ export const POS_METHODS = {
     async getPosOrders(userId, { dimensionId = null, statuses = null, sinceDate = null, limitCount = 200 } = {}) {
         try {
             const col = collection(this.db, `${this._scope(userId)}/pos_orders`);
-            const workspaceWindow = () => getDocs(query(col, orderBy('created_at', 'desc'), limit(limitCount)));
+            const since = sinceDate instanceof Date ? Timestamp.fromDate(sinceDate) : null;
+            const workspaceWindow = () => getDocs(query(col,
+                ...(since ? [where('created_at', '>=', since)] : []),
+                orderBy('created_at', 'desc'), limit(limitCount)));
             let snap;
             if (dimensionId) {
                 // THIS OUTLET's newest `limitCount` — see the note above POS_METHODS.
                 try {
                     snap = await getDocs(query(col, where('dimension_id', '==', dimensionId),
+                        ...(since ? [where('created_at', '>=', since)] : []),
                         orderBy('created_at', 'desc'), limit(limitCount)));
                 } catch (err) {
                     if (!posIndexMissing(err)) throw err;
@@ -2814,14 +2818,14 @@ export const POS_METHODS = {
             } else {
                 snap = await workspaceWindow();
             }
-            const since = sinceDate ? sinceDate.getTime() : null;
+            const sinceMs = sinceDate ? sinceDate.getTime() : null;
             return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
                 .filter((o) => !dimensionId || o.dimension_id === dimensionId)
                 .filter((o) => !statuses || statuses.includes(o.status))
                 .filter((o) => {
-                    if (!since) return true;
+                    if (!sinceMs) return true;
                     const t = o.opened_at && typeof o.opened_at.toDate === 'function' ? o.opened_at.toDate().getTime() : 0;
-                    return t >= since;
+                    return t >= sinceMs;
                 });
         } catch (_) { return []; }
     },

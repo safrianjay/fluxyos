@@ -4800,6 +4800,19 @@
         "Unassigned": "Belum ditetapkan",
         "Not counted this month": "Belum dihitung bulan ini",
         "Matches": "Sesuai",
+        "Menu performance": "Kinerja menu",
+        "This month’s settled POS sales by outlet. Margin uses today’s recipe and ingredient costs, so it guides the next menu decision.": "Penjualan POS yang sudah lunas bulan ini per outlet. Margin memakai resep dan biaya bahan hari ini untuk membantu keputusan menu berikutnya.",
+        "Open POS": "Buka POS",
+        "Menu item · outlet": "Item menu · outlet",
+        "Sold": "Terjual",
+        "Net sales": "Penjualan bersih",
+        "Current recipe margin": "Margin resep saat ini",
+        "Performance": "Kinerja",
+        "Star": "Bintang",
+        "Workhorse": "Andalan",
+        "Hidden gem": "Potensial",
+        "Review": "Tinjau",
+        "Cost missing": "Biaya belum ada",
 
         "Where the stock went": "Ke mana stoknya pergi",
         // Redesigned Overview: chips, KPI strip, month card, outlet bars
@@ -5742,6 +5755,8 @@
           id: function (m) { return 'Kurang ' + m[1]; } },
         { re: /^Over ([\d.]+)$/,
           id: function (m) { return 'Lebih ' + m[1]; } },
+        { re: /^(\d+) orders?$/,
+          id: function (m) { return m[1] + ' pesanan'; } },
         // Outlet cell when one item sits in more than one place: "3 outlets".
         { re: /^(\d+) outlets$/,
           id: function (m) { return m[1] + ' outlet'; } },

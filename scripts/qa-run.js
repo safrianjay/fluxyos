@@ -209,6 +209,7 @@ function laneBE(changed) {
         // way and the KYC gate stopped running with nothing going red.
         ok = record('be', run('check:module-parse (every client module parses?)', 'node', ['tests/module-parse.check.js'])) && ok;
         ok = record('be', run('check:inventory-variance (POS recipes vs physical counts)', 'node', ['tests/inventory-variance.check.mjs'])) && ok;
+        ok = record('be', run('check:menu-engineering (POS sales and current recipe margin)', 'node', ['tests/menu-engineering.check.mjs'])) && ok;
   // Unconditional, for the same reason as the price book: the two eligibility
   // signals live in feature-access.js while the DATA they read is stamped by
   // onboarding and by a backfill script, so neither file needs to be in the diff
