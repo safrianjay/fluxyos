@@ -2795,6 +2795,15 @@ export const POS_METHODS = {
         return snap.exists() ? { id: snap.id, ...snap.data() } : null;
     },
 
+    async recordPosOrderLabelPrint(userId, orderId, { lineIds = [], copies = 1, mode = 'line' } = {}) {
+        if (!userId || !orderId) throw new Error('Order required.');
+        await this._auditCreateBestEffort(userId, 'pos_order.labels_printed', 'pos_orders', orderId, {
+            line_count: Array.isArray(lineIds) ? lineIds.length : 0,
+            copies: Math.max(1, Math.min(20, Math.round(Number(copies) || 1))),
+            mode: mode === 'quantity' ? 'quantity' : 'line'
+        });
+    },
+
     async getPosOrders(userId, { dimensionId = null, statuses = null, sinceDate = null, limitCount = 200 } = {}) {
         try {
             const col = collection(this.db, `${this._scope(userId)}/pos_orders`);

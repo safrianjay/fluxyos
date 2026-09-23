@@ -2700,6 +2700,7 @@ function renderOrder() {
         transferBtn?.classList.add('hidden');
         voidBtn.classList.add('hidden');
         refundBtn.classList.add('hidden');
+        $('pos-label-btn')?.classList.add('hidden');
         $('pos-reprint-btn').classList.add('hidden');
         return;
     }
@@ -2724,6 +2725,7 @@ function renderOrder() {
     badge.className = `fluxy-table-status ${st.cls} pos-order-badge`;
     badge.textContent = st.label;
     badge.classList.remove('hidden');
+    $('pos-label-btn')?.classList.toggle('hidden', !(o.lines || []).length);
     // Paid rides BESIDE the kitchen status, never instead of it. Replacing it
     // is the bug: a cashier reading one pill cannot tell whether the food has
     // gone out, and that is the question the panel is open to answer.
@@ -4511,6 +4513,26 @@ function openDiscountDrawer(lineId = null) {
 // above the total in one case and below it in the other. Since a second ticket
 // inherits the sitting's `pos_pricing` (pos.md) that cannot happen within a
 // sitting any more; it survives for bills opened before that rule existed.
+async function printOrderLabels(order) {
+    const all = order.lines || [];
+    const choice = window.prompt(`Print which products? Enter numbers, separated by commas.\n${all.map((l, i) => `${i + 1}. ${l.item_name} ×${l.quantity}`).join('\n')}`, all.map((_, i) => i + 1).join(','));
+    if (choice === null) return;
+    const picked = [...new Set(choice.split(',').map((v) => Number(v.trim()) - 1).filter((i) => i >= 0 && i < all.length))];
+    if (!picked.length) { toast('Choose at least one product label.', 'error'); return; }
+    const mode = window.confirm('Print one label for each quantity? Select Cancel for one label per product.') ? 'quantity' : 'line';
+    const copies = Math.max(1, Math.min(20, Number(window.prompt('Copies of each label (1–20)', '1')) || 1));
+    const w = window.open('', '_blank', 'width=420,height=640');
+    if (!w) { toast('Allow pop-ups to print order labels.', 'error'); return; }
+    const table = order.table_label ? `Table ${esc(order.table_label)}` : 'Takeaway';
+    const lines = picked.flatMap((i) => {
+        const line = all[i]; const repeat = (mode === 'quantity' ? Number(line.quantity) || 1 : 1) * copies;
+        return Array.from({ length: repeat }, () => `<section class="label"><strong>${esc(table)} · ${esc(order.order_number || '')}</strong><h1>${esc(line.item_name)}</h1><b>${mode === 'quantity' ? '×1' : `×${Number(line.quantity) || 0}`}</b><p>${esc((line.modifiers || []).map((m) => m.option_name).filter(Boolean).join(' · '))}${line.note ? `<br>${esc(line.note)}` : ''}</p><small>${esc(order.customer_name || order.channel || 'POS')} · ${esc(order.id || '')}<br>${new Date().toLocaleString()}</small></section>`);
+    }).join('');
+    w.document.write(`<!doctype html><title>Order labels</title><style>@page{size:58mm auto;margin:2mm}body{font:14px Arial}.label{width:54mm;min-height:32mm;border-bottom:1px dashed #000;padding:2mm 0;page-break-inside:avoid}h1{font-size:20px;margin:4px 0}b{font-size:28px}p{margin:4px 0}small{font-size:10px}</style>${lines}<script>window.onload=()=>window.print()<\/script>`);
+    w.document.close();
+    ds.recordPosOrderLabelPrint(state.uid, order.id, { lineIds: picked.map((i) => all[i].line_id), copies, mode }).catch(() => {});
+}
+
 async function openReceipt(order, { billId = null } = {}) {
     const list = (Array.isArray(order) ? order : [order]).filter(Boolean);
     if (!list.length) return;
@@ -6746,6 +6768,7 @@ function wire() {
         const o = state.order;
         if (o && o.table_id) openTableBillModal(o.table_id);
     });
+    $('pos-label-btn')?.addEventListener('click', () => { if (state.order) printOrderLabels(state.order); });
     $('pos-void-btn').addEventListener('click', openVoidDrawer);
     $('pos-refund-btn').addEventListener('click', openRefundDrawer);
     $('pos-reprint-btn').addEventListener('click', () => openReceipt(state.order));
