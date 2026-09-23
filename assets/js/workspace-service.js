@@ -26,6 +26,7 @@ const state = {
     id: null,        // resolved workspaceId
     role: null,      // owner | admin | finance | viewer
     status: null,    // active | pending | removed
+    posOutletId: null, // cashier's assigned outlet; null for cross-outlet roles
     uid: null,       // the signed-in user's uid
     ready: false,    // true once a real members doc was read
     name: null,      // workspace display name, when available
@@ -110,6 +111,7 @@ function publish() {
         id: state.id,
         role: state.role,
         status: state.status,
+        posOutletId: state.posOutletId,
         uid: state.uid,
         ready: state.ready,
         name: state.name,
@@ -167,7 +169,7 @@ async function healFromStoredInvite(app, db, fs, user) {
             const m = meSnap.data() || {};
             if ((m.status || 'active') === 'active') {
                 clearStoredInvite();
-                return { workspaceId: stored.ws, role: m.role || 'viewer' };
+                return { workspaceId: stored.ws, role: m.role || 'viewer', posOutletId: m.pos_outlet_id || null };
             }
             return null; // removed/pending — do not force-join
         }
@@ -186,7 +188,7 @@ async function healFromStoredInvite(app, db, fs, user) {
         });
         await ds.markInvitedMemberExempt(user.uid).catch(() => {});
         clearStoredInvite();
-        return { workspaceId: res.workspaceId, role: res.role };
+        return { workspaceId: res.workspaceId, role: res.role, posOutletId: res.posOutletId || null };
     } catch (_) {
         return null;
     }
@@ -199,6 +201,7 @@ function fallbackToSelf(uid) {
     state.uid = uid;
     state.role = 'owner';
     state.status = 'active';
+    state.posOutletId = null;
     state.ready = false; // membership doc not confirmed
     return publish();
 }
@@ -374,7 +377,7 @@ async function _resolveWorkspace(app, user) {
                 const parent = d.ref.parent && d.ref.parent.parent;
                 if (parent) {
                     const m = d.data() || {};
-                    memberships.push({ workspaceId: parent.id, role: m.role || 'viewer', status: m.status || 'active' });
+                    memberships.push({ workspaceId: parent.id, role: m.role || 'viewer', status: m.status || 'active', posOutletId: m.pos_outlet_id || null });
                 }
             });
         } catch (_) { /* collection-group index/rules unavailable — fall back below */ }
@@ -390,7 +393,7 @@ async function _resolveWorkspace(app, user) {
             const healed = await healFromStoredInvite(app, db, fs, user).catch(() => null);
             if (healed && healed.workspaceId && healed.workspaceId !== user.uid) {
                 active = active.filter((x) => x.workspaceId !== healed.workspaceId);
-                active.push({ workspaceId: healed.workspaceId, role: healed.role || 'viewer', status: 'active' });
+                active.push({ workspaceId: healed.workspaceId, role: healed.role || 'viewer', status: 'active', posOutletId: healed.posOutletId || null });
             }
         }
 
@@ -406,6 +409,7 @@ async function _resolveWorkspace(app, user) {
             state.id = chosen.workspaceId;
             state.role = chosen.role;
             state.status = 'active';
+            state.posOutletId = chosen.posOutletId || null;
             state.ready = true;
         } else {
             // Fallback (collection-group unavailable): single pointer-based read,
@@ -416,6 +420,7 @@ async function _resolveWorkspace(app, user) {
                 state.id = preferred;
                 state.role = m.role || 'viewer';
                 state.status = m.status || 'active';
+                state.posOutletId = m.pos_outlet_id || null;
                 state.ready = true;
             } else if (preferred === user.uid) {
                 state.id = user.uid;

@@ -2934,14 +2934,16 @@ class DataService {
     }
 
     // Create (or re-send) a pending invite. Returns { id } where id == email key.
-    async inviteMember(workspaceId, { email, role, invitedBy = null, invitedByEmail = null, expiresAt = null } = {}) {
+    async inviteMember(workspaceId, { email, role, posOutletId = null, invitedBy = null, invitedByEmail = null, expiresAt = null } = {}) {
         const key = this._emailKey(email);
         if (!key) throw new Error('An email address is required.');
-        if (!['admin', 'finance', 'accountant', 'viewer'].includes(role)) throw new Error('Invalid role.');
+        if (!['admin', 'finance', 'accountant', 'viewer', 'cashier'].includes(role)) throw new Error('Invalid role.');
+        if (role === 'cashier' && !posOutletId) throw new Error('Choose the cashier\'s outlet.');
         const ref = doc(this.db, `workspaces/${workspaceId}/invites/${key}`);
         await setDoc(ref, {
             email: key,
             role,
+            pos_outlet_id: role === 'cashier' ? String(posOutletId) : null,
             status: 'pending',
             invited_by: invitedBy,
             invited_by_email: invitedByEmail ? this._emailKey(invitedByEmail) : null,
@@ -2965,12 +2967,13 @@ class DataService {
         });
     }
 
-    async updateMemberRole(workspaceId, memberUid, role) {
-        if (!['admin', 'finance', 'accountant', 'viewer'].includes(role)) throw new Error('Invalid role.');
+    async updateMemberRole(workspaceId, memberUid, role, { posOutletId = null } = {}) {
+        if (!['admin', 'finance', 'accountant', 'viewer', 'cashier'].includes(role)) throw new Error('Invalid role.');
+        if (role === 'cashier' && !posOutletId) throw new Error('Choose the cashier\'s outlet.');
         const ref = doc(this.db, `workspaces/${workspaceId}/members/${memberUid}`);
         let before = {};
         try { before = (await getDoc(ref)).data() || {}; } catch (_) {}
-        await updateDoc(ref, { role, updated_at: serverTimestamp() });
+        await updateDoc(ref, { role, pos_outlet_id: role === 'cashier' ? String(posOutletId) : null, updated_at: serverTimestamp() });
         await this._workspaceAudit(workspaceId, {
             action: 'member.role_change', target_collection: 'members', target_id: memberUid,
             before: { role: before.role || null }, after: { role }
@@ -3004,6 +3007,7 @@ class DataService {
             email: key,
             display_name: displayName,
             role,
+            pos_outlet_id: role === 'cashier' ? (invite.pos_outlet_id || null) : null,
             status: 'active',
             invited_by: invite.invited_by || null,
             joined_at: serverTimestamp(),
@@ -3020,7 +3024,7 @@ class DataService {
                 updated_at: serverTimestamp()
             }, { merge: true });
         } catch (_) {}
-        return { workspaceId, role };
+        return { workspaceId, role, posOutletId: role === 'cashier' ? (invite.pos_outlet_id || null) : null };
     }
 
     async getWorkspaceAuditLogs(workspaceId, limitCount = 50) {
@@ -5919,8 +5923,16 @@ class DataService {
 
     async getDimensions(userId, { includeArchived = false } = {}) {
         try {
-            const snap = await getDocs(collection(this.db, `${this._scope(userId)}/dimensions`));
-            return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+            const ws = typeof window !== 'undefined' ? window.FluxyWorkspace : null;
+            let rows;
+            if (ws?.role === 'cashier' && ws.posOutletId) {
+                const one = await getDoc(doc(this.db, `${this._scope(userId)}/dimensions/${ws.posOutletId}`));
+                rows = one.exists() ? [{ id: one.id, ...one.data() }] : [];
+            } else {
+                const snap = await getDocs(collection(this.db, `${this._scope(userId)}/dimensions`));
+                rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+            }
+            return rows
                 .filter((d) => includeArchived || d.status !== 'archived')
                 .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
         } catch (_) { return []; }

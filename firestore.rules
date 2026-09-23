@@ -2570,6 +2570,20 @@ service cloud.firestore {
     function wsCashier(workspaceId) {
       return isMember(workspaceId) && callerMember(workspaceId).role == 'cashier';
     }
+    function wsCashierOutlet(workspaceId) {
+      return callerMember(workspaceId).pos_outlet_id;
+    }
+    function wsPosOutletAccess(workspaceId, dimensionId) {
+      return wsRead(workspaceId)
+        || (wsCashier(workspaceId) && dimensionId == wsCashierOutlet(workspaceId));
+    }
+    function wsPosRecordAccess(workspaceId, data) {
+      return wsPosOutletAccess(workspaceId, data.dimension_id);
+    }
+    function wsPosRecordWrite(workspaceId, data) {
+      return wsWrite(workspaceId)
+        || (wsCashier(workspaceId) && data.dimension_id == wsCashierOutlet(workspaceId));
+    }
 
     // ---- POS order validators ----
     // Split per transition, not one big validator: the invoice open→paid rule
@@ -2978,6 +2992,9 @@ service cloud.firestore {
     function pendingInviteRole(workspaceId) {
       return get(invitePathFor(workspaceId)).data.role;
     }
+    function pendingInviteOutlet(workspaceId) {
+      return get(invitePathFor(workspaceId)).data.pos_outlet_id;
+    }
 
     // Workspace ACCOUNTING currencies (docs/PROJECT_BACKGROUND.md §4). Rules cannot
     // cheaply assert the value equals THIS workspace's base_currency — a get() per
@@ -3054,20 +3071,26 @@ service cloud.firestore {
         && (!('updated_by' in data) || data.updated_by == null || data.updated_by == request.auth.uid);
     }
     function isValidMember(data) {
-      return data.keys().hasOnly(['uid', 'email', 'display_name', 'role', 'status', 'invited_by', 'joined_at', 'updated_at'])
+      return data.keys().hasOnly(['uid', 'email', 'display_name', 'role', 'status', 'pos_outlet_id', 'invited_by', 'joined_at', 'updated_at'])
         && data.uid is string
         && data.role in ['owner', 'admin', 'finance', 'accountant', 'viewer', 'cashier']
         && data.status in ['active', 'pending', 'removed']
         && (!('email' in data) || data.email == null || (data.email is string && data.email.size() <= 200))
         && (!('display_name' in data) || data.display_name == null || (data.display_name is string && data.display_name.size() <= 200))
+        && (data.role == 'cashier'
+          ? (data.pos_outlet_id is string && data.pos_outlet_id.size() > 0 && data.pos_outlet_id.size() <= 200)
+          : (!('pos_outlet_id' in data) || data.pos_outlet_id == null))
         && (!('invited_by' in data) || data.invited_by == null || (data.invited_by is string && data.invited_by.size() <= 160));
     }
     function isValidInvite(inviteId, data) {
-      return data.keys().hasOnly(['email', 'role', 'status', 'invited_by', 'invited_by_email', 'created_at', 'updated_at', 'expires_at', 'accepted_by', 'accepted_at'])
+      return data.keys().hasOnly(['email', 'role', 'status', 'pos_outlet_id', 'invited_by', 'invited_by_email', 'created_at', 'updated_at', 'expires_at', 'accepted_by', 'accepted_at'])
         && data.email is string && data.email.size() > 0 && data.email.size() <= 200
         && data.email == inviteId
         && data.role in ['admin', 'finance', 'accountant', 'viewer', 'cashier']
         && data.status in ['pending', 'accepted', 'revoked', 'expired']
+        && (data.role == 'cashier'
+          ? (data.pos_outlet_id is string && data.pos_outlet_id.size() > 0 && data.pos_outlet_id.size() <= 200)
+          : (!('pos_outlet_id' in data) || data.pos_outlet_id == null))
         && (!('invited_by' in data) || data.invited_by == null || (data.invited_by is string && data.invited_by.size() <= 160))
         && (!('invited_by_email' in data) || data.invited_by_email == null || (data.invited_by_email is string && data.invited_by_email.size() <= 200))
         && (!('expires_at' in data) || data.expires_at == null || data.expires_at is timestamp);
@@ -3630,7 +3653,9 @@ service cloud.firestore {
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.status == 'active'
           && hasPendingInvite(workspaceId)
-          && request.resource.data.role == pendingInviteRole(workspaceId);
+          && request.resource.data.role == pendingInviteRole(workspaceId)
+          && (request.resource.data.role != 'cashier'
+            || request.resource.data.pos_outlet_id == pendingInviteOutlet(workspaceId));
         // Role changes are OWNER-ONLY. Admins cannot change roles. No one may edit
         // their OWN membership (no self-escalation), the owner doc is immutable
         // here, and no one can be promoted to owner (ownership transfer is a
@@ -3700,7 +3725,9 @@ service cloud.firestore {
         // would fail the whole atomic batch; a finance session sweeps them later.
         allow create: if (wsWrite(workspaceId)
             && wsValidTxCreate(request.resource.data))
-          || (wsCashier(workspaceId) && wsValidPosTxCreate(request.resource.data));
+          || (wsCashier(workspaceId)
+            && request.resource.data.dimension_id == wsCashierOutlet(workspaceId)
+            && wsValidPosTxCreate(request.resource.data));
         allow update: if wsWrite(workspaceId) && wsValidTxUpdate(request.resource.data, resource.data);
         allow delete: if false;
       }
@@ -3953,7 +3980,9 @@ service cloud.firestore {
         // Cashiers relieve stock for a SALE only — count/waste are how a
         // shortfall gets papered over, and are stock control, not a till action.
         allow create, update: if (wsWrite(workspaceId)
-            || (wsCashier(workspaceId) && request.resource.data.adjustment_type == 'sale'))
+            || (wsCashier(workspaceId)
+              && request.resource.data.dimension_id == wsCashierOutlet(workspaceId)
+              && request.resource.data.adjustment_type == 'sale'))
           && request.resource.data.adjustment_type in ['count', 'waste', 'sale']
           && request.resource.data.total_amount is number
           && request.resource.data.lines is list
@@ -4026,7 +4055,7 @@ service cloud.firestore {
       match /dimensions/{dimensionId} {
         // 'cashier' reads: a till must know its outlet, or the sale it posts
         // lands in "Unassigned" on /outlet-pnl.
-        allow read: if wsReadPos(workspaceId);
+        allow read: if wsPosOutletAccess(workspaceId, dimensionId);
         allow create, update: if wsWrite(workspaceId)
           && request.resource.data.name is string
           && request.resource.data.name.size() > 0
@@ -4043,7 +4072,7 @@ service cloud.firestore {
       // Tables. Occupancy is NOT stored — it derives from whether an open order
       // references the table; a stored status eventually disagrees with reality.
       match /pos_tables/{tableId} {
-        allow read: if wsReadPos(workspaceId);
+        allow read: if wsPosRecordAccess(workspaceId, resource.data);
         allow create, update: if wsWrite(workspaceId)
           && request.resource.data.label is string
           && request.resource.data.label.size() > 0
@@ -4056,27 +4085,27 @@ service cloud.firestore {
       // are the one holding the money, so withholding this would make the
       // feature unusable by the only role that needs it.
       match /pos_shifts/{shiftId} {
-        allow read: if wsReadPos(workspaceId);
-        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'cashier'])
+        allow read: if wsPosRecordAccess(workspaceId, resource.data);
+        allow create: if wsPosRecordWrite(workspaceId, request.resource.data)
           && wsValidPosShiftCreate(request.resource.data);
-        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'cashier'])
+        allow update: if wsPosRecordWrite(workspaceId, resource.data)
           && wsValidPosShiftUpdate(request.resource.data, resource.data);
         allow delete: if false;
       }
       // Orders. Mutable while open, frozen once paid — correction is by refund,
       // never by edit, exactly as journals are corrected by reversal.
       match /pos_orders/{orderId} {
-        allow read: if wsReadPos(workspaceId);
-        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'cashier'])
+        allow read: if wsPosRecordAccess(workspaceId, resource.data);
+        allow create: if wsPosRecordWrite(workspaceId, request.resource.data)
           && wsValidPosOrderCreate(request.resource.data);
         // Refunds are finance+ only: handing money back out is the till-fraud
         // direction, withheld from cashiers by design (perms-service.js).
         allow update: if resource.data.status == 'paid'
-          ? ((hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'cashier'])
+          ? ((wsPosRecordWrite(workspaceId, resource.data)
                 && wsValidPosOrderStamp(request.resource.data, resource.data))
               || (wsWrite(workspaceId)
                 && wsValidPosOrderRefund(request.resource.data, resource.data)))
-          : (hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'cashier'])
+          : (wsPosRecordWrite(workspaceId, resource.data)
               && wsValidPosOrderUpdate(request.resource.data, resource.data, workspaceId));
         allow delete: if false;
       }
@@ -4085,10 +4114,10 @@ service cloud.firestore {
       // extra steps. Never deleted — a cancelled booking is a fact about the
       // evening, and deleting it hides the no-show it may have become.
       match /pos_reservations/{reservationId} {
-        allow read: if wsReadPos(workspaceId);
-        allow create: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'cashier'])
+        allow read: if wsPosRecordAccess(workspaceId, resource.data);
+        allow create: if wsPosRecordWrite(workspaceId, request.resource.data)
           && wsValidPosReservationCreate(request.resource.data);
-        allow update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'cashier'])
+        allow update: if wsPosRecordWrite(workspaceId, resource.data)
           && wsValidPosReservationUpdate(request.resource.data, resource.data);
         allow delete: if false;
       }
@@ -4097,7 +4126,7 @@ service cloud.firestore {
       // standing at it. WRITE is finance+: rates are money and hours are a
       // promise to customers, neither of which is a floor-staff decision.
       match /pos_outlet_settings/{dimensionId} {
-        allow read: if wsReadPos(workspaceId);
+        allow read: if wsPosOutletAccess(workspaceId, dimensionId);
         allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
           && wsPosOutletKeys(request.resource.data)
           && wsValidPosOutletFields(request.resource.data)
@@ -4108,20 +4137,22 @@ service cloud.firestore {
       // only finance+ decides what discounts exist. Archived, never deleted —
       // a preset that was applied to real sales is a fact about those sales.
       match /pos_discount_presets/{presetId} {
-        allow read: if wsReadPos(workspaceId);
+        allow read: if wsRead(workspaceId)
+          || (wsCashier(workspaceId)
+            && (resource.data.dimension_id == null || resource.data.dimension_id == wsCashierOutlet(workspaceId)));
         allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
           && wsPosDiscountPresetKeys(request.resource.data)
           && wsValidPosDiscountPresetFields(request.resource.data);
         allow delete: if false;
       }
       match /pos_outlet_menu_drafts/{draftId} {
-        allow read: if wsReadPos(workspaceId);
+        allow read: if wsWrite(workspaceId);
         allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
           && wsValidPosMenuDraft(request.resource.data);
         allow delete: if false;
       }
       match /pos_outlet_menu_items/{snapshotId} {
-        allow read: if wsReadPos(workspaceId);
+        allow read: if wsPosRecordAccess(workspaceId, resource.data);
         allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
           && request.resource.data.dimension_id is string
           && request.resource.data.item_id is string
@@ -4132,7 +4163,7 @@ service cloud.firestore {
         allow delete: if false;
       }
       match /pos_menu_publications/{dimensionId} {
-        allow read: if wsReadPos(workspaceId);
+        allow read: if wsPosOutletAccess(workspaceId, dimensionId);
         allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
           && wsValidPosMenuPublication(request.resource.data)
           && request.resource.data.dimension_id == dimensionId;
@@ -4166,13 +4197,17 @@ service cloud.firestore {
       // reaches ONLY the `pos-` counters — never `journal-*`, where a bumped
       // sequence would burn journal numbers and leave gaps in the audit trail.
       match /counters/{counterId} {
-        allow read: if wsReadPos(workspaceId);
+        allow read: if wsRead(workspaceId)
+          || (wsCashier(workspaceId)
+            && counterId.matches('^pos-' + wsCashierOutlet(workspaceId) + '-.*'));
         allow create: if (wsWrite(workspaceId)
-            || (wsCashier(workspaceId) && counterId.matches('^pos-.*')))
+            || (wsCashier(workspaceId)
+              && counterId.matches('^pos-' + wsCashierOutlet(workspaceId) + '-.*')))
           && request.resource.data.seq is number
           && request.resource.data.seq >= 0;
         allow update: if (wsWrite(workspaceId)
-            || (wsCashier(workspaceId) && counterId.matches('^pos-.*')))
+            || (wsCashier(workspaceId)
+              && counterId.matches('^pos-' + wsCashierOutlet(workspaceId) + '-.*')))
           && request.resource.data.seq is number
           && request.resource.data.seq >= resource.data.seq;
         allow delete: if false;

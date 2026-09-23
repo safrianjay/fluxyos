@@ -27,8 +27,8 @@ import { createRequire } from 'module';
 import { initializeApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator, signInAnonymously } from 'firebase/auth';
 import {
-    getFirestore, connectFirestoreEmulator, doc, setDoc, updateDoc,
-    deleteDoc, getDoc, serverTimestamp
+    getFirestore, connectFirestoreEmulator, doc, collection, query, where, setDoc, updateDoc,
+    deleteDoc, getDoc, getDocs, serverTimestamp
 } from 'firebase/firestore';
 
 const require = createRequire(import.meta.url);
@@ -108,7 +108,10 @@ function saleAdjustment(overrides = {}) {
 }
 
 async function setMemberRole(uid, role) {
-    await adminDb.doc(`workspaces/${WS}/members/${uid}`).set({ role, status: 'active', uid });
+    await adminDb.doc(`workspaces/${WS}/members/${uid}`).set({
+        role, status: 'active', uid,
+        ...(role === 'cashier' ? { pos_outlet_id: 'outlet-kemang' } : {})
+    });
 }
 
 async function main() {
@@ -268,10 +271,32 @@ async function main() {
         getDoc(doc(db, `workspaces/${WS}/pos_tables/t12`)));
     await expectOutcome('cashier reads an order', true, () =>
         getDoc(doc(db, `workspaces/${WS}/pos_orders/o3`)));
+    await expectOutcome('cashier cannot read another outlet table', false, () =>
+        getDoc(doc(db, `workspaces/${WS}/pos_tables/t-other`)));
+    await setMemberRole(uid, 'finance');
+    await setDoc(doc(db, `workspaces/${WS}/pos_orders/o-other-outlet`), order({
+        order_number: 'MTG-001', dimension_id: 'outlet-menteng', table_id: 't-other', table_label: 'B1'
+    }));
+    await setMemberRole(uid, 'cashier');
+    await expectOutcome('cashier cannot read another outlet order', false, () =>
+        getDoc(doc(db, `workspaces/${WS}/pos_orders/o-other-outlet`)));
+    await expectOutcome('cashier queries orders only inside the assigned outlet', true, () =>
+        getDocs(query(collection(db, `workspaces/${WS}/pos_orders`),
+            where('dimension_id', '==', 'outlet-kemang'))));
+    await expectOutcome('cashier cannot query the workspace-wide order list', false, () =>
+        getDocs(collection(db, `workspaces/${WS}/pos_orders`)));
+    await expectOutcome('cashier cannot create another outlet order', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_orders/o-cross-outlet`), order({
+            order_number: 'MTG-002', dimension_id: 'outlet-menteng', table_id: 't-other', table_label: 'B1'
+        })));
     await expectOutcome('cashier appends the POS revenue row', true, () =>
         setDoc(doc(db, `workspaces/${WS}/transactions/pos-tx-1`), posTx()));
+    await expectOutcome('cashier cannot post revenue to another outlet', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/transactions/pos-tx-other`), posTx({ dimension_id: 'outlet-menteng' })));
     await expectOutcome('cashier relieves stock for the sale', true, () =>
         setDoc(doc(db, `workspaces/${WS}/stock_adjustments/pos-sa-1`), saleAdjustment()));
+    await expectOutcome('cashier cannot relieve another outlet stock', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/stock_adjustments/pos-sa-other`), saleAdjustment({ dimension_id: 'outlet-menteng' })));
     // Split tender (2026-08-30). The settlement split is what the posting rule
     // reads to decide how much lands in 1000 vs 1030, so a validator that does
     // not list these keys refuses the whole write — `hasOnly` rejects an unlisted
@@ -630,7 +655,7 @@ async function main() {
     console.log('\n— outlet settings and discount presets —');
 
     const outletSettings = (o = {}) => ({
-        dimension_id: 'dim1', address: 'Jl. Kemang Raya 1', phone: '021555000',
+        dimension_id: 'outlet-kemang', address: 'Jl. Kemang Raya 1', phone: '021555000',
         hours: [{ day: 'mon', closed: false, open: '09:00', close: '22:00' }],
         cover_image_path: null,
         tax_enabled: true, tax_label: 'PPN', tax_rate_percent: 11, tax_inclusive: false,
@@ -645,18 +670,18 @@ async function main() {
 
     await setMemberRole(uid, 'owner');
     await expectOutcome('owner writes outlet settings', true, () =>
-        setDoc(doc(db, `workspaces/${WS}/pos_outlet_settings/dim1`), outletSettings()));
+        setDoc(doc(db, `workspaces/${WS}/pos_outlet_settings/outlet-kemang`), outletSettings()));
     await expectOutcome('owner writes a discount preset', true, () =>
         setDoc(doc(db, `workspaces/${WS}/pos_discount_presets/p1`), preset()));
     const menuDraft = {
-        dimension_id: 'dim1', item_id: 'coffee', visible: true, available: true,
+        dimension_id: 'outlet-kemang', item_id: 'coffee', visible: true, available: true,
         price_override: 28000, sort: 0, updated_at: serverTimestamp(), updated_by: uid
     };
     await expectOutcome('owner saves an outlet menu draft', true, () =>
-        setDoc(doc(db, `workspaces/${WS}/pos_outlet_menu_drafts/dim1__coffee`), menuDraft));
+        setDoc(doc(db, `workspaces/${WS}/pos_outlet_menu_drafts/outlet-kemang__coffee`), menuDraft));
     await expectOutcome('owner publishes outlet menu metadata', true, () =>
-        setDoc(doc(db, `workspaces/${WS}/pos_menu_publications/dim1`), {
-            dimension_id: 'dim1', active_version: 'v1', item_count: 1,
+        setDoc(doc(db, `workspaces/${WS}/pos_menu_publications/outlet-kemang`), {
+            dimension_id: 'outlet-kemang', active_version: 'v1', item_count: 1,
             published_at: serverTimestamp(), published_by: uid
         }));
 
@@ -688,13 +713,13 @@ async function main() {
     // never be the one deciding what the rates or the discounts are.
     await setMemberRole(uid, 'cashier');
     await expectOutcome('cashier READS outlet settings', true, () =>
-        getDoc(doc(db, `workspaces/${WS}/pos_outlet_settings/dim1`)));
+        getDoc(doc(db, `workspaces/${WS}/pos_outlet_settings/outlet-kemang`)));
     await expectOutcome('cashier READS discount presets', true, () =>
         getDoc(doc(db, `workspaces/${WS}/pos_discount_presets/p1`)));
     await expectOutcome('cashier READS the published menu version', true, () =>
-        getDoc(doc(db, `workspaces/${WS}/pos_menu_publications/dim1`)));
+        getDoc(doc(db, `workspaces/${WS}/pos_menu_publications/outlet-kemang`)));
     await expectOutcome('cashier writing outlet settings is denied', false, () =>
-        setDoc(doc(db, `workspaces/${WS}/pos_outlet_settings/dim1`),
+        setDoc(doc(db, `workspaces/${WS}/pos_outlet_settings/outlet-kemang`),
             outletSettings({ tax_rate_percent: 0 })));
     await expectOutcome('cashier writing a discount preset is denied', false, () =>
         setDoc(doc(db, `workspaces/${WS}/pos_discount_presets/p9`), preset()));

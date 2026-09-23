@@ -169,7 +169,10 @@ export const POS_METHODS = {
 
     async getPosTables(userId, { dimensionId = null, includeArchived = false } = {}) {
         try {
-            const snap = await getDocs(collection(this.db, `${this._scope(userId)}/pos_tables`));
+            const col = collection(this.db, `${this._scope(userId)}/pos_tables`);
+            const snap = await getDocs(dimensionId
+                ? query(col, where('dimension_id', '==', dimensionId))
+                : col);
             return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
                 .filter((t) => includeArchived || t.status !== 'archived')
                 .filter((t) => !dimensionId || t.dimension_id === dimensionId)
@@ -301,12 +304,18 @@ export const POS_METHODS = {
             // index that has to be deployed by hand is a thing that ships broken
             // (docs/data-model/pos.md, deploy/deployed-stamps.json).
             const parts = [collection(this.db, `${this._scope(userId)}/pos_reservations`)];
-            if (fromMs != null) parts.push(where('starts_at', '>=', Timestamp.fromMillis(fromMs)));
-            if (untilMs != null) parts.push(where('starts_at', '<=', Timestamp.fromMillis(untilMs)));
-            parts.push(orderBy('starts_at', 'asc'), limit(limitCount));
+            if (dimensionId) parts.push(where('dimension_id', '==', dimensionId));
+            else {
+                if (fromMs != null) parts.push(where('starts_at', '>=', Timestamp.fromMillis(fromMs)));
+                if (untilMs != null) parts.push(where('starts_at', '<=', Timestamp.fromMillis(untilMs)));
+                parts.push(orderBy('starts_at', 'asc'));
+            }
+            parts.push(limit(limitCount));
             const snap = await getDocs(query(...parts));
             return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
                 .filter((r) => !dimensionId || r.dimension_id === dimensionId)
+                .filter((r) => fromMs == null || posToMs(r.starts_at) >= fromMs)
+                .filter((r) => untilMs == null || posToMs(r.starts_at) <= untilMs)
                 .filter((r) => !statuses || statuses.includes(r.status));
         } catch (_) { return []; }
     },
@@ -652,9 +661,10 @@ export const POS_METHODS = {
                 const publicationKey = `${dimensionId}:${publication.active_version}`;
                 const snap = await getDocs(query(
                     collection(this.db, `${this._scope(userId)}/pos_outlet_menu_items`),
-                    where('publication_key', '==', publicationKey)
+                    where('dimension_id', '==', dimensionId)
                 ));
                 return snap.docs.map((d) => ({ id: d.data().item_id, ...d.data() }))
+                    .filter((i) => i.publication_key === publicationKey)
                     .filter((i) => i.visible === true && Number.isInteger(Number(i.sales_price)) && Number(i.sales_price) > 0)
                     .sort((a, b) => (Number(a.pos_sort) || 0) - (Number(b.pos_sort) || 0)
                         || String(a.pos_category || '').localeCompare(String(b.pos_category || ''))
@@ -962,8 +972,15 @@ export const POS_METHODS = {
     async getPosDiscountPresets(userId, { dimensionId = null, includeArchived = false } = {}) {
         if (!userId) return [];
         const scope = this._scope(userId);
-        const snap = await getDocs(collection(this.db, `${scope}/pos_discount_presets`));
-        return snap.docs
+        const col = collection(this.db, `${scope}/pos_discount_presets`);
+        const isCashier = typeof window !== 'undefined' && window.FluxyWorkspace?.role === 'cashier';
+        const snaps = isCashier && dimensionId
+            ? await Promise.all([
+                getDocs(query(col, where('dimension_id', '==', dimensionId))),
+                getDocs(query(col, where('dimension_id', '==', null)))
+            ])
+            : [await getDocs(col)];
+        return snaps.flatMap((snap) => snap.docs)
             .map((d) => ({ id: d.id, ...d.data() }))
             .filter((p) => (includeArchived || p.status === 'active'))
             // A preset with no outlet belongs to every outlet.
@@ -2202,23 +2219,25 @@ export const POS_METHODS = {
 
     async getOpenPosShift(userId, { dimensionId } = {}) {
         try {
-            const snap = await getDocs(query(
-                collection(this.db, `${this._scope(userId)}/pos_shifts`),
-                orderBy('created_at', 'desc'), limit(20)
-            ));
+            const col = collection(this.db, `${this._scope(userId)}/pos_shifts`);
+            const snap = await getDocs(dimensionId
+                ? query(col, where('dimension_id', '==', dimensionId), orderBy('created_at', 'desc'), limit(20))
+                : query(col, orderBy('created_at', 'desc'), limit(20)));
             return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+                .sort((a, b) => posToMs(b.created_at) - posToMs(a.created_at))
                 .find((s) => s.status === 'open' && (!dimensionId || s.dimension_id === dimensionId)) || null;
         } catch (_) { return null; }
     },
 
     async listPosShifts(userId, { dimensionId = null, limitCount = 20 } = {}) {
         try {
-            const snap = await getDocs(query(
-                collection(this.db, `${this._scope(userId)}/pos_shifts`),
-                orderBy('created_at', 'desc'), limit(limitCount)
-            ));
+            const col = collection(this.db, `${this._scope(userId)}/pos_shifts`);
+            const snap = await getDocs(dimensionId
+                ? query(col, where('dimension_id', '==', dimensionId), orderBy('created_at', 'desc'), limit(limitCount))
+                : query(col, orderBy('created_at', 'desc'), limit(limitCount)));
             return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-                .filter((s) => !dimensionId || s.dimension_id === dimensionId);
+                .filter((s) => !dimensionId || s.dimension_id === dimensionId)
+                .sort((a, b) => posToMs(b.created_at) - posToMs(a.created_at));
         } catch (_) { return []; }
     },
 
@@ -2788,6 +2807,7 @@ export const POS_METHODS = {
                         orderBy('created_at', 'desc'), limit(limitCount)));
                 } catch (err) {
                     if (!posIndexMissing(err)) throw err;
+                    if (typeof window !== 'undefined' && window.FluxyWorkspace?.role === 'cashier') throw err;
                     warnPosIndex(err);
                     snap = await workspaceWindow();
                 }
@@ -2856,6 +2876,10 @@ export const POS_METHODS = {
             // A listener's error arrives HERE, not as a throw: re-listen on the
             // old window rather than leaving the till deaf to new orders.
             if (canFallBack && posIndexMissing(err)) {
+                if (typeof window !== 'undefined' && window.FluxyWorkspace?.role === 'cashier') {
+                    console.error('[pos] outlet index unavailable:', err && err.message);
+                    return;
+                }
                 warnPosIndex(err);
                 stop = listen(workspaceWindow, false);
                 return;

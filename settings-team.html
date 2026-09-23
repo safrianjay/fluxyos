@@ -99,6 +99,7 @@
         .team-role-finance { background:#F0FDF4; color:#15803D; border:1px solid #BBF7D0; }
         .team-role-accountant { background:#F5F3FF; color:#6D28D9; border:1px solid #DDD6FE; }
         .team-role-viewer  { background:#F8FAFC; color:#475569; border:1px solid #E2E8F0; }
+        .team-role-cashier { background:#FFF7ED; color:#C2410C; border:1px solid #FED7AA; }
         .team-you-tag { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#C2410C; background:#FFF7ED; border:1px solid #FED7AA; padding:1px 6px; border-radius:9999px; }
     </style>
 
@@ -130,12 +131,12 @@
         const auth = getAuth(app);
         const ds = new DataService(app);
 
-        const ASSIGNABLE_ROLES = ['admin', 'finance', 'accountant', 'viewer']; // owner is never assignable
+        const ASSIGNABLE_ROLES = ['admin', 'finance', 'accountant', 'viewer', 'cashier']; // owner is never assignable
         const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const avatarFor = (name) => `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=EA580C&color=fff`;
         const fmtTime = (ts) => { try { return ts && ts.toDate ? ts.toDate().toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''; } catch (_) { return ''; } };
 
-        let state = { ws: null, user: null, canInvite: false, canManageMembers: false, businessName: null };
+        let state = { ws: null, user: null, canInvite: false, canManageMembers: false, businessName: null, outlets: [] };
 
         const authTimeout = setTimeout(async () => {
             // Wait for Firebase to FINISH restoring the session, then redirect only if
@@ -171,6 +172,8 @@
             state.canInvite = ws.can('team.invite');
             state.canManageMembers = ws.can('team.manage_members');
             ds.setActor(user.uid, ws.role); // pin role for audit attribution
+            state.outlets = (await ds.getDimensions(user.uid).catch(() => []))
+                .filter((d) => d.type === 'outlet' && d.status !== 'archived');
 
             renderRoleReference();
             wireInvite();
@@ -232,7 +235,8 @@
             const canEditThis = state.canManageMembers && !isOwner && !isSelf;
             let roleCell;
             if (canEditThis) {
-                roleCell = `<select data-role-select data-uid="${esc(m.uid)}" class="text-[13px]">${ASSIGNABLE_ROLES.map((r) => `<option value="${r}" ${m.role === r ? 'selected' : ''}>${esc(roleMeta(r).label)}</option>`).join('')}</select>`;
+                roleCell = `<div class="flex flex-col gap-2"><select data-role-select data-uid="${esc(m.uid)}" class="text-[13px]">${ASSIGNABLE_ROLES.map((r) => `<option value="${r}" ${m.role === r ? 'selected' : ''}>${esc(roleMeta(r).label)}</option>`).join('')}</select>
+                    <select data-outlet-select data-uid="${esc(m.uid)}" class="text-[12px] ${m.role === 'cashier' ? '' : 'hidden'}" aria-label="Cashier outlet">${state.outlets.map((o) => `<option value="${esc(o.id)}" ${m.pos_outlet_id === o.id ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}</select></div>`;
             } else {
                 roleCell = roleLabelPill(m.role);
             }
@@ -263,12 +267,29 @@
                 sel.addEventListener('change', async () => {
                     const uid = sel.getAttribute('data-uid');
                     const role = sel.value;
+                    const outletSelect = document.querySelector(`[data-outlet-select][data-uid="${CSS.escape(uid)}"]`);
+                    outletSelect?.classList.toggle('hidden', role !== 'cashier');
                     try {
-                        await ds.updateMemberRole(state.ws.id, uid, role);
+                        await ds.updateMemberRole(state.ws.id, uid, role, { posOutletId: role === 'cashier' ? outletSelect?.value : null });
                         window.showToast(`Role updated to ${roleMeta(role).label}`, 'success');
                     } catch (e) {
                         console.warn('[team] role update failed', e);
                         window.showToast('Could not update role.', 'error');
+                        loadMembers();
+                    }
+                });
+            });
+            document.querySelectorAll('[data-outlet-select]').forEach((sel) => {
+                sel.addEventListener('change', async () => {
+                    const uid = sel.getAttribute('data-uid');
+                    const role = document.querySelector(`[data-role-select][data-uid="${CSS.escape(uid)}"]`)?.value;
+                    if (role !== 'cashier') return;
+                    try {
+                        await ds.updateMemberRole(state.ws.id, uid, role, { posOutletId: sel.value });
+                        window.showToast('Cashier outlet updated.', 'success');
+                    } catch (e) {
+                        console.warn('[team] outlet assignment failed', e);
+                        window.showToast('Could not update cashier outlet.', 'error');
                         loadMembers();
                     }
                 });
@@ -375,6 +396,11 @@
                                 </select>
                                 <p class="mt-2 text-[12px] text-gray-400">We'll email them a link to join this workspace.</p>
                             </div>
+                            <div id="invite-outlet-wrap" class="hidden">
+                                <label for="invite-outlet" class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Assigned outlet</label>
+                                <select id="invite-outlet" class="w-full text-[14px]">${state.outlets.map((o) => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('')}</select>
+                                <p class="mt-2 text-[12px] text-gray-400">Cashiers can only access this outlet's till data.</p>
+                            </div>
                         </div>
                         <div class="border-t border-gray-100 bg-white/95 p-4">
                             <button type="submit" id="invite-submit-btn" class="w-full py-3.5 bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-xl shadow-lg transition-all disabled:bg-gray-300">Send invitation</button>
@@ -396,6 +422,9 @@
             window.__teamInviteEsc = (e) => { if (e.key === 'Escape') closeInviteDrawer(); };
             document.addEventListener('keydown', window.__teamInviteEsc);
             document.getElementById('team-invite-form').addEventListener('submit', onInviteSubmit);
+            document.getElementById('invite-role').addEventListener('change', (e) => {
+                document.getElementById('invite-outlet-wrap').classList.toggle('hidden', e.target.value !== 'cashier');
+            });
         }
 
         function closeInviteDrawer() {
@@ -413,6 +442,7 @@
             e.preventDefault();
             const email = document.getElementById('invite-email').value.trim();
             const role = document.getElementById('invite-role').value;
+            const posOutletId = role === 'cashier' ? document.getElementById('invite-outlet').value : null;
             const submitBtn = document.getElementById('invite-submit-btn');
             if (!email) return;
             // Guard: already a member or already invited?
@@ -426,7 +456,7 @@
             submitBtn.disabled = true;
             submitBtn.textContent = 'Sending…';
             try {
-                await ds.inviteMember(state.ws.id, { email, role, invitedBy: state.user.uid, invitedByEmail: state.user.email });
+                await ds.inviteMember(state.ws.id, { email, role, posOutletId, invitedBy: state.user.uid, invitedByEmail: state.user.email });
                 await sendInvite(email, role, null);
                 window.showToast(`Invitation created for ${email}.`, 'success');
                 closeInviteDrawer();

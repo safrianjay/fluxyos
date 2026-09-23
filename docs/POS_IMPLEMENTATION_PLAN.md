@@ -917,9 +917,11 @@ follow-up.**
 
 ### Phase 3 — Depth
 
-Split bills, order transfer between tables, menu availability / 86-ing, and
-per-outlet menu pricing are shipped. Per-outlet rules scoping remains after a
-rules-budget check.
+Split bills, order transfer between tables, menu availability / 86-ing,
+per-outlet menu pricing, and cashier outlet scoping are shipped. Cashier
+memberships carry one `pos_outlet_id`; rules require that outlet on POS reads,
+writes, revenue rows, stock relief, and counters while finance roles retain
+cross-outlet access.
 
 ### Phase 4 — Inventory closure
 

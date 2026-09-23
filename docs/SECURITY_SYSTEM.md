@@ -90,6 +90,7 @@ to these roles instead of inventing page-specific access names.
 | `approver` | Department or budget approver | Review and approve assigned bills, budgets, and exceptions |
 | `employee` | Regular submitter | Submit claims, receipts, card/budget requests |
 | `viewer` | Auditor, investor, or read-only stakeholder | Read-only dashboard and exports where allowed |
+| `cashier` | Outlet till operator | POS access for one assigned `pos_outlet_id`; no finance records or other outlets |
 
 Role rules:
 
@@ -104,6 +105,10 @@ Role rules:
 - `approver` can approve only records assigned to them or their scope.
 - Sensitive permissions should be additive and explicit; do not infer them from
   page access alone.
+- Every `cashier` membership and invitation must carry exactly one
+  `pos_outlet_id`. Firestore validates POS documents against that assignment;
+  owners, admins, finance, accountants, and viewers keep their existing
+  workspace-wide read scope according to role.
 
 ---
 
