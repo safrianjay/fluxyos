@@ -57,7 +57,12 @@ test('authenticate as QA user', async ({ page }, testInfo) => {
     const dashboard = page.waitForURL(/\/dashboard(\.html)?($|\?)/, { timeout: 90_000 });
     const verifyGate = page.locator('#verify-view')
         .waitFor({ state: 'visible', timeout: 90_000 })
-        .then(() => page.locator('#verify-skip-link').click());
+        // The verification card has a continuous decorative animation, which
+        // Playwright treats as an unstable link even though the action itself
+        // is safe and deterministic. The gate is already visible, so force the
+        // link activation instead of turning a visual animation into a market
+        // QA outage.
+        .then(() => page.locator('#verify-skip-link').click({ force: true }));
     await Promise.race([dashboard, verifyGate]);
     // ⚠️ THE WHOLE BROWSER LANE HANGS OFF THIS ONE WAIT. Every spec depends on
     // the `auth-setup` project, so when this times out Playwright reports the
