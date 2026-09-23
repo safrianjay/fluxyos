@@ -2883,6 +2883,27 @@ service cloud.firestore {
         && data.service_rate_percent <= 100
         && data.service_taxable is bool;
     }
+    function wsValidPosMenuDraft(data) {
+      return data.keys().hasOnly([
+          'dimension_id', 'item_id', 'visible', 'available', 'price_override',
+          'sort', 'updated_at', 'updated_by'
+        ])
+        && data.dimension_id is string && data.dimension_id.size() > 0
+        && data.item_id is string && data.item_id.size() > 0
+        && data.visible is bool && data.available is bool
+        && (data.price_override == null || (data.price_override is int && data.price_override > 0))
+        && data.sort is int && data.updated_at == request.time
+        && data.updated_by == request.auth.uid;
+    }
+    function wsValidPosMenuPublication(data) {
+      return data.keys().hasOnly([
+          'dimension_id', 'active_version', 'item_count', 'published_at', 'published_by'
+        ])
+        && data.dimension_id is string && data.dimension_id.size() > 0
+        && data.active_version is string && data.active_version.size() > 0
+        && data.item_count is int && data.item_count >= 0
+        && data.published_at == request.time && data.published_by == request.auth.uid;
+    }
 
     // ── Discount presets ───────────────────────────────────────────────────
     //
@@ -3085,7 +3106,8 @@ service cloud.firestore {
           'pos_tables', 'pos_orders', 'pos_shifts', 'pos_reservations',
           // Added WITH the collections, not eleven days later — see §7a of
           // docs/data-model/pos.md for what that cost last time.
-          'pos_outlet_settings', 'pos_discount_presets',
+          'pos_outlet_settings', 'pos_discount_presets', 'pos_menu_publications',
+          'pos_outlet_menu_drafts',
           // `business_categories.seeded` was denied the same way.
           'business_categories'
         ]
@@ -4081,6 +4103,30 @@ service cloud.firestore {
         allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
           && wsPosDiscountPresetKeys(request.resource.data)
           && wsValidPosDiscountPresetFields(request.resource.data);
+        allow delete: if false;
+      }
+      match /pos_outlet_menu_drafts/{draftId} {
+        allow read: if wsReadPos(workspaceId);
+        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && wsValidPosMenuDraft(request.resource.data);
+        allow delete: if false;
+      }
+      match /pos_outlet_menu_items/{snapshotId} {
+        allow read: if wsReadPos(workspaceId);
+        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && request.resource.data.dimension_id is string
+          && request.resource.data.item_id is string
+          && request.resource.data.publication_key is string
+          && request.resource.data.publication_version is string
+          && request.resource.data.published_at == request.time
+          && request.resource.data.published_by == request.auth.uid;
+        allow delete: if false;
+      }
+      match /pos_menu_publications/{dimensionId} {
+        allow read: if wsReadPos(workspaceId);
+        allow create, update: if hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant'])
+          && wsValidPosMenuPublication(request.resource.data)
+          && request.resource.data.dimension_id == dimensionId;
         allow delete: if false;
       }
       // Period lifecycle. Closing requires finance+; locking is owner/admin only.

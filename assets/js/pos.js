@@ -628,8 +628,10 @@ async function loadOutlets() {
     }
     setHint('');
     sel.disabled = false;
+    const requested = new URLSearchParams(window.location.search).get('outlet');
     const stored = localStorage.getItem(OUTLET_KEY);
-    state.outletId = state.outlets.some((o) => o.id === stored) ? stored : state.outlets[0].id;
+    state.outletId = state.outlets.some((o) => o.id === requested) ? requested
+        : (state.outlets.some((o) => o.id === stored) ? stored : state.outlets[0].id);
     // Persist the FIRST resolution too, not just an explicit change. Without
     // this the till re-picked outlets[0] on every load, so adding an outlet that
     // sorted earlier would silently move a running till to a different room —
@@ -743,7 +745,12 @@ async function finishOutletOnboarding() {
             await ds.openPosShift(state.uid, { dimensionId: onboardingOutlet, openingFloat: Number(raw || 0) });
         }
         localStorage.setItem(OUTLET_KEY, onboardingOutlet);
+        const continueToMenu = onboarding('#pos-onboard-menu-after').checked;
         closeOutletOnboarding();
+        if (continueToMenu) {
+            window.location.href = `/inventory?tab=items&setup=pos&outlet=${encodeURIComponent(onboardingOutlet)}`;
+            return;
+        }
         await loadOutlets();
         state.outletId = onboardingOutlet;
         await refresh();
@@ -2248,9 +2255,9 @@ function renderMenu() {
         if (count) count.textContent = '';
         window.renderEmptyState('pos-menu-empty', {
             title: 'Nothing on the menu yet',
-            description: 'An item appears here once it has a selling price and is marked visible on the till. Set both in Inventory.',
-            buttonText: 'Open Inventory',
-            onAction: () => { window.location.href = '/inventory?tab=items'; }
+            description: 'Add products and recipes, then publish this outlet’s menu.',
+            buttonText: 'Add your first menu item',
+            onAction: () => { window.location.href = `/inventory?tab=items&setup=pos&outlet=${encodeURIComponent(state.outletId || '')}`; }
         });
         return;
     }
@@ -2297,9 +2304,9 @@ function renderMenu() {
     });
 
     host.innerHTML = rows.map((m) => `
-        <button type="button" class="pos-card${onOrder[m.id] ? ' is-in-order' : ''}${m.image_path ? ' has-image' : ''}" data-item="${esc(m.id)}"
-                data-price="${m.sales_price}" data-name="${esc(m.name)}" ${live ? '' : 'disabled'}
-                title="${live ? '' : 'Open a table or start a takeaway order first'}">
+        <button type="button" class="pos-card${onOrder[m.id] ? ' is-in-order' : ''}${m.image_path ? ' has-image' : ''}${m.available === false ? ' is-sold-out' : ''}" data-item="${esc(m.id)}"
+                data-price="${m.sales_price}" data-name="${esc(m.name)}" ${(live && m.available !== false) ? '' : 'disabled'}
+                title="${m.available === false ? 'Sold out at this outlet' : (live ? '' : 'Open a table or start a takeaway order first')}">
             <span class="pos-card-media">
                 <!-- The initial is the FALLBACK, and it stays until an image has
                      actually decoded. Most items have no photo, and one that
@@ -2315,6 +2322,7 @@ function renderMenu() {
             </span>
             <span class="pos-card-name">${esc(m.name)}</span>
             <span class="pos-card-price">${rp(m.sales_price)}</span>
+            ${m.available === false ? '<span class="pos-card-stock is-out">Sold out</span>' : ''}
             ${cardStockTag(m)}
             ${onOrder[m.id]
                 ? `<span class="pos-card-qty" aria-label="${onOrder[m.id]} on this order">${onOrder[m.id]}</span>`
@@ -2339,7 +2347,10 @@ function renderMenu() {
         });
         // Kept in sync with `live` above: a card that is tappable with no order
         // open must be able to open one.
-        if (!state.orderId && posProfile().payFirst) btn.removeAttribute('disabled');
+        if (!state.orderId && posProfile().payFirst
+            && (state.menu || []).find((m) => m.id === btn.dataset.item)?.available !== false) {
+            btn.removeAttribute('disabled');
+        }
     });
 }
 
@@ -6470,7 +6481,7 @@ async function refresh({ keepOrder = false } = {}) {
     if (state.frozen) return;
     const [overview, menu, shift] = await Promise.all([
         ds.getPosOverview(state.uid, { dimensionId: state.outletId }),
-        ds.getPosMenu(state.uid),
+        ds.getPosMenu(state.uid, { dimensionId: state.outletId }),
         ds.getOpenPosShift(state.uid, { dimensionId: state.outletId })
     ]);
     // Checked AGAIN, after the await. Freezing stops the next refresh from

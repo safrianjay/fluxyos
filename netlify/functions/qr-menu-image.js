@@ -289,11 +289,19 @@ exports.handler = async (event) => {
         // 2. The item, IN THAT WORKSPACE. This is the check a Storage rule
         //    cannot make: scoping a photo to the restaurant whose QR code was
         //    scanned, and to items actually on its menu.
-        const photo = await pathCache.get(`item/${workspaceId}/${itemId}`, async () => {
-            const itemSnap = await db.doc(`workspaces/${workspaceId}/items/${itemId}`).get();
+        const menuDimensionId = dir.dimension_id || null;
+        const publicationSnap = menuDimensionId
+            ? await db.doc(`workspaces/${workspaceId}/pos_menu_publications/${menuDimensionId}`).get()
+            : null;
+        const menuVersion = publicationSnap && publicationSnap.exists
+            ? String((publicationSnap.data() || {}).active_version || '') : '';
+        const photo = await pathCache.get(`item/${workspaceId}/${menuDimensionId || ''}/${menuVersion}/${itemId}`, async () => {
+            const itemSnap = menuVersion
+                ? await db.doc(`workspaces/${workspaceId}/pos_outlet_menu_items/${menuDimensionId}__${menuVersion}__${itemId}`).get()
+                : await db.doc(`workspaces/${workspaceId}/items/${itemId}`).get();
             if (!itemSnap.exists) return null;
             const item = itemSnap.data() || {};
-            if (item.pos_visible !== true) return null;
+            if (menuVersion ? item.visible !== true : item.pos_visible !== true) return null;
             if (item.status === 'archived') return null;
             if (!(typeof item.image_path === 'string' && item.image_path)) return null;
             return {

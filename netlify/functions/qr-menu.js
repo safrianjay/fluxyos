@@ -80,7 +80,7 @@ function initAdmin() {
  * The diner-facing items, projected and sorted. The same two gates
  * `getPosMenu` applies, and nothing a customer must not receive.
  */
-function projectItems(itemsSnap) {
+function projectItems(itemsSnap, { published = false } = {}) {
     const items = [];
     itemsSnap.forEach((d) => {
         const i = d.data() || {};
@@ -88,9 +88,10 @@ function projectItems(itemsSnap) {
         // The same two conditions `getPosMenu` applies. An item marked
         // visible with no price is a button that cannot be rung up.
         if (!Number.isInteger(price) || price <= 0) return;
+        if (published && i.visible !== true) return;
         if (i.status === 'archived') return;
         items.push({
-            id: d.id,
+            id: published ? String(i.item_id || '') : d.id,
             name: String(i.name || '').slice(0, 120),
             // `pos_category` IS the taxonomy — a free string on the item,
             // the same one the till builds its chips from. There is no
@@ -106,6 +107,8 @@ function projectItems(itemsSnap) {
             // this one serves the diner; a field added to only one of them
             // works on one surface and silently does nothing on the other.
             recommended: i.pos_recommended === true,
+            available: i.available !== false,
+            _sort: Number.isInteger(Number(i.pos_sort)) ? Number(i.pos_sort) : 0,
             // Options the customer chooses, with their price deltas. What
             // each option CONSUMES is deliberately stripped — that is stock
             // and cost, and none of a diner's business.
@@ -127,8 +130,10 @@ function projectItems(itemsSnap) {
     });
     // Sorted here rather than in the page, so every client agrees and the
     // order survives a page that forgets to sort.
-    items.sort((a, b) => String(a.category || '￿').localeCompare(String(b.category || '￿'))
+    items.sort((a, b) => a._sort - b._sort
+        || String(a.category || '￿').localeCompare(String(b.category || '￿'))
         || a.name.localeCompare(b.name));
+    items.forEach((item) => { delete item._sort; });
     return items;
 }
 
@@ -141,9 +146,10 @@ function projectItems(itemsSnap) {
 async function loadOutlet(db, workspaceId, dimensionId) {
     const docs = [db.doc(`workspaces/${workspaceId}`)];
     if (dimensionId) docs.push(db.doc(`workspaces/${workspaceId}/dimensions/${dimensionId}`));
-    const [snaps, itemsSnap, cfg] = await Promise.all([
+    const publicationRef = dimensionId
+        ? db.doc(`workspaces/${workspaceId}/pos_menu_publications/${dimensionId}`) : null;
+    const [snaps, cfg, publicationSnap] = await Promise.all([
         db.getAll(...docs),
-        db.collection(`workspaces/${workspaceId}/items`).where('pos_visible', '==', true).get(),
         // Best-effort, on its own: a menu is what a hungry person is waiting
         // for, and failing it because a configuration document could not be
         // read would be the wrong trade at a table. Settings are keyed BY the
@@ -153,8 +159,15 @@ async function loadOutlet(db, workspaceId, dimensionId) {
                 console.warn('[qr-menu] outlet settings unreadable; menu prices at zero rates', e && e.message);
                 return null;
             })
-            : Promise.resolve(null)
+            : Promise.resolve(null),
+        publicationRef ? publicationRef.get() : Promise.resolve(null)
     ]);
+    const publication = publicationSnap && publicationSnap.exists ? publicationSnap.data() : null;
+    const version = publication && publication.active_version ? String(publication.active_version) : null;
+    const itemsSnap = version
+        ? await db.collection(`workspaces/${workspaceId}/pos_outlet_menu_items`)
+            .where('publication_key', '==', `${dimensionId}:${version}`).get()
+        : await db.collection(`workspaces/${workspaceId}/items`).where('pos_visible', '==', true).get();
     const ws = snaps[0].exists ? (snaps[0].data() || {}) : {};
     // The outlet, not the workspace, is what a diner recognises — they are
     // sitting in one branch, not in a company.
@@ -190,7 +203,8 @@ async function loadOutlet(db, workspaceId, dimensionId) {
         pricing: outletPricing,
         hasCover,
         outletInfo,
-        items: projectItems(itemsSnap)
+        publicationVersion: version,
+        items: projectItems(itemsSnap, { published: Boolean(version) })
     };
 }
 
@@ -306,6 +320,7 @@ exports.handler = async (event) => {
                 // Absent settings send the module's defaults — every flag off —
                 // which is exactly what this endpoint described before.
                 pricing: outlet.pricing,
+                publication_version: outlet.publicationVersion,
                 // WHETHER there is a header photo, never a URL to it.
                 //
                 // ⚠️ This returned a signed URL for about an hour on 2026-09-05,

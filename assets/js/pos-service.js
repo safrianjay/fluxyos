@@ -527,10 +527,140 @@ export const POS_METHODS = {
 
     // ── Menu ────────────────────────────────────────────────────────────────
 
+    _posMenuSnapshot(item, draft, version, dimensionId, publisherId) {
+        const override = draft || {};
+        const canonicalPrice = Number(item.sales_price);
+        const overridePrice = Number(override.price_override);
+        const price = Number.isInteger(overridePrice) && overridePrice > 0
+            ? overridePrice : canonicalPrice;
+        return {
+            publication_key: `${dimensionId}:${version}`,
+            publication_version: version,
+            dimension_id: dimensionId,
+            item_id: item.id,
+            visible: override.visible !== false && item.pos_visible === true
+                && item.status !== 'archived' && Number.isInteger(price) && price > 0,
+            available: override.available !== false,
+            name: String(item.name || '').slice(0, 120),
+            sales_price: Number.isInteger(price) && price > 0 ? price : null,
+            pos_category: item.pos_category || null,
+            pos_sort: Number.isInteger(Number(override.sort)) ? Number(override.sort)
+                : (Number.isInteger(Number(item.pos_sort)) ? Number(item.pos_sort) : 0),
+            pos_recommended: item.pos_recommended === true,
+            pos_modifier_groups: Array.isArray(item.pos_modifier_groups) ? item.pos_modifier_groups : [],
+            image_path: item.image_path || null,
+            image_thumb_path: item.image_thumb_path || null,
+            type: item.type,
+            base_unit: item.base_unit,
+            track_stock: item.track_stock !== false,
+            has_recipe: item.type === 'composite' && Array.isArray(item.components) && item.components.length > 0,
+            source_updated_at: item.updated_at || null,
+            published_at: serverTimestamp(),
+            published_by: this.actorUid || publisherId
+        };
+    },
+
+    async getPosMenuPublication(userId, dimensionId) {
+        if (!userId || !dimensionId) return null;
+        const snap = await getDoc(doc(this.db, `${this._scope(userId)}/pos_menu_publications/${dimensionId}`));
+        return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    },
+
+    async getPosMenuDrafts(userId, dimensionId) {
+        if (!userId || !dimensionId) return [];
+        const snap = await getDocs(query(
+            collection(this.db, `${this._scope(userId)}/pos_outlet_menu_drafts`),
+            where('dimension_id', '==', dimensionId)
+        ));
+        return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    },
+
+    async savePosMenuDraft(userId, dimensionId, itemId, patch = {}) {
+        if (!userId || !dimensionId || !itemId) throw new Error('Outlet and item are required.');
+        const ref = doc(this.db, `${this._scope(userId)}/pos_outlet_menu_drafts/${dimensionId}__${itemId}`);
+        const price = Number(patch.price_override);
+        const body = {
+            dimension_id: dimensionId,
+            item_id: itemId,
+            visible: patch.visible !== false,
+            available: patch.available !== false,
+            price_override: Number.isInteger(price) && price > 0 ? price : null,
+            sort: Number.isInteger(Number(patch.sort)) ? Number(patch.sort) : 0,
+            updated_at: serverTimestamp(),
+            updated_by: this.actorUid || userId
+        };
+        await setDoc(ref, body, { merge: true });
+        this._auditCreateBestEffort(userId, 'pos_menu.draft_saved',
+            'pos_outlet_menu_drafts', ref.id, { dimension_id: dimensionId, item_id: itemId });
+        return body;
+    },
+
+    async getPosMenuReadiness(userId, dimensionId) {
+        const [items, drafts, publication] = await Promise.all([
+            this.getItems(userId, { includeArchived: true }),
+            this.getPosMenuDrafts(userId, dimensionId),
+            this.getPosMenuPublication(userId, dimensionId)
+        ]);
+        const draftByItem = new Map(drafts.map((d) => [d.item_id, d]));
+        const candidates = items.filter((i) => i.status !== 'archived' && (i.pos_visible === true || draftByItem.has(i.id)));
+        const missingPrice = candidates.filter((i) => {
+            const p = Number(draftByItem.get(i.id)?.price_override || i.sales_price);
+            return !Number.isInteger(p) || p <= 0;
+        });
+        const missingCategory = candidates.filter((i) => i.pos_visible === true && !String(i.pos_category || '').trim());
+        const missingRecipe = candidates.filter((i) => i.type === 'composite' && (!Array.isArray(i.components) || !i.components.length));
+        const latest = candidates.reduce((max, i) => Math.max(max, i.updated_at?.toMillis?.() || 0), 0);
+        const publishedAt = publication?.published_at?.toMillis?.() || 0;
+        return { items, drafts, publication, missingPrice, missingCategory, missingRecipe,
+            unpublished: !publication || latest > publishedAt || drafts.some((d) => (d.updated_at?.toMillis?.() || 0) > publishedAt) };
+    },
+
+    async publishPosMenu(userId, dimensionId) {
+        if (!userId || !dimensionId) throw new Error('Pick an outlet first.');
+        const scope = this._scope(userId);
+        const readiness = await this.getPosMenuReadiness(userId, dimensionId);
+        if (readiness.missingPrice.length) throw new Error('Every visible menu item needs a selling price.');
+        const drafts = new Map(readiness.drafts.map((d) => [d.item_id, d]));
+        const version = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+        const snapshots = readiness.items
+            .filter((i) => i.status !== 'archived')
+            .map((i) => this._posMenuSnapshot(i, drafts.get(i.id), version, dimensionId, userId));
+        for (let start = 0; start < snapshots.length; start += 450) {
+            const batch = writeBatch(this.db);
+            snapshots.slice(start, start + 450).forEach((snapshot) => {
+                const id = `${dimensionId}__${version}__${snapshot.item_id}`;
+                batch.set(doc(this.db, `${scope}/pos_outlet_menu_items/${id}`), snapshot);
+            });
+            await batch.commit();
+        }
+        const meta = { dimension_id: dimensionId, active_version: version,
+            item_count: snapshots.filter((s) => s.visible).length,
+            published_at: serverTimestamp(), published_by: this.actorUid || userId };
+        await setDoc(doc(this.db, `${scope}/pos_menu_publications/${dimensionId}`), meta);
+        this._auditCreateBestEffort(userId, 'pos_menu.published',
+            'pos_menu_publications', dimensionId, { active_version: version, item_count: meta.item_count });
+        return { ...meta, active_version: version };
+    },
+
     // The menu IS `items`: anything with a price that is marked visible. No
     // separate menu collection, so a dish's recipe — and therefore its true cost
     // — is the same record the kitchen already maintains.
-    async getPosMenu(userId) {
+    async getPosMenu(userId, { dimensionId = null } = {}) {
+        if (dimensionId) {
+            const publication = await this.getPosMenuPublication(userId, dimensionId).catch(() => null);
+            if (publication?.active_version) {
+                const publicationKey = `${dimensionId}:${publication.active_version}`;
+                const snap = await getDocs(query(
+                    collection(this.db, `${this._scope(userId)}/pos_outlet_menu_items`),
+                    where('publication_key', '==', publicationKey)
+                ));
+                return snap.docs.map((d) => ({ id: d.data().item_id, ...d.data() }))
+                    .filter((i) => i.visible === true && Number.isInteger(Number(i.sales_price)) && Number(i.sales_price) > 0)
+                    .sort((a, b) => (Number(a.pos_sort) || 0) - (Number(b.pos_sort) || 0)
+                        || String(a.pos_category || '').localeCompare(String(b.pos_category || ''))
+                        || String(a.name || '').localeCompare(String(b.name || '')));
+            }
+        }
         const items = await this.getItems(userId);
         return items
             .filter((i) => i.pos_visible === true && Number.isInteger(Number(i.sales_price)) && Number(i.sales_price) > 0)
@@ -574,7 +704,9 @@ export const POS_METHODS = {
                 // px, and a till loading sixty 1280px photos on restaurant wifi
                 // was paying ~70% more than it shows. Null for photos that
                 // predate the copy — the tile then uses `image_path`.
-                image_thumb_path: i.image_thumb_path || null
+                image_thumb_path: i.image_thumb_path || null,
+                available: true,
+                publication_version: null
             }))
             .sort((a, b) => (a.pos_sort - b.pos_sort)
                 || String(a.pos_category || '').localeCompare(String(b.pos_category || ''))
@@ -2702,7 +2834,7 @@ export const POS_METHODS = {
         const [orders, tables, menu, movements, reservations] = await Promise.all([
             this.getPosOrders(userId, { dimensionId, limitCount: 300 }),
             this.getPosTables(userId, { dimensionId }),
-            this.getPosMenu(userId),
+            this.getPosMenu(userId, { dimensionId }),
             this.getStockMovements(userId, { limitCount: 1000 }).catch(() => []),
             // Bookings that could hold a table anywhere near now. Read in the
             // SAME call as the tables and the orders on purpose: the floor plan

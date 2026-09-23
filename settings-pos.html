@@ -383,6 +383,16 @@
                         </div>
                     </section>
 
+                    <section class="pos-set-card">
+                        <div class="pos-set-head flex items-start justify-between gap-4">
+                            <div>
+                                <h2 class="pos-set-title">Menu &amp; recipes</h2>
+                                <p class="pos-set-sub">Choose what this outlet sells, set outlet prices and availability, review recipes, then publish one version to the cashier and QR menu.</p>
+                            </div>
+                            <a id="pos-menu-setup-link" href="/inventory?tab=items&amp;setup=pos" class="pos-mini-btn whitespace-nowrap">Set up menu</a>
+                        </div>
+                    </section>
+
                     <!-- 4. VAT & SERVICE FEE -->
                     <section class="pos-set-card">
                         <div class="pos-set-head">
@@ -863,6 +873,7 @@
 
         async function selectOutlet(dimensionId) {
             currentOutlet = dimensionId;
+            $('pos-menu-setup-link').href = `/inventory?tab=items&setup=pos&outlet=${encodeURIComponent(dimensionId)}`;
             setLoadState('loading', 'Loading settings');
             try {
                 const [s, p] = await Promise.all([

@@ -501,6 +501,24 @@
         <div class="fluxy-page-shell">
             <div class="fluxy-page-canvas fluxy-section-stack">
 
+                <section id="pos-menu-setup" class="fluxy-table-card hidden" aria-labelledby="pos-menu-setup-title">
+                    <div class="fluxy-table-card-header">
+                        <div>
+                            <p class="text-[12px] font-bold uppercase tracking-[.12em] text-[#EA580C]">POS · Outlet setup</p>
+                            <h2 id="pos-menu-setup-title" class="fluxy-table-title mt-1">Menu &amp; recipes</h2>
+                            <p class="fluxy-table-subtitle">Prepare this outlet’s menu here. Cashier and QR menus keep the last published version until you publish.</p>
+                        </div>
+                        <div class="fluxy-table-actions">
+                            <button id="pos-menu-add" type="button" class="fluxy-table-action">Add menu item</button>
+                            <a id="pos-menu-preview-till" class="fluxy-table-action" href="/pos">Preview cashier</a>
+                            <a id="pos-menu-preview-qr" class="fluxy-table-action" href="/pos">QR menu &amp; tables</a>
+                            <button id="pos-menu-publish" type="button" class="px-4 py-2 rounded-lg bg-gray-900 text-white text-[13px] font-bold">Publish menu</button>
+                        </div>
+                    </div>
+                    <div id="pos-menu-readiness" class="p-5 border-t border-gray-100"></div>
+                    <div id="pos-menu-drafts" class="fluxy-table-scroll"></div>
+                </section>
+
                 <!-- Two views of one module, one route. State lives in the URL so
                      the Overview's alerts can deep-link into a filtered Items
                      table (DESIGN_SYSTEM → In-Page Section Navigation). Panels
@@ -1156,6 +1174,9 @@
         const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
         const auth = getAuth(app);
         const ds = new DataService(app);
+        const posSetupParams = new URLSearchParams(window.location.search);
+        const posSetupOutlet = posSetupParams.get('setup') === 'pos'
+            ? posSetupParams.get('outlet') : null;
 
         // ── Tabs & deep links ────────────────────────────────────────────────
         // State lives in the URL so an Overview alert can hand the Items tab a
@@ -1240,6 +1261,44 @@
         let receiptDate = null;  // 'YYYY-MM-DD'
         let lineSeq = 0;
         let lastMovements = [];
+
+        function readinessPill(label, count, problem = true) {
+            const tone = count && problem ? 'border-amber-200 bg-amber-50 text-amber-800'
+                : 'border-emerald-200 bg-emerald-50 text-emerald-800';
+            return `<span class="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[12px] font-bold ${tone}">${esc(label)} <strong>${count}</strong></span>`;
+        }
+
+        async function renderPosMenuSetup() {
+            if (!posSetupOutlet || !currentUid) return;
+            const panel = document.getElementById('pos-menu-setup');
+            panel.classList.remove('hidden');
+            const info = document.getElementById('pos-menu-readiness');
+            const host = document.getElementById('pos-menu-drafts');
+            info.innerHTML = bar('w-2/3');
+            host.innerHTML = '';
+            try {
+                const ready = await ds.getPosMenuReadiness(currentUid, posSetupOutlet);
+                const drafts = new Map(ready.drafts.map((d) => [d.item_id, d]));
+                const candidates = ready.items.filter((i) => i.status !== 'archived' && (i.pos_visible === true || drafts.has(i.id)));
+                info.innerHTML = `<div class="flex flex-wrap items-center gap-2">${readinessPill('Missing price', ready.missingPrice.length)}${readinessPill('Missing category', ready.missingCategory.length)}${readinessPill('Recipe needs ingredients', ready.missingRecipe.length)}${readinessPill('Unpublished changes', ready.unpublished ? 1 : 0)}<span class="ml-auto text-[12px] text-gray-500">${ready.publication ? `Published ${esc(String(ready.publication.active_version || '').split('_')[0])}` : 'Using the legacy live menu until first publish'}</span></div>`;
+                host.innerHTML = candidates.length ? `<table class="fluxy-table"><thead><tr class="fluxy-table-header"><th>Menu item</th><th>Visible</th><th>Available</th><th class="fluxy-table-money">Outlet price</th><th></th></tr></thead><tbody>${candidates.map((item, index) => {
+                    const d = drafts.get(item.id) || {};
+                    return `<tr data-pos-menu-item="${esc(item.id)}"><td><strong>${esc(item.name)}</strong><div class="text-[12px] text-gray-500">${esc(item.pos_category || 'No category')} · ${item.type === 'composite' ? 'Recipe product' : 'Item'}</div></td><td><input data-field="visible" type="checkbox" ${d.visible !== false ? 'checked' : ''}></td><td><input data-field="available" type="checkbox" ${d.available !== false ? 'checked' : ''}></td><td class="fluxy-table-money"><input data-field="price_override" class="pos-input" style="width:140px" inputmode="numeric" placeholder="${esc(rp(item.sales_price))}" value="${d.price_override || ''}"></td><td><button type="button" data-edit-item="${esc(item.id)}" class="fluxy-table-action">Edit item &amp; recipe</button><input data-field="sort" type="hidden" value="${Number.isInteger(Number(d.sort)) ? Number(d.sort) : index}"></td></tr>`;
+                }).join('')}</tbody></table>` : '<div class="p-6 text-[14px] text-gray-600">No POS-visible items yet. Add your first menu item to begin.</div>';
+            } catch (err) {
+                info.innerHTML = `<p class="text-[13px] text-red-700">${esc(err.message || 'Could not load menu readiness.')}</p>`;
+            }
+        }
+
+        async function savePosDraftRow(row) {
+            const val = (name) => row.querySelector(`[data-field="${name}"]`);
+            await ds.savePosMenuDraft(currentUid, posSetupOutlet, row.dataset.posMenuItem, {
+                visible: val('visible').checked, available: val('available').checked,
+                price_override: val('price_override').value, sort: Number(val('sort').value) || 0
+            });
+            window.showToast('Menu draft saved. Publish when it is ready.', 'success');
+            await renderPosMenuSetup();
+        }
 
         // ── Formatting ───────────────────────────────────────────────────────
         // Rp with dot separators and no space, per DESIGN_SYSTEM. Negative stock
@@ -2955,6 +3014,7 @@
                 window.showToast(editingItem ? 'Item updated.' : 'Item added.', 'success');
                 closeDrawer();
                 await loadInventory();
+                await renderPosMenuSetup();
                 revealItem(saved && saved.id);
             } catch (err) {
                 showError(INV_MESSAGES[err.code] || err.message || 'Could not save this item.');
@@ -3969,6 +4029,30 @@
             if (found) openDrawer(found.item);
         });
 
+        document.getElementById('pos-menu-add').addEventListener('click', () => openDrawer(null));
+        document.getElementById('pos-menu-drafts').addEventListener('change', async (event) => {
+            const row = event.target.closest('[data-pos-menu-item]');
+            if (!row) return;
+            try { await savePosDraftRow(row); }
+            catch (err) { window.showToast(err.message || 'Could not save menu draft.', 'error'); }
+        });
+        document.getElementById('pos-menu-drafts').addEventListener('click', (event) => {
+            const button = event.target.closest('[data-edit-item]');
+            if (!button) return;
+            const row = allRows.find((r) => r.item.id === button.dataset.editItem);
+            if (row) openDrawer(row.item);
+        });
+        document.getElementById('pos-menu-publish').addEventListener('click', async () => {
+            const button = document.getElementById('pos-menu-publish');
+            button.disabled = true; button.textContent = 'Publishing…';
+            try {
+                await ds.publishPosMenu(currentUid, posSetupOutlet);
+                window.showToast('Menu published to cashier and QR ordering.', 'success');
+                await renderPosMenuSetup();
+            } catch (err) { window.showToast(err.message || 'Could not publish menu.', 'error'); }
+            finally { button.disabled = false; button.textContent = 'Publish menu'; }
+        });
+
         // ── Boot ─────────────────────────────────────────────────────────────
         onAuthStateChanged(auth, async (user) => {
             if (!user) { window.location.replace('/login'); return; }
@@ -3996,6 +4080,12 @@
             });
 
             await loadInventory();
+            if (posSetupOutlet) {
+                const outletUrl = encodeURIComponent(posSetupOutlet);
+                document.getElementById('pos-menu-preview-till').href = `/pos?outlet=${outletUrl}`;
+                document.getElementById('pos-menu-preview-qr').href = `/pos?outlet=${outletUrl}#tables`;
+                await renderPosMenuSetup();
+            }
 
             // Deep link last: the panels need their data before a filter can mean
             // anything. `push: false` so arriving at /inventory?tab=items does not

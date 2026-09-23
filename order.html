@@ -1024,6 +1024,11 @@ img { max-width: 100%; display: block; }
 }
 .add-btn svg { width: 17px; height: 17px; }
 .add-btn:active { background: #F3F4F6; }
+.card.is-sold-out, .reco-card.is-sold-out { filter: saturate(.45); }
+.card-sold-out {
+    padding: 5px 8px; border-radius: 999px; background: #F3F4F6;
+    color: #6B7280; font-size: 11px; font-weight: 800;
+}
 
 /* How many are already in the cart. A BADGE rather than a word on the button,
    because the button now has to stay identical for every render — the count is
@@ -3218,6 +3223,7 @@ html.kb-open .welcome-art { display: none; }
             'menu.empty': 'Tidak ada menu yang cocok.',
             'recos.title': 'Rekomendasi Kami',
             'card.add': 'Tambah {name}',
+            'card.soldOut': 'Habis',
 
             'item.required': 'Wajib pilih 1',
             'item.multi': 'Pilih beberapa',
@@ -3382,6 +3388,7 @@ html.kb-open .welcome-art { display: none; }
             'menu.empty': 'Nothing on the menu matches.',
             'recos.title': 'Our Recommendations',
             'card.add': 'Add {name}',
+            'card.soldOut': 'Sold out',
 
             'item.required': 'Pick 1',
             'item.multi': 'Pick any',
@@ -4580,7 +4587,8 @@ html.kb-open .welcome-art { display: none; }
         // and re-requests every photo. That is why images "sometimes did not
         // load": they were being torn down and refetched on every tap.
         return '<article class="' + (extra || 'card') + (i.has_image ? '' : ' is-plain')
-            + '" data-item="' + esc(i.id) + '" data-open="' + esc(i.id) + '">'
+            + (i.available === false ? ' is-sold-out' : '')
+            + '" data-item="' + esc(i.id) + '"' + (i.available === false ? '' : ' data-open="' + esc(i.id) + '"') + '>'
             + media
             + '<div class="card-scrim"></div>'
             + '<span class="card-qty" data-qty="' + esc(i.id) + '"'
@@ -4589,11 +4597,11 @@ html.kb-open .welcome-art { display: none; }
             + '<h3 class="card-name">' + esc(i.name) + '</h3>'
             + '<div class="card-foot">'
             + '<span class="card-price num">' + esc(money(i.price)) + '</span>'
-            + '<button class="add-btn" type="button" data-open="' + esc(i.id) + '"'
+            + (i.available === false ? '<span class="card-sold-out">' + esc(t('card.soldOut')) + '</span>' : '<button class="add-btn" type="button" data-open="' + esc(i.id) + '"'
             + ' aria-label="' + esc(t('card.add', { name: i.name })) + '">'
             + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"'
             + ' stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>'
-            + '</button>'
+            + '</button>')
             + '</div></div></article>';
     }
 
@@ -4910,7 +4918,7 @@ html.kb-open .welcome-art { display: none; }
     }
 
     function addToCart(item, optionIds, note, qty) {
-        if (!item) return;
+        if (!item || item.available === false) return;
         var meta = optionsMeta(item, optionIds);
         var key = cartKey(item.id, optionIds, note);
         var line = cart.filter(function (l) { return l.key === key; })[0];
@@ -5106,7 +5114,7 @@ html.kb-open .welcome-art { display: none; }
             if (it && it.category) cartCats[it.category] = true;
         });
 
-        var pool = menu.items.filter(function (i) { return !inCart[i.id]; });
+        var pool = menu.items.filter(function (i) { return i.available !== false && !inCart[i.id]; });
         var other = pool.filter(function (i) { return !i.category || !cartCats[i.category]; });
         var picks = (other.length ? other : pool).slice(0, 8);
 
@@ -6252,6 +6260,7 @@ html.kb-open .welcome-art { display: none; }
             body: JSON.stringify({
                 token: TOKEN,
                 client_ref: clientRef,
+                menu_version: menu && menu.publication_version,
                 // What this device believes it is part of. The server refuses
                 // the order if the table has moved on, rather than appending to
                 // a sitting already paid for. Read at call time, not closed
@@ -6377,6 +6386,8 @@ html.kb-open .welcome-art { display: none; }
                     if (lastStatus) lastStatus.status = 'awaiting_payment';
                 } else if (err && err.error === 'order_closed') {
                     msg = t('err.tableClosed');
+                } else if (err && err.error === 'menu_changed') {
+                    window.location.reload();
                 } else if (err && err.error === 'nothing_orderable') {
                     msg = t('err.itemGone');
                 } else if (err && err.error === 'rate_limited') {

@@ -629,6 +629,17 @@ async function main() {
         setDoc(doc(db, `workspaces/${WS}/pos_outlet_settings/dim1`), outletSettings()));
     await expectOutcome('owner writes a discount preset', true, () =>
         setDoc(doc(db, `workspaces/${WS}/pos_discount_presets/p1`), preset()));
+    const menuDraft = {
+        dimension_id: 'dim1', item_id: 'coffee', visible: true, available: true,
+        price_override: 28000, sort: 0, updated_at: serverTimestamp(), updated_by: uid
+    };
+    await expectOutcome('owner saves an outlet menu draft', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_outlet_menu_drafts/dim1__coffee`), menuDraft));
+    await expectOutcome('owner publishes outlet menu metadata', true, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_menu_publications/dim1`), {
+            dimension_id: 'dim1', active_version: 'v1', item_count: 1,
+            published_at: serverTimestamp(), published_by: uid
+        }));
 
     // ⚠️ THE RATE BOUND IS A RULE, not a form validation. A rate typed as 1100
     // instead of 11 does not fail anywhere else — it produces a plausible,
@@ -661,11 +672,20 @@ async function main() {
         getDoc(doc(db, `workspaces/${WS}/pos_outlet_settings/dim1`)));
     await expectOutcome('cashier READS discount presets', true, () =>
         getDoc(doc(db, `workspaces/${WS}/pos_discount_presets/p1`)));
+    await expectOutcome('cashier READS the published menu version', true, () =>
+        getDoc(doc(db, `workspaces/${WS}/pos_menu_publications/dim1`)));
     await expectOutcome('cashier writing outlet settings is denied', false, () =>
         setDoc(doc(db, `workspaces/${WS}/pos_outlet_settings/dim1`),
             outletSettings({ tax_rate_percent: 0 })));
     await expectOutcome('cashier writing a discount preset is denied', false, () =>
         setDoc(doc(db, `workspaces/${WS}/pos_discount_presets/p9`), preset()));
+    await expectOutcome('cashier changing an outlet menu draft is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_outlet_menu_drafts/dim1__coffee`), menuDraft));
+    await expectOutcome('cashier publishing a menu is denied', false, () =>
+        setDoc(doc(db, `workspaces/${WS}/pos_menu_publications/dim1`), {
+            dimension_id: 'dim1', active_version: 'v2', item_count: 1,
+            published_at: serverTimestamp(), published_by: uid
+        }));
 
     // The pricing snapshot rides on the order. One key holding a map, because
     // five scalars would cost five more expressions on the money path.

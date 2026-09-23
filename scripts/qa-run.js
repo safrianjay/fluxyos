@@ -141,6 +141,7 @@ const FINANCE_COLLECTIONS = [
   // Reservations (2026-09-01) — a booking holds a table, so it is operational
   // data the scope guard has to see.
   'pos_reservations', 'pos_outlet_settings', 'pos_discount_presets',
+  'pos_outlet_menu_drafts', 'pos_outlet_menu_items', 'pos_menu_publications',
 ];
 
 function scopeGuard() {

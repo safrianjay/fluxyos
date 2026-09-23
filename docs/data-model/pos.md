@@ -1,6 +1,6 @@
 ---
 status: current
-owns: [pos_tables, pos_orders, pos_reservations, pos_table_directory, pos_outlet_settings, pos_discount_presets]
+owns: [pos_tables, pos_orders, pos_reservations, pos_table_directory, pos_outlet_settings, pos_discount_presets, pos_outlet_menu_drafts, pos_outlet_menu_items, pos_menu_publications]
 updated: 2026-09-05
 source: docs/POS_IMPLEMENTATION_PLAN.md
 ---
@@ -1722,7 +1722,29 @@ was never this workspace's money.
 Guard: `tests/pos-pricing.check.js` (1,200 combinations, pure, unconditional in
 the BE lane). Posting: `tests/pos-tax-service.check.js` — see §4.
 
-## 12. `pos_discount_presets/{presetId}` — named, reusable discounts
+## 12. Outlet menu drafts and publications
+
+Inventory `items` remains the canonical product, modifier, image, and recipe
+record. Outlet-specific menu edits live in
+`pos_outlet_menu_drafts/{dimensionId}__{itemId}` with `visible`, `available`,
+`price_override`, and `sort`. Saving a draft never changes a live till or QR
+menu.
+
+Publishing writes an immutable set of resolved customer-facing records to
+`pos_outlet_menu_items/{dimensionId}__{version}__{itemId}`. Each record carries
+`publication_key = dimensionId:version`; consumers query that key so they can
+never combine two versions. After all snapshot batches succeed,
+`pos_menu_publications/{dimensionId}` switches `active_version`. Until this
+metadata document exists, existing outlets retain the legacy `items.pos_visible`
+menu. Once it exists, the snapshot is authoritative for staff POS, QR menu,
+images, prices, modifiers, and availability.
+
+Finance and management roles may edit and publish. Cashiers may read the active
+snapshot but cannot write drafts or publication records. Recipe ingredients
+remain on `items`, so cost and stock relief continue to use canonical inventory
+data rather than the menu snapshot.
+
+## 13. `pos_discount_presets/{presetId}` — named, reusable discounts
 
 So a cashier taps instead of typing an amount and a reason free-hand with a
 customer waiting. **They change nothing about posting**: a preset produces the

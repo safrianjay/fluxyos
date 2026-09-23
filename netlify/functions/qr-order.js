@@ -16,7 +16,7 @@ const pricing = require('../../assets/js/pos-pricing.js');
 // FluxyOS — a customer at a table places an order. Public, unauthenticated.
 //
 //     POST /.netlify/functions/qr-order
-//     { token, client_ref, customer_name?, customer_phone?, guest_count?,
+//     { token, client_ref, menu_version?, customer_name?, customer_phone?, guest_count?,
 //       lines: [{ item_id, quantity, note?, options: [optionId, ...] }] }
 //
 // THE CLIENT'S PRICES ARE NOT VALIDATED — THEY ARE IGNORED. The request carries
@@ -217,9 +217,8 @@ exports.handler = async (event) => {
                 console.warn('[qr-order] outlet pricing unreadable; billing at zero rates', e);
                 return null;
             });
-        const [tableSnap, itemSnaps, recent, guessedSettings] = await Promise.all([
+        const [tableSnap, recent, guessedSettings] = await Promise.all([
             db.doc(`workspaces/${workspaceId}/pos_tables/${tableId}`).get(),
-            db.getAll(...ids.map((id) => db.doc(`workspaces/${workspaceId}/items/${id}`))),
             // Find the order already on this table: THIS TABLE's orders, not the
             // workspace's newest 50. A live order is not "recent" at a busy
             // outlet, and assuming it was is how tables vanished mid-meal (H1;
@@ -234,16 +233,29 @@ exports.handler = async (event) => {
         if (table.status === 'archived') return json(404, { error: 'not_found' });
         const dimensionId = table.dimension_id;
         if (!dimensionId) return json(409, { error: 'table_not_configured' });
+        const publicationSnap = await db.doc(
+            `workspaces/${workspaceId}/pos_menu_publications/${dimensionId}`
+        ).get();
+        const menuVersion = publicationSnap.exists
+            ? String((publicationSnap.data() || {}).active_version || '') : '';
+        if (menuVersion && String(body.menu_version || '') !== menuVersion) {
+            return json(409, { error: 'menu_changed', refresh_required: true,
+                publication_version: menuVersion });
+        }
+        const itemSnaps = await db.getAll(...ids.map((id) => menuVersion
+            ? db.doc(`workspaces/${workspaceId}/pos_outlet_menu_items/${dimensionId}__${menuVersion}__${id}`)
+            : db.doc(`workspaces/${workspaceId}/items/${id}`)));
         const menu = new Map();
         itemSnaps.forEach((s) => {
             if (!s.exists) return;
             const i = s.data() || {};
             // The same gate the menu endpoint applies. An item that is not on
             // the menu cannot be ordered by knowing its id.
-            if (i.pos_visible !== true || i.status === 'archived') return;
+            if (menuVersion ? (i.visible !== true || i.available === false)
+                : (i.pos_visible !== true || i.status === 'archived')) return;
             const price = Number(i.sales_price);
             if (!Number.isInteger(price) || price <= 0) return;
-            menu.set(s.id, i);
+            menu.set(menuVersion ? String(i.item_id || '') : s.id, i);
         });
 
         const lines = [];
