@@ -935,8 +935,9 @@ by ingredient and outlet without folding it into recipe COGS.
 
 ### Phase 5 — Payment providers
 
-The payments registry, Midtrans, Xendit, webhook receiver + worker, refunds,
-reconciliation, the `1030` settlement dashboard.
+The credential-gated payments registry and Midtrans/Xendit signature adapters
+are shipped. The webhook receiver + worker, charge initiation, refunds,
+reconciliation, and the `1030` settlement dashboard remain.
 
 ### Phase 6 — AI
 

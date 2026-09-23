@@ -211,6 +211,7 @@ function laneBE(changed) {
         ok = record('be', run('check:inventory-variance (POS recipes vs physical counts)', 'node', ['tests/inventory-variance.check.mjs'])) && ok;
         ok = record('be', run('check:menu-engineering (POS sales and current recipe margin)', 'node', ['tests/menu-engineering.check.mjs'])) && ok;
         ok = record('be', run('check:waste-attribution (recorded loss by reason and service)', 'node', ['tests/waste-attribution.check.mjs'])) && ok;
+        ok = record('be', run('check:payment-providers (provider registry and webhook verification)', 'node', ['tests/payment-provider-registry.check.js'])) && ok;
   // Unconditional, for the same reason as the price book: the two eligibility
   // signals live in feature-access.js while the DATA they read is stamped by
   // onboarding and by a backfill script, so neither file needs to be in the diff
