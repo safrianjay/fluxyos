@@ -45,8 +45,8 @@ const SITE = 'https://fluxyos.com';
 const PAGES = {
     'point-of-sale.html': {
         slug: 'point-of-sale', rootPath: '/point-of-sale',
-        title: "Point of Sale untuk Restoran & Kafe | FluxyOS",
-        description: "Hubungkan pesanan meja, menu QR, layanan dapur, dan catatan pembayaran dengan persediaan serta akuntansi melalui FluxyOS Point of Sale.",
+        title: "POS Intelligence untuk Restoran & Kafe | FluxyOS",
+        description: "POS intelligence FluxyOS menghubungkan pesanan meja, menu QR, layanan dapur, dan catatan pembayaran ke persediaan serta akuntansi.",
     },
     'fluxyos.html': {
         slug: 'fluxyos', rootPath: '/',

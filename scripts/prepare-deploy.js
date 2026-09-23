@@ -171,7 +171,7 @@ const ORDER_PAGES = pagesFor('order');
 // Marketing-only directories, pruned from app deploys. includes/ and assets/
 // stay on both sites (footer partials are only fetched by marketing pages;
 // assets are shared).
-const MARKETING_DIRS = ['use-cases', 'id'];
+const MARKETING_DIRS = ['use-cases', 'guides', 'id'];
 
 // Cron-registering functions. Pruned from the marketing deploy so the apex
 // site can never double-send even if an env flag is set there by mistake.
