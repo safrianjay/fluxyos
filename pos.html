@@ -590,6 +590,38 @@
         }
         .pos-modal-foot .pos-btn-primary, .pos-modal-foot .pos-btn-ghost { flex: 1 1 auto; justify-content: center; }
 
+        /* ── Order labels ─────────────────────────────────────────────────
+           A label run has three choices (products, label shape, copies). It
+           uses the shared dialog frame above; these rules only make those
+           choices easy to scan at a till. */
+        .pos-modal.pos-label-print { width: min(560px, 100%); }
+        .pos-label-list { display: grid; gap: 8px; }
+        .pos-label-selectall { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding-bottom: 10px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #475569; }
+        .pos-label-check { display: flex; align-items: center; gap: 10px; min-width: 0; cursor: pointer; }
+        .pos-label-check input { width: 16px; height: 16px; margin: 0; accent-color: #EA580C; flex: none; }
+        .pos-label-line { display: flex; align-items: center; gap: 12px; padding: 11px 12px;
+            border: 1px solid #E2E8F0; border-radius: 10px; background: #fff; cursor: pointer; }
+        .pos-label-line:hover { border-color: #CBD5E1; background: #F8FAFC; }
+        .pos-label-line:has(input:checked) { border-color: #FDBA74; background: #FFF7ED; }
+        .pos-label-line-main { min-width: 0; flex: 1; }
+        .pos-label-line-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            font-size: 14px; font-weight: 600; color: #0F172A; }
+        .pos-label-line-detail { display: block; margin-top: 2px; overflow: hidden; text-overflow: ellipsis;
+            white-space: nowrap; font-size: 12px; color: #64748B; }
+        .pos-label-qty { flex: none; padding: 3px 7px; border-radius: 999px; background: #F1F5F9;
+            color: #475569; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+        .pos-label-options { display: grid; grid-template-columns: minmax(0, 1fr) 132px; gap: 12px; align-items: end; }
+        .pos-label-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #F1F5F9; padding: 4px; border-radius: 10px; }
+        .pos-label-mode button { min-height: 40px; padding: 6px 9px; border: 0; border-radius: 7px; background: transparent;
+            color: #64748B; cursor: pointer; font-size: 12px; font-weight: 500; line-height: 1.2; }
+        .pos-label-mode button.is-on { background: #fff; color: #0F172A; font-weight: 600; box-shadow: 0 1px 2px rgba(15,23,42,.08); }
+        .pos-label-mode button:focus-visible { outline: 2px solid #EA580C; outline-offset: 1px; }
+        .pos-label-summary { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 9px;
+            background: #F8FAFC; color: #475569; font-size: 13px; }
+        .pos-label-summary strong { color: #0F172A; font-variant-numeric: tabular-nums; }
+        @media (max-width: 500px) { .pos-label-options { grid-template-columns: 1fr; } }
+
         /* The type switch. A segmented control rather than two cards: the choice
            is now the top of a FORM whose fields change with it, so it has to read
            as a setting on that form and not as the whole decision. */

@@ -4513,7 +4513,11 @@ function openDiscountDrawer(lineId = null) {
 // above the total in one case and below it in the other. Since a second ticket
 // inherits the sitting's `pos_pricing` (pos.md) that cannot happen within a
 // sitting any more; it survives for bills opened before that rule existed.
-async function printOrderLabels(order) {
+function printOrderLabels(order) {
+    return openOrderLabelDialog(order);
+    /* Legacy prompts retained below as historical context while the dialog is
+       rolled out. They are unreachable: labels now use the shared modal. */
+    /*
     const all = order.lines || [];
     const choice = window.prompt(`Print which products? Enter numbers, separated by commas.\n${all.map((l, i) => `${i + 1}. ${l.item_name} ×${l.quantity}`).join('\n')}`, all.map((_, i) => i + 1).join(','));
     if (choice === null) return;
@@ -4529,6 +4533,80 @@ async function printOrderLabels(order) {
         return Array.from({ length: repeat }, () => `<section class="label"><strong>${esc(table)} · ${esc(order.order_number || '')}</strong><h1>${esc(line.item_name)}</h1><b>${mode === 'quantity' ? '×1' : `×${Number(line.quantity) || 0}`}</b><p>${esc((line.modifiers || []).map((m) => m.option_name).filter(Boolean).join(' · '))}${line.note ? `<br>${esc(line.note)}` : ''}</p><small>${esc(order.customer_name || order.channel || 'POS')} · ${esc(order.id || '')}<br>${new Date().toLocaleString()}</small></section>`);
     }).join('');
     w.document.write(`<!doctype html><title>Order labels</title><style>@page{size:58mm auto;margin:2mm}body{font:14px Arial}.label{width:54mm;min-height:32mm;border-bottom:1px dashed #000;padding:2mm 0;page-break-inside:avoid}h1{font-size:20px;margin:4px 0}b{font-size:28px}p{margin:4px 0}small{font-size:10px}</style>${lines}<script>window.onload=()=>window.print()<\/script>`);
+    w.document.close();
+    ds.recordPosOrderLabelPrint(state.uid, order.id, { lineIds: picked.map((i) => all[i].line_id), copies, mode }).catch(() => {});
+    */
+}
+
+function openOrderLabelDialog(order) {
+    const all = order.lines || [];
+    if (!all.length) { toast('This order has no products to label.', 'error'); return; }
+    const prior = document.activeElement;
+    document.getElementById('pos-label-print-modal')?.remove();
+    const el = document.createElement('div');
+    el.id = 'pos-label-print-modal';
+    el.className = 'pos-modal-layer';
+    el.innerHTML = `
+        <div class="pos-modal-backdrop" data-label-close></div>
+        <section class="pos-modal pos-label-print" role="dialog" aria-modal="true" aria-labelledby="pos-label-print-title">
+            <div class="pos-modal-head"><div><h2 class="pos-modal-title" id="pos-label-print-title">Print order labels</h2><p class="pos-modal-sub">${esc(order.table_label ? `Table ${order.table_label}` : 'Takeaway')} · ${esc(order.order_number || 'Order')}</p></div><button type="button" class="pos-modal-close" data-label-close aria-label="Close print labels dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+            <div class="pos-modal-body">
+                <div class="pos-label-selectall"><label class="pos-label-check"><input type="checkbox" id="pos-label-all" checked> <span>Select all products</span></label><span id="pos-label-selected-count"></span></div>
+                <div class="pos-label-list" id="pos-label-list">${all.map((line, index) => {
+                    const detail = [(line.modifiers || []).map((m) => m.option_name).filter(Boolean).join(' · '), line.note].filter(Boolean).join(' · ');
+                    return `<label class="pos-label-line"><input type="checkbox" data-label-index="${index}" checked><span class="pos-label-line-main"><span class="pos-label-line-name">${esc(line.item_name || 'Unnamed product')}</span>${detail ? `<span class="pos-label-line-detail">${esc(detail)}</span>` : ''}</span><span class="pos-label-qty">×${Number(line.quantity) || 1}</span></label>`;
+                }).join('')}</div>
+                <div class="pos-label-options"><div class="pos-field"><label>Label format</label><div class="pos-label-mode" role="group" aria-label="Label format"><button type="button" class="is-on" data-label-mode="quantity">One label per unit</button><button type="button" data-label-mode="line">One label per product</button></div></div><div class="pos-field"><label for="pos-label-copies">Copies of each</label><input id="pos-label-copies" type="number" min="1" max="20" value="1" inputmode="numeric"></div></div>
+                <div class="pos-label-summary" aria-live="polite"><strong id="pos-label-total">0 labels</strong><span id="pos-label-summary-copy"></span></div>
+            </div>
+            <div class="pos-modal-foot"><button type="button" class="pos-btn-ghost" data-label-close>Cancel</button><button type="button" class="pos-btn-primary" id="pos-label-print-confirm">Print labels</button></div>
+        </section>`;
+    document.body.appendChild(el);
+    let mode = 'quantity';
+    const close = () => { el.remove(); prior?.focus?.(); };
+    const picked = () => [...el.querySelectorAll('[data-label-index]:checked')].map((input) => Number(input.dataset.labelIndex));
+    const copies = () => Math.max(1, Math.min(20, Number(el.querySelector('#pos-label-copies').value) || 1));
+    const update = () => {
+        const selected = picked();
+        const total = selected.reduce((sum, index) => sum + (mode === 'quantity' ? Number(all[index].quantity) || 1 : 1), 0) * copies();
+        const allToggle = el.querySelector('#pos-label-all');
+        allToggle.checked = selected.length === all.length;
+        allToggle.indeterminate = selected.length > 0 && selected.length < all.length;
+        el.querySelector('#pos-label-selected-count').textContent = `${selected.length} of ${all.length} selected`;
+        el.querySelector('#pos-label-total').textContent = `${total} label${total === 1 ? '' : 's'}`;
+        el.querySelector('#pos-label-summary-copy').textContent = total ? `will print${mode === 'quantity' ? ' as individual units' : ' with each product quantity shown'}.` : 'Choose at least one product.';
+        const confirm = el.querySelector('#pos-label-print-confirm');
+        confirm.disabled = !selected.length;
+        confirm.textContent = total ? `Print ${total} label${total === 1 ? '' : 's'}` : 'Print labels';
+    };
+    el.querySelectorAll('[data-label-close]').forEach((button) => button.addEventListener('click', close));
+    el.querySelector('#pos-label-all').addEventListener('change', (event) => { el.querySelectorAll('[data-label-index]').forEach((input) => { input.checked = event.target.checked; }); update(); });
+    el.querySelector('#pos-label-list').addEventListener('change', update);
+    el.querySelector('#pos-label-copies').addEventListener('input', update);
+    el.querySelectorAll('[data-label-mode]').forEach((button) => button.addEventListener('click', () => { mode = button.dataset.labelMode; el.querySelectorAll('[data-label-mode]').forEach((item) => item.classList.toggle('is-on', item === button)); update(); }));
+    el.addEventListener('keydown', (event) => { if (event.key === 'Escape') close(); });
+    el.querySelector('#pos-label-print-confirm').addEventListener('click', () => {
+        const selected = picked();
+        if (!selected.length) return;
+        const printCopies = copies();
+        const w = window.open('', '_blank', 'width=420,height=640');
+        if (!w) { toast('Allow pop-ups to print order labels.', 'error'); return; }
+        close();
+        writeOrderLabels(order, selected, mode, printCopies, w);
+    });
+    update();
+    el.querySelector('#pos-label-print-confirm').focus();
+}
+
+function writeOrderLabels(order, picked, mode, copies, w) {
+    const all = order.lines || [];
+    const table = order.table_label ? `Table ${esc(order.table_label)}` : 'Takeaway';
+    const lines = picked.flatMap((i) => {
+        const line = all[i]; const repeat = (mode === 'quantity' ? Number(line.quantity) || 1 : 1) * copies;
+        return Array.from({ length: repeat }, () => `<section class="label"><strong>${esc(table)} · ${esc(order.order_number || '')}</strong><h1>${esc(line.item_name)}</h1><b>${mode === 'quantity' ? '×1' : `×${Number(line.quantity) || 0}`}</b><p>${esc((line.modifiers || []).map((m) => m.option_name).filter(Boolean).join(' · '))}${line.note ? `<br>${esc(line.note)}` : ''}</p><small>${esc(order.customer_name || order.channel || 'POS')} · ${esc(order.id || '')}<br>${new Date().toLocaleString()}</small></section>`);
+    }).join('');
+    w.document.write(`<!doctype html><title>Order labels</title><style>@page{size:58mm auto;margin:2mm}body{font:14px Arial}.label{width:54mm;min-height:32mm;border-bottom:1px dashed #000;padding:2mm 0;page-break-inside:avoid}h1{font-size:20px;margin:4px 0}b{font-size:28px}p{margin:4px 0}small{font-size:10px}</style>${lines}<script>window.onload=()=>window.print()<\\/script>`);
+    w.opener = null;
     w.document.close();
     ds.recordPosOrderLabelPrint(state.uid, order.id, { lineIds: picked.map((i) => all[i].line_id), copies, mode }).catch(() => {});
 }
