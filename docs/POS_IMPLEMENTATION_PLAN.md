@@ -917,8 +917,9 @@ follow-up.**
 
 ### Phase 3 — Depth
 
-Per-outlet rules scoping (after a rules-budget check). Split bills. Order transfer
-between tables. Menu availability / 86-ing. Per-outlet menu pricing.
+Split bills, order transfer between tables, menu availability / 86-ing, and
+per-outlet menu pricing are shipped. Per-outlet rules scoping remains after a
+rules-budget check.
 
 ### Phase 4 — Inventory closure
 

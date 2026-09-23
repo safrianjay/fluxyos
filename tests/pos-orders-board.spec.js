@@ -147,6 +147,24 @@ test('a takeaway badge is a different colour from a table badge', async ({ page 
     expect(table.text).toBe('A04');
 });
 
+test('an open ticket can reach the table transfer flow without changing kitchen state', async ({ page }) => {
+    await openBoard(page);
+    await seedBoard(page, [{ status: 'sent', ageMin: 3, table: 'A04' }]);
+    await page.evaluate(() => window.__posSeedFloor([
+        { id: 'tA04', label: 'A04', status: 'active', sort: 1 },
+        { id: 'tA05', label: 'A05', status: 'active', sort: 2 }
+    ], []));
+    await page.locator('[data-order-card="seed-0"]').click();
+    await expect(page.locator('.pos-view[data-view="till"]')).toBeVisible();
+    const move = page.locator('#pos-transfer-btn');
+    await expect(move).toBeVisible();
+    await move.click();
+    const transferDrawer = page.locator('#pos-drawer');
+    await expect(transferDrawer.getByRole('heading')).toContainText(/Move this order/i);
+    await expect(page.locator('#pos-transfer-table')).toBeVisible();
+    await expect(transferDrawer).toContainText(/Kitchen status and payments stay unchanged/i);
+});
+
 test('a paid order never outranks a live one', async ({ page }) => {
     await openBoard(page);
     const rows = await seedBoard(page, [

@@ -146,6 +146,25 @@ async function main() {
         setDoc(doc(db, `workspaces/${WS}/pos_orders/o-ch`), order({ channel: 'telepathy' })));
     await expectOutcome('an unlisted field is denied (hasOnly)', false, () =>
         setDoc(doc(db, `workspaces/${WS}/pos_orders/o-extra`), order({ secret_margin: 1 })));
+    await setDoc(doc(db, `workspaces/${WS}/pos_tables/t13`), table({ label: '13', status: 'active' }));
+    await setDoc(doc(db, `workspaces/${WS}/pos_tables/t-other`), table({
+        label: 'B1', dimension_id: 'outlet-menteng', status: 'active'
+    }));
+    await setDoc(doc(db, `workspaces/${WS}/pos_orders/o-transfer`), order({
+        order_number: 'MOVE-1', table_id: null, table_label: null
+    }));
+    await expectOutcome('an open ticket moves to a table in the same outlet', true, () =>
+        updateDoc(doc(db, `workspaces/${WS}/pos_orders/o-transfer`), {
+            table_id: 't13', table_label: '13', version: 2, updated_at: serverTimestamp()
+        }));
+    await expectOutcome('a ticket cannot move across outlets', false, () =>
+        updateDoc(doc(db, `workspaces/${WS}/pos_orders/o-transfer`), {
+            table_id: 't-other', table_label: 'B1', version: 3, updated_at: serverTimestamp()
+        }));
+    await expectOutcome('a ticket cannot spoof the destination table label', false, () =>
+        updateDoc(doc(db, `workspaces/${WS}/pos_orders/o-transfer`), {
+            table_id: 't13', table_label: 'VIP', version: 3, updated_at: serverTimestamp()
+        }));
 
     await expectOutcome('adding a line bumps version to 2', true, () =>
         updateDoc(doc(db, `workspaces/${WS}/pos_orders/o1`), {

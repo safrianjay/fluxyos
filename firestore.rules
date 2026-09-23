@@ -2690,6 +2690,14 @@ service cloud.firestore {
     function wsValidPosPricing(data) {
       return !('pos_pricing' in data) || data.pos_pricing == null || data.pos_pricing is map;
     }
+    function wsValidPosOrderTable(data, prev, workspaceId) {
+      return (data.table_id == prev.table_id && data.table_label == prev.table_label)
+        || (data.table_id is string
+          && exists(/databases/$(database)/documents/workspaces/$(workspaceId)/pos_tables/$(data.table_id))
+          && get(/databases/$(database)/documents/workspaces/$(workspaceId)/pos_tables/$(data.table_id)).data.dimension_id == data.dimension_id
+          && get(/databases/$(database)/documents/workspaces/$(workspaceId)/pos_tables/$(data.table_id)).data.status == 'active'
+          && data.table_label == get(/databases/$(database)/documents/workspaces/$(workspaceId)/pos_tables/$(data.table_id)).data.label);
+    }
     function wsValidPosOrderCreate(data) {
       return wsPosOrderKeys(data)
         && wsValidPosOrderGuest(data)
@@ -2704,7 +2712,7 @@ service cloud.firestore {
     }
     // Open order. `version` must advance by exactly one — that is what makes a
     // stale second device lose the race instead of overwriting the first's lines.
-    function wsValidPosOrderUpdate(data, prev) {
+    function wsValidPosOrderUpdate(data, prev, workspaceId) {
       return wsPosOrderKeys(data)
         && wsValidPosOrderGuest(data)
         && wsValidPosPricing(data)
@@ -2716,6 +2724,7 @@ service cloud.firestore {
         && data.status in ['open', 'submitted', 'sent', 'ready', 'served', 'awaiting_payment', 'paid', 'void']
         && data.version == prev.version + 1
         && data.dimension_id == prev.dimension_id
+        && wsValidPosOrderTable(data, prev, workspaceId)
         && data.created_at == prev.created_at
         && data.total_amount is number
         && data.paid_amount is number
@@ -4068,7 +4077,7 @@ service cloud.firestore {
               || (wsWrite(workspaceId)
                 && wsValidPosOrderRefund(request.resource.data, resource.data)))
           : (hasRole(workspaceId, ['owner', 'admin', 'finance', 'accountant', 'cashier'])
-              && wsValidPosOrderUpdate(request.resource.data, resource.data));
+              && wsValidPosOrderUpdate(request.resource.data, resource.data, workspaceId));
         allow delete: if false;
       }
       // Bookings. A cashier may take one: they are who answers the phone, and a

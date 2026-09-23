@@ -430,6 +430,21 @@ served dishes included. Reverted 2026-09-06 on Jay's correction, and guarded in
 both directions by `check:qr-order` — the appendable set, and that appending
 never writes `status`.
 
+### Moving a ticket between tables
+
+An open ticket moves by changing only its `table_id` and snapshotted
+`table_label`. Lines, kitchen status, pricing, payments, customer details, and
+posting identifiers remain on the same order document. Moving it onto an
+occupied table therefore joins that table's bill without merging ticket lines or
+putting served food back into the kitchen queue.
+
+`transferPosOrder` reads the order and destination table in one transaction,
+increments the order version, and refuses archived tables, completed orders,
+reserved destinations, or a destination in another outlet. Firestore rules
+independently resolve the destination table and require its outlet and label to
+match the order update. The transfer is recorded as
+`pos_order.transferred` in the workspace audit trail.
+
 ### The dining session is DERIVED, not stored
 
 `qr-order-status` returns every order at the table that is neither paid, voided,

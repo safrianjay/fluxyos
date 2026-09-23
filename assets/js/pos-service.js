@@ -1268,6 +1268,55 @@ export const POS_METHODS = {
         });
     },
 
+    async transferPosOrder(userId, orderId, targetTableId) {
+        if (!userId || !orderId || !targetTableId) throw new Error('Order and destination table are required.');
+        const scope = this._scope(userId);
+        const orderRef = doc(this.db, `${scope}/pos_orders/${orderId}`);
+        const tableRef = doc(this.db, `${scope}/pos_tables/${targetTableId}`);
+
+        // A reservation is a claim on the destination table. Query before the
+        // transaction because Firestore transactions cannot discover documents;
+        // the table + order checks below remain atomic and rules independently
+        // enforce that the table belongs to the order's outlet.
+        const held = (await this._holdingReservations(userId, {}))
+            .filter((r) => r.table_id === targetTableId && !r.order_id && posReservationHoldsAt(r));
+        if (held.length) {
+            const r = held[0];
+            throw new Error(`That table is reserved for ${r.guest_name} at ${posFormatClock(posToMs(r.starts_at))}.`);
+        }
+
+        const moved = await this._posTxn(async (tx) => {
+            const orderSnap = await tx.get(orderRef);
+            const tableSnap = await tx.get(tableRef);
+            if (!orderSnap.exists()) throw new Error('That order no longer exists.');
+            if (!tableSnap.exists()) throw new Error('The destination table no longer exists.');
+            const order = { id: orderSnap.id, ...orderSnap.data() };
+            const table = { id: tableSnap.id, ...tableSnap.data() };
+            if (table.status === 'archived') throw new Error('The destination table is archived.');
+            if (table.dimension_id !== order.dimension_id) throw new Error('Orders cannot move between outlets.');
+            if (order.table_id === table.id) throw new Error(`This order is already at table ${table.label}.`);
+            if (order.status === 'void' || order.status === 'paid'
+                || (Number(order.total_amount) > 0 && Number(order.paid_amount) >= Number(order.total_amount))) {
+                throw new Error('A completed order cannot be moved.');
+            }
+            const patch = {
+                table_id: table.id,
+                table_label: table.label,
+                version: (Number(order.version) || 1) + 1,
+                updated_at: serverTimestamp(),
+                updated_by: this.actorUid || userId
+            };
+            tx.update(orderRef, patch);
+            return { ...order, ...patch, previous_table_id: order.table_id || null,
+                updated_at: Timestamp.fromDate(new Date()) };
+        });
+        this._auditCreateBestEffort(userId, 'pos_order.transferred', 'pos_orders', orderId, {
+            from_table_id: moved.previous_table_id,
+            to_table_id: targetTableId
+        });
+        return moved;
+    },
+
     // Chosen modifiers, normalized onto a line.
     //
     // `price_delta` is per UNIT and may be negative (a smaller size). It is kept

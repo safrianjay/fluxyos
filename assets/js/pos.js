@@ -2669,6 +2669,7 @@ function renderOrder() {
     const primary = $('pos-primary');
     const badge = $('pos-order-status');
     const discountBtn = $('pos-discount-btn');
+    const transferBtn = $('pos-transfer-btn');
     const voidBtn = $('pos-void-btn');
     const refundBtn = $('pos-refund-btn');
 
@@ -2696,6 +2697,7 @@ function renderOrder() {
         primary.textContent = prof2.emptyAction;
         primary.dataset.emptyAction = prof2.payFirst ? 'new-sale' : 'create-order';
         discountBtn.classList.add('hidden');
+        transferBtn?.classList.add('hidden');
         voidBtn.classList.add('hidden');
         refundBtn.classList.add('hidden');
         $('pos-reprint-btn').classList.add('hidden');
@@ -2915,6 +2917,12 @@ function renderOrder() {
     $('pos-hold-btn')?.classList.toggle('hidden',
         !posProfile().payFirst || !editable || empty);
     discountBtn.classList.toggle('hidden', !editable || empty);
+    if (transferBtn) {
+        const hasDestination = (state.overview?.tables || []).some((t) =>
+            t.status !== 'archived' && t.id !== o.table_id);
+        transferBtn.classList.toggle('hidden', !editable || !hasDestination);
+        transferBtn.textContent = o.table_id ? 'Move table' : 'Assign table';
+    }
     // ⚠️ SPLITTING BELONGS WHERE THE CASHIER IS. They are standing in this panel
     // when the customer says "we'll split it" — sending them to the Orders board
     // to find the same dialog is a detour they would take every time. Offered
@@ -6116,6 +6124,44 @@ function openHoldDrawer() {
     setTimeout(() => $('pos-hold-label')?.focus(), 40);
 }
 
+function openTransferDrawer() {
+    const order = state.order;
+    if (!order) return;
+    const tickets = tableTickets();
+    const tables = (state.overview?.tables || [])
+        .filter((t) => t.status !== 'archived' && t.id !== order.table_id)
+        .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0)
+            || String(a.label || '').localeCompare(String(b.label || '')));
+    if (!tables.length) { toast('There is no other active table at this outlet.', 'error'); return; }
+    drawer({
+        title: order.table_id ? 'Move this order' : 'Assign this order to a table',
+        subtitle: `${orderShort(order)} · Kitchen status and payments stay unchanged.`,
+        submitLabel: order.table_id ? 'Move order' : 'Assign table',
+        body: `<div>
+            <label class="block text-[12px] font-semibold text-slate-700 mb-2" for="pos-transfer-table">Destination table</label>
+            <select id="pos-transfer-table" name="table_id" required class="w-full min-h-[44px] px-3 border border-slate-300 rounded-lg text-[14px] bg-white">
+                <option value="">Choose a table</option>
+                ${tables.map((t) => {
+                    const open = tickets.get(t.id) || [];
+                    return `<option value="${esc(t.id)}">Table ${esc(t.label)}${open.length ? ` · join ${open.length} open ticket${open.length === 1 ? '' : 's'}` : ' · free'}</option>`;
+                }).join('')}
+            </select>
+            <p class="text-[11px] text-slate-500 mt-2">If the destination is occupied, its tickets and this one stay separate for the kitchen but appear together on the table bill.</p>
+        </div>`,
+        onSubmit: async (fd) => {
+            const target = String(fd.get('table_id') || '');
+            if (!target) throw new Error('Choose a destination table.');
+            const before = order.table_label ? `Table ${order.table_label}` : 'Takeaway';
+            state.order = await ds.transferPosOrder(state.uid, order.id, target);
+            state.orderId = order.id;
+            await refresh({ keepOrder: true });
+            renderOrder();
+            toast(`${before} moved to Table ${state.order.table_label}.`);
+        }
+    });
+    setTimeout(() => $('pos-transfer-table')?.focus(), 40);
+}
+
 function openLineNoteDrawer(lineId) {
     const line = (state.order.lines || []).find((l) => l.line_id === lineId);
     if (!line) return;
@@ -6695,6 +6741,7 @@ function wire() {
         return once(advance);
     });
     $('pos-discount-btn').addEventListener('click', openDiscountDrawer);
+    $('pos-transfer-btn')?.addEventListener('click', openTransferDrawer);
     $('pos-split-btn')?.addEventListener('click', () => {
         const o = state.order;
         if (o && o.table_id) openTableBillModal(o.table_id);
