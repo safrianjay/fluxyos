@@ -12,11 +12,11 @@
   ],
   "artifacts": {
     "firestore.rules": {
-      "sha256": "51197e506d08e4b7d1b3ee06eb5950957ee3f4699336d573b6679d31d167137b",
+      "sha256": "d3bca02abd77c0acf36de62d007b05ae2c3d0382250a824bf872e832c730025e",
       "stamped_at": "2026-09-23"
     },
     "firestore.indexes.json": {
-      "sha256": "9193a0a6a16cb8fcdf815d9303d9fb004bd24c74ac5fea1dc90a5c37646318ce",
+      "sha256": "53ac2ccbc802da301a36c2235e148151707ea1d996cbd96cedcc5e97bad1d0b4",
       "stamped_at": "2026-09-23"
     },
     "storage.rules": {
