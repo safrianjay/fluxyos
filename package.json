@@ -16,6 +16,7 @@
     "check:module-parse": "node tests/module-parse.check.js",
     "check:inventory-variance": "node tests/inventory-variance.check.mjs",
     "check:menu-engineering": "node tests/menu-engineering.check.mjs",
+    "check:waste-attribution": "node tests/waste-attribution.check.mjs",
     "check:feature-category": "node tests/feature-access-category.check.js",
     "rules:build": "node scripts/build-rules.js",
     "rules:deploy": "node scripts/build-rules.js && firebase deploy --only firestore:rules --config .rules-build/firebase.json",

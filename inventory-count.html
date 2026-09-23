@@ -263,7 +263,28 @@
                 </div>
             </div>
             <div class="fluxy-drawer-field">
-                <label class="fluxy-drawer-label" for="waste-reference">Reason <span class="cnt-muted">(optional)</span></label>
+                <label class="fluxy-drawer-label" for="waste-reason">Reason</label>
+                <select id="waste-reason" class="fluxy-drawer-select">
+                    <option value="spoilage">Spoilage</option>
+                    <option value="breakage">Breakage</option>
+                    <option value="prep_loss">Prep loss</option>
+                    <option value="returned">Returned</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="fluxy-drawer-field">
+                <label class="fluxy-drawer-label" for="waste-service-period">Service period</label>
+                <select id="waste-service-period" class="fluxy-drawer-select">
+                    <option value="prep">Prep</option>
+                    <option value="breakfast">Breakfast</option>
+                    <option value="lunch">Lunch</option>
+                    <option value="dinner">Dinner</option>
+                    <option value="close">Close</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="fluxy-drawer-field">
+                <label class="fluxy-drawer-label" for="waste-reference">Note <span class="cnt-muted">(optional)</span></label>
                 <input id="waste-reference" type="text" class="fluxy-drawer-input" maxlength="60" placeholder="Past its date" autocomplete="off">
             </div>
             <p id="waste-preview" class="fluxy-drawer-hint"></p>
@@ -779,6 +800,8 @@
                 await ds.createStockAdjustment(currentUid, {
                     adjustment_type: 'waste',
                     dimension_id: outletId || null,
+                    waste_reason: document.getElementById('waste-reason').value,
+                    service_period: document.getElementById('waste-service-period').value,
                     reference: document.getElementById('waste-reference').value.trim() || null,
                     lines: [{ item_id: r.item.id, quantity: r.base }]
                 });

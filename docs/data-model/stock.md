@@ -187,6 +187,8 @@ waste         Dr 5150      / Cr 1200    STOCK-WASTE
 | `adjustment_type` | enum | `count` \| `waste` \| `sale` |
 | `dimension_id` | string \| null | Which outlet was counted |
 | `lines` | array | count: `{item_id, system_quantity, counted_quantity, quantity, amount}` · waste: `{item_id, system_quantity, quantity, amount}` |
+| `waste_reason` | enum \| null | waste only: `spoilage` \| `breakage` \| `prep_loss` \| `returned` \| `other` |
+| `service_period` | enum \| null | waste only: `prep` \| `breakfast` \| `lunch` \| `dinner` \| `close` \| `other` |
 | `total_amount` | integer, **signed** | Negative means stock left. Deliberately not bounded ≥ 0 the way a receipt total is |
 
 **Waste posts to `5150`, not to COGS.** Folding spoilage into cost of goods sold
@@ -197,6 +199,11 @@ and one that hides the problem (`PRODUCT_STRATEGY.md` §7).
 **Waste and counts do not double-count.** Waste recorded as it happens reduces
 the system quantity, so the next count's variance is what the kitchen actually
 consumed.
+
+Waste metadata is copied onto its immutable `stock_movements` rows. The
+attribution view can therefore group recorded loss by ingredient, outlet, reason,
+and service period without joining operational documents or changing the
+subledger.
 
 ### Recipe use versus physical count
 

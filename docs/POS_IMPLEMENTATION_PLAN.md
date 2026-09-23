@@ -929,8 +929,9 @@ Theoretical-vs-actual variance reporting is shipped. Inventory compares POS
 recipe `issue` movements with physical-count corrections by ingredient and
 outlet; recorded waste remains separate from that explanation gap. Menu
 engineering (margin × popularity) is shipped as a current-recipe-margin view of
-settled POS sales by menu item and outlet. Waste attribution against POS
-consumption remains.
+settled POS sales by menu item and outlet. Waste attribution is shipped: waste
+records carry a reason and service period, and Inventory reports recorded loss
+by ingredient and outlet without folding it into recipe COGS.
 
 ### Phase 5 — Payment providers
 

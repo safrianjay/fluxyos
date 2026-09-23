@@ -6142,6 +6142,13 @@ class DataService {
         const entityId = this._resolvedScopeId(userId);
         const dimensionId = this._nullableString(data.dimension_id, 60);
         const reference = this._nullableString(data.reference, 60);
+        // Waste is an operational event. Keep its explanation on the immutable
+        // adjustment and movement so reports can distinguish spoilage from prep
+        // loss without reclassifying it as COGS.
+        const wasteReason = ['spoilage', 'breakage', 'prep_loss', 'returned', 'other']
+            .includes(data.waste_reason) ? data.waste_reason : 'other';
+        const servicePeriod = ['prep', 'breakfast', 'lunch', 'dinner', 'close', 'other']
+            .includes(data.service_period) ? data.service_period : 'other';
         const when = data.counted_at instanceof Date ? data.counted_at : new Date();
 
         const [items, onHand] = await Promise.all([
@@ -6224,6 +6231,10 @@ class DataService {
             timestamp: Timestamp.fromDate(when),
             created_by: this.actorUid || userId, created_at: serverTimestamp()
         };
+        if (type === 'waste') {
+            payload.waste_reason = wasteReason;
+            payload.service_period = servicePeriod;
+        }
 
         const batch = writeBatch(this.db);
         await this._postSourceJournal(userId, batch, 'stock_adjustments', ref, payload, {});
@@ -6233,7 +6244,7 @@ class DataService {
         lines.forEach((l) => {
             if (!l.quantity && !l.amount) return; // a line that counted exactly right
             const mref = doc(collection(this.db, `${scope}/stock_movements`));
-            batch.set(mref, {
+            const movement = {
                 item_id: l.item_id, item_name: l.item_name, dimension_id: dimensionId,
                 quantity: l.quantity, base_unit: l.base_unit, amount: l.amount,
                 movement_type: type === 'waste' ? 'waste' : 'count',
@@ -6241,12 +6252,20 @@ class DataService {
                 journal_ref: payload.journal_ref || null,
                 period_key: periodKey, entity_id: entityId,
                 created_by: this.actorUid || userId, created_at: serverTimestamp()
-            });
+            };
+            if (type === 'waste') {
+                // Kept on the movement too: Inventory reads its subledger rather
+                // than joining mutable operational documents for every report.
+                movement.waste_reason = wasteReason;
+                movement.service_period = servicePeriod;
+            }
+            batch.set(mref, movement);
         });
 
         await batch.commit();
         await this._auditCreateBestEffort(userId, `stock_${type}.created`, 'stock_adjustments', ref.id, {
-            total_amount: total, line_count: lines.length, dimension_id: dimensionId
+            total_amount: total, line_count: lines.length, dimension_id: dimensionId,
+            ...(type === 'waste' ? { waste_reason: wasteReason, service_period: servicePeriod } : {})
         });
         return { id: ref.id, ...payload };
     }
