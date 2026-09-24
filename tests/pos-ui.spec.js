@@ -34,7 +34,7 @@ test.describe('Point of Sale', () => {
         page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
         page.on('pageerror', (e) => errors.push(String(e)));
 
-        await page.goto('/pos');
+        await page.goto('/pos?view=till');
         // The till has its OWN topbar now — the dashboard's title/subtitle pair is
         // deliberately gone, because the POS is a different experience from the
         // finance app rather than a page inside it.
@@ -80,7 +80,7 @@ test.describe('Point of Sale', () => {
         // orders, the book and the drawer — not nineteen links to collections
         // their role is denied. Without this, the shared sidebar creeping back
         // would look like a styling regression rather than the wrong product.
-        await page.goto('/pos');
+        await page.goto('/pos?view=till');
         await page.waitForSelector('#pos-menu .pos-card, #pos-menu-empty', { timeout: 25000 });
 
         // It is the SAME sidebar component the dashboard uses — same logo, entity
@@ -97,7 +97,7 @@ test.describe('Point of Sale', () => {
         // so the book belongs beside the floor rather than in a calendar
         // elsewhere. Order matters — it sits between the orders and the drawer,
         // which is the order of a service.
-        const TILL_NAV = ['Point of Sale', 'Tables', 'Orders', 'Reservations', 'Shift'];
+        const TILL_NAV = ['Overview', 'Point of Sale', 'Tables', 'Orders', 'Reservations', 'Shift'];
         expect(navs.map((t) => t.trim())).toEqual(TILL_NAV);
 
         // Icons come from the shared Lucide set, not a second family drawn here.
@@ -114,7 +114,7 @@ test.describe('Point of Sale', () => {
         for (const v of ['tables', 'orders', 'shift', 'till']) {
             await page.click(`#nav-container [data-view="${v}"]`);
             await expect(page.locator(`.pos-view[data-view="${v}"]`)).toBeVisible();
-            expect(page.url(), 'views must not add routes').toBe(before);
+            expect(new URL(page.url()).pathname, 'views stay on the POS route').toBe(new URL(before).pathname);
         }
 
         // Exactly one view at a time, or two order panels fight over the same ids.
@@ -126,7 +126,7 @@ test.describe('Point of Sale', () => {
         // pos_orders; the dashboard sums the ledger; they differ until posting
         // runs. The resolution is labelling, and if that label is ever dropped
         // the product quietly grows two revenue numbers.
-        await page.goto('/pos');
+        await page.goto('/pos?view=till');
         await page.waitForSelector('#pos-metrics .pos-metric', { timeout: 15000 });
 
         const labels = await page.locator('.pos-metric-label').allTextContents();
@@ -138,7 +138,7 @@ test.describe('Point of Sale', () => {
         // The one page in this app designed mobile-first: it is used standing
         // up, one-handed, during service.
         await page.setViewportSize({ width: 375, height: 750 });
-        await page.goto('/pos');
+        await page.goto('/pos?view=till');
         await page.waitForSelector('#pos-metrics .pos-metric', { timeout: 15000 });
 
         // Nothing may scroll the body sideways.
@@ -162,7 +162,7 @@ test.describe('Point of Sale', () => {
     });
 
     test('type stays on the dashboard scale and no background is orange', async ({ page }) => {
-        await page.goto('/pos');
+        await page.goto('/pos?view=till');
         await page.waitForSelector('#pos-metrics .pos-metric', { timeout: 15000 });
 
         // DESIGN_SYSTEM: 6 steps only (10/12/14/16/20/24). The off-scale sizes
@@ -234,7 +234,7 @@ test.describe('Point of Sale', () => {
         await expect(page.locator('.pos-preset-row', { hasText: name })).toBeVisible({ timeout: 20000 });
 
         try {
-            await page.goto('/pos');
+            await page.goto('/pos?view=till');
             await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
             await expect(page.locator('#pos-new-order')).toBeEnabled({ timeout: 25000 });
             await startTakeawayOrder(page);
@@ -290,7 +290,7 @@ test.describe('Point of Sale', () => {
         // the same failure wearing a different hat, so it now RINGS UP ITS OWN
         // ORDER and refunds it again at the end. See the file header for why
         // that is allowed here and nowhere else in this file.
-        await page.goto('/pos');
+        await page.goto('/pos?view=till');
         await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
 
         // ── Ring up a real takeaway sale ────────────────────────────────────
@@ -445,7 +445,7 @@ test.describe('Point of Sale', () => {
         // Percent is a data-entry convenience only. The ledger holds Rupiah, and
         // a stored percentage would have to be re-applied against a base that
         // can still move — so it is resolved before it is ever saved.
-        await page.goto('/pos');
+        await page.goto('/pos?view=till');
         await page.waitForSelector('#pos-metrics .pos-metric', { timeout: 20000 });
 
         // The floor plan moved behind the header's "Table Order" button when the
@@ -522,7 +522,7 @@ test.describe('Point of Sale', () => {
         // Firestore is throttled to make the window observable. Asserting on the
         // real timing would be a race that passes on a fast laptop and ships the
         // bug.
-        await page.goto('/pos');
+        await page.goto('/pos?view=till');
         await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
         await expect(page.locator('#pos-new-order')).toBeEnabled({ timeout: 25000 });
 
@@ -574,7 +574,7 @@ test.describe('Point of Sale', () => {
         //
         // Writes nothing: it drags and CANCELS. Save is the one path that
         // touches Firestore and it is deliberately not exercised here.
-        await page.goto('/pos');
+        await page.goto('/pos?view=till');
         await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
         await page.click('#nav-container [data-view="tables"]');
         await page.waitForSelector('#pos-floor .pos-table', { timeout: 20000 });
@@ -643,7 +643,7 @@ test.describe('Point of Sale', () => {
         // children only: wrapping the views in `.pos-view` dropped every gap to
         // zero at once, and the page read as "weird, tight spacing" rather than
         // as the missing rule it was.
-        await page.goto('/pos');
+        await page.goto('/pos?view=till');
         await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
 
         for (const view of ['till', 'tables', 'orders', 'reservations', 'shift']) {

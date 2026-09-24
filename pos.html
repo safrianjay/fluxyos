@@ -83,6 +83,37 @@
         .pos-shift-btn:hover { background: #F8FAFC; }
         .pos-shift-btn.is-primary { background: #0F172A; color: #fff; border-color: #0F172A; }
         .pos-shift-btn.is-primary:hover { background: #1E293B; }
+        .pos-overview { color:#0B0F19; }
+        .pos-overview-status { display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border:1px solid #E2E8F0;border-radius:10px;background:#fff;font-size:12px;color:#64748B; }
+        .pos-overview-status[data-tone="warning"] { border-color:#FDE68A;background:#FFFBEB;color:#92400E; }
+        .pos-overview-status[data-tone="error"] { border-color:#FECDD3;background:#FFF1F2;color:#9F1239; }
+        .pos-overview-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px; }
+        .pos-overview-kpi { border:1px solid #E2E8F0;border-radius:12px;background:#fff;padding:16px;min-width:0; }
+        .pos-overview-kpi.is-primary { border-top:3px solid #EA580C; }
+        .pos-overview-label { display:flex;align-items:center;gap:6px;color:#64748B;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em; }
+        .pos-overview-value { margin-top:8px;font-size:24px;line-height:1.1;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere; }
+        .pos-overview-delta { margin-top:7px;color:#64748B;font-size:12px; }
+        .pos-overview-card { border:1px solid #E2E8F0;border-radius:12px;background:#fff;overflow:hidden; }
+        .pos-overview-card-head { display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px;border-bottom:1px solid #F1F5F9; }
+        .pos-overview-card h2 { font-size:15px;font-weight:700;letter-spacing:-.015em; }
+        .pos-overview-card p { margin-top:3px;color:#64748B;font-size:12px; }
+        .pos-overview-card-body { padding:16px; }
+        .pos-overview-two { display:grid;grid-template-columns:1fr;gap:16px; }
+        .pos-overview-list { display:grid;gap:10px; }
+        .pos-overview-row { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding-bottom:10px;border-bottom:1px solid #F1F5F9;font-size:13px; }
+        .pos-overview-row:last-child { border-bottom:0;padding-bottom:0; }
+        .pos-overview-row strong { font-variant-numeric:tabular-nums; }
+        .pos-overview-bars { display:flex;align-items:flex-end;gap:5px;min-height:190px;padding-top:22px;border-bottom:1px solid #CBD5E1; }
+        .pos-overview-bar { flex:1;min-width:5px;position:relative;border-radius:4px 4px 0 0;background:#0B0F19;border-top:2px solid #EA580C; }
+        .pos-overview-chart-table { width:100%;margin-top:14px;border-collapse:collapse;font-size:12px; }
+        .pos-overview-chart-table th,.pos-overview-chart-table td { padding:7px 8px;border-bottom:1px solid #F1F5F9;text-align:right; }
+        .pos-overview-chart-table th:first-child,.pos-overview-chart-table td:first-child { text-align:left; }
+        .pos-overview-empty { padding:28px 16px;text-align:center;color:#64748B;font-size:13px; }
+        .pos-overview-skeleton { min-height:96px;border-radius:12px;background:linear-gradient(90deg,#F1F5F9 25%,#F8FAFC 50%,#F1F5F9 75%);background-size:200% 100%;animation:pos-shimmer 1.3s infinite; }
+        @keyframes pos-shimmer { to { background-position:-200% 0; } }
+        #pos-overview-date { min-width:230px; }
+        @media (min-width:760px) { .pos-overview-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }.pos-overview-two { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+        @media (max-width:640px) { #pos-overview-date { min-width:0;width:100%; }.pos-overview-card-head,.pos-overview-card-body { padding:14px; } }
 
         /* Blind close: the count goes in before the expectation comes out. */
         .pos-count-reveal { border-top: 1px solid #E2E8F0; margin-top: 16px; padding-top: 16px; }
@@ -1996,6 +2027,7 @@
                 <p class="pos-topbar-sub" id="pos-view-sub">Ring up a sale — scan, search or tap a product.</p>
             </div>
             <div class="pos-topbar-actions">
+                <div id="pos-overview-date" class="hidden"></div>
                 <button id="pos-settings-btn" type="button" class="pos-btn-ghost" aria-label="Configure this outlet">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06A1.7 1.7 0 0 0 15.74 19l-.3.12a1.7 1.7 0 0 0-1.04 1.56v.08h-3v-.08A1.7 1.7 0 0 0 10.36 19l-.3-.12a1.7 1.7 0 0 0-1.88.34l-.06.06L6 17.16l.06-.06A1.7 1.7 0 0 0 6.4 15l-.12-.3A1.7 1.7 0 0 0 4.72 13.66h-.08v-3h.08A1.7 1.7 0 0 0 6.28 9.62l.12-.3A1.7 1.7 0 0 0 6.06 7.44L6 7.38l2.12-2.12.06.06a1.7 1.7 0 0 0 1.88.34l.3-.12A1.7 1.7 0 0 0 11.4 4v-.08h3V4a1.7 1.7 0 0 0 1.04 1.56l.3.12a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.12 2.12-.06.06a1.7 1.7 0 0 0-.34 1.88l.12.3a1.7 1.7 0 0 0 1.56 1.04h.08v3h-.08a1.7 1.7 0 0 0-1.56 1.06z"/></svg>
                     <span>Outlet setup</span>
@@ -2044,6 +2076,12 @@
                      looking at. -->
                 <div class="pos-shell" id="pos-shell">
                   <div class="pos-col">
+                <section class="pos-view pos-overview hidden" data-view="overview" aria-busy="true">
+                    <div id="pos-overview-state" class="pos-overview-status" role="status" aria-live="polite"><span>Loading POS sales…</span></div>
+                    <div id="pos-overview-content" class="fluxy-section-stack" style="gap:16px;margin-top:16px;">
+                        <div class="pos-overview-grid" aria-hidden="true"><div class="pos-overview-skeleton"></div><div class="pos-overview-skeleton"></div><div class="pos-overview-skeleton"></div><div class="pos-overview-skeleton"></div></div>
+                    </div>
+                </section>
                 <section class="pos-view" data-view="till">
                 <!-- No shift bar here. Opening and closing a drawer is a
                      twice-a-day job and it was occupying the top of the screen a
@@ -2389,6 +2427,7 @@
          resolves presets with it so a percentage rounds identically on every
          surface that can apply one. -->
     <script src="assets/js/pos-pricing.js"></script>
+    <script src="assets/js/pos-overview-metrics.js"></script>
     <script src="assets/js/sidebar-loader.js"></script>
     <script src="assets/js/fluxy-select.js"></script>
     <!-- The SHARED date picker. The reservation dialog uses it in single-date

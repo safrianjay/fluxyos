@@ -13,19 +13,19 @@
   "artifacts": {
     "firestore.rules": {
       "sha256": "d3bca02abd77c0acf36de62d007b05ae2c3d0382250a824bf872e832c730025e",
-      "stamped_at": "2026-09-23"
+      "stamped_at": "2026-09-24"
     },
     "firestore.indexes.json": {
-      "sha256": "53ac2ccbc802da301a36c2235e148151707ea1d996cbd96cedcc5e97bad1d0b4",
-      "stamped_at": "2026-09-23"
+      "sha256": "f921776cc5e2f16db21ad5b8decaf97798355c810906b1b8c780cb8fd659491d",
+      "stamped_at": "2026-09-24"
     },
     "storage.rules": {
       "sha256": "65a0cba16c8a5eb76a2ef7dc6c66ccdc0cf324cc2e1bf1827c71658943db32f6",
-      "stamped_at": "2026-09-23"
+      "stamped_at": "2026-09-24"
     },
     "qr-service": {
       "sha256": "69520389b30806ba94b7066e42741830c86bcace70bc95e8a639f767648e7275",
-      "stamped_at": "2026-09-23"
+      "stamped_at": "2026-09-24"
     }
   }
 }

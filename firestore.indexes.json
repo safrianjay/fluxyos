@@ -72,6 +72,15 @@
         { "fieldPath": "created_at", "order": "DESCENDING" }
       ]
     },
+    { "collectionGroup": "pos_orders", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "dimension_id", "order": "ASCENDING" }, { "fieldPath": "paid_at", "order": "ASCENDING" }
+    ]},
+    { "collectionGroup": "pos_orders", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "dimension_id", "order": "ASCENDING" }, { "fieldPath": "refunded_at", "order": "ASCENDING" }
+    ]},
+    { "collectionGroup": "pos_orders", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "dimension_id", "order": "ASCENDING" }, { "fieldPath": "voided_at", "order": "ASCENDING" }
+    ]},
     {
       "collectionGroup": "pos_shifts",
       "queryScope": "COLLECTION",

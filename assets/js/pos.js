@@ -361,7 +361,15 @@ function mountTillNav() {
         : item(n)).join('');
 
     host.querySelectorAll('[data-view]').forEach((b) => {
-        b.addEventListener('click', () => setView(b.dataset.view));
+        b.addEventListener('click', () => {
+            if (b.dataset.view === 'orders') {
+                state.orderDrilldown = null;
+                const url = new URL(window.location.href);
+                ['start','end','mode','product'].forEach((key) => url.searchParams.delete(key));
+                window.history.replaceState({}, '', `${url.pathname}${url.search}`);
+            }
+            setView(b.dataset.view);
+        });
     });
 
     // Only a role that HAS a dashboard is offered one — a cashier is denied
@@ -2172,6 +2180,11 @@ function bindPosAnalyticsActions() {
         const rows = [...state.analytics.current.completed, ...state.analytics.current.refundOrders]
             .filter((o, i, all) => all.findIndex((x) => x.id === o.id) === i);
         state.orderDrilldown = { rows, mode: button.dataset.overviewMode || null, product: button.dataset.overviewProduct || null };
+        const url = new URL(window.location.href);
+        url.searchParams.set('start', state.analytics.range.start); url.searchParams.set('end', state.analytics.range.end);
+        if (state.orderDrilldown.mode) url.searchParams.set('mode', state.orderDrilldown.mode); else url.searchParams.delete('mode');
+        if (state.orderDrilldown.product) url.searchParams.set('product', state.orderDrilldown.product); else url.searchParams.delete('product');
+        window.history.replaceState({}, '', `${url.pathname}${url.search}`);
         state.orderTab = 'all'; state.orderQuery = ''; setView('orders'); renderOrderLists();
     }));
     document.querySelector('[data-overview-shift]')?.addEventListener('click', () => setView('shift'));
@@ -2217,6 +2230,36 @@ async function loadPosAnalytics({ force = false } = {}) {
         section?.setAttribute('aria-busy', 'false');
     }
 }
+
+async function loadOrderDrilldownFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const startKey = params.get('start'); const endKey = params.get('end');
+    if (state.view !== 'orders' || !/^\d{4}-\d{2}-\d{2}$/.test(startKey || '') || !/^\d{4}-\d{2}-\d{2}$/.test(endKey || '')) return;
+    const range = { start:startKey, end:endKey }; const bounds = analyticsRanges(range);
+    try {
+        const data = await ds.getPosAnalyticsData(state.uid, { dimensionId:state.outletId, ...bounds, includeAccounting:false });
+        const rows = [...data.currentPaid,...data.currentRefunded,...data.currentVoided]
+            .filter((o,i,all) => all.findIndex((x) => x.id === o.id) === i);
+        state.orderDrilldown = { rows, mode:params.get('mode'), product:params.get('product') };
+        state.orderTab='all'; renderOrderLists();
+    } catch (_) {
+        toast('Could not load the linked POS orders.', 'error');
+    }
+}
+
+// Deterministic browser seam for layout/accessibility coverage. It accepts the
+// same normalized orders the calculator consumes; no sample data ships in the
+// product path and no production records are written by the spec.
+window.__posSeedOverview = ({ orders = [], previousOrders = [], accounting = [], start = '2026-09-01', end = '2026-09-30', partial = false } = {}) => {
+    const bounds = analyticsRanges({ start, end }); const M = window.FluxyPosOverviewMetrics;
+    state.analytics = {
+        outletId: state.outletId, range:{ start,end,days:bounds.days }, readAt:new Date('2026-09-24T05:00:00Z'),
+        current:M.calculate(orders,{startMs:bounds.start.getTime(),endMs:bounds.end.getTime()-1}),
+        previous:M.calculate(previousOrders,{startMs:bounds.previousStart.getTime(),endMs:bounds.previousEnd.getTime()-1}),
+        accounting, partial, failedLegs:partial?['accounting']:[]
+    };
+    state.analyticsLastValid=state.analytics; setView('overview'); renderPosAnalytics(state.analytics);
+};
 
 // ── Shift view ──────────────────────────────────────────────────────────────
 async function renderShiftHistory() {
@@ -7099,8 +7142,10 @@ function bindOutlet() {
         state.outletId = e.target.value;
         localStorage.setItem(OUTLET_KEY, state.outletId);
         state.orderId = null; state.order = null;
+        state.analytics = null; state.orderDrilldown = null; state.analyticsRequest += 1;
         await refresh();
         watch();
+        if (state.view === 'overview') loadPosAnalytics({ force:true });
     });
 }
 
@@ -7490,6 +7535,12 @@ onAuthStateChanged(auth, async (user) => {
 
     state.uid = user.uid;
     ds.actorUid = user.uid;
+    const requestedView = new URLSearchParams(window.location.search).get('view');
+    const role = window.FluxyWorkspace?.role || null;
+    const allowedView = requestedView && Object.prototype.hasOwnProperty.call(VIEWS, requestedView) ? requestedView : null;
+    state.view = role === 'cashier'
+        ? (allowedView === 'overview' ? 'till' : (allowedView || 'till'))
+        : (allowedView || 'overview');
 
     // No identity painted here at all: the shared sidebar's profile block already
     // carries the avatar, name and role, and a second avatar on a 60px topbar
@@ -7511,7 +7562,9 @@ onAuthStateChanged(auth, async (user) => {
         return;
     }
     await refresh();
+    await loadOrderDrilldownFromUrl();
     watch();
+    if (state.view === 'overview') await loadPosAnalytics({ force:true });
     const outletConfig = await ds.getPosOutletSettings(state.uid, state.outletId).catch(() => null);
     // A completed counter/takeaway outlet can deliberately have zero tables.
     // The settings document is the durable completion marker; using the table

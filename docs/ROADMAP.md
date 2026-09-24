@@ -36,7 +36,7 @@ carries a date.
 | 1 | Financial Operations | ✅ Substantially shipped |
 | 2 | Accounting Foundation | ✅ Substantially shipped |
 | 3 | Operational ERP Foundation | 🧭 Not started — preparation shipped (`INVENTORY_READINESS.md`) |
-| 4 | Commercial Operations | ◐ Marketplace order sync only; POS not built |
+| 4 | Commercial Operations | ◐ Marketplace sync plus first-party POS, QR ordering, shifts, and read-only outlet POS Overview; external POS adapters and provider payments remain planned |
 | 5 | Intelligent Finance OS | ◐ AI chat + extraction; no forecasting, no automation |
 
 Phases 3 and 4 both sit in Layer 3 below. Phase 5 spans Layers 4–5.

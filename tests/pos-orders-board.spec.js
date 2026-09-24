@@ -36,7 +36,9 @@ async function openBoard(page) {
         // harness action must not depend on normal pointer stacking.
         await page.locator('#pos-onboarding-close').click({ force: true });
     });
-    await page.goto('/pos');
+    // This suite exercises the Orders board, not the analytics default. Going
+    // directly to the view avoids six historical queries on every fixture.
+    await page.goto('/pos?view=orders');
     await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
     // The navigation is painted before both the initial refresh and the outlet
     // setup check. Wait for the completed page lifecycle before any fixture or

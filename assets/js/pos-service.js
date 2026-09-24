@@ -2890,6 +2890,34 @@ export const POS_METHODS = {
         } catch (_) { return []; }
     },
 
+    // Reporting reads event dates directly; the operational newest-N window is
+    // intentionally unsuitable for historical totals.
+    async getPosAnalyticsData(userId, { dimensionId, start, end, previousStart, previousEnd, includeAccounting = false } = {}) {
+        if (!userId || !dimensionId) throw new Error('An outlet is required for POS analytics.');
+        if ([start, end, previousStart, previousEnd].some((d) => !(d instanceof Date) || !Number.isFinite(d.getTime()))) throw new Error('A valid current and comparison range is required.');
+        const col = collection(this.db, `${this._scope(userId)}/pos_orders`);
+        const readEvent = async (field, from, to) => {
+            const snap = await getDocs(query(col, where('dimension_id', '==', dimensionId), where(field, '>=', Timestamp.fromDate(from)), where(field, '<', Timestamp.fromDate(to)), orderBy(field, 'asc'), limit(5000)));
+            return { rows: snap.docs.map((d) => ({ id: d.id, ...d.data() })), capped: snap.size === 5000 };
+        };
+        const legs = [['currentPaid','paid_at',start,end],['currentRefunded','refunded_at',start,end],['currentVoided','voided_at',start,end],['previousPaid','paid_at',previousStart,previousEnd],['previousRefunded','refunded_at',previousStart,previousEnd],['previousVoided','voided_at',previousStart,previousEnd]];
+        const settled = await Promise.allSettled(legs.map(([,field,from,to]) => readEvent(field,from,to)));
+        const result = { partial:false, failedLegs:[], readAt:new Date(), accounting:null };
+        settled.forEach((entry,i) => { const name=legs[i][0]; if (entry.status === 'fulfilled') { result[name]=entry.value.rows; if (entry.value.capped) { result.partial=true; result.failedLegs.push(`${name}:limit`); } } else { result[name]=[]; result.partial=true; result.failedLegs.push(name); } });
+        if (settled.every((entry) => entry.status === 'rejected')) throw (settled[0].reason || new Error('POS analytics are unavailable.'));
+        if (includeAccounting) {
+            try {
+                const snap = await getDocs(query(collection(this.db, `${this._scope(userId)}/transactions`),
+                    where('timestamp','>=',Timestamp.fromDate(start)), where('timestamp','<',Timestamp.fromDate(end)),
+                    orderBy('timestamp','asc'), limit(5000)));
+                result.accounting = snap.docs.map((d) => ({ id:d.id,...d.data() }))
+                    .filter((tx) => tx.source === 'pos' && tx.pos_order_id && tx.dimension_id === dimensionId);
+                if (snap.size === 5000) { result.partial=true; result.failedLegs.push('accounting:limit'); }
+            } catch (_) { result.partial=true; result.failedLegs.push('accounting'); }
+        }
+        return result;
+    },
+
     // The LIVE orders at one outlet, found by outlet and status — exact, never a
     // window. Used where "is there anything unsettled here?" must not miss an
     // old ticket: archiving an outlet hides its orders from the till, so an

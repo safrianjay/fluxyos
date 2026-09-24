@@ -1,7 +1,7 @@
 ---
 status: current
 owns: [pos_tables, pos_orders, pos_reservations, pos_table_directory, pos_outlet_settings, pos_discount_presets, pos_outlet_menu_drafts, pos_outlet_menu_items, pos_menu_publications]
-updated: 2026-09-05
+updated: 2026-09-24
 source: docs/POS_IMPLEMENTATION_PLAN.md
 ---
 
@@ -13,12 +13,32 @@ source: docs/POS_IMPLEMENTATION_PLAN.md
 
 Phase 1 of [`POS_IMPLEMENTATION_PLAN.md`](../POS_IMPLEMENTATION_PLAN.md).
 
-**Status:** Phase 1.5 (shifts and the cash drawer) ships too — see §10. The
+**Status:** Phase 1.5 (shifts and the cash drawer) and the read-only POS Overview ship too — see §10 and §14. The
 staff till ships in full — tables (create + archive), orders,
 per-line and per-order discounts (amount or percent), line notes, manual payment
 with partial tender, void, refund, a 58mm receipt, and posting through the
-existing kernel. QR customer ordering (Phase 2), shifts
-and the cash drawer (Phase 1.5), and payment providers (Phase 5) are not built.
+existing kernel. QR customer ordering (Phase 2) is built; payment-provider
+processing and offline order/payment queues (Phase 5) are not built.
+
+## 14. POS Overview metric contract
+
+`/pos?view=overview` reads `pos_orders` by event date, scoped to one permitted
+outlet. Sales use `paid_at`, refunds use `refunded_at`, and cancellations use
+`voided_at`; the till's bounded newest-order read is never reused for reporting.
+
+- Gross sales is line gross/subtotal before discounts. Net POS sales is gross
+  minus `discount_total` and full-order merchandise refunds. Tax and service
+  charges are excluded throughout.
+- Dine-in means `table_id` is present; a null table means takeaway. `channel`
+  identifies origin and is never treated as delivery mode.
+- Payment mix allocates merchandise net across settled tenders. Product net
+  sales allocates order discounts proportionally; full refunds reverse units
+  and product value on the refund date.
+- First-party documents deduplicate by document id. Connector rows require both
+  connector source and stable source order id or are excluded as a mapping gap.
+- Linked accounting transactions are a separate reconciliation and are never
+  added to POS sales. Footfall, delivery mode, partial refunds, and consolidated
+  all-outlet reporting remain unavailable rather than being shown as zero.
 
 ## 1. Why only two collections
 
@@ -1886,5 +1906,5 @@ refusal never reports the till offline.
 Offline-first (v1 is online-only — the largest honest limitation; see the
 blip-tolerance note below for what it DOES survive), kitchen display,
 split-by-seat (the units are the item and the head — see §3),
-per-outlet menu pricing, QR ordering, payment providers, and any AI over POS
-data. §15 of the plan sequences all of them.
+per-outlet menu pricing, payment providers, and any AI over POS data. §15 of the
+plan sequences the remaining work.
