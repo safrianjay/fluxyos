@@ -89,13 +89,27 @@ function run(name, cmd, args, opts = {}) {
   });
   const output = `${res.stdout || ''}${res.stderr || ''}`;
   const ok = res.status === 0;
+  // Keep both streams: expected permission denials and Node warnings on stderr
+  // can otherwise push the actual failed assertion out of the artifact's tail.
+  let logPath;
+  if (!ok) {
+    logPath = `.qa/logs/${name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.log`;
+    fs.mkdirSync(path.join(REPO_ROOT, '.qa/logs'), { recursive: true });
+    fs.writeFileSync(path.join(REPO_ROOT, logPath), output);
+  }
   return {
     name,
     ok,
     status: res.status,
+    logPath,
     ms: Date.now() - started,
     // Keep the tail of the output for the artifact; full output goes to stdout.
-    detail: ok ? '' : output.split('\n').slice(-40).join('\n').trim(),
+    detail: ok ? '' : [
+      `Full output: ${logPath}`,
+      res.error ? `Runner error: ${res.error.message}` : '',
+      'stdout:', (res.stdout || '').split('\n').slice(-30).join('\n').trim(),
+      'stderr:', (res.stderr || '').split('\n').slice(-10).join('\n').trim(),
+    ].filter(Boolean).join('\n'),
     output,
   };
 }
