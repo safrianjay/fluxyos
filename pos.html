@@ -234,6 +234,12 @@
         .pos-method.is-on { border-color: #0F172A; background: #0F172A; color: #fff; }
         .pos-method:hover:not(.is-on) { background: #F8FAFC; border-color: #CBD5E1; }
         .pos-method:focus-visible { outline: 2px solid #EA580C; outline-offset: 2px; }
+        .pos-method:disabled { opacity: .52; cursor: not-allowed; }
+        /* Cash movements are a two-way choice, not the till's five tender
+           types. The short explanatory line keeps "cash in" from looking like
+           a sale and "cash out" from looking like a refund. */
+        #pos-move-kind { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .pos-method small { display: block; margin-top: 2px; font-size: 10px; font-weight: 500; opacity: .72; }
         /* A disabled amount field still has to be READABLE — it is stating the
            figure the cashier is about to charge. Greyed to say "not yours to
            type", not greyed out of legibility. */

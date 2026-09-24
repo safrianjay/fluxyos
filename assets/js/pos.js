@@ -77,6 +77,14 @@ const state = {
     menuQuery: '',
     menuCategory: null,
     view: 'till',
+    analytics: null,
+    analyticsLastValid: null,
+    analyticsLoading: false,
+    analyticsMetric: 'sales',
+    analyticsRange: null,
+    analyticsPicker: null,
+    analyticsRequest: 0,
+    orderDrilldown: null,
     zone: null,
     // ── Reservations ────────────────────────────────────────────────────
     // The board's own view state. `resAnchor` is any moment inside the range
@@ -226,6 +234,7 @@ function posProfile() {
 // either, since all four views live behind one URL. Each view now says what it
 // is for in the one place a person looks first.
 const VIEWS = {
+    overview: { title: 'POS Overview', sub: 'Sales, orders and product demand for this outlet.' },
     till:   { title: 'Point of Sale (POS)', sub: 'Ring up a sale — scan, search or tap a product.' },
     tables: { title: 'Tables',              sub: 'Tap a table to open or continue its order.' },
     orders: { title: 'Orders',              sub: 'Every order on the floor today, and everything already settled.' },
@@ -239,6 +248,9 @@ const VIEWS = {
 function setView(name) {
     if (!VIEWS[name]) name = 'till';
     state.view = name;
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', name);
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
     document.querySelectorAll('.pos-view').forEach((v) => {
         v.classList.toggle('hidden', v.dataset.view !== name);
     });
@@ -258,6 +270,7 @@ function setView(name) {
     // The floor plan and the order lists are painted on demand: they read from
     // state.overview, which refresh() already holds, so switching is a repaint.
     if (name === 'tables') renderTables();
+    if (name === 'overview') loadPosAnalytics();
     if (name === 'orders') renderOrderLists();
     if (name === 'shift')  { renderShift(); renderShiftHistory(); }
     if (name === 'reservations') { renderReservations(); loadReservationRange().catch(() => {}); }
@@ -265,13 +278,16 @@ function setView(name) {
     // and New reservation competing for one glance is two primary actions in one
     // zone, and the one that belongs to the screen you are on should win.
     document.querySelector('.pos-topbar-actions')?.classList.toggle('hidden', name === 'reservations');
+    $('pos-overview-date')?.classList.toggle('hidden', name !== 'overview');
+    ['pos-settings-btn', 'pos-tables-btn', 'pos-new-order'].forEach((id) => $(id)?.classList.toggle('hidden', name === 'overview'));
     // Orders goes full width too, now that the cards carry their own detail.
     //
     // The panel was a second copy of what the card already shows, costing the
     // board ~380px — a third of its width — to duplicate it. With the cards
     // expanded there is nothing left for it to add, and the grid uses the space
     // for another column of orders instead.
-    document.getElementById('pos-shell')?.classList.toggle('is-wide', name === 'shift' || name === 'orders' || name === 'reservations');
+    document.getElementById('pos-shell')?.classList.toggle('is-wide', name === 'overview' || name === 'shift' || name === 'orders' || name === 'reservations');
+    document.getElementById('pos-order-panel')?.classList.toggle('hidden', name === 'overview');
     closeSideNav();
 
     // A scanner types into whatever has focus, so at a counter the search box
@@ -301,6 +317,7 @@ function setView(name) {
 // pieces and was visibly a different component within an hour.
 const TILL_NAV = [
     { section: 'Point of sale' },
+    { view: 'overview', id: 'nav-overview', label: 'Overview' },
     { view: 'till',   id: 'nav-pos',        label: 'Point of Sale' },
     { view: 'tables', id: 'nav-outlet-pnl', label: 'Tables',  badge: 'pos-nav-tables' },
     { view: 'orders', id: 'nav-ledger',     label: 'Orders',  badge: 'pos-nav-orders' },
@@ -320,7 +337,8 @@ function mountTillNav() {
     // Only the views this business actually uses. A retail till has no floor to
     // draw, and a menu entry onto a room that does not exist is worse than one
     // fewer entry.
-    const nav = TILL_NAV.filter((n) => n.section || posProfile().views.includes(n.view));
+    const nav = TILL_NAV.filter((n) => n.section || n.view === 'overview' || posProfile().views.includes(n.view))
+        .filter((n) => n.section || n.view !== 'overview' || ws.role !== 'cashier');
 
     const icons = {};
     nav.filter((n) => n.id).forEach((n) => {
@@ -1418,7 +1436,7 @@ function inDateWindow(o, mode) {
 
 function visibleOrders() {
     const ov = state.overview || {};
-    const all = allBoardOrders(ov);
+    const all = state.orderDrilldown ? state.orderDrilldown.rows : allBoardOrders(ov);
     const pass = ORDER_TABS[state.orderTab] || ORDER_TABS.all;
     const q = (state.orderQuery || '').trim().toLowerCase();
     // One `now` for the whole pass. Reading Date.now() inside the comparator
@@ -1427,7 +1445,10 @@ function visibleOrders() {
     const now = Date.now();
     return all.filter((o) => {
         if (!pass(o)) return false;
-        if (!inDateWindow(o, state.orderDate)) return false;
+        if (!state.orderDrilldown && !inDateWindow(o, state.orderDate)) return false;
+        if (state.orderDrilldown?.mode === 'dine_in' && !o.table_id) return false;
+        if (state.orderDrilldown?.mode === 'takeaway' && o.table_id) return false;
+        if (state.orderDrilldown?.product && !(o.lines || []).some((l) => (l.item_id || `name:${String(l.item_name || '').toLowerCase()}`) === state.orderDrilldown.product)) return false;
         if (state.orderService === 'dine_in' && !o.table_id) return false;
         if (state.orderService === 'takeaway' && o.table_id) return false;
         if (!q) return true;
@@ -1793,9 +1814,9 @@ function cardAction(o) {
 
 function renderTabCounts() {
     const ov = state.overview || {};
-    const all = allBoardOrders(ov);
+    const all = state.orderDrilldown ? state.orderDrilldown.rows : allBoardOrders(ov);
     const now = Date.now();
-    const scoped = all.filter((o) => inDateWindow(o, state.orderDate)
+    const scoped = all.filter((o) => (state.orderDrilldown || inDateWindow(o, state.orderDate))
         && !(state.orderService === 'dine_in' && !o.table_id)
         && !(state.orderService === 'takeaway' && o.table_id));
 
@@ -1986,6 +2007,215 @@ function renderOrderLists() {
             e.stopPropagation();
             once(() => reprintBill(b.dataset.print));
         }));
+}
+
+// ── POS Overview ───────────────────────────────────────────────────────────
+const POS_TZ = { ID: 'Asia/Jakarta', PH: 'Asia/Manila', SG: 'Asia/Singapore', MY: 'Asia/Kuala_Lumpur' };
+
+function posTimeZone() {
+    return POS_TZ[(window.FluxyWorkspace && window.FluxyWorkspace.country) || 'ID'] || 'Asia/Jakarta';
+}
+
+function posDayBoundary(dayKey) {
+    const [year, month, day] = String(dayKey).split('-').map(Number);
+    const zone = posTimeZone();
+    const desired = Date.UTC(year, month - 1, day, 0, 0, 0);
+    let guess = desired;
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+        timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+    });
+    for (let i = 0; i < 2; i += 1) {
+        const p = Object.fromEntries(fmt.formatToParts(new Date(guess)).map((x) => [x.type, x.value]));
+        const represented = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour), Number(p.minute), Number(p.second));
+        guess += desired - represented;
+    }
+    return new Date(guess);
+}
+
+function addDayKey(key, days) {
+    const [y, m, d] = key.split('-').map(Number);
+    const date = new Date(Date.UTC(y, m - 1, d + days));
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+
+function analyticsRanges(range) {
+    const start = posDayBoundary(range.start);
+    const end = posDayBoundary(addDayKey(range.end, 1));
+    const days = Math.max(1, Math.round((Date.parse(`${range.end}T00:00:00Z`) - Date.parse(`${range.start}T00:00:00Z`)) / 86400000) + 1);
+    return { start, end, previousStart: posDayBoundary(addDayKey(range.start, -days)), previousEnd: start, days };
+}
+
+function mountPosAnalyticsPicker() {
+    if (state.analyticsPicker || !window.FluxyDateRangePicker) return;
+    state.analyticsPicker = window.FluxyDateRangePicker.mount('#pos-overview-date', {
+        onChange: (range) => { state.analyticsRange = range; loadPosAnalytics({ force: true }); }
+    });
+    state.analyticsRange = state.analyticsPicker.getRange();
+}
+
+const signedMoney = (n) => `${Number(n) < 0 ? '-' : ''}${rp(Math.abs(Number(n) || 0))}`;
+const signedNumber = (n) => `${Number(n) > 0 ? '+' : ''}${Math.round(Number(n) || 0).toLocaleString(window.FluxyMoney.baseLocale())}`;
+
+function deltaHtml(change, money = false) {
+    if (!change) return '<span>Previous period unavailable</span>';
+    const absolute = money ? signedMoney(change.absolute) : signedNumber(change.absolute);
+    const pct = change.percent == null ? 'No comparable percentage' : `${change.percent > 0 ? '+' : ''}${change.percent.toFixed(1)}%`;
+    return `${absolute} · ${pct} vs previous period`;
+}
+
+function metricCard(label, value, help, change, primary = false, money = false) {
+    return `<article class="pos-overview-kpi${primary ? ' is-primary' : ''}" title="${esc(help)}">
+        <div class="pos-overview-label">${esc(label)} <span aria-hidden="true">ⓘ</span></div>
+        <div class="pos-overview-value">${value}</div>
+        <div class="pos-overview-delta">${deltaHtml(change, money)}</div>
+    </article>`;
+}
+
+function overviewRows(items, empty, render) {
+    return items.length ? `<div class="pos-overview-list">${items.map(render).join('')}</div>`
+        : `<div class="pos-overview-empty">${esc(empty)}</div>`;
+}
+
+function accountingSummary(rows) {
+    if (!Array.isArray(rows)) return null;
+    let total = 0;
+    const orders = new Set();
+    rows.forEach((tx) => {
+        const amount = Math.abs(Math.round(Number(tx.amount) || 0));
+        total += tx.type === 'refund' ? -amount : amount;
+        if (tx.pos_order_id) orders.add(tx.pos_order_id);
+    });
+    return { total, linkedOrders: orders.size };
+}
+
+function renderPosAnalytics(snapshot, { stale = false } = {}) {
+    const host = $('pos-overview-content');
+    const status = $('pos-overview-state');
+    const section = document.querySelector('.pos-view[data-view="overview"]');
+    if (!host || !status || !section) return;
+    section.setAttribute('aria-busy', 'false');
+    const M = window.FluxyPosOverviewMetrics;
+    const current = snapshot.current;
+    const previous = snapshot.previous;
+    const range = snapshot.range;
+    const asOf = snapshot.readAt.toLocaleString(window.FluxyMoney.baseLocale(), { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' });
+    const warnings = [];
+    if (snapshot.partial) warnings.push(`Partial data: ${snapshot.failedLegs.join(', ')} could not be read.`);
+    if (current.quality.excludedConnectorRows) warnings.push(`${current.quality.excludedConnectorRows} connector order(s) excluded because stable source identity is missing.`);
+    if (stale) warnings.push(`Showing the last valid result from ${asOf}.`);
+    status.dataset.tone = stale ? 'error' : (warnings.length ? 'warning' : '');
+    status.innerHTML = `<span>${warnings.length ? esc(warnings.join(' ')) : `Direct POS data · ${esc(range.start)} to ${esc(range.end)}`}</span><span>Data through ${esc(asOf)}</span>`;
+
+    const salesChange = M.compare(current, previous, 'netPosSales');
+    const countChange = M.compare(current, previous, 'completedTransactions');
+    const aovChange = M.compare(current, previous, 'averageOrderValue');
+    const grossChange = M.compare(current, previous, 'grossSales');
+    const hourly = range.days <= 2;
+    const buckets = M.bucket(current, { hourly, locale: window.FluxyMoney.baseLocale(), timeZone: posTimeZone() });
+    const metric = state.analyticsMetric;
+    const max = Math.max(1, ...buckets.map((b) => Math.abs(metric === 'sales' ? b.sales : b.orders)));
+    const products = [...current.products].sort((a, b) => state.analyticsProductSort === 'sales' ? b.netSales - a.netSales : b.units - a.units).slice(0, 5);
+    const totalModes = Math.max(1, current.completedTransactions);
+    const accounting = accountingSummary(snapshot.accounting);
+    const shift = state.shift;
+
+    host.innerHTML = `
+        <div class="pos-overview-grid">
+            ${metricCard('Net POS sales', signedMoney(current.netPosSales), 'Gross merchandise sales minus discounts and refunds; tax and service charges excluded.', salesChange, true, true)}
+            ${metricCard('Completed transactions', current.completedTransactions.toLocaleString(window.FluxyMoney.baseLocale()), 'Distinct settled POS orders in the selected period.', countChange, true)}
+            ${metricCard('Average order value', current.averageOrderValue == null ? 'Unavailable' : signedMoney(current.averageOrderValue), 'Net POS sales divided by completed transactions.', current.averageOrderValue == null ? null : aovChange, false, true)}
+            ${metricCard('Gross sales', signedMoney(current.grossSales), 'Line prices × quantities before discounts and refunds; tax and service charges excluded.', grossChange, false, true)}
+        </div>
+        ${current.completedTransactions === 0 && current.refundCount === 0 ? '<div class="pos-overview-card"><div class="pos-overview-empty"><strong>No completed orders in this period.</strong><br>Choose another range to review earlier POS activity.</div></div>' : ''}
+        <section class="pos-overview-card">
+            <div class="pos-overview-card-head"><div><h2>Sales and orders trend</h2><p>${hourly ? 'Hourly' : 'Daily'} buckets in ${esc(posTimeZone())}. Refunds use their refund date.</p></div>
+                <div><button type="button" class="pos-btn-ghost" data-overview-metric="sales" aria-pressed="${metric === 'sales'}">Sales</button><button type="button" class="pos-btn-ghost" data-overview-metric="orders" aria-pressed="${metric === 'orders'}">Orders</button></div></div>
+            <div class="pos-overview-card-body">
+                ${buckets.length ? `<div class="pos-overview-bars" aria-hidden="true">${buckets.map((b) => { const value = metric === 'sales' ? b.sales : b.orders; return `<span class="pos-overview-bar" style="height:${Math.max(2, Math.round(Math.abs(value) / max * 160))}px" title="${esc(b.key)}: ${metric === 'sales' ? signedMoney(value) : value}"></span>`; }).join('')}</div>
+                <table class="pos-overview-chart-table"><caption class="sr-only">POS trend values</caption><thead><tr><th>Period</th><th>Net sales</th><th>Orders</th></tr></thead><tbody>${buckets.map((b) => `<tr><td>${esc(b.key)}</td><td>${signedMoney(b.sales)}</td><td>${b.orders}</td></tr>`).join('')}</tbody></table>` : '<div class="pos-overview-empty">No sales or refunds to plot.</div>'}
+            </div>
+        </section>
+        <div class="pos-overview-two">
+            <section class="pos-overview-card"><div class="pos-overview-card-head"><div><h2>Gross to net</h2><p>Tax and service charges are outside this reconciliation.</p></div></div><div class="pos-overview-card-body">${overviewRows([
+                ['Gross sales', current.grossSales], ['Discounts', -current.discounts], ['Refunds', -current.refunds], ['Net POS sales', current.netPosSales]
+            ], '', (r) => `<div class="pos-overview-row"><span>${r[0]}</span><strong>${signedMoney(r[1])}</strong></div>`)}</div></section>
+            <section class="pos-overview-card"><div class="pos-overview-card-head"><div><h2>Order mode mix</h2><p>Derived from table assignment; delivery is unavailable.</p></div></div><div class="pos-overview-card-body">${overviewRows(current.modes, 'No completed orders to group.', (m) => `<button type="button" class="pos-overview-row w-full text-left" data-overview-mode="${esc(m.mode)}"><span>${m.mode === 'dine_in' ? 'Dine-in' : m.mode === 'takeaway' ? 'Takeaway' : 'Other / unknown'} · ${(m.count / totalModes * 100).toFixed(1)}%</span><strong>${m.count} · ${signedMoney(m.netSales)}</strong></button>`)}</div></section>
+        </div>
+        <div class="pos-overview-two">
+            <section class="pos-overview-card"><div class="pos-overview-card-head"><div><h2>Best-selling products</h2><p>Refunded orders subtract units and net item sales.</p></div><button type="button" class="pos-btn-ghost" id="pos-product-sort">Sort by ${state.analyticsProductSort === 'sales' ? 'units' : 'sales'}</button></div><div class="pos-overview-card-body">${overviewRows(products, 'No line-item sales in this period.', (p) => `<button type="button" class="pos-overview-row w-full text-left" data-overview-product="${esc(p.id || `name:${p.name.toLowerCase()}`)}"><span>${esc(p.name)} · ${p.units} units</span><strong>${signedMoney(p.netSales)}</strong></button>`)}</div></section>
+            <section class="pos-overview-card"><div class="pos-overview-card-head"><div><h2>Payment mix</h2><p>Net merchandise value allocated across settled tenders.</p></div></div><div class="pos-overview-card-body">${overviewRows(current.payments, 'Payment allocation is unavailable for this period.', (p) => `<div class="pos-overview-row"><span>${esc(p.method === 'qris' ? 'QRIS' : p.method.replace(/_/g, ' '))}</span><strong>${signedMoney(p.amount)}</strong></div>`)}</div></section>
+        </div>
+        <div class="pos-overview-two">
+            <section class="pos-overview-card"><div class="pos-overview-card-head"><div><h2>Exceptions and accounting</h2><p>Operational POS sales are never added to accounting revenue.</p></div></div><div class="pos-overview-card-body">
+                <div class="pos-overview-row"><span>Cancellations / voids</span><strong>${current.cancellations}</strong></div>
+                <div class="pos-overview-row"><span>Refunded orders</span><strong>${current.refundCount}</strong></div>
+                ${accounting ? `<div class="pos-overview-row"><span>Recorded accounting revenue</span><strong>${signedMoney(accounting.total)}</strong></div><p>${accounting.linkedOrders} linked POS order(s), based on accounting dates.</p>` : '<div class="pos-overview-row"><span>Recorded accounting revenue</span><strong>Unavailable for this role</strong></div>'}
+            </div></section>
+            <section class="pos-overview-card"><div class="pos-overview-card-head"><div><h2>Shift and other indicators</h2><p>Shift actions remain in the dedicated workflow.</p></div><button type="button" class="pos-btn-ghost" data-overview-shift>View Shift</button></div><div class="pos-overview-card-body">
+                <div class="pos-overview-row"><span>Shift status</span><strong>${shift ? 'Open' : 'No open shift'}</strong></div>
+                <div class="pos-overview-row"><span>Footfall</span><strong>Unavailable — no visitor source</strong></div>
+                <div class="pos-overview-row"><span>Visit-to-purchase rate</span><strong>Unavailable</strong></div>
+            </div></section>
+        </div>`;
+    bindPosAnalyticsActions();
+}
+
+function bindPosAnalyticsActions() {
+    document.querySelectorAll('[data-overview-metric]').forEach((button) => button.addEventListener('click', () => {
+        state.analyticsMetric = button.dataset.overviewMetric; renderPosAnalytics(state.analytics);
+    }));
+    $('pos-product-sort')?.addEventListener('click', () => {
+        state.analyticsProductSort = state.analyticsProductSort === 'sales' ? 'units' : 'sales'; renderPosAnalytics(state.analytics);
+    });
+    document.querySelectorAll('[data-overview-mode],[data-overview-product]').forEach((button) => button.addEventListener('click', () => {
+        const rows = [...state.analytics.current.completed, ...state.analytics.current.refundOrders]
+            .filter((o, i, all) => all.findIndex((x) => x.id === o.id) === i);
+        state.orderDrilldown = { rows, mode: button.dataset.overviewMode || null, product: button.dataset.overviewProduct || null };
+        state.orderTab = 'all'; state.orderQuery = ''; setView('orders'); renderOrderLists();
+    }));
+    document.querySelector('[data-overview-shift]')?.addEventListener('click', () => setView('shift'));
+}
+
+async function loadPosAnalytics({ force = false } = {}) {
+    if (state.view !== 'overview' || !state.uid || !state.outletId || state.analyticsLoading) return;
+    mountPosAnalyticsPicker();
+    if (!state.analyticsRange) return;
+    if (state.analytics && !force && state.analytics.outletId === state.outletId) { renderPosAnalytics(state.analytics); return; }
+    const request = ++state.analyticsRequest;
+    state.analyticsLoading = true;
+    const section = document.querySelector('.pos-view[data-view="overview"]');
+    section?.setAttribute('aria-busy', 'true');
+    $('pos-overview-state').innerHTML = '<span>Loading POS sales…</span>';
+    try {
+        const ranges = analyticsRanges(state.analyticsRange);
+        const includeAccounting = window.FluxyWorkspace?.role !== 'cashier';
+        const data = await ds.getPosAnalyticsData(state.uid, { dimensionId: state.outletId, ...ranges, includeAccounting });
+        if (request !== state.analyticsRequest) return;
+        const M = window.FluxyPosOverviewMetrics;
+        const currentRows = [...data.currentPaid, ...data.currentRefunded, ...data.currentVoided];
+        const previousRows = [...data.previousPaid, ...data.previousRefunded, ...data.previousVoided];
+        state.analytics = {
+            outletId: state.outletId, range: { ...state.analyticsRange, days: ranges.days }, readAt: data.readAt,
+            current: M.calculate(currentRows, { startMs: ranges.start.getTime(), endMs: ranges.end.getTime() - 1 }),
+            previous: M.calculate(previousRows, { startMs: ranges.previousStart.getTime(), endMs: ranges.previousEnd.getTime() - 1 }),
+            accounting: data.accounting, partial: data.partial, failedLegs: data.failedLegs
+        };
+        state.analyticsLastValid = state.analytics;
+        renderPosAnalytics(state.analytics);
+    } catch (error) {
+        if (request !== state.analyticsRequest) return;
+        if (state.analyticsLastValid) renderPosAnalytics(state.analyticsLastValid, { stale: true });
+        else {
+            const status = $('pos-overview-state');
+            status.dataset.tone = navigator.onLine ? 'error' : 'warning';
+            status.innerHTML = `<span>${navigator.onLine ? 'POS overview could not be loaded.' : 'No connection. POS overview is unavailable.'}</span><button type="button" class="pos-btn-ghost" id="pos-overview-retry">Retry</button>`;
+            $('pos-overview-retry')?.addEventListener('click', () => loadPosAnalytics({ force: true }));
+        }
+    } finally {
+        if (request === state.analyticsRequest) state.analyticsLoading = false;
+        section?.setAttribute('aria-busy', 'false');
+    }
 }
 
 // ── Shift view ──────────────────────────────────────────────────────────────
@@ -6433,7 +6663,7 @@ function renderShift() {
             <span class="pos-shift-actions">
                 <button type="button" id="pos-open-shift" class="pos-shift-btn is-primary" ${mayManage ? '' : 'disabled'}>Open shift</button>
             </span>`;
-        $('pos-open-shift')?.addEventListener('click', openShiftDrawer);
+        bindShiftActions(bar);
         mirrorShiftBar(bars);
         return;
     }
@@ -6446,12 +6676,19 @@ function renderShift() {
     // close is that the person counting has not been told the answer.
     bar.innerHTML = `
         <span class="pos-shift-state"><span class="pos-shift-dot"></span>Shift open</span>
-        <span class="pos-shift-meta">Since ${esc(since)} · float ${rp(s.opening_float)}${moves ? ` · ${moves} drawer ${moves === 1 ? 'movement' : 'movements'}` : ''}</span>
+        <span class="pos-shift-meta">Since ${esc(since)} · opening cash ${rp(s.opening_float)}${moves ? ` · ${moves} cash ${moves === 1 ? 'movement' : 'movements'}` : ''}</span>
         <span class="pos-shift-actions">
-            <button type="button" id="pos-drawer-move" class="pos-shift-btn">Paid in / out</button>
-            <button type="button" id="pos-close-shift" class="pos-shift-btn is-primary">Close shift</button>
+            <button type="button" id="pos-drawer-move" class="pos-shift-btn">Record cash movement</button>
+            <button type="button" id="pos-close-shift" class="pos-shift-btn is-primary">Count &amp; close</button>
         </span>`;
+    bindShiftActions(bar);
     mirrorShiftBar(bars);
+}
+
+function bindShiftActions(host) {
+    host.querySelector('[data-act="open-shift"], #pos-open-shift')?.addEventListener('click', () => once(openShiftDrawer));
+    host.querySelector('[data-act="drawer-move"], #pos-drawer-move')?.addEventListener('click', () => once(openMovementDrawer));
+    host.querySelector('[data-act="close-shift"], #pos-close-shift')?.addEventListener('click', () => once(openCloseShiftDrawer));
 }
 
 // The Shift view shows the same bar. Cloning the HTML and re-binding by class
@@ -6463,14 +6700,7 @@ function mirrorShiftBar(bars) {
     bars.slice(1).forEach((dst) => {
         dst.className = src.className;
         dst.innerHTML = src.innerHTML.replace(/id="pos-(open-shift|drawer-move|close-shift)"/g, 'data-act="$1"');
-        dst.querySelectorAll('[data-act]').forEach((b) => {
-            const act = b.dataset.act;
-            b.addEventListener('click', () => {
-                if (act === 'open-shift') return openShiftDrawer();
-                if (act === 'drawer-move') return openMovementDrawer();
-                return once(openCloseShiftDrawer);
-            });
-        });
+        bindShiftActions(dst);
     });
 }
 
@@ -6502,16 +6732,22 @@ function openShiftDrawer() {
 }
 
 function openMovementDrawer() {
-    let kind = 'paid_out';
+    // A paid-out creates an expense source document. Cashiers deliberately do
+    // not have permission to create general expenses, so asking a manager to
+    // do that one action is clearer than claiming it was recorded when rules
+    // must refuse its accounting half.
+    const role = ((window.FluxyWorkspace || {}).role || '').toLowerCase();
+    const mayRecordPaidOut = ['owner', 'admin', 'finance', 'accountant'].includes(role);
+    let kind = mayRecordPaidOut ? 'paid_out' : 'paid_in';
     drawer({
-        title: 'Paid in / out',
-        subtitle: 'Cash that moved without a sale.',
+        title: 'Record cash movement',
+        subtitle: 'Cash that moved without a customer payment.',
         submitLabel: 'Record',
         body: `
             <div>
                 <div class="pos-methods" id="pos-move-kind">
-                    <button type="button" class="pos-method is-on" data-kind="paid_out">Paid out</button>
-                    <button type="button" class="pos-method" data-kind="paid_in">Paid in</button>
+                    <button type="button" class="pos-method ${kind === 'paid_out' ? 'is-on' : ''}" data-kind="paid_out" ${mayRecordPaidOut ? '' : 'disabled title="Only a manager can record a business expense"'}><span>Cash out</span><small>Business expense</small></button>
+                    <button type="button" class="pos-method ${kind === 'paid_in' ? 'is-on' : ''}" data-kind="paid_in"><span>Cash in</span><small>Change from safe</small></button>
                 </div>
                 <p class="text-[11px] text-slate-500 mt-2" id="pos-move-note"></p>
             </div>
@@ -6528,7 +6764,7 @@ function openMovementDrawer() {
             state.shift = await ds.recordPosShiftMovement(state.uid, state.shift.id, {
                 kind, amount, reason: fd.get('reason')
             });
-            toast(kind === 'paid_out' ? 'Paid out recorded.' : 'Paid in recorded.');
+            toast(kind === 'paid_out' ? 'Cash out and expense recorded.' : 'Cash in recorded.');
             renderShift();
         }
     });
@@ -6536,8 +6772,8 @@ function openMovementDrawer() {
         // Say what each one does to the books, because they differ and it is not
         // obvious: one is an expense, the other is moving your own cash around.
         $('pos-move-note').textContent = kind === 'paid_out'
-            ? 'Records an expense — this money left the business.'
-            : 'Change topped up from the safe. Moves cash around; posts nothing.';
+            ? 'This reduces the drawer and records a business expense. Use it for something paid from the till, such as ice or a courier.'
+            : 'This adds change from the safe to the drawer. It changes the count only; it is not income.';
     };
     $('pos-move-kind').addEventListener('click', (e) => {
         const b = e.target.closest('[data-kind]');
@@ -6568,9 +6804,9 @@ async function openCloseShiftDrawer() {
     // closing up, and nothing else on this screen would mention them.
     const parked = parkedSales().length;
     drawer({
-        title: 'Close shift',
+        title: 'Count cash drawer',
         subtitle: tally ? `${tally.order_count} ${tally.order_count === 1 ? 'order' : 'orders'} this shift` : '',
-        submitLabel: 'Count and close',
+        submitLabel: 'Submit count & close',
         body: `
             ${parked ? `<div class="pos-note is-warn">
                 <strong>${parked} ${parked === 1 ? 'sale is' : 'sales are'} still on hold.</strong>
@@ -6582,8 +6818,8 @@ async function openCloseShiftDrawer() {
                 <p class="text-[11px] text-slate-500 mt-2">Count it before you look. FluxyOS shows what it expected only after you submit — a count taken against a number you were already shown cannot tell you anything.</p>
             </div>
             <div>
-                <label class="block text-[12px] font-semibold text-slate-700 mb-2" for="pos-close-note">Note <span class="font-normal text-slate-400">(optional)</span></label>
-                <input id="pos-close-note" name="note" class="w-full min-h-[44px] px-3 border border-slate-300 rounded-lg text-[14px]" placeholder="Anything worth remembering about this shift">
+                <label class="block text-[12px] font-semibold text-slate-700 mb-2" for="pos-close-note">Close note <span class="font-normal text-slate-400">(optional)</span></label>
+                <input id="pos-close-note" name="note" class="w-full min-h-[44px] px-3 border border-slate-300 rounded-lg text-[14px]" placeholder="Handover, deposit, or anything to review">
             </div>`,
         onSubmit: async (fd) => {
             const counted = Number(String(fd.get('counted')).replace(/\D/g, ''));
@@ -6616,7 +6852,7 @@ function showShiftResult(s) {
         body: `
             <div>
                 <div class="pos-total-row"><span>Opening float</span><span>${rp(s.opening_float)}</span></div>
-                <div class="pos-total-row"><span>Cash sales</span><span>${rp(s.cash_sales)}</span></div>
+                <div class="pos-total-row"><span>Cash payments${s.refund_count ? ', net refunds' : ''}</span><span>${rp(s.cash_sales)}</span></div>
                 ${(s.movements || []).filter((m) => m.kind === 'paid_in').length
                     ? `<div class="pos-total-row"><span>Paid in</span><span>${rp((s.movements || []).filter((m) => m.kind === 'paid_in').reduce((a, m) => a + m.amount, 0))}</span></div>` : ''}
                 ${(s.movements || []).filter((m) => m.kind === 'paid_out').length
@@ -6628,8 +6864,8 @@ function showShiftResult(s) {
             </div>
             ${s.non_cash_sales ? `<div class="pos-count-reveal">
                 <p class="text-[12px] font-semibold text-slate-700 mb-2">Not in the drawer</p>
-                <div class="pos-total-row"><span>Card, QRIS and transfer</span><span>${rp(s.non_cash_sales)}</span></div>
-                <p class="text-[11px] text-slate-500 mt-2">Settles when the provider pays out, so it was never cash you could count.</p>
+                <div class="pos-total-row"><span>Card, QRIS and transfer${s.refund_count ? ', net refunds' : ''}</span><span>${rp(s.non_cash_sales)}</span></div>
+                <p class="text-[11px] text-slate-500 mt-2">This never belongs in the drawer, so it is shown separately from the physical count.</p>
             </div>` : ''}
             ${methods.length ? `<div class="pos-count-reveal">
                 <p class="text-[12px] font-semibold text-slate-700 mb-2">By payment method</p>
@@ -6688,6 +6924,9 @@ async function refresh({ keepOrder = false } = {}) {
             console.warn('[pos] discount presets unavailable', e);
             state.presets = [];
         }
+        // `__posSeedBoard` can freeze the board while this optional read is in
+        // flight. Do not let the tail of an older refresh repaint its fixture.
+        if (state.frozen) return;
     }
     state.shift = shift;
     // The board and the floor plan read ONE list. `getPosOverview` returns the
@@ -6730,6 +6969,9 @@ async function refresh({ keepOrder = false } = {}) {
             // miss, and it still clears for the case this branch is FOR: an
             // order voided on another device really is gone.
             const fresh = await ds.getPosOrder(state.uid, state.orderId).catch(() => null);
+            // This is another asynchronous boundary. A board fixture may have
+            // frozen the view while the confirmation read was pending.
+            if (state.frozen) return;
             if (fresh && fresh.status !== 'void') state.order = newerOrder(state.order, fresh);
             else { state.orderId = null; state.order = null; }
         }
@@ -7236,6 +7478,10 @@ function closeTableQrSheet() {
 
 onAuthStateChanged(auth, async (user) => {
     if (!user) { window.location.href = '/login'; return; }
+    // Consumers that need a stable till surface (including the board fixture)
+    // must wait until outlet setup has been resolved as well as the first data
+    // refresh. The nav and New order button are both painted earlier.
+    $('pos-shell')?.setAttribute('data-pos-ready', 'false');
     // No `feature` gate: eligibility resolves from the OWNER's email, and a
     // cashier is not the owner. The sidebar reveals the entry for a POS-only
     // role; firestore.rules is the real boundary either way.
@@ -7260,7 +7506,8 @@ onAuthStateChanged(auth, async (user) => {
     if (!hasOutlet) {
         $('pos-metrics').innerHTML = '';
         renderOrder();
-        openOutletOnboarding();
+        await openOutletOnboarding();
+        $('pos-shell')?.setAttribute('data-pos-ready', 'true');
         return;
     }
     await refresh();
@@ -7269,5 +7516,6 @@ onAuthStateChanged(auth, async (user) => {
     // A completed counter/takeaway outlet can deliberately have zero tables.
     // The settings document is the durable completion marker; using the table
     // count here would reopen setup on every visit for that valid service mode.
-    if (!outletConfig?.exists) openOutletOnboarding(state.outletId);
+    if (!outletConfig?.exists) await openOutletOnboarding(state.outletId);
+    $('pos-shell')?.setAttribute('data-pos-ready', 'true');
 });

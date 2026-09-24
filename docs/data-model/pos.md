@@ -1583,7 +1583,7 @@ the only question a close-of-day actually asks.
 | `dimension_id` | string | Outlet. **One open shift per outlet** — two would each claim the same sales and neither would reconcile. Enforced in the DAL; rules cannot query |
 | `status` | enum | `open` \| `closed` |
 | `opening_float` | integer | Cash in the drawer at open. **Immutable after create** |
-| `movements` | array | `{id, kind: 'paid_in'\|'paid_out', amount, reason, at, by}` |
+| `movements` | array | `{id, kind: 'paid_in'\|'paid_out', amount, reason, at, by}`; a paid-out also carries its linked expense `transaction_id` |
 | `counted_cash` | integer \| null | What was physically counted. **Write-once** — see below |
 | `expected_cash` / `variance` | integer \| null | Computed at close. `variance = counted − expected` |
 | `cash_sales` / `non_cash_sales` / `order_count` | integer | Tallied from orders carrying this `shift_id` |
@@ -1605,9 +1605,19 @@ is arithmetic, not accounting. Counterintuitive enough to be worth stating.
 ### Paid in and paid out are not symmetrical
 
 **Paid out** posts an ordinary expense — buying ice, paying a courier. That money
-left the business. **Paid in** does not: it is change topped up from the safe,
-which is internal. If a paid-in ever needs to post it is not a paid-in; it is a
-sale or a refund and belongs on an order.
+left the business. The drawer movement and the expense are written in one batch:
+if either write is refused, neither is recorded. It is a finance/manager action,
+because a cashier is intentionally not allowed to create general expenses.
+**Paid in** does not post: it is change topped up from the safe, which is
+internal. If a paid-in ever needs to post it is not a paid-in; it is a sale or a
+refund and belongs on an order.
+
+### Refunds return to the original tender
+
+The shift tally nets a refunded order against each settled payment on that
+order. A card or QRIS refund therefore never reduces expected drawer cash; a
+split-tender refund reduces it only by the original cash portion. This follows
+the same tender distinction used when the sale entered the drawer.
 
 ### Only the variance posts
 

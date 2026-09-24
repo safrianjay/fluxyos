@@ -31,19 +31,30 @@ async function openBoard(page) {
     // dismiss it whenever it would block an interaction, rather than guessing a
     // delay that happens to cover one Firebase response time.
     await page.addLocatorHandler(page.locator('#pos-onboarding:not(.hidden)'), async () => {
-        await page.locator('#pos-onboarding-close').click();
+        // Setup can arrive after a payment dialog is already open. It still has
+        // to be dismissed, but the dialog rightly sits above it, so this test
+        // harness action must not depend on normal pointer stacking.
+        await page.locator('#pos-onboarding-close').click({ force: true });
     });
     await page.goto('/pos');
     await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
-    // `data-till-nav` is installed before the first outlet refresh completes.
-    // A fixture seeded in that gap can be replaced by the tail of that refresh,
-    // which only shows up after a busy, serial browser run. The enabled Create
-    // Order control is the till's own ready signal, so wait for it before
-    // freezing a board fixture.
+    // The navigation is painted before both the initial refresh and the outlet
+    // setup check. Wait for the completed page lifecycle before any fixture or
+    // modal interaction, otherwise setup can arrive on top of a later dialog.
+    await expect(page.locator('#pos-shell[data-pos-ready="true"]')).toBeVisible({ timeout: 40_000 });
+    const setup = page.locator('#pos-onboarding:not(.hidden)');
+    if (await setup.isVisible().catch(() => false)) {
+        await page.locator('#pos-onboarding-close').click({ force: true });
+        await expect(setup).toBeHidden();
+    }
     await expect(page.locator('#pos-new-order')).toBeEnabled({ timeout: 40_000 });
     await page.click('#nav-container [data-view="orders"]');
     await expect(page.locator('.pos-view[data-view="orders"]')).toBeVisible();
-    await page.waitForTimeout(1200);
+    // The seam is the entry point for every board fixture. Waiting for it is
+    // deterministic; a fixed pause was sensitive to a busy serial QA run.
+    await expect.poll(() => page.evaluate(() => typeof window.__posSeedBoard), {
+        timeout: 40_000
+    }).toBe('function');
 }
 
 // Replaces the board's data with orders of KNOWN age, then repaints. Nothing is

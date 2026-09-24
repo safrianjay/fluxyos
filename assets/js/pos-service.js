@@ -2291,31 +2291,64 @@ export const POS_METHODS = {
 
         const scope = this._scope(userId);
         const ref = doc(this.db, `${scope}/pos_shifts/${shiftId}`);
-        const out = await this._posTxn(async (tx) => {
-            const snap = await tx.get(ref);
-            if (!snap.exists()) throw new Error('That shift no longer exists.');
-            const cur = { id: snap.id, ...snap.data() };
-            if (cur.status !== 'open') throw new Error('This shift is closed.');
-            const movements = [...(cur.movements || []), {
-                id: `m${Date.now().toString(36)}`,
-                kind, amount: amt, reason: why,
-                at: Timestamp.fromDate(new Date()),
-                by: this.actorUid || userId
-            }];
-            tx.update(ref, { movements, version: (Number(cur.version) || 1) + 1, updated_at: serverTimestamp() });
-            return { ...cur, movements, version: (Number(cur.version) || 1) + 1 };
+        const movement = () => ({
+            id: `m${Date.now().toString(36)}`,
+            kind, amount: amt, reason: why,
+            at: Timestamp.fromDate(new Date()),
+            by: this.actorUid || userId
         });
 
-        if (kind === 'paid_out') {
-            try {
-                await this.addTransaction(userId, {
-                    amount: amt, vendor_name: why, category, type: 'expense', icon: '💸',
-                    status: 'Completed', timestamp: new Date(), dimension_id: out.dimension_id
-                });
-            } catch (err) {
-                console.error('[pos] paid-out recorded in the drawer but not posted:', err && err.message);
-            }
+        // A paid-in is a transfer of the business's own cash into the drawer.
+        // It changes the count, but it is not an expense or a new source of
+        // funds, so the shift document is the entire record.
+        if (kind === 'paid_in') {
+            const out = await this._posTxn(async (tx) => {
+                const snap = await tx.get(ref);
+                if (!snap.exists()) throw new Error('That shift no longer exists.');
+                const cur = { id: snap.id, ...snap.data() };
+                if (cur.status !== 'open') throw new Error('This shift is closed.');
+                const movements = [...(cur.movements || []), movement()];
+                tx.update(ref, { movements, version: (Number(cur.version) || 1) + 1, updated_at: serverTimestamp() });
+                return { ...cur, movements, version: (Number(cur.version) || 1) + 1 };
+            });
+            await this._auditCreateBestEffort(userId, 'pos_shift.movement_recorded', 'pos_shifts', shiftId, {
+                kind, amount: amt, reason: why, dimension_id: out.dimension_id
+            });
+            return out;
         }
+
+        // A paid-out is an expense AND cash leaving this specific drawer. These
+        // used to be separate writes and the expense failure was swallowed. A
+        // cashier could therefore see "Paid out recorded" while the drawer
+        // count changed but the books did not. Put both source documents in one
+        // batch: either both facts exist or neither does.
+        const snap = await getDoc(ref);
+        if (!snap.exists()) throw new Error('That shift no longer exists.');
+        const cur = { id: snap.id, ...snap.data() };
+        if (cur.status !== 'open') throw new Error('This shift is closed.');
+        const txRef = doc(collection(this.db, `${scope}/transactions`));
+        const paidOut = { ...movement(), transaction_id: txRef.id };
+        const movements = [...(cur.movements || []), paidOut];
+        const when = new Date();
+        const transaction = {
+            amount: amt, vendor_name: why, category, type: 'expense', icon: '💸',
+            status: 'Completed', timestamp: Timestamp.fromDate(when),
+            dimension_id: cur.dimension_id, created_at: serverTimestamp()
+        };
+        const batch = writeBatch(this.db);
+        await this._postSourceJournal(userId, batch, 'transactions', txRef, transaction, { date: when });
+        batch.set(txRef, transaction);
+        batch.update(ref, {
+            movements, version: (Number(cur.version) || 1) + 1, updated_at: serverTimestamp()
+        });
+        await batch.commit();
+        const out = { ...cur, movements, version: (Number(cur.version) || 1) + 1 };
+        await this._auditCreateBestEffort(userId, 'pos_shift.movement_recorded', 'pos_shifts', shiftId, {
+            kind, amount: amt, reason: why, transaction_id: txRef.id, dimension_id: out.dimension_id
+        });
+        await this._auditCreateBestEffort(userId, 'transaction.create', 'transactions', txRef.id, {
+            amount: amt, vendor_name: why, category, type: 'expense', status: 'Completed'
+        });
         return out;
     },
 
@@ -2354,7 +2387,7 @@ export const POS_METHODS = {
         // TENDER, not settlement. A bank transfer settles to the same account as
         // cash and puts nothing in the drawer — counting it here made the blind
         // count short by every transfer taken. See POS_PAYMENT_METHODS.
-        let cash = 0; let nonCash = 0;
+        let cash = 0; let nonCash = 0; let refundCount = 0;
         const byMethod = {};
         mine.forEach((o) => {
             (o.payments || []).filter((p) => p.status === 'settled').forEach((p) => {
@@ -2362,10 +2395,24 @@ export const POS_METHODS = {
                 byMethod[p.method] = (byMethod[p.method] || 0) + amt;
                 if (this._posTenderFor(p.method) === 'cash') cash += amt; else nonCash += amt;
             });
-            // A refund hands cash back out of the same drawer.
-            if (o.refund_transaction_id) cash -= Number(o.total_amount) || 0;
+            // A full refund returns each tender to its original destination. It
+            // is never safe to subtract the whole bill from the drawer: a QRIS
+            // or card refund did not hand notes back, and a split tender only
+            // returns its cash portion from this drawer.
+            if (o.refund_transaction_id) {
+                refundCount += 1;
+                (o.payments || []).filter((p) => p.status === 'settled').forEach((p) => {
+                    const amt = Number(p.amount) || 0;
+                    byMethod[p.method] = (byMethod[p.method] || 0) - amt;
+                    if (this._posTenderFor(p.method) === 'cash') cash -= amt; else nonCash -= amt;
+                });
+            }
         });
-        return { cash_sales: cash, non_cash_sales: nonCash, order_count: mine.length, by_method: byMethod };
+        return {
+            cash_sales: cash, non_cash_sales: nonCash, order_count: mine.length,
+            refund_count: refundCount,
+            by_method: Object.fromEntries(Object.entries(byMethod).filter(([, amount]) => amount !== 0))
+        };
     },
 
     // Close it. `countedCash` is what was physically counted, and the caller is
@@ -2434,7 +2481,11 @@ export const POS_METHODS = {
             counted_cash: counted, expected_cash: expected, variance,
             order_count: tally.order_count, dimension_id: shift.dimension_id
         });
-        return { id: shiftId, ...shift, ...patch, by_method: tally.by_method };
+        return {
+            id: shiftId, ...shift, ...patch,
+            refund_count: tally.refund_count,
+            by_method: tally.by_method
+        };
     },
 
     // ── Emission: where an operational event becomes a financial one ────────
