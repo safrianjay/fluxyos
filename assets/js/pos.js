@@ -4601,6 +4601,10 @@ function openOrderLabelDialog(order) {
 }
 
 function writeOrderLabels(order, picked, mode, copies, w) {
+    return writeKitchenOrderLabels(order, picked, mode, copies, w);
+    /* Superseded label template retained below until the printer-template
+       migration is complete. */
+    /*
     const all = order.lines || [];
     const table = order.table_label ? `Table ${esc(order.table_label)}` : 'Takeaway';
     const lines = picked.flatMap((i) => {
@@ -4611,6 +4615,37 @@ function writeOrderLabels(order, picked, mode, copies, w) {
     w.opener = null;
     w.document.close();
     ds.recordPosOrderLabelPrint(state.uid, order.id, { lineIds: picked.map((i) => all[i].line_id), copies, mode }).catch(() => {});
+    */
+}
+
+function writeKitchenOrderLabels(order, picked, mode, copies, w) {
+    const all = order.lines || [];
+    const destination = order.table_label ? `Table ${order.table_label}` : 'Takeaway';
+    const opened = order.opened_at?.toDate?.() || order.opened_at;
+    const firedAt = opened instanceof Date && !Number.isNaN(opened.getTime()) ? opened : new Date();
+    const time = firedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const source = order.channel === 'qr' ? 'TABLE QR' : (order.customer_name || 'POS');
+    const labels = picked.flatMap((index) => {
+        const line = all[index];
+        const repeat = (mode === 'quantity' ? Number(line.quantity) || 1 : 1) * copies;
+        const quantity = mode === 'quantity' ? 1 : Number(line.quantity) || 1;
+        const modifiers = (line.modifiers || []).map((m) => m.option_name).filter(Boolean).join(' · ');
+        return Array.from({ length: repeat }, (_, labelIndex) => '<section class="label">'
+            + '<header class="label-head"><div class="label-destination"><span>DESTINATION</span><strong>' + esc(destination) + '</strong></div>'
+            + '<div class="label-order"><span>ORDER</span><strong>' + esc(order.order_number || '—') + '</strong></div></header>'
+            + '<main class="label-main"><h1>' + esc(line.item_name || 'Unnamed product') + '</h1>'
+            + '<div class="label-quantity"><span>QUANTITY</span><b>×' + quantity + '</b></div>'
+            + (modifiers ? '<p class="label-modifiers"><strong>MAKE IT</strong>' + esc(modifiers) + '</p>' : '')
+            + (line.note ? '<p class="label-note"><strong>NOTE</strong>' + esc(line.note) + '</p>' : '')
+            + '</main><footer class="label-foot"><span>' + esc(source) + '</span><span>' + esc(time) + '</span>'
+            + (repeat > 1 ? '<small>LABEL ' + (labelIndex + 1) + ' / ' + repeat + '</small>' : '')
+            + '</footer></section>');
+    }).join('');
+    const style = '@page{size:58mm auto;margin:0}*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#000}.label{width:58mm;min-height:43mm;margin:0 0 2mm;padding:2mm;border-bottom:1px dashed #000;page-break-inside:avoid;break-inside:avoid}.label-head{display:grid;grid-template-columns:1fr auto;gap:2mm;padding:1.8mm 2mm;border:1.1px solid #000}.label-head span,.label-quantity span,.label-modifiers strong,.label-note strong,.label-order span{display:block;font-size:7px;font-weight:700;letter-spacing:.13em;line-height:1.1}.label-destination strong{display:block;margin-top:.7mm;font-size:18px;line-height:1;letter-spacing:-.03em}.label-order{text-align:right}.label-order strong{display:block;margin-top:.8mm;font-size:10px;line-height:1;white-space:nowrap}.label-main{padding:2.7mm 2mm 2mm}.label h1{margin:0 0 2.2mm;font-size:21px;line-height:1.02;letter-spacing:-.035em;word-break:break-word}.label-quantity{display:flex;align-items:center;justify-content:space-between;padding:1.3mm 1.8mm;border:1.1px solid #000}.label-quantity b{font-size:24px;line-height:.9}.label-modifiers{margin:2mm 0 0;padding-left:1.8mm;border-left:1.1mm solid #000;font-size:10px;font-weight:700;line-height:1.35}.label-modifiers strong{margin-bottom:.7mm}.label-note{margin:1.8mm 0 0;padding:1.5mm 1.8mm;border:1px solid #000;font-size:10px;font-weight:700;line-height:1.35}.label-note strong{margin-bottom:.7mm}.label-foot{display:grid;grid-template-columns:1fr auto;gap:1mm;padding:1.5mm 2mm 0;border-top:1px dashed #000;color:#111;font-size:8px;font-weight:700;line-height:1.2}.label-foot small{grid-column:1/-1;font-size:7px;letter-spacing:.09em}@media print{.label{margin-bottom:2mm}}';
+    w.document.write('<!doctype html><html><head><title>Order labels</title><style>' + style + '</style></head><body>' + labels + '<script>window.onload=()=>window.print()<\\/script></body></html>');
+    w.opener = null;
+    w.document.close();
+    ds.recordPosOrderLabelPrint(state.uid, order.id, { lineIds: picked.map((index) => all[index].line_id), copies, mode }).catch(() => {});
 }
 
 async function openReceipt(order, { billId = null } = {}) {
