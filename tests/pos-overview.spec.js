@@ -4,7 +4,7 @@ const stamp = (iso) => iso;
 
 test('POS Overview renders verified metrics, honest gaps, drill-downs and mobile layout', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto('/pos?view=overview');
+    await page.goto('/pos?view=overview', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => typeof window.__posSeedOverview === 'function');
     await page.evaluate(({ paid, refunded }) => window.__posSeedOverview({
         start:'2026-09-01',end:'2026-09-30',
@@ -27,7 +27,15 @@ test('POS Overview renders verified metrics, honest gaps, drill-downs and mobile
     await expect(page.locator('.pos-overview-kpi').nth(1)).toContainText('1');
     await expect(page.getByText('Unavailable — no visitor source')).toBeVisible();
     await expect(page.getByText('Recorded accounting revenue').locator('..')).toContainText('Rp110.000');
+    await expect(page.locator('.pos-overview-chart-table')).not.toBeVisible();
+    await expect(page.locator('.pos-overview-bar.is-negative')).toHaveCount(1);
+    await page.screenshot({ path: '.qa/pos-overview-desktop.png', fullPage: true });
+    await page.getByText('View data', { exact: true }).click();
     await expect(page.locator('.pos-overview-chart-table')).toBeVisible();
+    await page.setViewportSize({ width:375,height:800 });
+    await page.screenshot({ path: '.qa/pos-overview-mobile.png', fullPage: true });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+    await page.setViewportSize({ width:1280,height:900 });
 
     await page.getByRole('button',{name:/Dine-in/}).click();
     await expect(page.locator('.pos-view[data-view="orders"]')).toBeVisible();
@@ -39,4 +47,37 @@ test('POS Overview renders verified metrics, honest gaps, drill-downs and mobile
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth-document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);
     await expect(page.getByText('No completed orders in this period.')).toBeVisible();
+});
+
+test('month-long POS trend scrolls within its card at desktop and mobile widths', async ({ page }) => {
+    await page.goto('/pos?view=overview', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.__posSeedOverview === 'function');
+    await page.evaluate(() => window.__posSeedOverview({
+        start:'2026-09-01', end:'2026-09-30',
+        orders:Array.from({ length:30 }, (_, i) => {
+            const amount = 45000 + (i % 7) * 15000;
+            return { id:`visual-${i}`, channel:'staff', status:'paid', table_id:i % 2 ? null : 'table-1',
+                paid_at:`2026-09-${String(i + 1).padStart(2,'0')}T03:00:00Z`,
+                subtotal:amount, total_amount:amount, discount_total:0,
+                lines:[{item_id:'coffee',item_name:'Coffee',quantity:1,gross_amount:amount}],
+                payments:[{method:'cash',amount,status:'settled'}] };
+        })
+    }));
+    for (const width of [1280, 375]) {
+        await page.setViewportSize({ width, height:900 });
+        await expect(page.locator('.pos-overview-column')).toHaveCount(30);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+        const scroller = page.locator('.pos-overview-scroll');
+        expect(await scroller.evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
+        await page.locator('.pos-overview-stage').scrollIntoViewIfNeeded();
+        await page.screenshot({ path:`.qa/pos-overview-month-${width}.png` });
+        await scroller.evaluate(el => { el.scrollLeft = el.scrollWidth; });
+        await expect(page.locator('.pos-overview-dates span').last()).toHaveText(/30/);
+    }
+    await page.getByRole('button', {name:'Orders',exact:true}).click();
+    await expect(page.getByRole('button', {name:'Orders',exact:true})).toHaveAttribute('aria-pressed','true');
+    await page.getByText('View data', {exact:true}).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.pos-overview-chart-table tbody tr')).toHaveCount(30);
+    await expect(page.locator('.pos-overview-chart-table')).toBeVisible();
 });

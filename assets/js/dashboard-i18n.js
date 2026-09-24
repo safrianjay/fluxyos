@@ -60,6 +60,7 @@
     }
 
     var ID = {
+        'View data': 'Lihat data',
         // ── KPI drill-down detail pages (Revenue Overview / Cash Position / OpEx & Budget) ──
         "Revenue Overview": "Ringkasan Pendapatan",
         "Where your revenue comes from across businesses, categories, and channels — for the selected period.": "Dari mana pendapatan Anda berasal — lintas bisnis, kategori, dan channel — untuk periode yang dipilih.",
