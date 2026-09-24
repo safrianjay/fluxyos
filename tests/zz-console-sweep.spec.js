@@ -1,5 +1,5 @@
 // @ts-check
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./qa-test');
 const { auditSpacing, MIN_GAP } = require('./helpers/spacing-audit');
 const { installTrialPaywallBypass } = require('./qa-helpers');
 

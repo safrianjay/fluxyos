@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./qa-test');
 
 // =============================================================================
 // The Orders board as a KITCHEN screen, not just a cashier's list.
@@ -38,7 +38,7 @@ async function openBoard(page) {
     });
     // This suite exercises the Orders board, not the analytics default. Going
     // directly to the view avoids six historical queries on every fixture.
-    await page.goto('/pos?view=orders');
+    await page.goto('/pos?view=orders', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#nav-container[data-till-nav]', { timeout: 25000 });
     // The navigation is painted before both the initial refresh and the outlet
     // setup check. Wait for the completed page lifecycle before any fixture or

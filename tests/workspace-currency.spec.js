@@ -18,7 +18,7 @@
 // Assertions are written against whatever currency the workspace reports, not a
 // hardcoded PHP, so the same spec works for SG/MY when those accounts exist.
 
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./qa-test');
 const fs = require('fs');
 const path = require('path');
 

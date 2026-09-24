@@ -17,7 +17,7 @@
 // that the page renders in the workspace's own currency and never flashes
 // another one.
 
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./qa-test');
 
 const APP_PAGES = [
     '/dashboard.html',

@@ -103,7 +103,7 @@ function run(name, cmd, args, opts = {}) {
     status: res.status,
     logPath,
     ms: Date.now() - started,
-    // Keep the tail of the output for the artifact; full output goes to stdout.
+    // Keep separate stream tails in the artifact; the full failure log is on disk.
     detail: ok ? '' : [
       `Full output: ${logPath}`,
       res.error ? `Runner error: ${res.error.message}` : '',
@@ -115,6 +115,16 @@ function run(name, cmd, args, opts = {}) {
 }
 
 const results = [];
+function emulatorEnvironment() {
+  // Emulator tests need no CLI login. Isolate their config so telemetry cannot
+  // turn a successful test into exit 2 when GA's post-command request times out.
+  // Never change the user's real Firebase credentials or usage preference.
+  const configRoot = path.join(REPO_ROOT, '.qa/firebase-emulator-config');
+  fs.mkdirSync(path.join(configRoot, 'configstore'), { recursive: true });
+  fs.writeFileSync(path.join(configRoot, 'configstore/firebase-tools.json'), JSON.stringify({ usage: false }));
+  return { XDG_CONFIG_HOME: configRoot };
+}
+
 function record(lane, r, { printOnPass = false } = {}) {
   results.push({ lane, ...r, output: undefined });
   const icon = r.ok ? '✓' : '✗';
@@ -410,7 +420,7 @@ function laneBE(changed) {
       'npx',
       ['firebase', 'emulators:exec', '--config', '.rules-build/firebase.json', '--only', 'firestore',
        'node tests/cleanup-pos.check.js'],
-      { timeout: 5 * 60_000 }
+      { timeout: 5 * 60_000, env: emulatorEnvironment() }
     )) && ok;
   }
   if (FORCE_ALL || touched(/^firestore\.rules$|^storage\.rules$/)) {
@@ -427,7 +437,7 @@ function laneBE(changed) {
         'npx',
         ['firebase', 'emulators:exec', '--only', 'firestore,auth',
          'for s in tests/*-rules-emulator-test.mjs; do echo "--- $s"; node "$s" || exit 1; done'],
-        { timeout: 10 * 60_000 }
+        { timeout: 10 * 60_000, env: emulatorEnvironment() }
       )) && ok;
     }
   }
