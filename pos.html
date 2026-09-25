@@ -170,25 +170,38 @@
         .pos-topbar.is-overview { min-height:72px;height:auto; }
         .pos-overview-period { display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end; }
         .pos-overview-period #pos-overview-date { min-width:230px; }
-        @media (max-width:760px) {
+        /* The POS sidebar consumes 220px on tablet, so wrap the Overview
+           toolbar before the viewport itself looks "mobile". */
+        @media (max-width:1100px) {
             .pos-topbar.is-overview { min-height:116px;padding:12px 16px;flex-wrap:wrap;align-items:flex-start; }
             .pos-topbar.is-overview .pos-overview-period { order:4;width:100%;justify-content:flex-start; }
             .pos-topbar.is-overview .pos-topbar-right { order:5;width:100%;justify-content:flex-end; }
-            .pos-topbar.is-overview .dashboard-period-controls { width:100%;overflow-x:auto; }
+            .pos-topbar.is-overview .dashboard-period-controls { max-width:100%;overflow-x:auto; }
             .pos-topbar.is-overview .dashboard-period-btn { white-space:nowrap; }
             .pos-topbar.is-overview .pos-overview-period #pos-overview-date { width:100%;min-width:0; }
+        }
+        @media (max-width:760px) {
             .pos-overview-card.chart-card { padding:18px; }
             .pos-overview-card.chart-card .pos-overview-card-head { flex-direction:column;align-items:flex-start; }
             .pos-overview-card.chart-card .pos-overview-legend { justify-content:flex-start;gap:10px; }
             .pos-overview-chart-row { grid-template-columns:48px minmax(0,1fr) 38px;gap:8px; }
             .pos-overview-dates { margin-left:56px; }
         }
-        @media (max-width:900px) { .pos-overview-two { grid-template-columns:minmax(0,1fr)!important; } }
-        @media (max-width:759px) { .pos-overview-kpi { padding:20px 16px; }.pos-overview-kpi:nth-child(3) { border-left:0; }.pos-overview-kpi:nth-child(n+3) { border-top:1px solid #E5E7EB; } }
+        @media (max-width:1199px) {
+            .pos-overview-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+            .pos-overview-kpi { padding:20px 16px; }
+            .pos-overview-kpi:nth-child(odd) { border-left:0; }
+            .pos-overview-kpi:nth-child(n+3) { border-top:1px solid #E5E7EB; }
+            .pos-overview-two { grid-template-columns:minmax(0,1fr)!important; }
+        }
         .pos-overview-skeleton { min-height:96px;border-radius:12px;background:linear-gradient(90deg,#F1F5F9 25%,#F8FAFC 50%,#F1F5F9 75%);background-size:200% 100%;animation:pos-shimmer 1.3s infinite; }
         @keyframes pos-shimmer { to { background-position:-200% 0; } }
         #pos-overview-date { min-width:230px; }
-        @media (min-width:760px) { .pos-overview-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }.pos-overview-two { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+        @media (min-width:1200px) {
+            .pos-overview-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+            .pos-overview-kpi:nth-child(n+3) { border-top:0; }
+            .pos-overview-two { grid-template-columns:repeat(2,minmax(0,1fr)); }
+        }
         @media (max-width:640px) { #pos-overview-date { min-width:0;width:100%; }.pos-overview-card-head,.pos-overview-card-body { padding:14px; }.pos-overview-donut { gap:12px; }.pos-overview-donut-ring { flex-basis:128px;height:128px; }.pos-overview-donut-ring svg { width:128px;height:128px; }.pos-overview-donut-ring strong { font-size:14px; }.pos-overview-donut li { font-size:12px; } }
 
         /* Blind close: the count goes in before the expectation comes out. */

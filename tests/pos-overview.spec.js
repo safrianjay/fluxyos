@@ -62,6 +62,15 @@ test('POS Overview renders verified metrics, honest gaps, drill-downs and mobile
     await expect(page.locator('.pos-overview-chart-table')).not.toBeVisible();
     await expect(page.locator('.pos-overview-bar.is-negative')).toHaveCount(1);
     await page.screenshot({ path: '.qa/pos-overview-desktop.png', fullPage: true });
+    for (const width of [1024, 768]) {
+        await page.setViewportSize({ width, height:900 });
+        await expect(page.locator('#pos-overview-period-selector')).toBeVisible();
+        await expect(page.locator('.pos-overview-kpi')).toHaveCount(4);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+        const columns = await page.locator('.pos-overview-grid').evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
+        expect(columns).toBe(2);
+        await page.screenshot({ path:`.qa/pos-overview-tablet-${width}.png`, fullPage:true });
+    }
     await page.getByText('View data', { exact: true }).click();
     await expect(page.locator('.pos-overview-chart-table')).toBeVisible();
     await page.setViewportSize({ width:375,height:800 });
@@ -95,7 +104,7 @@ test('month-long POS trend scrolls within its card at desktop and mobile widths'
                 payments:[{method:'cash',amount,status:'settled'}] };
         })
     }));
-    for (const width of [1280, 375]) {
+    for (const width of [1280, 1024, 768, 390, 375]) {
         await page.setViewportSize({ width, height:900 });
         await expect(page.locator('.pos-overview-column')).toHaveCount(30);
         expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
