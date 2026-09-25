@@ -121,7 +121,13 @@ const RULES = [
     id: 'orange-background',
     severity: 'error',
     doc: 'CLAUDE.md — "Orange backgrounds are PROHIBITED project-wide"',
-    applies: (f) => /\.(html|css)$/.test(f) && !f.startsWith('docs/'),
+    // The generated Tailwind bundle is intentionally one minified line. A
+    // rebuild would therefore re-report every legacy utility on that line,
+    // even when the changed source is clean. Inspect the source HTML/CSS
+    // instead, where an orange background is actionable.
+    applies: (f) => /\.(html|css)$/.test(f)
+      && !f.startsWith('docs/')
+      && f !== 'assets/css/tailwind.min.css',
     scan(line) {
       // Gradients are explicitly allowed (orange is legal as an accent and in
       // gradients), so from-/via-/to- prefixes must not trip this.
