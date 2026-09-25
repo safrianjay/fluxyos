@@ -126,8 +126,12 @@
         .pos-overview-segment { display:flex;padding:3px;background:#F1F5F9;border-radius:8px; }
         .pos-overview-segment button { font-size:12px;padding:6px 12px;border-radius:6px; }
         .pos-overview-segment [aria-pressed="true"] { background:#fff;color:#0F172A;box-shadow:0 1px 3px rgb(15 23 42 / 10%); }
-        .pos-overview-plot { display:flex;gap:12px;margin-top:12px; }
+        .pos-overview-plot { margin-top:12px; }
+        .pos-overview-chart-row { display:flex;gap:12px;min-width:0; }
         .pos-overview-axis { position:relative;width:80px;flex-shrink:0;height:220px;font-size:10px;color:#94A3B8;font-variant-numeric:tabular-nums; }
+        .pos-overview-axis-title { display:block;position:absolute;top:-10px;right:0;font-size:10px;font-weight:600;color:#64748B; }
+        .pos-overview-axis-right { width:44px; }
+        .pos-overview-axis-right span:not(.pos-overview-axis-title) { left:0;right:auto; }
         .pos-overview-axis span { position:absolute;right:0;transform:translateY(-50%); }
         .pos-overview-scroll { overflow-x:auto;min-width:0;flex:1;padding-top:8px; }
         .pos-overview-stage { position:relative;height:220px;display:flex; }
@@ -136,11 +140,26 @@
         .pos-overview-column { position:relative;flex:1;min-width:56px; }
         .pos-overview-column .pos-overview-bar { position:absolute;left:50%;transform:translateX(-50%);width:44%;max-width:36px;border:0;background:#3B82F6;border-radius:3px 3px 0 0; }
         .pos-overview-column .pos-overview-bar.is-negative { background:#94A3B8;border-radius:0 0 3px 3px; }
+        .pos-overview-order-line { position:absolute;inset:0;width:100%;height:220px;overflow:visible;pointer-events:none; }
+        .pos-overview-order-line polyline { fill:none;stroke:#0B0F19;stroke-width:2;vector-effect:non-scaling-stroke; }
+        .pos-overview-order-line circle { fill:#fff;stroke:#0B0F19;stroke-width:2;vector-effect:non-scaling-stroke; }
         .pos-overview-dates { display:flex;margin-top:12px;color:#94A3B8;font-size:10px; }
         .pos-overview-dates span { flex:1;min-width:56px;text-align:center; }
         .pos-overview-data { margin-top:24px;border-top:1px solid #F1F5F9;padding-top:12px;font-size:12px;color:#64748B; }
         .pos-overview-data summary { cursor:pointer;width:fit-content; }
         .pos-overview-data > div { overflow-x:auto; }
+        .pos-overview-legend { display:flex;gap:16px;justify-content:center;margin-top:10px;color:#64748B;font-size:12px; }
+        .pos-overview-legend span { display:inline-flex;align-items:center;gap:6px; }
+        .pos-overview-legend i { display:inline-block;width:9px;height:9px;border-radius:3px; }
+        .pos-overview-legend-sales { background:#3B82F6; }.pos-overview-legend-orders { background:#0B0F19;border-radius:50%!important; }
+        .pos-overview-donut { display:flex;align-items:center;gap:24px;min-height:184px; }
+        .pos-overview-donut-ring { position:relative;flex:0 0 154px;height:154px;display:flex;align-items:center;justify-content:center; }
+        .pos-overview-donut-ring svg { width:154px;height:154px;transform:rotate(0); }
+        .pos-overview-donut-track,.pos-overview-donut-segment { fill:none;stroke-width:16; }
+        .pos-overview-donut-track { stroke:#F1F5F9; }.pos-overview-donut-segment { stroke-linecap:butt; }
+        .pos-overview-donut-ring strong,.pos-overview-donut-ring span { position:absolute; }.pos-overview-donut-ring strong { margin-top:-8px;font-size:16px;font-weight:600; }.pos-overview-donut-ring span { margin-top:28px;color:#64748B;font-size:10px;text-transform:uppercase;letter-spacing:.06em; }
+        .pos-overview-donut ul { flex:1;display:grid;gap:10px;margin:0;padding:0;list-style:none;font-size:12px; }.pos-overview-donut li { display:grid;grid-template-columns:10px 1fr auto;gap:8px;align-items:center; }.pos-overview-donut li i { width:10px;height:10px;border-radius:3px; }.pos-overview-donut li span { color:#334155; }.pos-overview-donut li b { color:#64748B;font-weight:600; }
+        .pos-overview-ranking { display:grid;gap:4px; }.pos-overview-rank { display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #F1F5F9;text-align:left; }.pos-overview-rank:last-child { border-bottom:0; }.pos-overview-rank-index { color:#94A3B8;font-size:12px;font-weight:600; }.pos-overview-rank-main { min-width:0;display:grid;gap:7px;font-size:14px;font-weight:500; }.pos-overview-rank-main > span { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }.pos-overview-rank-main i { display:block;height:5px;border-radius:999px;background:#F1F5F9;overflow:hidden; }.pos-overview-rank-main em { display:block;height:100%;border-radius:inherit;background:#3B82F6; }.pos-overview-rank b { font-size:14px;font-weight:500;font-variant-numeric:tabular-nums; }
         .pos-overview :focus-visible { outline:2px solid #EA580C;outline-offset:3px; }
         @media (max-width:900px) { .pos-overview-two { grid-template-columns:minmax(0,1fr)!important; } }
         @media (max-width:759px) { .pos-overview-kpi { padding:20px 16px; }.pos-overview-kpi:nth-child(3) { border-left:0; }.pos-overview-kpi:nth-child(n+3) { border-top:1px solid #E5E7EB; } }
@@ -148,7 +167,7 @@
         @keyframes pos-shimmer { to { background-position:-200% 0; } }
         #pos-overview-date { min-width:230px; }
         @media (min-width:760px) { .pos-overview-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }.pos-overview-two { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-        @media (max-width:640px) { #pos-overview-date { min-width:0;width:100%; }.pos-overview-card-head,.pos-overview-card-body { padding:14px; } }
+        @media (max-width:640px) { #pos-overview-date { min-width:0;width:100%; }.pos-overview-card-head,.pos-overview-card-body { padding:14px; }.pos-overview-donut { gap:12px; }.pos-overview-donut-ring { flex-basis:128px;height:128px; }.pos-overview-donut-ring svg { width:128px;height:128px; }.pos-overview-donut-ring strong { font-size:14px; }.pos-overview-donut li { font-size:12px; } }
 
         /* Blind close: the count goes in before the expectation comes out. */
         .pos-count-reveal { border-top: 1px solid #E2E8F0; margin-top: 16px; padding-top: 16px; }

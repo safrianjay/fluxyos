@@ -2024,6 +2024,13 @@ function posTimeZone() {
     return POS_TZ[(window.FluxyWorkspace && window.FluxyWorkspace.country) || 'ID'] || 'Asia/Jakarta';
 }
 
+function posTodayKey() {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+        timeZone: posTimeZone(), year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(new Date()).map((part) => [part.type, part.value]));
+    return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
 function posDayBoundary(dayKey) {
     const [year, month, day] = String(dayKey).split('-').map(Number);
     const zone = posTimeZone();
@@ -2056,7 +2063,10 @@ function analyticsRanges(range) {
 
 function mountPosAnalyticsPicker() {
     if (state.analyticsPicker || !window.FluxyDateRangePicker) return;
+    const today = posTodayKey();
     state.analyticsPicker = window.FluxyDateRangePicker.mount('#pos-overview-date', {
+        start: today,
+        end: today,
         onChange: (range) => { state.analyticsRange = range; loadPosAnalytics({ force: true }); }
     });
     state.analyticsRange = state.analyticsPicker.getRange();
@@ -2073,8 +2083,8 @@ function deltaHtml(change, money = false) {
 }
 
 function metricCard(label, value, help, change, primary = false, money = false) {
-    return `<article class="pos-overview-kpi${primary ? ' is-primary' : ''}" title="${esc(help)}">
-        <div class="pos-overview-label">${esc(label)} <span aria-hidden="true">ⓘ</span></div>
+    return `<article class="pos-overview-kpi${primary ? ' is-primary' : ''}">
+        <div class="pos-overview-label">${esc(label)} <button type="button" class="metric-info" aria-label="${esc(label)}: ${esc(help)}" data-tooltip="${esc(help)}">?</button></div>
         <div class="pos-overview-value">${value}</div>
         <div class="pos-overview-delta">${deltaHtml(change, money)}</div>
     </article>`;
@@ -2085,23 +2095,47 @@ function overviewRows(items, empty, render) {
         : `<div class="pos-overview-empty">${esc(empty)}</div>`;
 }
 
-function overviewTrend(buckets, metric, hourly) {
+function overviewTrend(buckets, hourly) {
     if (!buckets.length) return '<div class="pos-overview-empty">No sales or refunds to plot.</div>';
-    const values = buckets.map(b => metric === 'sales' ? b.sales : b.orders);
+    const values = buckets.map(b => b.sales);
     const high = Math.max(1, ...values), low = Math.min(0, ...values);
     const y = value => (high - value) / (high - low) * 220;
     const zero = y(0);
     const ticks = [high, (high + low) / 2, low];
-    const format = value => metric === 'sales' ? signedMoney(value) : Number(value.toFixed(1)).toLocaleString(window.FluxyMoney.baseLocale());
+    const orderHigh = Math.max(1, ...buckets.map(b => b.orders));
+    const orderY = value => 220 - ((Number(value) || 0) / orderHigh) * 200;
     const label = key => hourly ? key.slice(-5) : new Date(`${key.slice(0,10)}T12:00:00Z`).toLocaleDateString(window.FluxyMoney.baseLocale(), { day:'numeric', month:'short', timeZone:'UTC' });
-    return `<div class="pos-overview-plot" aria-hidden="true">
-        <div class="pos-overview-axis">${ticks.map(v => `<span style="top:${y(v) + 8}px">${format(v)}</span>`).join('')}</div>
+    const width = buckets.length * 56;
+    const points = buckets.map((b, i) => `${i * 56 + 28},${orderY(b.orders).toFixed(1)}`).join(' ');
+    const orderTick = (value) => Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, '');
+    return `<div class="pos-overview-plot" aria-label="Sales value bars and order volume line"><div class="pos-overview-chart-row">
+        <div class="pos-overview-axis"><span class="pos-overview-axis-title">Sales</span>${ticks.map(v => `<span style="top:${y(v) + 8}px">${signedMoney(v)}</span>`).join('')}</div>
         <div class="pos-overview-scroll"><div style="min-width:${buckets.length * 56}px">
             <div class="pos-overview-stage">${ticks.map(v => `<i class="pos-overview-gridline" style="top:${y(v)}px"></i>`).join('')}<i class="pos-overview-gridline is-zero" style="top:${zero}px"></i>
-            ${buckets.map((b,i) => `<div class="pos-overview-column" data-index="${i}"><span class="pos-overview-bar${values[i] < 0 ? ' is-negative' : ''}" style="top:${Math.min(zero,y(values[i]))}px;height:${Math.abs(y(values[i])-zero)}px"></span></div>`).join('')}</div>
+            <svg class="pos-overview-order-line" viewBox="0 0 ${width} 220" preserveAspectRatio="none" aria-hidden="true"><polyline points="${points}"></polyline>${buckets.map((b, i) => `<circle cx="${i * 56 + 28}" cy="${orderY(b.orders).toFixed(1)}" r="3"></circle>`).join('')}</svg>
+            ${buckets.map((b,i) => `<div class="pos-overview-column" data-chart-bar data-index="${i}"><span class="pos-overview-bar${values[i] < 0 ? ' is-negative' : ''}" style="top:${Math.min(zero,y(values[i]))}px;height:${Math.abs(y(values[i])-zero)}px"></span></div>`).join('')}</div>
             <div class="pos-overview-dates">${buckets.map(b => `<span>${esc(label(b.key))}</span>`).join('')}</div>
-        </div></div></div>
+        </div></div>
+        <div class="pos-overview-axis pos-overview-axis-right"><span class="pos-overview-axis-title">Orders</span><span style="top:8px">${orderTick(orderHigh)}</span><span style="top:108px">${orderTick(orderHigh / 2)}</span><span style="top:208px">0</span></div>
+        </div>
+        <div class="pos-overview-legend"><span><i class="pos-overview-legend-sales"></i>Sales</span><span><i class="pos-overview-legend-orders"></i>Orders</span></div>
         <details class="pos-overview-data"><summary>View data</summary><div><table class="pos-overview-chart-table"><caption class="sr-only">POS trend values</caption><thead><tr><th>Period</th><th>Net sales</th><th>Orders</th></tr></thead><tbody>${buckets.map(b => `<tr><td>${esc(b.key)}</td><td>${signedMoney(b.sales)}</td><td>${b.orders}</td></tr>`).join('')}</tbody></table></div></details>`;
+}
+
+function overviewDonut(items, totalLabel, formatValue) {
+    const rows = items.filter((item) => Number(item.value) > 0);
+    const total = rows.reduce((sum, item) => sum + Number(item.value), 0);
+    if (!total) return '<div class="pos-overview-empty">No data for this period.</div>';
+    const circumference = 2 * Math.PI * 48;
+    let offset = 0;
+    const palette = ['#3B82F6', '#16A34A', '#F59E0B', '#94A3B8', '#8B5CF6'];
+    const arcs = rows.map((item, index) => {
+        const length = Math.max((item.value / total) * circumference - 2, 0.5);
+        const arc = `<circle class="pos-overview-donut-segment" cx="60" cy="60" r="48" stroke="${palette[index % palette.length]}" stroke-dasharray="${length} ${circumference - length}" stroke-dashoffset="${-offset}"></circle>`;
+        offset += (item.value / total) * circumference;
+        return arc;
+    }).join('');
+    return `<div class="pos-overview-donut"><div class="pos-overview-donut-ring"><svg viewBox="0 0 120 120" role="img" aria-label="${esc(totalLabel)}"><circle class="pos-overview-donut-track" cx="60" cy="60" r="48"></circle><g transform="rotate(-90 60 60)">${arcs}</g></svg><strong>${esc(formatValue(total))}</strong><span>${esc(totalLabel)}</span></div><ul>${rows.map((item, index) => `<li><i style="background:${palette[index % palette.length]}"></i><span>${esc(item.label)}</span><b>${((item.value / total) * 100).toFixed(0)}%</b></li>`).join('')}</ul></div>`;
 }
 
 function accountingSummary(rows) {
@@ -2140,9 +2174,7 @@ function renderPosAnalytics(snapshot, { stale = false } = {}) {
     const grossChange = M.compare(current, previous, 'grossSales');
     const hourly = range.days <= 2;
     const buckets = M.bucket(current, { hourly, locale: window.FluxyMoney.baseLocale(), timeZone: posTimeZone() });
-    const metric = state.analyticsMetric;
     const products = [...current.products].sort((a, b) => state.analyticsProductSort === 'sales' ? b.netSales - a.netSales : b.units - a.units).slice(0, 5);
-    const totalModes = Math.max(1, current.completedTransactions);
     const accounting = accountingSummary(snapshot.accounting);
     const shift = state.shift;
 
@@ -2155,21 +2187,20 @@ function renderPosAnalytics(snapshot, { stale = false } = {}) {
         </div>
         ${current.completedTransactions === 0 && current.refundCount === 0 ? '<div class="pos-overview-card"><div class="pos-overview-empty"><strong>No completed orders in this period.</strong><br>Choose another range to review earlier POS activity.</div></div>' : ''}
         <section class="pos-overview-card">
-            <div class="pos-overview-card-head"><div><h2>Sales and orders trend</h2><p>${hourly ? 'Hourly' : 'Daily'} buckets in ${esc(posTimeZone())}. Refunds use their refund date.</p></div>
-                <div class="pos-overview-segment"><button type="button" class="pos-btn-ghost" data-overview-metric="sales" aria-pressed="${metric === 'sales'}">Sales</button><button type="button" class="pos-btn-ghost" data-overview-metric="orders" aria-pressed="${metric === 'orders'}">Orders</button></div></div>
+            <div class="pos-overview-card-head"><div><h2>Sales and orders trend</h2><p>${hourly ? 'Hourly' : 'Daily'} buckets in ${esc(posTimeZone())}. Sales value and order volume share one timeline.</p></div></div>
             <div class="pos-overview-card-body">
-                ${overviewTrend(buckets, metric, hourly)}
+                ${overviewTrend(buckets, hourly)}
             </div>
         </section>
         <div class="pos-overview-two">
             <section class="pos-overview-card"><div class="pos-overview-card-head"><div><h2>Gross to net</h2><p>Tax and service charges are outside this reconciliation.</p></div></div><div class="pos-overview-card-body">${overviewRows([
                 ['Gross sales', current.grossSales], ['Discounts', -current.discounts], ['Refunds', -current.refunds], ['Net POS sales', current.netPosSales]
             ], '', (r) => `<div class="pos-overview-row"><span>${r[0]}</span><strong>${signedMoney(r[1])}</strong></div>`)}</div></section>
-            <section class="pos-overview-card"><div class="pos-overview-card-head"><div><h2>Order mode mix</h2><p>Derived from table assignment; delivery is unavailable.</p></div></div><div class="pos-overview-card-body">${overviewRows(current.modes, 'No completed orders to group.', (m) => `<button type="button" class="pos-overview-row w-full text-left" data-overview-mode="${esc(m.mode)}"><span>${m.mode === 'dine_in' ? 'Dine-in' : m.mode === 'takeaway' ? 'Takeaway' : 'Other / unknown'} · ${(m.count / totalModes * 100).toFixed(1)}%</span><strong>${m.count} · ${signedMoney(m.netSales)}</strong></button>`)}</div></section>
+            <section class="pos-overview-card"><div class="pos-overview-card-head"><div><h2>Order mode mix</h2><p>Derived from table assignment; delivery is unavailable.</p></div></div><div class="pos-overview-card-body">${overviewDonut(current.modes.map((m) => ({ label:m.mode === 'dine_in' ? 'Dine-in' : m.mode === 'takeaway' ? 'Takeaway' : 'Other / unknown', value:m.count })), 'Orders', (value) => value.toLocaleString(window.FluxyMoney.baseLocale()))}</div></section>
         </div>
         <div class="pos-overview-two">
-            <section class="pos-overview-card"><div class="pos-overview-card-head"><div><h2>Best-selling products</h2><p>Refunded orders subtract units and net item sales.</p></div><button type="button" class="pos-btn-ghost" id="pos-product-sort">Sort by ${state.analyticsProductSort === 'sales' ? 'units' : 'sales'}</button></div><div class="pos-overview-card-body">${overviewRows(products, 'No line-item sales in this period.', (p) => `<button type="button" class="pos-overview-row w-full text-left" data-overview-product="${esc(p.id || `name:${p.name.toLowerCase()}`)}"><span>${esc(p.name)} · ${p.units} units</span><strong>${signedMoney(p.netSales)}</strong></button>`)}</div></section>
-            <section class="pos-overview-card"><div class="pos-overview-card-head"><div><h2>Payment mix</h2><p>Net merchandise value allocated across settled tenders.</p></div></div><div class="pos-overview-card-body">${overviewRows(current.payments, 'Payment allocation is unavailable for this period.', (p) => `<div class="pos-overview-row"><span>${esc(p.method === 'qris' ? 'QRIS' : p.method.replace(/_/g, ' '))}</span><strong>${signedMoney(p.amount)}</strong></div>`)}</div></section>
+            <section class="pos-overview-card"><div class="pos-overview-card-head"><div><h2>Best-selling products</h2><p>Ranked by ${state.analyticsProductSort === 'sales' ? 'net sales' : 'units'}; refunds subtract from the rank.</p></div><button type="button" class="pos-btn-ghost" id="pos-product-sort">Sort by ${state.analyticsProductSort === 'sales' ? 'units' : 'sales'}</button></div><div class="pos-overview-card-body"><div class="pos-overview-ranking">${products.length ? products.map((p, i) => `<button type="button" class="pos-overview-rank" data-overview-product="${esc(p.id || `name:${p.name.toLowerCase()}`)}"><span class="pos-overview-rank-index">${i + 1}</span><span class="pos-overview-rank-main"><span>${esc(p.name)}</span><i><em style="width:${Math.max(4, Math.min(100, (p.netSales / Math.max(1, products[0].netSales)) * 100))}%"></em></i></span><b>${signedMoney(p.netSales)}</b></button>`).join('') : '<div class="pos-overview-empty">No line-item sales in this period.</div>'}</div></div></section>
+            <section class="pos-overview-card"><div class="pos-overview-card-head"><div><h2>Payment mix</h2><p>Net merchandise value allocated across settled tenders.</p></div></div><div class="pos-overview-card-body">${overviewDonut(current.payments.map((p) => ({ label:p.method === 'qris' ? 'QRIS' : p.method.replace(/_/g, ' '), value:p.amount })), 'Net sales', signedMoney)}</div></section>
         </div>
         <div class="pos-overview-two">
             <section class="pos-overview-card"><div class="pos-overview-card-head"><div><h2>Exceptions and accounting</h2><p>Operational POS sales are never added to accounting revenue.</p></div></div><div class="pos-overview-card-body">
@@ -2185,19 +2216,16 @@ function renderPosAnalytics(snapshot, { stale = false } = {}) {
         </div>`;
     const stage = host.querySelector('.pos-overview-stage');
     if (stage && window.attachChartHover) window.attachChartHover(stage, {
-        bars: '.pos-overview-column', orientation: 'vertical',
+        bars: '[data-chart-bar]', orientation: 'vertical',
         buildTooltip: element => {
             const bucket = buckets[Number(element.dataset.index)];
-            return `<div class="chart-tooltip-header">${esc(bucket.key)}</div><div class="chart-tooltip-row"><span>${metric === 'sales' ? 'Net sales' : 'Orders'}</span><strong>${metric === 'sales' ? signedMoney(bucket.sales) : bucket.orders}</strong></div>`;
+            return `<div class="chart-tooltip-header">${esc(bucket.key)}</div><div class="chart-tooltip-row"><span class="chart-tooltip-swatch" style="background:#3B82F6"></span><span class="chart-tooltip-label">Sales</span><strong class="chart-tooltip-value">${signedMoney(bucket.sales)}</strong></div><div class="chart-tooltip-row"><span class="chart-tooltip-swatch" style="background:#0B0F19"></span><span class="chart-tooltip-label">Orders</span><strong class="chart-tooltip-value">${bucket.orders}</strong></div>`;
         }
     });
     bindPosAnalyticsActions();
 }
 
 function bindPosAnalyticsActions() {
-    document.querySelectorAll('[data-overview-metric]').forEach((button) => button.addEventListener('click', () => {
-        state.analyticsMetric = button.dataset.overviewMetric; renderPosAnalytics(state.analytics);
-    }));
     $('pos-product-sort')?.addEventListener('click', () => {
         state.analyticsProductSort = state.analyticsProductSort === 'sales' ? 'units' : 'sales'; renderPosAnalytics(state.analytics);
     });
