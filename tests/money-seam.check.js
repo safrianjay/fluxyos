@@ -123,6 +123,9 @@ if (!failures.some((f) => f.check === 'country-map')) {
 const EXCLUDE = [
     'money-format.js', 'billing-config.js', 'internal-dashboard.js',
     'investor.js', 'checkout.js', 'dashboard-i18n.js',
+    // Translation dictionaries include fixed marketing examples; workspace
+    // amounts themselves are still rendered by FluxyMoney at runtime.
+    'i18n.js',
 ];
 // Marketing pages are not workspace surfaces — they advertise IDR pricing.
 const EXCLUDE_HTML = ['onboarding.html', 'pricing.html',
