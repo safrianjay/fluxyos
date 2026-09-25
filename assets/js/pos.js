@@ -2083,7 +2083,6 @@ function mountPosAnalyticsPicker() {
             if (period === 'custom') {
                 state.analyticsPeriod = 'custom';
                 updatePosPeriodControls();
-                document.querySelector('#pos-overview-date [data-drp-trigger]')?.click();
                 return;
             }
             const today = posTodayKey();
@@ -2112,6 +2111,8 @@ function updatePosPeriodControls() {
     document.querySelectorAll('[data-pos-period]').forEach((button) => {
         button.classList.toggle('is-active', button.dataset.posPeriod === state.analyticsPeriod);
     });
+    const picker = document.getElementById('pos-overview-date');
+    if (picker) picker.style.display = state.analyticsPeriod === 'custom' ? '' : 'none';
 }
 
 const signedMoney = (n) => `${Number(n) < 0 ? '-' : ''}${rp(Math.abs(Number(n) || 0))}`;
@@ -2173,11 +2174,11 @@ function overviewDonut(items, totalLabel, formatValue) {
     const palette = ['#3B82F6', '#16A34A', '#F59E0B', '#94A3B8', '#8B5CF6'];
     const arcs = rows.map((item, index) => {
         const length = Math.max((item.value / total) * circumference - 2, 0.5);
-        const arc = `<circle class="pos-overview-donut-segment" cx="60" cy="60" r="48" stroke="${palette[index % palette.length]}" stroke-dasharray="${length} ${circumference - length}" stroke-dashoffset="${-offset}"></circle>`;
+        const arc = `<circle class="chart-donut-segment" cx="60" cy="60" r="48" stroke="${palette[index % palette.length]}" stroke-dasharray="${length} ${circumference - length}" stroke-dashoffset="${-offset}"></circle>`;
         offset += (item.value / total) * circumference;
         return arc;
     }).join('');
-    return `<div class="pos-overview-donut"><div class="pos-overview-donut-ring"><svg viewBox="0 0 120 120" role="img" aria-label="${esc(totalLabel)}"><circle class="pos-overview-donut-track" cx="60" cy="60" r="48"></circle><g transform="rotate(-90 60 60)">${arcs}</g></svg><strong>${esc(formatValue(total))}</strong><span>${esc(totalLabel)}</span></div><ul>${rows.map((item, index) => `<li><i style="background:${palette[index % palette.length]}"></i><span>${esc(item.label)}</span><b>${((item.value / total) * 100).toFixed(0)}%</b></li>`).join('')}</ul></div>`;
+    return `<div class="chart-donut"><div class="chart-donut-body"><div class="chart-donut-ring"><svg viewBox="0 0 120 120" role="img" aria-label="${esc(totalLabel)}"><circle class="chart-donut-track" cx="60" cy="60" r="48"></circle><g transform="rotate(-90 60 60)">${arcs}</g></svg><div class="chart-donut-center"><strong class="chart-donut-total">${esc(formatValue(total))}</strong><span class="chart-donut-total-label">${esc(totalLabel)}</span></div></div><ul class="chart-donut-legend">${rows.map((item, index) => `<li class="chart-donut-legend-row"><i class="chart-donut-swatch" style="background:${palette[index % palette.length]}"></i><span class="chart-donut-legend-label">${esc(item.label)}</span><b class="chart-donut-legend-pct">${((item.value / total) * 100).toFixed(0)}%</b><strong class="chart-donut-legend-value">${esc(formatValue(item.value))}</strong></li>`).join('')}</ul></div></div>`;
 }
 
 function accountingSummary(rows) {
@@ -2238,11 +2239,11 @@ function renderPosAnalytics(snapshot, { stale = false } = {}) {
             <section class="pos-overview-card"><div class="pos-overview-card-head"><div><h2>Gross to net</h2><p>Tax and service charges are outside this reconciliation.</p></div></div><div class="pos-overview-card-body">${overviewRows([
                 ['Gross sales', current.grossSales], ['Discounts', -current.discounts], ['Refunds', -current.refunds], ['Net POS sales', current.netPosSales]
             ], '', (r) => `<div class="pos-overview-row"><span>${r[0]}</span><strong>${signedMoney(r[1])}</strong></div>`)}</div></section>
-            <section class="pos-overview-card"><div class="pos-overview-card-head"><div><h2>Order mode mix</h2><p>Derived from table assignment; delivery is unavailable.</p></div></div><div class="pos-overview-card-body">${overviewDonut(current.modes.map((m) => ({ label:m.mode === 'dine_in' ? 'Dine-in' : m.mode === 'takeaway' ? 'Takeaway' : 'Other / unknown', value:m.count })), 'Orders', (value) => value.toLocaleString(window.FluxyMoney.baseLocale()))}</div></section>
+            <section class="pos-overview-card chart-card"><div class="pos-overview-card-head chart-card-header"><div><h2 class="chart-title">Order mode mix</h2><p class="chart-subtitle">Derived from table assignment; delivery is unavailable.</p></div></div><div class="pos-overview-card-body">${overviewDonut(current.modes.map((m) => ({ label:m.mode === 'dine_in' ? 'Dine-in' : m.mode === 'takeaway' ? 'Takeaway' : 'Other / unknown', value:m.count })), 'Orders', (value) => value.toLocaleString(window.FluxyMoney.baseLocale()))}</div></section>
         </div>
         <div class="pos-overview-two">
-            <section class="pos-overview-card"><div class="pos-overview-card-head"><div><h2>Best-selling products</h2><p>Ranked by ${state.analyticsProductSort === 'sales' ? 'net sales' : 'units'}; refunds subtract from the rank.</p></div><button type="button" class="pos-btn-ghost" id="pos-product-sort">Sort by ${state.analyticsProductSort === 'sales' ? 'units' : 'sales'}</button></div><div class="pos-overview-card-body"><div class="pos-overview-ranking">${products.length ? products.map((p, i) => `<button type="button" class="pos-overview-rank" data-overview-product="${esc(p.id || `name:${p.name.toLowerCase()}`)}"><span class="pos-overview-rank-index">${i + 1}</span><span class="pos-overview-rank-main"><span>${esc(p.name)}</span><i><em style="width:${Math.max(4, Math.min(100, (p.netSales / Math.max(1, products[0].netSales)) * 100))}%"></em></i></span><b>${signedMoney(p.netSales)}</b></button>`).join('') : '<div class="pos-overview-empty">No line-item sales in this period.</div>'}</div></div></section>
-            <section class="pos-overview-card"><div class="pos-overview-card-head"><div><h2>Payment mix</h2><p>Net merchandise value allocated across settled tenders.</p></div></div><div class="pos-overview-card-body">${overviewDonut(current.payments.map((p) => ({ label:p.method === 'qris' ? 'QRIS' : p.method.replace(/_/g, ' '), value:p.amount })), 'Net sales', signedMoney)}</div></section>
+            <section class="pos-overview-card chart-card"><div class="pos-overview-card-head chart-card-header"><div><h2 class="chart-title">Best-selling products</h2><p class="chart-subtitle">Ranked by ${state.analyticsProductSort === 'sales' ? 'net sales' : 'units'}; refunds subtract from the rank.</p></div><button type="button" class="pos-btn-ghost" id="pos-product-sort">Sort by ${state.analyticsProductSort === 'sales' ? 'units' : 'sales'}</button></div><div class="pos-overview-card-body"><div class="pos-overview-ranking">${products.length ? products.map((p, i) => `<button type="button" class="pos-overview-rank" data-overview-product="${esc(p.id || `name:${p.name.toLowerCase()}`)}"><span class="pos-overview-rank-index">${i + 1}</span><span class="pos-overview-rank-main"><span>${esc(p.name)}</span><i><em style="width:${Math.max(4, Math.min(100, (p.netSales / Math.max(1, products[0].netSales)) * 100))}%"></em></i></span><b>${signedMoney(p.netSales)}</b></button>`).join('') : '<div class="pos-overview-empty">No line-item sales in this period.</div>'}</div></div></section>
+            <section class="pos-overview-card chart-card"><div class="pos-overview-card-head chart-card-header"><div><h2 class="chart-title">Payment mix</h2><p class="chart-subtitle">Net merchandise value allocated across settled tenders.</p></div></div><div class="pos-overview-card-body">${overviewDonut(current.payments.map((p) => ({ label:p.method === 'qris' ? 'QRIS' : p.method.replace(/_/g, ' '), value:p.amount })), 'Net sales', signedMoney)}</div></section>
         </div>
         <div class="pos-overview-two">
             <section class="pos-overview-card"><div class="pos-overview-card-head"><div><h2>Exceptions and accounting</h2><p>Operational POS sales are never added to accounting revenue.</p></div></div><div class="pos-overview-card-body">

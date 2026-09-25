@@ -4,7 +4,21 @@ const stamp = (iso) => iso;
 
 test('POS Overview renders verified metrics, honest gaps, drill-downs and mobile layout', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
+    // The outlet setup prompt is intentionally asynchronous. It is unrelated
+    // to the read-only Overview and must not intercept the period controls.
+    await page.addLocatorHandler(page.locator('#pos-onboarding:not(.hidden)'), async () => {
+        await page.locator('#pos-onboarding-close').click({ force: true });
+    });
     await page.goto('/pos?view=overview', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#pos-shell[data-pos-ready="true"]')).toBeVisible({ timeout: 40_000 });
+    const setup = page.locator('#pos-onboarding:not(.hidden)');
+    if (await setup.isVisible().catch(() => false)) {
+        await page.locator('#pos-onboarding-close').click({ force: true });
+        await expect(setup).toBeHidden();
+    }
+    // The host is deliberately hidden for Today, but the shared picker must
+    // already be mounted before the Custom interaction is exercised.
+    await expect(page.locator('#pos-overview-date [data-drp-trigger]')).toBeAttached();
     await page.waitForFunction(() => typeof window.__posSeedOverview === 'function');
     await page.evaluate(({ paid, refunded }) => window.__posSeedOverview({
         start:'2026-09-01',end:'2026-09-30',
@@ -23,9 +37,18 @@ test('POS Overview renders verified metrics, honest gaps, drill-downs and mobile
     }), { paid:stamp('2026-09-10T03:00:00Z'), refunded:stamp('2026-09-12T03:00:00Z') });
 
     await expect(page.locator('#pos-view-title')).toHaveText('POS Overview');
-    await expect(page.locator('#pos-overview-date')).toBeVisible();
+    await expect(page.locator('#pos-overview-date')).toBeHidden();
     await expect(page.locator('#pos-overview-period-selector [data-pos-period="today"]')).toHaveClass(/is-active/);
     await expect(page.locator('#pos-overview-period-selector')).toBeVisible();
+    await page.locator('#pos-overview-period-selector [data-pos-period="custom"]').click();
+    await expect(page.locator('#pos-overview-date')).toBeVisible();
+    await expect(page.locator('#pos-overview-period-selector [data-pos-period="custom"]')).toHaveClass(/is-active/);
+    const calendar = page.locator('[data-drp-panel]');
+    await expect(calendar).toBeHidden();
+    await page.locator('#pos-overview-date [data-drp-trigger]').click();
+    await expect(calendar).toBeVisible();
+    await page.locator('#pos-view-title').click();
+    await expect(calendar).toBeHidden();
     await expect(page.locator('.pos-overview-kpi').nth(0)).toContainText('Rp70.000');
     await page.locator('.pos-overview-kpi .metric-info').first().focus();
     await expect(page.locator('.metric-tooltip.is-visible')).toContainText('Gross merchandise sales');
