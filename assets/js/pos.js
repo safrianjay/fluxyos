@@ -2069,6 +2069,7 @@ function mountPosAnalyticsPicker() {
     state.analyticsPicker = window.FluxyDateRangePicker.mount('#pos-overview-date', {
         start: today,
         end: today,
+        maxDate: today,
         onChange: (range) => {
             state.analyticsRange = range;
             state.analyticsPeriod = posPeriodForRange(range);
@@ -2085,25 +2086,41 @@ function mountPosAnalyticsPicker() {
                 updatePosPeriodControls();
                 return;
             }
-            const today = posTodayKey();
-            const end = period === 'yesterday' ? addDayKey(today, -1) : today;
-            const start = period === 'week' ? addDayKey(today, -6)
-                : period === 'month' ? `${today.slice(0, 8)}01` : end;
+            const range = posRangeForPeriod(period);
+            if (!range) return;
             state.analyticsPeriod = period;
-            state.analyticsRange = { start, end };
+            state.analyticsRange = range;
             updatePosPeriodControls();
-            state.analyticsPicker?.setRange(start, end);
+            state.analyticsPicker?.setRange(range.start, range.end);
+            loadPosAnalytics({ force: true });
         });
     });
     updatePosPeriodControls();
 }
 
-function posPeriodForRange(range) {
+function posRangeForPeriod(period) {
     const today = posTodayKey();
-    if (range.start === today && range.end === today) return 'today';
-    if (range.start === addDayKey(today, -1) && range.end === range.start) return 'yesterday';
-    if (range.start === addDayKey(today, -6) && range.end === today) return 'week';
-    if (range.start === `${today.slice(0, 8)}01` && range.end === today) return 'month';
+    if (period === 'today') return { start: today, end: today };
+    if (period === 'yesterday') {
+        const yesterday = addDayKey(today, -1);
+        return { start: yesterday, end: yesterday };
+    }
+    if (period === 'week') return { start: addDayKey(today, -6), end: today };
+    if (period === 'month') return { start: `${today.slice(0, 8)}01`, end: today };
+    if (period === 'last_month') {
+        const lastMonthEnd = addDayKey(`${today.slice(0, 8)}01`, -1);
+        return { start: `${lastMonthEnd.slice(0, 8)}01`, end: lastMonthEnd };
+    }
+    if (period === 'year_to_date') return { start: `${today.slice(0, 4)}-01-01`, end: today };
+    if (period === 'all_time') return { start: '1970-01-01', end: today };
+    return null;
+}
+
+function posPeriodForRange(range) {
+    for (const period of ['today', 'yesterday', 'week', 'month', 'last_month', 'year_to_date', 'all_time']) {
+        const expected = posRangeForPeriod(period);
+        if (expected?.start === range.start && expected?.end === range.end) return period;
+    }
     return 'custom';
 }
 
@@ -2147,17 +2164,13 @@ function overviewTrend(buckets, hourly) {
     const zero = y(0);
     const ticks = [high, (high + low) / 2, low];
     const orderHigh = Math.max(1, ...buckets.map(b => b.orders));
-    const orderY = value => chartHeight - ((Number(value) || 0) / orderHigh) * 176;
     const label = key => hourly ? key.slice(-5) : new Date(`${key.slice(0,10)}T12:00:00Z`).toLocaleDateString(window.FluxyMoney.baseLocale(), { day:'numeric', month:'short', timeZone:'UTC' });
-    const width = buckets.length * 56;
-    const points = buckets.map((b, i) => `${i * 56 + 28},${orderY(b.orders).toFixed(1)}`).join(' ');
     const orderTick = (value) => Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, '');
-    return `<div class="pos-overview-plot cash-flow-chart" aria-label="Sales value bars and order volume line"><div class="pos-overview-chart-row">
+    return `<div class="pos-overview-plot cash-flow-chart" role="group" aria-label="Sales and orders bar chart"><div class="pos-overview-chart-row">
         <div class="pos-overview-axis"><span class="pos-overview-axis-title">Sales</span>${ticks.map(v => `<span style="top:${Math.min(chartHeight - 2, Math.max(2, y(v)))}px">${signedMoney(v)}</span>`).join('')}</div>
         <div class="pos-overview-scroll"><div style="min-width:${buckets.length * 56}px">
             <div class="pos-overview-stage">${ticks.map(v => `<i class="pos-overview-gridline" style="top:${y(v)}px"></i>`).join('')}<i class="pos-overview-gridline is-zero" style="top:${zero}px"></i>
-            <svg class="pos-overview-order-line" viewBox="0 0 ${width} ${chartHeight}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${points}"></polyline>${buckets.map((b, i) => `<circle cx="${i * 56 + 28}" cy="${orderY(b.orders).toFixed(1)}" r="3"></circle>`).join('')}</svg>
-            ${buckets.map((b,i) => `<div class="pos-overview-column" data-chart-bar data-index="${i}"><span class="pos-overview-bar${values[i] < 0 ? ' is-negative' : ''}" style="top:${Math.min(zero,y(values[i]))}px;height:${Math.abs(y(values[i])-zero)}px"></span></div>`).join('')}</div>
+            ${buckets.map((b,i) => `<div class="pos-overview-column" data-chart-bar data-index="${i}"><span class="pos-overview-bar${values[i] < 0 ? ' is-negative' : ''}" style="top:${Math.min(zero,y(values[i]))}px;height:${Math.abs(y(values[i])-zero)}px"></span><span class="pos-overview-order-bar" style="height:${b.orders ? Math.max(4, (Number(b.orders) / orderHigh) * 176) : 0}px"></span></div>`).join('')}</div>
             <div class="pos-overview-dates">${buckets.map(b => `<span>${esc(label(b.key))}</span>`).join('')}</div>
         </div></div>
         <div class="pos-overview-axis pos-overview-axis-right"><span class="pos-overview-axis-title">Orders</span><span style="top:8px">${orderTick(orderHigh)}</span><span style="top:98px">${orderTick(orderHigh / 2)}</span><span style="top:188px">0</span></div>
@@ -2230,7 +2243,7 @@ function renderPosAnalytics(snapshot, { stale = false } = {}) {
         </div>
         ${current.completedTransactions === 0 && current.refundCount === 0 ? '<div class="pos-overview-card"><div class="pos-overview-empty"><strong>No completed orders in this period.</strong><br>Choose another range to review earlier POS activity.</div></div>' : ''}
         <section class="pos-overview-card chart-card">
-            <div class="pos-overview-card-head chart-card-header"><div><h2 class="chart-title">Sales and orders trend</h2><p class="chart-subtitle">${hourly ? 'Hourly' : 'Daily'} buckets in ${esc(posTimeZone())}. Sales value and order volume share one timeline.</p></div><div class="chart-legend pos-overview-legend"><span class="legend-item"><span class="legend-dot legend-dot-cash-in"></span> Sales</span><span class="legend-item"><span class="legend-dot legend-dot-cash-net"></span> Orders</span></div></div>
+            <div class="pos-overview-card-head chart-card-header"><div><h2 class="chart-title">Sales and orders trend</h2><p class="chart-subtitle">${hourly ? 'Hourly' : 'Daily'} buckets in ${esc(posTimeZone())}. Bars compare sales value with order volume.</p></div><div class="chart-legend pos-overview-legend"><span class="legend-item"><span class="legend-dot legend-dot-cash-in"></span> Sales</span><span class="legend-item"><span class="legend-dot legend-dot-cash-net"></span> Orders</span></div></div>
             <div class="pos-overview-card-body">
                 ${overviewTrend(buckets, hourly)}
             </div>
@@ -2262,7 +2275,7 @@ function renderPosAnalytics(snapshot, { stale = false } = {}) {
         bars: '[data-chart-bar]', orientation: 'vertical',
         buildTooltip: element => {
             const bucket = buckets[Number(element.dataset.index)];
-            return `<div class="chart-tooltip-header">${esc(bucket.key)}</div><div class="chart-tooltip-row"><span class="chart-tooltip-swatch" style="background:#3B82F6"></span><span class="chart-tooltip-label">Sales</span><strong class="chart-tooltip-value">${signedMoney(bucket.sales)}</strong></div><div class="chart-tooltip-row"><span class="chart-tooltip-swatch" style="background:#0B0F19"></span><span class="chart-tooltip-label">Orders</span><strong class="chart-tooltip-value">${bucket.orders}</strong></div>`;
+            return `<div class="chart-tooltip-header">${esc(bucket.key)}</div><div class="chart-tooltip-row"><span class="chart-tooltip-swatch" style="background:#16A34A"></span><span class="chart-tooltip-label">Sales</span><strong class="chart-tooltip-value">${signedMoney(bucket.sales)}</strong></div><div class="chart-tooltip-row"><span class="chart-tooltip-swatch" style="background:#111827"></span><span class="chart-tooltip-label">Orders</span><strong class="chart-tooltip-value">${bucket.orders}</strong></div>`;
         }
     });
     bindPosAnalyticsActions();
@@ -2287,7 +2300,7 @@ function bindPosAnalyticsActions() {
 }
 
 async function loadPosAnalytics({ force = false } = {}) {
-    if (state.view !== 'overview' || !state.uid || !state.outletId || state.analyticsLoading) return;
+    if (state.view !== 'overview' || !state.uid || !state.outletId) return;
     mountPosAnalyticsPicker();
     if (!state.analyticsRange) return;
     if (state.analytics && !force && state.analytics.outletId === state.outletId) { renderPosAnalytics(state.analytics); return; }
