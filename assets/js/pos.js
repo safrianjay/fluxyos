@@ -80,8 +80,8 @@ const state = {
     analytics: null,
     analyticsLastValid: null,
     analyticsLoading: false,
-    analyticsMetric: 'sales',
     analyticsRange: null,
+    analyticsPeriod: 'today',
     analyticsPicker: null,
     analyticsRequest: 0,
     orderDrilldown: null,
@@ -277,8 +277,10 @@ function setView(name) {
     // The topbar's till CTAs step aside on the planning surface: Create Order
     // and New reservation competing for one glance is two primary actions in one
     // zone, and the one that belongs to the screen you are on should win.
-    document.querySelector('.pos-topbar-actions')?.classList.toggle('hidden', name === 'reservations');
-    $('pos-overview-date')?.classList.toggle('hidden', name !== 'overview');
+    document.querySelector('.pos-topbar-actions')?.classList.toggle('hidden', name === 'overview' || name === 'reservations');
+    $('pos-overview-period')?.classList.toggle('hidden', name !== 'overview');
+    document.querySelector('.pos-topbar-right')?.classList.toggle('hidden', name === 'overview');
+    document.querySelector('.pos-topbar')?.classList.toggle('is-overview', name === 'overview');
     ['pos-settings-btn', 'pos-tables-btn', 'pos-new-order'].forEach((id) => $(id)?.classList.toggle('hidden', name === 'overview'));
     // Orders goes full width too, now that the cards carry their own detail.
     //
@@ -2067,9 +2069,49 @@ function mountPosAnalyticsPicker() {
     state.analyticsPicker = window.FluxyDateRangePicker.mount('#pos-overview-date', {
         start: today,
         end: today,
-        onChange: (range) => { state.analyticsRange = range; loadPosAnalytics({ force: true }); }
+        onChange: (range) => {
+            state.analyticsRange = range;
+            state.analyticsPeriod = posPeriodForRange(range);
+            updatePosPeriodControls();
+            loadPosAnalytics({ force: true });
+        }
     });
     state.analyticsRange = state.analyticsPicker.getRange();
+    document.querySelectorAll('[data-pos-period]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const period = button.dataset.posPeriod;
+            if (period === 'custom') {
+                state.analyticsPeriod = 'custom';
+                updatePosPeriodControls();
+                document.querySelector('#pos-overview-date [data-drp-trigger]')?.click();
+                return;
+            }
+            const today = posTodayKey();
+            const end = period === 'yesterday' ? addDayKey(today, -1) : today;
+            const start = period === 'week' ? addDayKey(today, -6)
+                : period === 'month' ? `${today.slice(0, 8)}01` : end;
+            state.analyticsPeriod = period;
+            state.analyticsRange = { start, end };
+            updatePosPeriodControls();
+            state.analyticsPicker?.setRange(start, end);
+        });
+    });
+    updatePosPeriodControls();
+}
+
+function posPeriodForRange(range) {
+    const today = posTodayKey();
+    if (range.start === today && range.end === today) return 'today';
+    if (range.start === addDayKey(today, -1) && range.end === range.start) return 'yesterday';
+    if (range.start === addDayKey(today, -6) && range.end === today) return 'week';
+    if (range.start === `${today.slice(0, 8)}01` && range.end === today) return 'month';
+    return 'custom';
+}
+
+function updatePosPeriodControls() {
+    document.querySelectorAll('[data-pos-period]').forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.posPeriod === state.analyticsPeriod);
+    });
 }
 
 const signedMoney = (n) => `${Number(n) < 0 ? '-' : ''}${rp(Math.abs(Number(n) || 0))}`;
@@ -2097,28 +2139,28 @@ function overviewRows(items, empty, render) {
 
 function overviewTrend(buckets, hourly) {
     if (!buckets.length) return '<div class="pos-overview-empty">No sales or refunds to plot.</div>';
+    const chartHeight = 196;
     const values = buckets.map(b => b.sales);
     const high = Math.max(1, ...values), low = Math.min(0, ...values);
-    const y = value => (high - value) / (high - low) * 220;
+    const y = value => (high - value) / (high - low) * chartHeight;
     const zero = y(0);
     const ticks = [high, (high + low) / 2, low];
     const orderHigh = Math.max(1, ...buckets.map(b => b.orders));
-    const orderY = value => 220 - ((Number(value) || 0) / orderHigh) * 200;
+    const orderY = value => chartHeight - ((Number(value) || 0) / orderHigh) * 176;
     const label = key => hourly ? key.slice(-5) : new Date(`${key.slice(0,10)}T12:00:00Z`).toLocaleDateString(window.FluxyMoney.baseLocale(), { day:'numeric', month:'short', timeZone:'UTC' });
     const width = buckets.length * 56;
     const points = buckets.map((b, i) => `${i * 56 + 28},${orderY(b.orders).toFixed(1)}`).join(' ');
     const orderTick = (value) => Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, '');
-    return `<div class="pos-overview-plot" aria-label="Sales value bars and order volume line"><div class="pos-overview-chart-row">
-        <div class="pos-overview-axis"><span class="pos-overview-axis-title">Sales</span>${ticks.map(v => `<span style="top:${y(v) + 8}px">${signedMoney(v)}</span>`).join('')}</div>
+    return `<div class="pos-overview-plot cash-flow-chart" aria-label="Sales value bars and order volume line"><div class="pos-overview-chart-row">
+        <div class="pos-overview-axis"><span class="pos-overview-axis-title">Sales</span>${ticks.map(v => `<span style="top:${Math.min(chartHeight - 2, Math.max(2, y(v)))}px">${signedMoney(v)}</span>`).join('')}</div>
         <div class="pos-overview-scroll"><div style="min-width:${buckets.length * 56}px">
             <div class="pos-overview-stage">${ticks.map(v => `<i class="pos-overview-gridline" style="top:${y(v)}px"></i>`).join('')}<i class="pos-overview-gridline is-zero" style="top:${zero}px"></i>
-            <svg class="pos-overview-order-line" viewBox="0 0 ${width} 220" preserveAspectRatio="none" aria-hidden="true"><polyline points="${points}"></polyline>${buckets.map((b, i) => `<circle cx="${i * 56 + 28}" cy="${orderY(b.orders).toFixed(1)}" r="3"></circle>`).join('')}</svg>
+            <svg class="pos-overview-order-line" viewBox="0 0 ${width} ${chartHeight}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${points}"></polyline>${buckets.map((b, i) => `<circle cx="${i * 56 + 28}" cy="${orderY(b.orders).toFixed(1)}" r="3"></circle>`).join('')}</svg>
             ${buckets.map((b,i) => `<div class="pos-overview-column" data-chart-bar data-index="${i}"><span class="pos-overview-bar${values[i] < 0 ? ' is-negative' : ''}" style="top:${Math.min(zero,y(values[i]))}px;height:${Math.abs(y(values[i])-zero)}px"></span></div>`).join('')}</div>
             <div class="pos-overview-dates">${buckets.map(b => `<span>${esc(label(b.key))}</span>`).join('')}</div>
         </div></div>
-        <div class="pos-overview-axis pos-overview-axis-right"><span class="pos-overview-axis-title">Orders</span><span style="top:8px">${orderTick(orderHigh)}</span><span style="top:108px">${orderTick(orderHigh / 2)}</span><span style="top:208px">0</span></div>
+        <div class="pos-overview-axis pos-overview-axis-right"><span class="pos-overview-axis-title">Orders</span><span style="top:8px">${orderTick(orderHigh)}</span><span style="top:98px">${orderTick(orderHigh / 2)}</span><span style="top:188px">0</span></div>
         </div>
-        <div class="pos-overview-legend"><span><i class="pos-overview-legend-sales"></i>Sales</span><span><i class="pos-overview-legend-orders"></i>Orders</span></div>
         <details class="pos-overview-data"><summary>View data</summary><div><table class="pos-overview-chart-table"><caption class="sr-only">POS trend values</caption><thead><tr><th>Period</th><th>Net sales</th><th>Orders</th></tr></thead><tbody>${buckets.map(b => `<tr><td>${esc(b.key)}</td><td>${signedMoney(b.sales)}</td><td>${b.orders}</td></tr>`).join('')}</tbody></table></div></details>`;
 }
 
@@ -2186,8 +2228,8 @@ function renderPosAnalytics(snapshot, { stale = false } = {}) {
             ${metricCard('Gross sales', signedMoney(current.grossSales), 'Line prices × quantities before discounts and refunds; tax and service charges excluded.', grossChange, false, true)}
         </div>
         ${current.completedTransactions === 0 && current.refundCount === 0 ? '<div class="pos-overview-card"><div class="pos-overview-empty"><strong>No completed orders in this period.</strong><br>Choose another range to review earlier POS activity.</div></div>' : ''}
-        <section class="pos-overview-card">
-            <div class="pos-overview-card-head"><div><h2>Sales and orders trend</h2><p>${hourly ? 'Hourly' : 'Daily'} buckets in ${esc(posTimeZone())}. Sales value and order volume share one timeline.</p></div></div>
+        <section class="pos-overview-card chart-card">
+            <div class="pos-overview-card-head chart-card-header"><div><h2 class="chart-title">Sales and orders trend</h2><p class="chart-subtitle">${hourly ? 'Hourly' : 'Daily'} buckets in ${esc(posTimeZone())}. Sales value and order volume share one timeline.</p></div><div class="chart-legend pos-overview-legend"><span class="legend-item"><span class="legend-dot legend-dot-cash-in"></span> Sales</span><span class="legend-item"><span class="legend-dot legend-dot-cash-net"></span> Orders</span></div></div>
             <div class="pos-overview-card-body">
                 ${overviewTrend(buckets, hourly)}
             </div>
@@ -7160,7 +7202,7 @@ function applyPosProfileChrome() {
     const p = posProfile();
 
     // "Table Order" opens the floor plan. Without tables there is no floor.
-    $('pos-tables-btn')?.classList.toggle('hidden', !p.views.includes('tables'));
+    $('pos-tables-btn')?.classList.toggle('hidden', !p.views.includes('tables') || state.view === 'overview');
 
     // "Create Order" on a floor with tables, "New sale" at a counter.
     const start = $('pos-new-order');

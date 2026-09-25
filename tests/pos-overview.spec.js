@@ -24,6 +24,8 @@ test('POS Overview renders verified metrics, honest gaps, drill-downs and mobile
 
     await expect(page.locator('#pos-view-title')).toHaveText('POS Overview');
     await expect(page.locator('#pos-overview-date')).toBeVisible();
+    await expect(page.locator('#pos-overview-period-selector [data-pos-period="today"]')).toHaveClass(/is-active/);
+    await expect(page.locator('#pos-overview-period-selector')).toBeVisible();
     await expect(page.locator('.pos-overview-kpi').nth(0)).toContainText('Rp70.000');
     await page.locator('.pos-overview-kpi .metric-info').first().focus();
     await expect(page.locator('.metric-tooltip.is-visible')).toContainText('Gross merchandise sales');

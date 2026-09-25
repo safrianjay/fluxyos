@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/shared-dashboard.css">
     <link rel="stylesheet" href="assets/css/accounting.css">
+    <link rel="stylesheet" href="assets/css/dashboard.css">
     <style>
         /* ── The till is a MOBILE surface first ──────────────────────────────
            Every other app page is a desktop finance screen that also works on a
@@ -126,29 +127,30 @@
         .pos-overview-segment { display:flex;padding:3px;background:#F1F5F9;border-radius:8px; }
         .pos-overview-segment button { font-size:12px;padding:6px 12px;border-radius:6px; }
         .pos-overview-segment [aria-pressed="true"] { background:#fff;color:#0F172A;box-shadow:0 1px 3px rgb(15 23 42 / 10%); }
-        .pos-overview-plot { margin-top:12px; }
-        .pos-overview-chart-row { display:flex;gap:12px;min-width:0; }
-        .pos-overview-axis { position:relative;width:80px;flex-shrink:0;height:220px;font-size:10px;color:#94A3B8;font-variant-numeric:tabular-nums; }
+        .pos-overview-plot { margin-top:0; }
+        .pos-overview-chart-row { display:grid;grid-template-columns:60px minmax(0,1fr) 44px;gap:10px;min-height:196px; }
+        .pos-overview-axis { position:relative;height:196px;font-size:11px;color:#94A3B8;font-variant-numeric:tabular-nums;font-weight:700;text-align:right;padding-right:8px; }
         .pos-overview-axis-title { display:block;position:absolute;top:-10px;right:0;font-size:10px;font-weight:600;color:#64748B; }
-        .pos-overview-axis-right { width:44px; }
+        .pos-overview-axis-right { width:auto;padding-right:0;padding-left:8px;text-align:left; }
         .pos-overview-axis-right span:not(.pos-overview-axis-title) { left:0;right:auto; }
         .pos-overview-axis span { position:absolute;right:0;transform:translateY(-50%); }
-        .pos-overview-scroll { overflow-x:auto;min-width:0;flex:1;padding-top:8px; }
-        .pos-overview-stage { position:relative;height:220px;display:flex; }
+        .pos-overview-scroll { position:relative;overflow-x:auto;min-width:0;border-left:1px solid #E5E7EB;background:linear-gradient(to bottom,transparent calc(25% - 1px),#F1F5F9 25%,transparent calc(25% + 1px)),linear-gradient(to bottom,transparent calc(75% - 1px),#F1F5F9 75%,transparent calc(75% + 1px));scrollbar-width:none; }
+        .pos-overview-scroll::-webkit-scrollbar { display:none; }
+        .pos-overview-stage { position:relative;height:196px;display:flex; }
         .pos-overview-gridline { position:absolute;left:0;right:0;border-top:1px dashed #E5E7EB;pointer-events:none; }
         .pos-overview-gridline.is-zero { border-top:1px solid #CBD5E1; }
         .pos-overview-column { position:relative;flex:1;min-width:56px; }
-        .pos-overview-column .pos-overview-bar { position:absolute;left:50%;transform:translateX(-50%);width:44%;max-width:36px;border:0;background:#3B82F6;border-radius:3px 3px 0 0; }
-        .pos-overview-column .pos-overview-bar.is-negative { background:#94A3B8;border-radius:0 0 3px 3px; }
-        .pos-overview-order-line { position:absolute;inset:0;width:100%;height:220px;overflow:visible;pointer-events:none; }
+        .pos-overview-column .pos-overview-bar { position:absolute;left:30%;transform:translateX(-50%);width:clamp(8px,22%,20px);max-width:20px;border:0;background:linear-gradient(180deg,#22C55E 0%,#15803D 100%);border-radius:999px 999px 4px 4px;box-shadow:inset 0 0 0 1px rgb(255 255 255 / 36%); }
+        .pos-overview-column .pos-overview-bar.is-negative { left:70%;background:#EF4444;border-radius:999px 999px 4px 4px; }
+        .pos-overview-order-line { position:absolute;inset:0;width:100%;height:196px;overflow:visible;pointer-events:none; }
         .pos-overview-order-line polyline { fill:none;stroke:#0B0F19;stroke-width:2;vector-effect:non-scaling-stroke; }
         .pos-overview-order-line circle { fill:#fff;stroke:#0B0F19;stroke-width:2;vector-effect:non-scaling-stroke; }
-        .pos-overview-dates { display:flex;margin-top:12px;color:#94A3B8;font-size:10px; }
+        .pos-overview-dates { display:flex;margin:10px 0 0 70px;color:#94A3B8;font-size:11px;font-weight:700;overflow-x:auto;scrollbar-width:thin; }
         .pos-overview-dates span { flex:1;min-width:56px;text-align:center; }
         .pos-overview-data { margin-top:24px;border-top:1px solid #F1F5F9;padding-top:12px;font-size:12px;color:#64748B; }
         .pos-overview-data summary { cursor:pointer;width:fit-content; }
         .pos-overview-data > div { overflow-x:auto; }
-        .pos-overview-legend { display:flex;gap:16px;justify-content:center;margin-top:10px;color:#64748B;font-size:12px; }
+        .pos-overview-legend { display:flex;gap:16px;justify-content:flex-end;margin-top:0;color:#6B7280;font-size:12px;font-weight:700; }
         .pos-overview-legend span { display:inline-flex;align-items:center;gap:6px; }
         .pos-overview-legend i { display:inline-block;width:9px;height:9px;border-radius:3px; }
         .pos-overview-legend-sales { background:#3B82F6; }.pos-overview-legend-orders { background:#0B0F19;border-radius:50%!important; }
@@ -161,6 +163,28 @@
         .pos-overview-donut ul { flex:1;display:grid;gap:10px;margin:0;padding:0;list-style:none;font-size:12px; }.pos-overview-donut li { display:grid;grid-template-columns:10px 1fr auto;gap:8px;align-items:center; }.pos-overview-donut li i { width:10px;height:10px;border-radius:3px; }.pos-overview-donut li span { color:#334155; }.pos-overview-donut li b { color:#64748B;font-weight:600; }
         .pos-overview-ranking { display:grid;gap:4px; }.pos-overview-rank { display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #F1F5F9;text-align:left; }.pos-overview-rank:last-child { border-bottom:0; }.pos-overview-rank-index { color:#94A3B8;font-size:12px;font-weight:600; }.pos-overview-rank-main { min-width:0;display:grid;gap:7px;font-size:14px;font-weight:500; }.pos-overview-rank-main > span { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }.pos-overview-rank-main i { display:block;height:5px;border-radius:999px;background:#F1F5F9;overflow:hidden; }.pos-overview-rank-main em { display:block;height:100%;border-radius:inherit;background:#3B82F6; }.pos-overview-rank b { font-size:14px;font-weight:500;font-variant-numeric:tabular-nums; }
         .pos-overview :focus-visible { outline:2px solid #EA580C;outline-offset:3px; }
+        .pos-overview-card.chart-card { padding:24px;border-radius:18px;box-shadow:0 1px 2px rgb(15 23 42 / 4%),0 10px 22px rgb(15 23 42 / 4%); }
+        .pos-overview-card.chart-card .pos-overview-card-head { padding:0;margin-bottom:18px; }
+        .pos-overview-card.chart-card .pos-overview-card-body { padding:0; }
+        .pos-overview-card.chart-card h2.chart-title { font-size:18px;font-weight:800;letter-spacing:-.025em; }
+        .pos-overview-card.chart-card p.chart-subtitle { margin:4px 0 0;color:#6B7280;font-size:13px;font-weight:500; }
+        .pos-overview-card.chart-card .pos-overview-data { margin-top:14px; }
+        .pos-topbar.is-overview { min-height:72px;height:auto; }
+        .pos-overview-period { display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end; }
+        .pos-overview-period #pos-overview-date { min-width:230px; }
+        @media (max-width:760px) {
+            .pos-topbar.is-overview { min-height:116px;padding:12px 16px;flex-wrap:wrap;align-items:flex-start; }
+            .pos-topbar.is-overview .pos-overview-period { order:4;width:100%;justify-content:flex-start; }
+            .pos-topbar.is-overview .pos-topbar-right { order:5;width:100%;justify-content:flex-end; }
+            .pos-topbar.is-overview .dashboard-period-controls { width:100%;overflow-x:auto; }
+            .pos-topbar.is-overview .dashboard-period-btn { white-space:nowrap; }
+            .pos-topbar.is-overview .pos-overview-period #pos-overview-date { width:100%;min-width:0; }
+            .pos-overview-card.chart-card { padding:18px; }
+            .pos-overview-card.chart-card .pos-overview-card-head { flex-direction:column;align-items:flex-start; }
+            .pos-overview-card.chart-card .pos-overview-legend { justify-content:flex-start;gap:10px; }
+            .pos-overview-chart-row { grid-template-columns:48px minmax(0,1fr) 38px;gap:8px; }
+            .pos-overview-dates { margin-left:56px; }
+        }
         @media (max-width:900px) { .pos-overview-two { grid-template-columns:minmax(0,1fr)!important; } }
         @media (max-width:759px) { .pos-overview-kpi { padding:20px 16px; }.pos-overview-kpi:nth-child(3) { border-left:0; }.pos-overview-kpi:nth-child(n+3) { border-top:1px solid #E5E7EB; } }
         .pos-overview-skeleton { min-height:96px;border-radius:12px;background:linear-gradient(90deg,#F1F5F9 25%,#F8FAFC 50%,#F1F5F9 75%);background-size:200% 100%;animation:pos-shimmer 1.3s infinite; }
@@ -2081,7 +2105,6 @@
                 <p class="pos-topbar-sub" id="pos-view-sub">Ring up a sale — scan, search or tap a product.</p>
             </div>
             <div class="pos-topbar-actions">
-                <div id="pos-overview-date" class="hidden"></div>
                 <button id="pos-settings-btn" type="button" class="pos-btn-ghost" aria-label="Configure this outlet">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06A1.7 1.7 0 0 0 15.74 19l-.3.12a1.7 1.7 0 0 0-1.04 1.56v.08h-3v-.08A1.7 1.7 0 0 0 10.36 19l-.3-.12a1.7 1.7 0 0 0-1.88.34l-.06.06L6 17.16l.06-.06A1.7 1.7 0 0 0 6.4 15l-.12-.3A1.7 1.7 0 0 0 4.72 13.66h-.08v-3h.08A1.7 1.7 0 0 0 6.28 9.62l.12-.3A1.7 1.7 0 0 0 6.06 7.44L6 7.38l2.12-2.12.06.06a1.7 1.7 0 0 0 1.88.34l.3-.12A1.7 1.7 0 0 0 11.4 4v-.08h3V4a1.7 1.7 0 0 0 1.04 1.56l.3.12a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.12 2.12-.06.06a1.7 1.7 0 0 0-.34 1.88l.12.3a1.7 1.7 0 0 0 1.56 1.04h.08v3h-.08a1.7 1.7 0 0 0-1.56 1.06z"/></svg>
                     <span>Outlet setup</span>
@@ -2095,6 +2118,16 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
                     <span>Create Order</span>
                 </button>
+            </div>
+            <div class="pos-overview-period hidden" id="pos-overview-period">
+                <div id="pos-overview-period-selector" class="dashboard-period-controls" aria-label="POS overview period">
+                    <button type="button" class="dashboard-period-btn is-active" data-pos-period="today">Today</button>
+                    <button type="button" class="dashboard-period-btn" data-pos-period="yesterday">Yesterday</button>
+                    <button type="button" class="dashboard-period-btn" data-pos-period="week">This Week</button>
+                    <button type="button" class="dashboard-period-btn" data-pos-period="month">This Month</button>
+                    <button type="button" class="dashboard-period-btn" data-pos-period="custom">Custom</button>
+                </div>
+                <div id="pos-overview-date"></div>
             </div>
             <div class="pos-topbar-right">
                 <span class="pos-conn" id="pos-conn"><span class="pos-conn-dot"></span><span class="pos-conn-text">Online</span></span>
