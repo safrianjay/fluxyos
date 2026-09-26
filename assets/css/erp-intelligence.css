@@ -663,10 +663,15 @@
   font-size: 13px;
   line-height: 1.6;
 }
-.erp-statement-panel aside a {
+.erp-statement-panel .erp-report-action {
   display: inline-block;
   margin-top: 18px;
-  color: #9a3412;
+  color: #667085;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: inherit;
+  cursor: not-allowed;
   font-size: 12px;
   font-weight: 600;
 }
@@ -1793,6 +1798,27 @@
 .erp-page .erp-gallery-grid-cards article:nth-child(4) .erp-gallery-line { stroke: #3b82f6; }
 .erp-page .erp-gallery-grid-cards article:nth-child(5) .erp-gallery-bars i { background: #3b82f6; }
 .erp-page .erp-gallery-visual { background: #fff; border: 1px solid var(--line); }
+.erp-page .erp-gallery-visual::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  /* Mask the interior: the orange gradient is a border accent only. */
+  background: linear-gradient(135deg, #ea580c, #f97316);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+@media (hover: hover) {
+  .erp-page .erp-gallery-grid-cards article:hover .erp-gallery-visual::after { opacity: 1; }
+  .erp-page .erp-gallery-grid-cards article:hover .erp-gallery-visual { border-color: transparent; }
+  .erp-page .erp-gallery-grid-cards article:hover h3 { color: #ea580c; }
+}
 .erp-page .erp-ledger-account:nth-of-type(3) b { color: #16a34a; }
 .erp-page .erp-ledger-account:nth-of-type(4) b { color: #3b82f6; }
 .erp-page .erp-ledger-account:nth-of-type(5) b { color: #9a3412; }
@@ -1800,25 +1826,30 @@
   content: '';
   position: absolute;
   inset: -1px;
-  border: 1px solid transparent;
-  border-top-color: #98a2b340;
+  padding: 2px;
+  /* Only the rotating arc is colored; the ring interior stays transparent. */
+  background: conic-gradient(transparent 0deg 260deg, #ea580c 295deg, #f97316 330deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
   border-radius: 50%;
 }
 @media (prefers-reduced-motion: no-preference) {
   .erp-page .erp-hero-rings i {
-    animation: erp-ring-breathe 18s ease-in-out infinite alternate;
+    animation: erp-ring-breathe 6s ease-in-out infinite alternate;
     animation-delay: -2s;
   }
-  .erp-page .erp-hero-rings i:nth-child(even) { animation-delay: -9s; }
+  .erp-page .erp-hero-rings i:nth-child(even) { animation-delay: -5s; }
   .erp-page .erp-hero-rings i:nth-child(3n)::after {
-    animation: erp-ring-orbit 48s linear infinite;
+    animation: erp-ring-orbit 12s linear infinite;
   }
-  .erp-page .erp-hero-rings i:nth-child(6)::after { animation-direction: reverse; animation-delay: -16s; }
-  .erp-page .erp-hero-rings i:nth-child(9)::after { animation-delay: -32s; }
+  .erp-page .erp-hero-rings i:nth-child(6)::after { animation-direction: reverse; animation-delay: -4s; }
+  .erp-page .erp-hero-rings i:nth-child(9)::after { animation-delay: -8s; }
 }
 @keyframes erp-ring-breathe {
-  from { transform: translate(-50%, -50%) scale(0.985); }
-  to { transform: translate(-50%, -50%) scale(1.025); }
+  from { transform: translate(-50%, -50%) scale(0.96); }
+  to { transform: translate(-50%, -50%) scale(1.045); }
 }
 @keyframes erp-ring-orbit {
   to { transform: rotate(360deg); }
