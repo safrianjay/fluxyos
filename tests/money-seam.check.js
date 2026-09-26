@@ -126,6 +126,8 @@ const EXCLUDE = [
     // Translation dictionaries include fixed marketing examples; workspace
     // amounts themselves are still rendered by FluxyMoney at runtime.
     'i18n.js',
+    // Public AI landing demo: fixed illustrative IDR examples, never workspace balances.
+    'ai-agent-landing.js',
 ];
 // Marketing pages are not workspace surfaces — they advertise IDR pricing.
 const EXCLUDE_HTML = ['onboarding.html', 'pricing.html',
