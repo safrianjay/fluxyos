@@ -1,35 +1,76 @@
 <!doctype html>
 <html lang="id">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>POS Intelligence untuk Restoran & Kafe | FluxyOS</title>
-    <meta name="description" content="POS intelligence FluxyOS menghubungkan pesanan meja, menu QR, layanan dapur, dan catatan pembayaran ke persediaan serta akuntansi." />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml" />
-    <link rel="canonical" href="https://fluxyos.com/id/point-of-sale" />
-    <link rel="alternate" hreflang="en" href="https://fluxyos.com/point-of-sale" />
-    <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/point-of-sale" />
-    <link rel="alternate" hreflang="x-default" href="https://fluxyos.com/point-of-sale" />
+    <title>ERP Intelligence untuk Tim Keuangan | FluxyOS</title>
+    <meta
+      name="description"
+      content="FluxyOS ERP Intelligence connects accounting, reporting, automation, and Fluxy AI so finance teams can understand the business behind every number."
+    />
+    <link rel="canonical" href="https://fluxyos.com/id/erp-intelligence" />
+    <link
+      rel="alternate"
+      hreflang="en"
+      href="https://fluxyos.com/erp-intelligence"
+    />
+    <link
+      rel="alternate"
+      hreflang="id"
+      href="https://fluxyos.com/id/erp-intelligence"
+    />
+    <link
+      rel="alternate"
+      hreflang="x-default"
+      href="https://fluxyos.com/erp-intelligence"
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="/assets/css/tailwind.min.css" />
     <link rel="stylesheet" href="/assets/css/fluxyos.css" />
-    <link rel="stylesheet" href="/assets/css/pos-landing.css" />
+    <link rel="stylesheet" href="/assets/css/erp-intelligence.css" />
+    <style>
+      .erp-page [hidden] {
+        display: none !important;
+      }
+    </style>
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="POS Intelligence untuk Restoran & Kafe | FluxyOS" />
-    <meta property="og:description" content="POS intelligence FluxyOS menghubungkan pesanan meja, menu QR, layanan dapur, dan catatan pembayaran ke persediaan serta akuntansi." />
-    <meta property="og:url" content="https://fluxyos.com/id/point-of-sale" />
-    <meta property="og:site_name" content="FluxyOS" />
-    <meta property="og:locale" content="id_ID" />
-    <meta property="og:locale:alternate" content="en_US" />
-    <meta property="og:image" content="https://fluxyos.com/assets/images/og-point-of-sale.png" />
+    <meta property="og:url" content="https://fluxyos.com/id/erp-intelligence" />
+    <meta
+      property="og:title"
+      content="ERP Intelligence for Finance Teams | FluxyOS"
+    />
+    <meta
+      property="og:description"
+      content="Accounting, reporting, automation, and Fluxy AI in one connected finance workflow."
+    />
+    <meta
+      property="og:image"
+      content="https://fluxyos.com/assets/images/og-erp-intelligence.png"
+    />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="FluxyOS" />
+    <meta property="og:locale" content="id_ID" />
+    <meta property="og:locale:alternate" content="id_ID" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="POS Intelligence untuk Restoran & Kafe | FluxyOS" />
-    <meta name="twitter:description" content="POS intelligence FluxyOS menghubungkan pesanan meja, menu QR, layanan dapur, dan catatan pembayaran ke persediaan serta akuntansi." />
-    <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-point-of-sale.png" />
+    <meta
+      name="twitter:title"
+      content="ERP Intelligence for Finance Teams | FluxyOS"
+    />
+    <meta
+      name="twitter:description"
+      content="Accounting, reporting, automation, and Fluxy AI in one connected finance workflow."
+    />
+    <meta
+      name="twitter:image"
+      content="https://fluxyos.com/assets/images/og-erp-intelligence.png"
+    />
     <script type="application/ld+json">{
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -60,68 +101,15 @@
     <script type="application/ld+json">{
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  "name": "FluxyOS Point of Sale",
+  "name": "FluxyOS ERP Intelligence",
   "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "Intelligent Finance Operating System",
   "operatingSystem": "Web",
-  "url": "https://fluxyos.com/point-of-sale",
-  "description": "POS intelligence FluxyOS menghubungkan pesanan meja, menu QR, layanan dapur, dan catatan pembayaran ke persediaan serta akuntansi.",
+  "url": "https://fluxyos.com/erp-intelligence",
+  "description": "FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System). Di satu tempat, Anda bisa mengelola keuangan, akuntansi, operasional bisnis, dan alur kerja tim. Fluxy AI menjawab pertanyaan berdasarkan data yang sudah tercatat.",
   "publisher": {
     "@id": "https://fluxyos.com/#organization"
   }
-}</script>
-    <script type="application/ld+json">{
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
-    {
-      "@type": "Question",
-      "name": "Apa itu FluxyOS Point of Sale?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Point of Sale adalah ruang kerja FluxyOS untuk menerima pesanan, mengelola layanan meja, dan mencatat pembayaran. Penjualan terhubung ke akuntansi serta, dengan item dan resep yang sudah diatur, persediaan dan harga pokok penjualan."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Apa itu POS intelligence?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "POS intelligence menghubungkan pesanan, pembayaran, dan biaya item yang sudah diatur ke catatan keuangan Anda, sehingga tim dapat meninjau informasi penjualan dan biaya dalam konteksnya. FluxyOS Point of Sale mencatat aktivitas operasional; catatan akuntansi Anda tetap menjadi sumber kebenaran."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Apakah tamu bisa memesan lewat QR meja?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Ya. Tamu scan QR meja untuk membuka menu, memilih item dan opsi, mengirim pesanan, serta memantau statusnya. Pesanan masuk ke alur layanan outlet."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Apakah POS memproses pembayaran kartu atau QRIS?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Staf bisa mencatat pembayaran tunai, kartu, dan QRIS di kasir. Pemrosesan terintegrasi dengan penyedia pembayaran belum tersedia; tim Anda mengonfirmasi pembayaran melalui layanan pembayaran yang digunakan."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Apakah POS bisa digunakan tanpa koneksi internet?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Koneksi internet diperlukan. Penerimaan pesanan dan antrean pembayaran saat offline belum didukung."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Bagaimana cara mendapatkan akses?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Hubungi tim kami untuk membahas outlet dan alur layanan Anda. Akses Point of Sale diaktifkan untuk workspace yang memenuhi syarat, dan kami dapat membantu meninjau pengaturan untuk bisnis Anda."
-      }
-    }
-  ]
 }</script>
     <script type="application/ld+json">{
   "@context": "https://schema.org",
@@ -136,14 +124,52 @@
     {
       "@type": "ListItem",
       "position": 2,
-      "name": "Point of Sale",
-      "item": "https://fluxyos.com/point-of-sale"
+      "name": "ERP Intelligence",
+      "item": "https://fluxyos.com/erp-intelligence"
+    }
+  ]
+}</script>
+    <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Apa yang bisa dilakukan ERP Intelligence?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "FluxyOS ERP Intelligence menyatukan akuntansi, laporan keuangan, dan Fluxy AI. Semuanya memakai catatan keuangan yang sama."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Apakah FluxyOS menggantikan ERP?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Tidak. FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System) untuk mengelola pekerjaan keuangan dan akuntansi. ERP yang sudah Anda gunakan tidak perlu diganti."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Apa yang bisa ditanyakan ke Fluxy AI?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Anda bisa bertanya soal pendapatan, pengeluaran, arus kas, transaksi, dan anggaran. Fluxy AI membantu menunjukkan catatan di balik jawabannya."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Laporan apa saja yang tersedia?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "FluxyOS menyediakan Laporan Laba Rugi, Neraca, Laporan Arus Kas, neraca saldo, Buku Besar, dan laporan pendukung lainnya."
+      }
     }
   ]
 }</script>
   </head>
   <body>
-    <a class="pos-skip" href="#main-content">Langsung ke konten</a>
+    <a class="erp-skip" href="#main-content">Langsung ke konten</a>
     <nav class="home-hero-nav bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
         <div class="max-w-[1280px] mx-auto px-6 h-[80px] flex items-center justify-between">
             <div class="flex items-center gap-12 h-full">
@@ -460,8 +486,8 @@
                         <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
                     <div class="absolute right-0 top-[100%] mt-2 w-36 bg-white border border-gray-100 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden py-1">
-                        <a href="/point-of-sale" class="block px-4 py-2.5 text-[14px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">English (EN)</a>
-                        <a href="/id/point-of-sale" class="flex items-center justify-between px-4 py-2.5 text-[14px] font-medium text-gray-900 bg-gray-50">Bahasa (ID)<svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg></a>
+                        <a href="/erp-intelligence" class="block px-4 py-2.5 text-[14px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">English (EN)</a>
+                        <a href="/id/erp-intelligence" class="flex items-center justify-between px-4 py-2.5 text-[14px] font-medium text-gray-900 bg-gray-50">Bahasa (ID)<svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg></a>
                     </div>
                 </div>
 
@@ -531,652 +557,449 @@
             </div>
         </div>
     </nav>
-    <main id="main-content" class="pos-landing">
-      <section class="pos-hero landing-hero">
-        <div class="pos-hero-copy">
-          <h1>Setiap pesanan.<br /><span>Terhubung ke pembukuan Anda.</span></h1>
-          <p class="pos-lead">FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System). POS intelligence-nya menghubungkan meja, pesanan dapur, pembayaran, dan pembukuan Anda.</p>
-          <div class="pos-actions">
-            <a class="pos-button pos-primary" href="/contact-sales"
-              >Hubungi sales<svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M5 12h14m-5-5 5 5-5 5" /></svg></a
-            ><a class="pos-button" href="#pos-experience"
-              >Jelajahi Point of Sale<svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M5 12h14m-5-5 5 5-5 5" /></svg
-            ></a>
+    <main id="main-content" class="erp-page">
+      <section class="erp-hero">
+        <div class="erp-hero-stage">
+          <div class="erp-hero-rings" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <div class="erp-hero-card erp-orbit-profit">
+            <span><svg class="erp-metric-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V9m7 10V4m7 15v-7M3 21h18"/></svg>Laba bersih</span><strong>Rp24.810.000</strong>
+            <div class="erp-orbit-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          </div>
+          <div class="erp-hero-card erp-orbit-revenue">
+            <span><svg class="erp-metric-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17 9 12l4 3 7-10M15 5h5v5"/></svg>Pendapatan</span><strong>Rp84.260.000</strong>
+            <svg viewBox="0 0 180 36" aria-hidden="true">
+              <path
+                d="M2 30 25 25 47 28 70 17 92 20 115 12 137 14 160 6 178 3"
+              />
+            </svg>
+          </div>
+          <div class="erp-hero-card erp-orbit-cash">
+            <span><svg class="erp-metric-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v13H3zM3 10h18m-5 4h2"/></svg>Posisi kas</span><strong>Rp36.840.000</strong>
+            <svg viewBox="0 0 180 36" aria-hidden="true">
+              <path class="erp-spark-area" d="M2 29 25 27 47 19 70 22 92 16 115 18 137 11 160 9 178 4 V36 H2Z" />
+              <path
+                d="M2 29 25 27 47 19 70 22 92 16 115 18 137 11 160 9 178 4"
+              />
+            </svg>
+          </div>
+          <div class="erp-hero-card erp-orbit-budget">
+            <span><svg class="erp-metric-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 9h8m-8 4h5"/></svg>Biaya operasional vs anggaran</span><strong>78% terpakai</strong>
+            <div class="erp-orbit-bars erp-orbit-bars-simple" aria-hidden="true"><i style="height:28%"></i><i style="height:42%"></i><i style="height:36%"></i><i style="height:55%"></i><i style="height:49%"></i><i style="height:68%"></i><i style="height:62%"></i><i style="height:83%"></i><i style="height:76%"></i><i style="height:100%"></i></div>
+          </div>
+          <div class="erp-hero-card erp-orbit-review">
+            <span><svg class="erp-metric-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7m-7 4h5"/></svg>Dokumen untuk diperiksa</span><strong>3 dokumen</strong>
+            <div class="erp-orbit-list" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+          </div>
+          <div class="erp-hero-copy">
+            <div class="erp-hero-label">ERP Intelligence</div>
+            <h1>Lihat angkanya.<br /><span>Tahu sebabnya.</span></h1>
+            <div class="erp-hero-summary">Akuntansi, laporan keuangan, dan Fluxy AI.<br /><span>Lihat perubahan angkanya. Telusuri penyebabnya.</span></div>
+            <div class="erp-actions">
+              <a class="erp-button erp-button-primary" href="/id/pricing"
+                >Mulai gratis <span aria-hidden="true">→</span></a
+              ><a class="erp-button" href="/contact-sales">Hubungi sales</a>
+            </div>
           </div>
         </div>
-        <div
-          class="pos-connections"
-          aria-label="Dari pesanan ke catatan keuangan"
-        >
-          <svg
-            class="pos-wires"
-            viewBox="0 0 1100 240"
-            preserveAspectRatio="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M115 70V160Q115 180 135 180H965Q985 180 985 160V70M330 150v30m220-30v30m220-30v30"
-            />
-          </svg>
-          <div class="pos-node edge">
-            <div class="pos-node-title">
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M4 7h16v10H4z M8 3v4m8-4v4M8 17v4m8-4v4" /></svg
-              ><strong>Meja</strong><span class="pos-node-dot"></span>
-            </div>
-            <p>Meja 08 · Makan di tempat</p>
-            <p class="pos-muted">2 tamu</p>
+        <div class="erp-hero-intro">
+          <p>FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System). Di satu tempat, Anda bisa mengelola keuangan, akuntansi, operasional bisnis, dan alur kerja tim. Fluxy AI menjawab pertanyaan berdasarkan data yang sudah tercatat.</p>
+          <p class="erp-note">Untuk kebutuhan keuangan yang makin kompleks. Bukan pengganti ERP.</p>
+        </div>
+      </section>
+      <section id="ai" class="erp-section erp-feature-suite">
+        <div class="erp-suite-heading"><h2>Dari pencatatan sampai laporan. <span>Semuanya memakai pembukuan yang sama.</span></h2></div>
+        <div class="erp-feature-grid">
+          <article class="erp-feature-cell erp-feature-wide"><div class="erp-feature-visual">        <div class="erp-chat">
+          <div class="erp-chat-head">
+            <span class="erp-ai-icon">✦</span><strong>Fluxy AI</strong
+            ><small>Memakai data keuangan Anda</small>
           </div>
-          <div class="pos-node">
-            <div class="pos-node-title">
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M8 3h8v3H8z M6 5H4v16h16V5h-2M8 11h8m-8 4h5" /></svg
-              ><strong>Pesanan</strong><span class="pos-node-dot"></span>
-            </div>
-            <p>2 × Nasi goreng</p>
-            <p class="pos-muted">Dikirim ke dapur</p>
+          <div class="erp-question">
+            Kenapa biaya operasional naik pada Maret?
           </div>
-          <div class="pos-node center">
-            <div class="pos-node-title">
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+          <div class="erp-response">
+            <p>
+              <strong
+                >Biaya operasional naik Rp1.240.000 dari Februari.</strong
               >
-                <path d="M3 5h18v14H3z M3 10h18M7 15h3" /></svg
-              ><strong>Pembayaran</strong><span class="pos-node-dot"></span>
+            </p>
+            <p>
+              Kenaikan terbesar ada pada biaya software, disusul jasa pemasaran.
+            </p>
+            <div class="erp-answer-numbers">
+              <span><small>Software &amp; tools</small><b>Rp740.000</b></span
+              ><span><small>Layanan marketing</small><b>Rp320.000</b></span>
             </div>
-            <p>Rp90.000</p>
-            <p class="pos-muted">Dicatat di kasir</p>
+            <details class="erp-expense-details"><summary>Lihat rincian kenaikan biaya <span aria-hidden="true">+</span></summary><div><span>Software &amp; tools</span><b>Rp740.000</b></div><div><span>Layanan marketing</span><b>Rp320.000</b></div><div><span>Biaya lainnya</span><b>Rp180.000</b></div></details>
           </div>
-          <div class="pos-node">
-            <div class="pos-node-title">
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="m3 7 9-4 9 4-9 4z M3 7v10l9 4 9-4V7M12 11v10" /></svg
-              ><strong>Persediaan</strong><span class="pos-node-dot"></span>
-            </div>
-            <p>Bahan dalam resep</p>
-            <p class="pos-muted">Pergerakan stok</p>
-          </div>
-          <div class="pos-node edge">
-            <div class="pos-node-title">
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M4 3h16v18H4z M8 7h8m-8 5h8m-8 5h5" /></svg
-              ><strong>Buku besar</strong><span class="pos-node-dot"></span>
-            </div>
-            <p>Pendapatan + biaya</p>
-            <p class="pos-muted">Dicatat untuk outlet Anda</p>
+          <div class="erp-composer">
+            Tanya soal keuangan bisnis Anda <span aria-hidden="true">↑</span>
           </div>
         </div>
-        <div id="pos-experience" class="pos-experience" data-pos-tabs>
-          <div class="pos-demo-caption">
-            <span>Layanan terhubung, sejak pesanan pertama.</span
-            ><span>Ilustrasi tampilan produk</span>
-          </div>
-          <div class="pos-app">
-            <div class="pos-app-top">
-              <span class="pos-app-brand"
-                ><img
-                  src="/assets/images/favicon.svg"
-                  width="24"
-                  height="24"
-                  alt=""
-                />FluxyOS <span>Point of Sale</span></span
-              ><span class="pos-outlet"
-                >Outlet Senopati
-                <span class="pos-live">● Shift open</span></span
-              >
+</div><div class="erp-feature-caption"><h3>Tanya soal pendapatan, biaya, dan kas.</h3><p>Jawaban memakai catatan keuangan di workspace Anda</p></div></article>
+          <article class="erp-feature-cell erp-feature-small erp-feature-document">
+            <div class="erp-ledger-demo">
+              <div class="erp-ledger-heading"><span class="erp-product-icon"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h7a3 3 0 0 1 3 3v14a3 3 0 0 0-3-3H4zM14 7h6v14h-6M7 8h3m-3 4h3"/></svg></span><div><strong>Buku Besar</strong><small>Maret 2026</small></div></div>
+              <div class="erp-ledger-labels"><span>Akun</span><span>Saldo</span></div>
+              <div class="erp-ledger-account"><span><small>1100</small>Rekening bank</span><b>Rp36.840.000</b></div>
+              <div class="erp-ledger-account"><span><small>6100</small>Biaya software</span><b>Rp1.240.000</b></div>
+              <details class="erp-ledger-details"><summary>Lihat entri jurnal <span aria-hidden="true">+</span></summary>
+                <div class="erp-ledger-entry"><div><span>Debit</span><b>Rp1.240.000</b></div><div><span>Kredit</span><b>Rp1.240.000</b></div><p><span aria-hidden="true">✓</span> Seimbang</p></div>
+              </details>
             </div>
-            <div role="tabpanel" tabindex="0" id="service-floor" aria-labelledby="service-tab-floor"><div class="pos-floor-layout"><div class="pos-floor-main"><div class="pos-view-heading"><h3>Pantau semua meja Anda.</h3><span>Ruang utama</span></div><div class="pos-floor-grid"><div class="pos-table "><i></i><strong>01</strong><span>Tersedia</span><i></i></div><div class="pos-table "><i></i><strong>02</strong><span>Sedang makan</span><i></i></div><div class="pos-table "><i></i><strong>03</strong><span>Tersedia</span><i></i></div><div class="pos-table "><i></i><strong>04</strong><span>Direservasi</span><i></i></div><div class="pos-table "><i></i><strong>05</strong><span>Sedang makan</span><i></i></div><div class="pos-table "><i></i><strong>06</strong><span>Tersedia</span><i></i></div><div class="pos-table "><i></i><strong>07</strong><span>Tersedia</span><i></i></div><div class="pos-table selected"><i></i><strong>08</strong><span>Dipilih</span><i></i></div><div class="pos-table "><i></i><strong>09</strong><span>Sedang makan</span><i></i></div></div><div class="pos-floor-legend"><span>○ Available</span><span>◉ Dining</span><span>◷ Reserved</span></div></div><aside class="pos-ticket"><div class="pos-ticket-head"><div><small>Pesanan saat ini</small><h3>Meja 08</h3></div><span class="pos-tag">Makan di tempat</span></div><p class="pos-muted">2 tamu · Pesanan #024</p><div class="pos-row"><span>2 × Nasi goreng</span><strong>Rp70.000</strong></div><div class="pos-row"><span>2 × Es teh</span><strong>Rp20.000</strong></div><div class="pos-ticket-note">Tidak terlalu pedas · Tanpa es</div><div class="pos-ticket-total"><div class="pos-row"><span>Subtotal</span><strong>Rp90.000</strong></div></div><div class="pos-demo-status"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg>Dikirim ke dapur</div></aside></div></div>
-<div
-              role="tabpanel"
-              tabindex="0"
-              id="service-kitchen"
-              aria-labelledby="service-tab-kitchen"
-              hidden
+            <h3>Periksa akun dan rincian saldonya.</h3>
+            <p>Lihat transaksi yang sudah dibukukan, saldo akun, dan jurnal terkait.</p>
+          </article>
+          <article class="erp-feature-cell erp-feature-small erp-feature-journal">
+            <span>03</span>
+            <div
+              class="erp-flow-preview erp-journal-preview"
+              aria-hidden="true"
             >
-              <div class="pos-kitchen">
-                <div class="pos-view-heading">
-                  <h3>Setiap pesanan jelas statusnya.</h3>
-                  <span>Pesanan dapur</span>
-                </div>
-                <div class="pos-kitchen-grid">
-                  <div class="pos-kitchen-column">
-                    <div class="pos-column-title">Sedang disiapkan <span>1</span></div>
-                    <div class="pos-kitchen-ticket">
-                      <strong>Meja 08</strong><small>Makan di tempat</small>
-                      <p>2 × Nasi goreng</p>
-                      <p>2 × Es teh</p>
-                      <div class="pos-ticket-note">
-                        Catatan tetap terhubung ke pesanan.
-                      </div>
-                    </div>
-                  </div>
-                  <div class="pos-kitchen-column">
-                    <div class="pos-column-title">Siap disajikan <span>1</span></div>
-                    <div class="pos-kitchen-ticket">
-                      <strong>Meja 02</strong><small>Makan di tempat</small>
-                      <p>1 × Mie goreng</p>
-                      <p>1 × Kopi susu</p>
-                      <div class="pos-ticket-note">
-                        Catatan tetap terhubung ke pesanan.
-                      </div>
-                    </div>
-                  </div>
-                  <div class="pos-kitchen-column">
-                    <div class="pos-column-title">Sudah disajikan <span>1</span></div>
-                    <div class="pos-kitchen-ticket">
-                      <strong>Meja 05</strong><small>Makan di tempat</small>
-                      <p>2 × Nasi ayam</p>
-                      <p>2 × Es teh</p>
-                      <div class="pos-ticket-note">
-                        Catatan tetap terhubung ke pesanan.
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              <div class="erp-mini-top">
+                <span>Entri jurnal</span><b>Seimbang</b>
+              </div>
+              <div class="erp-mini-row">
+                <span>Biaya software</span><strong>Rp1.240.000</strong>
+              </div>
+              <div class="erp-mini-row">
+                <span>Rekening bank</span><strong>Rp1.240.000</strong>
+              </div>
+              <div class="erp-mini-status">
+                <span class="erp-mini-dot"></span>Terhubung ke Buku Besar
               </div>
             </div>
-            <div
-              role="tabpanel"
-              tabindex="0"
-              id="service-payment"
-              aria-labelledby="service-tab-payment"
-              hidden
-            >
-              <div class="pos-payment">
+            <h3>Jurnal tetap terhubung</h3>
+            <p>
+              Jurnal yang terbentuk dari transaksi tetap bisa ditelusuri ke dokumen asal dan Buku Besar.
+            </p>
+          </article>
+          <article class="erp-feature-cell erp-feature-wide erp-feature-dashboard"><div class="erp-feature-visual">        <div
+          class="erp-hero-product"
+          aria-label="Ilustrasi ringkasan keuangan FluxyOS"
+        >
+          <div class="erp-appbar">
+            <strong>FluxyOS <span>ERP Intelligence</span></strong
+            ><small>Maret 2026</small>
+          </div>
+          <div class="erp-appbody">
+            <aside>
+              <span class="erp-active">Ringkasan</span><span>Buku besar</span
+              ><span>Jurnal</span><span>Laporan</span><span>Anggaran</span>
+            </aside>
+            <div class="erp-dashboard">
+              <div class="erp-apphead">
                 <div>
-                  <span class="pos-section-label">Saat pembayaran</span>
-                  <h3>Satu meja. Tagihan yang jelas.</h3>
-                  <p>
-                    Periksa tagihan meja, bagi per item atau rata, lalu catat setiap pembayaran di kasir.
-                  </p>
-                  <div class="pos-payment-methods">
-                    <span>Tunai</span><span>Kartu</span><span>QRIS</span>
+                  <small>RINGKASAN KEUANGAN</small>
+                  <h2>Kondisi keuangan bisnis</h2>
+                </div>
+                <span class="erp-live-dot">Pembukuan terbaru</span>
+              </div>
+              <div class="erp-metrics">
+                <div>
+                  <small>Pendapatan</small><strong>Rp84.260.000</strong
+                  ><em>+12,4% dari periode sebelumnya</em>
+                </div>
+                <div>
+                  <small>Posisi kas</small><strong>Rp36.840.000</strong
+                  ><em>Di semua rekening bank dan kas</em>
+                </div>
+                <div>
+                  <small>Biaya operasional vs anggaran</small><strong>78%</strong
+                  ><em>Sisa Rp8.430.000</em>
+                </div>
+              </div>
+              <div class="erp-product-grid">
+                <div class="erp-chart">
+                  <div class="erp-card-head">
+                    <strong>Pendapatan dan pengeluaran</strong
+                    ><small>Jan — Mar</small>
                   </div>
-                  <small
-                    >Metode pembayaran dicatat manual. Pemrosesan oleh penyedia pembayaran belum tersedia.</small
+                  <div class="erp-chart-area">
+                    <i style="height: 35%"></i><i style="height: 59%"></i
+                    ><i style="height: 44%"></i><i style="height: 72%"></i
+                    ><i style="height: 67%"></i><i style="height: 86%"></i>
+                  </div>
+                  <div class="erp-chart-labels">
+                    <span>Jan</span><span>Feb</span><span>Mar</span>
+                  </div>
+                </div>
+                <div class="erp-ai-preview">
+                  <div>
+                    <span class="erp-ai-icon">✦</span
+                    ><strong>Tanya Fluxy AI</strong>
+                  </div>
+                  <p>Kenapa pengeluaran bulan ini naik?</p>
+                  <div class="erp-ai-answer">
+                    <b>Biaya software naik Rp1.240.000.</b
+                    ><span
+                      >Sebagian besar kenaikan berasal dari tiga transaksi perpanjangan.</span
+                    >
+                  </div>
+                  <a href="#ai"
+                    >Buka transaksinya
+                    <span aria-hidden="true">→</span></a
                   >
                 </div>
-                <div class="pos-receipt">
-                  <span class="pos-receipt-brand">FluxyOS</span>
-                  <p>Meja 08 · Pesanan #024</p>
-                  <div class="pos-row">
-                    <span>2 × Nasi goreng</span><strong>Rp70.000</strong>
-                  </div>
-                  <div class="pos-row">
-                    <span>2 × Es teh</span><strong>Rp20.000</strong>
-                  </div>
-                  <div class="pos-ticket-total">
-                    <div class="pos-row">
-                      <span>Total</span><strong>Rp90.000</strong>
-                    </div>
-                  </div>
-                  <div class="pos-paid">
-                    <svg
-                      aria-hidden="true"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
-                      <path d="m5 12 4 4L19 6" /></svg
-                    >Pembayaran dicatat
-                  </div>
-                  <div class="pos-receipt-lines" aria-hidden="true"></div>
-                </div>
               </div>
             </div>
           </div>
-          <div class="pos-tabs" role="tablist" aria-label="Jelajahi POS">
+        </div>
+</div><div class="erp-feature-caption"><h3>Pantau keuangan dalam satu tampilan.</h3><p>Tanya soal pendapatan, biaya, arus kas, atau anggaran</p></div></article>
+        </div>
+      </section>
+      <section class="erp-section erp-statements">
+        <div class="erp-statements-intro">
+          <div>
+            <p class="erp-kicker">Laporan keuangan</p>
+            <h2>Buka laporan. Telusuri angkanya.</h2>
+          </div>
+          <p>
+            Laba Rugi, Neraca, dan Arus Kas berasal dari pembukuan yang sama.
+          </p>
+        </div>
+        <div class="erp-statement-workspace" data-erp-tabs>
+          <div
+            class="erp-tabs"
+            role="tablist"
+            aria-label="Laporan keuangan"
+          >
             <button
-              type="button"
+              id="statement-tab-income"
               role="tab"
-              id="service-tab-floor"
-              aria-controls="service-floor"
               aria-selected="true"
-              tabindex="0"
-              data-pos-tab="floor"
+              aria-controls="statement-income"
             >
-              Layanan meja</button
+              Laporan Laba Rugi</button
             ><button
-              type="button"
+              id="statement-tab-balance"
               role="tab"
-              id="service-tab-kitchen"
-              aria-controls="service-kitchen"
               aria-selected="false"
+              aria-controls="statement-balance"
               tabindex="-1"
-              data-pos-tab="kitchen"
             >
-              Pesanan dapur</button
+              Neraca</button
             ><button
-              type="button"
+              id="statement-tab-cashflow"
               role="tab"
-              id="service-tab-payment"
-              aria-controls="service-payment"
               aria-selected="false"
+              aria-controls="statement-cashflow"
               tabindex="-1"
-              data-pos-tab="payment"
             >
-              Pencatatan pembayaran
+              Arus Kas
             </button>
           </div>
-        </div>
-      </section>
-      <section class="pos-section pos-intro">
-        <p>
-          FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System) yang menghubungkan operasional keuangan, akuntansi, operasional bisnis, alur kerja perusahaan, dan intelligence dalam satu sistem yang terus terhubung.
-        </p>
-      </section>
-      <section class="pos-section">
-        <div class="pos-section-heading">
-          <h2>
-            Mengikuti cara Anda melayani.
-            <span>Dari secangkir kopi hingga satu meja penuh.</span>
-          </h2>
-        </div>
-        <div class="pos-feature-grid">
-          <article class="pos-feature">
-            <span class="pos-feature-number">[01]</span>
-            <div class="pos-feature-art"><svg class="pos-service-scene" aria-hidden="true" viewBox="0 0 220 140" fill="#f3f5f8" stroke="#526075" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="91" y="12" width="38" height="16" rx="7"/><rect x="91" y="112" width="38" height="16" rx="7"/><rect x="43" y="51" width="16" height="38" rx="7"/><rect x="161" y="51" width="16" height="38" rx="7"/><rect x="66" y="35" width="88" height="70" rx="16" fill="white"/><circle cx="87" cy="57" r="9"/><circle cx="133" cy="83" r="9"/><path d="M82 57h10m41 21v10" stroke="#cbd1da"/><text x="110" y="78">08</text><circle cx="165" cy="32" r="15" fill="white" stroke="#EA580C"/><path d="m159 32 4 4 8-9" stroke="#EA580C"/></svg><span>Makan di tempat → Meja → Pesanan</span>
-            </div>
-            <h3>Siapkan meja untuk setiap tamu.</h3>
-            <p>
-              Lihat meja tersedia, pantau reservasi, dan buka pesanan makan di tempat atau bawa pulang dari kasir yang sama.
-            </p>
-          </article>
-          <article class="pos-feature">
-            <span class="pos-feature-number">[02]</span>
-            <div class="pos-feature-art"><svg class="pos-service-scene" aria-hidden="true" viewBox="0 0 220 140" fill="#f3f5f8" stroke="#526075" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M70 55h67l-6 51H77z" fill="white"/><path d="M137 63h9a13 13 0 0 1 0 26h-12M63 112h83M85 38c-9-9 9-12 0-21m20 21c-9-9 9-12 0-21"/><path d="M83 80h41" stroke="#EA580C"/><rect x="145" y="25" width="56" height="32" rx="10" fill="white"/><path d="M155 41h13m-6-6v12" stroke="#EA580C"/><path d="M178 36h13m-13 9h8"/><circle cx="66" cy="88" r="15" fill="white" stroke="#EA580C"/><path d="m60 88 4 4 8-9" stroke="#EA580C"/></svg><span>Kurangi gula · Extra shot</span>
-            </div>
-            <h3>Catat pesanan sesuai keinginan tamu.</h3>
-            <p>
-              Catat ukuran, tambahan, catatan, dan diskon pada setiap pesanan agar detailnya ikut sampai ke dapur.
-            </p>
-          </article>
-          <article class="pos-feature">
-            <span class="pos-feature-number">[03]</span>
-            <div class="pos-feature-art"><svg class="pos-service-scene" aria-hidden="true" viewBox="0 0 220 140" fill="#f3f5f8" stroke="#526075" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M77 13h66v63l-8-5-8 5-8-5-9 5-9-5-8 5-8-5-8 5z" fill="white"/><path d="M90 29h40m-40 12h24"/><path d="M96 56h28" stroke="#EA580C"/><path d="M110 81v10H59v11m51-11h51v11" stroke="#EA580C"/><rect x="28" y="103" width="63" height="27" rx="7" fill="white"/><rect x="130" y="103" width="63" height="27" rx="7" fill="white"/><path d="M38 114h12m-12 7h7m95-7h12m-12 7h7"/><circle cx="77" cy="116" r="5" stroke="#EA580C"/><circle cx="179" cy="116" r="5" stroke="#EA580C"/></svg><span>Rp90.000 → Rp45.000 + Rp45.000</span>
-            </div>
-            <h3>Selesaikan pembayaran dengan jelas.</h3>
-            <p>
-              Satukan pesanan meja dalam satu tagihan, bagi pembayaran, dan cetak struk dengan detail yang dibutuhkan tamu.
-            </p>
-          </article>
-          <article class="pos-feature">
-            <span class="pos-feature-number">[04]</span>
-            <div class="pos-feature-art"><svg class="pos-service-scene" aria-hidden="true" viewBox="0 0 220 140" fill="#f3f5f8" stroke="#526075" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="49" y="47" width="119" height="77" rx="12" fill="white"/><path d="M49 89h119M86 104h44"/><path d="M75 47V17h68v30" fill="white"/><path d="M87 29h18m-18 9h34"/><rect x="64" y="59" width="34" height="17" rx="4"/><path d="M113 63h7m10 0h7m-24 10h7m10 0h7"/><circle cx="166" cy="41" r="20" fill="white" stroke="#EA580C"/><path d="m157 41 6 6 12-13" stroke="#EA580C"/></svg><span>Kas seharusnya = Kas terhitung + Selisih</span>
-            </div>
-            <h3>Tutup shift dengan yakin.</h3>
-            <p>
-              Cocokkan uang di laci dengan kas yang seharusnya. Lihat pergerakan kas dan selisih saat menutup shift.
-            </p>
-          </article>
-        </div>
-      </section>
-      <section id="qr-ordering" class="pos-section pos-qr-section">
-        <div class="pos-section-heading">
-          <h2>
-            Kurangi waktu menunggu.
-            <span>Lebih dekat dengan tamu Anda.</span>
-          </h2>
-          <p>
-            Tamu cukup scan QR meja, lihat menu, dan kirim pesanan dari ponsel. Tim Anda menerima pesanan dalam alur layanan yang sama.
-          </p>
-        </div>
-        <div class="pos-qr-stage" data-pos-tabs data-autoplay>
-          <div class="pos-qr-copy">
-            <span class="pos-section-label">Pemesanan QR</span>
-            <h3>Ponsel tamu. Menu Anda.</h3>
-            <p>
-              Foto menu, pilihan item, dan status pesanan membantu tamu memesan dengan lebih mudah.
-            </p>
-<div class="pos-qr-steps" role="tablist" aria-label="Jelajahi pemesanan QR" aria-orientation="vertical"><button type="button" role="tab" id="qr-tab-menu" aria-controls="qr-menu" aria-selected="true" tabindex="0" data-pos-tab="menu"><span class="pos-qr-step-number" aria-hidden="true">01</span><span><strong>Jelajahi menu</strong><span>Lihat foto, kategori, dan harga.</span></span></button><button type="button" role="tab" id="qr-tab-customize" aria-controls="qr-customize" aria-selected="false" tabindex="-1" data-pos-tab="customize"><span class="pos-qr-step-number" aria-hidden="true">02</span><span><strong>Sesuaikan pesanan</strong><span>Pilih opsi dan tambahkan catatan.</span></span></button><button type="button" role="tab" id="qr-tab-basket" aria-controls="qr-basket" aria-selected="false" tabindex="-1" data-pos-tab="basket"><span class="pos-qr-step-number" aria-hidden="true">03</span><span><strong>Periksa pesanan</strong><span>Periksa item dan total sebelum dikirim.</span></span></button></div>
-            <button type="button" class="pos-autoplay" aria-pressed="false" hidden><span aria-hidden="true">Ⅱ</span><span class="pos-autoplay-label">Jeda tayangan</span></button>
-          </div>
-          <div class="pos-qr-device">
-            <div class="pos-phone pos-phone-real">
-              <div class="pos-phone-camera" aria-hidden="true"></div>
-              <div role="tabpanel" id="qr-menu" aria-labelledby="qr-tab-menu" tabindex="0">
-                <a href="/assets/images/pos-qr-menu-id.jpg" target="_blank" rel="noopener" data-qr-screen="menu" aria-label="Buka tangkapan layar aplikasi pemesanan ini dalam ukuran penuh">
-                  <img src="/assets/images/pos-qr-menu-id.jpg" width="780" height="1688" loading="lazy" decoding="async" data-qr-screen="menu" alt="Aplikasi pemesanan QR FluxyOS asli yang menampilkan menu demo Senopati dan rekomendasi hidangan.">
-                </a>
-              </div>
-              <div role="tabpanel" id="qr-customize" aria-labelledby="qr-tab-customize" tabindex="0" hidden>
-                <a href="/assets/images/pos-qr-customize-id.jpg" target="_blank" rel="noopener" data-qr-screen="customize" aria-label="Buka tangkapan layar aplikasi pemesanan ini dalam ukuran penuh">
-                  <img src="/assets/images/pos-qr-customize-id.jpg" width="780" height="1688" loading="lazy" decoding="async" data-qr-screen="customize" alt="Aplikasi pemesanan QR FluxyOS asli yang menampilkan pilihan item sebelum menambahkan minuman ke pesanan.">
-                </a>
-              </div>
-              <div role="tabpanel" id="qr-basket" aria-labelledby="qr-tab-basket" tabindex="0" hidden>
-                <a href="/assets/images/pos-qr-basket-id.jpg" target="_blank" rel="noopener" data-qr-screen="basket" aria-label="Buka tangkapan layar aplikasi pemesanan ini dalam ukuran penuh">
-                  <img src="/assets/images/pos-qr-basket-id.jpg" width="780" height="1688" loading="lazy" decoding="async" data-qr-screen="basket" alt="Aplikasi pemesanan QR FluxyOS asli yang menampilkan ringkasan pesanan, harga item, dan total sebelum dikirim.">
-                </a>
-              </div>
-            </div>
-            <p class="pos-qr-capture-note">Aplikasi pemesanan asli · Menu demo<br><span>Ketuk layar untuk melihat ukuran penuh.</span></p>
-          </div>
-        </div>
-      </section>
-      <section class="pos-section pos-finance">
-        <div class="pos-section-heading">
-          <h2>
-            Penjualan baru permulaan.
-            <span>Hubungkan seluruh cerita keuangannya.</span>
-          </h2>
-        </div>
-        <div class="pos-finance-grid">
-          <div class="pos-finance-copy">
-            <span class="pos-section-label">Dari kasir ke buku besar</span>
-            <h3>Setiap hidangan punya biaya. Catat dengan tepat.</h3>
-            <p>
-              Resep yang sudah diatur menghubungkan hidangan terjual dengan stok bahan dan harga pokok penjualan. Penjualan POS masuk ke fondasi akuntansi yang sama dengan bisnis Anda.
-            </p>
-            <p>
-              Pendapatan dan biaya menyertakan outlet, sehingga Anda bisa menelusuri hasilnya hingga laporan laba rugi outlet.
-            </p>
-          </div>
-          <div class="pos-recipe">
-            <div class="pos-recipe-title">
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="m3 7 9-4 9 4-9 4z M3 7v10l9 4 9-4V7M12 11v10" /></svg
-              ><strong>Nasi goreng</strong><span>Resep</span>
-            </div>
-            <div class="pos-row"><span>Nasi</span><strong>200 g</strong></div>
-            <div class="pos-row"><span>Telur</span><strong>1 butir</strong></div>
-            <div class="pos-row">
-              <span>Bumbu</span><strong>30 g</strong>
-            </div>
-            <div class="pos-recipe-connection">↓</div>
-            <div class="pos-recipe-bottom">
-              <div>
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="m3 7 9-4 9 4-9 4z M3 7v10l9 4 9-4V7M12 11v10" /></svg
-                >Pergerakan stok
-              </div>
-              <div>
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M4 3h16v18H4z M8 7h8m-8 5h8m-8 5h5" /></svg
-                >Harga pokok penjualan
-              </div>
-            </div>
-            <p class="pos-muted">
-              Terhubung lewat penjualan. Dicatat untuk outlet.
-            </p>
-          </div>
-        </div>
-      </section>
-      <section class="pos-section pos-reports" data-pos-tabs>
-        <div class="pos-section-heading">
-          <h2>Dari layanan ke gambaran yang lebih jelas.</h2>
-          <p>
-            Baca pendapatan, biaya, dan laba kotor bersama. Penjualan yang sama menghasilkan catatan yang selaras di laporan keuangan Anda.
-          </p>
-        </div>
-        <div class="pos-profit-equation" aria-label="Perhitungan laba kotor mingguan"><div><span>Pendapatan</span><strong>Rp4.800.000</strong></div><b aria-hidden="true">−</b><div><span>Harga pokok penjualan</span><strong>Rp1.920.000</strong></div><b aria-hidden="true">=</b><div><span>Laba kotor</span><strong>Rp2.880.000</strong></div><span class="pos-margin">Margin kotor 60%</span></div>
-        <div class="pos-tabs" role="tablist" aria-label="Tampilan keuangan">
-          <button
-            type="button"
-            role="tab"
-            id="report-tab-revenue"
-            aria-controls="report-revenue"
-            aria-selected="true"
-            tabindex="0"
-            data-pos-tab="revenue"
+          <section
+            id="statement-income"
+            role="tabpanel"
+            aria-labelledby="statement-tab-income"
+            class="erp-statement-panel"
           >
-            Pendapatan</button
-          ><button
-            type="button"
-            role="tab"
-            id="report-tab-cost"
-            aria-controls="report-cost"
-            aria-selected="false"
-            tabindex="-1"
-            data-pos-tab="cost"
-          >
-            Harga pokok penjualan</button
-          ><button
-            type="button"
-            role="tab"
-            id="report-tab-profit"
-            aria-controls="report-profit"
-            aria-selected="false"
-            tabindex="-1"
-            data-pos-tab="profit"
-          >
-            Laba kotor
-          </button>
-        </div>
-        <div
-          role="tabpanel"
-          tabindex="0"
-          id="report-revenue"
-          aria-labelledby="report-tab-revenue"
-        >
-          <div class="pos-report-card">
-            <div class="pos-report-summary">
-              <small>Outlet Senopati · Contoh mingguan</small>
-              <h3>Pendapatan</h3>
-              <strong class="pos-report-value">Rp4.800.000</strong>
-              <p>Penjualan yang dibukukan untuk outlet terpilih.</p>
-              <span class="pos-tag">Data ilustrasi</span>
+            <div>
+              <p>Januari — Maret 2026</p>
+              <h3>Laporan Laba Rugi</h3>
+              <dl>
+                <div>
+                  <dt>Pendapatan</dt>
+                  <dd>Rp84.260.000</dd>
+                </div>
+                <div>
+                  <dt>Harga pokok penjualan</dt>
+                  <dd>Rp27.840.000</dd>
+                </div>
+                <div>
+                  <dt>Biaya operasional</dt>
+                  <dd>Rp31.610.000</dd>
+                </div>
+                <div class="erp-total">
+                  <dt>Laba bersih</dt>
+                  <dd>Rp24.810.000</dd>
+                </div>
+              </dl>
             </div>
-            <div class="pos-week-chart pos-week-revenue">
-              <div class="pos-chart-heading"><span>Rincian harian</span><span>14–20 Sep 2026</span></div>
-              <p class="pos-chart-unit">Nilai dalam ribuan Rp · Skala sama di setiap tampilan</p>
-              <div class="pos-plot"><div class="pos-axis" aria-hidden="true"><span>1.200</span><span>900</span><span>600</span><span>300</span><span>0</span></div><div class="pos-daily-bars"><div class="pos-daily-column" data-value="480000"><div class="pos-daily-bar" style="--value:40.00%"><strong>480</strong></div><span>Sen</span></div><div class="pos-daily-column" data-value="560000"><div class="pos-daily-bar" style="--value:46.67%"><strong>560</strong></div><span>Sel</span></div><div class="pos-daily-column" data-value="520000"><div class="pos-daily-bar" style="--value:43.33%"><strong>520</strong></div><span>Rab</span></div><div class="pos-daily-column" data-value="640000"><div class="pos-daily-bar" style="--value:53.33%"><strong>640</strong></div><span>Kam</span></div><div class="pos-daily-column" data-value="700000"><div class="pos-daily-bar" style="--value:58.33%"><strong>700</strong></div><span>Jum</span></div><div class="pos-daily-column" data-value="900000"><div class="pos-daily-bar" style="--value:75.00%"><strong>900</strong></div><span>Sab</span></div><div class="pos-daily-column" data-value="1000000"><div class="pos-daily-bar" style="--value:83.33%"><strong>1.000</strong></div><span>Min</span></div></div></div>
-            </div>
-          </div>
-        </div>
-        <div
-          role="tabpanel"
-          tabindex="0"
-          id="report-cost"
-          aria-labelledby="report-tab-cost"
-          hidden
-        >
-          <div class="pos-report-card">
-            <div class="pos-report-summary">
-              <small>Outlet Senopati · Contoh mingguan</small>
-              <h3>Harga pokok penjualan</h3>
-              <strong class="pos-report-value">Rp1.920.000</strong>
+            <aside>
+              <small>Catatan dari Fluxy AI</small>
+              <h4>Laba tetap terjaga meski biaya software naik.</h4>
               <p>
-                Biaya bahan dari resep yang sudah diatur dan pergerakan stok.
+                Pada periode ini, kenaikan pendapatan lebih besar daripada kenaikan biaya operasional.
               </p>
-              <span class="pos-tag">Data ilustrasi</span>
-            </div>
-            <div class="pos-week-chart pos-week-cost">
-              <div class="pos-chart-heading"><span>Rincian harian</span><span>14–20 Sep 2026</span></div>
-              <p class="pos-chart-unit">Nilai dalam ribuan Rp · Skala sama di setiap tampilan</p>
-              <div class="pos-plot"><div class="pos-axis" aria-hidden="true"><span>1.200</span><span>900</span><span>600</span><span>300</span><span>0</span></div><div class="pos-daily-bars"><div class="pos-daily-column" data-value="192000"><div class="pos-daily-bar" style="--value:16.00%"><strong>192</strong></div><span>Sen</span></div><div class="pos-daily-column" data-value="224000"><div class="pos-daily-bar" style="--value:18.67%"><strong>224</strong></div><span>Sel</span></div><div class="pos-daily-column" data-value="208000"><div class="pos-daily-bar" style="--value:17.33%"><strong>208</strong></div><span>Rab</span></div><div class="pos-daily-column" data-value="256000"><div class="pos-daily-bar" style="--value:21.33%"><strong>256</strong></div><span>Kam</span></div><div class="pos-daily-column" data-value="280000"><div class="pos-daily-bar" style="--value:23.33%"><strong>280</strong></div><span>Jum</span></div><div class="pos-daily-column" data-value="360000"><div class="pos-daily-bar" style="--value:30.00%"><strong>360</strong></div><span>Sab</span></div><div class="pos-daily-column" data-value="400000"><div class="pos-daily-bar" style="--value:33.33%"><strong>400</strong></div><span>Min</span></div></div></div>
-            </div>
-          </div>
-        </div>
-        <div
-          role="tabpanel"
-          tabindex="0"
-          id="report-profit"
-          aria-labelledby="report-tab-profit"
-          hidden
-        >
-          <div class="pos-report-card">
-            <div class="pos-report-summary">
-              <small>Outlet Senopati · Contoh mingguan</small>
-              <h3>Laba kotor</h3>
-              <strong class="pos-report-value">Rp2.880.000</strong>
-              <p>Pendapatan dikurangi harga pokok penjualan, sebelum biaya operasional.</p>
-              <span class="pos-tag">Data ilustrasi</span>
-            </div>
-            <div class="pos-week-chart pos-week-profit">
-              <div class="pos-chart-heading"><span>Rincian harian</span><span>14–20 Sep 2026</span></div>
-              <p class="pos-chart-unit">Nilai dalam ribuan Rp · Skala sama di setiap tampilan</p>
-              <div class="pos-plot"><div class="pos-axis" aria-hidden="true"><span>1.200</span><span>900</span><span>600</span><span>300</span><span>0</span></div><div class="pos-daily-bars"><div class="pos-daily-column" data-value="288000"><div class="pos-daily-bar" style="--value:24.00%"><strong>288</strong></div><span>Sen</span></div><div class="pos-daily-column" data-value="336000"><div class="pos-daily-bar" style="--value:28.00%"><strong>336</strong></div><span>Sel</span></div><div class="pos-daily-column" data-value="312000"><div class="pos-daily-bar" style="--value:26.00%"><strong>312</strong></div><span>Rab</span></div><div class="pos-daily-column" data-value="384000"><div class="pos-daily-bar" style="--value:32.00%"><strong>384</strong></div><span>Kam</span></div><div class="pos-daily-column" data-value="420000"><div class="pos-daily-bar" style="--value:35.00%"><strong>420</strong></div><span>Jum</span></div><div class="pos-daily-column" data-value="540000"><div class="pos-daily-bar" style="--value:45.00%"><strong>540</strong></div><span>Sab</span></div><div class="pos-daily-column" data-value="600000"><div class="pos-daily-bar" style="--value:50.00%"><strong>600</strong></div><span>Min</span></div></div></div>
-            </div>
-          </div>
-        </div>
-      </section>
-      <section class="pos-section pos-faq">
-        <div class="pos-section-heading">
-          <h2>Beberapa hal yang perlu Anda tahu.</h2>
-        </div>
-        <div>
-          <details>
-            <summary>
-              Apa itu FluxyOS Point of Sale?<span aria-hidden="true">+</span>
-            </summary>
-            <p>
-              Point of Sale adalah ruang kerja FluxyOS untuk menerima pesanan, mengelola layanan meja, dan mencatat pembayaran. Penjualan terhubung ke akuntansi serta, dengan item dan resep yang sudah diatur, persediaan dan harga pokok penjualan.
-            </p>
-          </details>
-          <details>
-            <summary>
-              Apa itu POS intelligence?<span aria-hidden="true">+</span>
-            </summary>
-            <p>
-              POS intelligence menghubungkan pesanan, pembayaran, dan biaya item yang sudah diatur ke catatan keuangan Anda, sehingga tim dapat meninjau informasi penjualan dan biaya dalam konteksnya. FluxyOS Point of Sale mencatat aktivitas operasional; catatan akuntansi Anda tetap menjadi sumber kebenaran.
-            </p>
-          </details>
-          <details>
-            <summary>
-              Apakah tamu bisa memesan lewat QR meja?<span aria-hidden="true">+</span>
-            </summary>
-            <p>
-              Ya. Tamu scan QR meja untuk membuka menu, memilih item dan opsi, mengirim pesanan, serta memantau statusnya. Pesanan masuk ke alur layanan outlet.
-            </p>
-          </details>
-          <details>
-            <summary>
-              Apakah POS memproses pembayaran kartu atau QRIS?<span
-                aria-hidden="true"
-                >+</span
-              >
-            </summary>
-            <p>
-              Staf bisa mencatat pembayaran tunai, kartu, dan QRIS di kasir. Pemrosesan terintegrasi dengan penyedia pembayaran belum tersedia; tim Anda mengonfirmasi pembayaran melalui layanan pembayaran yang digunakan.
-            </p>
-          </details>
-          <details>
-            <summary>
-              Apakah POS bisa digunakan tanpa koneksi internet?<span
-                aria-hidden="true"
-                >+</span
-              >
-            </summary>
-            <p>
-              Koneksi internet diperlukan. Penerimaan pesanan dan antrean pembayaran saat offline belum didukung.
-            </p>
-          </details>
-          <details>
-            <summary>
-              Bagaimana cara mendapatkan akses?<span aria-hidden="true">+</span>
-            </summary>
-            <p>
-              Hubungi tim kami untuk membahas outlet dan alur layanan Anda. Akses Point of Sale diaktifkan untuk workspace yang memenuhi syarat, dan kami dapat membantu meninjau pengaturan untuk bisnis Anda.
-            </p>
-          </details>
-        </div>
-      </section>
-      <section class="pos-closing">
-        <span class="pos-section-label">FluxyOS Point of Sale</span>
-        <h2>Layanan yang baik.<br />Bisnis yang terhubung.</h2>
-        <p>Jadikan pesanan berikutnya bagian dari gambaran bisnis Anda.</p>
-        <a class="pos-button pos-primary" href="/contact-sales"
-          >Hubungi sales<svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+              <a href="#ai">Tanya lebih lanjut →</a>
+            </aside>
+          </section>
+          <section
+            id="statement-balance"
+            role="tabpanel"
+            aria-labelledby="statement-tab-balance"
+            class="erp-statement-panel"
+            hidden
           >
-            <path d="M5 12h14m-5-5 5 5-5 5" /></svg></a
-        ><a class="pos-text-link" href="/id/pricing">Lihat paket FluxyOS →</a>
+            <div>
+              <p>Per 31 Maret 2026</p>
+              <h3>Neraca</h3>
+              <dl>
+                <div>
+                  <dt>Total aset</dt>
+                  <dd>Rp112.600.000</dd>
+                </div>
+                <div>
+                  <dt>Total liabilitas</dt>
+                  <dd>Rp38.240.000</dd>
+                </div>
+                <div class="erp-total">
+                  <dt>Total ekuitas</dt>
+                  <dd>Rp74.360.000</dd>
+                </div>
+              </dl>
+            </div>
+            <aside>
+              <small>Konteks keuangan</small>
+              <h4>Lihat akun di balik setiap saldo.</h4>
+              <p>
+                Jika ada saldo yang perlu dicek, buka akun terkait di Buku Besar.
+              </p>
+              <a href="/accounting">Buka akuntansi →</a>
+            </aside>
+          </section>
+          <section
+            id="statement-cashflow"
+            role="tabpanel"
+            aria-labelledby="statement-tab-cashflow"
+            class="erp-statement-panel"
+            hidden
+          >
+            <div>
+              <p>Januari — Maret 2026</p>
+              <h3>Laporan Arus Kas</h3>
+              <dl>
+                <div>
+                  <dt>Aktivitas operasi</dt>
+                  <dd>Rp18.450.000</dd>
+                </div>
+                <div>
+                  <dt>Aktivitas investasi</dt>
+                  <dd>Rp0</dd>
+                </div>
+                <div>
+                  <dt>Aktivitas pendanaan</dt>
+                  <dd>Rp0</dd>
+                </div>
+                <div class="erp-total">
+                  <dt>Perubahan bersih kas</dt>
+                  <dd>Rp18.450.000</dd>
+                </div>
+              </dl>
+            </div>
+            <aside>
+              <small>Konteks keuangan</small>
+              <h4>Pahami ke mana kas bergerak.</h4>
+              <p>
+                Periksa arus kas bersama tagihan, invoice, rekening bank, dan transaksi terkait.
+              </p>
+              <a href="/cash-position">Lihat posisi kas →</a>
+            </aside>
+          </section>
+        </div>
+      </section>
+      <section class="erp-section erp-insights erp-insight-gallery"><div class="erp-gallery-heading"><p class="erp-kicker">Pantau kinerja bisnis</p><h2>Pantau angka yang perlu ditindaklanjuti.</h2><p>Lihat pendapatan, pengeluaran, dan pemakaian anggaran dalam satu tampilan. Dokumen yang belum diperiksa juga terlihat di sini.</p></div><div class="erp-gallery-grid-cards"><article><div class="erp-gallery-visual"><small>Pendapatan</small><strong>Rp84.260.000</strong><svg viewBox="0 0 280 90" aria-hidden="true"><path class="erp-gallery-grid" d="M0 20H280M0 45H280M0 70H280"/><path class="erp-gallery-line" d="M4 75 35 68 65 71 95 47 125 53 155 35 185 39 215 19 245 24 276 8"/></svg></div><h3>Pendapatan</h3><p>Pendapatan dan pengeluaran</p></article>
+<article><div class="erp-gallery-visual"><small>Laba bersih</small><strong>Rp24.810.000</strong><div class="erp-gallery-bars" aria-hidden="true"><i style="height:34%"></i><i style="height:47%"></i><i style="height:42%"></i><i style="height:63%"></i><i style="height:76%"></i><i style="height:94%"></i></div></div><h3>Laba bersih</h3><p>Laporan Laba Rugi</p></article>
+<article><div class="erp-gallery-visual"><small>Sisa anggaran</small><strong>Rp8.430.000</strong><div class="erp-gallery-bars" aria-hidden="true"><i style="height:32%"></i><i style="height:48%"></i><i style="height:41%"></i><i style="height:64%"></i><i style="height:70%"></i><i style="height:87%"></i></div></div><h3>Sisa anggaran</h3><p>Lihat sisa anggaran sebelum menambah biaya</p></article>
+<article><div class="erp-gallery-visual"><small>Posisi kas</small><strong>Rp36.840.000</strong><svg viewBox="0 0 280 90" aria-hidden="true"><path class="erp-gallery-grid" d="M0 20H280M0 45H280M0 70H280"/><path class="erp-gallery-line" d="M4 75 35 68 65 71 95 47 125 53 155 35 185 39 215 19 245 24 276 8"/></svg></div><h3>Posisi kas</h3><p>Di semua rekening bank dan kas</p></article>
+<article><div class="erp-gallery-visual"><small>Biaya operasional</small><strong>Rp31.610.000</strong><div class="erp-gallery-bars" aria-hidden="true"><i style="height:32%"></i><i style="height:48%"></i><i style="height:41%"></i><i style="height:64%"></i><i style="height:70%"></i><i style="height:87%"></i></div></div><h3>Biaya operasional</h3><p>Pemakaian anggaran</p></article>
+<article><div class="erp-gallery-visual"><small>Tinjau selanjutnya</small><strong>3 dokumen</strong><div class="erp-gallery-records" aria-hidden="true"><i></i><i></i><i></i></div></div><h3>Tinjau selanjutnya</h3><p>Periksa dokumen →</p></article></div></section>
+      <section class="erp-section erp-ecosystem">
+        <div class="erp-section-title">
+          <p class="erp-kicker">Satu pembukuan, banyak kegunaan</p>
+          <h2>Catat sekali. Gunakan di seluruh laporan.</h2>
+        </div>
+        <div class="erp-ecosystem-grid">
+          <article>
+            <span>01</span>
+            <h3>Catatan operasional</h3>
+            <p>
+              Transaksi, pendapatan, tagihan, invoice, rekening bank, dan dokumen sumber.
+            </p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>Dasar akuntansi</h3>
+            <p>
+              Entri jurnal, daftar akun, Buku Besar, dan proses tutup buku.
+            </p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>Analisis keuangan</h3>
+            <p>
+              Laporan keuangan, KPI, dan jawaban Fluxy AI memakai catatan yang sama.
+            </p>
+          </article>
+        </div>
+      </section>
+      <section id="faq" class="erp-section erp-faq">
+        <div>
+          <p class="erp-kicker">Tanya jawab</p>
+          <h2>Hal yang sering ditanyakan.</h2>
+        </div>
+        <div class="erp-faq-list">
+          <details>
+            <summary>
+              Apa yang bisa dilakukan ERP Intelligence?<span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              FluxyOS ERP Intelligence menyatukan akuntansi, laporan keuangan, dan Fluxy AI. Semuanya memakai catatan keuangan yang sama.
+            </p>
+          </details>
+          <details>
+            <summary>
+              Apakah FluxyOS menggantikan ERP?<span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              Tidak. FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System) untuk mengelola pekerjaan keuangan dan akuntansi. ERP yang sudah Anda gunakan tidak perlu diganti.
+            </p>
+          </details>
+          <details>
+            <summary>
+              Apa yang bisa ditanyakan ke Fluxy AI?<span aria-hidden="true"
+                >+</span
+              >
+            </summary>
+            <p>
+              Anda bisa bertanya soal pendapatan, pengeluaran, arus kas, transaksi, dan anggaran. Fluxy AI membantu menunjukkan catatan di balik jawabannya.
+            </p>
+          </details>
+          <details>
+            <summary>
+              Laporan apa saja yang tersedia?<span aria-hidden="true"
+                >+</span
+              >
+            </summary>
+            <p>
+              FluxyOS menyediakan Laporan Laba Rugi, Neraca, Laporan Arus Kas, neraca saldo, Buku Besar, dan laporan pendukung lainnya.
+            </p>
+          </details>
+        </div>
+      </section>
+      <section class="erp-closing">
+        <p class="erp-kicker">FluxyOS ERP Intelligence</p>
+        <h2>Pahami angka bisnis.<br />Tentukan langkah berikutnya.</h2>
+        <p>
+          Catatan keuangan rapi. Perubahan mudah dilihat. Keputusan jadi lebih terarah.
+        </p>
+        <div class="erp-actions">
+          <a class="erp-button erp-button-light" href="/id/pricing"
+            >Mulai gratis <span aria-hidden="true">→</span></a
+          ><a class="erp-button erp-button-dark-outline" href="/contact-sales"
+            >Hubungi sales</a
+          >
+        </div>
       </section>
     </main>
     <script src="/assets/js/universe-canvas.js" defer></script>
     <script src="/assets/js/footer-loader.js" defer></script>
     <script src="/assets/js/fluxyos.js" defer></script>
     <script src="/assets/js/i18n.js" defer></script>
-    <script src="/assets/js/pos-landing.js" defer></script>
+    <script src="/assets/js/erp-intelligence.js" defer></script>
   </body>
 </html>

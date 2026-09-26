@@ -43,6 +43,11 @@ const SITE = 'https://fluxyos.com';
 // slug -> pretty path served for the root page; title/description are the
 // Indonesian head copy (titles match the runtime dictionary).
 const PAGES = {
+    'erp-intelligence.html': {
+        slug: 'erp-intelligence', rootPath: '/erp-intelligence',
+        title: 'ERP Intelligence untuk Tim Keuangan | FluxyOS',
+        description: 'Akuntansi, laporan keuangan, dan Fluxy AI memakai catatan yang sama. Lihat pendapatan, biaya, arus kas, dan transaksi tanpa berpindah alat.',
+    },
     'point-of-sale.html': {
         slug: 'point-of-sale', rootPath: '/point-of-sale',
         title: "POS Intelligence untuk Restoran & Kafe | FluxyOS",
@@ -86,6 +91,13 @@ const PAGES = {
 };
 
 const MIRROR_SLUGS = Object.keys(PAGES).map((f) => PAGES[f].slug);
+
+const PAGE_COPY_OVERRIDES = {
+    'erp-intelligence': {
+        'FluxyOS is an Intelligent Finance Operating System that connects financial operations, accounting, business operations, enterprise workflows, and intelligence into one continuously connected system.':
+            'FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System). Di satu tempat, Anda bisa mengelola keuangan, akuntansi, operasional bisnis, dan alur kerja tim. Fluxy AI menjawab pertanyaan berdasarkan data yang sudah tercatat.',
+    },
+};
 
 // Dictionary: same source of truth as the runtime switcher.
 function loadDict() {
@@ -152,9 +164,15 @@ function main() {
     // in the dictionary. Nothing failed, nothing warned. Misses are recorded and
     // reported below so it cannot happen quietly again.
     const misses = new Map();
+    const lookupTranslation = (decoded, where) => {
+        const override = PAGE_COPY_OVERRIDES[where];
+        if (override && Object.prototype.hasOwnProperty.call(override, decoded)) return override[decoded];
+        return Object.prototype.hasOwnProperty.call(dict, decoded) ? dict[decoded] : null;
+    };
     const translate = (raw, where) => {
         const decoded = decodeEntities(raw).replace(/\s+/g, ' ').trim();
-        if (Object.prototype.hasOwnProperty.call(dict, decoded)) return dict[decoded];
+        const localized = lookupTranslation(decoded, where);
+        if (localized !== null) return localized;
         if (LOOKS_TRANSLATABLE(decoded)) {
             if (!misses.has(decoded)) misses.set(decoded, new Set());
             misses.get(decoded).add(where);
@@ -254,11 +272,11 @@ function main() {
         // reviewer-facing strings beside them, so the two stay identical.
         html = html.replace(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g, (block, json) => {
             // The POS FAQ and product description must match the visible locale.
-            if (meta.slug === 'point-of-sale') {
+            if (['point-of-sale', 'erp-intelligence'].includes(meta.slug)) {
                 const localize = (value) => {
                     if (Array.isArray(value)) return value.map(localize);
                     if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, localize(v)]));
-                    return typeof value === 'string' && Object.prototype.hasOwnProperty.call(dict, value) ? dict[value] : value;
+                    return typeof value === 'string' ? (lookupTranslation(value, meta.slug) ?? value) : value;
                 };
                 return '<script type="application/ld+json">' + JSON.stringify(localize(JSON.parse(json)), null, 2) + '</script>';
             }

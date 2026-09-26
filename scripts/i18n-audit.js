@@ -41,7 +41,7 @@ const REPORT = path.join(ROOT, '.qa', LANDING ? 'i18n-gap-report-landing.md' : '
 // Marketing/landing pages (casual register, assets/js/i18n.js).
 const LANDING_PAGES = [
     'fluxyos.html', 'pricing.html', 'vendorspend.html', 'revenuesync.html',
-    'receiptcapture.html', 'aiagents.html', 'budgetlanding.html',
+    'receiptcapture.html', 'aiagents.html', 'budgetlanding.html', 'erp-intelligence.html',
 ];
 
 // Authenticated app pages in localization scope (docs/LOCALIZATION_PLAN.md §12).

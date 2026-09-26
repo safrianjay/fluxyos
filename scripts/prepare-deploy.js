@@ -78,6 +78,7 @@ const PAGE_ROLES = {
     'fluxyos.html': ['marketing'],   // homepage (served at /)
     'pricing.html': ['marketing'],
     'point-of-sale.html': ['marketing'],
+    'erp-intelligence.html': ['marketing'],
     'contact-sales.html': ['marketing'],
     'event.html': ['marketing'],   // QR-scanned event signup (noindex)
     'aiagents.html': ['marketing'],
