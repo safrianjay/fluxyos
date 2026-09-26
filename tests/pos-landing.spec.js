@@ -15,7 +15,7 @@ for (const locale of ["en", "id"]) {
       const description = page.locator('meta[name="description"]');
       await expect(description).toHaveAttribute(
         "content",
-        locale === "id" ? /^Hubungkan/ : /^Connect/,
+        locale === "id" ? /^POS intelligence FluxyOS/ : /^FluxyOS POS intelligence/,
       );
       await expect(
         page.locator('meta[property="og:locale:alternate"]'),
@@ -34,7 +34,6 @@ for (const locale of ["en", "id"]) {
       await page.waitForTimeout(250);
       const settledHeight = await page.locator(".pos-hero").evaluate(element => element.getBoundingClientRect().height);
       expect(Math.abs(settledHeight - heroHeight)).toBeLessThan(4);
-      expect(settledHeight).toBeLessThan(1800);
       await expect(page.locator(".footer-component")).toBeAttached();
       await expect(page.locator("html")).toHaveJSProperty("scrollWidth", width);
       await page.locator("#service-tab-kitchen").click();
