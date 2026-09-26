@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#FFFFFF"/>
+  <rect x="32" y="32" width="1136" height="566" rx="12" fill="#FFFFFF" stroke="#E4E7EC"/>
+  <path d="M32 118h1136M690 118v480" stroke="#E4E7EC"/>
+  <g transform="translate(68 61)">
+    <rect width="36" height="36" rx="7" fill="#0B0F19"/>
+    <path d="M8 7h23l-5 5H13v19H8zm9 11h9l-5 5h-4z" fill="#FFFFFF"/>
+  </g>
+  <g font-family="Inter, Arial, sans-serif">
+    <text x="116" y="87" font-size="24" font-weight="600" fill="#0B0F19">FluxyOS</text>
+    <text x="1070" y="85" text-anchor="end" font-size="16" fill="#667085">Customers</text>
+    <text x="68" y="236" font-size="48" font-weight="400" letter-spacing="-2" fill="#0B0F19">Different businesses.</text>
+    <text x="68" y="298" font-size="48" font-weight="400" letter-spacing="-2" fill="#667085">One connected</text>
+    <text x="68" y="360" font-size="48" font-weight="400" letter-spacing="-2" fill="#667085">financial picture.</text>
+    <text x="68" y="424" font-size="18" fill="#475467">Intelligent Finance Operating System</text>
+    <text x="68" y="534" font-size="14" fill="#667085">Workflow examples · Sample stories</text>
+    <rect x="730" y="158" width="396" height="190" rx="8" fill="#F9FAFB" stroke="#E4E7EC"/>
+    <text x="752" y="190" font-size="14" font-weight="500" fill="#0B0F19">Revenue Sync</text>
+    <text x="752" y="217" font-size="12" fill="#667085">Orders, refunds, settlements</text>
+    <path d="M752 244h352M752 277h352M752 310h352" stroke="#E4E7EC"/>
+    <path d="m756 306 36-14 36 6 36-19 36 4 36-17 36 5 36-25 36 4 32-16" fill="none" stroke="#16A34A" stroke-width="2.5"/>
+    <rect x="730" y="372" width="396" height="186" rx="8" fill="#FFFFFF" stroke="#E4E7EC"/>
+    <text x="752" y="406" font-size="14" font-weight="500" fill="#0B0F19">Dynamic Budgeting</text>
+    <text x="752" y="444" font-size="12" fill="#667085">Planned</text>
+    <rect x="752" y="456" width="350" height="7" rx="3" fill="#F2F4F7"/>
+    <rect x="752" y="456" width="300" height="7" rx="3" fill="#3B82F6" opacity="0.4"/>
+    <text x="752" y="499" font-size="12" fill="#667085">Actual spend</text>
+    <rect x="752" y="511" width="350" height="7" rx="3" fill="#F2F4F7"/>
+    <rect x="752" y="511" width="195" height="7" rx="3" fill="#3B82F6"/>
+  </g>
+</svg>

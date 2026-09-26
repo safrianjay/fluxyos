@@ -125,7 +125,7 @@
 
   <url>
     <loc>https://fluxyos.com/revenuesync</loc>
-    <lastmod>2026-06-25</lastmod>
+    <lastmod>2026-09-26</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
     <xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/revenuesync"/>
@@ -135,7 +135,7 @@
 
   <url>
     <loc>https://fluxyos.com/id/revenuesync</loc>
-    <lastmod>2026-07-03</lastmod>
+    <lastmod>2026-09-26</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
     <xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/revenuesync"/>
@@ -145,7 +145,7 @@
 
   <url>
     <loc>https://fluxyos.com/budgetlanding</loc>
-    <lastmod>2026-06-24</lastmod>
+    <lastmod>2026-09-26</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
     <xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/budgetlanding"/>
@@ -155,7 +155,7 @@
 
   <url>
     <loc>https://fluxyos.com/id/budgetlanding</loc>
-    <lastmod>2026-07-03</lastmod>
+    <lastmod>2026-09-26</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
     <xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/budgetlanding"/>
@@ -331,4 +331,22 @@
   <url><loc>https://fluxyos.com/guides/erp-intelligence</loc><lastmod>2026-09-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority><xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/guides/erp-intelligence"/><xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/guides/erp-intelligence"/></url>
   <url><loc>https://fluxyos.com/id/guides/pos-intelligence</loc><lastmod>2026-09-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority><xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/guides/pos-intelligence"/><xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/guides/pos-intelligence"/></url>
   <url><loc>https://fluxyos.com/id/guides/erp-intelligence</loc><lastmod>2026-09-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority><xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/guides/erp-intelligence"/><xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/guides/erp-intelligence"/></url>
+  <url>
+    <loc>https://fluxyos.com/customers</loc>
+    <lastmod>2026-09-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/customers"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/customers"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/customers"/>
+  </url>
+  <url>
+    <loc>https://fluxyos.com/id/customers</loc>
+    <lastmod>2026-09-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/customers"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/customers"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/customers"/>
+  </url>
 </urlset>

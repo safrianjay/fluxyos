@@ -1854,6 +1854,18 @@
 @keyframes erp-ring-orbit {
   to { transform: rotate(360deg); }
 }
+@media (max-width: 1279px) {
+  .erp-page .erp-hero-rings i { top: 30%; }
+  .erp-page .erp-hero-rings i:nth-child(1) { --ring-size: 160px; }
+  .erp-page .erp-hero-rings i:nth-child(2) { --ring-size: 230px; }
+  .erp-page .erp-hero-rings i:nth-child(3) { --ring-size: 300px; }
+  .erp-page .erp-hero-rings i:nth-child(4) { --ring-size: 370px; }
+  .erp-page .erp-hero-rings i:nth-child(5) { --ring-size: 440px; }
+  .erp-page .erp-hero-rings i:nth-child(6) { --ring-size: 510px; }
+  .erp-page .erp-hero-rings i:nth-child(7) { --ring-size: 580px; }
+  .erp-page .erp-hero-rings i:nth-child(8) { --ring-size: 650px; }
+  .erp-page .erp-hero-rings i:nth-child(9) { --ring-size: 720px; }
+}
 @media (max-width: 1100px) {
   .erp-page .erp-feature-wide, .erp-page .erp-feature-small { grid-column: span 4; }
   .erp-page .erp-feature-cell { padding: 24px; }
@@ -1898,7 +1910,8 @@
     padding: 70px 0 0;
   }
   .erp-page .erp-hero-rings {
-    display: none;
+    display: block;
+    opacity: 0.85;
   }
   .erp-page .erp-hero-copy {
     grid-column: 1 / -1;

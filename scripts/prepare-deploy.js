@@ -79,6 +79,7 @@ const PAGE_ROLES = {
     'pricing.html': ['marketing'],
     'point-of-sale.html': ['marketing'],
     'erp-intelligence.html': ['marketing'],
+    'customers.html': ['marketing'],
     'contact-sales.html': ['marketing'],
     'event.html': ['marketing'],   // QR-scanned event signup (noindex)
     'aiagents.html': ['marketing'],

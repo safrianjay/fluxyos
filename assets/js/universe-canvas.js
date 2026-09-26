@@ -115,7 +115,13 @@ function initUniverseCanvas(canvas) {
     }, { threshold: 0.01 });
     io.observe(canvas.parentElement);
 
-    new ResizeObserver(resize).observe(canvas.parentElement);
+    // Canvas size writes must happen outside ResizeObserver delivery, otherwise
+    // Safari reports a resize loop when the shared footer finishes loading.
+    let resizeFrame;
+    new ResizeObserver(() => {
+        cancelAnimationFrame(resizeFrame);
+        resizeFrame = requestAnimationFrame(resize);
+    }).observe(canvas.parentElement);
 
     resize();
 }

@@ -146,111 +146,104 @@
       }
     }
     </script>
-    <script type="application/ld+json">
+    <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "FluxyOS Revenue Sync",
+  "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "Finance Operations Software",
+  "operatingSystem": "Web, iOS, Android",
+  "url": "https://fluxyos.com/revenuesync",
+  "description": "Sync marketplace orders, refunds, and settlements into your double-entry ledger automatically.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "IDR",
+    "availability": "https://schema.org/InStock"
+  },
+  "featureList": [
+    "TikTok Shop and Shopee marketplace connectors",
+    "Order, refund, and settlement records",
+    "Double-entry journal generation",
+    "Marketplace revenue reporting"
+  ],
+  "publisher": {
+    "@id": "https://fluxyos.com/#organization"
+  }
+}</script>
+    <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
     {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "FluxyOS Revenue Sync",
-      "applicationCategory": "BusinessApplication",
-      "applicationSubCategory": "Finance Operations Software",
-      "operatingSystem": "Web, iOS, Android",
-      "url": "https://fluxyos.com/revenuesync",
-      "description": "Sync marketplace orders, refunds, and settlements into your double-entry ledger automatically.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "IDR",
-        "availability": "https://schema.org/InStock"
-      },
-      "featureList": [
-        "TikTok Shop and Shopee order, refund, and settlement sync",
-        "TikTok Shop and Shopee order, refund, and settlement sync",
-        "Real-time transaction sync (<30s)",
-        "Multi-channel revenue consolidation",
-        "Auto-deduplication and refund handling",
-        "Multi-currency reconciliation"
-      ],
-      "publisher": {
-        "@id": "https://fluxyos.com/#organization"
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://fluxyos.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Revenue Sync",
+      "item": "https://fluxyos.com/revenuesync"
+    }
+  ]
+}</script>
+    <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Apa yang dihubungkan oleh Revenue Sync?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Revenue Sync membawa pesanan, pengembalian dana, dan pencairan dana marketplace ke buku besar berpasangan FluxyOS. Konektor yang tersedia saat ini adalah TikTok Shop dan Shopee."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Marketplace apa saja yang didukung?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "TikTok Shop dan Shopee. Hubungkan akun marketplace Anda untuk mulai membawa catatan keuangannya ke FluxyOS."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Mengapa penjualan berbeda dari pencairan dana?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Penjualan mencatat nilai pesanan. Pencairan dana mencatat pembayaran setelah pengembalian dana dan biaya platform. Dengan keduanya, Anda bisa melihat rincian dana yang diterima bisnis."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Bagaimana pengembalian dana dicatat?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Catatan pengembalian dana tetap terhubung ke marketplace dan referensi pesanan asal. Anda bisa menelusuri penyesuaiannya hingga ke transaksi penjualan."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Seberapa cepat data disinkronkan?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Waktunya bergantung pada ketersediaan data dari marketplace dan siklus sinkronisasi konektor. Pesanan dan pencairan dana bisa masuk pada waktu yang berbeda."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Apakah ini menggantikan dashboard marketplace?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Tidak. Tetap gunakan marketplace untuk berjualan dan mengelola pesanan. Revenue Sync menghubungkan catatan keuangannya ke akuntansi dan laporan di FluxyOS."
       }
     }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Home",
-          "item": "https://fluxyos.com/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Revenue Sync",
-          "item": "https://fluxyos.com/revenuesync"
-        }
-      ]
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-          "@context": "https://schema.org",
-          "@type": "FAQPage",
-          "mainEntity": [
-                {
-                      "@type": "Question",
-                      "name": "What is Revenue Sync?",
-                      "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "Revenue Sync is a FluxyOS feature that connects sales channels, payment processors, POS systems, and marketplaces into one live ledger. It gives Indonesian businesses a real-time view of revenue without waiting for manual CSV exports or end-of-month reconciliation."
-                      }
-                },
-                {
-                      "@type": "Question",
-                      "name": "Which platforms does Revenue Sync connect to?",
-                      "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "Revenue Sync brings marketplace orders, refunds, and settlements into your double-entry ledger. Marketplace connectors are rolling out — TikTok Shop and Shopee first — on a connector pattern built so further platforms are additive. Bank activity comes in through statement import today."
-                      }
-                },
-                {
-                      "@type": "Question",
-                      "name": "How fast do transactions appear in FluxyOS?",
-                      "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "Most connected transactions appear in FluxyOS in under 30 seconds after the source platform makes them available. This helps finance teams spot channel performance, refunds, fees, and revenue gaps while the day is still in motion."
-                      }
-                },
-                {
-                      "@type": "Question",
-                      "name": "Does Revenue Sync handle refunds and duplicate transactions?",
-                      "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "Yes. Revenue Sync is designed to detect duplicate imports, flag refunds, and keep settlement records tied to their original sales channel. That reduces double counting and gives teams a cleaner revenue ledger."
-                      }
-                },
-                {
-                      "@type": "Question",
-                      "name": "Is Revenue Sync useful for small businesses?",
-                      "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "Yes. Revenue Sync is useful for small businesses that sell across more than one channel because it removes manual reconciliation work and makes cash flow easier to trust. Even a simple Shopify plus marketplace setup can become difficult to track in spreadsheets."
-                      }
-                },
-                {
-                      "@type": "Question",
-                      "name": "Can Revenue Sync support Indonesian teams using IDR?",
-                      "acceptedAnswer": {
-                            "@type": "Answer",
-                            "text": "Yes. Revenue Sync supports Indonesian Rupiah reporting and multi-currency reconciliation for businesses selling across local and international platforms. Finance teams can review revenue in one operating view while preserving source-platform detail."
-                      }
-                }
-          ]
-    }
-    </script>
+  ]
+}</script>
+    <link rel="stylesheet" href="/assets/css/finance-feature-landing.css">
 </head>
 <body class="min-h-screen flex flex-col">
 
@@ -557,7 +550,7 @@
                         </div>
                     </div>
 
-                    <a href="/id/fluxyos" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Pelanggan</a>
+                    <a href="/id/customers" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Pelanggan</a>
                     <a href="/id/pricing" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Harga</a>
                 </div>
             </div>
@@ -634,7 +627,7 @@
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
-                    <a href="/id/fluxyos" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Pelanggan</a>
+                    <a href="/id/customers" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Pelanggan</a>
                     <a href="/id/pricing" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Harga</a>
                     <a href="/login" class="mobile-menu-link rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-gray-800 text-center">Masuk</a>
                     <a href="/id/pricing" class="mobile-menu-link rounded-xl bg-gradient-to-r from-[#EA580C] to-[#F97316] px-4 py-3 text-[15px] font-semibold text-white text-center shadow-sm">Coba FluxyOS</a>
@@ -644,446 +637,704 @@
     </nav>
 
     <!-- HERO SECTION -->
-    <section class="hero-gradient py-16 md:py-28 px-6">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid md:grid-cols-2 gap-12 items-center">
-                <div>
-                    <h1 class="text-[48px] md:text-[56px] font-bold tracking-tight leading-[1.1] text-gray-900 mb-6">
-                        Sinkronkan pendapatan dari semua saluran, instan
-                    </h1>
-
-                    <p class="text-[18px] text-gray-600 leading-relaxed mb-8 max-w-xl">
-                        Hubungkan TikTok Shop dan Shopee. Pesanan, refund, dan settlement langsung masuk ke buku besar double-entry Anda, jadi omzet marketplace rekonsiliasi sendiri.
-                    </p>
-
-                    <div class="flex flex-col sm:flex-row gap-4">
-                        <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-8 py-4 rounded-md transition-all duration-200 shadow-sm hover:shadow inline-block text-center">
-                            Mulai Sinkronisasi
-                        </a>
-                        <a href="#platforms" class="border-2 border-gray-300 text-gray-900 font-semibold text-[15px] px-8 py-3 rounded-md hover:border-gray-400 transition-colors inline-block text-center">
-                            Jelajahi Integrasi
-                        </a>
-                    </div>
-
-                    <div class="mt-12 flex items-center gap-8">
-                        <div>
-                            <div class="text-[20px] font-bold text-gray-900">TikTok Shop &middot; Shopee</div>
-                            <p class="text-[14px] text-gray-600">Konektor aktif</p>
-                        </div>
-                        <div>
-                            <div class="text-[20px] font-bold text-gray-900">Pesanan, refund, settlement</div>
-                            <p class="text-[14px] text-gray-600">Masuk ke buku besar Anda</p>
-                        </div>
-                    </div>
+    <main class="fl-page">
+        <div class="fl-shell">
+            <section class="fl-hero">
+                <h1>
+                    Pendapatan marketplace.
+                    <span>
+                        Terhubung ke pembukuan Anda.
+                    </span>
+                </h1>
+                <p>
+                    Hubungkan TikTok Shop dan Shopee. Catat pesanan, pengembalian dana, dan pencairan dana ke buku besar berpasangan Anda.
+                </p>
+                <div class="fl-actions">
+                    <a class="fl-button fl-button-primary" href="/id/pricing">
+                        Mulai gratis
+                    </a>
+                    <a class="fl-button" href="#platforms">
+                        Lihat integrasi
+                    </a>
                 </div>
-
-                <!-- Hero Visual: Multi-layer sync mockups -->
-                <div class="relative h-[450px] md:h-[550px] flex items-center justify-center">
-                    <!-- Ambient glow -->
-                    <div class="absolute inset-0 bg-gradient-to-tr from-blue-100/40 via-indigo-50/40 to-transparent rounded-full blur-3xl -z-10 transform scale-110"></div>
-
-                    <!-- Animated orbit -->
-                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] md:w-[450px] md:h-[450px] z-0 pointer-events-none opacity-20">
-                        <svg viewBox="0 0 600 600" class="w-full h-full hero-orbit">
-                            <circle cx="300" cy="300" r="290" fill="none" stroke="#0B0F19" stroke-width="2" stroke-dasharray="16 16" />
-                        </svg>
+                <div class="fl-stage">
+                    <div class="fl-source-strip" aria-label="TikTok Shop dan Shopee terhubung ke FluxyOS">
+                        <span>
+                            TikTok Shop
+                        </span>
+                        <i aria-hidden="true">
+                        </i>
+                        <span>
+                            FluxyOS
+                        </span>
+                        <i aria-hidden="true">
+                        </i>
+                        <span>
+                            Shopee
+                        </span>
                     </div>
-
-                    <!-- Floating platform cards -->
-                    <div class="relative z-10 w-full flex flex-col items-center gap-6">
-                        <!-- Row 1: Stripe, Shopify, Tokopedia -->
-                        <div class="flex gap-4 float-item">
-                            <div class="bg-white rounded-lg border border-gray-200 shadow-lg p-4 min-w-[120px] text-center">
-                                <svg class="w-8 h-8 mx-auto mb-2" viewBox="0 0 512 214" xmlns="http://www.w3.org/2000/svg"><path d="M35.982 83.484c0-5.546 4.551-7.68 12.09-7.68 10.808 0 24.461 3.272 35.27 9.103V51.484c-11.804-4.693-23.466-6.542-35.27-6.542C19.2 44.942 0 60.018 0 85.192c0 39.252 54.044 32.995 54.044 49.92 0 6.541-5.688 8.675-13.653 8.675-11.804 0-26.88-4.836-38.827-11.378v33.849c13.227 5.689 26.596 8.106 38.827 8.106 29.582 0 49.92-14.648 49.92-40.106-.142-42.382-54.329-34.845-54.329-50.774zm96.142-66.986l-34.702 7.395-.142 113.92c0 21.05 15.787 36.551 36.836 36.551 11.662 0 20.195-2.133 24.888-4.693V140.8c-4.55 1.849-27.022 8.391-27.022-12.658V77.653h27.022V47.36h-27.022l.142-30.862zm71.112 41.386L200.96 47.36h-30.72v124.444h35.556V87.467c8.39-10.951 22.613-8.96 27.022-7.396V47.36c-4.551-1.707-21.191-4.836-29.582 10.524zm38.257-10.524h35.698v124.444h-35.698V47.36zm0-4.7l35.698-7.68V0l-35.698 7.538V36.55zm109.938 8.391c-13.938 0-22.898 6.542-27.875 11.094l-1.85-8.818h-31.288v165.83l35.555-7.537.143-40.249c5.12 3.698 12.657 8.96 25.173 8.96 25.458 0 48.64-20.48 48.64-65.564-.142-41.245-23.609-63.716-48.498-63.716zm-8.533 97.991c-8.391 0-13.37-2.986-16.782-6.684l-.143-52.765c3.698-4.124 8.818-6.968 16.925-6.968 12.942 0 21.902 14.506 21.902 33.137 0 19.058-8.818 33.28-21.902 33.28zM512 110.08c0-36.409-17.636-65.138-51.342-65.138-33.85 0-54.33 28.73-54.33 64.854 0 42.808 24.179 64.426 58.88 64.426 16.925 0 29.725-3.84 39.396-9.244v-28.445c-9.67 4.836-20.764 7.823-34.844 7.823-13.796 0-26.027-4.836-27.591-21.618h69.547c0-1.85.284-9.245.284-12.658zm-70.258-13.511c0-16.071 9.814-22.756 18.774-22.756 8.675 0 17.92 6.685 17.92 22.756h-36.694z" fill="#6772E5"/></svg>
-                                <div class="text-sm font-bold text-gray-900 mb-1">Stripe</div>
-                                <div class="text-xs text-gray-500">Payments</div>
-                            </div>
-                            <div class="bg-white rounded-lg border border-gray-200 shadow-lg p-4 min-w-[120px] text-center">
-                                <svg class="w-8 h-8 mx-auto mb-2" viewBox="0 0 256 292" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid"><path d="M223.774 57.34c-.201-1.46-1.48-2.268-2.537-2.357-1.055-.088-23.383-1.743-23.383-1.743s-15.507-15.395-17.209-17.099c-1.703-1.703-5.029-1.185-6.32-.805-.19.056-3.388 1.043-8.678 2.68-5.18-14.906-14.322-28.604-30.405-28.604-.444 0-.901.018-1.358.044C129.31 3.407 123.644.779 118.75.779c-37.465 0-55.364 46.835-60.976 70.635-14.558 4.511-24.9 7.718-26.221 8.133-8.126 2.549-8.383 2.805-9.45 10.462C21.3 95.806.038 260.235.038 260.235l165.678 31.042 89.77-19.42S223.973 58.8 223.775 57.34zM156.49 40.848l-14.019 4.339c.005-.988.01-1.96.01-3.023 0-9.264-1.286-16.723-3.349-22.636 8.287 1.04 13.806 10.469 17.358 21.32zm-27.638-19.483c2.304 5.773 3.802 14.058 3.802 25.238 0 .572-.005 1.095-.01 1.624-9.117 2.824-19.024 5.89-28.953 8.966 5.575-21.516 16.025-31.908 25.161-35.828zm-11.131-10.537c1.617 0 3.246.549 4.805 1.622-12.007 5.65-24.877 19.88-30.312 48.297l-22.886 7.088C75.694 46.16 90.81 10.828 117.72 10.828z" fill="#95BF46"/><path d="M221.237 54.983c-1.055-.088-23.383-1.743-23.383-1.743s-15.507-15.395-17.209-17.099c-.637-.634-1.496-.959-2.394-1.099l-12.527 256.233 89.762-19.418S223.972 58.8 223.774 57.34c-.201-1.46-1.48-2.268-2.537-2.357" fill="#5E8E3E"/><path d="M135.242 104.585l-11.069 32.926s-9.698-5.176-21.586-5.176c-17.428 0-18.305 10.937-18.305 13.693 0 15.038 39.2 20.8 39.2 56.024 0 27.713-17.577 45.558-41.277 45.558-28.44 0-42.984-17.7-42.984-17.7l7.615-25.16s14.95 12.835 27.565 12.835c8.243 0 11.596-6.49 11.596-11.232 0-19.616-32.16-20.491-32.16-52.724 0-27.129 19.472-53.382 58.778-53.382 15.145 0 22.627 4.338 22.627 4.338" fill="#FFF"/></svg>
-                                <div class="text-sm font-bold text-gray-900 mb-1">Shopify</div>
-                                <div class="text-xs text-gray-500">E-commerce</div>
-                            </div>
-                            <div class="bg-white rounded-lg border border-gray-200 shadow-lg p-4 min-w-[120px] text-center">
-                                <svg class="w-8 h-8 mx-auto mb-2" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M14 12c0-3.5 3-7 10-7s10 3.5 10 7v2h4c2 0 3 1 3 3v23c0 2-1 3-3 3H10c-2 0-3-1-3-3V17c0-2 1-3 3-3h4v-2zm4 0v2h12v-2c0-2.2-2-4-6-4s-6 1.8-6 4z" fill="#03AC0E"/><circle cx="19" cy="26" r="3" fill="#fff"/><circle cx="29" cy="26" r="3" fill="#fff"/><circle cx="19" cy="26" r="1.5" fill="#03AC0E"/><circle cx="29" cy="26" r="1.5" fill="#03AC0E"/><path d="M22 32 L24 35 L26 32 Z" fill="#FFC107"/></svg>
-                                <div class="text-sm font-bold text-gray-900 mb-1">Tokopedia</div>
-                                <div class="text-xs text-gray-500">Marketplace</div>
-                            </div>
-                        </div>
-
-                        <!-- Arrow down -->
-                        <div class="text-2xl text-gray-400">↓</div>
-
-                        <!-- Central sync hub with gradient -->
-                        <div class="hub-gradient text-white rounded-xl px-8 py-4 font-bold text-center shadow-xl float-item z-20">
-                            <div>Revenue Sync</div>
-                            <div class="text-[12px] font-normal mt-1 opacity-90">Menyatu secara real-time</div>
-                        </div>
-
-                        <!-- Arrow down -->
-                        <div class="text-2xl text-gray-400">↓</div>
-
-                        <!-- Result: Live ledger -->
-                        <div class="bg-white border-2 border-[#EA580C] rounded-lg px-6 py-3 text-center shadow-lg float-item">
-                            <div class="text-[12px] text-gray-600 font-medium">Ledger Live</div>
-                            <div class="font-bold text-gray-900 font-mono">Rp 125.456.789</div>
-                            <div class="text-[11px] text-green-600 mt-1 flex items-center justify-center gap-1">
-                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                                Diperbarui 2 detik lalu
-                            </div>
-                        </div>
-
-                        <!-- Row 2: More integrations -->
-                        <div class="flex gap-4 float-item mt-4">
-                            <div class="bg-white rounded-lg border border-gray-200 shadow-lg p-4 min-w-[120px] text-center opacity-75">
-                                <svg class="w-8 h-8 mx-auto mb-2" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M24 8c-9 0-16 5-16 13s7 13 16 13c4 0 7-1 10-2-1 1-4 2-7 2 5 0 9-1 12-3l3-2-2 1c-3 1-7 2-12 2-7 0-12-3-12-8s5-9 12-9c4 0 7 1 9 3l-1-3c-3-3-7-7-12-7zm6 11c-1 0-3 0-4 1l4-1c2 0 4 1 5 2l-1-2c-1-0-2-0-4 0z" fill="#FF6B28"/><path d="M16 18c0-4 4-7 9-7 4 0 7 2 9 5l1-2c-3-3-6-5-10-5-6 0-11 4-11 9 0 0 1 0 2 0z" fill="#FF6B28"/></svg>
-                                <div class="text-sm font-bold text-gray-900 mb-1">Alibaba</div>
-                                <div class="text-xs text-gray-500">Marketplace</div>
-                            </div>
-                            <div class="bg-white rounded-lg border border-gray-200 shadow-lg p-4 min-w-[120px] text-center opacity-75">
-                                <svg class="w-8 h-8 mx-auto mb-2" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                                    <polygon points="24,4 42,14 42,34 24,44 6,34 6,14" fill="none" stroke="#4A6CB7" stroke-width="3"/>
-                                    <line x1="14" y1="14" x2="34" y2="34" stroke="#E04E4E" stroke-width="3"/>
-                                    <line x1="34" y1="14" x2="14" y2="34" stroke="#4A6CB7" stroke-width="3"/>
+                    <div class="fl-window" aria-label="Pratinjau Revenue Sync">
+                        <div class="fl-window-bar">
+                            <span class="fl-brand">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M4 7h16M4 17h16m-4-14 4 4-4 4M8 13l-4 4 4 4" />
                                 </svg>
-                                <div class="text-sm font-bold text-gray-900 mb-1">Xendit</div>
-                                <div class="text-xs text-gray-500">Payments</div>
+                                Revenue Sync
+                            </span>
+                            <span class="fl-date">
+                                Maret 2026
+                            </span>
+                        </div>
+                        <div class="fl-workspace">
+                            <div class="fl-sidebar" aria-hidden="true">
+                                <span>
+                                    Ringkasan
+                                </span>
+                                <span>
+                                    Pesanan
+                                </span>
+                                <span>
+                                    Pengembalian dana
+                                </span>
+                                <span>
+                                    Pencairan dana
+                                </span>
                             </div>
-                            <div class="bg-white rounded-lg border border-gray-200 shadow-lg p-4 min-w-[120px] text-center opacity-75">
-                                <div class="text-sm font-bold text-gray-900">+ 247 Lainnya</div>
-                                <div class="text-xs text-gray-500">Integrasi</div>
+                            <div class="fl-workspace-content">
+                                <div class="fl-product-title">
+                                    <h2>
+                                        Aktivitas marketplace
+                                    </h2>
+                                    <span class="fl-status">
+                                        Terhubung ke buku besar
+                                    </span>
+                                </div>
+                                <div class="fl-stats">
+                                    <div>
+                                        <small>
+                                            Penjualan bruto
+                                        </small>
+                                        <strong>
+                                            Rp24.500.000
+                                        </strong>
+                                    </div>
+                                    <div>
+                                        <small>
+                                            Pengembalian dana
+                                        </small>
+                                        <strong>
+                                            Rp1.200.000
+                                        </strong>
+                                    </div>
+                                    <div>
+                                        <small>
+                                            Pencairan bersih
+                                        </small>
+                                        <strong>
+                                            Rp22.500.000
+                                        </strong>
+                                    </div>
+                                </div>
+                                <div class="fl-table-scroll">
+                                    <table class="fl-table">
+                                        <caption class="sr-only">
+                                            Contoh catatan marketplace
+                                        </caption>
+                                        <thead>
+                                            <tr>
+                                                <th>
+                                                    Sumber
+                                                </th>
+                                                <th>
+                                                    Catatan
+                                                </th>
+                                                <th>
+                                                    Status
+                                                </th>
+                                                <th>
+                                                    Jumlah
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>
+                                                    Shopee
+                                                </td>
+                                                <td>
+                                                    SP-1042
+                                                    <small>
+                                                        Pesanan
+                                                    </small>
+                                                </td>
+                                                <td>
+                                                    <span class="fl-badge fl-badge-positive">
+                                                        Dibukukan
+                                                    </span>
+                                                </td>
+                                                <td class="fl-money">
+                                                    Rp1.250.000
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    TikTok Shop
+                                                </td>
+                                                <td>
+                                                    TK-0841
+                                                    <small>
+                                                        Pesanan
+                                                    </small>
+                                                </td>
+                                                <td>
+                                                    <span class="fl-badge fl-badge-positive">
+                                                        Dibukukan
+                                                    </span>
+                                                </td>
+                                                <td class="fl-money">
+                                                    Rp860.000
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    Shopee
+                                                </td>
+                                                <td>
+                                                    RF-1042
+                                                    <small>
+                                                        Pengembalian dana
+                                                    </small>
+                                                </td>
+                                                <td>
+                                                    <span class="fl-badge ">
+                                                        Tercatat
+                                                    </span>
+                                                </td>
+                                                <td class="fl-money">
+                                                    −Rp100.000
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    Shopee
+                                                </td>
+                                                <td>
+                                                    ST-0303
+                                                    <small>
+                                                        Pencairan dana
+                                                    </small>
+                                                </td>
+                                                <td>
+                                                    <span class="fl-badge ">
+                                                        Dicairkan
+                                                    </span>
+                                                </td>
+                                                <td class="fl-money">
+                                                    Rp1.075.000
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="fl-product-foot">
+                                    <span>
+                                        Contoh data produk
+                                    </span>
+                                    <span>
+                                        Pesanan → pengembalian &amp; biaya → pencairan
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
+            </section>
+            <div class="fl-context">
+                <span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 7h16M4 17h16m-4-14 4 4-4 4M8 13l-4 4 4 4" />
+                    </svg>
+                    Pesanan
+                </span>
+                <span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 7h16M4 17h16m-4-14 4 4-4 4M8 13l-4 4 4 4" />
+                    </svg>
+                    Pengembalian dana
+                </span>
+                <span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 7h16M4 17h16m-4-14 4 4-4 4M8 13l-4 4 4 4" />
+                    </svg>
+                    Biaya platform
+                </span>
+                <span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 7h16M4 17h16m-4-14 4 4-4 4M8 13l-4 4 4 4" />
+                    </svg>
+                    Pencairan dana
+                </span>
             </div>
-        </div>
-    </section>
-
-    <!-- DARK SECTION: How Revenue Sync Works -->
-    <section class="section-dark py-20 md:py-32 px-6 border-t border-gray-800">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-2xl mx-auto text-center mb-16">
-                <h2 class="text-[40px] md:text-[48px] font-bold tracking-tight mb-6">
-                    Lihat transaksi sync secara real-time
-                </h2>
-                <p class="text-[18px] text-gray-400">
-                    Setiap pembayaran, invoice, dan refund dari semua saluran langsung masuk ke ledger Anda — tanpa middleware, tanpa delay, tanpa pusing.
+            <section class="fl-intro">
+                <p>
+                    FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System) yang menghubungkan operasional keuangan, akuntansi, operasional bisnis, alur kerja perusahaan, dan kecerdasan dalam satu sistem yang terus terhubung. Revenue Sync membawa catatan marketplace ke alur keuangan tersebut.
                 </p>
-            </div>
-
-            <!-- Bento grid showcase -->
-            <div class="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-                <!-- Card 1: Inbound Flow -->
-                <div class="bg-[#1A1F26] border border-gray-800 rounded-2xl p-8 flex flex-col justify-between h-full hover:border-gray-700 transition-colors">
-                    <div class="mb-6">
-                        <div class="w-12 h-12 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-4">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                        </div>
-                        <h3 class="text-[20px] font-bold mb-2">Pendapatan Masuk</h3>
-                        <p class="text-gray-400 text-[14px] leading-relaxed">
-                            Stripe, Shopify, Tokopedia — pembayaran masuk dari semua sumber, semua saluran, semua mata uang otomatis tergabung.
-                        </p>
-                    </div>
-                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 text-sm">
-                        <div class="flex items-center gap-2 text-green-400 mb-2">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                            <span className="font-semibold">12 kanal terdeteksi</span>
-                        </div>
-                        <div className="text-gray-500 text-[13px]">Rp 247.5M sedang tersinkron</div>
-                    </div>
-                </div>
-
-                <!-- Card 2: Processing -->
-                <div class="bg-[#1A1F26] border border-gray-800 rounded-2xl p-8 flex flex-col justify-between h-full hover:border-gray-700 transition-colors">
-                    <div class="mb-6">
-                        <div class="w-12 h-12 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-4">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                        </div>
-                        <h3 class="text-[20px] font-bold mb-2">Pemrosesan Cerdas</h3>
-                        <p class="text-gray-400 text-[14px] leading-relaxed">
-                            AI klasifikasi otomatis per saluran, hapus duplikat, tangani refund — semua dikategorikan dan siap masuk ledger.
-                        </p>
-                    </div>
-                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 text-sm">
-                        <div class="space-y-2">
-                            <div className="flex justify-between text-[13px]">
-                                <span className="text-gray-500">Waktu pemrosesan</span>
-                                <span className="text-gray-300 font-mono">&lt;5s</span>
-                            </div>
-                            <div className="flex justify-between text-[13px]">
-                                <span className="text-gray-500">Duplikat dihapus</span>
-                                <span className="text-gray-300 font-mono">847</span>
+            </section>
+            <section class="fl-split">
+                <div class="fl-split-copy">
+                    <h2>
+                        Dari marketplace ke buku besar.
+                        <span>
+                            Setiap catatan tetap terhubung.
+                        </span>
+                    </h2>
+                    <p>
+                        Nilai pesanan tidak selalu sama dengan dana yang diterima. Lihat penjualan, penyesuaian, dan pencairannya secara terpisah.
+                    </p>
+                    <div class="fl-step-list">
+                        <div>
+                            <span>
+                                01
+                            </span>
+                            <div>
+                                <strong>
+                                    Catat pesanan
+                                </strong>
+                                <p>
+                                    Simpan referensi marketplace pada catatan penjualan.
+                                </p>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Card 3: Live Ledger -->
-                <div class="bg-[#1A1F26] border border-gray-800 rounded-2xl p-8 flex flex-col justify-between h-full hover:border-gray-700 transition-colors">
-                    <div class="mb-6">
-                        <div class="w-12 h-12 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400 mb-4">
-                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                        <div>
+                            <span>
+                                02
+                            </span>
+                            <div>
+                                <strong>
+                                    Telusuri penyesuaian
+                                </strong>
+                                <p>
+                                    Catat pengembalian dana dan biaya platform.
+                                </p>
+                            </div>
                         </div>
-                        <h3 class="text-[20px] font-bold mb-2">Update Ledger Live</h3>
-                        <p class="text-gray-400 text-[14px] leading-relaxed">
-                            Dashboard Anda update instan. Lihat persis berapa pendapatan masuk, dari saluran mana, sekarang.
+                        <div>
+                            <span>
+                                03
+                            </span>
+                            <div>
+                                <strong>
+                                    Periksa pencairan dana
+                                </strong>
+                                <p>
+                                    Lihat dana bersih setelah seluruh potongan.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="fl-split-visual">
+                    <div class="fl-flow-demo" data-feature-tabs>
+                        <div class="fl-tabs" role="tablist" aria-label="Jenis catatan marketplace">
+                            <button id="tab-orders" type="button" role="tab" aria-controls="panel-orders" aria-selected="true" tabindex="0">
+                                Pesanan
+                            </button>
+                            <button id="tab-refunds" type="button" role="tab" aria-controls="panel-refunds" aria-selected="false" tabindex="-1">
+                                Pengembalian dana
+                            </button>
+                            <button id="tab-settlements" type="button" role="tab" aria-controls="panel-settlements" aria-selected="false" tabindex="-1">
+                                Pencairan dana
+                            </button>
+                        </div>
+                        <div class="fl-flow-panel" id="panel-orders" role="tabpanel" aria-labelledby="tab-orders" tabindex="0">
+                            <div class="fl-record">
+                                <small>
+                                    Shopee · SP-1042
+                                </small>
+                                <h3>
+                                    Pesanan tercatat
+                                </h3>
+                                <span class="fl-badge fl-badge-positive">
+                                    Terhubung ke buku besar
+                                </span>
+                                <div class="fl-row">
+                                    <span>
+                                        Marketplace
+                                    </span>
+                                    <b class="fl-money">
+                                        Shopee
+                                    </b>
+                                </div>
+                                <div class="fl-row">
+                                    <span>
+                                        Nilai pesanan
+                                    </span>
+                                    <b class="fl-money">
+                                        Rp1.250.000
+                                    </b>
+                                </div>
+                                <p>
+                                    Nilai pesanan tetap terkait dengan referensi marketplace asal.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="fl-flow-panel" id="panel-refunds" role="tabpanel" aria-labelledby="tab-refunds" tabindex="0">
+                            <div class="fl-record">
+                                <small>
+                                    Shopee · RF-1042
+                                </small>
+                                <h3>
+                                    Pengembalian dana tercatat
+                                </h3>
+                                <span class="fl-badge fl-badge-positive">
+                                    Terhubung ke buku besar
+                                </span>
+                                <div class="fl-row">
+                                    <span>
+                                        Pesanan asal
+                                    </span>
+                                    <b class="fl-money">
+                                        SP-1042
+                                    </b>
+                                </div>
+                                <div class="fl-row">
+                                    <span>
+                                        Jumlah pengembalian
+                                    </span>
+                                    <b class="fl-money">
+                                        Rp100.000
+                                    </b>
+                                </div>
+                                <p>
+                                    Telusuri penyesuaian hingga ke penjualan asal.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="fl-flow-panel" id="panel-settlements" role="tabpanel" aria-labelledby="tab-settlements" tabindex="0">
+                            <div class="fl-record">
+                                <small>
+                                    Shopee · ST-0303
+                                </small>
+                                <h3>
+                                    Pencairan dana tercatat
+                                </h3>
+                                <span class="fl-badge fl-badge-positive">
+                                    Terhubung ke buku besar
+                                </span>
+                                <div class="fl-row">
+                                    <span>
+                                        Nilai pesanan
+                                    </span>
+                                    <b class="fl-money">
+                                        Rp1.250.000
+                                    </b>
+                                </div>
+                                <div class="fl-row">
+                                    <span>
+                                        Pengembalian dana
+                                    </span>
+                                    <b class="fl-money">
+                                        −Rp100.000
+                                    </b>
+                                </div>
+                                <div class="fl-row">
+                                    <span>
+                                        Biaya platform
+                                    </span>
+                                    <b class="fl-money">
+                                        −Rp75.000
+                                    </b>
+                                </div>
+                                <div class="fl-row">
+                                    <span>
+                                        Dana bersih diterima
+                                    </span>
+                                    <b class="fl-money">
+                                        Rp1.075.000
+                                    </b>
+                                </div>
+                                <p>
+                                    Lihat rincian dari nilai penjualan hingga dana yang dicairkan.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section aria-labelledby="revenue-features">
+                <div class="fl-section-heading">
+                    <h2 id="revenue-features">
+                        Bukan sekadar total penjualan.
+                        <span>
+                            Lihat catatan di balik pendapatan.
+                        </span>
+                    </h2>
+                    <p>
+                        Bantu tim keuangan mencocokkan aktivitas marketplace dan memahami kinerja bisnis dari catatan yang lengkap.
+                    </p>
+                </div>
+                <div class="fl-feature-grid">
+                    <article class="fl-feature-card">
+                        <div class="fl-demo">
+                            <div class="fl-panel">
+                                <div class="fl-panel-title">
+                                    <b>
+                                        Penjualan bruto
+                                    </b>
+                                    <span class="fl-money">
+                                        Rp24.500.000
+                                    </span>
+                                </div>
+                                <svg class="fl-trend" viewBox="0 0 360 100" role="img" aria-label="Contoh tren pendapatan">
+                                    <path class="fl-trend-grid" d="M0 20h360M0 50h360M0 80h360"/>
+                                    <path class="fl-trend-line" d="m0 82 36-8 36 4 36-20 36 8 36-15 36 3 36-20 36 4 36-20 36-8"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <h3>
+                            Lihat pendapatan dari toko yang terhubung.
+                        </h3>
+                        <p>
+                            Satukan catatan marketplace untuk laporan keuangan dan analisis pendapatan.
                         </p>
-                    </div>
-                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 text-sm">
-                        <div className="font-mono font-bold text-2xl text-white mb-2">Rp 1.2B</div>
-                        <div className="text-gray-500 text-[12px]">Total tersinkron bulan ini</div>
-                        <div className="text-green-400 text-[12px] mt-2">✓ Semua kategori terekonsiliasi</div>
-                    </div>
+                    </article>
+                    <article class="fl-feature-card">
+                        <div class="fl-demo">
+                            <div class="fl-panel">
+                                <div class="fl-row">
+                                    <span>
+                                        Pesanan asal
+                                    </span>
+                                    <b class="fl-money">
+                                        SP-1042
+                                    </b>
+                                </div>
+                                <div class="fl-row">
+                                    <span>
+                                        Nilai pesanan
+                                    </span>
+                                    <b class="fl-money">
+                                        Rp1.250.000
+                                    </b>
+                                </div>
+                                <div class="fl-row">
+                                    <span>
+                                        Jumlah pengembalian
+                                    </span>
+                                    <b class="fl-money">
+                                        Rp100.000
+                                    </b>
+                                </div>
+                            </div>
+                        </div>
+                        <h3>
+                            Pengembalian dana punya catatan asal.
+                        </h3>
+                        <p>
+                            Telusuri pengembalian dana ke sumbernya, bukan sekadar melihat potongan tanpa rincian.
+                        </p>
+                    </article>
+                    <article class="fl-feature-card">
+                        <div class="fl-demo">
+                            <div class="fl-panel">
+                                <div class="fl-row">
+                                    <span>
+                                        Nilai pesanan
+                                    </span>
+                                    <b class="fl-money">
+                                        Rp1.250.000
+                                    </b>
+                                </div>
+                                <div class="fl-row">
+                                    <span>
+                                        Pengembalian dan biaya
+                                    </span>
+                                    <b class="fl-money">
+                                        −Rp175.000
+                                    </b>
+                                </div>
+                                <div class="fl-row">
+                                    <span>
+                                        Dana bersih diterima
+                                    </span>
+                                    <b class="fl-money">
+                                        Rp1.075.000
+                                    </b>
+                                </div>
+                            </div>
+                        </div>
+                        <h3>
+                            Pahami selisih dana yang diterima.
+                        </h3>
+                        <p>
+                            Periksa biaya dan pengembalian dana yang membuat pencairan berbeda dari penjualan bruto.
+                        </p>
+                    </article>
+                    <article class="fl-feature-card">
+                        <div class="fl-demo">
+                            <div class="fl-panel">
+                                <div class="fl-panel-title">
+                                    <b>
+                                        Pratinjau jurnal
+                                    </b>
+                                    <span class="fl-badge fl-badge-positive">
+                                        Seimbang
+                                    </span>
+                                </div>
+                                <div class="fl-row">
+                                    <span>
+                                        Bank + penyesuaian · Debit
+                                    </span>
+                                    <b class="fl-money">
+                                        Rp1.250.000
+                                    </b>
+                                </div>
+                                <div class="fl-row">
+                                    <span>
+                                        Penjualan · Kredit
+                                    </span>
+                                    <b class="fl-money">
+                                        Rp1.250.000
+                                    </b>
+                                </div>
+                            </div>
+                        </div>
+                        <h3>
+                            Pendapatan masuk ke buku besar.
+                        </h3>
+                        <p>
+                            Alur data marketplace menghasilkan jurnal seimbang untuk pembukuan dan laporan.
+                        </p>
+                    </article>
                 </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- KEY BENEFITS -->
-    <section class="py-16 md:py-24 px-6">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="text-center mb-16">
-                <h2 class="text-[40px] md:text-[48px] font-bold tracking-tight text-gray-900 mb-4">
-                    Kenapa bisnis memilih Revenue Sync
+            </section>
+            <section id="platforms" aria-labelledby="platforms-title">
+                <div class="fl-section-heading">
+                    <h2 id="platforms-title">
+                        Mulai dari toko yang Anda kelola.
+                    </h2>
+                    <p>
+                        Hubungkan akun marketplace yang sudah digunakan bisnis Anda.
+                    </p>
+                </div>
+                <div class="fl-connectors">
+                    <article>
+                        <h3>
+                            TikTok Shop
+                        </h3>
+                        <span class="fl-badge fl-badge-positive">
+                            Konektor marketplace
+                        </span>
+                        <p>
+                            Bawa pesanan, pengembalian dana, dan pencairan TikTok Shop ke catatan keuangan Anda.
+                        </p>
+                    </article>
+                    <article>
+                        <h3>
+                            Shopee
+                        </h3>
+                        <span class="fl-badge fl-badge-positive">
+                            Konektor marketplace
+                        </span>
+                        <p>
+                            Hubungkan catatan penjualan dan pencairan Shopee ke alur pembukuan Anda.
+                        </p>
+                    </article>
+                </div>
+            </section>
+            <section class="fl-faq" aria-labelledby="faq-title">
+                <h2 id="faq-title">
+                    Yang perlu Anda ketahui.
                 </h2>
-                <p class="text-[18px] text-gray-600 max-w-2xl mx-auto">
-                    Berhenti rugi karena rekonsiliasi manual. Dapatkan visibilitas real-time atas semua pendapatan Anda.
-                </p>
-            </div>
-
-            <div class="grid md:grid-cols-3 gap-8">
-                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
-                    <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    </div>
-                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">Rekonsiliasi Instan</h3>
-                    <p class="text-[15px] text-gray-600 leading-relaxed">
-                        Setiap transaksi sync dalam 30 detik. Tidak perlu menunggu settlement window atau upload CSV manual.
-                    </p>
+                <div>
+                    <details>
+                        <summary>
+                            Apa yang dihubungkan oleh Revenue Sync?
+                            <span aria-hidden="true">
+                                +
+                            </span>
+                        </summary>
+                        <p>
+                            Revenue Sync membawa pesanan, pengembalian dana, dan pencairan dana marketplace ke buku besar berpasangan FluxyOS. Konektor yang tersedia saat ini adalah TikTok Shop dan Shopee.
+                        </p>
+                    </details>
+                    <details>
+                        <summary>
+                            Marketplace apa saja yang didukung?
+                            <span aria-hidden="true">
+                                +
+                            </span>
+                        </summary>
+                        <p>
+                            TikTok Shop dan Shopee. Hubungkan akun marketplace Anda untuk mulai membawa catatan keuangannya ke FluxyOS.
+                        </p>
+                    </details>
+                    <details>
+                        <summary>
+                            Mengapa penjualan berbeda dari pencairan dana?
+                            <span aria-hidden="true">
+                                +
+                            </span>
+                        </summary>
+                        <p>
+                            Penjualan mencatat nilai pesanan. Pencairan dana mencatat pembayaran setelah pengembalian dana dan biaya platform. Dengan keduanya, Anda bisa melihat rincian dana yang diterima bisnis.
+                        </p>
+                    </details>
+                    <details>
+                        <summary>
+                            Bagaimana pengembalian dana dicatat?
+                            <span aria-hidden="true">
+                                +
+                            </span>
+                        </summary>
+                        <p>
+                            Catatan pengembalian dana tetap terhubung ke marketplace dan referensi pesanan asal. Anda bisa menelusuri penyesuaiannya hingga ke transaksi penjualan.
+                        </p>
+                    </details>
+                    <details>
+                        <summary>
+                            Seberapa cepat data disinkronkan?
+                            <span aria-hidden="true">
+                                +
+                            </span>
+                        </summary>
+                        <p>
+                            Waktunya bergantung pada ketersediaan data dari marketplace dan siklus sinkronisasi konektor. Pesanan dan pencairan dana bisa masuk pada waktu yang berbeda.
+                        </p>
+                    </details>
+                    <details>
+                        <summary>
+                            Apakah ini menggantikan dashboard marketplace?
+                            <span aria-hidden="true">
+                                +
+                            </span>
+                        </summary>
+                        <p>
+                            Tidak. Tetap gunakan marketplace untuk berjualan dan mengelola pesanan. Revenue Sync menghubungkan catatan keuangannya ke akuntansi dan laporan di FluxyOS.
+                        </p>
+                    </details>
                 </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
-                    <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                    </div>
-                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">Tampilan Multi-Saluran</h3>
-                    <p class="text-[15px] text-gray-600 leading-relaxed">
-                        Konsolidasi pendapatan dari POS, e-commerce, marketplace, dan payment gateway dalam satu dashboard.
-                    </p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
-                    <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    </div>
-                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">Tanpa Kerja Manual</h3>
-                    <p class="text-[15px] text-gray-600 leading-relaxed">
-                        Sync via API artinya tanpa copy-paste, tanpa error, tanpa rekonsiliasi malam Jumat.
-                    </p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
-                    <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    </div>
-                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">Cash Flow Akurat</h3>
-                    <p class="text-[15px] text-gray-600 leading-relaxed">
-                        Tahu persis berapa pendapatan dari setiap saluran. Temukan kejanggalan sebelum jadi masalah.
-                    </p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
-                    <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                    </div>
-                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">Keamanan Tingkat Bank</h3>
-                    <p class="text-[15px] text-gray-600 leading-relaxed">
-                        Koneksi terenkripsi ke semua provider. Akses API read-only menjaga transaksi Anda aman dan auditable.
-                    </p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-8 hover:shadow-lg transition-shadow">
-                    <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    </div>
-                    <h3 class="text-[20px] font-bold text-gray-900 mb-3">Insight Bertenaga AI</h3>
-                    <p class="text-[15px] text-gray-600 leading-relaxed">
-                        Tanya Fluxy AI untuk identifikasi tren, deteksi anomali, dan temukan kebocoran pendapatan tersembunyi.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- SUPPORTED PLATFORMS -->
-    <section id="platforms" class="bg-gray-50 py-16 md:py-24 px-6">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="text-center mb-16">
-                <h2 class="text-[40px] md:text-[48px] font-bold tracking-tight text-gray-900 mb-4">
-                    Hubungkan platform favorit Anda
+            </section>
+            <section class="fl-closing">
+                <h2>
+                    Pendapatan marketplace, tanpa bolak-balik spreadsheet.
                 </h2>
-                <p class="text-[18px] text-gray-600 max-w-2xl mx-auto">
-                    Revenue Sync bekerja dengan semua payment processor utama, POS, marketplace, dan platform produk.
+                <p>
+                    Hubungkan toko Anda dan bawa catatan keuangannya ke FluxyOS.
                 </p>
-            </div>
-
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="0 0 512 214" xmlns="http://www.w3.org/2000/svg"><path d="M35.982 83.484c0-5.546 4.551-7.68 12.09-7.68 10.808 0 24.461 3.272 35.27 9.103V51.484c-11.804-4.693-23.466-6.542-35.27-6.542C19.2 44.942 0 60.018 0 85.192c0 39.252 54.044 32.995 54.044 49.92 0 6.541-5.688 8.675-13.653 8.675-11.804 0-26.88-4.836-38.827-11.378v33.849c13.227 5.689 26.596 8.106 38.827 8.106 29.582 0 49.92-14.648 49.92-40.106-.142-42.382-54.329-34.845-54.329-50.774zm96.142-66.986l-34.702 7.395-.142 113.92c0 21.05 15.787 36.551 36.836 36.551 11.662 0 20.195-2.133 24.888-4.693V140.8c-4.55 1.849-27.022 8.391-27.022-12.658V77.653h27.022V47.36h-27.022l.142-30.862zm71.112 41.386L200.96 47.36h-30.72v124.444h35.556V87.467c8.39-10.951 22.613-8.96 27.022-7.396V47.36c-4.551-1.707-21.191-4.836-29.582 10.524zm38.257-10.524h35.698v124.444h-35.698V47.36zm0-4.7l35.698-7.68V0l-35.698 7.538V36.55zm109.938 8.391c-13.938 0-22.898 6.542-27.875 11.094l-1.85-8.818h-31.288v165.83l35.555-7.537.143-40.249c5.12 3.698 12.657 8.96 25.173 8.96 25.458 0 48.64-20.48 48.64-65.564-.142-41.245-23.609-63.716-48.498-63.716zm-8.533 97.991c-8.391 0-13.37-2.986-16.782-6.684l-.143-52.765c3.698-4.124 8.818-6.968 16.925-6.968 12.942 0 21.902 14.506 21.902 33.137 0 19.058-8.818 33.28-21.902 33.28zM512 110.08c0-36.409-17.636-65.138-51.342-65.138-33.85 0-54.33 28.73-54.33 64.854 0 42.808 24.179 64.426 58.88 64.426 16.925 0 29.725-3.84 39.396-9.244v-28.445c-9.67 4.836-20.764 7.823-34.844 7.823-13.796 0-26.027-4.836-27.591-21.618h69.547c0-1.85.284-9.245.284-12.658zm-70.258-13.511c0-16.071 9.814-22.756 18.774-22.756 8.675 0 17.92 6.685 17.92 22.756h-36.694z" fill="#6772E5"/></svg>
-                    <h3 class="font-bold text-gray-900 text-[14px]">Stripe</h3>
-                    <p class="text-[12px] text-gray-500 mt-1">Payments</p>
+                <div class="fl-actions">
+                    <a class="fl-button fl-button-primary" href="/id/pricing">
+                        Mulai gratis
+                    </a>
+                    <a class="fl-button" href="/contact-sales">
+                        Hubungi sales
+                    </a>
                 </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="0 0 256 292" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid"><path d="M223.774 57.34c-.201-1.46-1.48-2.268-2.537-2.357-1.055-.088-23.383-1.743-23.383-1.743s-15.507-15.395-17.209-17.099c-1.703-1.703-5.029-1.185-6.32-.805-.19.056-3.388 1.043-8.678 2.68-5.18-14.906-14.322-28.604-30.405-28.604-.444 0-.901.018-1.358.044C129.31 3.407 123.644.779 118.75.779c-37.465 0-55.364 46.835-60.976 70.635-14.558 4.511-24.9 7.718-26.221 8.133-8.126 2.549-8.383 2.805-9.45 10.462C21.3 95.806.038 260.235.038 260.235l165.678 31.042 89.77-19.42S223.973 58.8 223.775 57.34zM156.49 40.848l-14.019 4.339c.005-.988.01-1.96.01-3.023 0-9.264-1.286-16.723-3.349-22.636 8.287 1.04 13.806 10.469 17.358 21.32zm-27.638-19.483c2.304 5.773 3.802 14.058 3.802 25.238 0 .572-.005 1.095-.01 1.624-9.117 2.824-19.024 5.89-28.953 8.966 5.575-21.516 16.025-31.908 25.161-35.828zm-11.131-10.537c1.617 0 3.246.549 4.805 1.622-12.007 5.65-24.877 19.88-30.312 48.297l-22.886 7.088C75.694 46.16 90.81 10.828 117.72 10.828z" fill="#95BF46"/><path d="M221.237 54.983c-1.055-.088-23.383-1.743-23.383-1.743s-15.507-15.395-17.209-17.099c-.637-.634-1.496-.959-2.394-1.099l-12.527 256.233 89.762-19.418S223.972 58.8 223.774 57.34c-.201-1.46-1.48-2.268-2.537-2.357" fill="#5E8E3E"/><path d="M135.242 104.585l-11.069 32.926s-9.698-5.176-21.586-5.176c-17.428 0-18.305 10.937-18.305 13.693 0 15.038 39.2 20.8 39.2 56.024 0 27.713-17.577 45.558-41.277 45.558-28.44 0-42.984-17.7-42.984-17.7l7.615-25.16s14.95 12.835 27.565 12.835c8.243 0 11.596-6.49 11.596-11.232 0-19.616-32.16-20.491-32.16-52.724 0-27.129 19.472-53.382 58.778-53.382 15.145 0 22.627 4.338 22.627 4.338" fill="#FFF"/></svg>
-                    <h3 class="font-bold text-gray-900 text-[14px]">Shopify</h3>
-                    <p class="text-[12px] text-gray-500 mt-1">E-Commerce</p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M14 12c0-3.5 3-7 10-7s10 3.5 10 7v2h4c2 0 3 1 3 3v23c0 2-1 3-3 3H10c-2 0-3-1-3-3V17c0-2 1-3 3-3h4v-2zm4 0v2h12v-2c0-2.2-2-4-6-4s-6 1.8-6 4z" fill="#03AC0E"/><circle cx="19" cy="26" r="3" fill="#fff"/><circle cx="29" cy="26" r="3" fill="#fff"/><circle cx="19" cy="26" r="1.5" fill="#03AC0E"/><circle cx="29" cy="26" r="1.5" fill="#03AC0E"/><path d="M22 32 L24 35 L26 32 Z" fill="#FFC107"/></svg>
-                    <h3 class="font-bold text-gray-900 text-[14px]">Tokopedia</h3>
-                    <p class="text-[12px] text-gray-500 mt-1">Marketplace</p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="80 130 920 800" xmlns="http://www.w3.org/2000/svg"><path fill="#000" fill-rule="evenodd" d="m704.17 170.42c153.2 0 136.11 41.22 155.26 171.05 13.81 93.58 22.13 190.41 34.99 284.67 11.64 85.35 37.9 186.75-57.25 236.66-47.64 25-241.73 13.52-306.14 13.52-300.51 0-409.98 43.57-366.67-253.46 13.67-93.81 23.41-190.72 34.96-284.69 15.68-127.65 5.44-167.34 151.9-167.75 0-225.19 352.95-227.04 352.95 0zm-86.57 0c0-122.34-179.8-125.08-179.8 0z"/><path fill="#ec2b89" d="m727.48 431.75c-55.16 0-99.87-44.71-99.87-99.87h-74.9v289.9c0 33.71-27.32 61.03-61.03 61.03-33.71 0-61.04-27.32-61.04-61.03 0.01-33.7 27.33-61.03 61.04-61.03 6.32 0 13.48 0.96 19.21 2.74v-76.3q-9.42-1.33-19.21-1.34c-75.08 0-135.94 60.86-135.94 135.93 0 75.08 60.86 135.94 135.94 135.94 75.07 0 135.93-60.86 135.93-135.94v-153.43c27.23 22.21 62 35.53 99.87 35.53z"/><path fill="#00efe8" d="m706.27 410.53c-55.16 0-99.88-44.71-99.88-99.87h-74.9v289.9c0 33.71-27.32 61.03-61.03 61.03-33.71 0-61.03-27.32-61.03-61.03 0-33.7 27.32-61.03 61.03-61.03 6.32 0 13.48 0.96 19.22 2.75v-76.3q-9.43-1.34-19.22-1.35c-75.08 0-135.94 60.86-135.94 135.93 0 75.08 60.86 135.94 135.94 135.94 75.07 0 135.93-60.86 135.93-135.94l0.01-153.43c27.22 22.21 61.98 35.53 99.87 35.53z"/><path fill="#fff" d="m706.27 429.47c-24.15-5.22-45.04-19.17-59.21-38.38-19.22-14.18-33.16-35.06-38.39-59.21h-55.96v289.9c0 33.71-27.32 61.03-61.03 61.03-22.3 0-41.79-11.96-52.44-29.81-17.85-10.65-29.81-30.14-29.81-52.44 0-33.7 27.32-61.03 61.03-61.03 6.32 0 13.48 0.96 19.22 2.75v-56.41c-74.15 1.07-133.94 61.51-133.94 135.91 0 32.13 11.16 61.66 29.8 84.92 23.26 18.64 52.79 29.8 84.92 29.8 75.07 0 135.93-60.86 135.93-135.94l0.01-153.43c27.22 22.21 61.98 35.53 99.87 35.53z"/></svg>
-                    <h3 class="font-bold text-gray-900 text-[14px]">TikTok Shop</h3>
-                    <p class="text-[12px] text-gray-500 mt-1">Marketplace</p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M24 8c-9 0-16 5-16 13s7 13 16 13c4 0 7-1 10-2-1 1-4 2-7 2 5 0 9-1 12-3l3-2-2 1c-3 1-7 2-12 2-7 0-12-3-12-8s5-9 12-9c4 0 7 1 9 3l-1-3c-3-3-7-7-12-7zm6 11c-1 0-3 0-4 1l4-1c2 0 4 1 5 2l-1-2c-1-0-2-0-4 0z" fill="#FF6B28"/><path d="M16 18c0-4 4-7 9-7 4 0 7 2 9 5l1-2c-3-3-6-5-10-5-6 0-11 4-11 9 0 0 1 0 2 0z" fill="#FF6B28"/></svg>
-                    <h3 class="font-bold text-gray-900 text-[14px]">Alibaba</h3>
-                    <p class="text-[12px] text-gray-500 mt-1">Marketplace</p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                        <text x="24" y="34" text-anchor="middle" font-size="22" font-weight="700" font-family="Arial, sans-serif" fill="#3853A4" font-style="italic">moka</text>
-                    </svg>
-                    <h3 class="font-bold text-gray-900 text-[14px]">Moka</h3>
-                    <p class="text-[12px] text-gray-500 mt-1">POS / Payments</p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                        <polygon points="24,4 42,14 42,34 24,44 6,34 6,14" fill="none" stroke="#4A6CB7" stroke-width="3"/>
-                        <line x1="14" y1="14" x2="34" y2="34" stroke="#E04E4E" stroke-width="3"/>
-                        <line x1="34" y1="14" x2="14" y2="34" stroke="#4A6CB7" stroke-width="3"/>
-                    </svg>
-                    <h3 class="font-bold text-gray-900 text-[14px]">Xendit</h3>
-                    <p class="text-[12px] text-gray-500 mt-1">Payments</p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="8" y="14" width="3" height="20" rx="1.5" fill="#7BB7E8"/>
-                        <rect x="14" y="10" width="3" height="28" rx="1.5" fill="#0B2545"/>
-                        <rect x="20" y="14" width="3" height="20" rx="1.5" fill="#7BB7E8"/>
-                        <text x="40" y="32" text-anchor="middle" font-size="14" font-weight="700" font-family="Arial, sans-serif" fill="#0B2545">M</text>
-                    </svg>
-                    <h3 class="font-bold text-gray-900 text-[14px]">Midtrans</h3>
-                    <p class="text-[12px] text-gray-500 mt-1">Payments</p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                    <svg class="w-12 h-12 mb-3" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                        <text x="24" y="34" text-anchor="middle" font-size="20" font-weight="900" font-family="Arial, sans-serif" fill="#873EFF">Woo</text>
-                    </svg>
-                    <h3 class="font-bold text-gray-900 text-[14px]">WooCommerce</h3>
-                    <p class="text-[12px] text-gray-500 mt-1">E-Commerce</p>
-                </div>
-
-                <div class="bg-white rounded-xl border-2 border-dashed border-gray-300 p-6 flex flex-col items-center justify-center text-center group cursor-pointer hover:border-[#EA580C] transition-colors">
-                    <div class="w-12 h-12 rounded-lg border-2 border-gray-300 flex items-center justify-center mb-3 group-hover:border-[#EA580C]">
-                        <svg class="w-6 h-6 text-gray-400 group-hover:text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                    </div>
-                    <h3 class="font-bold text-gray-900 text-[14px] group-hover:text-[#EA580C]">Lainnya</h3>
-                    <p class="text-[12px] text-gray-500 group-hover:text-[#EA580C] mt-1">Sumber marketplace &amp; bank</p>
-                </div>
-            </div>
+            </section>
         </div>
-    </section>
+    </main>
 
-    <!-- FAQ SECTION -->
-    <section id="faq-revenuesync" class="bg-white text-gray-900 py-20 px-6 border-t border-gray-200">
-        <div class="max-w-4xl mx-auto">
-            <div class="mb-10">
-                <p class="text-[#EA580C] text-xs font-bold uppercase tracking-wider mb-3">Pertanyaan yang sering ditanyakan</p>
-                <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight">Pertanyaan tentang Revenue Sync, terjawab</h2>
-            </div>
-
-            <details class="group border-b border-gray-200 py-5">
-                <summary class="flex cursor-pointer list-none items-center justify-between gap-6">
-                    <h3 class="text-[17px] font-bold text-gray-900">Apa itu Revenue Sync?</h3>
-                    <span class="text-[#EA580C] text-2xl leading-none transition-transform group-open:rotate-45">+</span>
-                </summary>
-                <p class="mt-3 text-[15px] leading-relaxed text-gray-700">Revenue Sync adalah fitur FluxyOS yang menghubungkan kanal penjualan, pemroses pembayaran, sistem POS, dan marketplace ke satu buku besar live. Bisnis Indonesia bisa melihat pendapatan real-time tanpa menunggu ekspor CSV manual atau rekonsiliasi akhir bulan.</p>
-            </details>
-
-            <details class="group border-b border-gray-200 py-5">
-                <summary class="flex cursor-pointer list-none items-center justify-between gap-6">
-                    <h3 class="text-[17px] font-bold text-gray-900">Platform apa saja yang terhubung dengan Revenue Sync?</h3>
-                    <span class="text-[#EA580C] text-2xl leading-none transition-transform group-open:rotate-45">+</span>
-                </summary>
-                <p class="mt-3 text-[15px] leading-relaxed text-gray-700">Revenue Sync memasukkan order, refund, dan settlement marketplace ke buku besar double-entry Anda. Konektor marketplace sedang bertahap dirilis — TikTok Shop dan Shopee lebih dulu — dengan pola konektor yang dirancang supaya platform berikutnya tinggal ditambahkan. Aktivitas bank masuk lewat import rekening koran.</p>
-            </details>
-
-            <details class="group border-b border-gray-200 py-5">
-                <summary class="flex cursor-pointer list-none items-center justify-between gap-6">
-                    <h3 class="text-[17px] font-bold text-gray-900">Seberapa cepat transaksi muncul di FluxyOS?</h3>
-                    <span class="text-[#EA580C] text-2xl leading-none transition-transform group-open:rotate-45">+</span>
-                </summary>
-                <p class="mt-3 text-[15px] leading-relaxed text-gray-700">Sebagian besar transaksi muncul di FluxyOS dalam waktu kurang dari 30 detik setelah tersedia di platform sumber. Tim keuangan bisa memantau performa kanal, refund, biaya, dan selisih pendapatan selagi hari masih berjalan.</p>
-            </details>
-
-            <details class="group border-b border-gray-200 py-5">
-                <summary class="flex cursor-pointer list-none items-center justify-between gap-6">
-                    <h3 class="text-[17px] font-bold text-gray-900">Apakah Revenue Sync menangani refund dan transaksi ganda?</h3>
-                    <span class="text-[#EA580C] text-2xl leading-none transition-transform group-open:rotate-45">+</span>
-                </summary>
-                <p class="mt-3 text-[15px] leading-relaxed text-gray-700">Ya. Revenue Sync dirancang untuk mendeteksi impor ganda, menandai refund, dan menjaga catatan settlement tetap terhubung ke kanal penjualan asalnya. Hitungan ganda berkurang dan buku pendapatan lebih bersih.</p>
-            </details>
-
-            <details class="group border-b border-gray-200 py-5">
-                <summary class="flex cursor-pointer list-none items-center justify-between gap-6">
-                    <h3 class="text-[17px] font-bold text-gray-900">Apakah Revenue Sync berguna untuk bisnis kecil?</h3>
-                    <span class="text-[#EA580C] text-2xl leading-none transition-transform group-open:rotate-45">+</span>
-                </summary>
-                <p class="mt-3 text-[15px] leading-relaxed text-gray-700">Ya. Revenue Sync berguna untuk bisnis kecil yang berjualan di lebih dari satu kanal karena menghapus pekerjaan rekonsiliasi manual dan membuat arus kas lebih bisa dipercaya. Setup sederhana Shopify plus marketplace saja sudah sulit dilacak di spreadsheet.</p>
-            </details>
-
-            <details class="group border-b border-gray-200 py-5">
-                <summary class="flex cursor-pointer list-none items-center justify-between gap-6">
-                    <h3 class="text-[17px] font-bold text-gray-900">Apakah Revenue Sync mendukung tim Indonesia yang memakai IDR?</h3>
-                    <span class="text-[#EA580C] text-2xl leading-none transition-transform group-open:rotate-45">+</span>
-                </summary>
-                <p class="mt-3 text-[15px] leading-relaxed text-gray-700">Ya. Revenue Sync mendukung pelaporan Rupiah dan rekonsiliasi multi-mata-uang untuk bisnis yang berjualan di platform lokal maupun internasional. Tim keuangan meninjau pendapatan dalam satu tampilan tanpa kehilangan detail platform sumber.</p>
-            </details>
-        </div>
-    </section>
-
-    <!-- CTA SECTION -->
-    <section class="bg-[#0B0F19] py-16 md:py-24 px-6">
-        <div class="max-w-[1280px] mx-auto text-center">
-            <h2 class="text-[40px] md:text-[48px] font-bold tracking-tight text-white mb-6">
-                Berhenti kehilangan pendapatan karena kerja manual
-            </h2>
-            <p class="text-[18px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">
-                Setup Revenue Sync dalam hitungan menit. Sync transaksi real-time. Ambil keputusan bisnis lebih baik dengan data live yang akurat.
-            </p>
-            <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-sm hover:shadow inline-block text-center">
-                    Mulai Gratis
-                </a>
-                <a href="#platforms" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">
-                    Lihat Integrasi
-                </a>
-            </div>
-        </div>
-    </section>
-
+    <script src="/assets/js/finance-feature-landing.js" defer></script>
     <script src="/assets/js/universe-canvas.js" defer></script>
     <script src="/assets/js/footer-loader.js" defer></script>
     <script src="/assets/js/fluxyos.js" defer></script>

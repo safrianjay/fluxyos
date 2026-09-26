@@ -23,13 +23,17 @@ function _fluxyosInit() {
         nav.insertAdjacentElement('beforebegin', banner);
 
         const updatePromoHeight = () => {
-            document.documentElement.style.setProperty('--promo-banner-height', `${banner.getBoundingClientRect().height}px`);
+            const height = `${banner.getBoundingClientRect().height}px`;
+            if (document.documentElement.style.getPropertyValue('--promo-banner-height') !== height) {
+                document.documentElement.style.setProperty('--promo-banner-height', height);
+            }
         };
 
         updatePromoHeight();
         requestAnimationFrame(updatePromoHeight);
         if ('ResizeObserver' in window) {
-            new ResizeObserver(updatePromoHeight).observe(banner);
+            // Defer writes outside the observer delivery cycle (Safari).
+            new ResizeObserver(() => requestAnimationFrame(updatePromoHeight)).observe(banner);
         }
         window.addEventListener('resize', updatePromoHeight);
     };

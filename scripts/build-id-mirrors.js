@@ -43,6 +43,11 @@ const SITE = 'https://fluxyos.com';
 // slug -> pretty path served for the root page; title/description are the
 // Indonesian head copy (titles match the runtime dictionary).
 const PAGES = {
+    'customers.html': {
+        slug: 'customers', rootPath: '/customers',
+        title: 'Pelanggan & Alur Kerja Bisnis | FluxyOS',
+        description: 'Lihat alur keuangan untuk bisnis retail, agensi, dan tim keuangan melalui cerita ilustratif dan contoh testimoni.',
+    },
     'erp-intelligence.html': {
         slug: 'erp-intelligence', rootPath: '/erp-intelligence',
         title: 'ERP Intelligence untuk Tim Keuangan | FluxyOS',
@@ -260,6 +265,9 @@ function main() {
             html = html.replace(/pos-qr-(menu|customize|basket)-en\.jpg/g, 'pos-qr-$1-id.jpg');
             html = html.replace(/(<meta property="og:locale:alternate" content=")[^"]*(")/, '$1en_US$2');
         }
+        if (meta.slug === 'customers') {
+            html = html.replace(/(<meta property="og:locale:alternate" content=")[^"]*(")/, '$1en_US$2');
+        }
 
         // Restore shielded blocks.
         html = html.replace(/ SHIELD(\d+) /g, (_, i) => shields[Number(i)]);
@@ -272,7 +280,7 @@ function main() {
         // reviewer-facing strings beside them, so the two stay identical.
         html = html.replace(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g, (block, json) => {
             // The POS FAQ and product description must match the visible locale.
-            if (['point-of-sale', 'erp-intelligence'].includes(meta.slug)) {
+            if (['point-of-sale', 'erp-intelligence', 'budgetlanding', 'revenuesync', 'customers'].includes(meta.slug)) {
                 const localize = (value) => {
                     if (Array.isArray(value)) return value.map(localize);
                     if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, localize(v)]));
