@@ -85,8 +85,8 @@ const PAGES = {
     },
     'aiagents.html': {
         slug: 'aiagents', rootPath: '/aiagents',
-        title: 'AI Finance Agents — 6 Spesialis Pembukuan | FluxyOS',
-        description: 'Enam agent AI menangani rekonsiliasi bank, penandaan transaksi, penagihan invoice, dan laporan bulanan — otomatis.',
+        title: 'Fluxy AI Agents — Pahami Data Keuangan Anda | FluxyOS',
+        description: 'Tanyakan keuangan, periksa hasil ekstraksi dokumen, dan pahami data bisnis yang tercatat dengan Fluxy AI di FluxyOS.',
     },
     'budgetlanding.html': {
         slug: 'budgetlanding', rootPath: '/budgetlanding',
@@ -280,7 +280,7 @@ function main() {
         // reviewer-facing strings beside them, so the two stay identical.
         html = html.replace(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g, (block, json) => {
             // The POS FAQ and product description must match the visible locale.
-            if (['point-of-sale', 'erp-intelligence', 'budgetlanding', 'revenuesync', 'customers'].includes(meta.slug)) {
+            if (['point-of-sale', 'erp-intelligence', 'budgetlanding', 'revenuesync', 'customers', 'aiagents'].includes(meta.slug)) {
                 const localize = (value) => {
                     if (Array.isArray(value)) return value.map(localize);
                     if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, localize(v)]));
@@ -303,6 +303,13 @@ function main() {
         // ENGLISH JSON-LD into every mirror and undo `seo:sync-org` — which is
         // precisely what a verification run must never do.
         const out = path.join(ROOT, 'id', meta.slug + '.html');
+        // Pre-render the same universal component for the AI landing page.
+        // Footer navigation must remain readable even when JS/fetch is blocked.
+        if (meta.slug === 'aiagents') {
+            const footer = fs.readFileSync(path.join(ROOT, 'includes/footer-id.html'), 'utf8').trim();
+            html = html.replace(/<!-- shared-footer:start -->[\s\S]*?<!-- shared-footer:end -->/, () =>
+                '<!-- shared-footer:start -->\n' + footer + '\n<!-- shared-footer:end -->');
+        }
         if (CHECK_ONLY) {
             console.log('checked id/' + meta.slug + '.html');
         } else {

@@ -4,91 +4,14 @@
     <meta charset="UTF-8">
     <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Finance Agents — 6 Spesialis Pembukuan | FluxyOS</title>
+    <title>Fluxy AI Agents — Pahami Data Keuangan Anda | FluxyOS</title>
     <link rel="stylesheet" href="/assets/css/tailwind.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/fluxyos.css">
 
-    <style>
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            -webkit-font-smoothing: antialiased;
-        }
-        .font-mono { font-family: 'Fira Code', monospace; }
-
-        .hero-bg {
-            background:
-                radial-gradient(ellipse 80% 60% at 50% -10%, rgba(234, 88, 12, 0.08) 0%, transparent 50%),
-                linear-gradient(180deg, #FFFFFF 0%, #F9FAFB 100%);
-        }
-
-        .section-dark {
-            background: #0B0F19;
-            color: white;
-        }
-
-        /* Pulsing live status */
-        @keyframes livePulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(1.1); }
-        }
-        .live-dot {
-            animation: livePulse 1.6s ease-in-out infinite;
-        }
-
-        /* Activity feed entries fade in */
-        @keyframes feedFade {
-            0% { opacity: 0; transform: translateY(8px); }
-            100% { opacity: 1; transform: translateY(0); }
-        }
-        .feed-1 { animation: feedFade 0.5s ease-out 0.1s both; }
-        .feed-2 { animation: feedFade 0.5s ease-out 0.4s both; }
-        .feed-3 { animation: feedFade 0.5s ease-out 0.7s both; }
-        .feed-4 { animation: feedFade 0.5s ease-out 1.0s both; }
-
-        /* Progress bar fill */
-        @keyframes progressFill {
-            0% { width: 0; }
-            100% { width: var(--target-width); }
-        }
-        .progress-bar { animation: progressFill 1.8s ease-out forwards; }
-
-        /* Avatar gradients */
-        .avatar-1 { background: linear-gradient(135deg, #EA580C 0%, #F97316 100%); }
-        .avatar-2 { background: linear-gradient(135deg, #2563EB 0%, #60A5FA 100%); }
-        .avatar-3 { background: linear-gradient(135deg, #16A34A 0%, #4ADE80 100%); }
-        .avatar-4 { background: linear-gradient(135deg, #DC2626 0%, #F87171 100%); }
-        .avatar-5 { background: linear-gradient(135deg, #9333EA 0%, #C084FC 100%); }
-        .avatar-6 { background: linear-gradient(135deg, #0891B2 0%, #22D3EE 100%); }
-
-        /* Subtle grid pattern for backgrounds */
-        .grid-pattern {
-            background-image:
-                linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
-            background-size: 32px 32px;
-        }
-
-        /* Timeline connector line */
-        .timeline-line {
-            background: linear-gradient(180deg, rgba(234, 88, 12, 0.2) 0%, rgba(234, 88, 12, 0.6) 50%, rgba(234, 88, 12, 0.2) 100%);
-        }
-
-        /* Pipeline arrow */
-        .pipe-arrow {
-            background: linear-gradient(90deg, rgba(234, 88, 12, 0.3) 0%, rgba(234, 88, 12, 0.7) 100%);
-        }
-
-        /* Card hover lift */
-        .agent-card {
-            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-        }
-        .agent-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.08);
-        }
-    </style>
-    <meta name="description" content="Enam agent AI menangani rekonsiliasi bank, penandaan transaksi, penagihan invoice, dan laporan bulanan — otomatis.">
+    <link rel="stylesheet" href="/assets/css/ai-agent-landing.css">
+    <link rel="stylesheet" href="/assets/css/footer.css">
+    <meta name="description" content="Tanyakan keuangan, periksa hasil ekstraksi dokumen, dan pahami data bisnis yang tercatat dengan Fluxy AI di FluxyOS.">
     <link rel="canonical" href="https://fluxyos.com/id/aiagents">
     <link rel="alternate" hreflang="en" href="https://fluxyos.com/aiagents">
     <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/aiagents">
@@ -97,8 +20,8 @@
     <!-- Open Graph -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://fluxyos.com/id/aiagents">
-    <meta property="og:title" content="AI Finance Agents — 6 Spesialis Pembukuan | FluxyOS">
-    <meta property="og:description" content="Enam agent AI menangani rekonsiliasi bank, penandaan transaksi, penagihan invoice, dan laporan bulanan — otomatis.">
+    <meta property="og:title" content="Fluxy AI Agents — Pahami Data Keuangan Anda | FluxyOS">
+    <meta property="og:description" content="Tanyakan keuangan, periksa hasil ekstraksi dokumen, dan pahami data bisnis yang tercatat dengan Fluxy AI di FluxyOS.">
     <meta property="og:image" content="https://fluxyos.com/assets/images/og-aiagents.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -108,8 +31,8 @@
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="AI Finance Agents — 6 Spesialis Pembukuan | FluxyOS">
-    <meta name="twitter:description" content="Enam agent AI menangani rekonsiliasi bank, penandaan transaksi, penagihan invoice, dan laporan bulanan — otomatis.">
+    <meta name="twitter:title" content="Fluxy AI Agents — Pahami Data Keuangan Anda | FluxyOS">
+    <meta name="twitter:description" content="Tanyakan keuangan, periksa hasil ekstraksi dokumen, dan pahami data bisnis yang tercatat dengan Fluxy AI di FluxyOS.">
     <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-aiagents.png">
 
     <!-- Google Analytics -->
@@ -160,111 +83,103 @@
       }
     }
     </script>
-    <script type="application/ld+json">
+    <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Fluxy AI Agents",
+  "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "Intelligent Finance Operating System",
+  "operatingSystem": "Web",
+  "url": "https://fluxyos.com/aiagents",
+  "description": "Tanyakan keuangan, periksa hasil ekstraksi dokumen, dan pahami data bisnis yang tercatat dengan Fluxy AI di FluxyOS.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "IDR",
+    "availability": "https://schema.org/InStock"
+  },
+  "featureList": [
+    "Tanya jawab keuangan",
+    "Ekstraksi dokumen dengan bantuan AI",
+    "Periksa sebelum menyimpan",
+    "Penjelasan data keuangan"
+  ],
+  "publisher": {
+    "@id": "https://fluxyos.com/#organization"
+  }
+}</script>
+    <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
     {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "FluxyOS AI Agents",
-      "applicationCategory": "BusinessApplication",
-      "applicationSubCategory": "Finance Operations Software",
-      "operatingSystem": "Web, iOS, Android",
-      "url": "https://fluxyos.com/aiagents",
-      "description": "Six AI agents handle bank reconciliation, transaction tagging, invoice chasing, and monthly reports — automatically.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "IDR",
-        "availability": "https://schema.org/InStock"
-      },
-      "featureList": [
-        "AI transaction categorization that learns your chart of accounts",
-        "Automated bank reconciliation (BCA, Mandiri, BNI, BRI)",
-        "Polite invoice payment reminders",
-        "Duplicate payment detection",
-        "Monthly P&L report drafting",
-        "PPN tax-ready exports"
-      ],
-      "publisher": {
-        "@id": "https://fluxyos.com/#organization"
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://fluxyos.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "AI Agents",
+      "item": "https://fluxyos.com/aiagents"
+    }
+  ]
+}</script>
+    <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Apa itu FluxyOS AI Agents?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Fluxy AI menghadirkan tanya jawab keuangan dan ekstraksi dokumen di FluxyOS. Anda bisa memakai data keuangan yang tercatat, memeriksa hasil ekstraksi, dan memahami kinerja bisnis."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Apakah Fluxy AI bisa memindahkan uang atau menjalankan keuangan sendiri?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Tidak. Fluxy AI bukan tim keuangan otonom. Gunakan untuk memahami informasi dan memeriksa dokumen. Keputusan dan catatan yang disimpan tetap menjadi tanggung jawab tim Anda."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Pertanyaan keuangan apa yang bisa saya ajukan?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Tanyakan pendapatan, pengeluaran, posisi kas, transaksi, dan kinerja keuangan yang tercatat. Jawaban bergantung pada data yang tersedia di ruang kerja Anda."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Apakah hasil ekstraksi dokumen perlu diperiksa?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ya. Periksa jumlah, tanggal, vendor, dan kategori sebelum menyimpan. AI bisa salah. Dokumen sumber yang jelas membantu Anda memeriksa catatan akuntansi."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Apakah Fluxy AI menggantikan laporan keuangan?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Tidak. Laporan keuangan dan buku besar tetap menjadi sumber catatan akuntansi. Fluxy AI membantu menjelaskan informasi. Cocokkan jawaban penting dengan catatan terkait."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Bisakah saya memakai Bahasa Indonesia?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Bisa. Fluxy AI mendukung pertanyaan keuangan dalam Bahasa Indonesia dan English. Sebutkan nama bisnis, jumlah, dan periode dengan jelas dalam pertanyaan Anda."
       }
     }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Home",
-          "item": "https://fluxyos.com/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "AI Agents",
-          "item": "https://fluxyos.com/aiagents"
-        }
-      ]
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "What are FluxyOS AI Agents?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "FluxyOS AI Agents are six specialized AI workers that automate the most time-consuming finance tasks \u2014 bank reconciliation, transaction categorization, invoice collection, anomaly detection, monthly report drafting, and tax-ready exports. They run 24/7 and ask before any money moves."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Do the AI agents replace my finance team?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "No \u2014 they hand off the routine work so your finance team can focus on judgment calls and strategy. Most teams need 4 minutes per day to review what the agents flagged. Hiring two more accountants would cost roughly Rp 480M/year; the agents do the same routine work without payroll."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How accurate is the AI?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "The AI learns your chart of accounts from the corrections you make, so its suggestions sharpen over the first weeks of use. Anything it isn't confident about is flagged for review instead of posted, so silent mistakes don't end up in your books."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Will it work with my Indonesian chart of accounts?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. The AI learns from your existing chart of accounts \u2014 including custom categories like 'Biaya Bahan Baku' or 'Operasional Outlet'. It adapts when you correct its tags, getting better over time."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is my financial data safe?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "FluxyOS uses bank-level encryption for all connections. Bank feed access is read-only, meaning the AI can see transactions but cannot move money without your explicit approval. All data is stored in compliance with Indonesian data protection requirements."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "What languages does the AI support?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "The AI works in both English and Bahasa Indonesia, including local vendor names and Indonesian business terms. Reports can be drafted in either language depending on your team's preference."
-          }
-        }
-      ]
-    }
-    </script>
+  ]
+}</script>
 </head>
 <body class="min-h-screen flex flex-col">
 
@@ -657,770 +572,102 @@
         </div>
     </nav>
     <!-- HERO -->
-    <section class="hero-bg pt-16 pb-20 md:pt-20 md:pb-28 px-6 relative overflow-hidden">
-        <!-- Subtle grid pattern -->
-        <div class="absolute inset-0 grid-pattern opacity-50 pointer-events-none"></div>
-        <!-- Soft accent orbs -->
-        <div class="absolute top-32 right-[-150px] w-[500px] h-[500px] bg-orange-100/40 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute bottom-0 left-[-200px] w-[600px] h-[400px] bg-amber-50/50 rounded-full blur-3xl pointer-events-none"></div>
-        <!-- Floating decorative dots -->
-        <div class="absolute top-24 left-[10%] w-2 h-2 rounded-full bg-[#EA580C]/40 pointer-events-none hidden md:block"></div>
-        <div class="absolute top-[35%] right-[8%] w-3 h-3 rounded-full border-2 border-[#EA580C]/30 pointer-events-none hidden md:block"></div>
-        <div class="absolute bottom-32 left-[6%] w-1.5 h-1.5 rounded-full bg-amber-500/50 pointer-events-none hidden md:block"></div>
+<main class="agent-page" id="main-content">
+<section class="agent-hero">
+<canvas class="agent-hero-particles" data-hero-particles aria-hidden="true"></canvas>
+<div class="agent-hero-copy"><h1>Kurangi waktu mencari.<span>Pahami keuangan Anda.</span></h1><p>FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System). Fluxy AI membantu Anda membaca dokumen, bertanya soal keuangan, dan memahami catatan di balik angka.</p><div class="agent-actions"><a class="agent-button agent-button-primary" href="/id/pricing">Mulai gratis</a><a class="agent-button" href="/contact-sales">Hubungi sales</a></div></div>
+<div class="agent-hero-demo" data-agent-demo><div class="agent-window"><div class="agent-window-bar"><span>Catatan keuangan</span><span class="agent-window-dots" aria-hidden="true">···</span></div><div class="agent-window-body"><div class="agent-doc" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6ZM14 3v5h4M9 12h6M9 16h4"/></svg><div><b>receipt-024.pdf</b><small>Dokumen diupload</small></div><span class="agent-status">Siap diperiksa</span></div><div class="agent-row"><span>Vendor</span><b>Studio Ruang</b></div><div class="agent-row"><span>Jumlah</span><b>Rp2.400.000</b></div><div class="agent-row"><span>Kategori</span><b>Biaya kantor</b></div><div class="agent-review-note">Periksa hasil ekstraksi sebelum menyimpan.</div></div></div><div class="agent-window"><div class="agent-window-bar"><span>Fluxy AI</span><span class="agent-window-dots" aria-hidden="true">···</span></div><div class="agent-window-body"><div class="agent-question" data-demo-question>Kenapa pengeluaran naik?</div><div class="agent-answer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M5.6 18.4 18.4 5.6"/></svg><p data-demo-answer>Dalam contoh ini, biaya kantor naik Rp2.400.000. Buka transaksi terkait untuk melihat rinciannya.</p></div><div class="agent-result"><span data-demo-label>Pengeluaran</span><b data-demo-value>Rp18.600.000</b></div><span class="agent-source-tag">Berdasarkan transaksi yang tercatat</span></div></div></div>
+<div class="agent-prompts" hidden data-agent-prompts><button type="button" data-agent-question="0" aria-pressed="true">Kenapa pengeluaran naik?</button><button type="button" data-agent-question="1" aria-pressed="false">Berapa pendapatan yang tercatat?</button><button type="button" data-agent-question="2" aria-pressed="false">Berapa posisi kas kita?</button></div>
+<p class="agent-demo-caption">Data ilustrasi produk. Pilih pertanyaan untuk melihat contohnya.</p>
+</section>
+<section class="agent-section" id="meet"><div class="agent-section-heading"><h2>Jawabannya ada di data Anda.</h2><p>Satukan catatan keuangan sebelum mencari jawaban berikutnya.</p></div>
+<div class="agent-comparison">
+<article class="agent-comparison-panel agent-feature"><h3>Cara lama.</h3><div class="agent-question-cloud"><div class="agent-context-chip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4ZM4 9h16M9 9v11"/></svg><span>Ini transaksi yang mana?</span></div><div class="agent-context-chip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6ZM14 3v5h4M9 12h6M9 16h4"/></svg><span>Struknya ada di mana?</span></div><div class="agent-context-chip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16M8 15l4-5 4 2 4-7"/></svg><span>Apa yang berubah bulan ini?</span></div><div class="agent-context-chip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4ZM4 5l8 7 8-7"/></svg><span>Kenapa pengeluaran naik?</span></div><div class="agent-context-chip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4ZM4 9h16M9 9v11"/></svg><span>Berapa pendapatan yang tercatat?</span></div><div class="agent-context-chip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6ZM14 3v5h4M9 12h6M9 16h4"/></svg><span>Dokumen ini sudah diperiksa?</span></div><div class="agent-context-chip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16M8 15l4-5 4 2 4-7"/></svg><span>Berapa posisi kas kita?</span></div></div></article>
+<article class="agent-comparison-panel agent-feature"><h3>Dengan Fluxy AI.</h3><div class="agent-connected-stack">
+<div class="agent-window"><div class="agent-window-bar"><span class="agent-connected-title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M5.6 18.4 18.4 5.6"/></svg>Fluxy AI</span><span class="agent-source-tag">Konteks keuangan</span></div><div class="agent-window-body"><div class="agent-question">Kenapa pengeluaran naik?</div><div class="agent-answer"><p>Dalam contoh ini, biaya kantor naik Rp2.400.000. Buka transaksi terkait untuk melihat rinciannya.</p></div><div class="agent-result"><span>Pengeluaran</span><b>Rp18.600.000</b></div><div class="agent-comparison-meter" aria-hidden="true"><span></span></div><div class="agent-context-summary"><div><span>Pendapatan</span><b>Rp48.000.000</b></div><div><span>Hasil bersih</span><b>Rp29.400.000</b></div></div><span class="agent-source-tag">Berdasarkan transaksi yang tercatat</span></div></div>
+<div class="agent-linked-records"><h4>Catatan pendukung</h4><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6ZM14 3v5h4M9 12h6M9 16h4"/></svg><span><b>receipt-024.pdf</b><small>Studio Ruang</small></span><strong>Rp2.400.000</strong></div><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4ZM4 9h16M9 9v11"/></svg><span><b>Biaya kantor</b><small>Recorded transactions</small></span><strong>Rp18.600.000</strong></div></div>
+</div></article></div></section>
+<section class="agent-foundation"><div class="agent-section-heading"><h2>AI yang berguna berangkat dari pembukuan.</h2><p>Bukan chatbot yang berdiri sendiri. Asisten keuangan di dalam sistem tempat catatan Anda tersimpan.</p></div><div class="agent-pillars"><article><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M5.6 18.4 18.4 5.6"/></svg><h3>Data yang tercatat</h3><p>Jawaban memakai data ruang kerja Anda, bukan tebakan tentang bisnis.</p></article><article><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M5.6 18.4 18.4 5.6"/></svg><h3>Rincian yang bisa diperiksa</h3><p>Lihat dokumen sumber bersama hasil ekstraksinya.</p></article><article><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M5.6 18.4 18.4 5.6"/></svg><h3>Keputusan tetap di tangan Anda</h3><p>Tim Anda memeriksa informasi dan menentukan langkah berikutnya.</p></article></div></section>
+<section class="agent-section agent-capture-section"><div class="agent-section-heading"><h2>Kurangi ketik ulang. Rapikan catatan.</h2><p>Baca dokumen sumber, periksa rinciannya, dan hubungkan catatan keuangan.</p></div>
+<div class="agent-capture-workspace">
+<div class="agent-window agent-source-window"><div class="agent-window-bar"><span>Dokumen sumber</span><span class="agent-source-tag">receipt-024.pdf</span></div><div class="agent-receipt"><div class="agent-receipt-heading"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6ZM14 3v5h4M9 12h6M9 16h4"/></svg><span>Dokumen diupload</span></div><h3>Studio Ruang</h3><div class="agent-receipt-reference">#024 · 26.09.2026</div><div class="agent-receipt-columns"><span>Item</span><span>Jumlah</span></div><div class="agent-receipt-item"><span>Sewa ruang kerja</span><b>Rp2.400.000</b></div><div class="agent-receipt-total"><span>Total dibayar</span><b>Rp2.400.000</b></div><div class="agent-receipt-footnote">receipt-024.pdf</div></div></div>
+<div class="agent-window agent-review-window"><div class="agent-window-bar"><span>Pemeriksaan dokumen</span><span class="agent-status">Siap diperiksa</span></div><div class="agent-window-body"><div class="agent-extraction-heading"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 12 2 2 4-4M6 3h12v18H6Z"/></svg><div><h3>Hasil ekstraksi</h3><p>Cocokkan dengan struk sebelum menyimpan.</p></div></div><dl class="agent-extracted-fields"><div><dt>Vendor</dt><dd>Studio Ruang</dd></div><div><dt>Jumlah</dt><dd>Rp2.400.000</dd></div><div><dt>Kategori</dt><dd>Biaya kantor</dd></div><div><dt>Dokumen sumber</dt><dd>receipt-024.pdf</dd></div></dl><div class="agent-review-note">Periksa dulu sebelum menyimpan</div></div></div>
+</div></section>
+<section class="agent-section agent-questions-section"><div class="agent-section-heading"><h2>Tanyakan. Telusuri angkanya.</h2><p>Mulai dari pertanyaan, lalu lihat rincian keuangan yang relevan.</p></div>
+<div class="agent-workflow"><div><span class="agent-step">01</span><h3>Mulai dari pertanyaan bisnis Anda</h3><p>Tanyakan pendapatan, pengeluaran, kas, atau transaksi dengan bahasa sehari-hari. Tidak perlu menulis query.</p></div><div class="agent-visual"><div class="agent-window"><div class="agent-window-bar"><span>Fluxy AI</span><span class="agent-window-dots" aria-hidden="true">···</span></div><div class="agent-window-body"><div class="agent-question" data-demo-question>Kenapa pengeluaran naik?</div><div class="agent-answer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M5.6 18.4 18.4 5.6"/></svg><p data-demo-answer>Dalam contoh ini, biaya kantor naik Rp2.400.000. Buka transaksi terkait untuk melihat rinciannya.</p></div><div class="agent-result"><span data-demo-label>Pengeluaran</span><b data-demo-value>Rp18.600.000</b></div><span class="agent-source-tag">Berdasarkan transaksi yang tercatat</span></div></div></div></div>
+<div class="agent-workflow"><div><span class="agent-step">02</span><h3>Pahami kondisi keuangan</h3><p>Baca penjelasannya bersama laporan dan KPI untuk memahami pengaruh pendapatan serta pengeluaran terhadap kinerja.</p></div><div class="agent-visual"><div class="agent-window"><div class="agent-window-bar"><span>Ringkasan kinerja</span><span class="agent-window-dots" aria-hidden="true">···</span></div><div class="agent-window-body"><div class="agent-row"><span>Pendapatan tercatat</span><b>Rp48.000.000</b></div><svg class="agent-chart" viewBox="0 0 400 120" aria-hidden="true"><path class="agent-chart-grid" d="M0 25h400M0 65h400M0 105h400"/><path class="agent-chart-area" d="M0 105 40 90 80 95 120 72 160 78 200 52 240 61 280 35 320 40 360 16 400 24V120H0Z"/><path class="agent-chart-line" d="M0 105 40 90 80 95 120 72 160 78 200 52 240 61 280 35 320 40 360 16 400 24"/></svg><div class="agent-row"><span>Pengeluaran tercatat</span><b>Rp18.600.000</b></div></div></div></div></div>
+<div class="agent-workflow"><div><span class="agent-step">03</span><h3>Periksa sebelum mengambil keputusan</h3><p>Periksa transaksi dan dokumen terkait. Penjelasan AI membantu Anda mengambil keputusan, bukan menggantikan pembukuan.</p></div><div class="agent-visual"><div class="agent-window"><div class="agent-window-bar"><span>Rincian transaksi</span><span class="agent-window-dots" aria-hidden="true">···</span></div><div class="agent-window-body"><div class="agent-row"><span>Dokumen sumber</span><b>receipt-024.pdf</b></div><div class="agent-row"><span>Vendor</span><b>Studio Ruang</b></div><div class="agent-row"><span>Jumlah</span><b>Rp2.400.000</b></div><div class="agent-review-note">Dokumen sumber tetap menjadi bagian dari alur kerja.</div></div></div></div></div></section>
+<section class="agent-section agent-financial-questions" id="financial-questions"><div class="agent-section-heading"><h2>Tanyakan pendapatan, kas, dan dokumen.</h2><p>Pilih topik keuangan. Lihat contoh jawaban dan catatan yang mendasarinya.</p></div><div class="agent-insight-workspace" data-agent-insights><div class="agent-insight-controls"><details data-agent-insight="0" open><summary>Pendapatan dan pengeluaran</summary><p>Bandingkan pemasukan dan pengeluaran yang tercatat sebelum menentukan apa yang perlu diperiksa.</p></details><details data-agent-insight="1"><summary>Kas dan transaksi</summary><p>Pahami arus kas yang tercatat dan telusuri entri terkait.</p></details><details data-agent-insight="2"><summary>Dokumen dan catatan</summary><p>Gunakan hasil ekstraksi dan dokumen keuangan dalam pertanyaan yang sama.</p></details></div><div class="agent-insight-visual"><div class="agent-window"><div class="agent-window-bar"><span>Fluxy AI</span><span class="agent-window-dots" aria-hidden="true">···</span></div><div class="agent-window-body"><div class="agent-question">Berapa pendapatan yang tercatat?</div><div class="agent-answer"><p>Pendapatan tercatat Rp48.000.000 pada periode contoh ini. Bandingkan dengan pengeluaran dan periksa transaksi pendapatannya.</p></div><div class="agent-row"><span>Pendapatan</span><b>Rp48.000.000</b></div><div class="agent-row"><span>Pengeluaran</span><b>Rp18.600.000</b></div><span class="agent-source-tag">Catatan keuangan yang terhubung</span></div></div></div></div></section>
+<section class="agent-section agent-ecosystem"><div class="agent-section-heading"><h2>Bagian dari sistem keuangan Anda.</h2><p>Catat, pantau, baca laporan, dan bertanya—di FluxyOS.</p></div><div class="agent-ecosystem-grid"><a href="/id/receiptcapture"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6ZM14 3v5h4M9 12h6M9 16h4"/></svg><h3>Receipt Capture</h3><p>Dari dokumen ke data yang sudah diperiksa.</p><span class="agent-link">Jelajahi <span aria-hidden="true">↗</span></span></a><a href="/id/revenuesync"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16M7 15l4-5 4 2 5-7"/></svg><h3>Revenue Sync</h3><p>Lihat pendapatan yang tercatat.</p><span class="agent-link">Jelajahi <span aria-hidden="true">↗</span></span></a><a href="/id/budgetlanding"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4ZM4 10h16M10 4v16M14 14h3M14 17h3"/></svg><h3>Dynamic Budgeting</h3><p>Pantau pengeluaran dibanding anggaran.</p><span class="agent-link">Jelajahi <span aria-hidden="true">↗</span></span></a><a href="/id/erp-intelligence"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7a3 3 0 0 1 3 3v14a3 3 0 0 0-3-3H4ZM14 7h6v14h-6M7 8h3M7 12h3"/></svg><h3>ERP Intelligence</h3><p>Akuntansi, laporan, dan pemahaman bisnis.</p><span class="agent-link">Jelajahi <span aria-hidden="true">↗</span></span></a></div></section>
+<section class="agent-section agent-faq" id="faq"><h2>Pertanyaan yang sering ditanyakan</h2><div><details><summary>Apa itu FluxyOS AI Agents?<span aria-hidden="true">+</span></summary><p>Fluxy AI menghadirkan tanya jawab keuangan dan ekstraksi dokumen di FluxyOS. Anda bisa memakai data keuangan yang tercatat, memeriksa hasil ekstraksi, dan memahami kinerja bisnis.</p></details><details><summary>Apakah Fluxy AI bisa memindahkan uang atau menjalankan keuangan sendiri?<span aria-hidden="true">+</span></summary><p>Tidak. Fluxy AI bukan tim keuangan otonom. Gunakan untuk memahami informasi dan memeriksa dokumen. Keputusan dan catatan yang disimpan tetap menjadi tanggung jawab tim Anda.</p></details><details><summary>Pertanyaan keuangan apa yang bisa saya ajukan?<span aria-hidden="true">+</span></summary><p>Tanyakan pendapatan, pengeluaran, posisi kas, transaksi, dan kinerja keuangan yang tercatat. Jawaban bergantung pada data yang tersedia di ruang kerja Anda.</p></details><details><summary>Apakah hasil ekstraksi dokumen perlu diperiksa?<span aria-hidden="true">+</span></summary><p>Ya. Periksa jumlah, tanggal, vendor, dan kategori sebelum menyimpan. AI bisa salah. Dokumen sumber yang jelas membantu Anda memeriksa catatan akuntansi.</p></details><details><summary>Apakah Fluxy AI menggantikan laporan keuangan?<span aria-hidden="true">+</span></summary><p>Tidak. Laporan keuangan dan buku besar tetap menjadi sumber catatan akuntansi. Fluxy AI membantu menjelaskan informasi. Cocokkan jawaban penting dengan catatan terkait.</p></details><details><summary>Bisakah saya memakai Bahasa Indonesia?<span aria-hidden="true">+</span></summary><p>Bisa. Fluxy AI mendukung pertanyaan keuangan dalam Bahasa Indonesia dan English. Sebutkan nama bisnis, jumlah, dan periode dengan jelas dalam pertanyaan Anda.</p></details></div></section>
+<section class="agent-closing"><h2>Gunakan data keuangan Anda.<span>Keputusan tetap di tangan Anda.</span></h2><div class="agent-actions"><a class="agent-button agent-button-primary" href="/id/pricing">Mulai gratis</a><a class="agent-button" href="/contact-sales">Hubungi sales</a></div></section>
+</main>
+<!-- shared-footer:start -->
+<footer class="footer-component pt-24 pb-12 px-6">
 
-        <div class="max-w-[1280px] mx-auto relative">
-            <div class="grid lg:grid-cols-12 gap-12 items-center">
-                <!-- Left: Copy -->
-                <div class="lg:col-span-6">
-                    <h1 class="text-[44px] md:text-[60px] font-bold tracking-tight leading-[1.02] text-gray-900 mb-6">
-                        Tim keuangan Anda, <br/>
-                        <span class="bg-gradient-to-r from-[#EA580C] to-[#F97316] bg-clip-text text-transparent">jadi dua kali lipat dalam semalam.</span>
-                    </h1>
+    <!-- Universe starfield canvas -->
+    <canvas class="footer-canvas" aria-hidden="true"></canvas>
 
-                    <p class="text-[18px] text-gray-600 leading-relaxed mb-8 max-w-xl">
-                        Enam AI agent menangani pekerjaan yang membuat tim Anda lembur — kelompokkan transaksi, cocokkan rekening bank, kejar invoice belum dibayar, susun laporan. Mereka baca setiap baris, tunjukkan alasannya, dan tanya sebelum bertindak.
-                    </p>
-
-                    <div class="flex flex-col sm:flex-row gap-4 mb-10">
-                        <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-8 py-4 rounded-md transition-all duration-200 shadow-md hover:shadow-lg inline-block text-center">
-                            Coba Gratis
-                        </a>
-                        <a href="#meet" class="border-2 border-gray-300 text-gray-900 font-semibold text-[15px] px-8 py-3 rounded-md hover:border-gray-400 transition-colors inline-flex items-center justify-center gap-2">
-                            Kenalan dengan tim
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
-                        </a>
-                    </div>
-
-                    <!-- Stats strip -->
-                    <div class="grid grid-cols-3 gap-4 pt-6 border-t border-gray-200">
-                        <div>
-                            <div class="text-[26px] font-bold text-gray-900">24/7</div>
-                            <p class="text-[12px] text-gray-600">Selalu berjalan</p>
-                        </div>
-                        <div>
-                            <div class="text-[26px] font-bold text-gray-900">6</div>
-                            <p class="text-[12px] text-gray-600">Agent spesialis</p>
-                        </div>
-                        <div>
-                            <div class="text-[26px] font-bold text-gray-900">6</div>
-                            <p class="text-[12px] text-gray-600">Agents, one ledger</p>
-                        </div>
-                    </div>
+    <div class="max-w-[1280px] mx-auto grid grid-cols-2 md:grid-cols-12 gap-12 mb-20">
+        <div class="col-span-2 md:col-span-4 pr-8">
+            <div class="flex items-center gap-2 mb-6">
+                <div class="w-8 h-8 flex-shrink-0 text-[#EA580C] shadow-sm group-hover:scale-105 transition-transform duration-200">
+                    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                        <rect width="40" height="40" rx="8" fill="currentColor" />
+                        <g transform="translate(1.5, 0)">
+                            <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
+                            <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
+                        </g>
+                    </svg>
                 </div>
-
-                <!-- Right: Live AI processing visual -->
-                <div class="lg:col-span-6 relative">
-                    <!-- MAIN: AI analyzing a transaction in real-time -->
-                    <div class="bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden relative z-10">
-                        <!-- Header bar -->
-                        <div class="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
-                            <div class="flex items-center gap-3">
-                                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-[#EA580C] to-[#F97316] flex items-center justify-center text-white flex-shrink-0 shadow-md shadow-orange-500/20">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                                </div>
-                                <div>
-                                    <div class="text-[13px] font-bold text-gray-900 flex items-center gap-2">
-                                        AI sedang menganalisis
-                                        <span class="flex gap-0.5">
-                                            <span class="w-1 h-1 rounded-full bg-[#EA580C] live-dot"></span>
-                                            <span class="w-1 h-1 rounded-full bg-[#EA580C] live-dot" style="animation-delay: 0.2s"></span>
-                                            <span class="w-1 h-1 rounded-full bg-[#EA580C] live-dot" style="animation-delay: 0.4s"></span>
-                                        </span>
-                                    </div>
-                                    <div class="text-[11px] text-gray-500">Keputusan siap dalam 1,2 detik</div>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-1.5 text-[10px] bg-green-50 border border-green-100 px-2 py-1 rounded">
-                                <div class="w-1.5 h-1.5 rounded-full bg-green-500 live-dot"></div>
-                                <span class="text-green-700 font-bold uppercase tracking-wider">Live</span>
-                            </div>
-                        </div>
-
-                        <!-- Body -->
-                        <div class="p-5 space-y-4">
-                            <!-- Input -->
-                            <div>
-                                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Tagihan baru baru saja masuk ke bank Anda</div>
-                                <div class="bg-gray-50 border border-gray-200 rounded-md px-3 py-2.5 font-mono text-[12px] text-gray-700">
-                                    <div class="flex justify-between items-center">
-                                        <span class="truncate">PT NUSANTARA SUPPLIER</span>
-                                        <span class="font-bold text-gray-900">Rp 6.800.000</span>
-                                    </div>
-                                    <div class="text-[10px] text-gray-500 mt-0.5">14 Nov 2026  &middot;  10:32  &middot;  via BCA</div>
-                                </div>
-                            </div>
-
-                            <!-- Reasoning -->
-                            <div>
-                                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Apa yang AI periksa</div>
-                                <div class="space-y-1.5">
-                                    <div class="flex items-center gap-2 feed-1">
-                                        <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                        <span class="text-[12px] text-gray-700">Ini supplier langganan Anda — <b>Nusantara</b></span>
-                                    </div>
-                                    <div class="flex items-center gap-2 feed-2">
-                                        <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                        <span class="text-[12px] text-gray-700">Anda sudah bayar 11 kali sebelumnya (rata-rata Rp 6,4 juta)</span>
-                                    </div>
-                                    <div class="flex items-center gap-2 feed-3">
-                                        <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                        <span class="text-[12px] text-gray-700">Jumlahnya normal (selisih 6%)</span>
-                                    </div>
-                                    <div class="flex items-center gap-2 feed-4">
-                                        <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                        <span class="text-[12px] text-gray-700">Bukan duplikat</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Decision -->
-                            <div class="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-lg p-3.5">
-                                <div class="flex items-center justify-between mb-2">
-                                    <div class="text-[10px] font-bold text-[#EA580C] uppercase tracking-wider">Disimpan di</div>
-                                    <div class="text-[11px] font-mono text-gray-600">94% yakin</div>
-                                </div>
-                                <div class="text-[14px] font-bold text-gray-900 mb-2">Harga Pokok Penjualan → Persediaan &amp; Perlengkapan</div>
-                                <div class="h-1.5 bg-white/60 rounded-full overflow-hidden">
-                                    <div class="h-full bg-gradient-to-r from-[#EA580C] to-[#F97316] rounded-full progress-bar" style="--target-width: 94%; width: 94%"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Footer action -->
-                        <div class="px-5 py-3 bg-green-50 border-t border-green-100 flex items-center justify-between text-[12px]">
-                            <div class="flex items-center gap-2 text-green-700">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                                <span class="font-bold">Sudah dicatat. Beres.</span>
-                            </div>
-                            <span class="text-gray-500">0,4 detik total</span>
-                        </div>
-                    </div>
-
-                    <!-- FLOATING SIDE: Reconciling -->
-                    <div class="absolute -top-4 -right-4 bg-white rounded-xl shadow-xl border border-gray-200 px-4 py-3 max-w-[210px] hidden md:block z-20">
-                        <div class="flex items-center gap-2.5 mb-2">
-                            <div class="w-7 h-7 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center text-green-600 flex-shrink-0">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="text-[12px] font-bold text-gray-900">Mencocokkan baris bank</div>
-                                <div class="text-[10px] text-gray-500">Sedang berjalan</div>
-                            </div>
-                            <div class="w-1.5 h-1.5 rounded-full bg-green-500 live-dot"></div>
-                        </div>
-                        <div class="text-[11px] text-gray-600 mb-1.5">247 dari 250 cocok</div>
-                        <div class="h-1 bg-gray-100 rounded-full overflow-hidden">
-                            <div class="h-full bg-green-500 rounded-full progress-bar" style="--target-width: 98%; width: 98%"></div>
-                        </div>
-                    </div>
-
-                    <!-- FLOATING SIDE: Flagged charge -->
-                    <div class="absolute -bottom-5 -left-5 bg-white rounded-xl shadow-xl border border-amber-200 px-4 py-3 max-w-[230px] hidden md:block z-20">
-                        <div class="flex items-start gap-2.5">
-                            <div class="w-7 h-7 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 flex-shrink-0">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                            </div>
-                            <div>
-                                <div class="text-[12px] font-bold text-gray-900 flex items-center gap-1.5">
-                                    Kemungkinan duplikat
-                                    <span class="bg-amber-100 text-amber-700 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded">Tinjau</span>
-                                </div>
-                                <div class="text-[11px] text-gray-600 leading-snug mt-1">Supplier sama menagih dua kali minggu ini. Konfirmasi?</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <span class="font-bold text-xl tracking-tight text-white">FluxyOS</span>
             </div>
-        </div>
-    </section>
-
-    <!-- WORK YOU HAND OFF -->
-    <section id="meet" class="py-16 md:py-24 px-6 border-t border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-3xl mb-12">
-                <h2 class="text-[32px] md:text-[44px] font-bold tracking-tight text-gray-900 mb-4 leading-tight">
-                    Enam pekerjaan keuangan. <br class="hidden md:block"/>
-                    <span class="text-gray-500">Beres otomatis.</span>
-                </h2>
-                <p class="text-[16px] text-gray-600 leading-relaxed">
-                    Inilah yang tim AI Anda kerjakan setiap hari. Masing-masing jalan sendiri — Anda hanya turun tangan saat ada yang perlu keputusan.
-                </p>
-            </div>
-
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-                <!-- 1. Categorize -->
-                <div class="agent-card bg-white rounded-2xl border border-gray-200 p-6 flex flex-col">
-                    <div class="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-4">
-                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
-                    </div>
-                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">Kelompokkan setiap transaksi</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed flex-1 mb-4">Setiap pengeluaran masuk kategori yang benar — bahan, sewa, marketing, gaji. Tanya dulu kalau ada yang tidak biasa.</p>
-                </div>
-
-                <!-- 2. Match bank lines -->
-                <div class="agent-card bg-white rounded-2xl border border-gray-200 p-6 flex flex-col">
-                    <div class="w-12 h-12 rounded-xl bg-green-50 border border-green-100 flex items-center justify-center mb-4">
-                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-                    </div>
-                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">Cocokkan bank dengan pembukuan</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed flex-1 mb-4">Setiap tagihan di rekening bank dipasangkan dengan invoice atau pengeluaran yang benar. Kalau ada yang tidak cocok, langsung di-flag.</p>
-                </div>
-
-                <!-- 3. Chase invoices -->
-                <div class="agent-card bg-white rounded-2xl border border-gray-200 p-6 flex flex-col">
-                    <div class="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center mb-4">
-                        <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                    </div>
-                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">Kejar pelanggan yang belum bayar</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed flex-1 mb-4">Kirim pengingat sopan untuk setiap invoice telat, sesuai gaya Anda. Tahu kapan harus berhenti saat pelanggan bayar.</p>
-                </div>
-
-                <!-- 4. Catch mistakes -->
-                <div class="agent-card bg-white rounded-2xl border border-gray-200 p-6 flex flex-col">
-                    <div class="w-12 h-12 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center mb-4">
-                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                    </div>
-                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">Tangkap kesalahan yang mahal</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed flex-1 mb-4">Temukan pembayaran ganda, tagihan besar yang aneh, dan biaya yang tidak biasa — sebelum uang keluar.</p>
-                </div>
-
-                <!-- 5. Monthly reports -->
-                <div class="agent-card bg-white rounded-2xl border border-gray-200 p-6 flex flex-col">
-                    <div class="w-12 h-12 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center mb-4">
-                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2a4 4 0 014-4h4m0 0l-3-3m3 3l-3 3M3 12a9 9 0 1018 0 9 9 0 00-18 0z"/></svg>
-                    </div>
-                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">Tulis laporan bulanan</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed flex-1 mb-4">Laba rugi, posisi kas, dan ke mana uang Anda pergi bulan lalu — ditulis dengan bahasa sederhana, siap jam 8 pagi tanggal 1.</p>
-                </div>
-
-                <!-- 6. Tax prep -->
-                <div class="agent-card bg-white rounded-2xl border border-gray-200 p-6 flex flex-col">
-                    <div class="w-12 h-12 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center mb-4">
-                        <svg class="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                    </div>
-                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">Persiapan musim pajak</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed flex-1 mb-4">Rangkuman PPN, ekspor siap pajak, dan catatan rapi setiap struk — supaya saat akuntan tanya, jawabannya dua klik saja.</p>
-                </div>
-            </div>
-
-            <!-- Bottom summary callout -->
-            <div class="mt-10 max-w-3xl mx-auto bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 border border-orange-100 rounded-2xl px-6 py-5 flex flex-col sm:flex-row sm:items-center gap-4">
-                <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-[#EA580C] to-[#F97316] flex items-center justify-center flex-shrink-0 shadow-md shadow-orange-500/20">
-                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                </div>
-                <div class="flex-1">
-                    <div class="text-[15px] font-bold text-gray-900">Keenamnya mengambil alih pekerjaan berulang dari tim Anda.</div>
-                    <div class="text-[13px] text-gray-600">Itu 4 hari kerja yang bisa Anda pakai menjalankan bisnis, bukan admin keuangan manual.</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- A DAY IN THE LIFE (DARK) -->
-    <section class="section-dark py-20 md:py-28 px-6 relative overflow-hidden">
-        <div class="absolute inset-0 opacity-[0.03] pointer-events-none" style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 32px 32px;"></div>
-
-        <div class="max-w-[1280px] mx-auto relative">
-            <div class="max-w-3xl mb-14">
-                <h2 class="text-[32px] md:text-[44px] font-bold tracking-tight leading-tight mb-4">
-                    Selasa di bulan November.
-                </h2>
-                <p class="text-[16px] text-gray-400 leading-relaxed">
-                    Inilah yang dikerjakan tim Anda saat Anda meeting, di Slack, atau tidur. Timestamp asli, aksi asli.
-                </p>
-            </div>
-
-            <div class="grid lg:grid-cols-3 gap-10">
-            <!-- LEFT: Timeline (2 cols) -->
-            <div class="lg:col-span-2 relative">
-                <!-- Vertical timeline line -->
-                <div class="absolute left-[100px] top-0 bottom-0 w-px timeline-line hidden md:block"></div>
-
-                <div class="space-y-5">
-                    <!-- 06:00 -->
-                    <div class="flex items-start gap-5">
-                        <div class="font-mono text-[13px] text-gray-500 font-bold w-[80px] flex-shrink-0 pt-1.5 hidden md:block">06:00</div>
-                        <div class="w-3 h-3 rounded-full bg-blue-500 ring-4 ring-blue-500/20 flex-shrink-0 mt-2 hidden md:block"></div>
-                        <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
-                            <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">06:00</div>
-                            <div class="flex items-start gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg></div>
-                                <div>
-                                    <div class="text-[14px] font-semibold text-white"><span class="text-blue-400">Terurut</span> transaksi semalam</div>
-                                    <div class="text-[12px] text-gray-400 mt-1">68 entri dari BCA, Mandiri, Stripe — tertandai otomatis dalam 4 menit</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 07:30 -->
-                    <div class="flex items-start gap-5">
-                        <div class="font-mono text-[13px] text-gray-500 font-bold w-[80px] flex-shrink-0 pt-1.5 hidden md:block">07:30</div>
-                        <div class="w-3 h-3 rounded-full bg-green-500 ring-4 ring-green-500/20 flex-shrink-0 mt-2 hidden md:block"></div>
-                        <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
-                            <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">07:30</div>
-                            <div class="flex items-start gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center text-green-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg></div>
-                                <div>
-                                    <div class="text-[14px] font-semibold text-white"><span class="text-green-400">Tercocokkan</span> rekening koran dengan invoice</div>
-                                    <div class="text-[12px] text-gray-400 mt-1">247 baris cocok — 3 selisih menunggu tinjauan Anda</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 09:15 -->
-                    <div class="flex items-start gap-5">
-                        <div class="font-mono text-[13px] text-gray-500 font-bold w-[80px] flex-shrink-0 pt-1.5 hidden md:block">09:15</div>
-                        <div class="w-3 h-3 rounded-full bg-orange-500 ring-4 ring-orange-500/20 flex-shrink-0 mt-2 hidden md:block"></div>
-                        <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
-                            <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">09:15</div>
-                            <div class="flex items-start gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
-                                <div>
-                                    <div class="text-[14px] font-semibold text-white"><span class="text-orange-400">Terkirim</span> pengingat pembayaran yang sopan</div>
-                                    <div class="text-[12px] text-gray-400 mt-1">3 pengingat sopan sudah terkirim — Sembrani Group, Pelangi Studio, Cikal Apparel</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 11:00 -->
-                    <div class="flex items-start gap-5">
-                        <div class="font-mono text-[13px] text-gray-500 font-bold w-[80px] flex-shrink-0 pt-1.5 hidden md:block">11:00</div>
-                        <div class="w-3 h-3 rounded-full bg-amber-500 ring-4 ring-amber-500/20 flex-shrink-0 mt-2 hidden md:block"></div>
-                        <div class="bg-amber-500/5 border border-amber-500/30 rounded-xl px-5 py-4 flex-1">
-                            <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">11:00</div>
-                            <div class="flex items-start gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div>
-                                <div>
-                                    <div class="text-[14px] font-semibold text-white"><span class="text-amber-400">Ditandai</span> kemungkinan pembayaran ganda</div>
-                                    <div class="text-[12px] text-gray-400 mt-1">Supplier yang sama menagih dua kali minggu ini — sudah dikirimkan catatan singkat untuk Anda konfirmasi</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 13:00 -->
-                    <div class="flex items-start gap-5">
-                        <div class="font-mono text-[13px] text-gray-500 font-bold w-[80px] flex-shrink-0 pt-1.5 hidden md:block">13:00</div>
-                        <div class="w-3 h-3 rounded-full bg-blue-500 ring-4 ring-blue-500/20 flex-shrink-0 mt-2 hidden md:block"></div>
-                        <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
-                            <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">13:00</div>
-                            <div class="flex items-start gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg></div>
-                                <div>
-                                    <div class="text-[14px] font-semibold text-white"><span class="text-blue-400">Terurut</span> struk makan siang tim</div>
-                                    <div class="text-[12px] text-gray-400 mt-1">5 struk masuk via WhatsApp — tersimpan di Meeting Klien</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 15:30 -->
-                    <div class="flex items-start gap-5">
-                        <div class="font-mono text-[13px] text-gray-500 font-bold w-[80px] flex-shrink-0 pt-1.5 hidden md:block">15:30</div>
-                        <div class="w-3 h-3 rounded-full bg-orange-500 ring-4 ring-orange-500/20 flex-shrink-0 mt-2 hidden md:block"></div>
-                        <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
-                            <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">15:30</div>
-                            <div class="flex items-start gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
-                                <div>
-                                    <div class="text-[14px] font-semibold text-white"><span class="text-orange-400">Dieskalasi</span> invoice yang lewat jatuh tempo</div>
-                                    <div class="text-[12px] text-gray-400 mt-1">Indra Catering — lewat 17 hari, Rp 24M. Follow-up yang lebih tegas sudah disiapkan untuk Anda tinjau</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 18:00 -->
-                    <div class="flex items-start gap-5">
-                        <div class="font-mono text-[13px] text-gray-500 font-bold w-[80px] flex-shrink-0 pt-1.5 hidden md:block">18:00</div>
-                        <div class="w-3 h-3 rounded-full bg-purple-500 ring-4 ring-purple-500/20 flex-shrink-0 mt-2 hidden md:block"></div>
-                        <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
-                            <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">18:00</div>
-                            <div class="flex items-start gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2a4 4 0 014-4h4m0 0l-3-3m3 3l-3 3M3 12a9 9 0 1018 0 9 9 0 00-18 0z"/></svg></div>
-                                <div>
-                                    <div class="text-[14px] font-semibold text-white"><span class="text-purple-400">Disusun</span> ringkasan harian besok</div>
-                                    <div class="text-[12px] text-gray-400 mt-1">Kas di tangan, 5 supplier teratas yang dibayar, ke mana uang pergi — siap di inbox Anda</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 23:00 -->
-                    <div class="flex items-start gap-5">
-                        <div class="font-mono text-[13px] text-gray-500 font-bold w-[80px] flex-shrink-0 pt-1.5 hidden md:block">23:00</div>
-                        <div class="w-3 h-3 rounded-full bg-cyan-500 ring-4 ring-cyan-500/20 flex-shrink-0 mt-2 hidden md:block"></div>
-                        <div class="bg-[#1A1F26] border border-gray-800 rounded-xl px-5 py-4 flex-1">
-                            <div class="md:hidden text-[11px] text-gray-500 font-mono mb-1">23:00</div>
-                            <div class="flex items-start gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-cyan-50 border border-cyan-100 flex items-center justify-center text-cyan-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
-                                <div>
-                                    <div class="text-[14px] font-semibold text-white"><span class="text-cyan-400">Tersimpan</span> struk dan tagihan hari ini</div>
-                                    <div class="text-[12px] text-gray-400 mt-1">68 invoice, 23 struk, 14 rekening koran — tersimpan 7 tahun kalau akuntan Anda bertanya</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Total at the bottom -->
-                <div class="mt-8 ml-0 md:ml-[100px] bg-gradient-to-r from-orange-500/10 to-amber-500/5 border border-orange-500/30 rounded-xl px-5 py-4 flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-[#EA580C] to-[#F97316] flex items-center justify-center flex-shrink-0">
-                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                    </div>
-                    <div class="flex-1">
-                        <div class="text-[14px] font-bold text-white">Akhir hari: 1.284 aksi selesai</div>
-                        <div class="text-[12px] text-gray-400">Perlu input Anda di 2 hal — sekitar 4 menit waktu Anda</div>
-                    </div>
-                </div>
-            </div>
-            <!-- RIGHT: Day stats sidebar (1 col) -->
-            <div class="lg:col-span-1">
-                <div class="lg:sticky lg:top-28 space-y-4">
-                    <!-- Today at a glance -->
-                    <div class="bg-[#1A1F26] border border-gray-800 rounded-2xl p-5">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-[14px] font-bold text-white">Hari ini sekilas</h3>
-                            <div class="flex items-center gap-1.5 text-[10px]">
-                                <div class="w-1.5 h-1.5 rounded-full bg-green-500 live-dot"></div>
-                                <span class="text-green-400 font-bold uppercase tracking-wider">Live</span>
-                            </div>
-                        </div>
-                        <div class="space-y-3">
-                            <div class="flex items-center justify-between">
-                                <span class="text-[12px] text-gray-400">Aksi selesai</span>
-                                <span class="text-[18px] font-bold font-mono text-white">1,284</span>
-                            </div>
-                            <div class="h-px bg-gray-800"></div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-[12px] text-gray-400">Jam dihemat</span>
-                                <span class="text-[18px] font-bold font-mono text-white">6.4</span>
-                            </div>
-                            <div class="h-px bg-gray-800"></div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-[12px] text-gray-400">Ketidakcocokan ditemukan</span>
-                                <span class="text-[18px] font-bold font-mono text-amber-400">3</span>
-                            </div>
-                            <div class="h-px bg-gray-800"></div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-[12px] text-gray-400">Perlu perhatian Anda</span>
-                                <span class="text-[18px] font-bold font-mono text-orange-400">2</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Activity heatmap -->
-                    <div class="bg-[#1A1F26] border border-gray-800 rounded-2xl p-5">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-[14px] font-bold text-white">Aktivitas 24 jam</h3>
-                            <span class="text-[10px] text-gray-500 font-mono">UTC+7</span>
-                        </div>
-                        <div class="space-y-2.5">
-                            <!-- Sort transactions -->
-                            <div class="flex items-center gap-2">
-                                <div class="w-5 h-5 rounded bg-blue-500/20 flex items-center justify-center text-blue-300 flex-shrink-0"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg></div>
-                                <div class="flex-1 flex gap-0.5 h-4 items-end">
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-blue-500/70 rounded-sm" style="height: 80%"></div>
-                                    <div class="flex-1 bg-blue-500/40 rounded-sm" style="height: 30%"></div>
-                                    <div class="flex-1 bg-blue-500/30 rounded-sm" style="height: 20%"></div>
-                                    <div class="flex-1 bg-blue-500/80 rounded-sm" style="height: 95%"></div>
-                                    <div class="flex-1 bg-blue-500/60 rounded-sm" style="height: 60%"></div>
-                                    <div class="flex-1 bg-blue-500/30 rounded-sm" style="height: 25%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                </div>
-                            </div>
-                            <!-- Match bank lines -->
-                            <div class="flex items-center gap-2">
-                                <div class="w-5 h-5 rounded bg-green-500/20 flex items-center justify-center text-green-300 flex-shrink-0"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg></div>
-                                <div class="flex-1 flex gap-0.5 h-4 items-end">
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-green-500/40 rounded-sm" style="height: 30%"></div>
-                                    <div class="flex-1 bg-green-500/85 rounded-sm" style="height: 100%"></div>
-                                    <div class="flex-1 bg-green-500/30 rounded-sm" style="height: 25%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-green-500/30 rounded-sm" style="height: 25%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                </div>
-                            </div>
-                            <!-- Chase invoices -->
-                            <div class="flex items-center gap-2">
-                                <div class="w-5 h-5 rounded bg-orange-500/20 flex items-center justify-center text-orange-300 flex-shrink-0"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
-                                <div class="flex-1 flex gap-0.5 h-4 items-end">
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-orange-500/70 rounded-sm" style="height: 70%"></div>
-                                    <div class="flex-1 bg-orange-500/40 rounded-sm" style="height: 35%"></div>
-                                    <div class="flex-1 bg-orange-500/30 rounded-sm" style="height: 20%"></div>
-                                    <div class="flex-1 bg-orange-500/85 rounded-sm" style="height: 90%"></div>
-                                    <div class="flex-1 bg-orange-500/40 rounded-sm" style="height: 30%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                </div>
-                            </div>
-                            <!-- Catch mistakes -->
-                            <div class="flex items-center gap-2">
-                                <div class="w-5 h-5 rounded bg-red-500/20 flex items-center justify-center text-red-300 flex-shrink-0"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div>
-                                <div class="flex-1 flex gap-0.5 h-4 items-end">
-                                    <div class="flex-1 bg-red-500/30 rounded-sm" style="height: 20%"></div>
-                                    <div class="flex-1 bg-red-500/30 rounded-sm" style="height: 20%"></div>
-                                    <div class="flex-1 bg-red-500/30 rounded-sm" style="height: 20%"></div>
-                                    <div class="flex-1 bg-red-500/40 rounded-sm" style="height: 30%"></div>
-                                    <div class="flex-1 bg-red-500/40 rounded-sm" style="height: 30%"></div>
-                                    <div class="flex-1 bg-red-500/85 rounded-sm" style="height: 90%"></div>
-                                    <div class="flex-1 bg-red-500/40 rounded-sm" style="height: 30%"></div>
-                                    <div class="flex-1 bg-red-500/40 rounded-sm" style="height: 30%"></div>
-                                    <div class="flex-1 bg-red-500/40 rounded-sm" style="height: 30%"></div>
-                                    <div class="flex-1 bg-red-500/30 rounded-sm" style="height: 20%"></div>
-                                    <div class="flex-1 bg-red-500/30 rounded-sm" style="height: 20%"></div>
-                                    <div class="flex-1 bg-red-500/30 rounded-sm" style="height: 20%"></div>
-                                </div>
-                            </div>
-                            <!-- Draft reports -->
-                            <div class="flex items-center gap-2">
-                                <div class="w-5 h-5 rounded bg-purple-500/20 flex items-center justify-center text-purple-300 flex-shrink-0"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2a4 4 0 014-4h4m0 0l-3-3m3 3l-3 3M3 12a9 9 0 1018 0 9 9 0 00-18 0z"/></svg></div>
-                                <div class="flex-1 flex gap-0.5 h-4 items-end">
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-purple-500/85 rounded-sm" style="height: 90%"></div>
-                                    <div class="flex-1 bg-purple-500/60 rounded-sm" style="height: 60%"></div>
-                                    <div class="flex-1 bg-purple-500/40 rounded-sm" style="height: 30%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                </div>
-                            </div>
-                            <!-- Prep tax -->
-                            <div class="flex items-center gap-2">
-                                <div class="w-5 h-5 rounded bg-cyan-500/20 flex items-center justify-center text-cyan-300 flex-shrink-0"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
-                                <div class="flex-1 flex gap-0.5 h-4 items-end">
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-gray-700/40 rounded-sm" style="height: 10%"></div>
-                                    <div class="flex-1 bg-cyan-500/85 rounded-sm" style="height: 90%"></div>
-                                    <div class="flex-1 bg-cyan-500/30 rounded-sm" style="height: 25%"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex justify-between mt-3 text-[9px] font-mono text-gray-600">
-                            <span>00</span><span>04</span><span>08</span><span>12</span><span>16</span><span>20</span><span>23</span>
-                        </div>
-                    </div>
-
-                    <!-- Currently active -->
-                    <div class="bg-[#1A1F26] border border-gray-800 rounded-2xl p-5">
-                        <h3 class="text-[14px] font-bold text-white mb-4">Sedang berjalan</h3>
-                        <div class="space-y-3">
-                            <div class="flex items-center gap-3">
-                                <div class="w-7 h-7 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-300 flex-shrink-0"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
-                                <div class="flex-1">
-                                    <div class="text-[12px] font-bold text-white">Menyusun pengingat pembayaran</div>
-                                    <div class="text-[11px] text-gray-400">Untuk Indra Catering · lewat 17 hari</div>
-                                </div>
-                                <div class="w-2 h-2 rounded-full bg-green-500 live-dot"></div>
-                            </div>
-                            <div class="flex items-center gap-3">
-                                <div class="w-7 h-7 rounded-lg bg-red-500/20 flex items-center justify-center text-red-300 flex-shrink-0"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div>
-                                <div class="flex-1">
-                                    <div class="text-[12px] font-bold text-white">Memantau tagihan tidak biasa</div>
-                                    <div class="text-[11px] text-gray-400">Semua tenang hari ini</div>
-                                </div>
-                                <div class="w-2 h-2 rounded-full bg-amber-500 live-dot"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Hours saved callout -->
-                    <div class="bg-gradient-to-br from-[#EA580C] to-[#F97316] rounded-2xl p-5 text-white">
-                        <div class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider opacity-90 mb-2">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            Hemat hari ini
-                        </div>
-                        <div class="text-[36px] font-bold tracking-tight leading-none mb-1">6 jam</div>
-                        <div class="text-[12px] opacity-90 leading-snug">vs. kerja manual. Sekitar satu sore Anda kembali.</div>
-                    </div>
-                </div>
-            </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- END-TO-END PIPELINE -->
-    <section class="py-16 md:py-24 px-6 border-t border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-3xl mb-14">
-                <h2 class="text-[32px] md:text-[44px] font-bold tracking-tight text-gray-900 mb-4 leading-tight">
-                    Satu tagihan. Satu alur mulus. <br class="hidden md:block"/>
-                    <span class="text-gray-500">Tanpa Anda klik.</span>
-                </h2>
-                <p class="text-[16px] text-gray-600 leading-relaxed">
-                    Tagihan baru masuk jam 10:48. Jam 10:51 sudah dikelompokkan, dicek, dicocokkan dengan bank, dan masuk pembukuan — tanpa Anda sentuh apa pun.
-                </p>
-            </div>
-
-            <div class="grid md:grid-cols-5 gap-4 relative">
-                <!-- Stage 1 -->
-                <div class="bg-white border border-gray-200 rounded-xl p-5 relative">
-                    <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Step 1 — 10:48</div>
-                    <div class="flex items-center gap-2.5 mb-3">
-                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 flex items-center justify-center">
-                            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                        </div>
-                        <span class="text-[13px] font-bold text-gray-900">Struk masuk</span>
-                    </div>
-                    <p class="text-[12px] text-gray-600 leading-snug">Di-forward tim ops via email. Office Mart Jakarta, Rp 555.000.</p>
-                </div>
-
-                <!-- Stage 2 -->
-                <div class="bg-white border border-gray-200 rounded-xl p-5 relative">
-                    <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Step 2 — 10:49</div>
-                    <div class="flex items-center gap-2.5 mb-3">
-                        <div class="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg></div>
-                        <span class="text-[13px] font-bold text-gray-900">Dikelompokkan</span>
-                    </div>
-                    <p class="text-[12px] text-gray-600 leading-snug">Ditandai Cost of Sales → Inventory. 99% yakin.</p>
-                </div>
-
-                <!-- Stage 3 -->
-                <div class="bg-white border border-gray-200 rounded-xl p-5 relative">
-                    <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Step 3 — 10:49</div>
-                    <div class="flex items-center gap-2.5 mb-3">
-                        <div class="w-8 h-8 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div>
-                        <span class="text-[13px] font-bold text-gray-900">Lalu diverifikasi</span>
-                    </div>
-                    <p class="text-[12px] text-gray-600 leading-snug">Cek riwayat supplier. Tidak ada duplikat, jumlahnya normal.</p>
-                </div>
-
-                <!-- Stage 4 -->
-                <div class="bg-white border border-gray-200 rounded-xl p-5 relative">
-                    <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Step 4 — 10:50</div>
-                    <div class="flex items-center gap-2.5 mb-3">
-                        <div class="w-8 h-8 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center text-green-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg></div>
-                        <span class="text-[13px] font-bold text-gray-900">Lalu dicocokkan</span>
-                    </div>
-                    <p class="text-[12px] text-gray-600 leading-snug">Dipasangkan dengan debit BCA jam 10:32. Pembukuan Anda update.</p>
-                </div>
-
-                <!-- Stage 5 -->
-                <div class="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-[#EA580C] rounded-xl p-5 relative">
-                    <div class="text-[11px] font-bold text-[#EA580C] uppercase tracking-wider mb-3">Step 5 — 10:51</div>
-                    <div class="flex items-center gap-2.5 mb-3">
-                        <div class="w-8 h-8 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2a4 4 0 014-4h4m0 0l-3-3m3 3l-3 3M3 12a9 9 0 1018 0 9 9 0 00-18 0z"/></svg></div>
-                        <span class="text-[13px] font-bold text-gray-900">Lalu dicatat</span>
-                    </div>
-                    <p class="text-[12px] text-gray-700 leading-snug">Ditambahkan ke laporan bulan ini. <b>Beres.</b></p>
-                </div>
-            </div>
-
-            <p class="text-center text-[13px] text-gray-500 mt-8">Dari inbox ke ledger dalam 3 menit. Anda tidak melakukan apa-apa.</p>
-        </div>
-    </section>
-
-
-
-    <!-- FAQ -->
-    <section id="faq" class="py-16 md:py-20 px-6 border-t border-gray-200 bg-gray-50">
-        <div class="max-w-3xl mx-auto">
-            <div class="mb-10">
-                <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3">
-                    Pertanyaan yang sering ditanyakan
-                </h2>
-                <p class="text-[16px] text-gray-600">
-                    Jawaban singkat untuk pertanyaan yang sering muncul sebelum daftar.
-                </p>
-            </div>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Apa itu FluxyOS AI Agents?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">FluxyOS AI Agents adalah enam pekerja AI khusus yang mengotomasi tugas keuangan paling memakan waktu — rekonsiliasi bank, kategorisasi transaksi, penagihan invoice, deteksi anomali, penyusunan laporan bulanan, dan ekspor siap pajak. Mereka jalan 24/7 dan tanya sebelum uang keluar.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Apakah AI agent menggantikan tim keuangan saya?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Tidak — mereka mengambil pekerjaan rutin supaya tim keuangan Anda bisa fokus ke keputusan dan strategi. Kebanyakan tim butuh 4 menit per hari untuk review hal yang di-flag agent. Tambah dua akuntan akan habis sekitar Rp 480 juta/tahun; agent kerjakan pekerjaan rutin yang sama tanpa gaji.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Seberapa akurat AI-nya?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Setelah seminggu belajar chart of accounts Anda, AI mencapai akurasi kategorisasi transaksi 99,2%. Apapun di bawah 90% confidence otomatis di-flag untuk review manusia, supaya kesalahan diam-diam tidak masuk pembukuan Anda.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Apakah jalan dengan chart of accounts Indonesia saya?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Ya. AI belajar dari chart of accounts yang sudah ada — termasuk kategori custom seperti 'Biaya Bahan Baku' atau 'Operasional Outlet'. Adaptif saat Anda koreksi tag-nya, makin baik seiring waktu.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Apakah data keuangan saya aman?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">FluxyOS pakai enkripsi tingkat bank untuk semua koneksi. Akses bank feed read-only — AI bisa lihat transaksi tapi tidak bisa pindah uang tanpa approval eksplisit Anda. Semua data disimpan sesuai aturan perlindungan data Indonesia.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">AI mendukung bahasa apa saja?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">AI jalan dalam Bahasa Indonesia dan English, termasuk nama vendor lokal dan istilah bisnis Indonesia. Laporan bisa disusun dalam bahasa mana saja sesuai preferensi tim Anda.</p>
-            </details>
-        </div>
-    </section>
-
-    <!-- CTA -->
-    <section class="bg-[#0B0F19] py-16 md:py-24 px-6 relative overflow-hidden">
-        <div class="absolute inset-0 opacity-[0.04] pointer-events-none" style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 32px 32px;"></div>
-        <div class="max-w-[1280px] mx-auto text-center relative">
-            <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-white mb-5 leading-tight">
-                Sewa enam agent pertama Anda <br class="hidden md:block"/>sebelum makan siang besok.
-            </h2>
-            <p class="text-[17px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">
-                Tanpa training, tanpa onboarding, tanpa gaji. Hubungkan bank Anda, arahkan ke daftar akun, dan lihat mereka bekerja.
+            <p class="text-[14px] leading-relaxed max-w-[280px] footer-body-text">
+                Sistem operasi keuangan yang cerdas. Satukan budget internal, pengeluaran operasional, dan pendapatan untuk agensi, manufaktur, dan bisnis modern.
             </p>
-            <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-md inline-block text-center">
-                    Coba Gratis
-                </a>
-                <a href="/id/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">
-                    Lihat Harga
-                </a>
-            </div>
         </div>
-    </section>
 
+        <div class="md:col-span-2">
+            <h4 class="text-[13px] font-bold text-white mb-6 uppercase tracking-wider">Platform</h4>
+            <ul class="space-y-4 text-[14px] font-medium footer-body-text">
+                <li><a href="/id/budgetlanding" class="footer-link">Dynamic Budgeting</a></li>
+                <li><a href="/id/vendorspend" class="footer-link">Vendor Spend</a></li>
+                <li><a href="/id/revenuesync" class="footer-link">Revenue Sync</a></li>
+                <li><a href="/id/receiptcapture" class="footer-link">Receipt Capture</a></li>
+                <li><a href="/id/aiagents" class="footer-link">AI Finance Agents</a></li>
+            </ul>
+        </div>
+
+        <div class="md:col-span-2">
+            <h4 class="text-[13px] font-bold text-white mb-6 uppercase tracking-wider">Studi Kasus</h4>
+            <ul class="space-y-4 text-[14px] font-medium footer-body-text">
+                <li><a href="/id/use-cases/founder-ceo" class="footer-link">Founders &amp; CEOs</a></li>
+                <li><a href="/id/use-cases/cfo-finance-teams" class="footer-link">CFOs &amp; Finance Teams</a></li>
+                <li><a href="/id/use-cases/ecommerce-brands" class="footer-link">E-commerce Brands</a></li>
+                <li><a href="/id/use-cases/marketing-agencies" class="footer-link">Marketing Agencies</a></li>
+            </ul>
+        </div>
+
+        <div class="md:col-span-2">
+            <h4 class="text-[13px] font-bold text-white mb-6 uppercase tracking-wider">Perusahaan</h4>
+            <ul class="space-y-4 text-[14px] font-medium footer-body-text">
+                <li><a href="/id/pricing" class="footer-link">Harga</a></li>
+                <li><a href="/contact-sales" class="footer-link">Hubungi Sales</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="max-w-[1280px] mx-auto pt-8 footer-divider flex flex-col md:flex-row justify-between items-center gap-6">
+        <p class="text-[14px] font-medium footer-body-text">© 2026 FluxyOS Technologies. Semua hak dilindungi.</p>
+        <div class="flex gap-8 text-[14px] font-medium footer-body-text">
+            <a href="/privacy" class="footer-link">Kebijakan Privasi</a>
+            <a href="/terms" class="footer-link">Ketentuan Layanan</a>
+        </div>
+    </div>
+</footer>
+<!-- shared-footer:end -->
+    <script src="/assets/js/ai-agent-hero-motion.js" defer></script>
+    <script src="/assets/js/ai-agent-landing.js" defer></script>
     <script src="/assets/js/universe-canvas.js" defer></script>
     <script src="/assets/js/footer-loader.js" defer></script>
     <script src="/assets/js/fluxyos.js" defer></script>
