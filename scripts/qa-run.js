@@ -530,6 +530,7 @@ function rotatingShard(alreadyCovered) {
 function laneFE(changed) {
   console.log('\nFE');
   let ok = true;
+  ok = record('fe', run('marketing navbar parity', 'node', ['scripts/sync-marketing-nav.js', '--check'])) && ok;
 
   ok = record('fe', run('design-system lint (changed lines)', 'node', ['scripts/qa/lint-design.js'])) && ok;
 
@@ -537,6 +538,11 @@ function laneFE(changed) {
   if (SKIP_BROWSER) {
     console.log('  – console sweep skipped (--skip-browser)');
     return ok;
+  }
+  if (FORCE_ALL || changed.some((f) => /^(?:id\/)?vendorspend\.html$|^assets\/(?:css|js)\/invoice-landing\.|^tests\/invoice-landing\./.test(f))) {
+    ok = record('fe', run('browser: invoice landing EN + ID', 'npx',
+      ['playwright', 'test', '--config', 'tests/invoice-landing.config.js'],
+      { timeout: 4 * 60_000 })) && ok;
   }
   // No early exit for "nothing changed" any more: the rotating slice is the
   // whole point — it opens pages precisely when nobody has touched them.

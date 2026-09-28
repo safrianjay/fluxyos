@@ -52,25 +52,27 @@
       context.fillStyle = light;
       context.fillRect(0, 0, width, height);
     }
-    const cellWidth = height / 110;
+    // Keep drops legible on tall mobile heroes, rather than scaling the grid
+    // to the full stacked content height. Motion is automatic, not hover-led.
+    const cellWidth = Math.max(4, Math.min(height / 110, 8));
     const cellHeight = cellWidth * 2.4;
     for (let column = 0; column < Math.ceil(width / cellWidth); column++) {
-      const fall = time * height * (.02 + hash(column * 7.31) * .03);
+      const fall = time * height * (.045 + hash(column * 7.31) * .045);
       const shift = fall % cellHeight;
       const rowOffset = Math.floor(fall / cellHeight);
       for (let row = -1; row < Math.ceil(height / cellHeight); row++) {
         const seed = column * 173 + (row - rowOffset) * 79;
-        if (hash(seed) < .92) continue;
+        if (hash(seed) < .89) continue;
         const x = (column + .5) * cellWidth;
         const y = (row + .5) * cellHeight + shift;
         const phase = hash(seed + 31.7) * Math.PI * 2;
         const rate = .6 + hash(seed + 91.3) * 1.4;
-        const twinkle = .35 + .65 * Math.pow(.5 + .5 * Math.sin(time * rate + phase), 3);
-        const sides = .12 + .85 * smooth(.12, .42, Math.abs(x / width - .5));
-        const fade = smooth(0, .3, y / height) * (1 - smooth(.7, 1, y / height));
+        const twinkle = .5 + .5 * Math.pow(.5 + .5 * Math.sin(time * rate + phase), 3);
+        const sides = .2 + .8 * smooth(.12, .42, Math.abs(x / width - .5));
+        const fade = smooth(0, .2, y / height) * (1 - smooth(.8, 1, y / height));
         context.globalAlpha = twinkle * sides * fade * .9;
         context.fillStyle = '#fff';
-        context.fillRect(x, y, cellWidth * .48, cellHeight * .42);
+        context.fillRect(x, y, cellWidth * .55, cellHeight * .5);
       }
     }
     context.globalAlpha = 1;

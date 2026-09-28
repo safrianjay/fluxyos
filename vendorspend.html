@@ -4,59 +4,14 @@
     <meta charset="UTF-8">
     <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vendor Spend Management for Indonesian Businesses | FluxyOS</title>
+    <title>Invoice Management & AI Scanning | FluxyOS</title>
     <link rel="stylesheet" href="/assets/css/tailwind.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/fluxyos.css">
 
-    <style>
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            -webkit-font-smoothing: antialiased;
-        }
-        .font-mono { font-family: 'Fira Code', monospace; }
-
-        .hero-gradient {
-            background: linear-gradient(135deg, #F9FAFB 0%, #FFFFFF 100%);
-        }
-
-        .section-dark {
-            background: #0B0F19;
-            color: white;
-        }
-
-        .feature-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid rgba(234, 88, 12, 0.2);
-            color: #EA580C;
-        }
-
-        .vendor-row {
-            transition: background-color 0.15s ease;
-        }
-        .vendor-row:hover {
-            background-color: #F9FAFB;
-        }
-
-        .badge-approved {
-            background: #DCFCE7;
-            color: #166534;
-        }
-        .badge-pending {
-            background: #FEF3C7;
-            color: #92400E;
-        }
-        .badge-paid {
-            background: #DBEAFE;
-            color: #1E40AF;
-        }
-    </style>
-    <meta name="description" content="Centralize vendor invoices, automate approvals, catch duplicate payments.">
+    <link rel="stylesheet" href="/assets/css/invoice-landing.css">
+<link rel="stylesheet" href="/assets/css/footer.css">
+    <meta name="description" content="Create, email, scan, and track invoices in FluxyOS. Review AI-extracted details and connect invoice activity with your accounting workflow.">
     <link rel="canonical" href="https://fluxyos.com/vendorspend">
     <link rel="alternate" hreflang="en" href="https://fluxyos.com/vendorspend">
     <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/vendorspend">
@@ -65,9 +20,9 @@
     <!-- Open Graph -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://fluxyos.com/vendorspend">
-    <meta property="og:title" content="Vendor Spend Management for Indonesian Businesses | FluxyOS">
-    <meta property="og:description" content="Centralize vendor invoices, automate approvals, catch duplicate payments.">
-    <meta property="og:image" content="https://fluxyos.com/assets/images/og-vendorspend.png">
+    <meta property="og:title" content="Invoice Management & AI Scanning | FluxyOS">
+    <meta property="og:description" content="Create, email, scan, and track invoices in FluxyOS. Review AI-extracted details and connect invoice activity with your accounting workflow.">
+    <meta property="og:image" content="https://fluxyos.com/assets/images/og-invoice.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:site_name" content="FluxyOS">
@@ -76,9 +31,9 @@
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Vendor Spend Management for Indonesian Businesses | FluxyOS">
-    <meta name="twitter:description" content="Centralize vendor invoices, automate approvals, catch duplicate payments.">
-    <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-vendorspend.png">
+    <meta name="twitter:title" content="Invoice Management & AI Scanning | FluxyOS">
+    <meta name="twitter:description" content="Create, email, scan, and track invoices in FluxyOS. Review AI-extracted details and connect invoice activity with your accounting workflow.">
+    <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-invoice.png">
 
     <!-- Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZN7J6DRD2L"></script>
@@ -90,153 +45,129 @@
     </script>
 
     <!-- Schema.org structured data -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "@id": "https://fluxyos.com/#organization",
-      "name": "FluxyOS",
-      "legalName": "PT SAF Teknologi Maju",
-      "url": "https://fluxyos.com",
-      "logo": "https://fluxyos.com/assets/images/favicon.svg",
-      "description": "Intelligent Finance Operating System connecting financial operations, accounting, business operations, and intelligence into one system, for businesses at every growth stage.",
-      "foundingDate": "2026",
-      "areaServed": {
-        "@type": "Country",
-        "name": "Indonesia"
-      },
-      "address": {
-        "@type": "PostalAddress",
-        "streetAddress": "Plaza Indonesia, Level 5 Unit E021AB, Jl. M.H. Thamrin No. Kav. 28-30",
-        "addressLocality": "Jakarta Pusat",
-        "addressRegion": "DKI Jakarta",
-        "postalCode": "10350",
-        "addressCountry": "ID"
-      },
-      "sameAs": [
-        "https://www.linkedin.com/company/fluxyos/",
-        "https://www.instagram.com/fluxy_os/"
-      ],
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "contactType": "customer support",
-        "email": "support@fluxyos.com",
-        "availableLanguage": [
-          "English",
-          "Indonesian"
-        ]
-      }
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "FluxyOS Vendor Spend",
-      "applicationCategory": "BusinessApplication",
-      "applicationSubCategory": "Finance Operations Software",
-      "operatingSystem": "Web, iOS, Android",
-      "url": "https://fluxyos.com/vendorspend",
-      "description": "Centralize vendor invoices, automate approvals, catch duplicate payments.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "IDR",
-        "availability": "https://schema.org/InStock"
-      },
-      "featureList": [
-        "Centralized vendor invoice inbox",
-        "Rule-based approval workflow",
-        "Duplicate payment detection",
-        "Multi-currency invoicing (IDR, USD, SGD)",
-        "PPN tax-ready audit trail",
-        "Slack-native approval notifications"
-      ],
-      "publisher": {
-        "@id": "https://fluxyos.com/#organization"
-      }
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Home",
-          "item": "https://fluxyos.com/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Vendor Spend",
-          "item": "https://fluxyos.com/vendorspend"
-        }
-      ]
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "What is vendor spend management?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Vendor spend management is the process of tracking, approving, and paying every supplier and SaaS bill in one centralized system instead of email threads and spreadsheets. It lets finance teams catch duplicate payments, enforce approval limits, and maintain a clean audit trail of who paid whom."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How is FluxyOS Vendor Spend different from a regular accounting tool?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Accounting tools like Xero, QuickBooks, and Jurnal record what already happened. FluxyOS Vendor Spend automates the work that produces those records \u2014 it captures invoices, routes them for approval, schedules payment, and posts the entry. You can use FluxyOS alongside your existing accounting tool; we push cleaned data into it."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Does FluxyOS support Indonesian banks?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. FluxyOS imports statements from BCA, Mandiri, BNI, BRI, and other Indonesian banks for reconciliation. If you also pay international vendors, invoices support IDR, USD, and SGD, and a foreign-currency invoice is converted at the live rate when it is paid."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can I set custom approval rules for vendor payments?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. You can set rules by amount (e.g., anything over Rp 5M needs a director), by category (new vendors require procurement review), or by team (marketing budget is approved by the marketing lead). Approvers get a Slack notification and approve in one click."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How does FluxyOS catch duplicate vendor payments?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Every incoming invoice is checked against your vendor history \u2014 same supplier, same amount, same period. FluxyOS flags it for review before any money moves, so duplicates never become surprise charges on next month's bank statement."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "What does it cost?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "FluxyOS has a free tier for solo founders and small teams, with paid plans starting from Rp 490.000/month. See the pricing page for full breakdown."
-          }
-        }
-      ]
-    }
-    </script>
-</head>
-<body class="min-h-screen flex flex-col">
 
-    <!-- 1. Navigation with Mega Menu -->
+<script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://fluxyos.com/#organization",
+  "name": "FluxyOS",
+  "legalName": "PT SAF Teknologi Maju",
+  "url": "https://fluxyos.com",
+  "logo": "https://fluxyos.com/assets/images/favicon.svg",
+  "description": "Intelligent Finance Operating System connecting financial operations, accounting, business operations, and intelligence into one system, for businesses at every growth stage.",
+  "foundingDate": "2026",
+  "areaServed": {
+    "@type": "Country",
+    "name": "Indonesia"
+  },
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Plaza Indonesia, Level 5 Unit E021AB, Jl. M.H. Thamrin No. Kav. 28-30",
+    "addressLocality": "Jakarta Pusat",
+    "addressRegion": "DKI Jakarta",
+    "postalCode": "10350",
+    "addressCountry": "ID"
+  },
+  "sameAs": [
+    "https://www.linkedin.com/company/fluxyos/",
+    "https://www.instagram.com/fluxy_os/"
+  ],
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "customer support",
+    "email": "support@fluxyos.com",
+    "availableLanguage": [
+      "English",
+      "Indonesian"
+    ]
+  }
+}</script>
+<script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "FluxyOS Invoice",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "url": "https://fluxyos.com/vendorspend",
+  "description": "Create, email, scan, and track invoices in FluxyOS. Review AI-extracted details and connect invoice activity with your accounting workflow.",
+  "publisher": {
+    "@id": "https://fluxyos.com/#organization"
+  }
+}</script>
+<script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "FluxyOS",
+      "item": "https://fluxyos.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "FluxyOS Invoice",
+      "item": "https://fluxyos.com/vendorspend"
+    }
+  ]
+}</script>
+<script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Can I create and email invoices in FluxyOS?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Add customer details, line items, payment terms, and tax. Review the invoice and choose “Finalize and send.” With invoice email delivery enabled, FluxyOS generates the PDF and emails it to your customer automatically. Track delivery and resend from the invoice."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What does AI invoice scanning extract?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The scanner reads supplier details, invoice number, invoice date, due date, currency, and total, and suggests a category. Review and correct the fields before saving a bill. Structured line-item, tax, and bank-detail extraction is not currently included."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I receive supplier invoices here?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "You can upload a supplier invoice as a PDF or supported image, review the extracted details, and save a bill in FluxyOS. This is an upload-and-review workflow, not a dedicated inbound email inbox."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Which invoice statuses can I track?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Track draft, open, partially paid, overdue, paid, and void invoices. Email delivery is tracked separately. A sent email does not mean the customer has viewed or paid the invoice."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Which currencies are supported?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Create invoices in IDR, USD, SGD, PHP, and MYR. AI bill scanning currently recognizes IDR, USD, and SGD. Foreign-currency invoices retain their original amounts and are not automatically consolidated into the ledger."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do invoices connect to accounting?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Supported base-currency invoice workflows create journal entries for issuance and payment, connecting receivables and revenue to the ledger and financial reports. Supplier bills connect expenses and payables through their own accounting workflow. Foreign-currency records have separate accounting limitations."
+      }
+    }
+  ]
+}</script>
+</head>
+<body>
     <nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
         <div class="max-w-[1280px] mx-auto px-6 h-[80px] flex items-center justify-between">
             <div class="flex items-center gap-12 h-full">
@@ -253,23 +184,23 @@
                     </div>
                     <span class="font-bold text-xl tracking-tight text-gray-900">FluxyOS</span>
                 </a>
-                
+
                 <div class="hidden lg:flex items-center gap-8 h-full">
-                    
+
                     <!-- Platform Mega Menu Trigger -->
                     <div class="group h-full flex items-center">
                         <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 group-hover:text-gray-900 transition-colors h-full">
-                            Platform 
+                            Platform
                             <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
                         </button>
 
                         <!-- Platform Dropdown Panel -->
                         <div class="absolute left-0 top-[80px] w-full bg-white border-b border-gray-200 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                             <div class="max-w-[1280px] mx-auto flex">
-                                
+
                                 <!-- Columns Area -->
                                 <div class="flex-1 py-10 px-6 flex gap-12">
-                                    
+
                                     <!-- Features Column -->
                                     <div class="flex-[2]">
                                         <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">Features</h4>
@@ -302,12 +233,12 @@
                                                 </div>
                                             </a>
                                             <a href="/vendorspend" class="flex items-start gap-4 group/item">
-                                                <div class="w-10 h-10 rounded-lg border border-[#EA580C] bg-white flex items-center justify-center flex-shrink-0 text-[#EA580C]">
+                                                <div class="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover/item:border-[#EA580C] group-hover/item:text-[#EA580C] text-gray-600 transition-colors">
                                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                                                 </div>
                                                 <div>
-                                                    <div class="text-[15px] font-bold text-[#EA580C] mb-0.5 transition-colors">Vendor Spend</div>
-                                                    <div class="text-[13px] text-gray-500 leading-snug">Manage SaaS & contract payouts</div>
+                                                    <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">Invoice</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Create, send, scan &amp; track invoices</div>
                                                 </div>
                                             </a>
                                             <a href="/revenuesync" class="flex items-start gap-4 group/item">
@@ -341,7 +272,7 @@
                                                 </div>
                                                 <div>
                                                     <div class="text-[15px] font-bold text-gray-900 mb-0.5 group-hover/item:text-[#EA580C] transition-colors">FluxyOS AI Agents</div>
-                                                    <div class="text-[13px] text-gray-500 leading-snug">Multiply finance efficiency instantly</div>
+                                                    <div class="text-[13px] text-gray-500 leading-snug">Ask about recorded financial data</div>
                                                 </div>
                                             </a>
                                             <a href="/fluxyos" class="flex items-start gap-4 group/item">
@@ -369,19 +300,19 @@
                                 <!-- Right Sidebar: New Release -->
                                 <div class="w-[340px] bg-[#F8F9FB] border-l border-gray-200 p-8 flex-shrink-0">
                                     <h4 class="text-[13px] font-bold text-gray-900 mb-5 uppercase tracking-wider">New Release</h4>
-                                    
+
                                     <a href="/fluxyos" class="block group/release cursor-pointer mb-4">
                                         <div class="bg-black rounded-xl h-[160px] p-6 flex items-end relative overflow-hidden mb-4 shadow-md group-hover/release:shadow-lg transition-all">
                                             <!-- Grainy Overlay Simulation -->
                                             <div class="absolute inset-0 opacity-40 mix-blend-overlay bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiAvPgo8cGF0aCBkPSJNMCAwSDRWNEgwWiIgZmlsbD0ibm9uZSIvPjwvc3ZnPg==')]"></div>
                                             <!-- Gradient -->
                                             <div class="absolute inset-0 bg-gradient-to-tr from-gray-900 via-black to-gray-800"></div>
-                                            
+
                                             <h3 class="relative z-10 text-white font-bold text-[36px] leading-[0.9] tracking-tighter">
                                                 SPRING<br/>RELEASE<br/><span class="text-gray-400">2026</span>
                                             </h3>
                                         </div>
-                                        
+
                                         <h5 class="text-[14px] font-bold text-gray-900 mb-1 group-hover/release:text-[#EA580C] transition-colors flex items-center gap-1.5">
                                             WhatsApp AI Agents &rarr;
                                         </h5>
@@ -398,17 +329,17 @@
                     <!-- NEW: Use Cases Mega Menu Trigger -->
                     <div class="group h-full flex items-center">
                         <button class="flex items-center gap-1.5 text-[15px] font-medium text-gray-600 group-hover:text-gray-900 transition-colors h-full">
-                            Use Cases 
+                            Use Cases
                             <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
                         </button>
 
                         <!-- Use Cases Dropdown Panel -->
                         <div class="absolute left-0 top-[80px] w-full bg-white border-b border-gray-200 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                             <div class="max-w-[1280px] mx-auto flex">
-                                
+
                                 <!-- Columns Area -->
                                 <div class="flex-1 py-10 px-6 flex gap-12">
-                                    
+
                                     <!-- Industry Column -->
                                     <div class="flex-[2]">
                                         <h4 class="text-[13px] font-bold text-gray-900 mb-6 uppercase tracking-wider">By Industry</h4>
@@ -511,13 +442,13 @@
                                 <!-- Right Sidebar: Featured Case Study -->
                                 <div class="w-[340px] bg-[#F8F9FB] border-l border-gray-200 p-8 flex-shrink-0">
                                     <h4 class="text-[13px] font-bold text-gray-900 mb-5 uppercase tracking-wider">Featured Story</h4>
-                                    
+
                                     <a href="/fluxyos" class="block group/release cursor-pointer mb-4">
                                         <div class="bg-gray-100 rounded-xl h-[160px] p-6 flex items-end relative overflow-hidden mb-4 shadow-sm border border-gray-200 group-hover/release:shadow-md transition-all">
                                             <!-- Simple Abstract Image Replacement -->
                                             <div class="absolute inset-0 bg-gradient-to-tr from-gray-200 to-gray-50 z-0"></div>
                                             <svg class="absolute top-4 right-4 w-24 h-24 text-gray-300 opacity-50 z-0 transform -rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
-                                            
+
                                             <div class="relative z-10 w-full">
                                                 <span class="bg-[#EA580C] text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wide inline-block mb-2">Case Study</span>
                                                 <h3 class="text-gray-900 font-bold text-[18px] leading-[1.2] tracking-tight">
@@ -525,7 +456,7 @@
                                                 </h3>
                                             </div>
                                         </div>
-                                        
+
                                         <h5 class="text-[14px] font-bold text-gray-900 mb-1 group-hover/release:text-[#EA580C] transition-colors flex items-center gap-1.5">
                                             Read the story &rarr;
                                         </h5>
@@ -543,7 +474,7 @@
                     <a href="/pricing" class="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">Pricing</a>
                 </div>
             </div>
-            
+
             <div class="flex items-center gap-6">
                 <!-- Language Dropdown -->
                 <div class="relative group cursor-pointer hidden sm:block h-full py-2">
@@ -553,7 +484,7 @@
                         <svg class="w-3.5 h-3.5 opacity-50 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
                     <div class="absolute right-0 top-[100%] mt-2 w-36 bg-white border border-gray-100 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden py-1">
-                        <a href="/vendorspend" class="flex items-center justify-between px-4 py-2.5 text-[14px] font-medium text-gray-900 bg-gray-50">
+                        <a href="/fluxyos" class="flex items-center justify-between px-4 py-2.5 text-[14px] font-medium text-gray-900 bg-gray-50">
                             English (EN)
                             <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
                         </a>
@@ -591,7 +522,7 @@
                         </a>
                         <a href="/vendorspend" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
                             <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg></span>
-                            <span><span class="block text-[15px] font-bold text-gray-900">Vendor Spend</span><span class="block text-[13px] text-gray-500">Manage SaaS & contract payouts</span></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Invoice</span><span class="block text-[13px] text-gray-500">Create, send, scan &amp; track invoices</span></span>
                         </a>
                         <a href="/revenuesync" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
                             <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg></span>
@@ -599,7 +530,11 @@
                         </a>
                         <a href="/aiagents" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
                             <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></span>
-                            <span><span class="block text-[15px] font-bold text-gray-900">FluxyOS AI Agents</span><span class="block text-[13px] text-gray-500">Multiply finance efficiency instantly</span></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">FluxyOS AI Agents</span><span class="block text-[13px] text-gray-500">Ask about recorded financial data</span></span>
+                        </a>
+                        <a href="/receiptcapture" class="mobile-menu-link flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <span class="w-9 h-9 rounded-lg bg-white border border-gray-200 text-[#EA580C] flex items-center justify-center flex-shrink-0"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></span>
+                            <span><span class="block text-[15px] font-bold text-gray-900">Receipt Capture</span><span class="block text-[13px] text-gray-500">Automate manual paper chasing</span></span>
                         </a>
                     </div>
                 </div>
@@ -627,804 +562,173 @@
             </div>
         </div>
     </nav>
-    <!-- HERO SECTION -->
-    <section class="hero-gradient py-16 md:py-24 px-6">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-2 gap-12 items-center">
-                <div>
-                    <h1 class="text-[44px] md:text-[56px] font-bold tracking-tight leading-[1.05] text-gray-900 mb-6">
-                        Every vendor invoice. <br/>One place to control them.
-                    </h1>
-
-                    <p class="text-[18px] text-gray-600 leading-relaxed mb-8 max-w-xl">
-                        Stop chasing vendor invoices in email threads and Slack messages. Centralize every contract, subscription, and one-off payment so finance always knows what's going out — and why.
-                    </p>
-
-                    <div class="flex flex-col sm:flex-row gap-4">
-                        <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-8 py-4 rounded-md transition-all duration-200 shadow-sm hover:shadow inline-block text-center">
-                            Get started free
-                        </a>
-                        <a href="#workflow" class="border-2 border-gray-300 text-gray-900 font-semibold text-[15px] px-8 py-3 rounded-md hover:border-gray-400 transition-colors inline-block text-center">
-                            See how it works
-                        </a>
-                    </div>
-
-                    <div class="mt-12 flex items-center gap-8">
-                        <div>
-                            <div class="text-[28px] font-bold text-gray-900">12 hrs</div>
-                            <p class="text-[13px] text-gray-600">Saved per month</p>
-                        </div>
-                        <div>
-                            <div class="text-[28px] font-bold text-gray-900">94%</div>
-                            <p class="text-[13px] text-gray-600">Fewer late payments</p>
-                        </div>
-                        <div>
-                            <div class="text-[28px] font-bold text-gray-900">3 min</div>
-                            <p class="text-[13px] text-gray-600">Avg. approval time</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Hero Visual: Vendor Dashboard Mockup -->
-                <div class="relative">
-                    <div class="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-                        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                            <div class="flex items-center gap-2">
-                                <div class="w-2.5 h-2.5 rounded-full bg-red-400"></div>
-                                <div class="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
-                                <div class="w-2.5 h-2.5 rounded-full bg-green-400"></div>
-                                <span class="ml-3 text-[12px] text-gray-500 font-medium">Vendors • November 2026</span>
-                            </div>
-                            <div class="text-[12px] text-gray-500">Total: <span class="font-bold text-gray-900">Rp 247.8M</span></div>
-                        </div>
-                        <div class="divide-y divide-gray-100">
-                            <div class="vendor-row flex items-center justify-between px-5 py-3.5">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-9 h-9 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center font-bold text-[12px] text-orange-600">AWS</div>
-                                    <div>
-                                        <div class="text-[14px] font-semibold text-gray-900">Amazon Web Services</div>
-                                        <div class="text-[11px] text-gray-500">Infrastructure • Monthly</div>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <span class="badge-paid text-[11px] font-bold px-2 py-1 rounded">Paid</span>
-                                    <div class="text-[13px] font-mono font-bold text-gray-900 w-24 text-right">Rp 42.5M</div>
-                                </div>
-                            </div>
-                            <div class="vendor-row flex items-center justify-between px-5 py-3.5">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-9 h-9 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center font-bold text-[12px] text-purple-600">FG</div>
-                                    <div>
-                                        <div class="text-[14px] font-semibold text-gray-900">Figma</div>
-                                        <div class="text-[11px] text-gray-500">Design tools • Annual</div>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <span class="badge-approved text-[11px] font-bold px-2 py-1 rounded">Approved</span>
-                                    <div class="text-[13px] font-mono font-bold text-gray-900 w-24 text-right">Rp 18.2M</div>
-                                </div>
-                            </div>
-                            <div class="vendor-row flex items-center justify-between px-5 py-3.5 bg-orange-50/30">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-9 h-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-[12px] text-blue-600">SL</div>
-                                    <div>
-                                        <div class="text-[14px] font-semibold text-gray-900">Slack</div>
-                                        <div class="text-[11px] text-gray-500">Communication • Monthly</div>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <span class="badge-pending text-[11px] font-bold px-2 py-1 rounded">Needs approval</span>
-                                    <div class="text-[13px] font-mono font-bold text-gray-900 w-24 text-right">Rp 8.4M</div>
-                                </div>
-                            </div>
-                            <div class="vendor-row flex items-center justify-between px-5 py-3.5">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-9 h-9 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center font-bold text-[12px] text-gray-700">N</div>
-                                    <div>
-                                        <div class="text-[14px] font-semibold text-gray-900">Notion</div>
-                                        <div class="text-[11px] text-gray-500">Productivity • Monthly</div>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <span class="badge-paid text-[11px] font-bold px-2 py-1 rounded">Paid</span>
-                                    <div class="text-[13px] font-mono font-bold text-gray-900 w-24 text-right">Rp 3.1M</div>
-                                </div>
-                            </div>
-                            <div class="vendor-row flex items-center justify-between px-5 py-3.5">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-9 h-9 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center font-bold text-[12px] text-red-600">A</div>
-                                    <div>
-                                        <div class="text-[14px] font-semibold text-gray-900">Adobe Creative Cloud</div>
-                                        <div class="text-[11px] text-gray-500">Design tools • Annual</div>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <span class="badge-approved text-[11px] font-bold px-2 py-1 rounded">Approved</span>
-                                    <div class="text-[13px] font-mono font-bold text-gray-900 w-24 text-right">Rp 12.8M</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="px-5 py-3 bg-gray-50 border-t border-gray-100 text-[12px] text-gray-500 flex items-center justify-between">
-                            <span>+ 23 more vendors</span>
-                            <span class="text-[#EA580C] font-semibold cursor-pointer">View all &rarr;</span>
-                        </div>
-                    </div>
-                    <!-- Floating notification card -->
-                    <div class="absolute -bottom-6 -left-6 bg-white rounded-lg shadow-xl border border-gray-200 px-4 py-3 max-w-[260px] hidden md:block">
-                        <div class="flex items-start gap-3">
-                            <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-                                <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                            </div>
-                            <div>
-                                <div class="text-[13px] font-bold text-gray-900">Duplicate detected</div>
-                                <div class="text-[12px] text-gray-500 leading-snug">Slack invoice already processed last week</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+<main class="invoice-page" id="main-content">
+<section class="invoice-hero">
+  <div class="invoice-hero-copy"><h1>Every invoice.<br>Less busywork.</h1><p>Create and send customer invoices. Scan supplier bills. Keep the details, payments, and accounting connected in FluxyOS.</p><div class="invoice-actions"><a href="/pricing" class="invoice-button invoice-primary">Start free</a><a href="/contact-sales" class="invoice-button">Talk to sales</a></div><a class="invoice-explore" href="#invoice-processing">See how it works <span aria-hidden="true">↗</span></a></div>
+  <div class="invoice-hero-stage" aria-label="Invoice scanning demonstration">
+    <div class="invoice-stage-label"><span class="invoice-live-dot" aria-hidden="true"></span><span>From document to reviewed record.</span></div>
+    <div class="invoice-paper"><div class="invoice-paper-brand"><span class="invoice-monogram">N</span><span>Nusa Studio<small>INV-2026-084</small></span><span class="invoice-paper-type">INVOICE</span></div><div class="invoice-paper-address"><span>Bill to</span><b>Ruang Karya</b><small>finance@ruangkarya.example</small></div><div class="invoice-paper-dates"><span>Issued<b>14 Sep 2026</b></span><span>Due date<b>28 Sep 2026</b></span></div><div class="invoice-paper-line"><span>Design services</span><b>Rp4.000.000</b></div><div class="invoice-paper-line"><span>Production support</span><b>Rp800.000</b></div><div class="invoice-paper-total"><span>Total due</span><b>Rp4.800.000</b></div><div class="invoice-scan-beam" aria-hidden="true"></div></div>
+    <div class="invoice-hero-result"><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><b>Details ready to review</b><span class="invoice-pill">Fluxy AI</span></div><dl><div><dt>Vendor</dt><dd>Nusa Studio</dd></div><div><dt>Invoice number</dt><dd>INV-2026-084</dd></div><div><dt>Amount</dt><dd>Rp4.800.000</dd></div></dl><span class="invoice-review-note">You check the details before saving.</span></div>
+    <ol class="invoice-motion-steps"><li>Upload</li><li>Read</li><li>Review</li></ol><span class="invoice-demo-note">Illustrative product workflow</span>
+  </div>
+</section>
+<div class="invoice-capability-strip"><a href="#create-send-invoices">Create & send</a><span>Scan & review</span><span>Track payments</span><span>Connect accounting</span></div>
+<section class="invoice-section" id="invoice-processing">
+  <header class="invoice-heading"><p class="invoice-section-label">AI invoice processing</p><h2>The invoice is already written.<br>Skip typing it again.</h2><p>Turn a supplier invoice into a bill you can review, save, and track.</p></header>
+  <div class="invoice-processing-grid">
+    <div class="invoice-step-controls" aria-label="Invoice processing steps">
+      <button type="button" data-invoice-step="0" aria-pressed="true"><span>01</span><div><h3>Upload the document.</h3><p>Add a PDF or invoice photo. Keep the original close to the record.</p></div></button>
+      <button type="button" data-invoice-step="1" aria-pressed="false"><span>02</span><div><h3>Let AI read the details.</h3><p>Extract the vendor, invoice number, dates, currency, and total. Get a suggested category.</p></div></button>
+      <button type="button" data-invoice-step="2" aria-pressed="false"><span>03</span><div><h3>Check it before it counts.</h3><p>Review the extracted fields, correct anything missing, and confirm the amount.</p></div></button>
+      <button type="button" data-invoice-step="3" aria-pressed="false"><span>04</span><div><h3>Save a usable record.</h3><p>Create the bill in FluxyOS, ready for payment tracking and your accounting workflow.</p></div></button>
+    </div>
+    <div class="invoice-processing-visual" data-process-stage="0">
+      <div class="invoice-window"><div class="invoice-window-bar"><b>Scan bill</b><span class="invoice-pill">Fluxy AI</span></div><div class="invoice-window-content"><div class="invoice-file"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H5v20h14V7zM14 2v6h5M8 12h8M8 16h6"/></svg><div><b>nusa-invoice-084.pdf</b><small>PDF · 148 KB</small></div><span class="invoice-check" aria-hidden="true">✓</span></div><div class="invoice-extraction"><div class="invoice-field"><span>Vendor</span><b>Nusa Studio</b></div><div class="invoice-field"><span>Invoice number</span><b>INV-2026-084</b></div><div class="invoice-field"><span>Invoice date</span><b>14 Sep 2026</b></div><div class="invoice-field"><span>Due date</span><b>28 Sep 2026</b></div><div class="invoice-field"><span>Currency</span><b>IDR</b></div><div class="invoice-field"><span>Total amount</span><b>Rp4.800.000</b></div></div><div class="invoice-suggested"><span>Suggested category</span><b>Operations</b></div><p class="invoice-scan-disclaimer">AI can misread a document. Always review the extracted details.</p></div><div class="invoice-demo-status" aria-live="polite"><span data-stage-caption>Document uploaded · ready to read</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg></div></div>
+      <div hidden data-stage-labels><span>Document uploaded · ready to read</span><span>AI has extracted the key details</span><span>Review the fields against your document</span><span>Reviewed bill saved · ready to track</span></div>
+    </div>
+  </div>
+</section>
+<section class="invoice-section invoice-create-send" id="create-send-invoices">
+  <header class="invoice-heading"><p class="invoice-section-label">Create & email invoices</p><h2>Create the invoice.<br>Send it straight to your customer.</h2><p>Add your customer’s email, enter the invoice details, and choose “Finalize and send.” FluxyOS generates the PDF and sends the invoice by email through its invoice delivery service.</p></header>
+  <ol class="invoice-send-steps">
+    <li><span>01</span><div><h3>Create your invoice</h3><p>Add the customer, line items, tax, currency, and payment terms.</p></div></li>
+    <li><span>02</span><div><h3>Review & finalize</h3><p>Check the preview and recipient, then choose “Finalize and send.”</p></div></li>
+    <li><span>03</span><div><h3>Let FluxyOS send the email</h3><p>With invoice email delivery enabled, FluxyOS sends the PDF automatically. Check delivery or resend from the invoice.</p></div></li>
+  </ol>
+  <div class="invoice-send-workspace">
+    <div class="invoice-send-toolbar"><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H5v20h14V7zM14 2v6h5M8 12h8M8 16h6"/></svg><b>Customer invoice</b><span>INV-2026-084</span></div><span class="invoice-pill">IDR</span></div>
+    <div class="invoice-send-panels">
+      <div class="invoice-create-panel">
+        <div class="invoice-send-panel-heading"><h3>Invoice details</h3><span class="invoice-pill">Draft</span></div>
+        <div class="invoice-recipient-fields"><div><span>Customer</span><b>Ruang Karya</b></div><div><span>Customer email</span><b>finance@ruangkarya.example</b></div></div>
+        <div class="invoice-send-dates"><div><span>Invoice date</span><b>14 Sep 2026</b></div><div><span>Due date</span><b>28 Sep 2026</b></div></div>
+        <div class="invoice-table-wrap"><table><thead><tr><th scope="col">Description</th><th scope="col">Qty</th><th scope="col">Amount</th></tr></thead><tbody><tr><td>Design services</td><td>1</td><td>Rp4.000.000</td></tr><tr><td>Production support</td><td>1</td><td>Rp800.000</td></tr></tbody></table></div>
+        <div class="invoice-editor-total"><span>Subtotal</span><b>Rp4.800.000</b><span>Tax · 0%</span><b>Rp0</b><span>Total</span><b>Rp4.800.000</b></div>
+        <div class="invoice-finalize-row"><span>Invoice ready to review</span><span class="invoice-finalize-action">Finalize and send <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 12 16-8-5 16-3-7zM12 13l8-9"/></svg></span></div>
+      </div>
+      <div class="invoice-customer-email-panel">
+        <div class="invoice-send-panel-heading"><h3>Customer email</h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3zM3 5l9 8 9-8"/></svg></div>
+        <div class="invoice-email-preview">
+          <div class="invoice-email-row"><span>To</span><b>finance@ruangkarya.example</b></div>
+          <div class="invoice-email-row"><span>Subject</span><b>Invoice INV-2026-084 · Nusa Studio</b></div>
+          <div class="invoice-customer-message"><p>Hello Ruang Karya,</p><p>Your invoice from Nusa Studio is attached. The total is Rp4.800.000, due on 28 Sep 2026.</p><p>Thank you for working with us.</p></div>
+          <div class="invoice-file"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H5v20h14V7zM14 2v6h5M8 12h8M8 16h6"/></svg><div><b>INV-2026-084.pdf</b><small>PDF attached automatically</small></div></div>
+          <div class="invoice-email-receipt"><span class="invoice-check" aria-hidden="true">✓</span><div><b>Sent by FluxyOS</b><span>Delivery recorded on the invoice</span></div></div>
         </div>
-    </section>
-
-    <!-- DARK SECTION: How Vendor Spend Works -->
-    <section id="workflow" class="section-dark py-20 md:py-28 px-6 border-t border-gray-800">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-2xl mx-auto text-center mb-16">
-                <h2 class="text-[36px] md:text-[44px] font-bold tracking-tight mb-5">
-                    From invoice to payment, all in one flow
-                </h2>
-                <p class="text-[17px] text-gray-400 leading-relaxed">
-                    Three simple steps. No spreadsheets, no email back-and-forth, no missed renewals.
-                </p>
-            </div>
-
-            <div class="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-                <!-- Step 1 -->
-                <div class="bg-[#1A1F26] border border-gray-800 rounded-2xl p-8 flex flex-col h-full hover:border-gray-700 transition-colors">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-bold">1</div>
-                        <h3 class="text-[19px] font-bold">Capture every invoice</h3>
-                    </div>
-                    <p class="text-gray-400 text-[14px] leading-relaxed mb-6 flex-grow">
-                        Forward bills to your FluxyOS inbox or upload them in bulk. Vendor name, amount, and due date get pulled automatically — no manual entry.
-                    </p>
-                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-[12px] text-gray-500">From: billing@figma.com</span>
-                            <span class="text-[11px] text-green-400 font-semibold">Captured</span>
-                        </div>
-                        <div class="text-[13px] font-mono text-gray-300">Invoice #FG-2841</div>
-                        <div class="text-[18px] font-bold font-mono text-white mt-1">Rp 18.200.000</div>
-                    </div>
-                </div>
-
-                <!-- Step 2 -->
-                <div class="bg-[#1A1F26] border border-gray-800 rounded-2xl p-8 flex flex-col h-full hover:border-gray-700 transition-colors">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-9 h-9 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 font-bold">2</div>
-                        <h3 class="text-[19px] font-bold">Route for approval</h3>
-                    </div>
-                    <p class="text-gray-400 text-[14px] leading-relaxed mb-6 flex-grow">
-                        Set rules once: who approves what, by amount, by category, by team. Approvers get a Slack ping and one-click approve.
-                    </p>
-                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 space-y-2">
-                        <div class="flex items-center gap-2 text-[12px]">
-                            <div class="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-[10px] font-bold text-white">✓</div>
-                            <span class="text-gray-300">Sarah (Team Lead)</span>
-                            <span class="text-gray-500 ml-auto">Approved</span>
-                        </div>
-                        <div class="flex items-center gap-2 text-[12px]">
-                            <div class="w-5 h-5 rounded-full bg-yellow-500 flex items-center justify-center text-[10px] font-bold text-white">·</div>
-                            <span class="text-gray-300">David (Finance)</span>
-                            <span class="text-gray-500 ml-auto">Pending</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Step 3 -->
-                <div class="bg-[#1A1F26] border border-gray-800 rounded-2xl p-8 flex flex-col h-full hover:border-gray-700 transition-colors">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-9 h-9 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400 font-bold">3</div>
-                        <h3 class="text-[19px] font-bold">Pay on schedule</h3>
-                    </div>
-                    <p class="text-gray-400 text-[14px] leading-relaxed mb-6 flex-grow">
-                        Approved invoices queue for payment. Pay through your linked bank, or batch payments by due date. Every transaction lands in your ledger.
-                    </p>
-                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
-                        <div class="text-[12px] text-gray-500 mb-1">Scheduled this week</div>
-                        <div class="text-[20px] font-bold font-mono text-white mb-2">Rp 84.6M</div>
-                        <div class="text-[11px] text-gray-500">8 vendors • Auto-paid Friday</div>
-                    </div>
-                </div>
-            </div>
+        <div class="invoice-send-caption"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 13 4-4M8 15l-2 2a3 3 0 0 1-4-4l5-5a3 3 0 0 1 4 0M16 9l2-2a3 3 0 0 1 4 4l-5 5a3 3 0 0 1-4 0"/></svg><span>The invoice, PDF, and email activity stay together.</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="invoice-tracking-band"><div class="invoice-section invoice-split"><div class="invoice-section-copy"><p class="invoice-section-label">Invoice tracking</p><h2>Know what is paid.<br>And what needs a follow-up.</h2><p>Keep drafts, outstanding balances, partial payments, and overdue invoices in view. Check payment status separately from email delivery.</p><div class="invoice-status-key"><span>Draft</span><span>Open</span><span>Partial</span><span>Paid</span><span>Overdue</span><span>Void</span></div></div><div class="invoice-window invoice-tracker"><div class="invoice-window-bar"><b>Invoices</b><span>September 2026</span></div><div class="invoice-filter-bar" aria-label="Filter example invoices"><button type="button" data-invoice-filter="all" aria-pressed="true">All invoices</button><button type="button" data-invoice-filter="open" aria-pressed="false">Outstanding</button><button type="button" data-invoice-filter="paid" aria-pressed="false">Paid</button></div><div class="invoice-table-wrap"><table><thead><tr><th>Customer</th><th>Amount due</th><th>Status</th></tr></thead><tbody><tr data-invoice-row="open"><td>Ruang Karya<small>INV-084</small></td><td>Rp4.800.000</td><td><span class="invoice-pill">Open</span></td></tr><tr data-invoice-row="open"><td>Temu Coffee<small>INV-082</small></td><td>Rp1.200.000</td><td><span class="invoice-pill invoice-overdue">Overdue</span></td></tr><tr data-invoice-row="paid"><td>Loka Goods<small>INV-081</small></td><td>Rp0</td><td><span class="invoice-pill invoice-paid">Paid</span></td></tr><tr data-invoice-row="open"><td>Aruna Studio<small>INV-080</small></td><td>Rp2.000.000</td><td><span class="invoice-pill">Partial</span></td></tr></tbody></table></div><div class="invoice-tracker-foot"><span>Customer invoices</span><span>Illustrative records</span></div></div></div></section>
+<section class="invoice-section invoice-split invoice-currency-section"><div class="invoice-currency-visual"><div class="invoice-currency-orbit" aria-hidden="true"></div><div class="invoice-currency-card"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18M5 6h14M5 18h14"/></svg><span>Invoice currency</span><strong>IDR</strong><span>Indonesian Rupiah</span><div class="invoice-currency-list"><span>USD</span><span>SGD</span><span>PHP</span><span>MYR</span></div></div></div><div class="invoice-section-copy"><p class="invoice-section-label">Multi-currency invoices</p><h2>Different markets.<br>The same invoice workspace.</h2><p>Create invoices in IDR, USD, SGD, PHP, and MYR. Set the currency before adding your items, so the invoice reflects the amount you agreed with your customer.</p><p class="invoice-fineprint">Foreign-currency invoices are tracked in their original currency. Their accounting treatment differs from base-currency invoices; they are not automatically consolidated into the ledger.</p></div></section>
+<section class="invoice-accounting-band">
+  <div class="invoice-section">
+    <header class="invoice-accounting-heading">
+      <div><p class="invoice-section-label">Connected accounting</p><h2>Follow the invoice.<br>See the entry.</h2></div>
+      <p>Keep the source invoice beside its journal entry. See where receivables and revenue land in the books.</p>
+    </header>
+    <div class="invoice-books-workspace">
+      <div class="invoice-books-toolbar"><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h7a2 2 0 0 1 2 2v15a3 3 0 0 0-3-2H3zM21 4h-7a2 2 0 0 0-2 2v15a3 3 0 0 1 3-2h6z"/></svg><span>Accounting Center</span><span class="invoice-books-divider" aria-hidden="true">/</span><span>Invoice journal</span></div><span class="invoice-pill invoice-paid">Posted</span></div>
+      <div class="invoice-books-body">
+        <aside class="invoice-books-source">
+          <span class="invoice-books-label">Source invoice</span>
+          <div class="invoice-books-source-title"><span class="invoice-monogram">N</span><div><b>Nusa Studio</b><span>INV-2026-084</span></div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H5v20h14V7zM14 2v6h5M8 12h8M8 16h6"/></svg></div>
+          <dl><div><dt>Customer</dt><dd>Ruang Karya</dd></div><div><dt>Issued</dt><dd>14 Sep 2026</dd></div><div><dt>Currency</dt><dd>IDR</dd></div></dl>
+          <div class="invoice-books-source-total"><span>Invoice total</span><strong>Rp4.800.000</strong></div>
+          <div class="invoice-books-source-link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 13 4-4M8 15l-2 2a3 3 0 0 1-4-4l5-5a3 3 0 0 1 4 0M16 9l2-2a3 3 0 0 1 4 4l-5 5a3 3 0 0 1-4 0"/></svg><span>Linked to journal entry</span></div>
+        </aside>
+        <div class="invoice-books-entry">
+          <div class="invoice-books-entry-heading"><div><span class="invoice-books-label">Journal entry</span><h3>Invoice issued</h3><p>INV-2026-084 · 14 Sep 2026</p></div><span class="invoice-books-balanced"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>Balanced</span></span></div>
+          <div class="invoice-table-wrap"><table class="invoice-books-table"><thead><tr><th scope="col">Account</th><th scope="col">Debit</th><th scope="col">Credit</th></tr></thead><tbody><tr><td><span class="invoice-account-marker" aria-hidden="true"></span><b>Accounts receivable</b><small>Customer invoice</small></td><td>Rp4.800.000</td><td>—</td></tr><tr><td><span class="invoice-account-marker" aria-hidden="true"></span><b>Revenue</b><small>Design & production services</small></td><td>—</td><td>Rp4.800.000</td></tr></tbody><tfoot><tr><th scope="row">Total</th><td>Rp4.800.000</td><td>Rp4.800.000</td></tr></tfoot></table></div>
+          <div class="invoice-books-ledger"><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h16v18H4zM8 7h8M8 12h8M8 17h8"/></svg><span>General ledger</span></div><span>Same source. Same amounts.</span></div>
+          <div class="invoice-books-destinations"><div><span>Balance Sheet</span><b>Accounts receivable</b><strong>Rp4.800.000</strong></div><div><span>Income Statement</span><b>Revenue</b><strong>Rp4.800.000</strong></div></div>
         </div>
-    </section>
+      </div>
+      <div class="invoice-books-footnote"><span>Illustrative IDR invoice · issuance entry</span><span>Source document → journal → ledger → reports</span></div>
+    </div>
+    <div class="invoice-accounting-bottom"><p>FluxyOS is an Intelligent Finance Operating System that connects financial operations, accounting, business operations, enterprise workflows, and intelligence into one continuously connected system.</p><a class="invoice-text-link" href="/erp-intelligence">Explore ERP Intelligence <span aria-hidden="true">↗</span></a></div>
+  </div>
+</section>
+<section class="invoice-section invoice-faq"><div><h2>A few things<br>worth knowing.</h2><p>From your first draft to your books.</p></div><div>
+<details><summary>Can I create and email invoices in FluxyOS?</summary><p>Yes. Add customer details, line items, payment terms, and tax. Review the invoice and choose “Finalize and send.” With invoice email delivery enabled, FluxyOS generates the PDF and emails it to your customer automatically. Track delivery and resend from the invoice.</p></details>
+<details><summary>What does AI invoice scanning extract?</summary><p>The scanner reads supplier details, invoice number, invoice date, due date, currency, and total, and suggests a category. Review and correct the fields before saving a bill. Structured line-item, tax, and bank-detail extraction is not currently included.</p></details>
+<details><summary>Can I receive supplier invoices here?</summary><p>You can upload a supplier invoice as a PDF or supported image, review the extracted details, and save a bill in FluxyOS. This is an upload-and-review workflow, not a dedicated inbound email inbox.</p></details>
+<details><summary>Which invoice statuses can I track?</summary><p>Track draft, open, partially paid, overdue, paid, and void invoices. Email delivery is tracked separately. A sent email does not mean the customer has viewed or paid the invoice.</p></details>
+<details><summary>Which currencies are supported?</summary><p>Create invoices in IDR, USD, SGD, PHP, and MYR. AI bill scanning currently recognizes IDR, USD, and SGD. Foreign-currency invoices retain their original amounts and are not automatically consolidated into the ledger.</p></details>
+<details><summary>How do invoices connect to accounting?</summary><p>Supported base-currency invoice workflows create journal entries for issuance and payment, connecting receivables and revenue to the ledger and financial reports. Supplier bills connect expenses and payables through their own accounting workflow. Foreign-currency records have separate accounting limitations.</p></details>
+</div></section>
+<section class="invoice-closing"><h2>Less invoice admin.<br>More time for your business.</h2><div class="invoice-actions"><a href="/pricing" class="invoice-button invoice-primary">Start free</a><a href="/contact-sales" class="invoice-button">Talk to sales</a></div></section>
+</main>
 
-    <!-- KEY BENEFITS -->
-    <section class="py-16 md:py-24 px-6">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="text-center mb-16">
-                <h2 class="text-[36px] md:text-[44px] font-bold tracking-tight text-gray-900 mb-4">
-                    Built for finance teams who hate surprises
-                </h2>
-                <p class="text-[17px] text-gray-600 max-w-2xl mx-auto">
-                    The unglamorous work of vendor management — done properly, so you can spend time on the real numbers.
-                </p>
+<!-- shared-footer:start -->
+<footer class="footer-component pt-24 pb-12 px-6">
+
+    <!-- Universe starfield canvas -->
+    <canvas class="footer-canvas" aria-hidden="true"></canvas>
+
+    <div class="max-w-[1280px] mx-auto grid grid-cols-2 md:grid-cols-12 gap-12 mb-20">
+        <div class="col-span-2 md:col-span-4 pr-8">
+            <div class="flex items-center gap-2 mb-6">
+                <div class="w-8 h-8 flex-shrink-0 text-[#EA580C] shadow-sm group-hover:scale-105 transition-transform duration-200">
+                    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                        <rect width="40" height="40" rx="8" fill="currentColor" />
+                        <g transform="translate(1.5, 0)">
+                            <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
+                            <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
+                        </g>
+                    </svg>
+                </div>
+                <span class="font-bold text-xl tracking-tight text-white">FluxyOS</span>
             </div>
-
-            <div class="grid md:grid-cols-3 gap-6">
-                <div class="bg-white rounded-xl border border-gray-200 p-7 hover:shadow-md transition-shadow">
-                    <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                    </div>
-                    <h3 class="text-[19px] font-bold text-gray-900 mb-2">Catch duplicate payments</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Same invoice forwarded twice? Same vendor charging the same amount in the same month? You'll see it before you pay.
-                    </p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-7 hover:shadow-md transition-shadow">
-                    <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m3-3v6a2 2 0 002 2h6a2 2 0 002-2v-6a2 2 0 00-2-2h-6a2 2 0 00-2 2z"/></svg>
-                    </div>
-                    <h3 class="text-[19px] font-bold text-gray-900 mb-2">Approve before money leaves</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Set who signs off on what. Anything above Rp 5M needs a director. Anything from a new vendor needs procurement. Your call.
-                    </p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-7 hover:shadow-md transition-shadow">
-                    <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-                    </div>
-                    <h3 class="text-[19px] font-bold text-gray-900 mb-2">Spot forgotten subscriptions</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        That tool the marketing team stopped using six months ago? It's still charging Rp 2.4M a month. We'll flag the renewal before it hits.
-                    </p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-7 hover:shadow-md transition-shadow">
-                    <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2a4 4 0 014-4h4m0 0l-3-3m3 3l-3 3M3 12a9 9 0 1018 0 9 9 0 00-18 0z"/></svg>
-                    </div>
-                    <h3 class="text-[19px] font-bold text-gray-900 mb-2">See recurring vs. one-off</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Separate the bills you'll pay forever from the bills you paid once. Understand your true monthly run rate at a glance.
-                    </p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-7 hover:shadow-md transition-shadow">
-                    <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1L15 8m-3-1v1m0 8v1m0-1c-1.11 0-2.08-.402-2.599-1L9 16m3-9V6m0 12a9 9 0 110-18 9 9 0 010 18z"/></svg>
-                    </div>
-                    <h3 class="text-[19px] font-bold text-gray-900 mb-2">Multi-currency, no math</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Pay AWS in USD, your local agency in IDR, your team in Vietnam in VND. Everything reconciles to your reporting currency automatically.
-                    </p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-7 hover:shadow-md transition-shadow">
-                    <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
-                    </div>
-                    <h3 class="text-[19px] font-bold text-gray-900 mb-2">Audit-ready, every quarter</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Every approval, every payment, every receipt — logged and exportable. When auditors ask, you have the answer in two clicks.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- COMMON VENDORS - Spend-focused grid -->
-    <section id="vendors" class="bg-gray-50 py-14 md:py-20 px-6 border-t border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <!-- Compact header: title + subtitle + CTA in one row -->
-            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
-                <div>
-                    <h2 class="text-[28px] md:text-[34px] font-bold tracking-tight text-gray-900 leading-tight whitespace-nowrap">
-                        Track the vendors you actually use
-                    </h2>
-                    <p class="text-[15px] text-gray-600 mt-1.5">
-                        Connect your stack — every charge lands in the right category, automatically.
-                    </p>
-                </div>
-                <a href="/login" class="inline-flex items-center gap-2 text-[14px] font-bold text-[#EA580C] hover:text-[#D44400] transition-colors whitespace-nowrap self-start lg:self-auto">
-                    Connect your stack
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                </a>
-            </div>
-
-            <!-- Vendor grid with monthly spend -->
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                <!-- Engineering -->
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-9 h-9 rounded-md bg-orange-50 border border-orange-100 flex items-center justify-center font-bold text-[11px] text-orange-600 flex-shrink-0">AWS</div>
-                        <span class="text-[14px] font-bold text-gray-900 truncate">AWS</span>
-                    </div>
-                    <div class="flex items-end justify-between">
-                        <div>
-                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 42M</div>
-                            <div class="text-[11px] text-gray-500">per month</div>
-                        </div>
-                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
-                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                            Eng
-                        </span>
-                    </div>
-                </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-9 h-9 rounded-md bg-gray-900 flex items-center justify-center font-bold text-[12px] text-white flex-shrink-0">Gh</div>
-                        <span class="text-[14px] font-bold text-gray-900 truncate">GitHub</span>
-                    </div>
-                    <div class="flex items-end justify-between">
-                        <div>
-                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 1.2M</div>
-                            <div class="text-[11px] text-gray-500">per month</div>
-                        </div>
-                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
-                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                            Eng
-                        </span>
-                    </div>
-                </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-9 h-9 rounded-md bg-gray-900 flex items-center justify-center font-bold text-[13px] text-white flex-shrink-0">▲</div>
-                        <span class="text-[14px] font-bold text-gray-900 truncate">Vercel</span>
-                    </div>
-                    <div class="flex items-end justify-between">
-                        <div>
-                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 1.8M</div>
-                            <div class="text-[11px] text-gray-500">per month</div>
-                        </div>
-                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
-                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                            Eng
-                        </span>
-                    </div>
-                </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-9 h-9 rounded-md bg-orange-50 border border-orange-100 flex items-center justify-center font-bold text-[12px] text-orange-500 flex-shrink-0">Cf</div>
-                        <span class="text-[14px] font-bold text-gray-900 truncate">Cloudflare</span>
-                    </div>
-                    <div class="flex items-end justify-between">
-                        <div>
-                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 850K</div>
-                            <div class="text-[11px] text-gray-500">per month</div>
-                        </div>
-                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
-                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                            Eng
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Design -->
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-9 h-9 rounded-md bg-purple-50 border border-purple-100 flex items-center justify-center font-bold text-[12px] text-purple-600 flex-shrink-0">Fg</div>
-                        <span class="text-[14px] font-bold text-gray-900 truncate">Figma</span>
-                    </div>
-                    <div class="flex items-end justify-between">
-                        <div>
-                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 2.4M</div>
-                            <div class="text-[11px] text-gray-500">per month</div>
-                        </div>
-                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
-                            <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-                            Design
-                        </span>
-                    </div>
-                </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-9 h-9 rounded-md bg-red-50 border border-red-100 flex items-center justify-center font-bold text-[12px] text-red-600 flex-shrink-0">Ad</div>
-                        <span class="text-[14px] font-bold text-gray-900 truncate">Adobe</span>
-                    </div>
-                    <div class="flex items-end justify-between">
-                        <div>
-                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 1.6M</div>
-                            <div class="text-[11px] text-gray-500">per month</div>
-                        </div>
-                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
-                            <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-                            Design
-                        </span>
-                    </div>
-                </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-9 h-9 rounded-md bg-cyan-50 border border-cyan-100 flex items-center justify-center font-bold text-[12px] text-cyan-600 flex-shrink-0">Cv</div>
-                        <span class="text-[14px] font-bold text-gray-900 truncate">Canva</span>
-                    </div>
-                    <div class="flex items-end justify-between">
-                        <div>
-                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 480K</div>
-                            <div class="text-[11px] text-gray-500">per month</div>
-                        </div>
-                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
-                            <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-                            Design
-                        </span>
-                    </div>
-                </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-9 h-9 rounded-md bg-pink-50 border border-pink-100 flex items-center justify-center font-bold text-[12px] text-pink-600 flex-shrink-0">Db</div>
-                        <span class="text-[14px] font-bold text-gray-900 truncate">Dribbble</span>
-                    </div>
-                    <div class="flex items-end justify-between">
-                        <div>
-                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 280K</div>
-                            <div class="text-[11px] text-gray-500">per month</div>
-                        </div>
-                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
-                            <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-                            Design
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Communication -->
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-9 h-9 rounded-md bg-purple-50 border border-purple-100 flex items-center justify-center font-bold text-[12px] text-purple-600 flex-shrink-0">Sl</div>
-                        <span class="text-[14px] font-bold text-gray-900 truncate">Slack</span>
-                    </div>
-                    <div class="flex items-end justify-between">
-                        <div>
-                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 8.4M</div>
-                            <div class="text-[11px] text-gray-500">per month</div>
-                        </div>
-                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
-                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                            Comm
-                        </span>
-                    </div>
-                </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-9 h-9 rounded-md bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-[12px] text-blue-700 flex-shrink-0">Zm</div>
-                        <span class="text-[14px] font-bold text-gray-900 truncate">Zoom</span>
-                    </div>
-                    <div class="flex items-end justify-between">
-                        <div>
-                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 2.1M</div>
-                            <div class="text-[11px] text-gray-500">per month</div>
-                        </div>
-                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
-                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                            Comm
-                        </span>
-                    </div>
-                </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-9 h-9 rounded-md bg-purple-50 border border-purple-100 flex items-center justify-center font-bold text-[12px] text-purple-700 flex-shrink-0">Lm</div>
-                        <span class="text-[14px] font-bold text-gray-900 truncate">Loom</span>
-                    </div>
-                    <div class="flex items-end justify-between">
-                        <div>
-                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 1.2M</div>
-                            <div class="text-[11px] text-gray-500">per month</div>
-                        </div>
-                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
-                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                            Comm
-                        </span>
-                    </div>
-                </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-9 h-9 rounded-md bg-indigo-50 border border-indigo-100 flex items-center justify-center font-bold text-[12px] text-indigo-600 flex-shrink-0">Dc</div>
-                        <span class="text-[14px] font-bold text-gray-900 truncate">Discord</span>
-                    </div>
-                    <div class="flex items-end justify-between">
-                        <div>
-                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 320K</div>
-                            <div class="text-[11px] text-gray-500">per month</div>
-                        </div>
-                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
-                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                            Comm
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Productivity -->
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-9 h-9 rounded-md bg-gray-100 border border-gray-200 flex items-center justify-center font-bold text-[12px] text-gray-700 flex-shrink-0">N</div>
-                        <span class="text-[14px] font-bold text-gray-900 truncate">Notion</span>
-                    </div>
-                    <div class="flex items-end justify-between">
-                        <div>
-                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 3.1M</div>
-                            <div class="text-[11px] text-gray-500">per month</div>
-                        </div>
-                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
-                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                            Prod
-                        </span>
-                    </div>
-                </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-9 h-9 rounded-md bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-[12px] text-blue-600 flex-shrink-0">G</div>
-                        <span class="text-[14px] font-bold text-gray-900 truncate">Google Workspace</span>
-                    </div>
-                    <div class="flex items-end justify-between">
-                        <div>
-                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 4.6M</div>
-                            <div class="text-[11px] text-gray-500">per month</div>
-                        </div>
-                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
-                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                            Prod
-                        </span>
-                    </div>
-                </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-9 h-9 rounded-md bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-[12px] text-blue-700 flex-shrink-0">Ms</div>
-                        <span class="text-[14px] font-bold text-gray-900 truncate">Microsoft 365</span>
-                    </div>
-                    <div class="flex items-end justify-between">
-                        <div>
-                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 5.2M</div>
-                            <div class="text-[11px] text-gray-500">per month</div>
-                        </div>
-                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
-                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                            Prod
-                        </span>
-                    </div>
-                </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-9 h-9 rounded-md bg-red-50 border border-red-100 flex items-center justify-center font-bold text-[12px] text-red-600 flex-shrink-0">A</div>
-                        <span class="text-[14px] font-bold text-gray-900 truncate">Asana</span>
-                    </div>
-                    <div class="flex items-end justify-between">
-                        <div>
-                            <div class="text-[15px] font-bold font-mono text-gray-900">Rp 2.8M</div>
-                            <div class="text-[11px] text-gray-500">per month</div>
-                        </div>
-                        <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-semibold">
-                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                            Prod
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Total summary bar -->
-            <div class="mt-6 bg-white rounded-xl border border-gray-200 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-md bg-gradient-to-br from-[#EA580C] to-[#F97316] flex items-center justify-center text-white">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                    </div>
-                    <div>
-                        <div class="text-[14px] font-bold text-gray-900">Total tracked across 16 vendors</div>
-                        <div class="text-[12px] text-gray-500">Plus 240+ more — local agencies, contractors, one-offs</div>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <div class="text-[24px] font-bold font-mono text-gray-900">Rp 78.6M</div>
-                    <div class="text-[11px] text-gray-500">monthly run rate</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- BEFORE/AFTER COMPARISON -->
-    <section class="py-16 md:py-24 px-6 border-t border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-3xl mx-auto text-center mb-16">
-                <h2 class="text-[36px] md:text-[44px] font-bold tracking-tight text-gray-900 mb-4">
-                    From scattered to centralized
-                </h2>
-                <p class="text-[17px] text-gray-600 leading-relaxed">
-                    Most finance teams cobble together vendor management with five tools and a shared spreadsheet. Here's what changes.
-                </p>
-            </div>
-
-            <div class="grid md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-                <!-- Before card -->
-                <div class="bg-gray-50 rounded-2xl border border-gray-200 p-8 relative">
-                    <div class="absolute -top-3 left-8 bg-gray-200 text-gray-700 text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">Before</div>
-                    <h3 class="text-[20px] font-bold text-gray-900 mb-6 mt-2">The usual setup</h3>
-                    <ul class="space-y-4">
-                        <li class="flex items-start gap-3">
-                            <div class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3 h-3 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-                            </div>
-                            <div>
-                                <div class="text-[14px] font-semibold text-gray-700">Invoices in three inboxes</div>
-                                <div class="text-[13px] text-gray-500 leading-snug">Sales emails, founders' personal accounts, and that one shared mailbox nobody checks.</div>
-                            </div>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <div class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3 h-3 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-                            </div>
-                            <div>
-                                <div class="text-[14px] font-semibold text-gray-700">Approvals over WhatsApp</div>
-                                <div class="text-[13px] text-gray-500 leading-snug">"Hey, can you approve this?" — no record, no audit trail, no sense of urgency.</div>
-                            </div>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <div class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3 h-3 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-                            </div>
-                            <div>
-                                <div class="text-[14px] font-semibold text-gray-700">A spreadsheet that's always out of date</div>
-                                <div class="text-[13px] text-gray-500 leading-snug">"Vendors_Master_v7_FINAL_FINAL.xlsx" — updated by hand, never matches reality.</div>
-                            </div>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <div class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3 h-3 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-                            </div>
-                            <div>
-                                <div class="text-[14px] font-semibold text-gray-700">Paid twice. Discovered next quarter.</div>
-                                <div class="text-[13px] text-gray-500 leading-snug">Someone forwards an invoice that ops already paid. By the time it surfaces, the money's gone.</div>
-                            </div>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <div class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3 h-3 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-                            </div>
-                            <div>
-                                <div class="text-[14px] font-semibold text-gray-700">Audits take a week</div>
-                                <div class="text-[13px] text-gray-500 leading-snug">Hunting through Drive folders and bank statements to reconstruct who paid whom.</div>
-                            </div>
-                        </li>
-                    </ul>
-                </div>
-
-                <!-- After card -->
-                <div class="bg-white rounded-2xl border-2 border-[#EA580C] p-8 relative shadow-lg">
-                    <div class="absolute -top-3 left-8 bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">With FluxyOS</div>
-                    <h3 class="text-[20px] font-bold text-gray-900 mb-6 mt-2">One source of truth</h3>
-                    <ul class="space-y-4">
-                        <li class="flex items-start gap-3">
-                            <div class="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                            </div>
-                            <div>
-                                <div class="text-[14px] font-semibold text-gray-900">Every invoice, one inbox</div>
-                                <div class="text-[13px] text-gray-600 leading-snug">Forward to billing@yourco.fluxyos.com or upload in bulk. Vendor and amount auto-extracted.</div>
-                            </div>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <div class="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                            </div>
-                            <div>
-                                <div class="text-[14px] font-semibold text-gray-900">Approval rules, set once</div>
-                                <div class="text-[13px] text-gray-600 leading-snug">Above Rp 5M? Director signs off. New vendor? Procurement reviews. Logged automatically.</div>
-                            </div>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <div class="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                            </div>
-                            <div>
-                                <div class="text-[14px] font-semibold text-gray-900">Live vendor list, always current</div>
-                                <div class="text-[13px] text-gray-600 leading-snug">No more spreadsheets. Filter by category, status, or renewal date in one click.</div>
-                            </div>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <div class="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                            </div>
-                            <div>
-                                <div class="text-[14px] font-semibold text-gray-900">Duplicate caught, before payment</div>
-                                <div class="text-[13px] text-gray-600 leading-snug">Same invoice, same amount, same vendor — flagged at intake, not three months later.</div>
-                            </div>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <div class="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                            </div>
-                            <div>
-                                <div class="text-[14px] font-semibold text-gray-900">Audit trail in two clicks</div>
-                                <div class="text-[13px] text-gray-600 leading-snug">Every approval, payment, and document — exported as CSV or shared with auditors directly.</div>
-                            </div>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </section>
-
-
-
-
-    <!-- FAQ -->
-    <section id="faq" class="py-16 md:py-20 px-6 border-t border-gray-200 bg-gray-50">
-        <div class="max-w-3xl mx-auto">
-            <div class="mb-10">
-                <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3">
-                    Frequently asked questions
-                </h2>
-                <p class="text-[16px] text-gray-600">
-                    Quick answers to what people usually ask before signing up.
-                </p>
-            </div>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">What is vendor spend management?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Vendor spend management is the process of tracking, approving, and paying every supplier and SaaS bill in one centralized system instead of email threads and spreadsheets. It lets finance teams catch duplicate payments, enforce approval limits, and maintain a clean audit trail of who paid whom.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">How is FluxyOS Vendor Spend different from a regular accounting tool?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Accounting tools like Xero, QuickBooks, and Jurnal record what already happened. FluxyOS Vendor Spend automates the work that produces those records — it captures invoices, routes them for approval, schedules payment, and posts the entry. You can use FluxyOS alongside your existing accounting tool; we push cleaned data into it.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Does FluxyOS support Indonesian banks?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Yes. FluxyOS imports statements from BCA, Mandiri, BNI, BRI, and other Indonesian banks for reconciliation. If you also pay international vendors, invoices support IDR, USD, and SGD, and a foreign-currency invoice is converted at the live rate when it is paid.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Can I set custom approval rules for vendor payments?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Yes. You can set rules by amount (e.g., anything over Rp 5M needs a director), by category (new vendors require procurement review), or by team (marketing budget is approved by the marketing lead). Approvers get a Slack notification and approve in one click.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">How does FluxyOS catch duplicate vendor payments?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Every incoming invoice is checked against your vendor history — same supplier, same amount, same period. FluxyOS flags it for review before any money moves, so duplicates never become surprise charges on next month's bank statement.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">What does it cost?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">FluxyOS has a free tier for solo founders and small teams, with paid plans starting from Rp 490.000/month. See the pricing page for full breakdown.</p>
-            </details>
-        </div>
-    </section>
-
-    <!-- CTA SECTION -->
-    <section class="bg-[#0B0F19] py-16 md:py-24 px-6">
-        <div class="max-w-[1280px] mx-auto text-center">
-            <h2 class="text-[36px] md:text-[44px] font-bold tracking-tight text-white mb-5">
-                Take control of your vendor spend
-            </h2>
-            <p class="text-[17px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">
-                See every contract, every renewal, every payment. No more chasing invoices, no more surprise charges, no more manual reconciliation.
+            <p class="text-[14px] leading-relaxed max-w-[280px] footer-body-text">
+                The Intelligent Finance Operating System. Unify budgets, operational expenses, and revenue for businesses at every growth stage.
             </p>
-            <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-sm hover:shadow inline-block text-center">
-                    Get started free
-                </a>
-                <a href="/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">
-                    See pricing
-                </a>
-            </div>
         </div>
-    </section>
 
-    <script src="assets/js/universe-canvas.js" defer></script>
-    <script src="assets/js/footer-loader.js" defer></script>
-    <script src="assets/js/fluxyos.js" defer></script>
-    <script src="assets/js/i18n.js" defer></script>
+        <div class="md:col-span-2">
+            <h4 class="text-[13px] font-bold text-white mb-6 uppercase tracking-wider">Platform</h4>
+            <ul class="space-y-4 text-[14px] font-medium footer-body-text">
+                <li><a href="/budgetlanding" class="footer-link">Dynamic Budgeting</a></li>
+                <li><a href="/vendorspend" class="footer-link">Invoice</a></li>
+                <li><a href="/revenuesync" class="footer-link">Revenue Sync</a></li>
+                <li><a href="/receiptcapture" class="footer-link">Receipt Capture</a></li>
+                <li><a href="/aiagents" class="footer-link">AI Finance Agents</a></li>
+            </ul>
+        </div>
+
+        <div class="md:col-span-2">
+            <h4 class="text-[13px] font-bold text-white mb-6 uppercase tracking-wider">Use Cases</h4>
+            <ul class="space-y-4 text-[14px] font-medium footer-body-text">
+                <li><a href="/use-cases/founder-ceo" class="footer-link">Founders &amp; CEOs</a></li>
+                <li><a href="/use-cases/cfo-finance-teams" class="footer-link">CFOs &amp; Finance Teams</a></li>
+                <li><a href="/use-cases/ecommerce-brands" class="footer-link">E-commerce Brands</a></li>
+                <li><a href="/use-cases/marketing-agencies" class="footer-link">Marketing Agencies</a></li>
+            </ul>
+        </div>
+
+        <div class="md:col-span-2">
+            <h4 class="text-[13px] font-bold text-white mb-6 uppercase tracking-wider">Company</h4>
+            <ul class="space-y-4 text-[14px] font-medium footer-body-text">
+                <li><a href="/pricing" class="footer-link">Pricing</a></li>
+                <li><a href="/contact-sales" class="footer-link">Contact Sales</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="max-w-[1280px] mx-auto pt-8 footer-divider flex flex-col md:flex-row justify-between items-center gap-6">
+        <p class="text-[14px] font-medium footer-body-text">© 2026 FluxyOS Technologies. All rights reserved.</p>
+        <div class="flex gap-8 text-[14px] font-medium footer-body-text">
+            <a href="/privacy" class="footer-link">Privacy Policy</a>
+            <a href="/terms" class="footer-link">Terms of Service</a>
+        </div>
+    </div>
+</footer>
+<!-- shared-footer:end -->
+<script src="/assets/js/universe-canvas.js" defer></script>
+<script src="/assets/js/footer-loader.js" defer></script>
+<script src="/assets/js/fluxyos.js" defer></script>
+<script src="/assets/js/i18n.js" defer></script>
+<script src="/assets/js/invoice-landing.js" defer></script>
 </body>
 </html>

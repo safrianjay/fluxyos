@@ -14,7 +14,7 @@
 - [Homepage](https://fluxyos.com/): Product overview and key benefits
 - [Pricing](https://fluxyos.com/pricing): Plans starting from a free tier
 - [AI Agents](https://fluxyos.com/aiagents): Six specialist AI agents that handle finance ops end to end
-- [Vendor Spend](https://fluxyos.com/vendorspend): Centralized vendor invoice + approval management
+- [FluxyOS Invoice](https://fluxyos.com/vendorspend): Create and email invoices, scan supplier bills for review, and track payments across supported currencies.
 - [Revenue Sync](https://fluxyos.com/revenuesync): Sync TikTok Shop and Shopee orders, refunds, and settlements into your ledger
 - [Receipt Capture](https://fluxyos.com/receiptcapture): AI receipt scanning via WhatsApp, email, or app upload
 - [Dynamic Budgeting](https://fluxyos.com/budgetlanding): Live budget allocation and tracking

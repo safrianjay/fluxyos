@@ -70,8 +70,8 @@ const PAGES = {
     },
     'vendorspend.html': {
         slug: 'vendorspend', rootPath: '/vendorspend',
-        title: 'Manajemen Vendor Spend untuk Bisnis Indonesia | FluxyOS',
-        description: 'Pusatkan invoice vendor, otomatiskan persetujuan, dan tangkap pembayaran ganda sebelum dana keluar.',
+        title: 'Kelola Invoice & Scan dengan AI | FluxyOS',
+        description: 'Buat, kirim, scan, dan pantau invoice di FluxyOS. Periksa hasil pembacaan AI dan hubungkan invoice dengan alur akuntansi bisnis Anda.',
     },
     'revenuesync.html': {
         slug: 'revenuesync', rootPath: '/revenuesync',
@@ -98,6 +98,12 @@ const PAGES = {
 const MIRROR_SLUGS = Object.keys(PAGES).map((f) => PAGES[f].slug);
 
 const PAGE_COPY_OVERRIDES = {
+    vendorspend: {
+        "Amount": "Nominal",
+        "Review": "Periksa",
+        "Total amount": "Total nominal",
+        "FluxyOS is an Intelligent Finance Operating System that connects financial operations, accounting, business operations, enterprise workflows, and intelligence into one continuously connected system.": "FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System) yang menghubungkan operasional keuangan, akuntansi, operasional bisnis, alur kerja perusahaan, dan analisis dalam satu sistem yang terus terhubung."
+    },
     'erp-intelligence': {
         'FluxyOS is an Intelligent Finance Operating System that connects financial operations, accounting, business operations, enterprise workflows, and intelligence into one continuously connected system.':
             'FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System). Di satu tempat, Anda bisa mengelola keuangan, akuntansi, operasional bisnis, dan alur kerja tim. Fluxy AI menjawab pertanyaan berdasarkan data yang sudah tercatat.',
@@ -280,7 +286,7 @@ function main() {
         // reviewer-facing strings beside them, so the two stay identical.
         html = html.replace(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g, (block, json) => {
             // The POS FAQ and product description must match the visible locale.
-            if (['point-of-sale', 'erp-intelligence', 'budgetlanding', 'revenuesync', 'customers', 'aiagents'].includes(meta.slug)) {
+            if (['point-of-sale', 'erp-intelligence', 'budgetlanding', 'revenuesync', 'customers', 'aiagents', 'vendorspend'].includes(meta.slug)) {
                 const localize = (value) => {
                     if (Array.isArray(value)) return value.map(localize);
                     if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, localize(v)]));
@@ -305,7 +311,7 @@ function main() {
         const out = path.join(ROOT, 'id', meta.slug + '.html');
         // Pre-render the same universal component for the AI landing page.
         // Footer navigation must remain readable even when JS/fetch is blocked.
-        if (meta.slug === 'aiagents') {
+        if (['aiagents', 'vendorspend'].includes(meta.slug)) {
             const footer = fs.readFileSync(path.join(ROOT, 'includes/footer-id.html'), 'utf8').trim();
             html = html.replace(/<!-- shared-footer:start -->[\s\S]*?<!-- shared-footer:end -->/, () =>
                 '<!-- shared-footer:start -->\n' + footer + '\n<!-- shared-footer:end -->');
@@ -336,3 +342,4 @@ function main() {
 }
 
 main();
+if (!CHECK_ONLY) require('./sync-marketing-nav.js').run(false);

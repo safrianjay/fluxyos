@@ -78,7 +78,8 @@ for (const locale of ['en','id']) {
     await context.close();
   });
 }
-test('hero motion continues without hovering after the intro',async ({page})=>{
+for (const width of [390,1440]) test('hero motion continues without hovering after the intro '+width,async ({page})=>{
+  await page.setViewportSize({width,height:900});
   await page.goto('/aiagents',{waitUntil:'domcontentloaded'});
   const canvas=page.locator('.agent-hero-particles');
   await expect(canvas).toHaveAttribute('data-ready','');

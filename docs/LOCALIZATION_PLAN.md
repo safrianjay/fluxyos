@@ -142,6 +142,7 @@ The 8 `id/use-cases/*.html` pages are hand-maintained and are *not* generated.
 | Shift | Shift | Cashier working session |
 | Table service | Layanan meja | Dine-in POS workflow |
 | Vendor Spend | Vendor Spend (keep) | Product name |
+| FluxyOS Invoice | FluxyOS Invoice (keep) | Invoice feature; replaces Vendor Spend landing-page positioning |
 | Revenue Sync | Revenue Sync (keep) | Product name |
 | Receipt Capture | Receipt Capture (keep) | Product name |
 | Dynamic Budgeting | Dynamic Budgeting (keep) | Product name |
