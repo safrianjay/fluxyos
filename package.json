@@ -42,6 +42,7 @@
     "perf:verify": "node perf/verify.js",
     "qa:design": "node scripts/qa/lint-design.js",
     "qa:invoice": "playwright test --config tests/invoice-landing.config.js",
+    "qa:receipt": "playwright test --config tests/receipt-landing.config.js",
     "cbm:extract": "node scripts/cbm-extract-inline.js",
     "cbm:check": "node scripts/cbm-extract-inline.js --check",
     "cbm:sync": "node scripts/cbm-extract-inline.js && codebase-memory-mcp cli index_repository --repo-path . --mode moderate",

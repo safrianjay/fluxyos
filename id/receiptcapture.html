@@ -4,91 +4,14 @@
     <meta charset="UTF-8">
     <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Receipt Capture AI via WhatsApp, Email, atau Upload | FluxyOS</title>
+    <title>Scan Struk & Catat Pengeluaran dengan AI | FluxyOS</title>
     <link rel="stylesheet" href="/assets/css/tailwind.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/fluxyos.css">
 
-    <style>
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            -webkit-font-smoothing: antialiased;
-        }
-        .font-mono { font-family: 'Fira Code', monospace; }
-
-        .hero-gradient {
-            background: linear-gradient(135deg, #FFF7ED 0%, #FFFFFF 60%, #F9FAFB 100%);
-        }
-
-        .section-dark {
-            background: #0B0F19;
-            color: white;
-        }
-
-        /* Floating receipt animation */
-        @keyframes floatReceipt {
-            0%, 100% { transform: translateY(0) rotate(-3deg); }
-            50% { transform: translateY(-10px) rotate(-1deg); }
-        }
-        .receipt-float {
-            animation: floatReceipt 5s ease-in-out infinite;
-        }
-
-        /* Pulse ring for scanning effect */
-        @keyframes scanPulse {
-            0% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.4); }
-            70% { box-shadow: 0 0 0 18px rgba(234, 88, 12, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0); }
-        }
-        .scan-pulse {
-            animation: scanPulse 2.5s infinite;
-        }
-
-        /* Slide-in callout */
-        @keyframes slideInRight {
-            0% { opacity: 0; transform: translateX(20px); }
-            100% { opacity: 1; transform: translateX(0); }
-        }
-        .callout-1 { animation: slideInRight 0.6s ease-out 0.2s both; }
-        .callout-2 { animation: slideInRight 0.6s ease-out 0.5s both; }
-        .callout-3 { animation: slideInRight 0.6s ease-out 0.8s both; }
-        .callout-4 { animation: slideInRight 0.6s ease-out 1.1s both; }
-
-        /* WhatsApp-style chat bubble */
-        .wa-bg { background: #ECE5DD; background-image: radial-gradient(circle at 1px 1px, rgba(0,0,0,0.04) 1px, transparent 0); background-size: 20px 20px; }
-        .wa-bubble-in {
-            background: #FFFFFF;
-            border-radius: 0 12px 12px 12px;
-            box-shadow: 0 1px 1px rgba(0,0,0,0.08);
-        }
-        .wa-bubble-out {
-            background: #DCF8C6;
-            border-radius: 12px 0 12px 12px;
-            box-shadow: 0 1px 1px rgba(0,0,0,0.08);
-        }
-
-        /* Receipt paper effect */
-        .receipt-paper {
-            background: #FFFFFF;
-            position: relative;
-            box-shadow: 0 20px 50px -10px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.04);
-        }
-        .receipt-paper::before, .receipt-paper::after {
-            content: "";
-            position: absolute;
-            left: 0; right: 0;
-            height: 12px;
-            background: radial-gradient(circle at 6px 0, transparent 6px, #FFFFFF 6px) 0 0/12px 12px;
-        }
-        .receipt-paper::before { top: -1px; transform: scaleY(-1); }
-        .receipt-paper::after { bottom: -1px; }
-
-        /* Connector line */
-        .connector-line {
-            background: linear-gradient(90deg, rgba(234, 88, 12, 0.3) 0%, rgba(234, 88, 12, 0.6) 100%);
-        }
-    </style>
-    <meta name="description" content="Kirim struk via WhatsApp, email, atau upload. AI mengekstrak vendor, jumlah, pajak, dan kategori dalam hitungan detik. Dibuat untuk bisnis Indonesia.">
+    <link rel="stylesheet" href="/assets/css/receipt-landing.css">
+    <link rel="stylesheet" href="/assets/css/footer.css">
+    <meta name="description" content="Ubah foto struk dan PDF menjadi biaya yang Anda periksa. Fluxy AI membaca detail utama, memberi saran kategori, dan menghubungkan struk ke akuntansi Anda.">
     <link rel="canonical" href="https://fluxyos.com/id/receiptcapture">
     <link rel="alternate" hreflang="en" href="https://fluxyos.com/receiptcapture">
     <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/receiptcapture">
@@ -97,8 +20,8 @@
     <!-- Open Graph -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://fluxyos.com/id/receiptcapture">
-    <meta property="og:title" content="Receipt Capture AI via WhatsApp, Email, atau Upload | FluxyOS">
-    <meta property="og:description" content="Kirim struk via WhatsApp, email, atau upload. AI mengekstrak vendor, jumlah, pajak, dan kategori dalam hitungan detik. Dibuat untuk bisnis Indonesia.">
+    <meta property="og:title" content="Scan Struk & Catat Pengeluaran dengan AI | FluxyOS">
+    <meta property="og:description" content="Ubah foto struk dan PDF menjadi biaya yang Anda periksa. Fluxy AI membaca detail utama, memberi saran kategori, dan menghubungkan struk ke akuntansi Anda.">
     <meta property="og:image" content="https://fluxyos.com/assets/images/og-receiptcapture.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -108,8 +31,8 @@
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Receipt Capture AI via WhatsApp, Email, atau Upload | FluxyOS">
-    <meta name="twitter:description" content="Kirim struk via WhatsApp, email, atau upload. AI mengekstrak vendor, jumlah, pajak, dan kategori dalam hitungan detik. Dibuat untuk bisnis Indonesia.">
+    <meta name="twitter:title" content="Scan Struk & Catat Pengeluaran dengan AI | FluxyOS">
+    <meta name="twitter:description" content="Ubah foto struk dan PDF menjadi biaya yang Anda periksa. Fluxy AI membaca detail utama, memberi saran kategori, dan menghubungkan struk ke akuntansi Anda.">
     <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-receiptcapture.png">
 
     <!-- Google Analytics -->
@@ -160,113 +83,116 @@
       }
     }
     </script>
-    <script type="application/ld+json">
+    <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "FluxyOS Receipt Capture",
+  "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "Intelligent Finance Operating System",
+  "operatingSystem": "Web",
+  "url": "https://fluxyos.com/receiptcapture",
+  "description": "Ubah foto struk dan PDF menjadi biaya yang Anda periksa. Fluxy AI membaca detail utama, memberi saran kategori, dan menghubungkan struk ke akuntansi Anda.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "IDR",
+    "availability": "https://schema.org/InStock"
+  },
+  "featureList": [
+    "Upload gambar struk dan PDF",
+    "AI membaca merchant, tanggal, total, dan mata uang",
+    "Saran kategori pengeluaran",
+    "Periksa sebelum menyimpan",
+    "Lampiran struk pada transaksi pengeluaran",
+    "Terhubung ke akuntansi"
+  ],
+  "publisher": {
+    "@id": "https://fluxyos.com/#organization"
+  }
+}</script>
+    <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
     {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "FluxyOS Receipt Capture",
-      "applicationCategory": "BusinessApplication",
-      "applicationSubCategory": "Finance Operations Software",
-      "operatingSystem": "Web, iOS, Android",
-      "url": "https://fluxyos.com/receiptcapture",
-      "description": "Send receipts via WhatsApp, email, or upload. AI extracts vendor, amount, tax, and category in seconds. Built for Indonesian businesses.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "IDR",
-        "availability": "https://schema.org/InStock"
-      },
-      "featureList": [
-        "WhatsApp receipt submission",
-        "Email forwarding",
-        "Bulk PDF upload (100+ at once)",
-        "AI vendor + amount + tax extraction",
-        "Indonesian PPN line-item recognition",
-        "7-year searchable archive"
-      ],
-      "publisher": {
-        "@id": "https://fluxyos.com/#organization"
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://fluxyos.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Receipt Capture",
+      "item": "https://fluxyos.com/receiptcapture"
+    }
+  ]
+}</script>
+    <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Bagaimana cara kerja Receipt Capture?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Upload foto struk atau PDF lewat alur scan. Fluxy AI membaca merchant, tanggal, total, mata uang, dan memberi saran kategori. Periksa detailnya, pilih dampaknya ke kas, lalu simpan. Struk asli tetap terlampir pada transaksi."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "File struk apa saja yang bisa diupload?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Scan menerima JPG, PNG, WebP, dan PDF hingga 10 MB, satu dokumen per scan. Batas lampiran adalah 5 MB: gambar besar dikompres jika memungkinkan, tetapi PDF harus di bawah 5 MB agar tetap terlampir pada biaya. Gunakan foto yang jelas atau salinan digital lewat web."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Apakah AI membaca semua item, pajak, dan detail pembayaran?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Belum sebagai kolom terpisah. Scanner membaca detail utama dokumen dan memberi saran kategori. Rincian item, pajak, dan metode pembayaran tetap ada di struk asli untuk Anda periksa. Pastikan perlakuan pajak dan pengaturan dampak kas sebelum menyimpan."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Bisa mengubah hasil scan sebelum disimpan?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Bisa. Ubah merchant, nominal, tanggal, mata uang, kategori, dan akun akuntansi saat memeriksa hasil scan. Kolom yang kurang pasti bisa menampilkan indikator keyakinan dan peringatan. Hasil scan baru menjadi catatan keuangan setelah Anda simpan."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Mata uang apa yang dikenali scanner?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Scanner mengenali IDR, USD, dan SGD. Periksa mata uang dan kursnya. Transaksi pengeluaran disimpan dalam mata uang dasar workspace; nominal asli dan detail konversinya tetap ada di catatan. Tagihan supplier memakai alur mata uang asli yang terpisah."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Di mana saya bisa menemukan struk yang sudah disimpan?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Cari pengeluaran di Transactions lewat pencarian merchant atau kategori dan filter tanggal, lalu buka dokumen terlampirnya. Receipt Capture belum memiliki halaman riwayat struk khusus atau jaminan masa penyimpanan tertentu."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Bisa mengirim struk lewat WhatsApp atau email?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Saat ini, scan struk dimulai dari upload dokumen di FluxyOS. Bot struk WhatsApp dan inbox email struk khusus belum tersedia. Anda tetap bisa mengupload file struk yang diterima lewat kedua kanal tersebut."
       }
     }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Home",
-          "item": "https://fluxyos.com/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Receipt Capture",
-          "item": "https://fluxyos.com/receiptcapture"
-        }
-      ]
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "How does FluxyOS Receipt Capture work?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "FluxyOS Receipt Capture is an AI-powered tool that reads any receipt \u2014 phone photos, PDF invoices, or e-receipts \u2014 and extracts the vendor name, amount, date, tax breakdown, and line items. The data lands in your FluxyOS dashboard automatically, ready for categorization."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can I send receipts via WhatsApp?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. Send a photo of any receipt to FluxyOS AI on WhatsApp and the bot replies within 5 seconds with the extracted data. Tap to confirm the suggested category, and the receipt is filed in your dashboard. No app install needed \u2014 works on the WhatsApp account you already use."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "What file formats and sources are supported?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "FluxyOS accepts JPG/PNG photos from phone cameras, PDF invoices forwarded by email, e-receipts from online checkouts, and bulk uploads of up to 100 files at once. The AI reads handwritten receipts and printed thermal-paper struk equally well."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How accurate is the data extraction?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Every extracted field \u2014 vendor name, amount, date \u2014 carries its own confidence score. Anything the model is unsure about is flagged for a quick human review instead of posted, so silent mistakes never reach your books."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Does it handle Indonesian PPN tax correctly?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. The AI extracts PPN 11% as a separate line item, distinguishes it from service charges and discounts, and includes it in your tax-ready exports. PPN summaries by month are available with one click for your accountant."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Will my receipts be saved for audits?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Every receipt \u2014 photo, PDF, or e-receipt \u2014 is archived for 7 years and indexed by vendor, date, and amount. When auditors ask, you can pull any specific receipt in seconds."
-          }
-        }
-      ]
-    }
-    </script>
+  ]
+}</script>
 </head>
-<body class="min-h-screen flex flex-col">
+<body>
+<a class="receipt-skip" href="#main-content">Langsung ke konten</a>
 
     <!-- 1. Navigation with Mega Menu -->
     <nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
@@ -660,650 +586,175 @@
             </div>
         </div>
     </nav>
-    <!-- HERO -->
-    <section class="hero-gradient pt-16 pb-20 md:pt-20 md:pb-28 px-6 relative overflow-hidden">
-        <!-- Subtle dot grid background -->
-        <div class="absolute inset-0 opacity-40 pointer-events-none" style="background-image: radial-gradient(circle at 1px 1px, rgba(234, 88, 12, 0.18) 1px, transparent 0); background-size: 28px 28px;"></div>
-        <!-- Background accent shapes -->
-        <div class="absolute top-20 right-[-100px] w-[400px] h-[400px] bg-orange-100/40 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute bottom-0 left-[-150px] w-[500px] h-[500px] bg-amber-50/60 rounded-full blur-3xl pointer-events-none"></div>
-        <!-- Decorative diagonal line -->
-        <svg class="absolute top-10 left-1/2 -translate-x-1/2 opacity-30 pointer-events-none hidden md:block" width="600" height="200" viewBox="0 0 600 200" fill="none">
-            <path d="M0 100 Q 150 20, 300 100 T 600 100" stroke="#EA580C" stroke-width="1.5" stroke-dasharray="4 6" fill="none"/>
-        </svg>
-        <!-- Floating decorative dots -->
-        <div class="absolute top-32 left-[8%] w-2 h-2 rounded-full bg-[#EA580C]/40 pointer-events-none hidden md:block"></div>
-        <div class="absolute top-[40%] right-[6%] w-3 h-3 rounded-full border-2 border-[#EA580C]/30 pointer-events-none hidden md:block"></div>
-        <div class="absolute bottom-32 left-[12%] w-1.5 h-1.5 rounded-full bg-amber-400/50 pointer-events-none hidden md:block"></div>
-        <div class="absolute top-[55%] left-[3%] w-4 h-4 rounded-md border border-[#EA580C]/30 rotate-45 pointer-events-none hidden lg:block"></div>
+<main class="receipt-page" id="main-content">
+<section class="receipt-hero">
+  <div class="receipt-hero-copy">
+    <h1>Struk masuk.<br>Biaya siap dicatat.</h1>
+    <p>Ubah foto struk dan PDF menjadi biaya yang bisa Anda periksa, catat, dan telusuri. Fluxy AI membaca detailnya. Anda yang memastikan hasilnya.</p>
+    <div class="receipt-actions"><a href="/id/pricing" class="receipt-button receipt-primary">Coba Gratis</a><a href="/contact-sales" class="receipt-button">Hubungi tim sales</a></div>
+    <a class="receipt-explore" href="#receipt-workflow">Lihat alur struknya<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></a>
+  </div>
+  <div class="receipt-hero-stage" data-hero-phase="0" data-motion="paused" role="img" aria-label="Scan struk dan detail pengeluaran yang terbaca">
+    <div class="receipt-stage-top"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5M6 12h12"/></svg>Receipt Capture</span><span class="receipt-status">Periksa sebelum menyimpan</span></div>
+    <div class="receipt-hero-desk"><div class="receipt-paper">
+  <div class="receipt-paper-head"><b>Kopi Ruang</b><small>Jakarta · Struk KR-084</small></div>
+  <div class="receipt-paper-date"><span>14 Sep 2026</span><span>10:42</span></div>
+  <div class="receipt-paper-line"><span>Kopi · 5 ×</span><b>Rp125.000</b></div>
+  <div class="receipt-paper-line"><span>Pastri · 5 ×</span><b>Rp125.000</b></div>
+  <div class="receipt-paper-line"><span>Subtotal</span><b>Rp250.000</b></div>
+  <div class="receipt-paper-line"><span>Pajak di struk</span><b>Rp27.500</b></div>
+  <div class="receipt-paper-total"><span>TOTAL</span><b>Rp277.500</b></div>
+  <div class="receipt-paper-foot">Dibayar dengan kartu bank<br>Terima kasih sudah mampir.</div>
+  <div class="receipt-scan-line" aria-hidden="true"></div>
+</div><div class="receipt-extracted"><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5M6 12h12"/></svg><span>Dibaca Fluxy AI</span></div><dl class="receipt-fields">
+<div><dt>Merchant</dt><dd data-detected>Kopi Ruang</dd></div>
+<div><dt>Tanggal transaksi</dt><dd data-detected>14 Sep 2026</dd></div>
+<div><dt>Total nominal</dt><dd data-detected>Rp277.500</dd></div>
+<div><dt>Mata uang</dt><dd data-detected>IDR</dd></div>
+<div><dt>Saran kategori</dt><dd data-detected>Operasional</dd></div>
+</dl><div class="receipt-review-hint">Struk asli tetap di samping hasilnya.</div></div></div>
+    <div class="receipt-hero-caption" aria-live="off"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span data-hero-caption>Upload struk. Simpan sumbernya.</span></div>
+    <small class="receipt-demo-note">Ilustrasi alur produk · tidak ada data yang dikirim</small>
+  </div>
+  <div hidden data-hero-labels><span>Upload struk. Simpan sumbernya.</span><span>Merchant, tanggal, nominal, mata uang. Dibaca untuk Anda.</span><span>Detail siap. Anda periksa sebelum simpan.</span></div>
+</section>
+<div class="receipt-route"><ol aria-label="Alur struk ke akuntansi">
+<li>Masukkan</li><li>Scan</li><li>Baca detail</li><li>Periksa</li><li>Catat biaya</li><li>Perbarui pembukuan</li>
+</ol></div>
+<section class="receipt-section" id="receipt-workflow">
+  <header class="receipt-heading"><span class="receipt-label">Dari struk ke catatan</span><h2>Detailnya sudah ada.<br>Tak perlu diketik ulang.</h2><p>Satu dokumen, alur yang jelas ke pembukuan Anda. Pilih langkah di bawah atau lihat demo berjalan sendiri.</p></header>
+  <div class="receipt-workflow" data-autoplay="paused">
+    <div class="receipt-steps" role="group" aria-label="Langkah pemrosesan struk"><button type="button" class="receipt-step" data-receipt-step="0" aria-pressed="true" aria-controls="receipt-processing-demo"><span><small>01</small><b>Masukkan struknya</b></span><p>Foto struk dengan jelas, lalu upload. Sudah punya struk digital? Pakai gambar atau PDF-nya.</p></button><button type="button" class="receipt-step" data-receipt-step="1" aria-pressed="false" aria-controls="receipt-processing-demo"><span><small>02</small><b>Biar AI baca detailnya</b></span><p>Merchant, tanggal, total, dan mata uang masuk ke kolom yang bisa diperiksa. Kategori disarankan, bukan diputuskan untuk Anda.</p></button><button type="button" class="receipt-step" data-receipt-step="2" aria-pressed="false" aria-controls="receipt-processing-demo"><span><small>03</small><b>Periksa sebelum dicatat</b></span><p>Bandingkan hasil scan dengan struk asli. Perbaiki detail, akun, dan dampaknya ke kas sebelum menyimpan.</p></button><button type="button" class="receipt-step" data-receipt-step="3" aria-pressed="false" aria-controls="receipt-processing-demo"><span><small>04</small><b>Simpan biaya beserta struknya</b></span><p>Transaksi yang Anda pastikan masuk ke buku besar. Struk tetap terlampir, jadi sumber angkanya jelas.</p></button></div>
+    <div class="receipt-workspace" id="receipt-processing-demo" data-receipt-stage="0">
+      <div class="receipt-window"><div class="receipt-toolbar"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></svg>kopi-ruang.jpg</span><span>Scan &amp; periksa</span></div>
+      <div class="receipt-review-grid"><div class="receipt-source"><div class="receipt-paper">
+  <div class="receipt-paper-head"><b>Kopi Ruang</b><small>Jakarta · Struk KR-084</small></div>
+  <div class="receipt-paper-date"><span>14 Sep 2026</span><span>10:42</span></div>
+  <div class="receipt-paper-line"><span>Kopi · 5 ×</span><b>Rp125.000</b></div>
+  <div class="receipt-paper-line"><span>Pastri · 5 ×</span><b>Rp125.000</b></div>
+  <div class="receipt-paper-line"><span>Subtotal</span><b>Rp250.000</b></div>
+  <div class="receipt-paper-line"><span>Pajak di struk</span><b>Rp27.500</b></div>
+  <div class="receipt-paper-total"><span>TOTAL</span><b>Rp277.500</b></div>
+  <div class="receipt-paper-foot">Dibayar dengan kartu bank<br>Terima kasih sudah mampir.</div>
+  <div class="receipt-scan-line" aria-hidden="true"></div>
+</div></div><div class="receipt-review-form"><h3>Detail pengeluaran</h3><dl class="receipt-fields">
+<div><dt>Merchant</dt><dd >Kopi Ruang</dd></div>
+<div><dt>Tanggal transaksi</dt><dd >14 Sep 2026</dd></div>
+<div><dt>Total nominal</dt><dd >Rp277.500</dd></div>
+<div><dt>Mata uang</dt><dd >IDR</dd></div>
+<div><dt>Saran kategori</dt><dd >Operasional</dd></div>
+</dl><div class="receipt-confirm"><span>Konfirmasi Anda</span><b data-save-label>Simpan biaya</b></div></div></div></div>
+      <p class="receipt-stage-caption" data-receipt-caption aria-live="off">Gambar yang jelas membantu AI membaca struk.</p>
+      <small class="receipt-demo-note">Ilustrasi alur produk · tidak ada data yang dikirim</small>
+    </div>
+  </div>
+  <div hidden data-receipt-labels><span>Gambar yang jelas membantu AI membaca struk.</span><span>Detail utama masuk ke kolom terstruktur, lengkap dengan saran kategori.</span><span>Periksa struk asli. Ubah bagian yang perlu diperbaiki.</span><span>Setelah Anda pastikan, biaya dan struk tetap terhubung.</span></div><span hidden data-saved-label>Biaya tercatat</span>
+</section>
+<section class="receipt-section receipt-split">
+  <div class="receipt-copy"><span class="receipt-label">Anda periksa, Anda catat</span><h2>AI membaca lebih dulu.<br>Anda tetap pegang kendali.</h2><p>Periksa hasil scan, ubah kategori, dan pilih akun yang tepat. Tentukan apakah uang sudah keluar sebelum menyimpan biaya.</p><p class="receipt-fineprint">Rincian item, pajak, dan pembayaran tetap terlihat di struk asli. Saat ini, detail tersebut belum dibaca sebagai kolom terpisah.</p></div>
+  <div class="receipt-review-example">
+    <div class="receipt-toolbar"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5M6 12h12"/></svg>Periksa biaya</span><span class="receipt-status">Sebelum disimpan</span></div>
+    <div class="receipt-review-content"><div><span>Merchant</span><b>Kopi Ruang</b></div><div><span>Total nominal</span><b>Rp277.500</b></div>
+    <div><label for="receipt-demo-category">Kategori pengeluaran</label><select id="receipt-demo-category"><option value="Operations">Operasional</option><option value="Marketing">Pemasaran</option><option value="SaaS">SaaS</option></select></div>
+    <div><span>Dampak ke kas</span><span>Sudah dibayar</span></div></div>
+    <p class="receipt-category-note">Coba ubah kategorinya: <span data-category-preview>Operasional</span></p>
+  </div>
+</section>
+<section class="receipt-section" id="receipt-accounting">
+  <header class="receipt-heading"><span class="receipt-label">Terhubung ke akuntansi</span><h2>Biaya yang jelas sumbernya.<br>Jurnal yang seimbang.</h2><p>Setelah disimpan, transaksi masuk ke pembukuan sesuai akun dan dampak kas yang Anda periksa. Tak perlu dicatat lagi di spreadsheet.</p></header>
+  <div class="receipt-accounting"><div class="receipt-toolbar"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></svg>Struk → biaya → akuntansi</span><span>Sumber dan nominal tetap sama</span></div>
+  <div class="receipt-accounting-panels"><div class="receipt-expense-record"><span class="receipt-label">Pengeluaran yang dipastikan</span><h3>Kopi Ruang</h3><span class="receipt-status">Selesai</span><strong>Rp277.500</strong><dl class="receipt-fields"><div><dt>Tanggal transaksi</dt><dd>14 Sep 2026</dd></div><div><dt>Kategori</dt><dd>Operasional</dd></div></dl><div class="receipt-record-file"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></svg><span>kopi-ruang.jpg<br><small>Terlampir di transaksi ini</small></span></div></div>
+  <div class="receipt-journal"><h3>Jurnal pengeluaran</h3><div class="receipt-table-scroll"><table><caption class="sr-only">Jurnal seimbang untuk ilustrasi biaya yang sudah dibayar</caption><thead><tr><th scope="col">Akun</th><th scope="col" class="receipt-money">Debit</th><th scope="col" class="receipt-money">Kredit</th></tr></thead><tbody><tr><td>Biaya operasional</td><td class="receipt-money">Rp277.500</td><td class="receipt-money">—</td></tr><tr><td>Kas bank</td><td class="receipt-money">—</td><td class="receipt-money">Rp277.500</td></tr></tbody><tfoot><tr><td>Seimbang</td><td class="receipt-money">Rp277.500</td><td class="receipt-money">Rp277.500</td></tr></tfoot></table></div>
+  <div class="receipt-report-links"><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></svg><small>Buku besar</small><b>Biaya dibukukan</b></div><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><small>Laporan Laba Rugi</small><b>Biaya operasional</b></div><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18M15 6l6 6-6 6"/></svg><small>Arus kas</small><b>Pembayaran tercermin</b></div></div></div></div>
+  <p>Contoh: biaya IDR yang sudah dibayar, dicatat sebesar total termasuk pajak. Jurnal sebenarnya mengikuti pemetaan akun dan perlakuan pajak Anda.</p></div>
+</section>
+<section class="receipt-section receipt-split">
+  <div class="receipt-currency-visual"><div class="receipt-currency-row"><span>Mata uang yang dikenali</span><b>IDR · USD · SGD</b></div><div class="receipt-currency-flow"><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></svg><span>Nominal asli di struk</span></div><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M3 3l7 7M16 21h5v-5M21 21l-7-7"/></svg><span>Kurs yang Anda periksa</span></div><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>Biaya dalam mata uang dasar Anda</span></div></div><small class="receipt-demo-note">Mata uang asli dan detail konversi tetap ada di catatan.</small></div>
+  <div class="receipt-copy"><span class="receipt-label">Struk dari berbagai mata uang</span><h2>Baca mata uangnya.<br>Periksa konversinya.</h2><p>Fluxy AI mengenali struk IDR, USD, dan SGD. Periksa nominal dan kurs sebelum mencatat biaya dalam mata uang dasar workspace Anda.</p><p class="receipt-fineprint">Nominal asli dan detail konversi tetap tersimpan di catatan. Tagihan supplier mempertahankan mata uang aslinya lewat alur tagihan yang terpisah.</p></div>
+</section>
+<section class="receipt-section" id="receipt-records">
+  <header class="receipt-heading"><span class="receipt-label">Simpan buktinya bersama biaya</span><h2>Temukan pengeluarannya.<br>Buka struknya.</h2><p>Cari catatan transaksi berdasarkan merchant atau kategori. Gunakan filter tanggal di Transactions, lalu buka dokumen terlampir saat perlu memeriksa nominal.</p></header>
+  <div class="receipt-library"><div class="receipt-toolbar"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></svg>Transactions · catatan pengeluaran</span><span>September 2026</span></div>
+  <div class="receipt-library-controls"><label class="receipt-search" for="receipt-demo-search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 21l-5-5M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14"/></svg><span class="sr-only">Cari merchant atau kategori</span><input id="receipt-demo-search" type="search" placeholder="Cari merchant atau kategori"></label><div class="receipt-filter" role="group" aria-label="Filter lampiran struk"><button type="button" data-receipt-filter="all" aria-pressed="true">Semua biaya</button><button type="button" data-receipt-filter="attached" aria-pressed="false">Dengan struk</button><button type="button" data-receipt-filter="missing" aria-pressed="false">Tanpa struk</button></div></div>
+  <div class="receipt-table-scroll"><table><caption class="sr-only">Ilustrasi catatan biaya dan lampiran struknya</caption><thead><tr><th scope="col">Merchant</th><th scope="col">Tanggal</th><th scope="col">Kategori</th><th scope="col" class="receipt-money">Nominal</th><th scope="col">Dokumen sumber</th></tr></thead><tbody>
+  <tr data-receipt-row="attached"><td><b>Kopi Ruang</b><small>Selesai</small></td><td>14 Sep 2026</td><td>Operasional</td><td class="receipt-money">Rp277.500</td><td><span class="receipt-attachment "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></svg><span>kopi-ruang.jpg</span></span></td></tr><tr data-receipt-row="attached"><td><b>Nusa Print</b><small>Selesai</small></td><td>12 Sep 2026</td><td>Pemasaran</td><td class="receipt-money">Rp450.000</td><td><span class="receipt-attachment "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></svg><span>nusa-print.pdf</span></span></td></tr><tr data-receipt-row="attached"><td><b>Studio Kit</b><small>Selesai</small></td><td>10 Sep 2026</td><td>Operasional</td><td class="receipt-money">Rp825.000</td><td><span class="receipt-attachment "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></svg><span>studio-kit.jpg</span></span></td></tr><tr data-receipt-row="missing"><td><b>Langit Media</b><small>Tanpa Struk</small></td><td>09 Sep 2026</td><td>Pemasaran</td><td class="receipt-money">Rp600.000</td><td><span class="receipt-attachment receipt-missing"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5M12 17h.01M12 3 2 21h20z"/></svg><span>Belum terlampir</span></span></td></tr>
+  </tbody></table></div><p class="receipt-empty" data-receipt-empty hidden>Tidak ada biaya yang cocok. Coba kata kunci atau filter lain.</p><p class="receipt-results" role="status" aria-live="polite"><span data-receipt-count>4</span> catatan pengeluaran ditampilkan · data ilustrasi</p></div>
+</section>
+<section class="receipt-section">
+  <div class="receipt-copy"><span class="receipt-label">Bagian dari alur keuangan yang sama</span><h2>Struk adalah titik awalnya.</h2><p>FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System) yang menghubungkan operasional keuangan, akuntansi, operasional bisnis, alur kerja perusahaan, dan analisis dalam satu sistem yang terus terhubung.</p></div>
+  <div class="receipt-ecosystem"><a href="/id/erp-intelligence"><div>ERP Intelligence <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></div><p>Telusuri biaya ke jurnal, buku besar, dan laporan keuangan.</p></a><a href="/id/vendorspend"><div>FluxyOS Invoice <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></div><p>Buat invoice pelanggan dan periksa tagihan supplier hasil scan.</p></a><a href="/id/budgetlanding"><div>Dynamic Budgeting <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></div><p>Lihat biaya yang sudah tercatat dibandingkan anggaran tim.</p></a></div>
+</section>
+<section class="receipt-section receipt-faq" id="faq"><div><h2>Beberapa hal yang perlu Anda tahu.</h2><p>Apa yang dibaca, apa yang Anda periksa, dan di mana struk disimpan.</p></div><div><details><summary>Bagaimana cara kerja Receipt Capture?</summary><p>Upload foto struk atau PDF lewat alur scan. Fluxy AI membaca merchant, tanggal, total, mata uang, dan memberi saran kategori. Periksa detailnya, pilih dampaknya ke kas, lalu simpan. Struk asli tetap terlampir pada transaksi.</p></details><details><summary>File struk apa saja yang bisa diupload?</summary><p>Scan menerima JPG, PNG, WebP, dan PDF hingga 10 MB, satu dokumen per scan. Batas lampiran adalah 5 MB: gambar besar dikompres jika memungkinkan, tetapi PDF harus di bawah 5 MB agar tetap terlampir pada biaya. Gunakan foto yang jelas atau salinan digital lewat web.</p></details><details><summary>Apakah AI membaca semua item, pajak, dan detail pembayaran?</summary><p>Belum sebagai kolom terpisah. Scanner membaca detail utama dokumen dan memberi saran kategori. Rincian item, pajak, dan metode pembayaran tetap ada di struk asli untuk Anda periksa. Pastikan perlakuan pajak dan pengaturan dampak kas sebelum menyimpan.</p></details><details><summary>Bisa mengubah hasil scan sebelum disimpan?</summary><p>Bisa. Ubah merchant, nominal, tanggal, mata uang, kategori, dan akun akuntansi saat memeriksa hasil scan. Kolom yang kurang pasti bisa menampilkan indikator keyakinan dan peringatan. Hasil scan baru menjadi catatan keuangan setelah Anda simpan.</p></details><details><summary>Mata uang apa yang dikenali scanner?</summary><p>Scanner mengenali IDR, USD, dan SGD. Periksa mata uang dan kursnya. Transaksi pengeluaran disimpan dalam mata uang dasar workspace; nominal asli dan detail konversinya tetap ada di catatan. Tagihan supplier memakai alur mata uang asli yang terpisah.</p></details><details><summary>Di mana saya bisa menemukan struk yang sudah disimpan?</summary><p>Cari pengeluaran di Transactions lewat pencarian merchant atau kategori dan filter tanggal, lalu buka dokumen terlampirnya. Receipt Capture belum memiliki halaman riwayat struk khusus atau jaminan masa penyimpanan tertentu.</p></details><details><summary>Bisa mengirim struk lewat WhatsApp atau email?</summary><p>Saat ini, scan struk dimulai dari upload dokumen di FluxyOS. Bot struk WhatsApp dan inbox email struk khusus belum tersedia. Anda tetap bisa mengupload file struk yang diterima lewat kedua kanal tersebut.</p></details></div></section>
+<section class="receipt-closing"><h2>Simpan struknya.<br>Lewati ketik ulangnya.</h2><p>Masukkan dokumen, periksa detailnya, dan catat biaya dalam satu alur yang terhubung.</p><div class="receipt-actions"><a href="/id/pricing" class="receipt-button receipt-primary">Coba Gratis</a><a href="/contact-sales" class="receipt-button receipt-secondary">Hubungi tim sales</a></div></section>
+</main>
+<!-- shared-footer:start -->
+<footer class="footer-component pt-24 pb-12 px-6">
 
-        <div class="max-w-[1280px] mx-auto relative">
-            <div class="grid lg:grid-cols-2 gap-12 items-center">
-                <!-- Left: Copy -->
-                <div>
-                    <h1 class="text-[44px] md:text-[58px] font-bold tracking-tight leading-[1.05] text-gray-900 mb-6">
-                        Foto struknya. <br/>
-                        <span class="bg-gradient-to-r from-[#EA580C] to-[#F97316] bg-clip-text text-transparent">Sisanya biar kami.</span>
-                    </h1>
+    <!-- Universe starfield canvas -->
+    <canvas class="footer-canvas" aria-hidden="true"></canvas>
 
-                    <p class="text-[18px] text-gray-600 leading-relaxed mb-8 max-w-xl">
-                        Upload, email, atau kirim via WhatsApp — Fluxy AI baca setiap struk, ambil angkanya, pilih kategori yang tepat, dan simpan di buku Anda. Tanpa input manual. Tanpa kotak struk.
-                    </p>
-
-                    <div class="flex flex-col sm:flex-row gap-4 mb-10">
-                        <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-8 py-4 rounded-md transition-all duration-200 shadow-md hover:shadow-lg inline-block text-center">
-                            Coba Gratis
-                        </a>
-                        <a href="#whatsapp" class="border-2 border-gray-300 text-gray-900 font-semibold text-[15px] px-8 py-3 rounded-md hover:border-gray-400 transition-colors inline-flex items-center justify-center gap-2">
-                            <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.711.306 1.265.489 1.697.626.713.226 1.362.194 1.875.118.572-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
-                            Lihat demo WhatsApp
-                        </a>
-                    </div>
-
-                    <div class="flex items-center gap-8 pt-6 border-t border-gray-200">
-                        <div>
-                            <div class="text-[26px] font-bold text-gray-900">5 detik</div>
-                            <p class="text-[12px] text-gray-600">untuk tangkap</p>
-                        </div>
-                        <div>
-                            <div class="text-[26px] font-bold text-gray-900">3 cara</div>
-                            <p class="text-[12px] text-gray-600">kirim struk</p>
-                        </div>
-                        <div>
-                            <div class="text-[26px] font-bold text-gray-900">Nol</div>
-                            <p class="text-[12px] text-gray-600">input manual</p>
-                        </div>
-                    </div>
+    <div class="max-w-[1280px] mx-auto grid grid-cols-2 md:grid-cols-12 gap-12 mb-20">
+        <div class="col-span-2 md:col-span-4 pr-8">
+            <div class="flex items-center gap-2 mb-6">
+                <div class="w-8 h-8 flex-shrink-0 text-[#EA580C] shadow-sm group-hover:scale-105 transition-transform duration-200">
+                    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                        <rect width="40" height="40" rx="8" fill="currentColor" />
+                        <g transform="translate(1.5, 0)">
+                            <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
+                            <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
+                        </g>
+                    </svg>
                 </div>
-
-                <!-- Right: Floating receipt with extracted data callouts -->
-                <div class="relative h-[500px] md:h-[580px] flex items-center justify-center">
-                    <!-- Receipt paper -->
-                    <div class="receipt-float relative z-10 receipt-paper w-[280px] py-8 px-6 font-mono text-gray-800 text-[12px] leading-relaxed">
-                        <div class="text-center mb-3">
-                            <div class="text-[16px] font-bold tracking-tight">OFFICE MART JAKARTA</div>
-                            <div class="text-[10px] text-gray-500">Sudirman Plaza, Jakarta</div>
-                            <div class="text-[10px] text-gray-500">14 Nov 2026  •  10:48</div>
-                        </div>
-                        <div class="border-t border-dashed border-gray-300 my-3"></div>
-                        <div class="space-y-1.5">
-                            <div class="flex justify-between"><span>Kertas A4 (5 rim)</span><span>Rp 240.000</span></div>
-                            <div class="flex justify-between"><span>Whiteboard Markers</span><span>Rp 50.000</span></div>
-                            <div class="flex justify-between"><span>Ring Binders Pack</span><span>Rp 85.000</span></div>
-                            <div class="flex justify-between"><span>Set Sticky Notes</span><span>Rp 35.000</span></div>
-                            <div class="flex justify-between"><span>HP Toner Cartridge</span><span>Rp 90.000</span></div>
-                        </div>
-                        <div class="border-t border-dashed border-gray-300 my-3"></div>
-                        <div class="space-y-1">
-                            <div class="flex justify-between text-[11px]"><span>Subtotal</span><span>Rp 500.000</span></div>
-                            <div class="flex justify-between text-[11px]"><span>PPN 11%</span><span>Rp 55.000</span></div>
-                            <div class="flex justify-between font-bold text-[14px] mt-2"><span>TOTAL</span><span>Rp 555.000</span></div>
-                        </div>
-                        <div class="text-center mt-4 text-[10px] text-gray-500">— Terima kasih —</div>
-                        <div class="text-center mt-1 text-[9px] text-gray-400">#OM-08412-2611</div>
-                    </div>
-
-                    <!-- AI Scanning indicator overlay -->
-                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[290px] h-[1px] bg-gradient-to-r from-transparent via-[#EA580C] to-transparent opacity-50 pointer-events-none"></div>
-
-                    <!-- Floating extracted data callouts -->
-                    <div class="absolute top-8 right-0 md:right-[-40px] callout-1">
-                        <div class="bg-white rounded-lg shadow-lg border border-gray-200 px-3 py-2 max-w-[180px]">
-                            <div class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Vendor</div>
-                            <div class="text-[13px] font-bold text-gray-900">Office Mart Jakarta</div>
-                            <div class="text-[10px] text-green-600 font-semibold mt-1">✓ 99% cocok</div>
-                        </div>
-                    </div>
-
-                    <div class="absolute top-44 left-0 md:left-[-30px] callout-2">
-                        <div class="bg-white rounded-lg shadow-lg border border-gray-200 px-3 py-2">
-                            <div class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Jumlah</div>
-                            <div class="text-[14px] font-bold font-mono text-gray-900">Rp 555.000</div>
-                            <div class="text-[10px] text-gray-500 mt-1">PPN: Rp 55.000</div>
-                        </div>
-                    </div>
-
-                    <div class="absolute bottom-32 right-2 md:right-[-30px] callout-3">
-                        <div class="bg-white rounded-lg shadow-lg border border-gray-200 px-3 py-2">
-                            <div class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Kategori</div>
-                            <div class="text-[13px] font-bold text-gray-900">Operasional</div>
-                            <div class="text-[10px] text-orange-600 mt-1">→ Office Supplies</div>
-                        </div>
-                    </div>
-
-                    <div class="absolute bottom-8 left-4 md:left-0 callout-4">
-                        <div class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white rounded-lg shadow-lg px-3 py-2 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                            <span class="text-[12px] font-bold">Tersimpan dalam 4,2 detik</span>
-                        </div>
-                    </div>
-                </div>
+                <span class="font-bold text-xl tracking-tight text-white">FluxyOS</span>
             </div>
-        </div>
-    </section>
-
-    <!-- 4 WAYS TO CAPTURE -->
-    <section class="py-16 md:py-24 px-6 border-t border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-3xl mb-12">
-                <h2 class="text-[30px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3 leading-tight">
-                    Empat cara kirim struk.
-                    <span class="text-gray-500">Semuanya gampang.</span>
-                </h2>
-                <p class="text-[16px] text-gray-600 leading-relaxed">
-                    Tangkap di mana saja struknya — kamera HP, inbox email, chat WhatsApp, atau laptop. Fluxy AI yang kerjakan sisanya.
-                </p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                <!-- Method 1: Mobile -->
-                <div class="bg-white rounded-2xl border border-gray-200 p-6 hover:border-gray-300 hover:shadow-lg transition-all relative overflow-hidden group">
-                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200/50 flex items-center justify-center mb-5">
-                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                    </div>
-                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">📱 Dari HP Anda</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed mb-4">
-                        Buka app FluxyOS, tap kamera, arahkan ke struk. Beres sebelum kopi Anda habis.
-                    </p>
-                    <div class="text-[12px] text-gray-500 bg-gray-50 rounded-md px-3 py-2 font-mono">
-                        Foto → AI membaca → Tersimpan
-                    </div>
-                </div>
-
-                <!-- Method 2: Email -->
-                <div class="bg-white rounded-2xl border border-gray-200 p-6 hover:border-gray-300 hover:shadow-lg transition-all relative overflow-hidden group">
-                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200/50 flex items-center justify-center mb-5">
-                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                    </div>
-                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">✉️ Forward via email</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed mb-4">
-                        Dapat e-struk di inbox? Forward ke email FluxyOS Anda. Tersimpan otomatis dalam detik.
-                    </p>
-                    <div class="text-[12px] text-gray-500 bg-gray-50 rounded-md px-3 py-2 font-mono truncate">
-                        receipts@yourco.fluxyos.com
-                    </div>
-                </div>
-
-                <!-- Method 3: WhatsApp - HIGHLIGHTED -->
-                <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border-2 border-green-200 p-6 hover:shadow-lg transition-all relative overflow-hidden group">
-                    <div class="absolute top-3 right-3 bg-green-500 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">Paling disukai</div>
-                    <div class="w-12 h-12 rounded-xl bg-green-500 flex items-center justify-center mb-5 shadow-md shadow-green-500/30">
-                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
-                    </div>
-                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">💬 Kirim via WhatsApp</h3>
-                    <p class="text-[14px] text-gray-700 leading-relaxed mb-4">
-                        Foto lalu kirim ke Fluxy AI di WhatsApp. Balas kategorinya. Beres sebelum tagihan tiba di meja Anda.
-                    </p>
-                    <div class="text-[12px] text-green-700 bg-white/80 rounded-md px-3 py-2 font-mono font-semibold">
-                        +62 812 FLUXY-AI
-                    </div>
-                </div>
-
-                <!-- Method 4: Desktop -->
-                <div class="bg-white rounded-2xl border border-gray-200 p-6 hover:border-gray-300 hover:shadow-lg transition-all relative overflow-hidden group">
-                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-50 to-orange-100 border border-orange-200/50 flex items-center justify-center mb-5">
-                        <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
-                    </div>
-                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">🖥️ Seret &amp; lepas</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed mb-4">
-                        Punya folder PDF dari kuartal lalu? Drop semua. Bisa proses 100+ sekaligus.
-                    </p>
-                    <div class="text-[12px] text-gray-500 bg-gray-50 rounded-md px-3 py-2 font-mono">
-                        Sampai 100 file sekaligus
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- WHATSAPP SPOTLIGHT (DARK) -->
-    <section id="whatsapp" class="section-dark py-20 md:py-28 px-6 relative overflow-hidden">
-        <!-- Subtle bg pattern -->
-        <div class="absolute inset-0 opacity-[0.03] pointer-events-none" style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 32px 32px;"></div>
-
-        <div class="max-w-[1280px] mx-auto relative">
-            <div class="grid lg:grid-cols-2 gap-16 items-center">
-                <!-- Left: Copy -->
-                <div>
-                    <div class="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-full px-3 py-1.5 mb-6">
-                        <svg class="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
-                        <span class="text-[12px] font-bold text-green-400 uppercase tracking-wider">Native WhatsApp</span>
-                    </div>
-
-                    <h2 class="text-[36px] md:text-[46px] font-bold tracking-tight leading-[1.05] mb-6">
-                        Cukup kirim foto ke <br/>
-                        <span class="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">+62 812 FLUXY-AI</span>
-                    </h2>
-
-                    <p class="text-[17px] text-gray-300 leading-relaxed mb-8 max-w-xl">
-                        Tidak perlu install app baru. Tidak perlu login. Tidak perlu hafal password lagi. Buka chat yang Anda pakai ratusan kali sehari, kirim struk, beres.
-                    </p>
-
-                    <ul class="space-y-4 mb-10">
-                        <li class="flex items-start gap-3">
-                            <div class="w-6 h-6 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                            </div>
-                            <div>
-                                <div class="font-bold text-white text-[15px]">Bot balas dalam 5 detik</div>
-                                <div class="text-[14px] text-gray-400 leading-snug">Konfirmasi vendor, jumlah, dan saran kategori — tap untuk setujui atau perbaiki.</div>
-                            </div>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <div class="w-6 h-6 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                            </div>
-                            <div>
-                                <div class="font-bold text-white text-[15px]">Langsung tersambung ke dashboard</div>
-                                <div class="text-[14px] text-gray-400 leading-snug">Setiap foto otomatis masuk ke ledger FluxyOS. Terlihat oleh tim keuangan secara real-time.</div>
-                            </div>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <div class="w-6 h-6 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                            </div>
-                            <div>
-                                <div class="font-bold text-white text-[15px]">Untuk seluruh tim</div>
-                                <div class="text-[14px] text-gray-400 leading-snug">Sales, staf ops, founder — siapa saja dengan nomor perusahaan bisa submit. Otomatis tertagging ke pengirim.</div>
-                            </div>
-                        </li>
-                    </ul>
-
-                    <a href="/login" class="inline-flex items-center gap-2 bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-7 py-3.5 rounded-md transition-all shadow-lg shadow-orange-500/20">
-                        Coba Gratis
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                    </a>
-                </div>
-
-                <!-- Right: WhatsApp chat mockup -->
-                <div class="relative">
-                    <div class="bg-[#075E54] rounded-t-2xl px-5 py-3 flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#EA580C] to-[#F97316] flex items-center justify-center text-white font-bold text-[14px] shadow-md">F</div>
-                        <div class="flex-1">
-                            <div class="text-white font-bold text-[14px]">Fluxy AI</div>
-                            <div class="text-green-200 text-[11px]">online • biasanya membalas dalam hitungan detik</div>
-                        </div>
-                        <svg class="w-5 h-5 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1v2h2l3.6 7.59"/></svg>
-                    </div>
-
-                    <!-- Chat area -->
-                    <div class="wa-bg p-4 space-y-3 min-h-[460px]">
-                        <!-- Outgoing: receipt photo -->
-                        <div class="flex justify-end">
-                            <div class="wa-bubble-out max-w-[260px] p-1.5">
-                                <div class="bg-gradient-to-br from-amber-100 to-amber-50 rounded-md p-3 mb-1">
-                                    <div class="bg-white rounded p-3 font-mono text-[8px] leading-tight text-gray-700">
-                                        <div class="text-center font-bold text-[10px]">OFFICE MART JKT</div>
-                                        <div class="text-center text-gray-500 text-[7px]">Sudirman Plaza</div>
-                                        <div class="border-t border-dashed border-gray-300 my-1.5"></div>
-                                        <div class="space-y-0.5">
-                                            <div class="flex justify-between"><span>Kertas A4 x5</span><span>240.000</span></div>
-                                            <div class="flex justify-between"><span>WB Markers</span><span>50.000</span></div>
-                                            <div class="flex justify-between"><span>Ring Binders</span><span>85.000</span></div>
-                                            <div class="flex justify-between"><span>Sticky Notes</span><span>35.000</span></div>
-                                            <div class="flex justify-between"><span>HP Toner</span><span>90.000</span></div>
-                                        </div>
-                                        <div class="border-t border-dashed border-gray-300 my-1.5"></div>
-                                        <div class="flex justify-between font-bold"><span>TOTAL</span><span>555.000</span></div>
-                                    </div>
-                                </div>
-                                <div class="px-2 pb-1 flex items-center justify-end gap-1">
-                                    <span class="text-[10px] text-gray-500">14:34</span>
-                                    <svg class="w-3.5 h-3.5 text-blue-500" viewBox="0 0 16 11" fill="currentColor"><path d="M11.071.653a.5.5 0 0 1 .076.704l-7 8.5a.5.5 0 0 1-.704.076l-3-2.5a.5.5 0 0 1 .614-.79L3.95 8.83l6.418-7.79a.5.5 0 0 1 .704-.076zm4 0a.5.5 0 0 1 .076.704l-7 8.5a.5.5 0 0 1-.713.067l-3-2.5a.5.5 0 0 1 .614-.79l2.617 2.18 6.418-7.79a.5.5 0 0 1 .704-.076z"/></svg>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Incoming: AI response -->
-                        <div class="flex justify-start">
-                            <div class="wa-bubble-in max-w-[280px] p-3">
-                                <div class="text-[14px] text-gray-800 leading-relaxed">
-                                    Sip! 📥 Ini yang saya temukan:
-                                </div>
-                                <div class="mt-3 bg-gray-50 rounded-md p-3 space-y-1.5 text-[12px]">
-                                    <div class="flex justify-between"><span class="text-gray-500">Vendor</span><span class="font-bold text-gray-900">Office Mart Jakarta</span></div>
-                                    <div class="flex justify-between"><span class="text-gray-500">Jumlah</span><span class="font-bold font-mono text-gray-900">Rp 555.000</span></div>
-                                    <div class="flex justify-between"><span class="text-gray-500">Tanggal</span><span class="font-bold text-gray-900">14 Nov 2026</span></div>
-                                    <div class="flex justify-between"><span class="text-gray-500">Disarankan</span><span class="font-bold text-orange-600">Operations →</span></div>
-                                </div>
-                                <div class="mt-3 text-[13px] text-gray-700">
-                                    Sepertinya belanja perlengkapan kantor 📦 — konfirmasi atau ganti kategorinya:
-                                </div>
-                                <div class="flex flex-wrap gap-1.5 mt-2">
-                                    <span class="bg-orange-100 text-orange-700 text-[11px] font-bold px-2.5 py-1 rounded-full">Konfirmasi Operasional</span>
-                                    <span class="bg-gray-100 text-gray-600 text-[11px] font-semibold px-2.5 py-1 rounded-full">Peralatan</span>
-                                    <span class="bg-gray-100 text-gray-600 text-[11px] font-semibold px-2.5 py-1 rounded-full">Lainnya</span>
-                                </div>
-                                <div class="text-right text-[10px] text-gray-400 mt-2">14:34</div>
-                            </div>
-                        </div>
-
-                        <!-- Outgoing: Confirm -->
-                        <div class="flex justify-end">
-                            <div class="wa-bubble-out max-w-[200px] px-3 py-2">
-                                <div class="text-[14px] text-gray-800">Konfirmasi Operasional 👍</div>
-                                <div class="text-right text-[10px] text-gray-500 mt-0.5 flex items-center justify-end gap-1">
-                                    14:35
-                                    <svg class="w-3.5 h-3.5 text-blue-500" viewBox="0 0 16 11" fill="currentColor"><path d="M11.071.653a.5.5 0 0 1 .076.704l-7 8.5a.5.5 0 0 1-.704.076l-3-2.5a.5.5 0 0 1 .614-.79L3.95 8.83l6.418-7.79a.5.5 0 0 1 .704-.076zm4 0a.5.5 0 0 1 .076.704l-7 8.5a.5.5 0 0 1-.713.067l-3-2.5a.5.5 0 0 1 .614-.79l2.617 2.18 6.418-7.79a.5.5 0 0 1 .704-.076z"/></svg>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Incoming: Confirmation -->
-                        <div class="flex justify-start">
-                            <div class="wa-bubble-in max-w-[260px] p-3">
-                                <div class="text-[14px] text-gray-800 leading-relaxed mb-2">
-                                    Beres ✅ Tersimpan di <b>Operations → Office Supplies</b>.
-                                </div>
-                                <div class="bg-orange-50 border border-orange-100 rounded-md px-3 py-2 text-[12px] text-gray-700">
-                                    📊 Lihat di dashboard Anda →
-                                </div>
-                                <div class="text-right text-[10px] text-gray-400 mt-1.5">14:35</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- AI EXTRACTION IN ACTION -->
-    <section class="py-16 md:py-24 px-6 border-t border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-3xl mb-14">
-                <h2 class="text-[30px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3 leading-tight">
-                    Yang Fluxy AI ambil dari setiap struk.
-                </h2>
-                <p class="text-[16px] text-gray-600 leading-relaxed">
-                    Bukan cuma total — nama vendor, item per item, rincian pajak, metode pembayaran. Semua yang dibutuhkan pembukuan Anda.
-                </p>
-            </div>
-
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                <div class="bg-white rounded-xl border border-gray-200 p-5 hover:border-orange-200 hover:shadow-md transition-all">
-                    <div class="w-9 h-9 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center mb-3">
-                        <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                    </div>
-                    <h3 class="text-[13px] font-bold text-gray-900 mb-1">Nama vendor</h3>
-                    <p class="text-[11px] text-gray-500 leading-snug">Dicocokkan dengan daftar vendor, atau ditambahkan baru.</p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-5 hover:border-orange-200 hover:shadow-md transition-all">
-                    <div class="w-9 h-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center mb-3">
-                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1L15 8m-3-1v1m0 8v1m0-1c-1.11 0-2.08-.402-2.599-1"/></svg>
-                    </div>
-                    <h3 class="text-[13px] font-bold text-gray-900 mb-1">Jumlah total</h3>
-                    <p class="text-[11px] text-gray-500 leading-snug">Mata uang apa saja, otomatis terkonversi.</p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-5 hover:border-orange-200 hover:shadow-md transition-all">
-                    <div class="w-9 h-9 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center mb-3">
-                        <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    </div>
-                    <h3 class="text-[13px] font-bold text-gray-900 mb-1">Tanggal &amp; jam</h3>
-                    <p class="text-[11px] text-gray-500 leading-snug">Dicek silang dengan tanggal upload untuk akurasi.</p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-5 hover:border-orange-200 hover:shadow-md transition-all">
-                    <div class="w-9 h-9 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center mb-3">
-                        <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
-                    </div>
-                    <h3 class="text-[13px] font-bold text-gray-900 mb-1">Rincian pajak</h3>
-                    <p class="text-[11px] text-gray-500 leading-snug">PPN, service charge, diskon — per baris.</p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-5 hover:border-orange-200 hover:shadow-md transition-all">
-                    <div class="w-9 h-9 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center mb-3">
-                        <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
-                    </div>
-                    <h3 class="text-[13px] font-bold text-gray-900 mb-1">Item per item</h3>
-                    <p class="text-[11px] text-gray-500 leading-snug">Setiap item, qty, dan harga satuan — bisa di-export.</p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-5 hover:border-orange-200 hover:shadow-md transition-all">
-                    <div class="w-9 h-9 rounded-lg bg-pink-50 border border-pink-100 flex items-center justify-center mb-3">
-                        <svg class="w-4 h-4 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                    </div>
-                    <h3 class="text-[13px] font-bold text-gray-900 mb-1">Metode pembayaran</h3>
-                    <p class="text-[11px] text-gray-500 leading-snug">Tunai, kartu, GoPay, OVO — dicocokkan dengan sumber.</p>
-                </div>
-            </div>
-
-            <!-- Confidence indicator -->
-            <div class="mt-10 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100 rounded-xl px-6 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-lg bg-white border border-orange-200 flex items-center justify-center flex-shrink-0">
-                        <svg class="w-5 h-5 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                    </div>
-                    <div>
-                        <div class="text-[15px] font-bold text-gray-900">Skor confidence di setiap kolom</div>
-                        <div class="text-[13px] text-gray-600 leading-snug">Di bawah 90%? Fluxy AI flag untuk Anda cek cepat. Tidak ada kesalahan diam-diam di pembukuan.</div>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2 bg-white rounded-md border border-orange-200 px-4 py-2">
-                    <div class="w-2 h-2 rounded-full bg-green-500"></div>
-                    <span class="text-[13px] font-mono font-bold text-gray-900">Akurasi rata-rata 98,4%</span>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- REPORTING SECTION -->
-    <section class="bg-gray-50 py-16 md:py-24 px-6 border-t border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-2 gap-14 items-center">
-                <!-- Left: Visual -->
-                <div class="order-2 lg:order-1 relative">
-                    <!-- Dashboard mockup card -->
-                    <div class="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-                        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                            <div>
-                                <div class="text-[14px] font-bold text-gray-900">November 2026</div>
-                                <div class="text-[11px] text-gray-500">128 struk diproses</div>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded">Tercocokkan</span>
-                            </div>
-                        </div>
-                        <!-- Bar chart visualization -->
-                        <div class="p-5">
-                            <div class="text-[12px] text-gray-500 mb-4">Pengeluaran per kategori</div>
-                            <div class="space-y-3">
-                                <div>
-                                    <div class="flex justify-between text-[12px] mb-1.5">
-                                        <span class="text-gray-700 font-semibold">Pemasaran</span>
-                                        <span class="text-gray-900 font-mono font-bold">Rp 24.6M</span>
-                                    </div>
-                                    <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                        <div class="h-full bg-gradient-to-r from-[#EA580C] to-[#F97316] rounded-full" style="width: 78%"></div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div class="flex justify-between text-[12px] mb-1.5">
-                                        <span class="text-gray-700 font-semibold">Operasional</span>
-                                        <span class="text-gray-900 font-mono font-bold">Rp 18.2M</span>
-                                    </div>
-                                    <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                        <div class="h-full bg-blue-500 rounded-full" style="width: 58%"></div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div class="flex justify-between text-[12px] mb-1.5">
-                                        <span class="text-gray-700 font-semibold">Makan Tim</span>
-                                        <span class="text-gray-900 font-mono font-bold">Rp 9.4M</span>
-                                    </div>
-                                    <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                        <div class="h-full bg-purple-500 rounded-full" style="width: 30%"></div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div class="flex justify-between text-[12px] mb-1.5">
-                                        <span class="text-gray-700 font-semibold">Perjalanan</span>
-                                        <span class="text-gray-900 font-mono font-bold">Rp 6.8M</span>
-                                    </div>
-                                    <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                        <div class="h-full bg-green-500 rounded-full" style="width: 22%"></div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div class="flex justify-between text-[12px] mb-1.5">
-                                        <span class="text-gray-700 font-semibold">Perlengkapan Kantor</span>
-                                        <span class="text-gray-900 font-mono font-bold">Rp 3.1M</span>
-                                    </div>
-                                    <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                        <div class="h-full bg-amber-500 rounded-full" style="width: 10%"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-[12px]">
-                            <span class="text-gray-500">Total bulan ini</span>
-                            <span class="font-mono font-bold text-gray-900">Rp 62.1M</span>
-                        </div>
-                    </div>
-
-                    <!-- Floating "tax-ready" badge -->
-                    <div class="absolute -top-4 -right-4 bg-white rounded-xl shadow-lg border border-gray-200 px-4 py-3 max-w-[200px] hidden md:block">
-                        <div class="flex items-start gap-2">
-                            <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                                <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                            </div>
-                            <div>
-                                <div class="text-[12px] font-bold text-gray-900">Ekspor siap pajak</div>
-                                <div class="text-[11px] text-gray-500 leading-snug">CSV, Xero, QuickBooks</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right: Copy -->
-                <div class="order-1 lg:order-2">
-                    <div class="inline-flex items-center gap-2 bg-orange-50 border border-orange-100 rounded-full px-3 py-1.5 mb-5">
-                        <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2"/></svg>
-                        <span class="text-[12px] font-bold text-[#EA580C] uppercase tracking-wider">Pelaporan</span>
-                    </div>
-
-                    <h2 class="text-[30px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-5 leading-tight">
-                        Dari kotak struk ke dashboard —<br/>
-                        <span class="text-gray-500">otomatis.</span>
-                    </h2>
-
-                    <p class="text-[16px] text-gray-600 leading-relaxed mb-6">
-                        Struk tidak menumpuk lagi. Otomatis tersusun per kategori, total dijumlahkan per bulan, dan ekspor siap untuk akuntan — atau pelaporan pajak.
-                    </p>
-
-                    <ul class="space-y-3 mb-8">
-                        <li class="flex items-start gap-3">
-                            <div class="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3 h-3 text-[#EA580C]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.293-9.707a1 1 0 00-1.414 1.414L9.414 11l-1.121 1.121a1 1 0 101.414 1.414l1.121-1.121 1.121 1.121a1 1 0 001.414-1.414L11.414 11l1.121-1.121a1 1 0 00-1.414-1.414L10 10.586 8.879 9.465z"/></svg>
-                            </div>
-                            <span class="text-[15px] text-gray-700"><b>Ringkasan bulanan</b> — lihat pengeluaran per kategori, vendor, atau tim dalam satu grafik.</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <div class="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3 h-3 text-[#EA580C]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.293-9.707a1 1 0 00-1.414 1.414L9.414 11l-1.121 1.121a1 1 0 101.414 1.414l1.121-1.121 1.121 1.121a1 1 0 001.414-1.414L11.414 11l1.121-1.121a1 1 0 00-1.414-1.414L10 10.586 8.879 9.465z"/></svg>
-                            </div>
-                            <span class="text-[15px] text-gray-700"><b>Ekspor CSV siap pajak</b> — terformat untuk pelaporan PPN Indonesia dan siap untuk akuntan Anda.</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <div class="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3 h-3 text-[#EA580C]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.293-9.707a1 1 0 00-1.414 1.414L9.414 11l-1.121 1.121a1 1 0 101.414 1.414l1.121-1.121 1.121 1.121a1 1 0 001.414-1.414L11.414 11l1.121-1.121a1 1 0 00-1.414-1.414L10 10.586 8.879 9.465z"/></svg>
-                            </div>
-                            <span class="text-[15px] text-gray-700"><b>Sinkronisasi langsung</b> — kirim ke Xero, QuickBooks, atau buku besar Anda. Tanpa copy-paste lagi.</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <div class="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3 h-3 text-[#EA580C]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.293-9.707a1 1 0 00-1.414 1.414L9.414 11l-1.121 1.121a1 1 0 101.414 1.414l1.121-1.121 1.121 1.121a1 1 0 001.414-1.414L11.414 11l1.121-1.121a1 1 0 00-1.414-1.414L10 10.586 8.879 9.465z"/></svg>
-                            </div>
-                            <span class="text-[15px] text-gray-700"><b>Struk asli terarsip</b> — setiap foto dan PDF tersimpan, bisa dicari selama 7 tahun.</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </section>
-
-
-    <!-- FAQ -->
-    <section id="faq" class="py-16 md:py-20 px-6 border-t border-gray-200 bg-gray-50">
-        <div class="max-w-3xl mx-auto">
-            <div class="mb-10">
-                <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3">
-                    Pertanyaan yang sering ditanyakan
-                </h2>
-                <p class="text-[16px] text-gray-600">
-                    Jawaban singkat untuk pertanyaan yang sering muncul sebelum daftar.
-                </p>
-            </div>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Bagaimana cara kerja FluxyOS Receipt Capture?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">FluxyOS Receipt Capture adalah tools bertenaga AI yang membaca struk apa saja — foto HP, PDF invoice, atau e-struk — dan mengambil nama vendor, jumlah, tanggal, rincian pajak, dan item per item. Datanya otomatis masuk ke dashboard FluxyOS, siap dikategorikan.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Bisa kirim struk via WhatsApp?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Bisa. Kirim foto struk ke FluxyOS AI di WhatsApp dan bot balas dalam 5 detik dengan data yang sudah diekstrak. Tap untuk konfirmasi kategori yang disarankan, struk masuk ke dashboard. Tidak perlu install app — jalan di akun WhatsApp yang Anda pakai sehari-hari.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Format file dan sumber apa saja yang didukung?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">FluxyOS terima foto JPG/PNG dari kamera HP, PDF invoice via email, e-struk dari checkout online, dan upload bulk sampai 100 file sekaligus. AI baca struk tulisan tangan dan struk thermal printer dengan baik.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Seberapa akurat ekstraksi datanya?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Akurasi ekstraksi rata-rata 98,4% untuk nama vendor, jumlah, dan tanggal. Setiap kolom punya skor — apapun di bawah 90% confidence di-flag untuk review cepat supaya kesalahan diam-diam tidak masuk pembukuan.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Apakah menangani PPN Indonesia dengan benar?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Ya. AI ekstrak PPN 11% sebagai baris terpisah, bedakan dari service charge dan diskon, dan masukkan ke ekspor siap pajak Anda. Rangkuman PPN per bulan tersedia dengan satu klik untuk akuntan Anda.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Apakah struk saya disimpan untuk audit?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Setiap struk — foto, PDF, atau e-struk — diarsipkan 7 tahun dan diindeks berdasarkan vendor, tanggal, dan jumlah. Saat auditor tanya, Anda bisa tarik struk spesifik dalam hitungan detik.</p>
-            </details>
-        </div>
-    </section>
-
-    <!-- CTA -->
-    <section class="bg-[#0B0F19] py-16 md:py-24 px-6 relative overflow-hidden">
-        <div class="absolute inset-0 opacity-[0.04] pointer-events-none" style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 32px 32px;"></div>
-        <div class="max-w-[1280px] mx-auto text-center relative">
-            <h2 class="text-[36px] md:text-[46px] font-bold tracking-tight text-white mb-5">
-                Berhenti ketik data struk ke spreadsheet.
-            </h2>
-            <p class="text-[17px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">
-                Coba Receipt Capture gratis. Foto, kirim WhatsApp, atau forward email — lihat pembukuan update real-time.
+            <p class="text-[14px] leading-relaxed max-w-[280px] footer-body-text">
+                Sistem operasi keuangan yang cerdas. Satukan budget internal, pengeluaran operasional, dan pendapatan untuk agensi, manufaktur, dan bisnis modern.
             </p>
-            <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-md inline-block text-center">
-                    Coba Gratis
-                </a>
-                <a href="/id/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">
-                    Lihat Harga
-                </a>
-            </div>
         </div>
-    </section>
 
-    <script src="/assets/js/universe-canvas.js" defer></script>
-    <script src="/assets/js/footer-loader.js" defer></script>
-    <script src="/assets/js/fluxyos.js" defer></script>
-    <script src="/assets/js/i18n.js" defer></script>
+        <div class="md:col-span-2">
+            <h4 class="text-[13px] font-bold text-white mb-6 uppercase tracking-wider">Platform</h4>
+            <ul class="space-y-4 text-[14px] font-medium footer-body-text">
+                <li><a href="/id/budgetlanding" class="footer-link">Dynamic Budgeting</a></li>
+                <li><a href="/id/vendorspend" class="footer-link">Invoice</a></li>
+                <li><a href="/id/revenuesync" class="footer-link">Revenue Sync</a></li>
+                <li><a href="/id/receiptcapture" class="footer-link">Receipt Capture</a></li>
+                <li><a href="/id/aiagents" class="footer-link">AI Finance Agents</a></li>
+            </ul>
+        </div>
+
+        <div class="md:col-span-2">
+            <h4 class="text-[13px] font-bold text-white mb-6 uppercase tracking-wider">Studi Kasus</h4>
+            <ul class="space-y-4 text-[14px] font-medium footer-body-text">
+                <li><a href="/id/use-cases/founder-ceo" class="footer-link">Founders &amp; CEOs</a></li>
+                <li><a href="/id/use-cases/cfo-finance-teams" class="footer-link">CFOs &amp; Finance Teams</a></li>
+                <li><a href="/id/use-cases/ecommerce-brands" class="footer-link">E-commerce Brands</a></li>
+                <li><a href="/id/use-cases/marketing-agencies" class="footer-link">Marketing Agencies</a></li>
+            </ul>
+        </div>
+
+        <div class="md:col-span-2">
+            <h4 class="text-[13px] font-bold text-white mb-6 uppercase tracking-wider">Perusahaan</h4>
+            <ul class="space-y-4 text-[14px] font-medium footer-body-text">
+                <li><a href="/id/pricing" class="footer-link">Harga</a></li>
+                <li><a href="/contact-sales" class="footer-link">Hubungi Sales</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="max-w-[1280px] mx-auto pt-8 footer-divider flex flex-col md:flex-row justify-between items-center gap-6">
+        <p class="text-[14px] font-medium footer-body-text">© 2026 FluxyOS Technologies. Semua hak dilindungi.</p>
+        <div class="flex gap-8 text-[14px] font-medium footer-body-text">
+            <a href="/privacy" class="footer-link">Kebijakan Privasi</a>
+            <a href="/terms" class="footer-link">Ketentuan Layanan</a>
+        </div>
+    </div>
+</footer>
+<!-- shared-footer:end -->
+<script src="/assets/js/universe-canvas.js" defer></script>
+<script src="/assets/js/footer-loader.js" defer></script>
+<script src="/assets/js/fluxyos.js" defer></script>
+<script src="/assets/js/i18n.js" defer></script>
+<script src="/assets/js/receipt-landing.js" defer></script>
 </body>
 </html>

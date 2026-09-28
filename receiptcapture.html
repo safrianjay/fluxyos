@@ -4,91 +4,14 @@
     <meta charset="UTF-8">
     <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Receipt Capture via WhatsApp, Email, or Upload | FluxyOS</title>
+    <title>AI Receipt Capture & Expense Recording | FluxyOS</title>
     <link rel="stylesheet" href="/assets/css/tailwind.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/fluxyos.css">
 
-    <style>
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            -webkit-font-smoothing: antialiased;
-        }
-        .font-mono { font-family: 'Fira Code', monospace; }
-
-        .hero-gradient {
-            background: linear-gradient(135deg, #FFF7ED 0%, #FFFFFF 60%, #F9FAFB 100%);
-        }
-
-        .section-dark {
-            background: #0B0F19;
-            color: white;
-        }
-
-        /* Floating receipt animation */
-        @keyframes floatReceipt {
-            0%, 100% { transform: translateY(0) rotate(-3deg); }
-            50% { transform: translateY(-10px) rotate(-1deg); }
-        }
-        .receipt-float {
-            animation: floatReceipt 5s ease-in-out infinite;
-        }
-
-        /* Pulse ring for scanning effect */
-        @keyframes scanPulse {
-            0% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.4); }
-            70% { box-shadow: 0 0 0 18px rgba(234, 88, 12, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0); }
-        }
-        .scan-pulse {
-            animation: scanPulse 2.5s infinite;
-        }
-
-        /* Slide-in callout */
-        @keyframes slideInRight {
-            0% { opacity: 0; transform: translateX(20px); }
-            100% { opacity: 1; transform: translateX(0); }
-        }
-        .callout-1 { animation: slideInRight 0.6s ease-out 0.2s both; }
-        .callout-2 { animation: slideInRight 0.6s ease-out 0.5s both; }
-        .callout-3 { animation: slideInRight 0.6s ease-out 0.8s both; }
-        .callout-4 { animation: slideInRight 0.6s ease-out 1.1s both; }
-
-        /* WhatsApp-style chat bubble */
-        .wa-bg { background: #ECE5DD; background-image: radial-gradient(circle at 1px 1px, rgba(0,0,0,0.04) 1px, transparent 0); background-size: 20px 20px; }
-        .wa-bubble-in {
-            background: #FFFFFF;
-            border-radius: 0 12px 12px 12px;
-            box-shadow: 0 1px 1px rgba(0,0,0,0.08);
-        }
-        .wa-bubble-out {
-            background: #DCF8C6;
-            border-radius: 12px 0 12px 12px;
-            box-shadow: 0 1px 1px rgba(0,0,0,0.08);
-        }
-
-        /* Receipt paper effect */
-        .receipt-paper {
-            background: #FFFFFF;
-            position: relative;
-            box-shadow: 0 20px 50px -10px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.04);
-        }
-        .receipt-paper::before, .receipt-paper::after {
-            content: "";
-            position: absolute;
-            left: 0; right: 0;
-            height: 12px;
-            background: radial-gradient(circle at 6px 0, transparent 6px, #FFFFFF 6px) 0 0/12px 12px;
-        }
-        .receipt-paper::before { top: -1px; transform: scaleY(-1); }
-        .receipt-paper::after { bottom: -1px; }
-
-        /* Connector line */
-        .connector-line {
-            background: linear-gradient(90deg, rgba(234, 88, 12, 0.3) 0%, rgba(234, 88, 12, 0.6) 100%);
-        }
-    </style>
-    <meta name="description" content="Send receipts via WhatsApp, email, or upload. AI extracts vendor, amount, tax, and category in seconds. Built for Indonesian businesses.">
+    <link rel="stylesheet" href="/assets/css/receipt-landing.css">
+    <link rel="stylesheet" href="/assets/css/footer.css">
+    <meta name="description" content="Turn receipt photos and PDFs into reviewed expenses. Fluxy AI reads key details, suggests categories, and keeps the source connected to your accounting.">
     <link rel="canonical" href="https://fluxyos.com/receiptcapture">
     <link rel="alternate" hreflang="en" href="https://fluxyos.com/receiptcapture">
     <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/receiptcapture">
@@ -97,8 +20,8 @@
     <!-- Open Graph -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://fluxyos.com/receiptcapture">
-    <meta property="og:title" content="AI Receipt Capture via WhatsApp, Email, or Upload | FluxyOS">
-    <meta property="og:description" content="Send receipts via WhatsApp, email, or upload. AI extracts vendor, amount, tax, and category in seconds. Built for Indonesian businesses.">
+    <meta property="og:title" content="AI Receipt Capture & Expense Recording | FluxyOS">
+    <meta property="og:description" content="Turn receipt photos and PDFs into reviewed expenses. Fluxy AI reads key details, suggests categories, and keeps the source connected to your accounting.">
     <meta property="og:image" content="https://fluxyos.com/assets/images/og-receiptcapture.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -108,8 +31,8 @@
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="AI Receipt Capture via WhatsApp, Email, or Upload | FluxyOS">
-    <meta name="twitter:description" content="Send receipts via WhatsApp, email, or upload. AI extracts vendor, amount, tax, and category in seconds. Built for Indonesian businesses.">
+    <meta name="twitter:title" content="AI Receipt Capture & Expense Recording | FluxyOS">
+    <meta name="twitter:description" content="Turn receipt photos and PDFs into reviewed expenses. Fluxy AI reads key details, suggests categories, and keeps the source connected to your accounting.">
     <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-receiptcapture.png">
 
     <!-- Google Analytics -->
@@ -123,150 +46,159 @@
 
     <!-- Schema.org structured data -->
     <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://fluxyos.com/#organization",
+  "name": "FluxyOS",
+  "legalName": "PT SAF Teknologi Maju",
+  "url": "https://fluxyos.com",
+  "logo": "https://fluxyos.com/assets/images/favicon.svg",
+  "description": "Intelligent Finance Operating System connecting financial operations, accounting, business operations, and intelligence into one system, for businesses at every growth stage.",
+  "foundingDate": "2026",
+  "areaServed": {
+    "@type": "Country",
+    "name": "Indonesia"
+  },
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Plaza Indonesia, Level 5 Unit E021AB, Jl. M.H. Thamrin No. Kav. 28-30",
+    "addressLocality": "Jakarta Pusat",
+    "addressRegion": "DKI Jakarta",
+    "postalCode": "10350",
+    "addressCountry": "ID"
+  },
+  "sameAs": [
+    "https://www.linkedin.com/company/fluxyos/",
+    "https://www.instagram.com/fluxy_os/"
+  ],
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "customer support",
+    "email": "support@fluxyos.com",
+    "availableLanguage": [
+      "English",
+      "Indonesian"
+    ]
+  }
+}
+    </script>
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "FluxyOS Receipt Capture",
+  "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "Intelligent Finance Operating System",
+  "operatingSystem": "Web",
+  "url": "https://fluxyos.com/receiptcapture",
+  "description": "Turn receipt photos and PDFs into reviewed expenses. Fluxy AI reads key details, suggests categories, and keeps the source connected to your accounting.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "IDR",
+    "availability": "https://schema.org/InStock"
+  },
+  "featureList": [
+    "Receipt image and PDF upload",
+    "AI extraction of merchant, date, total, and currency",
+    "Suggested expense category",
+    "Review before saving",
+    "Receipt attachment to expense transaction",
+    "Accounting integration"
+  ],
+  "publisher": {
+    "@id": "https://fluxyos.com/#organization"
+  }
+}
+    </script>
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
     {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "@id": "https://fluxyos.com/#organization",
-      "name": "FluxyOS",
-      "legalName": "PT SAF Teknologi Maju",
-      "url": "https://fluxyos.com",
-      "logo": "https://fluxyos.com/assets/images/favicon.svg",
-      "description": "Intelligent Finance Operating System connecting financial operations, accounting, business operations, and intelligence into one system, for businesses at every growth stage.",
-      "foundingDate": "2026",
-      "areaServed": {
-        "@type": "Country",
-        "name": "Indonesia"
-      },
-      "address": {
-        "@type": "PostalAddress",
-        "streetAddress": "Plaza Indonesia, Level 5 Unit E021AB, Jl. M.H. Thamrin No. Kav. 28-30",
-        "addressLocality": "Jakarta Pusat",
-        "addressRegion": "DKI Jakarta",
-        "postalCode": "10350",
-        "addressCountry": "ID"
-      },
-      "sameAs": [
-        "https://www.linkedin.com/company/fluxyos/",
-        "https://www.instagram.com/fluxy_os/"
-      ],
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "contactType": "customer support",
-        "email": "support@fluxyos.com",
-        "availableLanguage": [
-          "English",
-          "Indonesian"
-        ]
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://fluxyos.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Receipt Capture",
+      "item": "https://fluxyos.com/receiptcapture"
+    }
+  ]
+}
+    </script>
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How does Receipt Capture work?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Upload a receipt photo or PDF in the scan workflow. Fluxy AI reads the merchant, date, total, currency, and a suggested category. Review and correct the details, choose how the expense affects cash, and save. The original receipt stays attached to the transaction."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Which receipt files can I upload?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Scanning accepts JPG, PNG, WebP, and PDF files up to 10 MB, one document at a time. Attachments have a 5 MB limit: large images are compressed where possible, but keep PDFs under 5 MB to retain the source with the expense. Use a clear photo or digital copy in the web workflow."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does AI extract every item, tax, and payment detail?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Not as separate structured fields today. The scanner extracts key document details and a suggested category. Item lines, tax breakdowns, and payment-method details remain on the original receipt for you to check. Confirm tax treatment and the cash-impact setting before saving."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I correct the AI result before saving?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Edit the merchant, amount, date, currency, category, and accounting account in the review step. Uncertain fields can show confidence indicators and warnings. A scan does not create a financial record until you save it."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Which currencies does receipt scanning recognize?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The scanner recognizes IDR, USD, and SGD. Review the detected currency and exchange rate. Expense transactions are saved in the workspace base currency; the original amount and conversion details are kept in notes. Supplier bills follow a separate original-currency workflow."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Where can I find a saved receipt?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Find the expense in Transactions using merchant or category search and the date filter, then open its attached document. Receipt Capture does not currently have a separate receipt-history page or a guaranteed retention period."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I submit receipts through WhatsApp or email?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Receipt scanning currently starts with a document upload in FluxyOS. A dedicated WhatsApp receipt bot and inbound receipt-email inbox are not available today. You can upload a receipt file you have received through either channel."
       }
     }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "FluxyOS Receipt Capture",
-      "applicationCategory": "BusinessApplication",
-      "applicationSubCategory": "Finance Operations Software",
-      "operatingSystem": "Web, iOS, Android",
-      "url": "https://fluxyos.com/receiptcapture",
-      "description": "Send receipts via WhatsApp, email, or upload. AI extracts vendor, amount, tax, and category in seconds. Built for Indonesian businesses.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "IDR",
-        "availability": "https://schema.org/InStock"
-      },
-      "featureList": [
-        "WhatsApp receipt submission",
-        "Email forwarding",
-        "Bulk PDF upload (100+ at once)",
-        "AI vendor + amount + tax extraction",
-        "Indonesian PPN line-item recognition",
-        "7-year searchable archive"
-      ],
-      "publisher": {
-        "@id": "https://fluxyos.com/#organization"
-      }
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Home",
-          "item": "https://fluxyos.com/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Receipt Capture",
-          "item": "https://fluxyos.com/receiptcapture"
-        }
-      ]
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "How does FluxyOS Receipt Capture work?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "FluxyOS Receipt Capture is an AI-powered tool that reads any receipt \u2014 phone photos, PDF invoices, or e-receipts \u2014 and extracts the vendor name, amount, date, tax breakdown, and line items. The data lands in your FluxyOS dashboard automatically, ready for categorization."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can I send receipts via WhatsApp?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. Send a photo of any receipt to FluxyOS AI on WhatsApp and the bot replies within 5 seconds with the extracted data. Tap to confirm the suggested category, and the receipt is filed in your dashboard. No app install needed \u2014 works on the WhatsApp account you already use."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "What file formats and sources are supported?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "FluxyOS accepts JPG/PNG photos from phone cameras, PDF invoices forwarded by email, e-receipts from online checkouts, and bulk uploads of up to 100 files at once. The AI reads handwritten receipts and printed thermal-paper struk equally well."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How accurate is the data extraction?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Every extracted field \u2014 vendor name, amount, date \u2014 carries its own confidence score. Anything the model is unsure about is flagged for a quick human review instead of posted, so silent mistakes never reach your books."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Does it handle Indonesian PPN tax correctly?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. The AI extracts PPN 11% as a separate line item, distinguishes it from service charges and discounts, and includes it in your tax-ready exports. PPN summaries by month are available with one click for your accountant."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Will my receipts be saved for audits?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Every receipt \u2014 photo, PDF, or e-receipt \u2014 is archived for 7 years and indexed by vendor, date, and amount. When auditors ask, you can pull any specific receipt in seconds."
-          }
-        }
-      ]
-    }
+  ]
+}
     </script>
 </head>
-<body class="min-h-screen flex flex-col">
+<body>
+<a class="receipt-skip" href="#main-content">Skip to content</a>
 
     <!-- 1. Navigation with Mega Menu -->
     <nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
@@ -663,650 +595,175 @@
             </div>
         </div>
     </nav>
-    <!-- HERO -->
-    <section class="hero-gradient pt-16 pb-20 md:pt-20 md:pb-28 px-6 relative overflow-hidden">
-        <!-- Subtle dot grid background -->
-        <div class="absolute inset-0 opacity-40 pointer-events-none" style="background-image: radial-gradient(circle at 1px 1px, rgba(234, 88, 12, 0.18) 1px, transparent 0); background-size: 28px 28px;"></div>
-        <!-- Background accent shapes -->
-        <div class="absolute top-20 right-[-100px] w-[400px] h-[400px] bg-orange-100/40 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute bottom-0 left-[-150px] w-[500px] h-[500px] bg-amber-50/60 rounded-full blur-3xl pointer-events-none"></div>
-        <!-- Decorative diagonal line -->
-        <svg class="absolute top-10 left-1/2 -translate-x-1/2 opacity-30 pointer-events-none hidden md:block" width="600" height="200" viewBox="0 0 600 200" fill="none">
-            <path d="M0 100 Q 150 20, 300 100 T 600 100" stroke="#EA580C" stroke-width="1.5" stroke-dasharray="4 6" fill="none"/>
-        </svg>
-        <!-- Floating decorative dots -->
-        <div class="absolute top-32 left-[8%] w-2 h-2 rounded-full bg-[#EA580C]/40 pointer-events-none hidden md:block"></div>
-        <div class="absolute top-[40%] right-[6%] w-3 h-3 rounded-full border-2 border-[#EA580C]/30 pointer-events-none hidden md:block"></div>
-        <div class="absolute bottom-32 left-[12%] w-1.5 h-1.5 rounded-full bg-amber-400/50 pointer-events-none hidden md:block"></div>
-        <div class="absolute top-[55%] left-[3%] w-4 h-4 rounded-md border border-[#EA580C]/30 rotate-45 pointer-events-none hidden lg:block"></div>
+<main class="receipt-page" id="main-content">
+<section class="receipt-hero">
+  <div class="receipt-hero-copy">
+    <h1>A receipt in.<br>An expense ready.</h1>
+    <p>Turn receipt photos and PDFs into expenses you can check, record, and trace. Fluxy AI reads the details. You make the final call.</p>
+    <div class="receipt-actions"><a href="/pricing" class="receipt-button receipt-primary">Start free</a><a href="/contact-sales" class="receipt-button">Talk to sales</a></div>
+    <a class="receipt-explore" href="#receipt-workflow">See the receipt journey<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></a>
+  </div>
+  <div class="receipt-hero-stage" data-hero-phase="0" data-motion="paused" role="img" aria-label="Receipt scanning and extracted expense details">
+    <div class="receipt-stage-top"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5M6 12h12"/></svg>Receipt Capture</span><span class="receipt-status">Review before saving</span></div>
+    <div class="receipt-hero-desk"><div class="receipt-paper">
+  <div class="receipt-paper-head"><b>Kopi Ruang</b><small>Jakarta · Receipt KR-084</small></div>
+  <div class="receipt-paper-date"><span>14 Sep 2026</span><span>10:42</span></div>
+  <div class="receipt-paper-line"><span>Coffee · 5 ×</span><b>Rp125.000</b></div>
+  <div class="receipt-paper-line"><span>Pastries · 5 ×</span><b>Rp125.000</b></div>
+  <div class="receipt-paper-line"><span>Subtotal</span><b>Rp250.000</b></div>
+  <div class="receipt-paper-line"><span>Tax shown on receipt</span><b>Rp27.500</b></div>
+  <div class="receipt-paper-total"><span>TOTAL</span><b>Rp277.500</b></div>
+  <div class="receipt-paper-foot">Paid by bank card<br>Thank you for stopping by.</div>
+  <div class="receipt-scan-line" aria-hidden="true"></div>
+</div><div class="receipt-extracted"><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5M6 12h12"/></svg><span>Read by Fluxy AI</span></div><dl class="receipt-fields">
+<div><dt>Merchant</dt><dd data-detected>Kopi Ruang</dd></div>
+<div><dt>Transaction date</dt><dd data-detected>14 Sep 2026</dd></div>
+<div><dt>Total amount</dt><dd data-detected>Rp277.500</dd></div>
+<div><dt>Currency</dt><dd data-detected>IDR</dd></div>
+<div><dt>Suggested category</dt><dd data-detected>Operations</dd></div>
+</dl><div class="receipt-review-hint">The original stays beside the result.</div></div></div>
+    <div class="receipt-hero-caption" aria-live="off"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span data-hero-caption>Upload a receipt. Keep the original.</span></div>
+    <small class="receipt-demo-note">Illustrative product workflow · nothing is submitted</small>
+  </div>
+  <div hidden data-hero-labels><span>Upload a receipt. Keep the original.</span><span>Merchant, date, amount, currency. Read for you.</span><span>Details ready. You review before saving.</span></div>
+</section>
+<div class="receipt-route"><ol aria-label="Receipt to accounting workflow">
+<li>Capture</li><li>Scan</li><li>Extract</li><li>Review</li><li>Record expense</li><li>Update accounting</li>
+</ol></div>
+<section class="receipt-section" id="receipt-workflow">
+  <header class="receipt-heading"><span class="receipt-label">From receipt to record</span><h2>The details are already there.<br>No need to type them twice.</h2><p>One document. A clear path into your books. Follow each step below, or let the demo run.</p></header>
+  <div class="receipt-workflow" data-autoplay="paused">
+    <div class="receipt-steps" role="group" aria-label="Receipt processing steps"><button type="button" class="receipt-step" data-receipt-step="0" aria-pressed="true" aria-controls="receipt-processing-demo"><span><small>01</small><b>Capture the receipt</b></span><p>Take a clear photo, then upload it. Already have a digital receipt? Use the image or PDF.</p></button><button type="button" class="receipt-step" data-receipt-step="1" aria-pressed="false" aria-controls="receipt-processing-demo"><span><small>02</small><b>Let AI read the details</b></span><p>Merchant, date, total, and currency become reviewable fields. A category is suggested, not decided for you.</p></button><button type="button" class="receipt-step" data-receipt-step="2" aria-pressed="false" aria-controls="receipt-processing-demo"><span><small>03</small><b>Check before you record</b></span><p>Compare the result with the original. Correct the details, account, and cash impact before saving.</p></button><button type="button" class="receipt-step" data-receipt-step="3" aria-pressed="false" aria-controls="receipt-processing-demo"><span><small>04</small><b>Save the expense and its source</b></span><p>Your confirmed transaction enters the ledger. Its receipt stays attached, so the numbers have a source.</p></button></div>
+    <div class="receipt-workspace" id="receipt-processing-demo" data-receipt-stage="0">
+      <div class="receipt-window"><div class="receipt-toolbar"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></svg>kopi-ruang.jpg</span><span>Scan &amp; review</span></div>
+      <div class="receipt-review-grid"><div class="receipt-source"><div class="receipt-paper">
+  <div class="receipt-paper-head"><b>Kopi Ruang</b><small>Jakarta · Receipt KR-084</small></div>
+  <div class="receipt-paper-date"><span>14 Sep 2026</span><span>10:42</span></div>
+  <div class="receipt-paper-line"><span>Coffee · 5 ×</span><b>Rp125.000</b></div>
+  <div class="receipt-paper-line"><span>Pastries · 5 ×</span><b>Rp125.000</b></div>
+  <div class="receipt-paper-line"><span>Subtotal</span><b>Rp250.000</b></div>
+  <div class="receipt-paper-line"><span>Tax shown on receipt</span><b>Rp27.500</b></div>
+  <div class="receipt-paper-total"><span>TOTAL</span><b>Rp277.500</b></div>
+  <div class="receipt-paper-foot">Paid by bank card<br>Thank you for stopping by.</div>
+  <div class="receipt-scan-line" aria-hidden="true"></div>
+</div></div><div class="receipt-review-form"><h3>Expense details</h3><dl class="receipt-fields">
+<div><dt>Merchant</dt><dd >Kopi Ruang</dd></div>
+<div><dt>Transaction date</dt><dd >14 Sep 2026</dd></div>
+<div><dt>Total amount</dt><dd >Rp277.500</dd></div>
+<div><dt>Currency</dt><dd >IDR</dd></div>
+<div><dt>Suggested category</dt><dd >Operations</dd></div>
+</dl><div class="receipt-confirm"><span>Your confirmation</span><b data-save-label>Save expense</b></div></div></div></div>
+      <p class="receipt-stage-caption" data-receipt-caption aria-live="off">A clear image gives AI a better starting point.</p>
+      <small class="receipt-demo-note">Illustrative product workflow · nothing is submitted</small>
+    </div>
+  </div>
+  <div hidden data-receipt-labels><span>A clear image gives AI a better starting point.</span><span>Key details become structured fields, with a category suggestion.</span><span>Check the original. Correct anything that needs fixing.</span><span>After you confirm, the expense and receipt stay linked.</span></div><span hidden data-saved-label>Expense recorded</span>
+</section>
+<section class="receipt-section receipt-split">
+  <div class="receipt-copy"><span class="receipt-label">Your review, your record</span><h2>AI handles the first pass.<br>You keep control.</h2><p>Check what was read, change the category, and choose the right account. Set whether cash has already moved before saving the expense.</p><p class="receipt-fineprint">Item lines, taxes, and payment details stay visible on the original receipt. They are not extracted into separate structured fields today.</p></div>
+  <div class="receipt-review-example">
+    <div class="receipt-toolbar"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5M6 12h12"/></svg>Review expense</span><span class="receipt-status">Before saving</span></div>
+    <div class="receipt-review-content"><div><span>Merchant</span><b>Kopi Ruang</b></div><div><span>Total amount</span><b>Rp277.500</b></div>
+    <div><label for="receipt-demo-category">Expense category</label><select id="receipt-demo-category"><option value="Operations">Operations</option><option value="Marketing">Marketing</option><option value="SaaS">SaaS</option></select></div>
+    <div><span>Cash impact</span><span>Already paid</span></div></div>
+    <p class="receipt-category-note">Try changing the category: <span data-category-preview>Operations</span></p>
+  </div>
+</section>
+<section class="receipt-section" id="receipt-accounting">
+  <header class="receipt-heading"><span class="receipt-label">Connected accounting</span><h2>An expense with a source.<br>An entry that balances.</h2><p>Once you save, the transaction feeds accounting through the account and cash-impact settings you reviewed. No second spreadsheet.</p></header>
+  <div class="receipt-accounting"><div class="receipt-toolbar"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></svg>Receipt → expense → accounting</span><span>Same source, same amount</span></div>
+  <div class="receipt-accounting-panels"><div class="receipt-expense-record"><span class="receipt-label">Confirmed expense</span><h3>Kopi Ruang</h3><span class="receipt-status">Completed</span><strong>Rp277.500</strong><dl class="receipt-fields"><div><dt>Transaction date</dt><dd>14 Sep 2026</dd></div><div><dt>Category</dt><dd>Operations</dd></div></dl><div class="receipt-record-file"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></svg><span>kopi-ruang.jpg<br><small>Attached to this transaction</small></span></div></div>
+  <div class="receipt-journal"><h3>Expense journal</h3><div class="receipt-table-scroll"><table><caption class="sr-only">Balanced journal for the illustrative paid expense</caption><thead><tr><th scope="col">Account</th><th scope="col" class="receipt-money">Debit</th><th scope="col" class="receipt-money">Credit</th></tr></thead><tbody><tr><td>Operating expenses</td><td class="receipt-money">Rp277.500</td><td class="receipt-money">—</td></tr><tr><td>Bank cash</td><td class="receipt-money">—</td><td class="receipt-money">Rp277.500</td></tr></tbody><tfoot><tr><td>Balanced</td><td class="receipt-money">Rp277.500</td><td class="receipt-money">Rp277.500</td></tr></tfoot></table></div>
+  <div class="receipt-report-links"><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></svg><small>General ledger</small><b>Expense posted</b></div><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><small>Income Statement</small><b>Operating expense</b></div><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18M15 6l6 6-6 6"/></svg><small>Cash flow</small><b>Payment reflected</b></div></div></div></div>
+  <p>Example: a paid IDR expense recorded at its tax-inclusive total. Actual entries depend on your account mapping and tax treatment.</p></div>
+</section>
+<section class="receipt-section receipt-split">
+  <div class="receipt-currency-visual"><div class="receipt-currency-row"><span>Recognized currencies</span><b>IDR · USD · SGD</b></div><div class="receipt-currency-flow"><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></svg><span>Original amount on the receipt</span></div><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M3 3l7 7M16 21h5v-5M21 21l-7-7"/></svg><span>Exchange rate you review</span></div><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span>Expense in your base currency</span></div></div><small class="receipt-demo-note">Original currency and conversion details stay in notes.</small></div>
+  <div class="receipt-copy"><span class="receipt-label">Receipts across currencies</span><h2>Read the currency.<br>Check the conversion.</h2><p>Fluxy AI recognizes IDR, USD, and SGD receipts. Review the amount and exchange rate before recording an expense in your workspace base currency.</p><p class="receipt-fineprint">The original amount and conversion details remain in notes. Supplier bills keep their own currency through the separate bill workflow.</p></div>
+</section>
+<section class="receipt-section" id="receipt-records">
+  <header class="receipt-heading"><span class="receipt-label">Keep the proof close</span><h2>Find the expense.<br>Open the receipt.</h2><p>Search your transaction records by merchant or category. Use the date filter in Transactions, then open the attached source when you need to check a number.</p></header>
+  <div class="receipt-library"><div class="receipt-toolbar"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></svg>Transactions · expense records</span><span>September 2026</span></div>
+  <div class="receipt-library-controls"><label class="receipt-search" for="receipt-demo-search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 21l-5-5M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14"/></svg><span class="sr-only">Search merchant or category</span><input id="receipt-demo-search" type="search" placeholder="Search merchant or category"></label><div class="receipt-filter" role="group" aria-label="Receipt attachment filters"><button type="button" data-receipt-filter="all" aria-pressed="true">All expenses</button><button type="button" data-receipt-filter="attached" aria-pressed="false">With receipts</button><button type="button" data-receipt-filter="missing" aria-pressed="false">Missing receipt</button></div></div>
+  <div class="receipt-table-scroll"><table><caption class="sr-only">Illustrative expense records and their receipt attachments</caption><thead><tr><th scope="col">Merchant</th><th scope="col">Date</th><th scope="col">Category</th><th scope="col" class="receipt-money">Amount</th><th scope="col">Source document</th></tr></thead><tbody>
+  <tr data-receipt-row="attached"><td><b>Kopi Ruang</b><small>Completed</small></td><td>14 Sep 2026</td><td>Operations</td><td class="receipt-money">Rp277.500</td><td><span class="receipt-attachment "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></svg><span>kopi-ruang.jpg</span></span></td></tr><tr data-receipt-row="attached"><td><b>Nusa Print</b><small>Completed</small></td><td>12 Sep 2026</td><td>Marketing</td><td class="receipt-money">Rp450.000</td><td><span class="receipt-attachment "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></svg><span>nusa-print.pdf</span></span></td></tr><tr data-receipt-row="attached"><td><b>Studio Kit</b><small>Completed</small></td><td>10 Sep 2026</td><td>Operations</td><td class="receipt-money">Rp825.000</td><td><span class="receipt-attachment "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></svg><span>studio-kit.jpg</span></span></td></tr><tr data-receipt-row="missing"><td><b>Langit Media</b><small>Missing Receipt</small></td><td>09 Sep 2026</td><td>Marketing</td><td class="receipt-money">Rp600.000</td><td><span class="receipt-attachment receipt-missing"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5M12 17h.01M12 3 2 21h20z"/></svg><span>Not attached</span></span></td></tr>
+  </tbody></table></div><p class="receipt-empty" data-receipt-empty hidden>No matching expenses. Try another search or filter.</p><p class="receipt-results" role="status" aria-live="polite"><span data-receipt-count>4</span> expense records shown · illustrative data</p></div>
+</section>
+<section class="receipt-section">
+  <div class="receipt-copy"><span class="receipt-label">Part of the same financial workflow</span><h2>The receipt is the starting point.</h2><p>FluxyOS is an Intelligent Finance Operating System that connects financial operations, accounting, business operations, enterprise workflows, and intelligence into one continuously connected system.</p></div>
+  <div class="receipt-ecosystem"><a href="/erp-intelligence"><div>ERP Intelligence <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></div><p>Follow the expense into journals, the ledger, and financial statements.</p></a><a href="/vendorspend"><div>FluxyOS Invoice <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></div><p>Create customer invoices and review scanned supplier bills.</p></a><a href="/budgetlanding"><div>Dynamic Budgeting <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></div><p>See recorded expenses against the budget your team set.</p></a></div>
+</section>
+<section class="receipt-section receipt-faq" id="faq"><div><h2>A few things to know.</h2><p>What gets read, what you review, and where the receipt goes.</p></div><div><details><summary>How does Receipt Capture work?</summary><p>Upload a receipt photo or PDF in the scan workflow. Fluxy AI reads the merchant, date, total, currency, and a suggested category. Review and correct the details, choose how the expense affects cash, and save. The original receipt stays attached to the transaction.</p></details><details><summary>Which receipt files can I upload?</summary><p>Scanning accepts JPG, PNG, WebP, and PDF files up to 10 MB, one document at a time. Attachments have a 5 MB limit: large images are compressed where possible, but keep PDFs under 5 MB to retain the source with the expense. Use a clear photo or digital copy in the web workflow.</p></details><details><summary>Does AI extract every item, tax, and payment detail?</summary><p>Not as separate structured fields today. The scanner extracts key document details and a suggested category. Item lines, tax breakdowns, and payment-method details remain on the original receipt for you to check. Confirm tax treatment and the cash-impact setting before saving.</p></details><details><summary>Can I correct the AI result before saving?</summary><p>Yes. Edit the merchant, amount, date, currency, category, and accounting account in the review step. Uncertain fields can show confidence indicators and warnings. A scan does not create a financial record until you save it.</p></details><details><summary>Which currencies does receipt scanning recognize?</summary><p>The scanner recognizes IDR, USD, and SGD. Review the detected currency and exchange rate. Expense transactions are saved in the workspace base currency; the original amount and conversion details are kept in notes. Supplier bills follow a separate original-currency workflow.</p></details><details><summary>Where can I find a saved receipt?</summary><p>Find the expense in Transactions using merchant or category search and the date filter, then open its attached document. Receipt Capture does not currently have a separate receipt-history page or a guaranteed retention period.</p></details><details><summary>Can I submit receipts through WhatsApp or email?</summary><p>Receipt scanning currently starts with a document upload in FluxyOS. A dedicated WhatsApp receipt bot and inbound receipt-email inbox are not available today. You can upload a receipt file you have received through either channel.</p></details></div></section>
+<section class="receipt-closing"><h2>Keep the receipt.<br>Skip the retyping.</h2><p>Capture the document, check the details, and record the expense in one connected workflow.</p><div class="receipt-actions"><a href="/pricing" class="receipt-button receipt-primary">Start free</a><a href="/contact-sales" class="receipt-button receipt-secondary">Talk to sales</a></div></section>
+</main>
+<!-- shared-footer:start -->
+<footer class="footer-component pt-24 pb-12 px-6">
 
-        <div class="max-w-[1280px] mx-auto relative">
-            <div class="grid lg:grid-cols-2 gap-12 items-center">
-                <!-- Left: Copy -->
-                <div>
-                    <h1 class="text-[44px] md:text-[58px] font-bold tracking-tight leading-[1.05] text-gray-900 mb-6">
-                        Snap a receipt. <br/>
-                        <span class="bg-gradient-to-r from-[#EA580C] to-[#F97316] bg-clip-text text-transparent">We'll do the rest.</span>
-                    </h1>
+    <!-- Universe starfield canvas -->
+    <canvas class="footer-canvas" aria-hidden="true"></canvas>
 
-                    <p class="text-[18px] text-gray-600 leading-relaxed mb-8 max-w-xl">
-                        Upload, email, or send through WhatsApp — Fluxy AI reads every receipt, pulls the numbers, picks the right category, and files it in your books. No data entry. No shoebox.
-                    </p>
-
-                    <div class="flex flex-col sm:flex-row gap-4 mb-10">
-                        <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-8 py-4 rounded-md transition-all duration-200 shadow-md hover:shadow-lg inline-block text-center">
-                            Try it free
-                        </a>
-                        <a href="#whatsapp" class="border-2 border-gray-300 text-gray-900 font-semibold text-[15px] px-8 py-3 rounded-md hover:border-gray-400 transition-colors inline-flex items-center justify-center gap-2">
-                            <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.711.306 1.265.489 1.697.626.713.226 1.362.194 1.875.118.572-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
-                            See WhatsApp demo
-                        </a>
-                    </div>
-
-                    <div class="flex items-center gap-8 pt-6 border-t border-gray-200">
-                        <div>
-                            <div class="text-[26px] font-bold text-gray-900">5 sec</div>
-                            <p class="text-[12px] text-gray-600">to capture</p>
-                        </div>
-                        <div>
-                            <div class="text-[26px] font-bold text-gray-900">3 ways</div>
-                            <p class="text-[12px] text-gray-600">to send a receipt</p>
-                        </div>
-                        <div>
-                            <div class="text-[26px] font-bold text-gray-900">Zero</div>
-                            <p class="text-[12px] text-gray-600">manual entry</p>
-                        </div>
-                    </div>
+    <div class="max-w-[1280px] mx-auto grid grid-cols-2 md:grid-cols-12 gap-12 mb-20">
+        <div class="col-span-2 md:col-span-4 pr-8">
+            <div class="flex items-center gap-2 mb-6">
+                <div class="w-8 h-8 flex-shrink-0 text-[#EA580C] shadow-sm group-hover:scale-105 transition-transform duration-200">
+                    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                        <rect width="40" height="40" rx="8" fill="currentColor" />
+                        <g transform="translate(1.5, 0)">
+                            <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
+                            <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
+                        </g>
+                    </svg>
                 </div>
-
-                <!-- Right: Floating receipt with extracted data callouts -->
-                <div class="relative h-[500px] md:h-[580px] flex items-center justify-center">
-                    <!-- Receipt paper -->
-                    <div class="receipt-float relative z-10 receipt-paper w-[280px] py-8 px-6 font-mono text-gray-800 text-[12px] leading-relaxed">
-                        <div class="text-center mb-3">
-                            <div class="text-[16px] font-bold tracking-tight">OFFICE MART JAKARTA</div>
-                            <div class="text-[10px] text-gray-500">Sudirman Plaza, Jakarta</div>
-                            <div class="text-[10px] text-gray-500">14 Nov 2026  •  10:48</div>
-                        </div>
-                        <div class="border-t border-dashed border-gray-300 my-3"></div>
-                        <div class="space-y-1.5">
-                            <div class="flex justify-between"><span>A4 Paper (5 reams)</span><span>Rp 240.000</span></div>
-                            <div class="flex justify-between"><span>Whiteboard Markers</span><span>Rp 50.000</span></div>
-                            <div class="flex justify-between"><span>Ring Binders Pack</span><span>Rp 85.000</span></div>
-                            <div class="flex justify-between"><span>Sticky Notes Set</span><span>Rp 35.000</span></div>
-                            <div class="flex justify-between"><span>HP Toner Cartridge</span><span>Rp 90.000</span></div>
-                        </div>
-                        <div class="border-t border-dashed border-gray-300 my-3"></div>
-                        <div class="space-y-1">
-                            <div class="flex justify-between text-[11px]"><span>Subtotal</span><span>Rp 500.000</span></div>
-                            <div class="flex justify-between text-[11px]"><span>PPN 11%</span><span>Rp 55.000</span></div>
-                            <div class="flex justify-between font-bold text-[14px] mt-2"><span>TOTAL</span><span>Rp 555.000</span></div>
-                        </div>
-                        <div class="text-center mt-4 text-[10px] text-gray-500">— Thank you —</div>
-                        <div class="text-center mt-1 text-[9px] text-gray-400">#OM-08412-2611</div>
-                    </div>
-
-                    <!-- AI Scanning indicator overlay -->
-                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[290px] h-[1px] bg-gradient-to-r from-transparent via-[#EA580C] to-transparent opacity-50 pointer-events-none"></div>
-
-                    <!-- Floating extracted data callouts -->
-                    <div class="absolute top-8 right-0 md:right-[-40px] callout-1">
-                        <div class="bg-white rounded-lg shadow-lg border border-gray-200 px-3 py-2 max-w-[180px]">
-                            <div class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Vendor</div>
-                            <div class="text-[13px] font-bold text-gray-900">Office Mart Jakarta</div>
-                            <div class="text-[10px] text-green-600 font-semibold mt-1">✓ 99% match</div>
-                        </div>
-                    </div>
-
-                    <div class="absolute top-44 left-0 md:left-[-30px] callout-2">
-                        <div class="bg-white rounded-lg shadow-lg border border-gray-200 px-3 py-2">
-                            <div class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Amount</div>
-                            <div class="text-[14px] font-bold font-mono text-gray-900">Rp 555.000</div>
-                            <div class="text-[10px] text-gray-500 mt-1">PPN: Rp 55.000</div>
-                        </div>
-                    </div>
-
-                    <div class="absolute bottom-32 right-2 md:right-[-30px] callout-3">
-                        <div class="bg-white rounded-lg shadow-lg border border-gray-200 px-3 py-2">
-                            <div class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Category</div>
-                            <div class="text-[13px] font-bold text-gray-900">Operations</div>
-                            <div class="text-[10px] text-orange-600 mt-1">→ Office Supplies</div>
-                        </div>
-                    </div>
-
-                    <div class="absolute bottom-8 left-4 md:left-0 callout-4">
-                        <div class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white rounded-lg shadow-lg px-3 py-2 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                            <span class="text-[12px] font-bold">Filed in 4.2 sec</span>
-                        </div>
-                    </div>
-                </div>
+                <span class="font-bold text-xl tracking-tight text-white">FluxyOS</span>
             </div>
-        </div>
-    </section>
-
-    <!-- 4 WAYS TO CAPTURE -->
-    <section class="py-16 md:py-24 px-6 border-t border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-3xl mb-12">
-                <h2 class="text-[30px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3 leading-tight">
-                    Four ways to send a receipt.
-                    <span class="text-gray-500">All of them painless.</span>
-                </h2>
-                <p class="text-[16px] text-gray-600 leading-relaxed">
-                    Capture wherever the receipt lives — your phone camera, your email inbox, your WhatsApp chat, or your laptop. Fluxy AI does the work after that.
-                </p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                <!-- Method 1: Mobile -->
-                <div class="bg-white rounded-2xl border border-gray-200 p-6 hover:border-gray-300 hover:shadow-lg transition-all relative overflow-hidden group">
-                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200/50 flex items-center justify-center mb-5">
-                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                    </div>
-                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">📱 From your phone</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed mb-4">
-                        Open the FluxyOS app, tap the camera, point at any receipt. Done before you finish your coffee.
-                    </p>
-                    <div class="text-[12px] text-gray-500 bg-gray-50 rounded-md px-3 py-2 font-mono">
-                        Snap → AI reads → Filed
-                    </div>
-                </div>
-
-                <!-- Method 2: Email -->
-                <div class="bg-white rounded-2xl border border-gray-200 p-6 hover:border-gray-300 hover:shadow-lg transition-all relative overflow-hidden group">
-                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200/50 flex items-center justify-center mb-5">
-                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                    </div>
-                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">✉️ Forward via email</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed mb-4">
-                        Got an e-receipt in your inbox? Forward it to your unique FluxyOS email. Auto-filed in seconds.
-                    </p>
-                    <div class="text-[12px] text-gray-500 bg-gray-50 rounded-md px-3 py-2 font-mono truncate">
-                        receipts@yourco.fluxyos.com
-                    </div>
-                </div>
-
-                <!-- Method 3: WhatsApp - HIGHLIGHTED -->
-                <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border-2 border-green-200 p-6 hover:shadow-lg transition-all relative overflow-hidden group">
-                    <div class="absolute top-3 right-3 bg-green-500 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">Most loved</div>
-                    <div class="w-12 h-12 rounded-xl bg-green-500 flex items-center justify-center mb-5 shadow-md shadow-green-500/30">
-                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
-                    </div>
-                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">💬 Send via WhatsApp</h3>
-                    <p class="text-[14px] text-gray-700 leading-relaxed mb-4">
-                        Snap and send to Fluxy AI on WhatsApp. Reply with category. Done before the bill arrives at your table.
-                    </p>
-                    <div class="text-[12px] text-green-700 bg-white/80 rounded-md px-3 py-2 font-mono font-semibold">
-                        +62 812 FLUXY-AI
-                    </div>
-                </div>
-
-                <!-- Method 4: Desktop -->
-                <div class="bg-white rounded-2xl border border-gray-200 p-6 hover:border-gray-300 hover:shadow-lg transition-all relative overflow-hidden group">
-                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-50 to-orange-100 border border-orange-200/50 flex items-center justify-center mb-5">
-                        <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
-                    </div>
-                    <h3 class="text-[18px] font-bold text-gray-900 mb-2">🖥️ Drag and drop</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed mb-4">
-                        Got a folder of PDFs from last quarter? Drop them all in. Bulk processing handles 100+ at once.
-                    </p>
-                    <div class="text-[12px] text-gray-500 bg-gray-50 rounded-md px-3 py-2 font-mono">
-                        Up to 100 files at once
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- WHATSAPP SPOTLIGHT (DARK) -->
-    <section id="whatsapp" class="section-dark py-20 md:py-28 px-6 relative overflow-hidden">
-        <!-- Subtle bg pattern -->
-        <div class="absolute inset-0 opacity-[0.03] pointer-events-none" style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 32px 32px;"></div>
-
-        <div class="max-w-[1280px] mx-auto relative">
-            <div class="grid lg:grid-cols-2 gap-16 items-center">
-                <!-- Left: Copy -->
-                <div>
-                    <div class="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-full px-3 py-1.5 mb-6">
-                        <svg class="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
-                        <span class="text-[12px] font-bold text-green-400 uppercase tracking-wider">WhatsApp Native</span>
-                    </div>
-
-                    <h2 class="text-[36px] md:text-[46px] font-bold tracking-tight leading-[1.05] mb-6">
-                        Just send a photo to <br/>
-                        <span class="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">+62 812 FLUXY-AI</span>
-                    </h2>
-
-                    <p class="text-[17px] text-gray-300 leading-relaxed mb-8 max-w-xl">
-                        No new app to install. No login. No remembering yet another password. Open the chat you already use a hundred times a day, send the receipt, and you're done.
-                    </p>
-
-                    <ul class="space-y-4 mb-10">
-                        <li class="flex items-start gap-3">
-                            <div class="w-6 h-6 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                            </div>
-                            <div>
-                                <div class="font-bold text-white text-[15px]">Bot replies in under 5 seconds</div>
-                                <div class="text-[14px] text-gray-400 leading-snug">Confirms vendor, amount, and suggested category — you tap to confirm or correct.</div>
-                            </div>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <div class="w-6 h-6 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                            </div>
-                            <div>
-                                <div class="font-bold text-white text-[15px]">Connects straight to your dashboard</div>
-                                <div class="text-[14px] text-gray-400 leading-snug">Every photo lands in your FluxyOS ledger automatically. Visible to your finance team in real time.</div>
-                            </div>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <div class="w-6 h-6 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                            </div>
-                            <div>
-                                <div class="font-bold text-white text-[15px]">Works for the whole team</div>
-                                <div class="text-[14px] text-gray-400 leading-snug">Sales reps, ops staff, founders — anyone with a company number can submit. Tagged to the sender automatically.</div>
-                            </div>
-                        </li>
-                    </ul>
-
-                    <a href="/login" class="inline-flex items-center gap-2 bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-7 py-3.5 rounded-md transition-all shadow-lg shadow-orange-500/20">
-                        Get started free
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                    </a>
-                </div>
-
-                <!-- Right: WhatsApp chat mockup -->
-                <div class="relative">
-                    <div class="bg-[#075E54] rounded-t-2xl px-5 py-3 flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#EA580C] to-[#F97316] flex items-center justify-center text-white font-bold text-[14px] shadow-md">F</div>
-                        <div class="flex-1">
-                            <div class="text-white font-bold text-[14px]">Fluxy AI</div>
-                            <div class="text-green-200 text-[11px]">online • typically replies in seconds</div>
-                        </div>
-                        <svg class="w-5 h-5 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1v2h2l3.6 7.59"/></svg>
-                    </div>
-
-                    <!-- Chat area -->
-                    <div class="wa-bg p-4 space-y-3 min-h-[460px]">
-                        <!-- Outgoing: receipt photo -->
-                        <div class="flex justify-end">
-                            <div class="wa-bubble-out max-w-[260px] p-1.5">
-                                <div class="bg-gradient-to-br from-amber-100 to-amber-50 rounded-md p-3 mb-1">
-                                    <div class="bg-white rounded p-3 font-mono text-[8px] leading-tight text-gray-700">
-                                        <div class="text-center font-bold text-[10px]">OFFICE MART JKT</div>
-                                        <div class="text-center text-gray-500 text-[7px]">Sudirman Plaza</div>
-                                        <div class="border-t border-dashed border-gray-300 my-1.5"></div>
-                                        <div class="space-y-0.5">
-                                            <div class="flex justify-between"><span>A4 Paper x5</span><span>240.000</span></div>
-                                            <div class="flex justify-between"><span>WB Markers</span><span>50.000</span></div>
-                                            <div class="flex justify-between"><span>Ring Binders</span><span>85.000</span></div>
-                                            <div class="flex justify-between"><span>Sticky Notes</span><span>35.000</span></div>
-                                            <div class="flex justify-between"><span>HP Toner</span><span>90.000</span></div>
-                                        </div>
-                                        <div class="border-t border-dashed border-gray-300 my-1.5"></div>
-                                        <div class="flex justify-between font-bold"><span>TOTAL</span><span>555.000</span></div>
-                                    </div>
-                                </div>
-                                <div class="px-2 pb-1 flex items-center justify-end gap-1">
-                                    <span class="text-[10px] text-gray-500">14:34</span>
-                                    <svg class="w-3.5 h-3.5 text-blue-500" viewBox="0 0 16 11" fill="currentColor"><path d="M11.071.653a.5.5 0 0 1 .076.704l-7 8.5a.5.5 0 0 1-.704.076l-3-2.5a.5.5 0 0 1 .614-.79L3.95 8.83l6.418-7.79a.5.5 0 0 1 .704-.076zm4 0a.5.5 0 0 1 .076.704l-7 8.5a.5.5 0 0 1-.713.067l-3-2.5a.5.5 0 0 1 .614-.79l2.617 2.18 6.418-7.79a.5.5 0 0 1 .704-.076z"/></svg>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Incoming: AI response -->
-                        <div class="flex justify-start">
-                            <div class="wa-bubble-in max-w-[280px] p-3">
-                                <div class="text-[14px] text-gray-800 leading-relaxed">
-                                    Got it! 📥 Here's what I found:
-                                </div>
-                                <div class="mt-3 bg-gray-50 rounded-md p-3 space-y-1.5 text-[12px]">
-                                    <div class="flex justify-between"><span class="text-gray-500">Vendor</span><span class="font-bold text-gray-900">Office Mart Jakarta</span></div>
-                                    <div class="flex justify-between"><span class="text-gray-500">Amount</span><span class="font-bold font-mono text-gray-900">Rp 555.000</span></div>
-                                    <div class="flex justify-between"><span class="text-gray-500">Date</span><span class="font-bold text-gray-900">14 Nov 2026</span></div>
-                                    <div class="flex justify-between"><span class="text-gray-500">Suggested</span><span class="font-bold text-orange-600">Operations →</span></div>
-                                </div>
-                                <div class="mt-3 text-[13px] text-gray-700">
-                                    Looks like an office supply restock 📦 — confirm or change the category:
-                                </div>
-                                <div class="flex flex-wrap gap-1.5 mt-2">
-                                    <span class="bg-orange-100 text-orange-700 text-[11px] font-bold px-2.5 py-1 rounded-full">Confirm Operations</span>
-                                    <span class="bg-gray-100 text-gray-600 text-[11px] font-semibold px-2.5 py-1 rounded-full">Equipment</span>
-                                    <span class="bg-gray-100 text-gray-600 text-[11px] font-semibold px-2.5 py-1 rounded-full">Other</span>
-                                </div>
-                                <div class="text-right text-[10px] text-gray-400 mt-2">14:34</div>
-                            </div>
-                        </div>
-
-                        <!-- Outgoing: Confirm -->
-                        <div class="flex justify-end">
-                            <div class="wa-bubble-out max-w-[200px] px-3 py-2">
-                                <div class="text-[14px] text-gray-800">Confirm Operations 👍</div>
-                                <div class="text-right text-[10px] text-gray-500 mt-0.5 flex items-center justify-end gap-1">
-                                    14:35
-                                    <svg class="w-3.5 h-3.5 text-blue-500" viewBox="0 0 16 11" fill="currentColor"><path d="M11.071.653a.5.5 0 0 1 .076.704l-7 8.5a.5.5 0 0 1-.704.076l-3-2.5a.5.5 0 0 1 .614-.79L3.95 8.83l6.418-7.79a.5.5 0 0 1 .704-.076zm4 0a.5.5 0 0 1 .076.704l-7 8.5a.5.5 0 0 1-.713.067l-3-2.5a.5.5 0 0 1 .614-.79l2.617 2.18 6.418-7.79a.5.5 0 0 1 .704-.076z"/></svg>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Incoming: Confirmation -->
-                        <div class="flex justify-start">
-                            <div class="wa-bubble-in max-w-[260px] p-3">
-                                <div class="text-[14px] text-gray-800 leading-relaxed mb-2">
-                                    Done ✅ Filed under <b>Operations → Office Supplies</b>.
-                                </div>
-                                <div class="bg-orange-50 border border-orange-100 rounded-md px-3 py-2 text-[12px] text-gray-700">
-                                    📊 View in your dashboard →
-                                </div>
-                                <div class="text-right text-[10px] text-gray-400 mt-1.5">14:35</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- AI EXTRACTION IN ACTION -->
-    <section class="py-16 md:py-24 px-6 border-t border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-3xl mb-14">
-                <h2 class="text-[30px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3 leading-tight">
-                    What Fluxy AI pulls from every receipt.
-                </h2>
-                <p class="text-[16px] text-gray-600 leading-relaxed">
-                    Not just totals — vendor names, line items, tax breakdowns, payment methods. Everything your books actually need.
-                </p>
-            </div>
-
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                <div class="bg-white rounded-xl border border-gray-200 p-5 hover:border-orange-200 hover:shadow-md transition-all">
-                    <div class="w-9 h-9 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center mb-3">
-                        <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                    </div>
-                    <h3 class="text-[13px] font-bold text-gray-900 mb-1">Vendor name</h3>
-                    <p class="text-[11px] text-gray-500 leading-snug">Matched against your existing vendor list, or added new.</p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-5 hover:border-orange-200 hover:shadow-md transition-all">
-                    <div class="w-9 h-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center mb-3">
-                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1L15 8m-3-1v1m0 8v1m0-1c-1.11 0-2.08-.402-2.599-1"/></svg>
-                    </div>
-                    <h3 class="text-[13px] font-bold text-gray-900 mb-1">Total amount</h3>
-                    <p class="text-[11px] text-gray-500 leading-snug">In any currency, converted automatically.</p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-5 hover:border-orange-200 hover:shadow-md transition-all">
-                    <div class="w-9 h-9 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center mb-3">
-                        <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    </div>
-                    <h3 class="text-[13px] font-bold text-gray-900 mb-1">Date & time</h3>
-                    <p class="text-[11px] text-gray-500 leading-snug">Cross-checked against the upload date for sanity.</p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-5 hover:border-orange-200 hover:shadow-md transition-all">
-                    <div class="w-9 h-9 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center mb-3">
-                        <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
-                    </div>
-                    <h3 class="text-[13px] font-bold text-gray-900 mb-1">Tax breakdown</h3>
-                    <p class="text-[11px] text-gray-500 leading-snug">PPN, service charge, discount — line by line.</p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-5 hover:border-orange-200 hover:shadow-md transition-all">
-                    <div class="w-9 h-9 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center mb-3">
-                        <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
-                    </div>
-                    <h3 class="text-[13px] font-bold text-gray-900 mb-1">Line items</h3>
-                    <p class="text-[11px] text-gray-500 leading-snug">Each item, qty, and unit price — exportable.</p>
-                </div>
-
-                <div class="bg-white rounded-xl border border-gray-200 p-5 hover:border-orange-200 hover:shadow-md transition-all">
-                    <div class="w-9 h-9 rounded-lg bg-pink-50 border border-pink-100 flex items-center justify-center mb-3">
-                        <svg class="w-4 h-4 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                    </div>
-                    <h3 class="text-[13px] font-bold text-gray-900 mb-1">Payment method</h3>
-                    <p class="text-[11px] text-gray-500 leading-snug">Cash, card, GoPay, OVO — matched to source.</p>
-                </div>
-            </div>
-
-            <!-- Confidence indicator -->
-            <div class="mt-10 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100 rounded-xl px-6 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-lg bg-white border border-orange-200 flex items-center justify-center flex-shrink-0">
-                        <svg class="w-5 h-5 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                    </div>
-                    <div>
-                        <div class="text-[15px] font-bold text-gray-900">Confidence scores on every field</div>
-                        <div class="text-[13px] text-gray-600 leading-snug">Low-confidence fields are flagged for a quick human review. No silent mistakes in your books.</div>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2 bg-white rounded-md border border-orange-200 px-4 py-2">
-                    <div class="w-2 h-2 rounded-full bg-green-500"></div>
-                    <span class="text-[13px] font-mono font-bold text-gray-900">98.4% avg accuracy</span>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- REPORTING SECTION -->
-    <section class="bg-gray-50 py-16 md:py-24 px-6 border-t border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-2 gap-14 items-center">
-                <!-- Left: Visual -->
-                <div class="order-2 lg:order-1 relative">
-                    <!-- Dashboard mockup card -->
-                    <div class="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-                        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                            <div>
-                                <div class="text-[14px] font-bold text-gray-900">November 2026</div>
-                                <div class="text-[11px] text-gray-500">128 receipts processed</div>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded">Reconciled</span>
-                            </div>
-                        </div>
-                        <!-- Bar chart visualization -->
-                        <div class="p-5">
-                            <div class="text-[12px] text-gray-500 mb-4">Spend by category</div>
-                            <div class="space-y-3">
-                                <div>
-                                    <div class="flex justify-between text-[12px] mb-1.5">
-                                        <span class="text-gray-700 font-semibold">Marketing</span>
-                                        <span class="text-gray-900 font-mono font-bold">Rp 24.6M</span>
-                                    </div>
-                                    <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                        <div class="h-full bg-gradient-to-r from-[#EA580C] to-[#F97316] rounded-full" style="width: 78%"></div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div class="flex justify-between text-[12px] mb-1.5">
-                                        <span class="text-gray-700 font-semibold">Operations</span>
-                                        <span class="text-gray-900 font-mono font-bold">Rp 18.2M</span>
-                                    </div>
-                                    <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                        <div class="h-full bg-blue-500 rounded-full" style="width: 58%"></div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div class="flex justify-between text-[12px] mb-1.5">
-                                        <span class="text-gray-700 font-semibold">Team Meals</span>
-                                        <span class="text-gray-900 font-mono font-bold">Rp 9.4M</span>
-                                    </div>
-                                    <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                        <div class="h-full bg-purple-500 rounded-full" style="width: 30%"></div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div class="flex justify-between text-[12px] mb-1.5">
-                                        <span class="text-gray-700 font-semibold">Travel</span>
-                                        <span class="text-gray-900 font-mono font-bold">Rp 6.8M</span>
-                                    </div>
-                                    <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                        <div class="h-full bg-green-500 rounded-full" style="width: 22%"></div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div class="flex justify-between text-[12px] mb-1.5">
-                                        <span class="text-gray-700 font-semibold">Office Supplies</span>
-                                        <span class="text-gray-900 font-mono font-bold">Rp 3.1M</span>
-                                    </div>
-                                    <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                        <div class="h-full bg-amber-500 rounded-full" style="width: 10%"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-[12px]">
-                            <span class="text-gray-500">Total this month</span>
-                            <span class="font-mono font-bold text-gray-900">Rp 62.1M</span>
-                        </div>
-                    </div>
-
-                    <!-- Floating "tax-ready" badge -->
-                    <div class="absolute -top-4 -right-4 bg-white rounded-xl shadow-lg border border-gray-200 px-4 py-3 max-w-[200px] hidden md:block">
-                        <div class="flex items-start gap-2">
-                            <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                                <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                            </div>
-                            <div>
-                                <div class="text-[12px] font-bold text-gray-900">Tax-ready export</div>
-                                <div class="text-[11px] text-gray-500 leading-snug">CSV, Xero, QuickBooks</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right: Copy -->
-                <div class="order-1 lg:order-2">
-                    <div class="inline-flex items-center gap-2 bg-orange-50 border border-orange-100 rounded-full px-3 py-1.5 mb-5">
-                        <svg class="w-4 h-4 text-[#EA580C]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2"/></svg>
-                        <span class="text-[12px] font-bold text-[#EA580C] uppercase tracking-wider">Reporting</span>
-                    </div>
-
-                    <h2 class="text-[30px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-5 leading-tight">
-                        From shoebox to dashboard —<br/>
-                        <span class="text-gray-500">automatically.</span>
-                    </h2>
-
-                    <p class="text-[16px] text-gray-600 leading-relaxed mb-6">
-                        Receipts don't pile up anymore. They sort themselves into categories, totals roll up by month, and exports come out ready for your accountant — or your tax filing.
-                    </p>
-
-                    <ul class="space-y-3 mb-8">
-                        <li class="flex items-start gap-3">
-                            <div class="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3 h-3 text-[#EA580C]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.293-9.707a1 1 0 00-1.414 1.414L9.414 11l-1.121 1.121a1 1 0 101.414 1.414l1.121-1.121 1.121 1.121a1 1 0 001.414-1.414L11.414 11l1.121-1.121a1 1 0 00-1.414-1.414L10 10.586 8.879 9.465z"/></svg>
-                            </div>
-                            <span class="text-[15px] text-gray-700"><b>Monthly summaries</b> — see spend by category, vendor, or team in one chart.</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <div class="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3 h-3 text-[#EA580C]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.293-9.707a1 1 0 00-1.414 1.414L9.414 11l-1.121 1.121a1 1 0 101.414 1.414l1.121-1.121 1.121 1.121a1 1 0 001.414-1.414L11.414 11l1.121-1.121a1 1 0 00-1.414-1.414L10 10.586 8.879 9.465z"/></svg>
-                            </div>
-                            <span class="text-[15px] text-gray-700"><b>Tax-ready CSV exports</b> — formatted for Indonesian PPN reporting and ready for your accountant.</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <div class="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3 h-3 text-[#EA580C]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.293-9.707a1 1 0 00-1.414 1.414L9.414 11l-1.121 1.121a1 1 0 101.414 1.414l1.121-1.121 1.121 1.121a1 1 0 001.414-1.414L11.414 11l1.121-1.121a1 1 0 00-1.414-1.414L10 10.586 8.879 9.465z"/></svg>
-                            </div>
-                            <span class="text-[15px] text-gray-700"><b>Direct sync</b> — push to Xero, QuickBooks, or your existing ledger. No more copy-paste.</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <div class="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3 h-3 text-[#EA580C]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.293-9.707a1 1 0 00-1.414 1.414L9.414 11l-1.121 1.121a1 1 0 101.414 1.414l1.121-1.121 1.121 1.121a1 1 0 001.414-1.414L11.414 11l1.121-1.121a1 1 0 00-1.414-1.414L10 10.586 8.879 9.465z"/></svg>
-                            </div>
-                            <span class="text-[15px] text-gray-700"><b>Original receipts archived</b> — every photo and PDF stored, searchable for 7 years.</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </section>
-
-
-    <!-- FAQ -->
-    <section id="faq" class="py-16 md:py-20 px-6 border-t border-gray-200 bg-gray-50">
-        <div class="max-w-3xl mx-auto">
-            <div class="mb-10">
-                <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3">
-                    Frequently asked questions
-                </h2>
-                <p class="text-[16px] text-gray-600">
-                    Quick answers to what people usually ask before signing up.
-                </p>
-            </div>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">How does FluxyOS Receipt Capture work?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">FluxyOS Receipt Capture is an AI-powered tool that reads any receipt — phone photos, PDF invoices, or e-receipts — and extracts the vendor name, amount, date, tax breakdown, and line items. The data lands in your FluxyOS dashboard automatically, ready for categorization.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Can I send receipts via WhatsApp?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Yes. Send a photo of any receipt to FluxyOS AI on WhatsApp and the bot replies within 5 seconds with the extracted data. Tap to confirm the suggested category, and the receipt is filed in your dashboard. No app install needed — works on the WhatsApp account you already use.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">What file formats and sources are supported?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">FluxyOS accepts JPG/PNG photos from phone cameras, PDF invoices forwarded by email, e-receipts from online checkouts, and bulk uploads of up to 100 files at once. The AI reads handwritten receipts and printed thermal-paper struk equally well.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">How accurate is the data extraction?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Every extracted field — vendor name, amount, date — carries its own confidence score. Anything the model is unsure about is flagged for a quick human review instead of posted, so silent mistakes never reach your books.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Does it handle Indonesian PPN tax correctly?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Yes. The AI extracts PPN 11% as a separate line item, distinguishes it from service charges and discounts, and includes it in your tax-ready exports. PPN summaries by month are available with one click for your accountant.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Will my receipts be saved for audits?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Every receipt — photo, PDF, or e-receipt — is archived for 7 years and indexed by vendor, date, and amount. When auditors ask, you can pull any specific receipt in seconds.</p>
-            </details>
-        </div>
-    </section>
-
-    <!-- CTA -->
-    <section class="bg-[#0B0F19] py-16 md:py-24 px-6 relative overflow-hidden">
-        <div class="absolute inset-0 opacity-[0.04] pointer-events-none" style="background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0); background-size: 32px 32px;"></div>
-        <div class="max-w-[1280px] mx-auto text-center relative">
-            <h2 class="text-[36px] md:text-[46px] font-bold tracking-tight text-white mb-5">
-                Stop typing receipt data into spreadsheets.
-            </h2>
-            <p class="text-[17px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">
-                Try Receipt Capture free. Snap, send through WhatsApp, or forward an email — see your books update in real time.
+            <p class="text-[14px] leading-relaxed max-w-[280px] footer-body-text">
+                The Intelligent Finance Operating System. Unify budgets, operational expenses, and revenue for businesses at every growth stage.
             </p>
-            <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-md inline-block text-center">
-                    Get started free
-                </a>
-                <a href="/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">
-                    See pricing
-                </a>
-            </div>
         </div>
-    </section>
 
-    <script src="assets/js/universe-canvas.js" defer></script>
-    <script src="assets/js/footer-loader.js" defer></script>
-    <script src="assets/js/fluxyos.js" defer></script>
-    <script src="assets/js/i18n.js" defer></script>
+        <div class="md:col-span-2">
+            <h4 class="text-[13px] font-bold text-white mb-6 uppercase tracking-wider">Platform</h4>
+            <ul class="space-y-4 text-[14px] font-medium footer-body-text">
+                <li><a href="/budgetlanding" class="footer-link">Dynamic Budgeting</a></li>
+                <li><a href="/vendorspend" class="footer-link">Invoice</a></li>
+                <li><a href="/revenuesync" class="footer-link">Revenue Sync</a></li>
+                <li><a href="/receiptcapture" class="footer-link">Receipt Capture</a></li>
+                <li><a href="/aiagents" class="footer-link">AI Finance Agents</a></li>
+            </ul>
+        </div>
+
+        <div class="md:col-span-2">
+            <h4 class="text-[13px] font-bold text-white mb-6 uppercase tracking-wider">Use Cases</h4>
+            <ul class="space-y-4 text-[14px] font-medium footer-body-text">
+                <li><a href="/use-cases/founder-ceo" class="footer-link">Founders &amp; CEOs</a></li>
+                <li><a href="/use-cases/cfo-finance-teams" class="footer-link">CFOs &amp; Finance Teams</a></li>
+                <li><a href="/use-cases/ecommerce-brands" class="footer-link">E-commerce Brands</a></li>
+                <li><a href="/use-cases/marketing-agencies" class="footer-link">Marketing Agencies</a></li>
+            </ul>
+        </div>
+
+        <div class="md:col-span-2">
+            <h4 class="text-[13px] font-bold text-white mb-6 uppercase tracking-wider">Company</h4>
+            <ul class="space-y-4 text-[14px] font-medium footer-body-text">
+                <li><a href="/pricing" class="footer-link">Pricing</a></li>
+                <li><a href="/contact-sales" class="footer-link">Contact Sales</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="max-w-[1280px] mx-auto pt-8 footer-divider flex flex-col md:flex-row justify-between items-center gap-6">
+        <p class="text-[14px] font-medium footer-body-text">© 2026 FluxyOS Technologies. All rights reserved.</p>
+        <div class="flex gap-8 text-[14px] font-medium footer-body-text">
+            <a href="/privacy" class="footer-link">Privacy Policy</a>
+            <a href="/terms" class="footer-link">Terms of Service</a>
+        </div>
+    </div>
+</footer>
+<!-- shared-footer:end -->
+<script src="/assets/js/universe-canvas.js" defer></script>
+<script src="/assets/js/footer-loader.js" defer></script>
+<script src="/assets/js/fluxyos.js" defer></script>
+<script src="/assets/js/i18n.js" defer></script>
+<script src="/assets/js/receipt-landing.js" defer></script>
 </body>
 </html>

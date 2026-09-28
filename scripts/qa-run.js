@@ -544,6 +544,11 @@ function laneFE(changed) {
       ['playwright', 'test', '--config', 'tests/invoice-landing.config.js'],
       { timeout: 4 * 60_000 })) && ok;
   }
+  if (FORCE_ALL || changed.some((f) => /^(?:id\/)?receiptcapture\.html$|^assets\/(?:css|js)\/receipt-landing\.|^tests\/receipt-landing\./.test(f))) {
+    ok = record('fe', run('browser: receipt landing EN + ID', 'npx',
+      ['playwright', 'test', '--config', 'tests/receipt-landing.config.js'],
+      { timeout: 4 * 60_000 })) && ok;
+  }
   // No early exit for "nothing changed" any more: the rotating slice is the
   // whole point — it opens pages precisely when nobody has touched them.
 
