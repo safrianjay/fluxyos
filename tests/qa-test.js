@@ -33,9 +33,10 @@ const test = base.test.extend({
         try {
             await use(page);
         } finally {
-            // Drain active handlers before the built-in page fixture closes it.
+            // Drain SDK handlers before the built-in page fixture closes it.
             // Context teardown alone runs too late for pending SDK downloads.
-            await page.unrouteAll({ behavior: 'wait' });
+            // Leave page-level routes alone: loading-state tests intentionally
+            // stall authentication requests until the page closes.
             await page.context().unrouteAll({ behavior: 'wait' });
         }
     },
