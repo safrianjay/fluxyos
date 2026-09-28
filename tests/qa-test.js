@@ -29,6 +29,16 @@ const test = base.test.extend({
         });
         await use(context);
     },
+    page: async ({ page }, use) => {
+        try {
+            await use(page);
+        } finally {
+            // Drain active handlers before the built-in page fixture closes it.
+            // Context teardown alone runs too late for pending SDK downloads.
+            await page.unrouteAll({ behavior: 'wait' });
+            await page.context().unrouteAll({ behavior: 'wait' });
+        }
+    },
 });
 
 module.exports = { ...base, test };
