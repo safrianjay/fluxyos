@@ -17,6 +17,7 @@ module.exports = {
     './vendorspend.html',
     './revenuesync.html',
     './receiptcapture.html',
+    './multi-currency.html',
     './budgetlanding.html',
     './contact-sales.html',
     './privacy.html',

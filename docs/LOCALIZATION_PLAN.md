@@ -145,6 +145,12 @@ The 8 `id/use-cases/*.html` pages are hand-maintained and are *not* generated.
 | FluxyOS Invoice | FluxyOS Invoice (keep) | Invoice feature; replaces Vendor Spend landing-page positioning |
 | Revenue Sync | Revenue Sync (keep) | Product name |
 | Receipt Capture | Receipt Capture (keep) | Product name |
+| Multi-Currency | Multi-Currency (keep) | Platform capability; body copy uses “multi-mata uang” |
+| Base currency | Mata uang utama | Fixed accounting currency of one workspace |
+| Document currency | Mata uang dokumen | Invoice or bill face currency; may differ from the base |
+| Exchange rate | Kurs | Review before recording a foreign-currency payment or expense |
+| Reference range | Rentang acuan | Illustrative comparison range; not an industry benchmark |
+| Actual revenue | Realisasi pendapatan | Recorded revenue in a financial chart |
 | Dynamic Budgeting | Dynamic Budgeting (keep) | Product name |
 | AI Agents / AI team | AI Agents / Tim AI | "Tim AI" in body copy |
 | Finance team | Tim keuangan | |

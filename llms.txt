@@ -18,6 +18,7 @@
 - [Revenue Sync](https://fluxyos.com/revenuesync): Sync TikTok Shop and Shopee orders, refunds, and settlements into your ledger
 - [Receipt Capture](https://fluxyos.com/receiptcapture): Upload receipt photos or PDFs, review AI-extracted details, and save expenses with their source documents attached
 - [Dynamic Budgeting](https://fluxyos.com/budgetlanding): Live budget allocation and tracking
+- [Multi-Currency](https://fluxyos.com/multi-currency): IDR, PHP, SGD, and MYR workspace accounting currencies; five invoice/bill currencies. Each workspace keeps separate books; foreign-document flows have explicit accounting limitations.
 
 ## Key facts
 
