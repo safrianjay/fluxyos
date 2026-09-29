@@ -588,9 +588,26 @@
 <section class="agent-hero">
 <canvas class="agent-hero-particles" data-hero-particles aria-hidden="true"></canvas>
 <div class="agent-hero-copy"><h1>Kurangi waktu mencari.<span>Pahami keuangan Anda.</span></h1><p>FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System). Fluxy AI membantu Anda membaca dokumen, bertanya soal keuangan, dan memahami catatan di balik angka.</p><div class="agent-actions"><a class="agent-button agent-button-primary" href="/id/pricing">Mulai gratis</a><a class="agent-button" href="/contact-sales">Hubungi sales</a></div></div>
-<div class="agent-hero-demo" data-agent-demo><div class="agent-window"><div class="agent-window-bar"><span>Catatan keuangan</span><span class="agent-window-dots" aria-hidden="true">···</span></div><div class="agent-window-body"><div class="agent-doc" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6ZM14 3v5h4M9 12h6M9 16h4"/></svg><div><b>receipt-024.pdf</b><small>Dokumen diupload</small></div><span class="agent-status">Siap diperiksa</span></div><div class="agent-row"><span>Vendor</span><b>Studio Ruang</b></div><div class="agent-row"><span>Jumlah</span><b>Rp2.400.000</b></div><div class="agent-row"><span>Kategori</span><b>Biaya kantor</b></div><div class="agent-review-note">Periksa hasil ekstraksi sebelum menyimpan.</div></div></div><div class="agent-window"><div class="agent-window-bar"><span>Fluxy AI</span><span class="agent-window-dots" aria-hidden="true">···</span></div><div class="agent-window-body"><div class="agent-question" data-demo-question>Kenapa pengeluaran naik?</div><div class="agent-answer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M5.6 18.4 18.4 5.6"/></svg><p data-demo-answer>Dalam contoh ini, biaya kantor naik Rp2.400.000. Buka transaksi terkait untuk melihat rinciannya.</p></div><div class="agent-result"><span data-demo-label>Pengeluaran</span><b data-demo-value>Rp18.600.000</b></div><span class="agent-source-tag">Berdasarkan transaksi yang tercatat</span></div></div></div>
-<div class="agent-prompts" hidden data-agent-prompts><button type="button" data-agent-question="0" aria-pressed="true">Kenapa pengeluaran naik?</button><button type="button" data-agent-question="1" aria-pressed="false">Berapa pendapatan yang tercatat?</button><button type="button" data-agent-question="2" aria-pressed="false">Berapa posisi kas kita?</button></div>
-<p class="agent-demo-caption">Data ilustrasi produk. Pilih pertanyaan untuk melihat contohnya.</p>
+<div class="agent-hero-demo" data-agent-conversation>
+  <div class="agent-window agent-chat-window">
+    <div class="agent-chat-header"><img src="/assets/images/favicon.svg" width="28" height="28" alt=""><span>Fluxy AI</span><img class="agent-chat-ai-icon" src="/assets/images/fluxy-ai-mark.svg" width="32" height="32" alt="" aria-hidden="true"></div>
+    <div class="agent-chat-log" data-conversation-log aria-label="Contoh percakapan tentang keuangan" tabindex="0" aria-live="off">
+      <article class="agent-chat-turn" data-conversation-turn>
+        <div class="agent-chat-user"><span>Anda</span><p data-chat-question>Bagaimana pendapatan saya bulan ini?</p></div>
+        <div class="agent-chat-response" data-chat-response><span class="agent-chat-author">Fluxy AI</span><p data-chat-answer>Pendapatan September Rp48.000.000, turun 20% dari Rp60.000.000 pada Agustus. Berikut perbandingan dari transaksi yang tercatat.</p><div class="agent-chat-evidence" data-chat-evidence><div><span>Pendapatan September</span><b>Rp48.000.000</b><small>vs. Rp60.000.000 pada Agustus</small></div><div><span>Perubahan pendapatan</span><b>−20%</b><small>Turun Rp12.000.000</small></div></div><span class="agent-source-tag">Sumber: transaksi pendapatan tercatat</span></div>
+      </article>
+      <article class="agent-chat-turn" data-conversation-turn>
+        <div class="agent-chat-user"><span>Anda</span><p data-chat-question>Apa penyebab penurunannya?</p></div>
+        <div class="agent-chat-response" data-chat-response><span class="agent-chat-author">Fluxy AI</span><p data-chat-answer>Selisihnya berasal dari dua kanal: penjualan online turun Rp8.000.000 dan penjualan langsung turun Rp4.000.000. Dua pertiga penurunan berasal dari penjualan online. Periksa transaksi terkait untuk mencari penyebabnya.</p><div class="agent-chat-evidence agent-chat-drivers" data-chat-evidence><div><span>Penjualan online</span><b>−Rp8.000.000</b><small>Rp24.000.000 → Rp16.000.000</small></div><div><span>Penjualan langsung</span><b>−Rp4.000.000</b><small>Rp36.000.000 → Rp32.000.000</small></div></div><span class="agent-source-tag">Sumber: pendapatan per kanal</span></div>
+      </article>
+      <article class="agent-chat-turn" data-conversation-turn>
+        <div class="agent-chat-user"><span>Anda</span><p data-chat-question>Bagaimana dengan pengeluaran saya?</p></div>
+        <div class="agent-chat-response" data-chat-response><span class="agent-chat-author">Fluxy AI</span><p data-chat-answer>Pengeluaran Rp18.600.000, naik Rp2.400.000 dari Agustus. Dalam catatan ini, kenaikannya berasal dari biaya kantor. Dengan pendapatan Rp48.000.000, hasil bersih Anda Rp29.400.000.</p><span class="agent-source-tag">Sumber: pendapatan dan pengeluaran tercatat</span></div>
+      </article>
+    </div>
+    <div class="agent-chat-accessible" data-chat-transcript-body></div>
+  </div>
+</div>
 </section>
 <section class="agent-section" id="meet"><div class="agent-section-heading"><h2>Jawabannya ada di data Anda.</h2><p>Satukan catatan keuangan sebelum mencari jawaban berikutnya.</p></div>
 <div class="agent-comparison">
@@ -680,6 +697,7 @@
 <!-- shared-footer:end -->
     <script src="/assets/js/ai-agent-hero-motion.js?v=fall-20260928" defer></script>
     <script src="/assets/js/ai-agent-landing.js" defer></script>
+    <script src="/assets/js/ai-agent-conversation.js" defer></script>
     <script src="/assets/js/universe-canvas.js" defer></script>
     <script src="/assets/js/footer-loader.js" defer></script>
     <script src="/assets/js/fluxyos.js" defer></script>

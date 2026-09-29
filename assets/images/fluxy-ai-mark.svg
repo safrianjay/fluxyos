@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <filter id="depth" x="0" y="0" width="48" height="48" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#0B0F19" flood-opacity=".16"/>
+    </filter>
+  </defs>
+  <g filter="url(#depth)">
+    <path d="m24 5 6 13 13 6-13 6-6 13-6-13-13-6 13-6Z" fill="#F9FAFB" stroke="#D0D5DD" stroke-linejoin="round"/>
+    <path d="m24 5 0 19-6-6Z" fill="#FFFFFF"/>
+    <path d="m24 5 6 13-6 6Z" fill="#E4E7EC"/>
+    <path d="m43 24-19 0 6-6Z" fill="#FFFFFF"/>
+    <path d="m43 24-13 6-6-6Z" fill="#D0D5DD"/>
+    <path d="m24 43 0-19 6 6Z" fill="#667085"/>
+    <path d="m24 43-6-13 6-6Z" fill="#0B0F19"/>
+    <path d="m5 24 19 0-6 6Z" fill="#E4E7EC"/>
+    <path d="m5 24 13-6 6 6Z" fill="#FFFFFF"/>
+    <path d="m24 8 5 11 11 5" stroke="#EA580C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
