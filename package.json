@@ -68,6 +68,8 @@
     "check:order-page": "node tests/order-page.check.js",
     "check:pos-table-qr": "node tests/pos-table-qr.check.js",
     "check:rate-limit": "node tests/rate-limit.check.js",
+    "check:contact-sales": "node tests/contact-sales-security.check.js",
+    "qa:contact-sales": "playwright test --config tests/contact-sales-form.config.js",
     "check:warm-cache": "node tests/warm-cache.check.js",
     "check:qr-warm": "node tests/qr-warm.check.js",
     "check:modifier-cogs": "node tests/modifier-cogs.check.js",

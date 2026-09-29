@@ -318,6 +318,7 @@ function laneBE(changed) {
   // public endpoint with no ceiling or a restaurant whose customers are refused
   // their own menu, and neither states itself at runtime.
   ok = record('be', run('check:rate-limit (counts, refuses, fails open)', 'node', ['tests/rate-limit.check.js'])) && ok;
+  ok = record('be', run('check:contact-sales (public lead abuse defenses)', 'node', ['tests/contact-sales-security.check.js'])) && ok;
   // Unconditional, for the same reason: the QR functions answer from this
   // cache, and a cached refusal or a cache that never expires is a card that
   // looks dead, or a price that never changes — neither says so at runtime.
@@ -559,6 +560,11 @@ function laneFE(changed) {
     ok = record('fe', run('browser: multi-currency landing EN + ID', 'npx',
       ['playwright', 'test', '--config', 'tests/currency-landing.config.js'],
       { timeout: 4 * 60_000 })) && ok;
+  }
+  if (FORCE_ALL || changed.some((f) => /^(?:contact-sales|event)\.html$|^assets\/js\/(?:lead-form-|contact-sales|event-signup)|^netlify\/functions\/(?:submit-contact-sales|contact-form-config|lib\/contact-sales-security)|^tests\/contact-sales/.test(f))) {
+    ok = record('fe', run('Contact Sales spam protection browser QA', 'npx',
+      ['playwright', 'test', '--config', 'tests/contact-sales-form.config.js'],
+      { timeout: 180_000 })) && ok;
   }
   if (FORCE_ALL || changed.some((f) => /^(?:id\/)?use-cases\/ecommerce-brands\.html$|^assets\/(?:css|js)\/ecommerce-landing\.|^tests\/ecommerce-landing\.|^scripts\/build-ecommerce-page\.js$/.test(f))) {
     ok = record('fe', run('browser: e-commerce landing EN + ID', 'npx',

@@ -114,6 +114,18 @@ for (const target of TARGETS) {
         });
 
         await installTrialPaywallBypass(page);
+        // The static QA server cannot execute Netlify functions. Exercise the
+        // lead form boot with a provider fixture, not a false config-endpoint
+        // 404. Real acceptance/failure paths are in contact-sales-form.spec.js.
+        if (/^(?:contact-sales|event)\.html$/.test(target)) {
+            await page.route('**/.netlify/functions/contact-form-config', route => route.fulfill({
+                json: { siteKey: 'public-qa-fixture', session: 'qa-session', nonce: 'qa-nonce', action: 'sales_lead', issuedAt: Date.now() }
+            }));
+            await page.route('https://challenges.cloudflare.com/turnstile/v0/api.js?*', route => route.fulfill({
+                contentType: 'application/javascript',
+                body: 'window.turnstile={render:function(el,options){options.callback("qa-proof");return 0;},reset:function(){},remove:function(){}};'
+            }));
+        }
         await page.goto(`/${target}`, { waitUntil: 'domcontentloaded' });
 
         // Proof the page actually booted rather than dying early — otherwise a

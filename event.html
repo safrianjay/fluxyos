@@ -147,11 +147,15 @@
 
             <div>
                 <label class="fx-label" for="ev-message">Anything you’re hoping FluxyOS can help with? <span class="font-normal text-gray-400">(optional)</span></label>
-                <textarea id="ev-message" name="message" class="fx-field" rows="2" maxlength="2000"
+                <textarea id="ev-message" name="message" class="fx-field" rows="2" maxlength="100" aria-describedby="ev-message-counter"
                           style="height:auto;padding:.75rem .875rem;" placeholder="Optional"></textarea>
+                <p id="ev-message-counter" class="text-right text-[12px] text-gray-500 tabular-nums">0 / 100</p>
             </div>
 
-            <p id="ev-form-error" class="hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[13px] font-medium text-red-700"></p>
+            <div id="event-verification"></div>
+            <noscript><p>Please enable JavaScript to use this secure form, or <a href="mailto:sales@fluxyos.com">email our sales team</a>.</p><style>#ev-submit { display: none; }</style></noscript>
+            <p id="ev-form-error" role="alert" class="hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[13px] font-medium text-red-700"></p>
+            <p class="text-center text-[12px] text-gray-500">Prefer email? <a href="mailto:sales@fluxyos.com" class="underline">sales@fluxyos.com</a></p>
 
             <button id="ev-submit" type="submit"
                     class="mt-1 inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#EA580C] text-[15px] font-bold text-white transition hover:bg-[#c2410c] disabled:opacity-60">
@@ -206,6 +210,8 @@
     // pure decoration — if it fails, the form must still work.
     try { initUniverseCanvas(document.querySelector('.sky canvas')); } catch (_) {}
 </script>
+<script src="assets/js/lead-form-validation.js"></script>
+<script src="assets/js/lead-form-security.js"></script>
 <script src="assets/js/event-signup.js"></script>
 </body>
 </html>

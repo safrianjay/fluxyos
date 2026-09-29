@@ -7,7 +7,8 @@
  *
  * The lead is written server-side by netlify/functions/submit-contact-sales.js
  * (Admin SDK). The browser never writes to Firestore — firestore.rules denies all
- * client writes to sales_leads, which is what keeps a public form spam-proof.
+ * client writes to sales_leads. The endpoint additionally verifies Turnstile,
+ * applies durable quotas and rejects suspicious content.
  */
 (function () {
     'use strict';
@@ -22,6 +23,10 @@
     var otherWrap = $('ev-other-wrap');
     var otherEl = $('ev-other');
     var submitting = false;
+    var guard = window.FluxyLeadGuard.create(form, {
+        counter: 'ev-message-counter', widget: 'event-verification', locale: 'en',
+        onError: function (message) { formError.textContent = message; formError.classList.remove('hidden'); }
+    });
 
     // ---- "Others" reveal --------------------------------------------------
     categoryEl.addEventListener('change', function () {
@@ -97,7 +102,7 @@
         // internal console has ONE field to filter on rather than two that
         // disagree.
         var category = categoryEl.value === 'Others'
-            ? otherEl.value.trim().slice(0, 60)
+            ? otherEl.value.trim()
             : categoryEl.value;
 
         var payload = {
@@ -112,16 +117,19 @@
         };
 
         try {
+            payload = await guard.protect(payload);
             var res = await fetch('/.netlify/functions/submit-contact-sales', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            if (!res.ok) throw new Error('http_' + res.status);
+            var body = await res.json();
+            if (!res.ok || !body.ok) { guard.serverError(body); throw new Error(body.error || 'server_error'); }
             showDone();
-        } catch (_) {
+        } catch (failure) {
             // Never lose a lead silently at an event: say what to do next.
-            formError.textContent = 'We could not register you just now — check your connection and tap Register again.';
+            formError.textContent = guard.message(failure.message);
+            guard.reset();
             formError.classList.remove('hidden');
             formError.scrollIntoView({ behavior: 'smooth', block: 'center' });
             submitting = false;
@@ -138,8 +146,7 @@
     }
 
     // ---- confetti ---------------------------------------------------------
-    // Canvas rather than a library: no external script can load here anyway, and
-    // ~40 lines beats a dependency on a page whose whole job is one form.
+    // Canvas keeps the optional celebration independent of external libraries.
     function confetti() {
         if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
         var cv = $('confetti');
