@@ -1,5 +1,15 @@
 const {test, expect} = require('@playwright/test');
 
+test.beforeEach(async ({page}) => {
+  // These local interaction tests must not wait on third-party fonts or
+  // analytics. Real typography is checked separately with Lighthouse and
+  // visual QA; every product stylesheet, script and interaction stays live.
+  await page.route('https://fonts.googleapis.com/**', route =>
+    route.fulfill({status: 200, contentType: 'text/css', body: ''}));
+  await page.route('https://www.googletagmanager.com/**', route =>
+    route.fulfill({status: 200, contentType: 'application/javascript', body: ''}));
+});
+
 for (const locale of ['en', 'id']) {
   const prefix = locale === 'id' ? '/id' : '';
   const route = prefix + '/multi-currency';
