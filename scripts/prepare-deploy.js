@@ -80,6 +80,7 @@ const PAGE_ROLES = {
     'point-of-sale.html': ['marketing'],
     'erp-intelligence.html': ['marketing'],
     'multi-currency.html': ['marketing'],
+    'accounting-automation.html': ['marketing'],
     'customers.html': ['marketing'],
     'contact-sales.html': ['marketing'],
     'event.html': ['marketing'],   // QR-scanned event signup (noindex)

@@ -13,7 +13,7 @@ for(const file of pages()) test('shared navbar '+file,async({page})=>{
   else if(publicPages.includes('id/'+file)) await expect(nav.locator('a').filter({hasText:/^Bahasa \(ID\)$/})).toHaveAttribute('href','/id/'+file.replace(/\.html$/,''));
   await expect(nav).toBeVisible();
   await nav.locator('button').first().hover();
-  for(const slug of ['aiagents','point-of-sale','erp-intelligence','budgetlanding','revenuesync','receiptcapture','vendorspend','multi-currency']){
+  for(const slug of ['aiagents','point-of-sale','erp-intelligence','budgetlanding','revenuesync','receiptcapture','vendorspend','multi-currency','accounting-automation']){
     await expect(nav.locator('a[href="'+prefix+'/'+slug+'"]').first()).toBeVisible();
   }
   for(const width of [768,390]){
@@ -23,7 +23,7 @@ for(const file of pages()) test('shared navbar '+file,async({page})=>{
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-expanded','true');
     await expect(nav.locator('#mobile-menu')).toBeVisible();
-    for(const slug of ['aiagents','point-of-sale','erp-intelligence','customers','receiptcapture','budgetlanding','revenuesync','vendorspend','multi-currency']){
+    for(const slug of ['aiagents','point-of-sale','erp-intelligence','customers','receiptcapture','budgetlanding','revenuesync','vendorspend','multi-currency','accounting-automation']){
       await expect(nav.locator('#mobile-menu a[href="'+prefix+'/'+slug+'"]')).toHaveCount(1);
     }
     await toggle.click();

@@ -146,6 +146,9 @@ The 8 `id/use-cases/*.html` pages are hand-maintained and are *not* generated.
 | Revenue Sync | Revenue Sync (keep) | Product name |
 | Receipt Capture | Receipt Capture (keep) | Product name |
 | Multi-Currency | Multi-Currency (keep) | Platform capability; body copy uses “multi-mata uang” |
+| Accounting Automation | Accounting Automation (keep) | Marketing feature name; body copy uses “otomatisasi akuntansi” |
+| Accounting Center | Accounting Center (keep) | Product surface; body copy may refer to “pusat akuntansi” |
+| Goods received not invoiced | Barang diterima belum ditagih | GRNI liability account, not a second expense |
 | Base currency | Mata uang utama | Fixed accounting currency of one workspace |
 | Document currency | Mata uang dokumen | Invoice or bill face currency; may differ from the base |
 | Exchange rate | Kurs | Review before recording a foreign-currency payment or expense |

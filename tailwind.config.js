@@ -18,6 +18,7 @@ module.exports = {
     './revenuesync.html',
     './receiptcapture.html',
     './multi-currency.html',
+    './accounting-automation.html',
     './budgetlanding.html',
     './contact-sales.html',
     './privacy.html',

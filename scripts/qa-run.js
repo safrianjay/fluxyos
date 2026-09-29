@@ -31,6 +31,7 @@
 const { execFileSync, spawnSync, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const vm = require('vm');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const ARTIFACT = path.join(REPO_ROOT, '.qa', 'qa-run.json');
@@ -539,6 +540,11 @@ function laneFE(changed) {
     console.log('  – console sweep skipped (--skip-browser)');
     return ok;
   }
+  if (FORCE_ALL || changed.some((f) => /^(?:id\/)?accounting-automation\.html$|^assets\/(?:css|js)\/accounting-automation\.|^tests\/accounting-automation\./.test(f))) {
+    ok = record('fe', run('browser: accounting automation landing EN + ID', 'npx',
+      ['playwright', 'test', '--config', 'tests/accounting-automation.config.js'],
+      { timeout: 4 * 60_000 })) && ok;
+  }
   if (FORCE_ALL || changed.some((f) => /^(?:id\/)?vendorspend\.html$|^assets\/(?:css|js)\/invoice-landing\.|^tests\/invoice-landing\./.test(f))) {
     ok = record('fe', run('browser: invoice landing EN + ID', 'npx',
       ['playwright', 'test', '--config', 'tests/invoice-landing.config.js'],
@@ -648,15 +654,18 @@ function i18nPairing(changed) {
 
 function seoEssentials(changed) {
   const src = fs.readFileSync(path.join(REPO_ROOT, 'scripts', 'prepare-deploy.js'), 'utf8');
-  const m = src.match(/const MARKETING_PAGES = \[([\s\S]*?)\];/);
-  const marketing = new Set(
-    (m ? m[1] : '').split('\n').map((l) => (l.match(/'([^']+\.html)'/) || [])[1]).filter(Boolean)
-  );
+  // PAGE_ROLES is the deploy source of truth. Never execute the pruning script.
+  const m = src.match(/const PAGE_ROLES = (\{[\s\S]*?\n\});/);
+  if (!m) throw new Error('Cannot read marketing page registry for SEO audit');
+  const roles = vm.runInNewContext('(' + m[1] + ')');
+  const marketing = new Set(Object.keys(roles).filter(file => roles[file].includes('marketing')));
 
   const problems = [];
   for (const f of changed) {
-    const base = f.replace(/^.*\//, '');
-    if (!f.endsWith('.html') || !marketing.has(base)) continue;
+    // Root marketing pages and their /id mirrors share a role. A guide with
+    // the same basename is a different route, not that root page's mirror.
+    const rootPage = f.replace(/^id\//, '');
+    if (!f.endsWith('.html') || !marketing.has(rootPage)) continue;
     const abs = path.join(REPO_ROOT, f);
     if (!fs.existsSync(abs)) continue;
     const html = fs.readFileSync(abs, 'utf8');
@@ -664,7 +673,7 @@ function seoEssentials(changed) {
     // rules in SEO_STRATEGY.md do not apply to it — requiring Open Graph and
     // JSON-LD on a private, unlisted page asks for rich previews of something
     // deliberately kept out of search. The private-link pages (investor.html,
-    // beila.html) are the cases; they are in MARKETING_PAGES only because that
+    // beila.html) are the cases; they are in PAGE_ROLES only because that
     // list decides which ORIGIN serves a page, not whether it is a landing page.
     if (/<meta[^>]+name=["']robots["'][^>]*noindex/i.test(html)) continue;
     const need = [

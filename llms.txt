@@ -12,6 +12,7 @@
 ## Core pages
 
 - [Homepage](https://fluxyos.com/): Product overview and key benefits
+- [Accounting Automation](https://fluxyos.com/accounting-automation): Supported business activity connects to balanced journals, the general ledger, financial statements, and source-linked insights. Posting depends on mapping, eligibility, and an open period; foreign-currency documents do not auto-post.
 - [Pricing](https://fluxyos.com/pricing): Plans starting from a free tier
 - [AI Agents](https://fluxyos.com/aiagents): Six specialist AI agents that handle finance ops end to end
 - [FluxyOS Invoice](https://fluxyos.com/vendorspend): Create and email invoices, scan supplier bills for review, and track payments across supported currencies.

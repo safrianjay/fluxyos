@@ -93,6 +93,7 @@ console.log('SITE_ROLE=marketing (fluxyos.com apex):');
 
     assert(!exists(dir, 'login.html') && !exists(dir, 'dashboard.html') && !exists(dir, 'settings-team.html'), 'app pages pruned');
     assert(exists(dir, 'fluxyos.html') && exists(dir, 'pricing.html') && exists(dir, 'use-cases') && exists(dir, 'id'), 'marketing pages kept');
+    assert(exists(dir, 'accounting-automation.html') && exists(dir, 'id/accounting-automation.html'), 'Accounting Automation EN and ID pages kept');
     assert(exists(dir, 'assets') && exists(dir, 'includes'), 'shared assets kept');
     assert(!exists(dir, 'netlify/functions/notify-sweep.js') && !exists(dir, 'netlify/functions/weekly-digest.js'), 'scheduled functions pruned');
     assert(exists(dir, 'netlify/functions/api.js') && exists(dir, 'netlify/functions/submit-contact-sales.js'), 'request-driven functions kept');

@@ -43,6 +43,11 @@ const SITE = 'https://fluxyos.com';
 // slug -> pretty path served for the root page; title/description are the
 // Indonesian head copy (titles match the runtime dictionary).
 const PAGES = {
+    'accounting-automation.html': {
+        slug: 'accounting-automation', rootPath: '/accounting-automation',
+        title: 'Accounting Automation untuk Pembukuan | FluxyOS',
+        description: 'Hubungkan penjualan, invoice, tagihan, persediaan, dan biaya yang diperiksa ke jurnal, buku besar, serta laporan keuangan FluxyOS.',
+    },
     'multi-currency.html': {
         slug: 'multi-currency', rootPath: '/multi-currency',
         title: 'Multi-Currency untuk Keuangan Bisnis | FluxyOS',
@@ -103,6 +108,16 @@ const PAGES = {
 const MIRROR_SLUGS = Object.keys(PAGES).map((f) => PAGES[f].slug);
 
 const PAGE_COPY_OVERRIDES = {
+    'accounting-automation': {
+        "Bill": "Tagihan",
+        "Stock": "Stok",
+        "Receipt": "Struk",
+        "Start free": "Coba Gratis",
+        "Talk to sales": "Hubungi tim sales",
+        "Ledger": "Buku Besar",
+        "FluxyOS is an Intelligent Finance Operating System that connects financial operations, accounting, business operations, enterprise workflows, and intelligence into one continuously connected system.": "FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System) yang menghubungkan operasional keuangan, akuntansi, operasional bisnis, alur kerja perusahaan, dan analisis dalam satu sistem yang terus terhubung.",
+        "Expenses": "Biaya",
+    },
     'multi-currency': {
     "May": "Mei",
     "Aug": "Agu",
@@ -308,7 +323,7 @@ function main() {
             html = html.replace(/pos-qr-(menu|customize|basket)-en\.jpg/g, 'pos-qr-$1-id.jpg');
             html = html.replace(/(<meta property="og:locale:alternate" content=")[^"]*(")/, '$1en_US$2');
         }
-        if (meta.slug === 'customers') {
+        if (['customers', 'accounting-automation'].includes(meta.slug)) {
             html = html.replace(/(<meta property="og:locale:alternate" content=")[^"]*(")/, '$1en_US$2');
         }
 
@@ -323,7 +338,7 @@ function main() {
         // reviewer-facing strings beside them, so the two stay identical.
         html = html.replace(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g, (block, json) => {
             // The POS FAQ and product description must match the visible locale.
-            if (['point-of-sale', 'erp-intelligence', 'budgetlanding', 'revenuesync', 'customers', 'aiagents', 'vendorspend', 'receiptcapture', 'multi-currency'].includes(meta.slug)) {
+            if (['point-of-sale', 'erp-intelligence', 'budgetlanding', 'revenuesync', 'customers', 'aiagents', 'vendorspend', 'receiptcapture', 'multi-currency', 'accounting-automation'].includes(meta.slug)) {
                 const localize = (value) => {
                     if (Array.isArray(value)) return value.map(localize);
                     if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, localize(v)]));
@@ -348,7 +363,7 @@ function main() {
         const out = path.join(ROOT, 'id', meta.slug + '.html');
         // Pre-render the same universal component for the AI landing page.
         // Footer navigation must remain readable even when JS/fetch is blocked.
-        if (['aiagents', 'vendorspend', 'receiptcapture', 'multi-currency'].includes(meta.slug)) {
+        if (['aiagents', 'vendorspend', 'receiptcapture', 'multi-currency', 'accounting-automation'].includes(meta.slug)) {
             const footer = fs.readFileSync(path.join(ROOT, 'includes/footer-id.html'), 'utf8').trim();
             html = html.replace(/<!-- shared-footer:start -->[\s\S]*?<!-- shared-footer:end -->/, () =>
                 '<!-- shared-footer:start -->\n' + footer + '\n<!-- shared-footer:end -->');
