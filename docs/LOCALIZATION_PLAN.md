@@ -132,6 +132,12 @@ Order is load-bearing — see `SEO_STRATEGY.md` → "Generator order". Also note
 on the next build, so root-page head copy changes go in `scripts/build-id-mirrors.js`.
 The 8 `id/use-cases/*.html` pages are hand-maintained and are *not* generated.
 
+The E-Commerce Brands EN/ID pair has a shared, bilingual content template in
+`scripts/build-ecommerce-page.js`. After editing that template, run
+`node scripts/build-ecommerce-page.js` (or `--check` to verify parity). It preserves
+each page's universal navbar and canonical Organization schema; the root mirror
+generator still does not touch use-case pages.
+
 ### Translation glossary — recurring product/finance terms
 
 | English | Indonesian (canonical) | Notes |

@@ -42,6 +42,7 @@
     "perf:verify": "node perf/verify.js",
     "qa:design": "node scripts/qa/lint-design.js",
     "qa:invoice": "playwright test --config tests/invoice-landing.config.js",
+    "qa:ecommerce": "playwright test --config tests/ecommerce-landing.config.js",
     "qa:receipt": "playwright test --config tests/receipt-landing.config.js",
     "qa:currency": "playwright test --config tests/currency-landing.config.js",
     "qa:accounting-automation": "playwright test --config tests/accounting-automation.config.js",

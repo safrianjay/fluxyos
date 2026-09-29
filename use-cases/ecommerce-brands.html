@@ -4,116 +4,13 @@
     <meta charset="UTF-8">
     <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Intelligent Finance OS for E-Commerce Brands | FluxyOS</title>
+    <title>E-Commerce Operations &amp; Finance | FluxyOS</title>
     <link rel="stylesheet" href="/assets/css/tailwind.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/fluxyos.css">
-
-    <style>
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            -webkit-font-smoothing: antialiased;
-        }
-        .font-mono { font-family: 'Fira Code', monospace; }
-
-        .hero-gradient {
-            background: linear-gradient(135deg, #F9FAFB 0%, #FFFFFF 100%);
-        }
-
-        .section-dark {
-            background: #0B0F19;
-            color: white;
-        }
-
-        .feature-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid rgba(234, 88, 12, 0.2);
-            color: #EA580C;
-        }
-
-        .vendor-row {
-            transition: background-color 0.15s ease;
-        }
-        .vendor-row:hover {
-            background-color: #F9FAFB;
-        }
-
-        .badge-approved {
-            background: #DCFCE7;
-            color: #166534;
-        }
-        .badge-pending {
-            background: #FEF3C7;
-            color: #92400E;
-        }
-        .badge-paid {
-            background: #DBEAFE;
-            color: #1E40AF;
-        }
-        .commerce-surface {
-            background:
-                linear-gradient(135deg, rgba(11, 15, 25, 0.035) 0%, rgba(255, 255, 255, 0) 45%),
-                radial-gradient(circle at 82% 18%, rgba(234, 88, 12, 0.08), transparent 30%),
-                #F7F7F2;
-        }
-
-        .premium-panel {
-            box-shadow: 0 24px 70px -38px rgba(11, 15, 25, 0.45);
-        }
-
-        .commerce-grid {
-            background-image:
-                linear-gradient(rgba(11, 15, 25, 0.055) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(11, 15, 25, 0.055) 1px, transparent 1px);
-            background-size: 42px 42px;
-        }
-
-        .product-shell {
-            background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
-        }
-
-        .signal-line {
-            background: linear-gradient(90deg, transparent, rgba(234, 88, 12, 0.55), transparent);
-        }
-
-        .channel-pill {
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
-        }
-
-        .bento-card {
-            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-        }
-        .bento-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 22px 55px -38px rgba(11, 15, 25, 0.55);
-            border-color: rgba(11, 15, 25, 0.18);
-        }
-
-        .mobile-viewport-bound {
-            min-width: 0 !important;
-            width: 100% !important;
-            max-width: calc(100vw - 48px) !important;
-        }
-
-        .mobile-viewport-bound h1,
-        .mobile-viewport-bound p {
-            max-width: 100% !important;
-            overflow-wrap: normal;
-        }
-
-        @media (min-width: 1024px) {
-            .mobile-viewport-bound {
-                max-width: none !important;
-            }
-        }
-
-    </style>
-    <meta name="description" content="Match TikTok Shop and Shopee payouts to your ledger. See true channel margin, automate COGS, and close without spreadsheets.">
+    <link rel="stylesheet" href="/assets/css/ecommerce-landing.css">
+    <link rel="stylesheet" href="/assets/css/footer.css">
+    <meta name="description" content="Connect e-commerce revenue, stock costs, invoices, expenses, and accounting. See your financial performance and ask Fluxy AI about your business.">
     <link rel="canonical" href="https://fluxyos.com/use-cases/ecommerce-brands">
     <link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/ecommerce-brands">
     <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/ecommerce-brands">
@@ -122,8 +19,8 @@
     <!-- Open Graph -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://fluxyos.com/use-cases/ecommerce-brands">
-    <meta property="og:title" content="Intelligent Finance OS for E-Commerce Brands | FluxyOS">
-    <meta property="og:description" content="Match TikTok Shop and Shopee payouts to your ledger. See true channel margin, automate COGS, and close without spreadsheets.">
+    <meta property="og:title" content="E-Commerce Operations &amp; Finance | FluxyOS">
+    <meta property="og:description" content="Connect e-commerce revenue, stock costs, invoices, expenses, and accounting. See your financial performance and ask Fluxy AI about your business.">
     <meta property="og:image" content="https://fluxyos.com/assets/images/og-ecommerce-brands.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -133,8 +30,8 @@
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Intelligent Finance OS for E-Commerce Brands | FluxyOS">
-    <meta name="twitter:description" content="Match TikTok Shop and Shopee payouts to your ledger. See true channel margin, automate COGS, and close without spreadsheets.">
+    <meta name="twitter:title" content="E-Commerce Operations &amp; Finance | FluxyOS">
+    <meta name="twitter:description" content="Connect e-commerce revenue, stock costs, invoices, expenses, and accounting. See your financial performance and ask Fluxy AI about your business.">
     <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-ecommerce-brands.png">
 
     <!-- Google tag (gtag.js) -->
@@ -148,157 +45,149 @@
 
     <!-- Schema.org structured data -->
     <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://fluxyos.com/#organization",
+  "name": "FluxyOS",
+  "legalName": "PT SAF Teknologi Maju",
+  "url": "https://fluxyos.com",
+  "logo": "https://fluxyos.com/assets/images/favicon.svg",
+  "description": "Intelligent Finance Operating System connecting financial operations, accounting, business operations, and intelligence into one system, for businesses at every growth stage.",
+  "foundingDate": "2026",
+  "areaServed": {
+    "@type": "Country",
+    "name": "Indonesia"
+  },
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Plaza Indonesia, Level 5 Unit E021AB, Jl. M.H. Thamrin No. Kav. 28-30",
+    "addressLocality": "Jakarta Pusat",
+    "addressRegion": "DKI Jakarta",
+    "postalCode": "10350",
+    "addressCountry": "ID"
+  },
+  "sameAs": [
+    "https://www.linkedin.com/company/fluxyos/",
+    "https://www.instagram.com/fluxy_os/"
+  ],
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "customer support",
+    "email": "support@fluxyos.com",
+    "availableLanguage": [
+      "English",
+      "Indonesian"
+    ]
+  }
+}
+    </script>
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "FluxyOS for E-Commerce Brands",
+  "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "Intelligent Finance Operating System",
+  "operatingSystem": "Web",
+  "url": "https://fluxyos.com/use-cases/ecommerce-brands",
+  "inLanguage": "en-US",
+  "description": "Connect e-commerce revenue, stock costs, invoices, expenses, and accounting. See your financial performance and ask Fluxy AI about your business.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "IDR",
+    "availability": "https://schema.org/InStock"
+  },
+  "featureList": [
+    "Connected commerce financial records",
+    "SKU-matched stock costing",
+    "Invoices and receipt extraction with review",
+    "General Ledger and source journals",
+    "Financial statements and budget tracking",
+    "Financial questions with Fluxy AI"
+  ],
+  "publisher": {
+    "@id": "https://fluxyos.com/#organization"
+  }
+}
+    </script>
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
     {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "@id": "https://fluxyos.com/#organization",
-      "name": "FluxyOS",
-      "legalName": "PT SAF Teknologi Maju",
-      "url": "https://fluxyos.com",
-      "logo": "https://fluxyos.com/assets/images/favicon.svg",
-      "description": "Intelligent Finance Operating System connecting financial operations, accounting, business operations, and intelligence into one system, for businesses at every growth stage.",
-      "foundingDate": "2026",
-      "areaServed": {
-        "@type": "Country",
-        "name": "Indonesia"
-      },
-      "address": {
-        "@type": "PostalAddress",
-        "streetAddress": "Plaza Indonesia, Level 5 Unit E021AB, Jl. M.H. Thamrin No. Kav. 28-30",
-        "addressLocality": "Jakarta Pusat",
-        "addressRegion": "DKI Jakarta",
-        "postalCode": "10350",
-        "addressCountry": "ID"
-      },
-      "sameAs": [
-        "https://www.linkedin.com/company/fluxyos/",
-        "https://www.instagram.com/fluxy_os/"
-      ],
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "contactType": "customer support",
-        "email": "support@fluxyos.com",
-        "availableLanguage": [
-          "English",
-          "Indonesian"
-        ]
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://fluxyos.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "E-Commerce Brands",
+      "item": "https://fluxyos.com/use-cases/ecommerce-brands"
+    }
+  ]
+}
+    </script>
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "inLanguage": "en-US",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is FluxyOS for e-commerce brands?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "FluxyOS is an Intelligent Finance Operating System. It connects supported commerce data with stock costing, invoices, expenses, accounting, financial reporting, and Fluxy AI in one workspace. It does not replace your storefront or fulfilment system."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Which marketplaces can I connect?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "FluxyOS has connectors for TikTok Shop and Shopee. Connection and sync depend on platform authorisation and configuration. Other financial records can be added manually or imported through supported CSV workflows; other storefronts are not advertised as live integrations."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do orders connect to inventory and accounting?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "For stock-holding workspaces, imported marketplace orders can be matched to item SKUs. The stock-cost posting action records stock movements and balanced cost-of-goods-sold journals using recorded inventory costs. Unmatched or uncosted items need review. FluxyOS does not push stock availability back to marketplaces."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I manage customer and supplier invoices?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Create and email customer invoices, track receivables, and record supplier bills and payment status. AI can extract uploaded invoice and receipt data for your review before recording. Supported document currencies are kept alongside their accounting values."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What can Fluxy AI tell me?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ask about recorded revenue, expenses, cash flow, and financial performance. Fluxy AI uses available workspace financial data and context. Answers depend on data coverage; it is not a promise of autonomous purchasing, product-level predictions, or inventory forecasting."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does FluxyOS forecast sales or stock demand?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. This page demonstrates recorded financial performance and budget-versus-actual tracking, not predictive sales or inventory forecasts. Complete your source records and account mappings to get meaningful financial statements."
       }
     }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "FluxyOS for E-Commerce Brands",
-      "applicationCategory": "BusinessApplication",
-      "applicationSubCategory": "E-Commerce Finance Software",
-      "operatingSystem": "Web, iOS, Android",
-      "url": "https://fluxyos.com/use-cases/ecommerce-brands",
-      "inLanguage": "en-US",
-      "description": "FluxyOS is a finance OS for online stores. Match marketplace settlements, separate ad spend from net margin, automate COGS, and close the books from one dashboard.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "IDR",
-        "availability": "https://schema.org/InStock"
-      },
-      "featureList": [
-        "Tokopedia, Shopee, TikTok Shop, Lazada, and Blibli payout reconciliation",
-        "Shopify and WooCommerce order ingestion",
-        "Net margin reporting by channel (revenue minus fees, ad spend, and COGS)",
-        "Receipt capture from supplier invoices and shipping labels, posted to your mapped cost account",
-        "Ad spend ROI tracking by campaign and channel",
-        "Budgeting and cash-flow forecasting",
-        "VAT-ready audit trail",
-        "AI agents for daily revenue and margin questions"
-      ],
-      "publisher": {
-        "@id": "https://fluxyos.com/#organization"
-      }
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Home",
-          "item": "https://fluxyos.com/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Use Cases",
-          "item": "https://fluxyos.com/use-cases/ecommerce-brands"
-        },
-        {
-          "@type": "ListItem",
-          "position": 3,
-          "name": "E-Commerce Brands",
-          "item": "https://fluxyos.com/use-cases/ecommerce-brands"
-        }
-      ]
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "inLanguage": "en-US",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "Does FluxyOS connect directly to Tokopedia, Shopee, and TikTok Shop?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. FluxyOS pulls orders, payouts, fees, and refunds from Tokopedia, Shopee, TikTok Shop, Lazada, and Blibli. Each marketplace settlement file is parsed automatically so revenue, marketplace fees, and net payouts land on the right ledger lines without manual import."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can I see profit by channel?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "By channel, yes. Once costs enter FluxyOS, every order is split into revenue, marketplace fees, gateway fees, ad cost share, and cost of goods, so you see true net margin per channel. Per-SKU margin is not available yet — it needs an item master and stock costing, which are on the roadmap."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How does FluxyOS handle VAT for marketplace orders?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "FluxyOS tags each transaction with its VAT treatment based on marketplace settlement formats and your tax setup. The result is an export-ready ledger your accountant or firm can use for monthly VAT reporting without rebuilding a spreadsheet."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "What if my store also sells through Shopify or WooCommerce?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "FluxyOS treats your D2C website as another channel. Shopify and WooCommerce orders, gateway payouts from Midtrans, Xendit, or Stripe, and refund flows all join the same ledger as marketplace data, so P&L stays consolidated across every storefront you run."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Do I need an accountant to set this up?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "No. The default chart of accounts, marketplace fee mappings, and channel categories are preconfigured for Indonesian e-commerce. Connect your store, link your bank, and FluxyOS books the first month for you. Your accountant can review and adjust later."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is there a free tier for new sellers?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. FluxyOS has a free tier that covers one storefront and basic reconciliation. Paid plans unlock multi-channel ingestion, AI agents, and advanced margin reporting — see the pricing page for details."
-          }
-        }
-      ]
-    }
+  ]
+}
     </script>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -707,451 +596,131 @@
         </div>
     </nav>
 
-    <!-- HERO SECTION -->
-    <section class="commerce-surface commerce-grid border-b border-gray-200 px-6 py-12 md:py-16 overflow-hidden">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid max-w-full lg:grid-cols-[0.92fr_1.08fr] gap-10 lg:gap-14 items-center">
-                <div class="mobile-viewport-bound min-w-0 w-full">
-                    <h1 class="max-w-3xl text-[44px] md:text-[56px] font-bold tracking-tight leading-[1.05] text-gray-950 mb-6">
-                        Run your online store finances as smoothly as your storefront.
-                    </h1>
-
-                    <p class="text-[16px] sm:text-[18px] md:text-[19px] text-gray-600 leading-relaxed mb-8">
-                        FluxyOS is the finance OS for online stores across Tokopedia, Shopee, TikTok Shop, Lazada, Shopify, and your own checkout. Match every payout, see true net margin by channel, and close the books without spreadsheets.
-                    </p>
-
-                    <div class="flex flex-col sm:flex-row gap-3">
-                        <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-7 py-4 rounded-md transition-all duration-200 shadow-sm hover:shadow inline-block text-center">
-                            Try FluxyOS free
-                        </a>
-                        <a href="#how-it-works" class="border border-gray-300 bg-white/70 text-gray-950 font-semibold text-[15px] px-7 py-4 rounded-md hover:border-gray-500 transition-colors inline-block text-center">
-                            See how it works
-                        </a>
-                    </div>
-                </div>
-
-                <div class="mobile-viewport-bound relative min-w-0 w-full lg:max-w-full lg:-mr-10">
-                    <div class="absolute -left-8 top-12 hidden h-44 w-44 rounded-full border border-gray-300/70 md:block"></div>
-                    <div class="absolute -right-8 -top-8 hidden h-28 w-28 rounded-full border border-[#EA580C]/35 md:block"></div>
-                    <div class="product-shell premium-panel relative max-w-full overflow-hidden rounded-[28px] border border-gray-200 p-3 text-gray-950">
-                        <div class="max-w-full overflow-hidden rounded-[22px] border border-gray-200 bg-white">
-                            <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4">
-                                <div>
-                                    <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500">Omnichannel finance cockpit</p>
-                                    <h2 class="mt-1 text-[18px] font-bold text-gray-950">Live reconciliation</h2>
-                                </div>
-                                <div class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[12px] font-semibold text-emerald-700">Live</div>
-                            </div>
-
-                            <div class="grid gap-3 p-4 sm:grid-cols-3">
-                                <div class="rounded-2xl border border-gray-200 bg-[#FAFAF7] p-4">
-                                    <p class="text-[12px] text-gray-500">Net margin</p>
-                                    <div class="mt-2 text-[28px] font-bold tracking-tight text-gray-950">22.4%</div>
-                                    <div class="mt-3 h-1.5 rounded-full bg-gray-200"><div class="h-full w-[72%] rounded-full bg-emerald-500"></div></div>
-                                </div>
-                                <div class="rounded-2xl border border-gray-200 bg-[#FAFAF7] p-4">
-                                    <p class="text-[12px] text-gray-500">Ad ROI</p>
-                                    <div class="mt-2 text-[28px] font-bold tracking-tight text-gray-950">3.8x</div>
-                                    <div class="mt-3 flex items-end gap-1.5 h-8"><span class="w-4 h-3 rounded bg-gray-200"></span><span class="w-4 h-5 rounded bg-gray-300"></span><span class="w-4 h-8 rounded bg-[#EA580C]"></span></div>
-                                </div>
-                                <div class="rounded-2xl border border-gray-200 bg-[#FAFAF7] p-4">
-                                    <p class="text-[12px] text-gray-500">COGS captured</p>
-                                    <div class="mt-2 text-[28px] font-bold tracking-tight text-gray-950">Rp 81M</div>
-                                    <p class="mt-2 text-[11px] text-gray-500">Invoice, 3PL, supplier</p>
-                                </div>
-                            </div>
-
-                            <div class="px-4 pb-4">
-                                <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
-                                    <div class="grid min-w-[540px] grid-cols-[1.1fr_.8fr_.7fr_.9fr_.7fr] gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                                        <span>Channel</span><span>Gross</span><span>Fees</span><span>Net payout</span><span>Status</span>
-                                    </div>
-                                    <div class="grid min-w-[540px] grid-cols-[1.1fr_.8fr_.7fr_.9fr_.7fr] gap-3 px-4 py-3 text-[12px] text-gray-600 border-b border-gray-100 last:border-b-0">
-                                        <span class="font-semibold text-gray-950">Tokopedia</span><span>Rp 124.3M</span><span>-4.5%</span><span>Rp 118.7M</span><span><span class="rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 px-2 py-1 text-[10px] font-bold">Matched</span></span>
-                                    </div>
-                                    <div class="grid min-w-[540px] grid-cols-[1.1fr_.8fr_.7fr_.9fr_.7fr] gap-3 px-4 py-3 text-[12px] text-gray-600 border-b border-gray-100 last:border-b-0">
-                                        <span class="font-semibold text-gray-950">Shopee</span><span>Rp 96.8M</span><span>-7.2%</span><span>Rp 89.8M</span><span><span class="rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 px-2 py-1 text-[10px] font-bold">Matched</span></span>
-                                    </div>
-                                    <div class="grid min-w-[540px] grid-cols-[1.1fr_.8fr_.7fr_.9fr_.7fr] gap-3 px-4 py-3 text-[12px] text-gray-600 border-b border-gray-100 last:border-b-0">
-                                        <span class="font-semibold text-gray-950">TikTok Shop</span><span>Rp 58.2M</span><span>-9.1%</span><span>Rp 52.9M</span><span><span class="rounded-full border bg-amber-50 text-amber-700 border-amber-200 px-2 py-1 text-[10px] font-bold">Review</span></span>
-                                    </div>
-                                    <div class="grid min-w-[540px] grid-cols-[1.1fr_.8fr_.7fr_.9fr_.7fr] gap-3 px-4 py-3 text-[12px] text-gray-600 border-b border-gray-100 last:border-b-0">
-                                        <span class="font-semibold text-gray-950">Shopify</span><span>Rp 24.7M</span><span>-2.8%</span><span>Rp 24.0M</span><span><span class="rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 px-2 py-1 text-[10px] font-bold">Matched</span></span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="px-4 pb-4">
-                                <div class="rounded-2xl border border-[#EA580C]/25 bg-white p-4">
-                                    <div class="mb-2 flex items-center justify-between gap-3">
-                                        <span class="text-[12px] font-bold uppercase tracking-wider text-[#EA580C]">AI finding</span>
-                                        <span class="font-mono text-[11px] text-gray-500">09:14</span>
-                                    </div>
-                                    <p class="text-[13px] leading-relaxed text-gray-700">Shopee margin dropped after the free shipping promo ended. Channel contribution is worth a review.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="signal-line absolute -bottom-5 left-10 right-10 h-px"></div>
-                </div>
+    <!-- ECOMMERCE CONTENT -->
+<main id="main-content" class="ecommerce-page">
+  <section class="ec-hero ec-guides" aria-labelledby="ec-title">
+    <div class="ec-container ec-hero-grid">
+      <div class="ec-hero-copy"><h1 id="ec-title">Your online business.<br>One connected system.</h1>
+        <p class="ec-lead">Run your e-commerce operations and finances together. Keep orders, stock costs, payments, and accounting connected—from the next sale to the next report.</p>
+        <p class="ec-category">FluxyOS is an Intelligent Finance Operating System that connects your commerce activity, financial operations, accounting, and business intelligence.</p>
+        <div class="ec-actions"><a class="ec-button ec-button-primary" href="/pricing">Start free<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a><a class="ec-button ec-button-secondary" href="/contact-sales">Talk to sales<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a></div><a class="ec-text-link" href="#commerce-workflow">Follow an order through FluxyOS<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
+      </div>
+      <div class="ec-hero-visual" aria-label="Commerce and accounting workspace demonstration">
+        <div class="ec-workspace ec-window"><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">FluxyOS</span><span class="ec-small">September 2026</span></div>
+          <div class="ec-workspace-nav"><span>Overview</span><span>Orders</span><span>Inventory</span><span>Accounting</span></div>
+          <div class="ec-workspace-body"><div class="ec-workspace-title"><h2>Commerce overview</h2><span class="ec-status">IDR</span></div>
+            <div class="ec-kpi-pair"><div><span>Revenue</span><strong>Rp184.000.000</strong><small>+12,2% vs August</small></div><div><span>Gross margin</span><strong>41,3%</strong><small>After recorded stock costs</small></div></div>
+            <svg class="ec-revenue-chart" viewBox="0 0 520 205" role="img" aria-label="Revenue rose from Rp164.000.000 in August to Rp184.000.000 in September."><g class="ec-chart-grid"><path d="M45 25H490M45 70H490M45 115H490M45 160H490"/></g><g class="ec-chart-axis"><text x="0" y="29">200m</text><text x="0" y="74">150m</text><text x="0" y="119">100m</text><text x="0" y="164">50m</text><text x="45" y="195">Apr</text><text x="130" y="195">May</text><text x="215" y="195">Jun</text><text x="300" y="195">Jul</text><text x="385" y="195">Aug</text><text x="473" y="195">Sep</text></g><path class="ec-chart-reference" d="M45 120 134 105 223 86 312 96 401 70 490 57"/><path class="ec-chart-line" d="M45 105 134 86 223 96 312 70 401 57 490 39"/><circle class="ec-chart-point" cx="490" cy="39" r="5"/></svg><div class="ec-order-list"><div class="ec-list-label"><span>Recent orders</span><span>Total</span></div>
+              <div class="ec-order-row" data-hero-order><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5v18h14V3h-3M8 3v4h8V3H8zm0 9h8m-8 4h5"/></svg></span><div><strong>EC-1048</strong><small>TikTok Shop</small></div><span class="ec-status">Paid</span><strong>Rp150.000</strong></div><div class="ec-order-row" ><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5v18h14V3h-3M8 3v4h8V3H8zm0 9h8m-8 4h5"/></svg></span><div><strong>EC-1047</strong><small>Shopee</small></div><span class="ec-status">Paid</span><strong>Rp225.000</strong></div><div class="ec-order-row" ><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5v18h14V3h-3M8 3v4h8V3H8zm0 9h8m-8 4h5"/></svg></span><div><strong>EC-1046</strong><small>TikTok Shop</small></div><span class="ec-status">Paid</span><strong>Rp300.000</strong></div>
             </div>
+          </div>
         </div>
-    </section>
+        <div class="ec-hero-record ec-window"><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Order → accounting</span><span class="ec-small"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h16v18H4V3zm4 5h8m-8 4h8m-8 4h4"/></svg></span></div><div class="ec-record-body"><span class="ec-small">EC-1048 · TOTE-01</span><div class="ec-mini-track" aria-hidden="true"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5v18h14V3h-3M8 3v4h8V3H8zm0 9h8m-8 4h5"/></svg></span><i></i><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v10l-9 4-9-4V7zm0 0 9 4 9-4m-9 4v10M7.5 5l9 4"/></svg></span><i></i><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h16v18H4V3zm4 5h8m-8 4h8m-8 4h4"/></svg></span></div><strong data-hero-status>Order received</strong><div class="ec-hero-stage" data-hero-stages><span data-hero-stage="0" >Rp150.000</span><span data-hero-stage="1" hidden>Rp142.500</span><span data-hero-stage="2" hidden>Rp90.000</span><span data-hero-stage="3" hidden>Balanced journal</span></div><div class="ec-stage-progress" aria-hidden="true"><i></i><i></i><i></i><i></i></div></div></div>
+        <span class="ec-demo-caption">Illustrative workspace · IDR · SKU matching and cost posting required</span>
+      </div>
+    </div>
+  </section>
+  <section class="ec-benefits ec-container" aria-label="A connected way to run your business">
+    <article><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5v18h14V3h-3M8 3v4h8V3H8zm0 9h8m-8 4h5"/></svg><h2>Know what you sold.</h2><p>Orders and revenue keep their channel and source context.</p></article><article><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v10l-9 4-9-4V7zm0 0 9 4 9-4m-9 4v10M7.5 5l9 4"/></svg><h2>Know what it cost.</h2><p>Match costed stock to sales before reading your margin.</p></article><article><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h16v18H4V3zm4 5h8m-8 4h8m-8 4h4"/></svg><h2>Keep the books connected.</h2><p>Invoices, receipts, and source journals stay in one workspace.</p></article><article><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 4 3 5-8"/></svg><h2>Ask a better question.</h2><p>Go from recorded financial data to a contextual Fluxy AI answer.</p></article>
+  </section>
+  <section id="commerce-workflow" class="ec-flow ec-dark" aria-labelledby="ec-flow-title">
+    <div class="ec-container"><div class="ec-section-intro"><span class="ec-section-label">Connected commerce</span><h2 id="ec-flow-title">A sale is the start.<br>Not the end of the story.</h2><p>Follow one tote bag from a customer order to a recorded stock cost and balanced journal. The source stays attached at every step.</p></div>
+      <div class="ec-flow-layout" data-flow><div class="ec-flow-steps" role="group" aria-label="Order-to-accounting steps"><button type="button" class="ec-flow-step" data-flow-step="0" aria-pressed="true"><span class="ec-step-number">01</span><span><strong>Bring the order into view.</strong><span>Connect an authorised marketplace account. Keep the order, channel, items, and financial source together.</span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button><button type="button" class="ec-flow-step" data-flow-step="1" aria-pressed="false"><span class="ec-step-number">02</span><span><strong>Separate the sale from the payout.</strong><span>See revenue, platform fees, and the recorded settlement instead of treating a net payout as your total sales.</span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button><button type="button" class="ec-flow-step" data-flow-step="2" aria-pressed="false"><span class="ec-step-number">03</span><span><strong>Give that sale its stock cost.</strong><span>Match the order SKU to a costed item, then post its stock cost. Unmatched items stay a review task—not a guessed margin.</span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button><button type="button" class="ec-flow-step" data-flow-step="3" aria-pressed="false"><span class="ec-step-number">04</span><span><strong>Keep the trail through the books.</strong><span>The stock movement creates a balanced journal. Recorded revenue and costs feed financial reporting in the same workspace.</span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button></div>
+      <div class="ec-flow-visual"><div class="ec-flow-rail" aria-hidden="true"><span data-flow-node="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5v18h14V3h-3M8 3v4h8V3H8zm0 9h8m-8 4h5"/></svg></span><i></i><span data-flow-node="1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h16v18H4V3zm4 5h8m-8 4h8m-8 4h4"/></svg></span><i></i><span data-flow-node="2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v10l-9 4-9-4V7zm0 0 9 4 9-4m-9 4v10M7.5 5l9 4"/></svg></span><i></i><span data-flow-node="3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 4 3 5-8"/></svg></span></div><div class="ec-flow-panels"><article class="ec-window ec-flow-panel" id="ec-flow-panel-0" data-flow-panel="0" aria-label="Order received"><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Order received</span><span class="ec-small">01 / 04</span></div><div class="ec-panel-body"><span class="ec-small">TikTok Shop · EC-1048</span><div class="ec-order-item"><span class="ec-item-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v10l-9 4-9-4V7zm0 0 9 4 9-4m-9 4v10M7.5 5l9 4"/></svg></span><div><strong>Everyday tote</strong><small>SKU TOTE-01 · 1 item</small></div><strong>Rp150.000</strong></div><div class="ec-money-row "><span>Order total</span><strong>Rp150.000</strong></div><span class="ec-record-footer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>Source record · EC-1048</span></div></article><article class="ec-window ec-flow-panel" id="ec-flow-panel-1" data-flow-panel="1" aria-label="Settlement recorded"><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Settlement recorded</span><span class="ec-small">02 / 04</span></div><div class="ec-panel-body"><span class="ec-small">EC-1048 · payment source</span><div class="ec-money-row "><span>Gross sale</span><strong>Rp150.000</strong></div><div class="ec-money-row "><span>Platform fee</span><strong>−Rp7.500</strong></div><div class="ec-money-row ec-money-total"><span>Net settlement</span><strong>Rp142.500</strong></div><span class="ec-record-footer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>Source record · EC-1048</span></div></article><article class="ec-window ec-flow-panel" id="ec-flow-panel-2" data-flow-panel="2" aria-label="Stock cost posted"><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Stock cost posted</span><span class="ec-small">03 / 04</span></div><div class="ec-panel-body"><span class="ec-small">TOTE-01 · matched SKU</span><div class="ec-money-row "><span>Before this sale</span><strong>81</strong></div><div class="ec-money-row "><span>Quantity sold</span><strong>−1</strong></div><div class="ec-money-row ec-money-total"><span>Stock on hand</span><strong>80</strong></div><div class="ec-source-note">Recorded unit cost <strong>Rp90.000</strong></div><span class="ec-record-footer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>Source record · EC-1048</span></div></article><article class="ec-window ec-flow-panel" id="ec-flow-panel-3" data-flow-panel="3" aria-label="Accounting updated"><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Accounting updated</span><span class="ec-small">04 / 04</span></div><div class="ec-panel-body"><span class="ec-small">EC-1048 → journal → statements</span><div class="ec-table-wrap"><table class="ec-table"><caption>Journal · cost of order EC-1048</caption><thead><tr><th>Account</th><th>Debit</th><th>Credit</th></tr></thead><tbody><tr><td>5100 · Cost of goods sold</td><td>Rp90.000</td><td>—</td></tr><tr><td>1200 · Inventory</td><td>—</td><td>Rp90.000</td></tr></tbody></table></div><div class="ec-ledger-total"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>Balanced journal</span><strong>Rp90.000 = Rp90.000</strong></div><span class="ec-record-footer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>Source record · EC-1048</span></div></article></div><div class="ec-flow-controls"><span>Illustrative workspace · IDR</span><button type="button" class="ec-dark-link" data-flow-replay>Replay order<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button></div></div></div>
+    </div>
+  </section>
+  <section class="ec-section ec-guides" aria-labelledby="ec-stock-title"><div class="ec-container ec-split">
+    <div class="ec-copy"><span class="ec-section-label">Inventory & product context</span><h2 id="ec-stock-title">Your stock has a cost.<br>Keep it in the picture.</h2><p>Track items, goods receipts, and stock movements. For imported marketplace orders, matched SKUs and recorded costs turn sold stock into cost-of-goods-sold entries.</p><ul class="ec-check-list"><li>See quantities and recorded inventory value.</li><li>Keep sold quantities tied to the order reference.</li><li>Review missing SKU matches or costs before posting.</li></ul><p class="ec-small ec-qualification">Available to stock-holding workspaces. Stock changes are recorded in FluxyOS, not pushed back to your storefront.</p></div>
+    <div class="ec-stock-composition" data-reveal><div class="ec-window"><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Inventory · Everyday tote</span><span class="ec-small">TOTE-01</span></div><div class="ec-panel-body"><div class="ec-stock-metric"><span>Stock on hand</span><strong>80 <small>units</small></strong><span>Recorded value <b>Rp7.200.000</b></span></div><div class="ec-stock-track" aria-hidden="true"><i ></i><i ></i><i ></i><i ></i><i ></i><i ></i><i ></i><i ></i><i ></i><i ></i><i ></i><i ></i><i ></i><i ></i><i ></i><i class="ec-stock-out"></i></div><div class="ec-table-wrap"><table class="ec-table"><caption>Stock movement history</caption><thead><tr><th>Reference</th><th>Movement</th><th>Quantity</th></tr></thead><tbody><tr><td>GR-028</td><td>Goods received</td><td>+100</td></tr><tr><td>EC-1030–1047</td><td>Prior sales</td><td>−19</td></tr><tr class="ec-highlight-row"><td>EC-1048</td><td>Sale · cost posted</td><td>−1</td></tr></tbody></table></div></div></div><div class="ec-stock-receipt ec-window"><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Supplier invoice → received stock</span><span class="ec-small"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v10l-9 4-9-4V7zm0 0 9 4 9-4m-9 4v10M7.5 5l9 4"/></svg></span></div><div class="ec-panel-body"><div class="ec-money-row "><span>Recorded purchase · 100 units</span><strong>Rp9.000.000</strong></div><div class="ec-source-note">GR-028 · Receipt linked to inventory journal</div></div></div></div>
+  </div></section>
+  <section class="ec-section ec-muted" aria-labelledby="ec-money-title"><div class="ec-container ec-split ec-split-reverse">
+    <div class="ec-copy"><span class="ec-section-label">Invoices, payments & expenses</span><h2 id="ec-money-title">Sold is one thing.<br>Paid is another.</h2><p>Create and email customer invoices. Track what customers owe, what suppliers are owed, and the expense records behind your operating costs.</p><p>Upload a supplier invoice or receipt. AI extracts the details; you check the data before creating the financial record. Supported document currencies keep their original context.</p><a class="ec-text-link" href="/vendorspend">Explore Invoice<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a></div>
+    <div class="ec-window ec-payment-visual" data-reveal><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Invoices & expenses</span><span class="ec-small">September 2026</span></div><div class="ec-panel-body"><div class="ec-kpi-pair"><div><span>Receivables</span><strong>Rp18.000.000</strong></div><div><span>Payables</span><strong>Rp32.000.000</strong></div></div><div class="ec-document-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v14H3V5zm0 0 9 8 9-8"/></svg><div><strong>INV-204 · Nusa Retail</strong><small>Email sent · customer invoice</small></div><span class="ec-status">Sent</span></div><div class="ec-document-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M7 9h10M7 13h10M7 17h5"/></svg><div><strong>supplier-028.pdf</strong><small>Invoice data extracted</small></div><span class="ec-status ec-status-accent">Review</span></div><div class="ec-extracted-fields"><span>Extracted invoice fields</span><div class="ec-money-row "><span>Supplier</span><strong>Nusa Textile</strong></div><div class="ec-money-row "><span>Invoice number</span><strong>SUP-028</strong></div><div class="ec-money-row "><span>Total · IDR</span><strong>Rp9.000.000</strong></div></div><ol class="ec-document-path"><li>Upload</li><li>AI extraction</li><li>Your review</li><li>Record</li></ol></div></div>
+  </div></section>
+  <section class="ec-section" aria-labelledby="ec-accounting-title"><div class="ec-container"><div class="ec-section-intro"><span class="ec-section-label">Accounting & financial reporting</span><h2 id="ec-accounting-title">Less rebuilding the books.<br>More reading the business.</h2><p>Source workflows create journal entries. Account mappings connect them to the General Ledger and financial statements. Keep the record, the journal, and the report in one place.</p></div>
+    <div class="ec-accounting-grid"><div class="ec-window ec-journal-visual" data-reveal><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">General Ledger</span><span class="ec-small">Posted</span></div><div class="ec-panel-body"><span class="ec-small">EC-1048 · TOTE-01</span><div class="ec-table-wrap"><table class="ec-table"><caption>Journal · cost of order EC-1048</caption><thead><tr><th>Account</th><th>Debit</th><th>Credit</th></tr></thead><tbody><tr><td>5100 · Cost of goods sold</td><td>Rp90.000</td><td>—</td></tr><tr><td>1200 · Inventory</td><td>—</td><td>Rp90.000</td></tr></tbody></table></div><div class="ec-ledger-total"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>Balanced journal</span><strong>Rp90.000 = Rp90.000</strong></div><div class="ec-accounting-trail"><span>Order</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg><span>Stock cost</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg><span>Journal</span></div><p class="ec-small">Review source data and account mappings before posting. Financial statements reflect posted entries.</p></div></div>
+    <div class="ec-window ec-reports" data-reports><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Financial statements</span><span class="ec-small">September 2026</span></div><div class="ec-report-tabs" role="group" aria-label="Choose a financial statement"><button type="button" data-report-tab="0">Income Statement</button><button type="button" data-report-tab="1">Balance Sheet</button><button type="button" data-report-tab="2">Cash Flow</button></div><section class="ec-report-panel" data-report-panel="0" id="ec-report-0"><h3>Income Statement</h3><span class="ec-small">September 2026 · IDR</span><div class="ec-money-row "><span>Revenue</span><strong>Rp184.000.000</strong></div><div class="ec-money-row "><span>Cost of goods sold</span><strong>Rp108.000.000</strong></div><div class="ec-money-row ec-money-subtotal"><span>Gross profit</span><strong>Rp76.000.000</strong></div><div class="ec-money-row "><span>Operating expenses</span><strong>Rp29.000.000</strong></div><div class="ec-money-row ec-money-total"><span>Net profit</span><strong>Rp47.000.000</strong></div></section><section class="ec-report-panel" data-report-panel="1" id="ec-report-1"><h3>Balance Sheet</h3><span class="ec-small">September 2026 · IDR</span><div class="ec-money-row "><span>Cash and bank</span><strong>Rp97.000.000</strong></div><div class="ec-money-row "><span>Accounts receivable</span><strong>Rp18.000.000</strong></div><div class="ec-money-row "><span>Inventory</span><strong>Rp45.000.000</strong></div><div class="ec-money-row ec-money-subtotal"><span>Total assets</span><strong>Rp160.000.000</strong></div><div class="ec-money-row "><span>Liabilities</span><strong>Rp32.000.000</strong></div><div class="ec-money-row ec-money-total"><span>Equity</span><strong>Rp128.000.000</strong></div></section><section class="ec-report-panel" data-report-panel="2" id="ec-report-2"><h3>Cash Flow</h3><span class="ec-small">September 2026 · IDR</span><div class="ec-money-row "><span>Customer receipts</span><strong>Rp166.000.000</strong></div><div class="ec-money-row "><span>Supplier payments</span><strong>−Rp108.000.000</strong></div><div class="ec-money-row "><span>Operating payments</span><strong>−Rp29.000.000</strong></div><div class="ec-money-row ec-money-subtotal"><span>Net cash movement</span><strong>Rp29.000.000</strong></div><div class="ec-money-row "><span>Opening cash</span><strong>Rp68.000.000</strong></div><div class="ec-money-row ec-money-total"><span>Closing cash</span><strong>Rp97.000.000</strong></div></section></div></div>
+  </div></section>
+  <section class="ec-section ec-muted ec-guides" aria-labelledby="ec-performance-title"><div class="ec-container ec-split">
+    <div class="ec-copy"><span class="ec-section-label">Financial performance</span><h2 id="ec-performance-title">Revenue is growing.<br>What stays with you?</h2><p>Read revenue alongside stock costs, operating expenses, gross margin, and cash. Compare recorded spending with your budget before making the next commitment.</p><a class="ec-text-link" href="/budgetlanding">Explore Dynamic Budgeting<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a><p class="ec-small ec-qualification">Recorded performance and budget tracking—not predictive sales or stock forecasts.</p></div>
+    <div class="ec-window ec-performance" data-reveal><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Business performance</span><span class="ec-small">September 2026</span></div><div class="ec-panel-body"><div class="ec-kpi-pair"><div><span>Revenue</span><strong>Rp184.000.000</strong><small>+12,2%</small></div><div><span>Net profit</span><strong>Rp47.000.000</strong><small>25,5% net margin</small></div></div><svg class="ec-revenue-chart" viewBox="0 0 520 205" role="img" aria-label="Revenue rose from Rp164.000.000 in August to Rp184.000.000 in September."><g class="ec-chart-grid"><path d="M45 25H490M45 70H490M45 115H490M45 160H490"/></g><g class="ec-chart-axis"><text x="0" y="29">200m</text><text x="0" y="74">150m</text><text x="0" y="119">100m</text><text x="0" y="164">50m</text><text x="45" y="195">Apr</text><text x="130" y="195">May</text><text x="215" y="195">Jun</text><text x="300" y="195">Jul</text><text x="385" y="195">Aug</text><text x="473" y="195">Sep</text></g><path class="ec-chart-reference" d="M45 120 134 105 223 86 312 96 401 70 490 57"/><path class="ec-chart-line" d="M45 105 134 86 223 96 312 70 401 57 490 39"/><circle class="ec-chart-point" cx="490" cy="39" r="5"/></svg><div class="ec-chart-legend"><span><i></i>Current period</span><span><i></i>Prior-period reference</span></div><div class="ec-budget"><div><div class="ec-money-row "><span>Operating budget</span><strong>Rp35.000.000</strong></div><div class="ec-money-row "><span>Actual spend</span><strong>Rp29.000.000</strong></div></div><meter min="0" max="35000000" value="29000000" aria-label="Operating budget used">82,9%</meter><span>82,9% used · Rp6.000.000 remaining</span></div></div></div>
+  </div></section>
+  <section class="ec-section ec-ai" aria-labelledby="ec-ai-title"><div class="ec-container ec-split ec-split-reverse">
+    <div class="ec-copy"><span class="ec-section-label">Fluxy AI</span><h2 id="ec-ai-title">Ask about the business.<br>Not just the numbers.</h2><p>Ask a question in your own words. Fluxy AI works with your available financial records and context to explain revenue, expenses, and cash flow.</p><div class="ec-question-controls" role="group" aria-label="Example financial questions"><button type="button" data-ai-question="0" aria-pressed="true">How is my revenue this month?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button><button type="button" data-ai-question="1" aria-pressed="false">Which expenses increased?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button><button type="button" data-ai-question="2" aria-pressed="false">How is my cash flow doing?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button></div><a class="ec-text-link" href="/aiagents">Meet Fluxy AI<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a></div>
+    <div class="ec-window ec-ai-window" data-ai><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Fluxy AI</span><span class="ec-small">Financial context connected</span></div><div class="ec-ai-conversation"><article data-ai-answer="0"><div class="ec-user-message"><span>You</span><p>How is my revenue this month?</p></div><div class="ec-ai-message"><span class="ec-ai-author"><img src="/assets/images/favicon.svg" width="20" height="20" alt="">Fluxy AI</span><p data-answer-text>September revenue is Rp184.000.000, up Rp20.000.000 from August. Review the recorded channel breakdown before deciding where to invest next.</p><div class="ec-answer-metric"><span>Revenue · September vs August</span><strong>Rp184.000.000</strong><small>+12,2%</small></div><div class="ec-source-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h16v18H4V3zm4 5h8m-8 4h8m-8 4h4"/></svg>Revenue · September vs August</div></div></article><article data-ai-answer="1"><div class="ec-user-message"><span>You</span><p>Which expenses increased?</p></div><div class="ec-ai-message"><span class="ec-ai-author"><img src="/assets/images/favicon.svg" width="20" height="20" alt="">Fluxy AI</span><p data-answer-text>Operating expenses rose from Rp27.000.000 to Rp29.000.000. Marketing increased by Rp1.500.000; packaging and delivery by Rp500.000. Those two categories explain the change in this example.</p><div class="ec-answer-metric"><span>Expense records · category comparison</span><strong>Rp29.000.000</strong><small>+7,4%</small></div><div class="ec-source-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h16v18H4V3zm4 5h8m-8 4h8m-8 4h4"/></svg>Expense records · category comparison</div></div></article><article data-ai-answer="2"><div class="ec-user-message"><span>You</span><p>How is my cash flow doing?</p></div><div class="ec-ai-message"><span class="ec-ai-author"><img src="/assets/images/favicon.svg" width="20" height="20" alt="">Fluxy AI</span><p data-answer-text>Recorded customer receipts are Rp166.000.000. Supplier and operating payments total Rp137.000.000, leaving a net cash increase of Rp29.000.000 for September.</p><div class="ec-answer-metric"><span>Cash Flow · recorded receipts and payments</span><strong>Rp29.000.000</strong><small>Net increase</small></div><div class="ec-source-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h16v18H4V3zm4 5h8m-8 4h8m-8 4h4"/></svg>Cash Flow · recorded receipts and payments</div></div></article></div><div class="ec-ai-footnote">Illustrative answers. Results depend on your recorded data.</div></div>
+  </div></section>
+  <section class="ec-ecosystem ec-dark"><div class="ec-container"><div class="ec-section-intro"><h2>The pieces work better together.</h2><p>Start with the workflow you need. Keep the financial context as your business grows.</p></div><div class="ec-ecosystem-grid"><a href="/revenuesync"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5v18h14V3h-3M8 3v4h8V3H8zm0 9h8m-8 4h5"/></svg><h3>Revenue Sync</h3><p>Sales, fees, and settlements.</p><span>Explore<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span></a><a href="/vendorspend"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v14H3V5zm0 0 9 8 9-8"/></svg><h3>Invoice</h3><p>Create, send, and track invoices.</p><span>Explore<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span></a><a href="/receiptcapture"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M7 9h10M7 13h10M7 17h5"/></svg><h3>Receipt Capture</h3><p>Documents to reviewed records.</p><span>Explore<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span></a><a href="/accounting-automation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h16v18H4V3zm4 5h8m-8 4h8m-8 4h4"/></svg><h3>Accounting Automation</h3><p>Source records to journals and reports.</p><span>Explore<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span></a></div></div></section>
+  <section class="ec-section ec-faq"><div class="ec-container ec-faq-layout"><div><span class="ec-section-label">Questions, answered</span><h2>Before you connect<br>your business.</h2></div><div><details><summary>What is FluxyOS for e-commerce brands?<span aria-hidden="true">+</span></summary><p>FluxyOS is an Intelligent Finance Operating System. It connects supported commerce data with stock costing, invoices, expenses, accounting, financial reporting, and Fluxy AI in one workspace. It does not replace your storefront or fulfilment system.</p></details><details><summary>Which marketplaces can I connect?<span aria-hidden="true">+</span></summary><p>FluxyOS has connectors for TikTok Shop and Shopee. Connection and sync depend on platform authorisation and configuration. Other financial records can be added manually or imported through supported CSV workflows; other storefronts are not advertised as live integrations.</p></details><details><summary>How do orders connect to inventory and accounting?<span aria-hidden="true">+</span></summary><p>For stock-holding workspaces, imported marketplace orders can be matched to item SKUs. The stock-cost posting action records stock movements and balanced cost-of-goods-sold journals using recorded inventory costs. Unmatched or uncosted items need review. FluxyOS does not push stock availability back to marketplaces.</p></details><details><summary>Can I manage customer and supplier invoices?<span aria-hidden="true">+</span></summary><p>Yes. Create and email customer invoices, track receivables, and record supplier bills and payment status. AI can extract uploaded invoice and receipt data for your review before recording. Supported document currencies are kept alongside their accounting values.</p></details><details><summary>What can Fluxy AI tell me?<span aria-hidden="true">+</span></summary><p>Ask about recorded revenue, expenses, cash flow, and financial performance. Fluxy AI uses available workspace financial data and context. Answers depend on data coverage; it is not a promise of autonomous purchasing, product-level predictions, or inventory forecasting.</p></details><details><summary>Does FluxyOS forecast sales or stock demand?<span aria-hidden="true">+</span></summary><p>No. This page demonstrates recorded financial performance and budget-versus-actual tracking, not predictive sales or inventory forecasts. Complete your source records and account mappings to get meaningful financial statements.</p></details></div></div></section>
+  <section class="ec-final ec-guides"><div class="ec-container"><h2>Keep selling.<br>Keep the full picture.</h2><p>Bring your e-commerce records, costs, and accounting into one connected workspace.</p><div class="ec-actions"><a class="ec-button ec-button-primary" href="/pricing">Start free<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a><a class="ec-button ec-button-secondary" href="/contact-sales">Talk to sales<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a></div></div></section>
+</main>
+<!-- UNIVERSAL FOOTER -->
+<footer class="footer-component pt-24 pb-12 px-6">
 
-        <!-- CHANNEL STRIP -->
-    <section class="border-b border-gray-200 bg-white px-6 py-8">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                <p class="text-[12px] font-bold text-gray-500 uppercase tracking-[0.2em]">Connected storefronts, banks, gateways, and supplier spend</p>
-                <div class="flex flex-wrap items-center gap-2.5">
-                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Tokopedia</span>
-                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-[#EA580C]"></span>Shopee</span>
-                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span>TikTok Shop</span>
-                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Lazada</span>
-                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-[#EA580C]"></span>Blibli</span>
-                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span>Shopify</span>
-                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>WooCommerce</span>
-                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-[#EA580C]"></span>Midtrans</span>
-                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span>Xendit</span>
+    <!-- Universe starfield canvas -->
+    <canvas class="footer-canvas" aria-hidden="true"></canvas>
+
+    <div class="max-w-[1280px] mx-auto grid grid-cols-2 md:grid-cols-12 gap-12 mb-20">
+        <div class="col-span-2 md:col-span-4 pr-8">
+            <div class="flex items-center gap-2 mb-6">
+                <div class="w-8 h-8 flex-shrink-0 text-[#EA580C] shadow-sm group-hover:scale-105 transition-transform duration-200">
+                    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                        <rect width="40" height="40" rx="8" fill="currentColor" />
+                        <g transform="translate(1.5, 0)">
+                            <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
+                            <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
+                        </g>
+                    </svg>
                 </div>
+                <span class="font-bold text-xl tracking-tight text-white">FluxyOS</span>
             </div>
-        </div>
-    </section>
-
-        <!-- WHO IT'S FOR -->
-    <section class="bg-[#F7F7F2] px-6 py-16 md:py-24 border-b border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-end mb-12">
-                <div>
-                    <p class="mb-4 text-[12px] font-bold uppercase tracking-[0.22em] text-[#EA580C]">Omnichannel control</p>
-                    <h2 class="text-[36px] md:text-[50px] font-bold tracking-tight leading-[1] text-gray-950">
-                        The finance layer your commerce stack is missing
-                    </h2>
-                </div>
-                <p class="text-[17px] leading-relaxed text-gray-600 max-w-2xl lg:justify-self-end">
-                    Marketplace dashboards show sales. Ad platforms show spend. Supplier invoices show costs. FluxyOS brings the whole operating picture into one close-ready system.
-                </p>
-            </div>
-
-            <div class="grid gap-5 lg:grid-cols-4 lg:grid-rows-2">
-                <div class="bento-card lg:col-span-2 lg:row-span-2 rounded-[24px] border border-gray-200 bg-white p-8 text-gray-950 overflow-hidden relative">
-                    <div class="absolute right-6 top-6 h-28 w-28 rounded-full border border-[#EA580C]/20"></div>
-                    <p class="mb-16 text-[12px] font-bold uppercase tracking-[0.22em] text-[#EA580C]">P&L engine</p>
-                    <h3 class="max-w-lg text-[30px] md:text-[38px] font-bold tracking-tight leading-tight">From GMV to real profit</h3>
-                    <p class="mt-5 max-w-xl text-[15px] leading-relaxed text-gray-600">See every order after marketplace fees, payment gateway charges, promo subsidies, ad spend, refunds, and COGS. No more celebrating channels that quietly lose money.</p>
-                    <div class="mt-10 grid grid-cols-3 gap-3 text-[12px]">
-                        <div class="rounded-2xl border border-gray-200 bg-[#FAFAF7] p-4"><div class="font-mono text-[20px] font-bold text-gray-950">GMV</div><div class="mt-2 text-gray-500">gross</div></div>
-                        <div class="rounded-2xl border border-gray-200 bg-[#FAFAF7] p-4"><div class="font-mono text-[20px] font-bold text-gray-950">Fees</div><div class="mt-2 text-gray-500">deducted</div></div>
-                        <div class="rounded-2xl border border-[#EA580C]/30 bg-white p-4"><div class="font-mono text-[20px] font-bold text-gray-950">Margin</div><div class="mt-2 text-[#EA580C]">real</div></div>
-                    </div>
-                </div>
-
-                <div class="bento-card rounded-[24px] border border-gray-200 bg-white p-6">
-                    <p class="text-[12px] font-bold uppercase tracking-[0.2em] text-gray-400">Marketplace</p>
-                    <h3 class="mt-5 text-[22px] font-bold tracking-tight text-gray-950">Marketplace sellers</h3>
-                    <p class="mt-3 text-[14px] leading-relaxed text-gray-600">Tokopedia, Shopee, TikTok Shop, Lazada, and Blibli settlement files flow into one ledger with the deductions already split out.</p>
-                </div>
-                <div class="bento-card rounded-[24px] border border-gray-200 bg-white p-6">
-                    <p class="text-[12px] font-bold uppercase tracking-[0.2em] text-gray-400">D2C</p>
-                    <h3 class="mt-5 text-[22px] font-bold tracking-tight text-gray-950">D2C & Shopify brands</h3>
-                    <p class="mt-3 text-[14px] leading-relaxed text-gray-600">Shopify, WooCommerce, Midtrans, Xendit, and Stripe sit beside marketplace revenue so channel performance is comparable.</p>
-                </div>
-                <div class="bento-card rounded-[24px] border border-gray-200 bg-white p-6">
-                    <p class="text-[12px] font-bold uppercase tracking-[0.2em] text-gray-400">Retail</p>
-                    <h3 class="mt-5 text-[22px] font-bold tracking-tight text-gray-950">Retail with online channels</h3>
-                    <p class="mt-3 text-[14px] leading-relaxed text-gray-600">POS sales, online orders, supplier bills, and inventory costs roll into a single P&L instead of three disconnected views.</p>
-                </div>
-                <div class="bento-card rounded-[24px] border border-gray-200 bg-white p-6">
-                    <p class="text-[12px] font-bold uppercase tracking-[0.2em] text-gray-400">Close-ready</p>
-                    <div class="mt-6 flex items-end gap-2">
-                        <div class="h-12 w-9 rounded-t-lg bg-gray-200"></div>
-                        <div class="h-20 w-9 rounded-t-lg bg-gray-300"></div>
-                        <div class="h-28 w-9 rounded-t-lg bg-gray-400"></div>
-                        <div class="h-16 w-9 rounded-t-lg bg-[#EA580C]"></div>
-                    </div>
-                    <p class="mt-6 text-[14px] leading-relaxed text-gray-600">Channel economics, budget burn, and supplier cost stay in one decision view.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-        <!-- HOW IT WORKS (3-step dark section) -->
-    <section id="how-it-works" class="section-dark px-6 py-20 md:py-28 border-t border-gray-800">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start mb-14">
-                <div>
-                    <p class="mb-4 text-[12px] font-bold uppercase tracking-[0.22em] text-[#FDBA74]">Operating flow</p>
-                    <h2 class="text-[36px] md:text-[50px] font-bold tracking-tight leading-[1.02]">
-                        From storefront to clean books in three steps
-                    </h2>
-                </div>
-                <p class="max-w-2xl text-[17px] leading-relaxed text-gray-400 lg:pt-11">
-                    The strongest finance tools make the system visible. FluxyOS gives e-commerce teams that clarity for payouts, fees, COGS, and close.
-                </p>
-            </div>
-
-            <div class="grid gap-5 md:grid-cols-3">
-                <div class="relative overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.055] p-7">
-                    <div class="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-blue-400/20 to-transparent"></div>
-                    <div class="relative">
-                        <div class="mb-12 flex items-center justify-between">
-                            <span class="font-mono text-[13px] text-gray-500">01</span>
-                            <span class="h-px flex-1 mx-4 bg-white/10"></span>
-                            <span class="h-2 w-2 rounded-full bg-[#EA580C]"></span>
-                        </div>
-                        <h3 class="text-[24px] font-bold tracking-tight">Connect channels</h3>
-                        <p class="mt-4 min-h-[88px] text-[14px] leading-relaxed text-gray-400">Storefronts, banks, gateways, ad accounts, and supplier invoices start feeding the ledger automatically.</p>
-                        <div class="mt-8 flex flex-wrap gap-2">
-                            <span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Tokopedia</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Shopee</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Shopify</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Bank</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="relative overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.055] p-7">
-                    <div class="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-purple-400/20 to-transparent"></div>
-                    <div class="relative">
-                        <div class="mb-12 flex items-center justify-between">
-                            <span class="font-mono text-[13px] text-gray-500">02</span>
-                            <span class="h-px flex-1 mx-4 bg-white/10"></span>
-                            <span class="h-2 w-2 rounded-full bg-[#EA580C]"></span>
-                        </div>
-                        <h3 class="text-[24px] font-bold tracking-tight">Match every payout</h3>
-                        <p class="mt-4 min-h-[88px] text-[14px] leading-relaxed text-gray-400">Orders split into gross revenue, fees, refunds, promo subsidies, and settlement deposits with exceptions called out.</p>
-                        <div class="mt-8 flex flex-wrap gap-2">
-                            <span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Gross</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Fees</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Refunds</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Payout</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="relative overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.055] p-7">
-                    <div class="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-emerald-400/20 to-transparent"></div>
-                    <div class="relative">
-                        <div class="mb-12 flex items-center justify-between">
-                            <span class="font-mono text-[13px] text-gray-500">03</span>
-                            <span class="h-px flex-1 mx-4 bg-white/10"></span>
-                            <span class="h-2 w-2 rounded-full bg-[#EA580C]"></span>
-                        </div>
-                        <h3 class="text-[24px] font-bold tracking-tight">Close with margin</h3>
-                        <p class="mt-4 min-h-[88px] text-[14px] leading-relaxed text-gray-400">Review channel margin, cost of goods, and VAT-ready exports before the month-end scramble starts.</p>
-                        <div class="mt-8 flex flex-wrap gap-2">
-                            <span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Margin</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">COGS</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">VAT</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Export</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-        <!-- KEY BENEFITS / FEATURE GRID -->
-    <section class="py-16 md:py-24 px-6">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="text-center mb-16">
-                <h2 class="text-[36px] md:text-[44px] font-bold tracking-tight text-gray-900 mb-4">
-                    For sellers who stopped trusting GMV
-                </h2>
-                <p class="text-[17px] text-gray-600 max-w-2xl mx-auto">
-                    Every feature here exists because spreadsheets stopped being enough the day you opened a second channel.
-                </p>
-            </div>
-
-            <div class="grid md:grid-cols-2 gap-6">
-                <a href="/revenuesync" class="block bg-white rounded-xl border border-gray-200 p-7 hover:shadow-md hover:border-gray-300 transition-all">
-                    <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-                    </div>
-                    <h3 class="text-[19px] font-bold text-gray-900 mb-2">Marketplace reconciliation</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed mb-3">
-                        Tokopedia and Shopee settlement files, TikTok Shop payouts, Lazada weekly reports — all parsed automatically. Every fee, refund, and adjustment lands on the right line.
-                    </p>
-                    <span class="text-[13px] font-bold text-[#EA580C] inline-flex items-center gap-1">Powered by Revenue Sync &rarr;</span>
-                </a>
-
-                <a href="/budgetlanding" class="block bg-white rounded-xl border border-gray-200 p-7 hover:shadow-md hover:border-gray-300 transition-all">
-                    <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
-                    </div>
-                    <h3 class="text-[19px] font-bold text-gray-900 mb-2">True net margin by channel</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed mb-3">
-                        Separate marketplace fees, ad spend, gateway fees, and COGS to see what each channel really earns. Find which storefront deserves more inventory.
-                    </p>
-                    <span class="text-[13px] font-bold text-[#EA580C] inline-flex items-center gap-1">Powered by Dynamic Budgeting &rarr;</span>
-                </a>
-
-                <a href="/vendorspend" class="block bg-white rounded-xl border border-gray-200 p-7 hover:shadow-md hover:border-gray-300 transition-all">
-                    <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-                    </div>
-                    <h3 class="text-[19px] font-bold text-gray-900 mb-2">Supplier &amp; inventory spend</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed mb-3">
-                        Every PO, supplier invoice, dropship payout, and 3PL bill lives in one ledger. Know true cost of goods before the next restock.
-                    </p>
-                    <span class="text-[13px] font-bold text-[#EA580C] inline-flex items-center gap-1">Powered by Vendor Spend &rarr;</span>
-                </a>
-
-                <a href="/receiptcapture" class="block bg-white rounded-xl border border-gray-200 p-7 hover:shadow-md hover:border-gray-300 transition-all">
-                    <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    </div>
-                    <h3 class="text-[19px] font-bold text-gray-900 mb-2">Receipt &amp; COGS automation</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed mb-3">
-                        Snap a supplier invoice or shipping receipt, and FluxyOS extracts the vendor, amount, and tax, then books it to the cost account you mapped.
-                    </p>
-                    <span class="text-[13px] font-bold text-[#EA580C] inline-flex items-center gap-1">Powered by Receipt Capture &rarr;</span>
-                </a>
-            </div>
-        </div>
-    </section>
-
-    <!-- A DAY IN THE LIFE -->
-    <section class="bg-gray-50 py-16 md:py-20 px-6 border-t border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="text-center mb-12">
-                <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3">
-                    A day in the life of an online seller
-                </h2>
-                <p class="text-[16px] text-gray-600 max-w-2xl mx-auto">
-                    Three moments where FluxyOS replaces spreadsheets, WhatsApp groups, and guesswork.
-                </p>
-            </div>
-            <div class="grid md:grid-cols-3 gap-6">
-                <div class="bg-white rounded-2xl border border-gray-200 p-7">
-                    <span class="text-[11px] font-bold text-[#EA580C] uppercase tracking-wider">Morning</span>
-                    <h3 class="text-[19px] font-bold text-gray-900 mt-1 mb-3">Yesterday's payouts, ready to read</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Open FluxyOS with coffee. Yesterday's Tokopedia, Shopee, and TikTok Shop payouts already match your bank account — net revenue, fees, refunds, all in one dashboard.
-                    </p>
-                </div>
-                <div class="bg-white rounded-2xl border border-gray-200 p-7">
-                    <span class="text-[11px] font-bold text-[#EA580C] uppercase tracking-wider">Afternoon</span>
-                    <h3 class="text-[19px] font-bold text-gray-900 mt-1 mb-3">Restock decisions with real numbers</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Check real margin by channel before your next purchase order, including ad spend share and the latest supplier invoice.
-                    </p>
-                </div>
-                <div class="bg-white rounded-2xl border border-gray-200 p-7">
-                    <span class="text-[11px] font-bold text-[#EA580C] uppercase tracking-wider">Evening</span>
-                    <h3 class="text-[19px] font-bold text-gray-900 mt-1 mb-3">Books that close themselves</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        No spreadsheet wrestling. Today's revenue, returns, and supplier bills are already in the ledger. Closing the books becomes a 30-minute review, not a three-day project.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- AI AGENTS CALLOUT (dark) -->
-    <section class="section-dark py-20 md:py-24 px-6 border-t border-gray-800">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-2 gap-12 items-center">
-                <div>
-                    <span class="inline-block bg-white/[0.04] text-[#EA580C] text-[12px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full mb-5 border border-orange-500/20">FluxyOS AI Agents</span>
-                    <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight mb-5 leading-tight">
-                        Ask why Shopee revenue dropped and get a chart, not a Slack thread.
-                    </h2>
-                    <p class="text-[16px] text-gray-400 leading-relaxed mb-8 max-w-xl">
-                        FluxyOS AI Agents understand your channels, products, and margins. Ask in plain language and they pull the numbers, run the breakdown, and explain what changed.
-                    </p>
-                    <a href="/aiagents" class="inline-flex items-center gap-2 text-[#EA580C] font-bold text-[15px] hover:text-[#F97316] transition-colors">
-                        Meet the agent
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                    </a>
-                </div>
-                <div class="bg-[#1A1F26] border border-gray-800 rounded-2xl p-6 space-y-4">
-                    <div class="flex items-start gap-3">
-                        <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0 text-[12px] font-bold">A</div>
-                        <div class="bg-gray-900 border border-gray-800 rounded-2xl rounded-tl-sm px-4 py-3 text-[14px] text-gray-200 leading-relaxed">
-                            Why did Shopee revenue drop on Tuesday?
-                        </div>
-                    </div>
-                    <div class="flex items-start gap-3 flex-row-reverse">
-                        <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 text-[12px] font-bold text-[#EA580C]">F</div>
-                        <div class="bg-white/[0.04] border border-orange-500/20 rounded-2xl rounded-tr-sm px-4 py-3 text-[14px] text-gray-100 leading-relaxed">
-                            Shopee gross revenue was Rp 11.2M, down 38% from Monday. Two main drivers: the free shipping promo ended at 12:00 (-Rp 4.1M est.) and the free shipping subsidy was not reclaimed on 38 orders. I flagged the oKU for restock.
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-
-    <!-- FAQ -->
-    <section id="faq" class="py-16 md:py-20 px-6 border-t border-gray-200 bg-white">
-        <div class="max-w-3xl mx-auto">
-            <div class="mb-10">
-                <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3">
-                    Frequently asked questions
-                </h2>
-                <p class="text-[16px] text-gray-600">
-                    Short answers to what online sellers usually ask before signing up.
-                </p>
-            </div>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Does FluxyOS connect directly to Tokopedia, Shopee, and TikTok Shop?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Yes. FluxyOS pulls orders, payouts, fees, and refunds from Tokopedia, Shopee, TikTok Shop, Lazada, and Blibli. Each marketplace settlement file is parsed automatically so revenue, marketplace fees, and net payouts land on the right ledger lines without manual import.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Can I see profit by channel?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">By channel, yes. Once costs enter FluxyOS, every order is split into revenue, marketplace fees, gateway fees, ad cost share, and cost of goods, so you see true net margin per channel. Per-SKU margin is not available yet — it needs an item master and stock costing, which are on the roadmap.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">How does FluxyOS handle VAT for marketplace orders?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">FluxyOS tags each transaction with its VAT treatment based on marketplace settlement formats and your tax setup. The result is an export-ready ledger your accountant or firm can use for monthly VAT reporting without rebuilding a spreadsheet.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">What if my store also sells through Shopify or WooCommerce?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">FluxyOS treats your D2C website as another channel. Shopify and WooCommerce orders, gateway payouts from Midtrans, Xendit, or Stripe, and refund flows all join the same ledger as marketplace data, so P&L stays consolidated across every storefront you run.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Do I need an accountant to set this up?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">No. The default chart of accounts, marketplace fee mappings, and channel categories are preconfigured for Indonesian e-commerce. Connect your store, link your bank, and FluxyOS books the first month for you. Your accountant can review and adjust later.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Is there a free tier for new sellers?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Yes. FluxyOS has a free tier that covers one storefront and basic reconciliation. Paid plans unlock multi-channel ingestion, AI agents, and advanced margin reporting — see the pricing page for details.</p>
-            </details>
-        </div>
-    </section>
-
-    <!-- CTA SECTION -->
-    <section class="bg-[#0B0F19] py-16 md:py-24 px-6">
-        <div class="max-w-[1280px] mx-auto text-center">
-            <h2 class="text-[36px] md:text-[44px] font-bold tracking-tight text-white mb-5">
-                Stop reconciling. Start running the store.
-            </h2>
-            <p class="text-[17px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">
-                Connect your channels, see true margin, and let FluxyOS keep the books clean in the background. Free to start, paid when you are ready to grow.
+            <p class="text-[14px] leading-relaxed max-w-[280px] footer-body-text">
+                The Intelligent Finance Operating System. Unify budgets, operational expenses, and revenue for businesses at every growth stage.
             </p>
-            <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-sm hover:shadow inline-block text-center">
-                    Try FluxyOS free
-                </a>
-                <a href="/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">
-                    See pricing
-                </a>
-            </div>
         </div>
-    </section>
 
-    <script src="/assets/js/universe-canvas.js" defer></script>
-    <script src="/assets/js/footer-loader.js" defer></script>
-    <script src="/assets/js/fluxyos.js" defer></script>
+        <div class="md:col-span-2">
+            <h4 class="text-[13px] font-bold text-white mb-6 uppercase tracking-wider">Platform</h4>
+            <ul class="space-y-4 text-[14px] font-medium footer-body-text">
+                <li><a href="/budgetlanding" class="footer-link">Dynamic Budgeting</a></li>
+                <li><a href="/vendorspend" class="footer-link">Invoice</a></li>
+                <li><a href="/revenuesync" class="footer-link">Revenue Sync</a></li>
+                <li><a href="/receiptcapture" class="footer-link">Receipt Capture</a></li>
+                <li><a href="/aiagents" class="footer-link">AI Finance Agents</a></li>
+            </ul>
+        </div>
+
+        <div class="md:col-span-2">
+            <h4 class="text-[13px] font-bold text-white mb-6 uppercase tracking-wider">Use Cases</h4>
+            <ul class="space-y-4 text-[14px] font-medium footer-body-text">
+                <li><a href="/use-cases/founder-ceo" class="footer-link">Founders &amp; CEOs</a></li>
+                <li><a href="/use-cases/cfo-finance-teams" class="footer-link">CFOs &amp; Finance Teams</a></li>
+                <li><a href="/use-cases/ecommerce-brands" class="footer-link">E-commerce Brands</a></li>
+                <li><a href="/use-cases/marketing-agencies" class="footer-link">Marketing Agencies</a></li>
+            </ul>
+        </div>
+
+        <div class="md:col-span-2">
+            <h4 class="text-[13px] font-bold text-white mb-6 uppercase tracking-wider">Company</h4>
+            <ul class="space-y-4 text-[14px] font-medium footer-body-text">
+                <li><a href="/pricing" class="footer-link">Pricing</a></li>
+                <li><a href="/contact-sales" class="footer-link">Contact Sales</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="max-w-[1280px] mx-auto pt-8 footer-divider flex flex-col md:flex-row justify-between items-center gap-6">
+        <p class="text-[14px] font-medium footer-body-text">© 2026 FluxyOS Technologies. All rights reserved.</p>
+        <div class="flex gap-8 text-[14px] font-medium footer-body-text">
+            <a href="/privacy" class="footer-link">Privacy Policy</a>
+            <a href="/terms" class="footer-link">Terms of Service</a>
+        </div>
+    </div>
+</footer>
+
+<script src="/assets/js/universe-canvas.js" defer></script>
+<script src="/assets/js/footer-loader.js" defer></script>
+<script src="/assets/js/fluxyos.js" defer></script>
 <script src="/assets/js/i18n.js" defer></script>
+<script src="/assets/js/ecommerce-landing.js" defer></script>
 </body>
 </html>

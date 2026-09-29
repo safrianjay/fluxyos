@@ -4,116 +4,13 @@
     <meta charset="UTF-8">
     <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finance OS untuk Brand E-Commerce Indonesia | FluxyOS</title>
+    <title>Operasional &amp; Keuangan E-Commerce | FluxyOS</title>
     <link rel="stylesheet" href="/assets/css/tailwind.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/fluxyos.css">
-
-    <style>
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            -webkit-font-smoothing: antialiased;
-        }
-        .font-mono { font-family: 'Fira Code', monospace; }
-
-        .hero-gradient {
-            background: linear-gradient(135deg, #F9FAFB 0%, #FFFFFF 100%);
-        }
-
-        .section-dark {
-            background: #0B0F19;
-            color: white;
-        }
-
-        .feature-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid rgba(234, 88, 12, 0.2);
-            color: #EA580C;
-        }
-
-        .vendor-row {
-            transition: background-color 0.15s ease;
-        }
-        .vendor-row:hover {
-            background-color: #F9FAFB;
-        }
-
-        .badge-approved {
-            background: #DCFCE7;
-            color: #166534;
-        }
-        .badge-pending {
-            background: #FEF3C7;
-            color: #92400E;
-        }
-        .badge-paid {
-            background: #DBEAFE;
-            color: #1E40AF;
-        }
-        .commerce-surface {
-            background:
-                linear-gradient(135deg, rgba(11, 15, 25, 0.035) 0%, rgba(255, 255, 255, 0) 45%),
-                radial-gradient(circle at 82% 18%, rgba(234, 88, 12, 0.08), transparent 30%),
-                #F7F7F2;
-        }
-
-        .premium-panel {
-            box-shadow: 0 24px 70px -38px rgba(11, 15, 25, 0.45);
-        }
-
-        .commerce-grid {
-            background-image:
-                linear-gradient(rgba(11, 15, 25, 0.055) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(11, 15, 25, 0.055) 1px, transparent 1px);
-            background-size: 42px 42px;
-        }
-
-        .product-shell {
-            background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
-        }
-
-        .signal-line {
-            background: linear-gradient(90deg, transparent, rgba(234, 88, 12, 0.55), transparent);
-        }
-
-        .channel-pill {
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
-        }
-
-        .bento-card {
-            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-        }
-        .bento-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 22px 55px -38px rgba(11, 15, 25, 0.55);
-            border-color: rgba(11, 15, 25, 0.18);
-        }
-
-        .mobile-viewport-bound {
-            min-width: 0 !important;
-            width: 100% !important;
-            max-width: calc(100vw - 48px) !important;
-        }
-
-        .mobile-viewport-bound h1,
-        .mobile-viewport-bound p {
-            max-width: 100% !important;
-            overflow-wrap: normal;
-        }
-
-        @media (min-width: 1024px) {
-            .mobile-viewport-bound {
-                max-width: none !important;
-            }
-        }
-
-    </style>
-    <meta name="description" content="Cocokkan payout TikTok Shop dan Shopee ke buku besar. Lihat margin asli per channel, otomatisasi COGS, dan tutup buku tanpa spreadsheet.">
+    <link rel="stylesheet" href="/assets/css/ecommerce-landing.css">
+    <link rel="stylesheet" href="/assets/css/footer.css">
+    <meta name="description" content="Hubungkan penjualan, biaya stok, invoice, pengeluaran, dan akuntansi toko online. Pantau kinerja keuangan dan tanyakan kondisi bisnis kepada Fluxy AI.">
     <link rel="canonical" href="https://fluxyos.com/id/use-cases/ecommerce-brands">
     <link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/ecommerce-brands">
     <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/ecommerce-brands">
@@ -122,8 +19,8 @@
     <!-- Open Graph -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://fluxyos.com/id/use-cases/ecommerce-brands">
-    <meta property="og:title" content="Finance OS untuk Brand E-Commerce Indonesia | FluxyOS">
-    <meta property="og:description" content="Cocokkan payout TikTok Shop dan Shopee ke buku besar. Lihat margin asli per channel, otomatisasi COGS, dan tutup buku tanpa spreadsheet.">
+    <meta property="og:title" content="Operasional &amp; Keuangan E-Commerce | FluxyOS">
+    <meta property="og:description" content="Hubungkan penjualan, biaya stok, invoice, pengeluaran, dan akuntansi toko online. Pantau kinerja keuangan dan tanyakan kondisi bisnis kepada Fluxy AI.">
     <meta property="og:image" content="https://fluxyos.com/assets/images/og-ecommerce-brands.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -133,8 +30,8 @@
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Finance OS untuk Brand E-Commerce Indonesia | FluxyOS">
-    <meta name="twitter:description" content="Cocokkan payout TikTok Shop dan Shopee ke buku besar. Lihat margin asli per channel, otomatisasi COGS, dan tutup buku tanpa spreadsheet.">
+    <meta name="twitter:title" content="Operasional &amp; Keuangan E-Commerce | FluxyOS">
+    <meta name="twitter:description" content="Hubungkan penjualan, biaya stok, invoice, pengeluaran, dan akuntansi toko online. Pantau kinerja keuangan dan tanyakan kondisi bisnis kepada Fluxy AI.">
     <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-ecommerce-brands.png">
 
     <!-- Google tag (gtag.js) -->
@@ -148,157 +45,149 @@
 
     <!-- Schema.org structured data -->
     <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://fluxyos.com/#organization",
+  "name": "FluxyOS",
+  "legalName": "PT SAF Teknologi Maju",
+  "url": "https://fluxyos.com",
+  "logo": "https://fluxyos.com/assets/images/favicon.svg",
+  "description": "Sistem Operasi Keuangan Cerdas yang menghubungkan operasional keuangan, akuntansi, operasional bisnis, dan intelligence dalam satu sistem, untuk bisnis di setiap tahap pertumbuhan.",
+  "foundingDate": "2026",
+  "areaServed": {
+    "@type": "Country",
+    "name": "Indonesia"
+  },
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Plaza Indonesia, Level 5 Unit E021AB, Jl. M.H. Thamrin No. Kav. 28-30",
+    "addressLocality": "Jakarta Pusat",
+    "addressRegion": "DKI Jakarta",
+    "postalCode": "10350",
+    "addressCountry": "ID"
+  },
+  "sameAs": [
+    "https://www.linkedin.com/company/fluxyos/",
+    "https://www.instagram.com/fluxy_os/"
+  ],
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "customer support",
+    "email": "support@fluxyos.com",
+    "availableLanguage": [
+      "English",
+      "Indonesian"
+    ]
+  }
+}
+    </script>
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "FluxyOS untuk E-Commerce Brands",
+  "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "Intelligent Finance Operating System",
+  "operatingSystem": "Web",
+  "url": "https://fluxyos.com/id/use-cases/ecommerce-brands",
+  "inLanguage": "id-ID",
+  "description": "Hubungkan penjualan, biaya stok, invoice, pengeluaran, dan akuntansi toko online. Pantau kinerja keuangan dan tanyakan kondisi bisnis kepada Fluxy AI.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "IDR",
+    "availability": "https://schema.org/InStock"
+  },
+  "featureList": [
+    "Catatan keuangan penjualan terhubung",
+    "Biaya stok berdasarkan SKU yang cocok",
+    "Invoice dan pembacaan struk dengan pemeriksaan",
+    "Buku Besar dan jurnal sumber",
+    "Laporan keuangan dan pemantauan anggaran",
+    "Pertanyaan keuangan dengan Fluxy AI"
+  ],
+  "publisher": {
+    "@id": "https://fluxyos.com/#organization"
+  }
+}
+    </script>
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
     {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "@id": "https://fluxyos.com/#organization",
-      "name": "FluxyOS",
-      "legalName": "PT SAF Teknologi Maju",
-      "url": "https://fluxyos.com",
-      "logo": "https://fluxyos.com/assets/images/favicon.svg",
-      "description": "Sistem Operasi Keuangan Cerdas yang menghubungkan operasional keuangan, akuntansi, operasional bisnis, dan intelligence dalam satu sistem, untuk bisnis di setiap tahap pertumbuhan.",
-      "foundingDate": "2026",
-      "areaServed": {
-        "@type": "Country",
-        "name": "Indonesia"
-      },
-      "address": {
-        "@type": "PostalAddress",
-        "streetAddress": "Plaza Indonesia, Level 5 Unit E021AB, Jl. M.H. Thamrin No. Kav. 28-30",
-        "addressLocality": "Jakarta Pusat",
-        "addressRegion": "DKI Jakarta",
-        "postalCode": "10350",
-        "addressCountry": "ID"
-      },
-      "sameAs": [
-        "https://www.linkedin.com/company/fluxyos/",
-        "https://www.instagram.com/fluxy_os/"
-      ],
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "contactType": "customer support",
-        "email": "support@fluxyos.com",
-        "availableLanguage": [
-          "English",
-          "Indonesian"
-        ]
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Beranda",
+      "item": "https://fluxyos.com/id/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "E-Commerce Brands",
+      "item": "https://fluxyos.com/id/use-cases/ecommerce-brands"
+    }
+  ]
+}
+    </script>
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "inLanguage": "id-ID",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Apa manfaat FluxyOS untuk bisnis e-commerce?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System). Data penjualan yang didukung terhubung dengan biaya stok, invoice, pengeluaran, akuntansi, laporan keuangan, dan Fluxy AI dalam satu workspace. FluxyOS tidak menggantikan toko online atau sistem pengiriman Anda."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Marketplace apa yang bisa dihubungkan?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "FluxyOS memiliki konektor TikTok Shop dan Shopee. Koneksi dan sinkronisasi memerlukan izin akun serta pengaturan platform. Catatan keuangan lain bisa ditambahkan langsung atau melalui impor CSV yang didukung. Konektor toko lain belum ditawarkan sebagai integrasi aktif."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Bagaimana pesanan terhubung dengan stok dan akuntansi?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Untuk workspace yang menyimpan stok, SKU pesanan marketplace yang masuk bisa dicocokkan dengan data barang. Saat biaya stok dibukukan, FluxyOS mencatat pergerakan stok dan jurnal harga pokok penjualan berdasarkan biaya persediaan yang tercatat. SKU yang belum cocok atau belum memiliki biaya perlu diperiksa. FluxyOS tidak mengirim jumlah stok kembali ke marketplace."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Bisa mengelola invoice pelanggan dan supplier?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Bisa. Buat dan kirim invoice pelanggan lewat email, pantau piutang, lalu catat tagihan supplier serta status pembayarannya. AI membaca data invoice dan struk yang diunggah untuk Anda periksa sebelum dicatat. Mata uang dokumen yang didukung tetap tersimpan bersama nilai pembukuannya."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Apa yang bisa saya tanyakan kepada Fluxy AI?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Tanyakan pendapatan, pengeluaran, arus kas, dan kinerja keuangan yang sudah tercatat. Fluxy AI memakai data keuangan serta konteks workspace yang tersedia. Jawaban bergantung pada kelengkapan data, bukan pembelian otomatis, prediksi per produk, atau proyeksi stok."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Apakah FluxyOS memprediksi penjualan atau kebutuhan stok?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Tidak. Halaman ini menampilkan kinerja keuangan yang tercatat serta perbandingan anggaran dengan pengeluaran aktual, bukan prediksi penjualan atau stok. Lengkapi catatan sumber dan pemetaan akun agar laporan keuangan bermakna."
       }
     }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "FluxyOS untuk E-Commerce Brands",
-      "applicationCategory": "BusinessApplication",
-      "applicationSubCategory": "E-Commerce Finance Software",
-      "operatingSystem": "Web, iOS, Android",
-      "url": "https://fluxyos.com/id/use-cases/ecommerce-brands",
-      "inLanguage": "id-ID",
-      "description": "FluxyOS adalah finance OS untuk online store. Cocokkan settlement marketplace, pisahkan ad spend dari net margin, otomatisasi COGS, dan tutup buku dari satu dashboard.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "IDR",
-        "availability": "https://schema.org/InStock"
-      },
-      "featureList": [
-        "Rekonsiliasi payout Tokopedia, Shopee, TikTok Shop, Lazada, Blibli",
-        "Ingest order Shopify dan WooCommerce",
-        "Laporan net margin per channel (revenue dikurangi fee, ad spend, COGS)",
-        "Receipt capture dari invoice supplier dan label pengiriman, dibukukan ke akun biaya yang Anda petakan",
-        "Tracking ROI ad spend per kampanye dan channel",
-        "Budgeting dan forecasting arus kas",
-        "Audit trail PPN siap pakai",
-        "AI agents untuk pertanyaan harian seputar revenue dan margin"
-      ],
-      "publisher": {
-        "@id": "https://fluxyos.com/#organization"
-      }
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Home",
-          "item": "https://fluxyos.com/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Use Cases",
-          "item": "https://fluxyos.com/id/use-cases/ecommerce-brands"
-        },
-        {
-          "@type": "ListItem",
-          "position": 3,
-          "name": "E-Commerce Brands",
-          "item": "https://fluxyos.com/id/use-cases/ecommerce-brands"
-        }
-      ]
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "inLanguage": "id-ID",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "Apakah FluxyOS terhubung langsung ke Tokopedia, Shopee, dan TikTok Shop?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Ya. FluxyOS menarik order, payout, fee, dan refund dari Tokopedia, Shopee, TikTok Shop, Lazada, dan Blibli. Setiap file settlement marketplace di-parsing otomatis sehingga revenue, marketplace fee, dan net payout Anda langsung masuk ke baris ledger yang tepat tanpa import manual."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Apakah saya bisa lihat profit per channel?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Per channel, ya. Setelah biaya masuk ke FluxyOS, setiap order dipecah jadi revenue, marketplace fee, gateway fee, share ad cost, dan harga pokok. Margin per SKU belum tersedia — itu butuh master barang dan costing persediaan, yang masih ada di roadmap."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Bagaimana FluxyOS menangani PPN untuk order marketplace?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "FluxyOS menandai setiap transaksi dengan perlakuan PPN-nya berdasarkan format settlement marketplace dan setup pajak Anda. Hasilnya adalah ledger siap export yang bisa langsung dipakai akuntan atau KAP Anda untuk pelaporan PPN bulanan — tanpa rebuild dari spreadsheet."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Bagaimana kalau toko saya juga jualan lewat Shopify atau WooCommerce sendiri?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "FluxyOS memperlakukan website D2C Anda sebagai channel yang sama. Order Shopify dan WooCommerce, payout gateway (Midtrans, Xendit, Stripe), serta arus refund semua bergabung di ledger yang sama dengan data marketplace, jadi P&L tetap konsolidasi di seluruh storefront yang Anda jalankan."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Apakah saya butuh akuntan untuk setup ini?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Tidak. Default chart of accounts, mapping fee marketplace, dan kategori channel sudah pre-configured untuk e-commerce Indonesia. Hubungkan toko Anda, link bank, dan FluxyOS membukukan bulan pertama untuk Anda. Akuntan Anda bisa review dan adjust nanti."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Apakah ada free tier untuk seller baru?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Ya. FluxyOS punya free tier yang mencakup satu storefront dan rekonsiliasi dasar. Paid plan membuka multi-channel ingestion, AI agents, dan laporan margin lanjutan — lihat halaman pricing untuk detailnya."
-          }
-        }
-      ]
-    }
+  ]
+}
     </script>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -704,451 +593,131 @@
         </div>
     </nav>
 
-    <!-- HERO SECTION -->
-    <section class="commerce-surface commerce-grid border-b border-gray-200 px-6 py-12 md:py-16 overflow-hidden">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid max-w-full lg:grid-cols-[0.92fr_1.08fr] gap-10 lg:gap-14 items-center">
-                <div class="mobile-viewport-bound min-w-0 w-full">
-                    <h1 class="max-w-3xl text-[44px] md:text-[56px] font-bold tracking-tight leading-[1.05] text-gray-950 mb-6">
-                        Kelola sisi finance toko online Anda semulus storefront-nya.
-                    </h1>
-
-                    <p class="text-[16px] sm:text-[18px] md:text-[19px] text-gray-600 leading-relaxed mb-8">
-                        FluxyOS adalah finance OS untuk online store — Tokopedia, Shopee, TikTok Shop, Lazada, Shopify, dan checkout sendiri Anda. Cocokkan setiap payout, lihat net margin asli per channel, dan tutup buku tanpa spreadsheet.
-                    </p>
-
-                    <div class="flex flex-col sm:flex-row gap-3">
-                        <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-7 py-4 rounded-md transition-all duration-200 shadow-sm hover:shadow inline-block text-center">
-                            Coba FluxyOS gratis
-                        </a>
-                        <a href="#how-it-works" class="border border-gray-300 bg-white/70 text-gray-950 font-semibold text-[15px] px-7 py-4 rounded-md hover:border-gray-500 transition-colors inline-block text-center">
-                            Lihat cara kerjanya
-                        </a>
-                    </div>
-                </div>
-
-                <div class="mobile-viewport-bound relative min-w-0 w-full lg:max-w-full lg:-mr-10">
-                    <div class="absolute -left-8 top-12 hidden h-44 w-44 rounded-full border border-gray-300/70 md:block"></div>
-                    <div class="absolute -right-8 -top-8 hidden h-28 w-28 rounded-full border border-[#EA580C]/35 md:block"></div>
-                    <div class="product-shell premium-panel relative max-w-full overflow-hidden rounded-[28px] border border-gray-200 p-3 text-gray-950">
-                        <div class="max-w-full overflow-hidden rounded-[22px] border border-gray-200 bg-white">
-                            <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4">
-                                <div>
-                                    <p class="text-[11px] uppercase tracking-[0.2em] text-gray-500">Kokpit finance omnichannel</p>
-                                    <h2 class="mt-1 text-[18px] font-bold text-gray-950">Rekonsiliasi live</h2>
-                                </div>
-                                <div class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[12px] font-semibold text-emerald-700">Live</div>
-                            </div>
-
-                            <div class="grid gap-3 p-4 sm:grid-cols-3">
-                                <div class="rounded-2xl border border-gray-200 bg-[#FAFAF7] p-4">
-                                    <p class="text-[12px] text-gray-500">Net margin</p>
-                                    <div class="mt-2 text-[28px] font-bold tracking-tight text-gray-950">22.4%</div>
-                                    <div class="mt-3 h-1.5 rounded-full bg-gray-200"><div class="h-full w-[72%] rounded-full bg-emerald-500"></div></div>
-                                </div>
-                                <div class="rounded-2xl border border-gray-200 bg-[#FAFAF7] p-4">
-                                    <p class="text-[12px] text-gray-500">ROI iklan</p>
-                                    <div class="mt-2 text-[28px] font-bold tracking-tight text-gray-950">3.8x</div>
-                                    <div class="mt-3 flex items-end gap-1.5 h-8"><span class="w-4 h-3 rounded bg-gray-200"></span><span class="w-4 h-5 rounded bg-gray-300"></span><span class="w-4 h-8 rounded bg-[#EA580C]"></span></div>
-                                </div>
-                                <div class="rounded-2xl border border-gray-200 bg-[#FAFAF7] p-4">
-                                    <p class="text-[12px] text-gray-500">COGS tercatat</p>
-                                    <div class="mt-2 text-[28px] font-bold tracking-tight text-gray-950">Rp 81M</div>
-                                    <p class="mt-2 text-[11px] text-gray-500">Invoice, 3PL, supplier</p>
-                                </div>
-                            </div>
-
-                            <div class="px-4 pb-4">
-                                <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
-                                    <div class="grid min-w-[540px] grid-cols-[1.1fr_.8fr_.7fr_.9fr_.7fr] gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                                        <span>Channel</span><span>Gross</span><span>Fee</span><span>Net payout</span><span>Status</span>
-                                    </div>
-                                    <div class="grid min-w-[540px] grid-cols-[1.1fr_.8fr_.7fr_.9fr_.7fr] gap-3 px-4 py-3 text-[12px] text-gray-600 border-b border-gray-100 last:border-b-0">
-                                        <span class="font-semibold text-gray-950">Tokopedia</span><span>Rp 124.3M</span><span>-4.5%</span><span>Rp 118.7M</span><span><span class="rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 px-2 py-1 text-[10px] font-bold">Cocok</span></span>
-                                    </div>
-                                    <div class="grid min-w-[540px] grid-cols-[1.1fr_.8fr_.7fr_.9fr_.7fr] gap-3 px-4 py-3 text-[12px] text-gray-600 border-b border-gray-100 last:border-b-0">
-                                        <span class="font-semibold text-gray-950">Shopee</span><span>Rp 96.8M</span><span>-7.2%</span><span>Rp 89.8M</span><span><span class="rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 px-2 py-1 text-[10px] font-bold">Cocok</span></span>
-                                    </div>
-                                    <div class="grid min-w-[540px] grid-cols-[1.1fr_.8fr_.7fr_.9fr_.7fr] gap-3 px-4 py-3 text-[12px] text-gray-600 border-b border-gray-100 last:border-b-0">
-                                        <span class="font-semibold text-gray-950">TikTok Shop</span><span>Rp 58.2M</span><span>-9.1%</span><span>Rp 52.9M</span><span><span class="rounded-full border bg-amber-50 text-amber-700 border-amber-200 px-2 py-1 text-[10px] font-bold">Review</span></span>
-                                    </div>
-                                    <div class="grid min-w-[540px] grid-cols-[1.1fr_.8fr_.7fr_.9fr_.7fr] gap-3 px-4 py-3 text-[12px] text-gray-600 border-b border-gray-100 last:border-b-0">
-                                        <span class="font-semibold text-gray-950">Shopify</span><span>Rp 24.7M</span><span>-2.8%</span><span>Rp 24.0M</span><span><span class="rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 px-2 py-1 text-[10px] font-bold">Cocok</span></span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="px-4 pb-4">
-                                <div class="rounded-2xl border border-[#EA580C]/25 bg-white p-4">
-                                    <div class="mb-2 flex items-center justify-between gap-3">
-                                        <span class="text-[12px] font-bold uppercase tracking-wider text-[#EA580C]">Temuan AI</span>
-                                        <span class="font-mono text-[11px] text-gray-500">09:14</span>
-                                    </div>
-                                    <p class="text-[13px] leading-relaxed text-gray-700">Margin Shopee turun setelah promo gratis ongkir berakhir. Kontribusi channel perlu ditinjau.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="signal-line absolute -bottom-5 left-10 right-10 h-px"></div>
-                </div>
+    <!-- ECOMMERCE CONTENT -->
+<main id="main-content" class="ecommerce-page">
+  <section class="ec-hero ec-guides" aria-labelledby="ec-title">
+    <div class="ec-container ec-hero-grid">
+      <div class="ec-hero-copy"><h1 id="ec-title">Bisnis online Anda.<br>Satu sistem yang terhubung.</h1>
+        <p class="ec-lead">Kelola operasional dan keuangan toko online bersama. Hubungkan pesanan, biaya stok, pembayaran, dan pembukuan—dari penjualan sampai laporan keuangan.</p>
+        <p class="ec-category">FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System) yang menghubungkan aktivitas penjualan, operasional keuangan, akuntansi, dan informasi bisnis Anda.</p>
+        <div class="ec-actions"><a class="ec-button ec-button-primary" href="/id/pricing">Mulai gratis<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a><a class="ec-button ec-button-secondary" href="/contact-sales">Hubungi sales<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a></div><a class="ec-text-link" href="#commerce-workflow">Lihat perjalanan pesanan di FluxyOS<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
+      </div>
+      <div class="ec-hero-visual" aria-label="Demonstrasi workspace penjualan dan akuntansi">
+        <div class="ec-workspace ec-window"><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">FluxyOS</span><span class="ec-small">September 2026</span></div>
+          <div class="ec-workspace-nav"><span>Ringkasan</span><span>Pesanan</span><span>Persediaan</span><span>Akuntansi</span></div>
+          <div class="ec-workspace-body"><div class="ec-workspace-title"><h2>Ringkasan bisnis online</h2><span class="ec-status">IDR</span></div>
+            <div class="ec-kpi-pair"><div><span>Pendapatan</span><strong>Rp184.000.000</strong><small>+12,2% dari Agustus</small></div><div><span>Margin kotor</span><strong>41,3%</strong><small>Setelah biaya stok tercatat</small></div></div>
+            <svg class="ec-revenue-chart" viewBox="0 0 520 205" role="img" aria-label="Pendapatan naik dari Rp164.000.000 pada Agustus menjadi Rp184.000.000 pada September."><g class="ec-chart-grid"><path d="M45 25H490M45 70H490M45 115H490M45 160H490"/></g><g class="ec-chart-axis"><text x="0" y="29">200 jt</text><text x="0" y="74">150 jt</text><text x="0" y="119">100 jt</text><text x="0" y="164">50 jt</text><text x="45" y="195">Apr</text><text x="130" y="195">Mei</text><text x="215" y="195">Jun</text><text x="300" y="195">Jul</text><text x="385" y="195">Agu</text><text x="473" y="195">Sep</text></g><path class="ec-chart-reference" d="M45 120 134 105 223 86 312 96 401 70 490 57"/><path class="ec-chart-line" d="M45 105 134 86 223 96 312 70 401 57 490 39"/><circle class="ec-chart-point" cx="490" cy="39" r="5"/></svg><div class="ec-order-list"><div class="ec-list-label"><span>Pesanan terbaru</span><span>Total</span></div>
+              <div class="ec-order-row" data-hero-order><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5v18h14V3h-3M8 3v4h8V3H8zm0 9h8m-8 4h5"/></svg></span><div><strong>EC-1048</strong><small>TikTok Shop</small></div><span class="ec-status">Lunas</span><strong>Rp150.000</strong></div><div class="ec-order-row" ><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5v18h14V3h-3M8 3v4h8V3H8zm0 9h8m-8 4h5"/></svg></span><div><strong>EC-1047</strong><small>Shopee</small></div><span class="ec-status">Lunas</span><strong>Rp225.000</strong></div><div class="ec-order-row" ><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5v18h14V3h-3M8 3v4h8V3H8zm0 9h8m-8 4h5"/></svg></span><div><strong>EC-1046</strong><small>TikTok Shop</small></div><span class="ec-status">Lunas</span><strong>Rp300.000</strong></div>
             </div>
+          </div>
         </div>
-    </section>
+        <div class="ec-hero-record ec-window"><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Pesanan → akuntansi</span><span class="ec-small"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h16v18H4V3zm4 5h8m-8 4h8m-8 4h4"/></svg></span></div><div class="ec-record-body"><span class="ec-small">EC-1048 · TOTE-01</span><div class="ec-mini-track" aria-hidden="true"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5v18h14V3h-3M8 3v4h8V3H8zm0 9h8m-8 4h5"/></svg></span><i></i><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v10l-9 4-9-4V7zm0 0 9 4 9-4m-9 4v10M7.5 5l9 4"/></svg></span><i></i><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h16v18H4V3zm4 5h8m-8 4h8m-8 4h4"/></svg></span></div><strong data-hero-status>Pesanan masuk</strong><div class="ec-hero-stage" data-hero-stages><span data-hero-stage="0" >Rp150.000</span><span data-hero-stage="1" hidden>Rp142.500</span><span data-hero-stage="2" hidden>Rp90.000</span><span data-hero-stage="3" hidden>Jurnal seimbang</span></div><div class="ec-stage-progress" aria-hidden="true"><i></i><i></i><i></i><i></i></div></div></div>
+        <span class="ec-demo-caption">Ilustrasi workspace · IDR · Perlu pencocokan SKU dan pembukuan harga pokok</span>
+      </div>
+    </div>
+  </section>
+  <section class="ec-benefits ec-container" aria-label="Cara terhubung untuk menjalankan bisnis">
+    <article><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5v18h14V3h-3M8 3v4h8V3H8zm0 9h8m-8 4h5"/></svg><h2>Tahu apa yang terjual.</h2><p>Pesanan dan pendapatan tetap memiliki konteks kanal dan sumber.</p></article><article><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v10l-9 4-9-4V7zm0 0 9 4 9-4m-9 4v10M7.5 5l9 4"/></svg><h2>Tahu biaya barangnya.</h2><p>Cocokkan biaya stok dengan penjualan sebelum membaca margin.</p></article><article><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h16v18H4V3zm4 5h8m-8 4h8m-8 4h4"/></svg><h2>Pembukuan tetap terhubung.</h2><p>Invoice, struk, dan jurnal sumber ada di satu workspace.</p></article><article><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 4 3 5-8"/></svg><h2>Tanya lebih dalam.</h2><p>Dari data keuangan tercatat ke jawaban Fluxy AI yang punya konteks.</p></article>
+  </section>
+  <section id="commerce-workflow" class="ec-flow ec-dark" aria-labelledby="ec-flow-title">
+    <div class="ec-container"><div class="ec-section-intro"><span class="ec-section-label">Penjualan yang terhubung</span><h2 id="ec-flow-title">Penjualan baru awalnya.<br>Bukan akhir ceritanya.</h2><p>Ikuti satu tas dari pesanan pelanggan sampai biaya stok dan jurnal seimbang. Sumber catatannya tetap bisa ditelusuri di setiap langkah.</p></div>
+      <div class="ec-flow-layout" data-flow><div class="ec-flow-steps" role="group" aria-label="Langkah dari pesanan ke pembukuan"><button type="button" class="ec-flow-step" data-flow-step="0" aria-pressed="true"><span class="ec-step-number">01</span><span><strong>Lihat pesanan yang masuk.</strong><span>Hubungkan akun marketplace yang sudah diberi izin. Pesanan, kanal, barang, dan sumber catatan keuangannya tetap terhubung.</span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button><button type="button" class="ec-flow-step" data-flow-step="1" aria-pressed="false"><span class="ec-step-number">02</span><span><strong>Pisahkan penjualan dari pencairan dana.</strong><span>Lihat pendapatan, biaya platform, dan pencairan yang tercatat. Dana bersih yang diterima bukan berarti total penjualan.</span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button><button type="button" class="ec-flow-step" data-flow-step="2" aria-pressed="false"><span class="ec-step-number">03</span><span><strong>Catat biaya stok untuk penjualan itu.</strong><span>Cocokkan SKU pesanan dengan barang yang sudah memiliki biaya, lalu bukukan harga pokoknya. Barang yang belum cocok perlu diperiksa, bukan dianggap tanpa biaya.</span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button><button type="button" class="ec-flow-step" data-flow-step="3" aria-pressed="false"><span class="ec-step-number">04</span><span><strong>Telusuri sampai ke pembukuan.</strong><span>Pergerakan stok menghasilkan jurnal seimbang. Pendapatan dan biaya yang tercatat masuk ke laporan keuangan di workspace yang sama.</span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button></div>
+      <div class="ec-flow-visual"><div class="ec-flow-rail" aria-hidden="true"><span data-flow-node="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5v18h14V3h-3M8 3v4h8V3H8zm0 9h8m-8 4h5"/></svg></span><i></i><span data-flow-node="1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h16v18H4V3zm4 5h8m-8 4h8m-8 4h4"/></svg></span><i></i><span data-flow-node="2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v10l-9 4-9-4V7zm0 0 9 4 9-4m-9 4v10M7.5 5l9 4"/></svg></span><i></i><span data-flow-node="3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18M7 15l4-5 4 3 5-8"/></svg></span></div><div class="ec-flow-panels"><article class="ec-window ec-flow-panel" id="ec-flow-panel-0" data-flow-panel="0" aria-label="Pesanan masuk"><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Pesanan masuk</span><span class="ec-small">01 / 04</span></div><div class="ec-panel-body"><span class="ec-small">TikTok Shop · EC-1048</span><div class="ec-order-item"><span class="ec-item-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v10l-9 4-9-4V7zm0 0 9 4 9-4m-9 4v10M7.5 5l9 4"/></svg></span><div><strong>Tas Everyday</strong><small>SKU TOTE-01 · 1 barang</small></div><strong>Rp150.000</strong></div><div class="ec-money-row "><span>Total pesanan</span><strong>Rp150.000</strong></div><span class="ec-record-footer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>Catatan sumber · EC-1048</span></div></article><article class="ec-window ec-flow-panel" id="ec-flow-panel-1" data-flow-panel="1" aria-label="Pencairan dicatat"><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Pencairan dicatat</span><span class="ec-small">02 / 04</span></div><div class="ec-panel-body"><span class="ec-small">EC-1048 · sumber pembayaran</span><div class="ec-money-row "><span>Penjualan bruto</span><strong>Rp150.000</strong></div><div class="ec-money-row "><span>Biaya platform</span><strong>−Rp7.500</strong></div><div class="ec-money-row ec-money-total"><span>Pencairan bersih</span><strong>Rp142.500</strong></div><span class="ec-record-footer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>Catatan sumber · EC-1048</span></div></article><article class="ec-window ec-flow-panel" id="ec-flow-panel-2" data-flow-panel="2" aria-label="Harga pokok dibukukan"><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Harga pokok dibukukan</span><span class="ec-small">03 / 04</span></div><div class="ec-panel-body"><span class="ec-small">TOTE-01 · SKU cocok</span><div class="ec-money-row "><span>Sebelum penjualan</span><strong>81</strong></div><div class="ec-money-row "><span>Jumlah terjual</span><strong>−1</strong></div><div class="ec-money-row ec-money-total"><span>Stok tersedia</span><strong>80</strong></div><div class="ec-source-note">Biaya satuan tercatat <strong>Rp90.000</strong></div><span class="ec-record-footer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>Catatan sumber · EC-1048</span></div></article><article class="ec-window ec-flow-panel" id="ec-flow-panel-3" data-flow-panel="3" aria-label="Pembukuan diperbarui"><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Pembukuan diperbarui</span><span class="ec-small">04 / 04</span></div><div class="ec-panel-body"><span class="ec-small">EC-1048 → jurnal → laporan</span><div class="ec-table-wrap"><table class="ec-table"><caption>Jurnal · harga pokok pesanan EC-1048</caption><thead><tr><th>Akun</th><th>Debit</th><th>Kredit</th></tr></thead><tbody><tr><td>5100 · Harga pokok penjualan</td><td>Rp90.000</td><td>—</td></tr><tr><td>1200 · Persediaan</td><td>—</td><td>Rp90.000</td></tr></tbody></table></div><div class="ec-ledger-total"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>Jurnal seimbang</span><strong>Rp90.000 = Rp90.000</strong></div><span class="ec-record-footer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>Catatan sumber · EC-1048</span></div></article></div><div class="ec-flow-controls"><span>Ilustrasi workspace · IDR</span><button type="button" class="ec-dark-link" data-flow-replay>Ulangi alur pesanan<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button></div></div></div>
+    </div>
+  </section>
+  <section class="ec-section ec-guides" aria-labelledby="ec-stock-title"><div class="ec-container ec-split">
+    <div class="ec-copy"><span class="ec-section-label">Stok & konteks produk</span><h2 id="ec-stock-title">Stok punya biaya.<br>Jangan sampai terlewat.</h2><p>Pantau barang, penerimaan barang, dan pergerakan stok. Pada pesanan marketplace yang diimpor, SKU yang cocok dan biaya tercatat menjadi dasar jurnal harga pokok penjualan.</p><ul class="ec-check-list"><li>Lihat jumlah stok dan nilai persediaan tercatat.</li><li>Telusuri barang terjual dari referensi pesanannya.</li><li>Periksa SKU yang belum cocok atau belum punya biaya.</li></ul><p class="ec-small ec-qualification">Tersedia untuk workspace yang menyimpan stok. Perubahan dicatat di FluxyOS, bukan dikirim kembali ke toko online.</p></div>
+    <div class="ec-stock-composition" data-reveal><div class="ec-window"><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Persediaan · Tas Everyday</span><span class="ec-small">TOTE-01</span></div><div class="ec-panel-body"><div class="ec-stock-metric"><span>Stok tersedia</span><strong>80 <small>unit</small></strong><span>Nilai tercatat <b>Rp7.200.000</b></span></div><div class="ec-stock-track" aria-hidden="true"><i ></i><i ></i><i ></i><i ></i><i ></i><i ></i><i ></i><i ></i><i ></i><i ></i><i ></i><i ></i><i ></i><i ></i><i ></i><i class="ec-stock-out"></i></div><div class="ec-table-wrap"><table class="ec-table"><caption>Riwayat pergerakan stok</caption><thead><tr><th>Referensi</th><th>Pergerakan</th><th>Jumlah</th></tr></thead><tbody><tr><td>GR-028</td><td>Barang diterima</td><td>+100</td></tr><tr><td>EC-1030–1047</td><td>Penjualan sebelumnya</td><td>−19</td></tr><tr class="ec-highlight-row"><td>EC-1048</td><td>Penjualan · HPP dibukukan</td><td>−1</td></tr></tbody></table></div></div></div><div class="ec-stock-receipt ec-window"><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Invoice supplier → penerimaan stok</span><span class="ec-small"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 7 9-4 9 4v10l-9 4-9-4V7zm0 0 9 4 9-4m-9 4v10M7.5 5l9 4"/></svg></span></div><div class="ec-panel-body"><div class="ec-money-row "><span>Pembelian tercatat · 100 unit</span><strong>Rp9.000.000</strong></div><div class="ec-source-note">GR-028 · Penerimaan terhubung dengan jurnal persediaan</div></div></div></div>
+  </div></section>
+  <section class="ec-section ec-muted" aria-labelledby="ec-money-title"><div class="ec-container ec-split ec-split-reverse">
+    <div class="ec-copy"><span class="ec-section-label">Invoice, pembayaran & pengeluaran</span><h2 id="ec-money-title">Terjual itu satu hal.<br>Lunas itu hal lain.</h2><p>Buat dan kirim invoice pelanggan melalui email. Pantau piutang pelanggan, tagihan supplier, dan catatan pengeluaran di balik biaya operasional Anda.</p><p>Upload invoice supplier atau struk. AI membaca detailnya; Anda memeriksa data sebelum catatan keuangan dibuat. Mata uang dokumen yang didukung tetap punya konteks aslinya.</p><a class="ec-text-link" href="/id/vendorspend">Lihat fitur Invoice<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a></div>
+    <div class="ec-window ec-payment-visual" data-reveal><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Invoice & pengeluaran</span><span class="ec-small">September 2026</span></div><div class="ec-panel-body"><div class="ec-kpi-pair"><div><span>Piutang</span><strong>Rp18.000.000</strong></div><div><span>Utang usaha</span><strong>Rp32.000.000</strong></div></div><div class="ec-document-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v14H3V5zm0 0 9 8 9-8"/></svg><div><strong>INV-204 · Nusa Retail</strong><small>Email terkirim · invoice pelanggan</small></div><span class="ec-status">Terkirim</span></div><div class="ec-document-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M7 9h10M7 13h10M7 17h5"/></svg><div><strong>supplier-028.pdf</strong><small>Data invoice sudah dibaca</small></div><span class="ec-status ec-status-accent">Periksa</span></div><div class="ec-extracted-fields"><span>Data invoice yang dibaca</span><div class="ec-money-row "><span>Supplier</span><strong>Nusa Textile</strong></div><div class="ec-money-row "><span>Nomor invoice</span><strong>SUP-028</strong></div><div class="ec-money-row "><span>Total · IDR</span><strong>Rp9.000.000</strong></div></div><ol class="ec-document-path"><li>Upload</li><li>AI membaca</li><li>Anda periksa</li><li>Dicatat</li></ol></div></div>
+  </div></section>
+  <section class="ec-section" aria-labelledby="ec-accounting-title"><div class="ec-container"><div class="ec-section-intro"><span class="ec-section-label">Akuntansi & laporan keuangan</span><h2 id="ec-accounting-title">Lebih sedikit susun ulang data.<br>Lebih banyak pahami bisnis.</h2><p>Alur pencatatan sumber menghasilkan jurnal. Pemetaan akun menghubungkannya ke Buku Besar dan laporan keuangan. Catatan, jurnal, dan laporan ada di satu tempat.</p></div>
+    <div class="ec-accounting-grid"><div class="ec-window ec-journal-visual" data-reveal><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Buku Besar</span><span class="ec-small">Dibukukan</span></div><div class="ec-panel-body"><span class="ec-small">EC-1048 · TOTE-01</span><div class="ec-table-wrap"><table class="ec-table"><caption>Jurnal · harga pokok pesanan EC-1048</caption><thead><tr><th>Akun</th><th>Debit</th><th>Kredit</th></tr></thead><tbody><tr><td>5100 · Harga pokok penjualan</td><td>Rp90.000</td><td>—</td></tr><tr><td>1200 · Persediaan</td><td>—</td><td>Rp90.000</td></tr></tbody></table></div><div class="ec-ledger-total"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>Jurnal seimbang</span><strong>Rp90.000 = Rp90.000</strong></div><div class="ec-accounting-trail"><span>Pesanan</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg><span>Harga pokok</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg><span>Jurnal</span></div><p class="ec-small">Periksa data sumber dan pemetaan akun sebelum dibukukan. Laporan keuangan berasal dari jurnal yang dibukukan.</p></div></div>
+    <div class="ec-window ec-reports" data-reports><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Laporan keuangan</span><span class="ec-small">September 2026</span></div><div class="ec-report-tabs" role="group" aria-label="Pilih laporan keuangan"><button type="button" data-report-tab="0">Laporan Laba Rugi</button><button type="button" data-report-tab="1">Neraca</button><button type="button" data-report-tab="2">Arus Kas</button></div><section class="ec-report-panel" data-report-panel="0" id="ec-report-0"><h3>Laporan Laba Rugi</h3><span class="ec-small">September 2026 · IDR</span><div class="ec-money-row "><span>Pendapatan</span><strong>Rp184.000.000</strong></div><div class="ec-money-row "><span>Harga pokok penjualan</span><strong>Rp108.000.000</strong></div><div class="ec-money-row ec-money-subtotal"><span>Laba kotor</span><strong>Rp76.000.000</strong></div><div class="ec-money-row "><span>Beban operasional</span><strong>Rp29.000.000</strong></div><div class="ec-money-row ec-money-total"><span>Laba bersih</span><strong>Rp47.000.000</strong></div></section><section class="ec-report-panel" data-report-panel="1" id="ec-report-1"><h3>Neraca</h3><span class="ec-small">September 2026 · IDR</span><div class="ec-money-row "><span>Kas dan bank</span><strong>Rp97.000.000</strong></div><div class="ec-money-row "><span>Piutang usaha</span><strong>Rp18.000.000</strong></div><div class="ec-money-row "><span>Persediaan</span><strong>Rp45.000.000</strong></div><div class="ec-money-row ec-money-subtotal"><span>Total aset</span><strong>Rp160.000.000</strong></div><div class="ec-money-row "><span>Liabilitas</span><strong>Rp32.000.000</strong></div><div class="ec-money-row ec-money-total"><span>Ekuitas</span><strong>Rp128.000.000</strong></div></section><section class="ec-report-panel" data-report-panel="2" id="ec-report-2"><h3>Arus Kas</h3><span class="ec-small">September 2026 · IDR</span><div class="ec-money-row "><span>Penerimaan pelanggan</span><strong>Rp166.000.000</strong></div><div class="ec-money-row "><span>Pembayaran supplier</span><strong>−Rp108.000.000</strong></div><div class="ec-money-row "><span>Pembayaran operasional</span><strong>−Rp29.000.000</strong></div><div class="ec-money-row ec-money-subtotal"><span>Perubahan kas bersih</span><strong>Rp29.000.000</strong></div><div class="ec-money-row "><span>Kas awal</span><strong>Rp68.000.000</strong></div><div class="ec-money-row ec-money-total"><span>Kas akhir</span><strong>Rp97.000.000</strong></div></section></div></div>
+  </div></section>
+  <section class="ec-section ec-muted ec-guides" aria-labelledby="ec-performance-title"><div class="ec-container ec-split">
+    <div class="ec-copy"><span class="ec-section-label">Kinerja keuangan</span><h2 id="ec-performance-title">Pendapatan naik.<br>Berapa yang tersisa?</h2><p>Baca pendapatan bersama harga pokok, beban operasional, margin kotor, dan kas. Bandingkan pengeluaran tercatat dengan anggaran sebelum menambah komitmen biaya.</p><a class="ec-text-link" href="/id/budgetlanding">Lihat Dynamic Budgeting<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a><p class="ec-small ec-qualification">Kinerja tercatat dan pemantauan anggaran, bukan prediksi penjualan atau stok.</p></div>
+    <div class="ec-window ec-performance" data-reveal><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Kinerja bisnis</span><span class="ec-small">September 2026</span></div><div class="ec-panel-body"><div class="ec-kpi-pair"><div><span>Pendapatan</span><strong>Rp184.000.000</strong><small>+12,2%</small></div><div><span>Laba bersih</span><strong>Rp47.000.000</strong><small>Margin bersih 25,5%</small></div></div><svg class="ec-revenue-chart" viewBox="0 0 520 205" role="img" aria-label="Pendapatan naik dari Rp164.000.000 pada Agustus menjadi Rp184.000.000 pada September."><g class="ec-chart-grid"><path d="M45 25H490M45 70H490M45 115H490M45 160H490"/></g><g class="ec-chart-axis"><text x="0" y="29">200 jt</text><text x="0" y="74">150 jt</text><text x="0" y="119">100 jt</text><text x="0" y="164">50 jt</text><text x="45" y="195">Apr</text><text x="130" y="195">Mei</text><text x="215" y="195">Jun</text><text x="300" y="195">Jul</text><text x="385" y="195">Agu</text><text x="473" y="195">Sep</text></g><path class="ec-chart-reference" d="M45 120 134 105 223 86 312 96 401 70 490 57"/><path class="ec-chart-line" d="M45 105 134 86 223 96 312 70 401 57 490 39"/><circle class="ec-chart-point" cx="490" cy="39" r="5"/></svg><div class="ec-chart-legend"><span><i></i>Periode saat ini</span><span><i></i>Referensi periode sebelumnya</span></div><div class="ec-budget"><div><div class="ec-money-row "><span>Anggaran operasional</span><strong>Rp35.000.000</strong></div><div class="ec-money-row "><span>Pengeluaran aktual</span><strong>Rp29.000.000</strong></div></div><meter min="0" max="35000000" value="29000000" aria-label="Anggaran operasional terpakai">82,9%</meter><span>82,9% terpakai · sisa Rp6.000.000</span></div></div></div>
+  </div></section>
+  <section class="ec-section ec-ai" aria-labelledby="ec-ai-title"><div class="ec-container ec-split ec-split-reverse">
+    <div class="ec-copy"><span class="ec-section-label">Fluxy AI</span><h2 id="ec-ai-title">Tanyakan kondisi bisnis.<br>Bukan sekadar angkanya.</h2><p>Tanyakan dengan bahasa Anda sendiri. Fluxy AI memakai catatan keuangan dan konteks yang tersedia untuk menjelaskan pendapatan, pengeluaran, dan arus kas.</p><div class="ec-question-controls" role="group" aria-label="Contoh pertanyaan keuangan"><button type="button" data-ai-question="0" aria-pressed="true">Bagaimana pendapatan bulan ini?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button><button type="button" data-ai-question="1" aria-pressed="false">Pengeluaran apa yang naik?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button><button type="button" data-ai-question="2" aria-pressed="false">Bagaimana kondisi arus kas saya?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button></div><a class="ec-text-link" href="/id/aiagents">Kenali Fluxy AI<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a></div>
+    <div class="ec-window ec-ai-window" data-ai><div class="ec-window-head"><span class="ec-window-brand"><img src="/assets/images/favicon.svg" width="22" height="22" alt="">Fluxy AI</span><span class="ec-small">Konteks keuangan terhubung</span></div><div class="ec-ai-conversation"><article data-ai-answer="0"><div class="ec-user-message"><span>Anda</span><p>Bagaimana pendapatan bulan ini?</p></div><div class="ec-ai-message"><span class="ec-ai-author"><img src="/assets/images/favicon.svg" width="20" height="20" alt="">Fluxy AI</span><p data-answer-text>Pendapatan September Rp184.000.000, naik Rp20.000.000 dari Agustus. Periksa rincian pendapatan per kanal sebelum menentukan investasi berikutnya.</p><div class="ec-answer-metric"><span>Pendapatan · September vs Agustus</span><strong>Rp184.000.000</strong><small>+12,2%</small></div><div class="ec-source-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h16v18H4V3zm4 5h8m-8 4h8m-8 4h4"/></svg>Pendapatan · September vs Agustus</div></div></article><article data-ai-answer="1"><div class="ec-user-message"><span>Anda</span><p>Pengeluaran apa yang naik?</p></div><div class="ec-ai-message"><span class="ec-ai-author"><img src="/assets/images/favicon.svg" width="20" height="20" alt="">Fluxy AI</span><p data-answer-text>Beban operasional naik dari Rp27.000.000 menjadi Rp29.000.000. Pemasaran naik Rp1.500.000; kemasan dan pengiriman naik Rp500.000. Dua kategori itu menjelaskan kenaikan pada contoh ini.</p><div class="ec-answer-metric"><span>Catatan pengeluaran · perbandingan kategori</span><strong>Rp29.000.000</strong><small>+7,4%</small></div><div class="ec-source-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h16v18H4V3zm4 5h8m-8 4h8m-8 4h4"/></svg>Catatan pengeluaran · perbandingan kategori</div></div></article><article data-ai-answer="2"><div class="ec-user-message"><span>Anda</span><p>Bagaimana kondisi arus kas saya?</p></div><div class="ec-ai-message"><span class="ec-ai-author"><img src="/assets/images/favicon.svg" width="20" height="20" alt="">Fluxy AI</span><p data-answer-text>Penerimaan pelanggan tercatat Rp166.000.000. Pembayaran supplier dan operasional total Rp137.000.000. Jadi, kas bertambah bersih Rp29.000.000 selama September.</p><div class="ec-answer-metric"><span>Arus Kas · penerimaan dan pembayaran tercatat</span><strong>Rp29.000.000</strong><small>Kenaikan bersih</small></div><div class="ec-source-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h16v18H4V3zm4 5h8m-8 4h8m-8 4h4"/></svg>Arus Kas · penerimaan dan pembayaran tercatat</div></div></article></div><div class="ec-ai-footnote">Ilustrasi jawaban. Hasil bergantung pada data yang Anda catat.</div></div>
+  </div></section>
+  <section class="ec-ecosystem ec-dark"><div class="ec-container"><div class="ec-section-intro"><h2>Semua bagian saling terhubung.</h2><p>Mulai dari alur yang Anda butuhkan. Konteks keuangan tetap terjaga saat bisnis berkembang.</p></div><div class="ec-ecosystem-grid"><a href="/id/revenuesync"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5v18h14V3h-3M8 3v4h8V3H8zm0 9h8m-8 4h5"/></svg><h3>Revenue Sync</h3><p>Penjualan, biaya, dan pencairan.</p><span>Lihat fitur<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span></a><a href="/id/vendorspend"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v14H3V5zm0 0 9 8 9-8"/></svg><h3>Invoice</h3><p>Buat, kirim, dan pantau invoice.</p><span>Lihat fitur<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span></a><a href="/id/receiptcapture"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M7 9h10M7 13h10M7 17h5"/></svg><h3>Receipt Capture</h3><p>Dokumen jadi catatan yang diperiksa.</p><span>Lihat fitur<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span></a><a href="/id/accounting-automation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h16v18H4V3zm4 5h8m-8 4h8m-8 4h4"/></svg><h3>Accounting Automation</h3><p>Catatan sumber jadi jurnal dan laporan.</p><span>Lihat fitur<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span></a></div></div></section>
+  <section class="ec-section ec-faq"><div class="ec-container ec-faq-layout"><div><span class="ec-section-label">Jawaban untuk Anda</span><h2>Sebelum menghubungkan<br>bisnis Anda.</h2></div><div><details><summary>Apa manfaat FluxyOS untuk bisnis e-commerce?<span aria-hidden="true">+</span></summary><p>FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System). Data penjualan yang didukung terhubung dengan biaya stok, invoice, pengeluaran, akuntansi, laporan keuangan, dan Fluxy AI dalam satu workspace. FluxyOS tidak menggantikan toko online atau sistem pengiriman Anda.</p></details><details><summary>Marketplace apa yang bisa dihubungkan?<span aria-hidden="true">+</span></summary><p>FluxyOS memiliki konektor TikTok Shop dan Shopee. Koneksi dan sinkronisasi memerlukan izin akun serta pengaturan platform. Catatan keuangan lain bisa ditambahkan langsung atau melalui impor CSV yang didukung. Konektor toko lain belum ditawarkan sebagai integrasi aktif.</p></details><details><summary>Bagaimana pesanan terhubung dengan stok dan akuntansi?<span aria-hidden="true">+</span></summary><p>Untuk workspace yang menyimpan stok, SKU pesanan marketplace yang masuk bisa dicocokkan dengan data barang. Saat biaya stok dibukukan, FluxyOS mencatat pergerakan stok dan jurnal harga pokok penjualan berdasarkan biaya persediaan yang tercatat. SKU yang belum cocok atau belum memiliki biaya perlu diperiksa. FluxyOS tidak mengirim jumlah stok kembali ke marketplace.</p></details><details><summary>Bisa mengelola invoice pelanggan dan supplier?<span aria-hidden="true">+</span></summary><p>Bisa. Buat dan kirim invoice pelanggan lewat email, pantau piutang, lalu catat tagihan supplier serta status pembayarannya. AI membaca data invoice dan struk yang diunggah untuk Anda periksa sebelum dicatat. Mata uang dokumen yang didukung tetap tersimpan bersama nilai pembukuannya.</p></details><details><summary>Apa yang bisa saya tanyakan kepada Fluxy AI?<span aria-hidden="true">+</span></summary><p>Tanyakan pendapatan, pengeluaran, arus kas, dan kinerja keuangan yang sudah tercatat. Fluxy AI memakai data keuangan serta konteks workspace yang tersedia. Jawaban bergantung pada kelengkapan data, bukan pembelian otomatis, prediksi per produk, atau proyeksi stok.</p></details><details><summary>Apakah FluxyOS memprediksi penjualan atau kebutuhan stok?<span aria-hidden="true">+</span></summary><p>Tidak. Halaman ini menampilkan kinerja keuangan yang tercatat serta perbandingan anggaran dengan pengeluaran aktual, bukan prediksi penjualan atau stok. Lengkapi catatan sumber dan pemetaan akun agar laporan keuangan bermakna.</p></details></div></div></section>
+  <section class="ec-final ec-guides"><div class="ec-container"><h2>Terus jualan.<br>Tetap tahu kondisi bisnis.</h2><p>Satukan catatan penjualan, biaya, dan akuntansi dalam satu workspace yang terhubung.</p><div class="ec-actions"><a class="ec-button ec-button-primary" href="/id/pricing">Mulai gratis<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a><a class="ec-button ec-button-secondary" href="/contact-sales">Hubungi sales<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a></div></div></section>
+</main>
+<!-- UNIVERSAL FOOTER -->
+<footer class="footer-component pt-24 pb-12 px-6">
 
-        <!-- CHANNEL STRIP -->
-    <section class="border-b border-gray-200 bg-white px-6 py-8">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                <p class="text-[12px] font-bold text-gray-500 uppercase tracking-[0.2em]">Storefront, bank, gateway, dan spend supplier terhubung</p>
-                <div class="flex flex-wrap items-center gap-2.5">
-                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Tokopedia</span>
-                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-[#EA580C]"></span>Shopee</span>
-                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span>TikTok Shop</span>
-                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Lazada</span>
-                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-[#EA580C]"></span>Blibli</span>
-                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span>Shopify</span>
-                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>WooCommerce</span>
-                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-[#EA580C]"></span>Midtrans</span>
-                    <span class="channel-pill inline-flex items-center gap-2 rounded-full border border-gray-200 bg-[#FAFAF7] px-4 py-2 text-[13px] font-semibold text-gray-800"><span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span>Xendit</span>
+    <!-- Universe starfield canvas -->
+    <canvas class="footer-canvas" aria-hidden="true"></canvas>
+
+    <div class="max-w-[1280px] mx-auto grid grid-cols-2 md:grid-cols-12 gap-12 mb-20">
+        <div class="col-span-2 md:col-span-4 pr-8">
+            <div class="flex items-center gap-2 mb-6">
+                <div class="w-8 h-8 flex-shrink-0 text-[#EA580C] shadow-sm group-hover:scale-105 transition-transform duration-200">
+                    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                        <rect width="40" height="40" rx="8" fill="currentColor" />
+                        <g transform="translate(1.5, 0)">
+                            <path d="M 7 6 L 33 6 L 27 12 L 13 12 L 13 34 L 7 34 Z" fill="#FFFFFF" />
+                            <path d="M 17 18 L 27 18 L 21 24 L 17 24 Z" fill="#FFFFFF" />
+                        </g>
+                    </svg>
                 </div>
+                <span class="font-bold text-xl tracking-tight text-white">FluxyOS</span>
             </div>
-        </div>
-    </section>
-
-        <!-- WHO IT'S FOR -->
-    <section class="bg-[#F7F7F2] px-6 py-16 md:py-24 border-b border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-end mb-12">
-                <div>
-                    <p class="mb-4 text-[12px] font-bold uppercase tracking-[0.22em] text-[#EA580C]">Omnichannel control</p>
-                    <h2 class="text-[36px] md:text-[50px] font-bold tracking-tight leading-[1] text-gray-950">
-                        Lapisan finance yang hilang dari commerce stack Anda
-                    </h2>
-                </div>
-                <p class="text-[17px] leading-relaxed text-gray-600 max-w-2xl lg:justify-self-end">
-                    Dashboard marketplace menunjukkan sales. Platform iklan menunjukkan spend. Invoice supplier menunjukkan cost. FluxyOS menyatukan semuanya ke sistem yang siap tutup buku.
-                </p>
-            </div>
-
-            <div class="grid gap-5 lg:grid-cols-4 lg:grid-rows-2">
-                <div class="bento-card lg:col-span-2 lg:row-span-2 rounded-[24px] border border-gray-200 bg-white p-8 text-gray-950 overflow-hidden relative">
-                    <div class="absolute right-6 top-6 h-28 w-28 rounded-full border border-[#EA580C]/20"></div>
-                    <p class="mb-16 text-[12px] font-bold uppercase tracking-[0.22em] text-[#EA580C]">P&L engine</p>
-                    <h3 class="max-w-lg text-[30px] md:text-[38px] font-bold tracking-tight leading-tight">Dari GMV ke profit asli</h3>
-                    <p class="mt-5 max-w-xl text-[15px] leading-relaxed text-gray-600">Lihat setiap order setelah marketplace fee, biaya payment gateway, subsidi promo, ad spend, refund, dan COGS. Tidak ada lagi merayakan channel yang diam-diam rugi.</p>
-                    <div class="mt-10 grid grid-cols-3 gap-3 text-[12px]">
-                        <div class="rounded-2xl border border-gray-200 bg-[#FAFAF7] p-4"><div class="font-mono text-[20px] font-bold text-gray-950">GMV</div><div class="mt-2 text-gray-500">gross</div></div>
-                        <div class="rounded-2xl border border-gray-200 bg-[#FAFAF7] p-4"><div class="font-mono text-[20px] font-bold text-gray-950">Fees</div><div class="mt-2 text-gray-500">deducted</div></div>
-                        <div class="rounded-2xl border border-[#EA580C]/30 bg-white p-4"><div class="font-mono text-[20px] font-bold text-gray-950">Margin</div><div class="mt-2 text-[#EA580C]">real</div></div>
-                    </div>
-                </div>
-
-                <div class="bento-card rounded-[24px] border border-gray-200 bg-white p-6">
-                    <p class="text-[12px] font-bold uppercase tracking-[0.2em] text-gray-400">Marketplace</p>
-                    <h3 class="mt-5 text-[22px] font-bold tracking-tight text-gray-950">Seller marketplace</h3>
-                    <p class="mt-3 text-[14px] leading-relaxed text-gray-600">File settlement Tokopedia, Shopee, TikTok Shop, Lazada, dan Blibli masuk satu ledger dengan potongan sudah terpisah rapi.</p>
-                </div>
-                <div class="bento-card rounded-[24px] border border-gray-200 bg-white p-6">
-                    <p class="text-[12px] font-bold uppercase tracking-[0.2em] text-gray-400">D2C</p>
-                    <h3 class="mt-5 text-[22px] font-bold tracking-tight text-gray-950">D2C & brand Shopify</h3>
-                    <p class="mt-3 text-[14px] leading-relaxed text-gray-600">Shopify, WooCommerce, Midtrans, Xendit, dan Stripe berdampingan dengan revenue marketplace sehingga performa channel bisa dibandingkan.</p>
-                </div>
-                <div class="bento-card rounded-[24px] border border-gray-200 bg-white p-6">
-                    <p class="text-[12px] font-bold uppercase tracking-[0.2em] text-gray-400">Retail</p>
-                    <h3 class="mt-5 text-[22px] font-bold tracking-tight text-gray-950">Retail dengan channel online</h3>
-                    <p class="mt-3 text-[14px] leading-relaxed text-gray-600">Sales POS, order online, tagihan supplier, dan biaya inventory masuk satu P&L, bukan tiga tampilan terpisah.</p>
-                </div>
-                <div class="bento-card rounded-[24px] border border-gray-200 bg-white p-6">
-                    <p class="text-[12px] font-bold uppercase tracking-[0.2em] text-gray-400">Close-ready</p>
-                    <div class="mt-6 flex items-end gap-2">
-                        <div class="h-12 w-9 rounded-t-lg bg-gray-200"></div>
-                        <div class="h-20 w-9 rounded-t-lg bg-gray-300"></div>
-                        <div class="h-28 w-9 rounded-t-lg bg-gray-400"></div>
-                        <div class="h-16 w-9 rounded-t-lg bg-[#EA580C]"></div>
-                    </div>
-                    <p class="mt-6 text-[14px] leading-relaxed text-gray-600">Channel economics, budget burn, and supplier cost stay in one decision view.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-        <!-- HOW IT WORKS (3-step dark section) -->
-    <section id="how-it-works" class="section-dark px-6 py-20 md:py-28 border-t border-gray-800">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start mb-14">
-                <div>
-                    <p class="mb-4 text-[12px] font-bold uppercase tracking-[0.22em] text-[#FDBA74]">Operating flow</p>
-                    <h2 class="text-[36px] md:text-[50px] font-bold tracking-tight leading-[1.02]">
-                        Dari storefront ke buku rapi, dalam tiga langkah
-                    </h2>
-                </div>
-                <p class="max-w-2xl text-[17px] leading-relaxed text-gray-400 lg:pt-11">
-                    Tools finance terbaik membuat sistemnya terlihat bekerja. FluxyOS memberi kejelasan itu untuk payout, fee, COGS, dan tutup buku e-commerce.
-                </p>
-            </div>
-
-            <div class="grid gap-5 md:grid-cols-3">
-                <div class="relative overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.055] p-7">
-                    <div class="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-blue-400/20 to-transparent"></div>
-                    <div class="relative">
-                        <div class="mb-12 flex items-center justify-between">
-                            <span class="font-mono text-[13px] text-gray-500">01</span>
-                            <span class="h-px flex-1 mx-4 bg-white/10"></span>
-                            <span class="h-2 w-2 rounded-full bg-[#EA580C]"></span>
-                        </div>
-                        <h3 class="text-[24px] font-bold tracking-tight">Hubungkan channel</h3>
-                        <p class="mt-4 min-h-[88px] text-[14px] leading-relaxed text-gray-400">Storefront, bank, gateway, akun iklan, dan invoice supplier mulai mengalir otomatis ke ledger.</p>
-                        <div class="mt-8 flex flex-wrap gap-2">
-                            <span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Tokopedia</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Shopee</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Shopify</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Bank</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="relative overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.055] p-7">
-                    <div class="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-purple-400/20 to-transparent"></div>
-                    <div class="relative">
-                        <div class="mb-12 flex items-center justify-between">
-                            <span class="font-mono text-[13px] text-gray-500">02</span>
-                            <span class="h-px flex-1 mx-4 bg-white/10"></span>
-                            <span class="h-2 w-2 rounded-full bg-[#EA580C]"></span>
-                        </div>
-                        <h3 class="text-[24px] font-bold tracking-tight">Cocokkan setiap payout</h3>
-                        <p class="mt-4 min-h-[88px] text-[14px] leading-relaxed text-gray-400">Order dipecah menjadi gross revenue, fee, refund, subsidi promo, dan settlement bank dengan exception yang jelas.</p>
-                        <div class="mt-8 flex flex-wrap gap-2">
-                            <span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Gross</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Fees</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Refunds</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Payout</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="relative overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.055] p-7">
-                    <div class="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-emerald-400/20 to-transparent"></div>
-                    <div class="relative">
-                        <div class="mb-12 flex items-center justify-between">
-                            <span class="font-mono text-[13px] text-gray-500">03</span>
-                            <span class="h-px flex-1 mx-4 bg-white/10"></span>
-                            <span class="h-2 w-2 rounded-full bg-[#EA580C]"></span>
-                        </div>
-                        <h3 class="text-[24px] font-bold tracking-tight">Tutup dengan margin</h3>
-                        <p class="mt-4 min-h-[88px] text-[14px] leading-relaxed text-gray-400">Review margin channel, harga pokok, dan export siap PPN sebelum rush tutup buku dimulai.</p>
-                        <div class="mt-8 flex flex-wrap gap-2">
-                            <span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Margin</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">COGS</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">VAT</span><span class="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[12px] font-semibold text-gray-300">Export</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-        <!-- KEY BENEFITS / FEATURE GRID -->
-    <section class="py-16 md:py-24 px-6">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="text-center mb-16">
-                <h2 class="text-[36px] md:text-[44px] font-bold tracking-tight text-gray-900 mb-4">
-                    Untuk seller yang berhenti percaya GMV
-                </h2>
-                <p class="text-[17px] text-gray-600 max-w-2xl mx-auto">
-                    Setiap fitur di sini ada karena spreadsheet berhenti cukup sejak hari Anda membuka channel kedua.
-                </p>
-            </div>
-
-            <div class="grid md:grid-cols-2 gap-6">
-                <a href="/revenuesync" class="block bg-white rounded-xl border border-gray-200 p-7 hover:shadow-md hover:border-gray-300 transition-all">
-                    <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-                    </div>
-                    <h3 class="text-[19px] font-bold text-gray-900 mb-2">Rekonsiliasi marketplace</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed mb-3">
-                        File settlement Tokopedia dan Shopee, payout TikTok Shop, laporan mingguan Lazada — semua di-parsing otomatis. Setiap fee, refund, dan adjustment masuk ke baris yang tepat.
-                    </p>
-                    <span class="text-[13px] font-bold text-[#EA580C] inline-flex items-center gap-1">Didukung Revenue Sync &rarr;</span>
-                </a>
-
-                <a href="/budgetlanding" class="block bg-white rounded-xl border border-gray-200 p-7 hover:shadow-md hover:border-gray-300 transition-all">
-                    <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
-                    </div>
-                    <h3 class="text-[19px] font-bold text-gray-900 mb-2">Net margin asli per channel</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed mb-3">
-                        Pisahkan marketplace fee, ad spend, gateway fee, dan COGS untuk lihat berapa pendapatan asli setiap channel. Temukan storefront mana yang layak dapat tambahan stok.
-                    </p>
-                    <span class="text-[13px] font-bold text-[#EA580C] inline-flex items-center gap-1">Didukung Dynamic Budgeting &rarr;</span>
-                </a>
-
-                <a href="/vendorspend" class="block bg-white rounded-xl border border-gray-200 p-7 hover:shadow-md hover:border-gray-300 transition-all">
-                    <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-                    </div>
-                    <h3 class="text-[19px] font-bold text-gray-900 mb-2">Spend supplier &amp; inventory</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed mb-3">
-                        Setiap PO, invoice supplier, payout dropship, dan tagihan 3PL ada di satu ledger. Tahu cost of goods asli sebelum restock berikutnya.
-                    </p>
-                    <span class="text-[13px] font-bold text-[#EA580C] inline-flex items-center gap-1">Didukung Vendor Spend &rarr;</span>
-                </a>
-
-                <a href="/receiptcapture" class="block bg-white rounded-xl border border-gray-200 p-7 hover:shadow-md hover:border-gray-300 transition-all">
-                    <div class="feature-icon mb-4">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    </div>
-                    <h3 class="text-[19px] font-bold text-gray-900 mb-2">Otomatisasi receipt &amp; COGS</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed mb-3">
-                        Foto invoice supplier atau resi pengiriman, FluxyOS menarik vendor, jumlah, dan pajak — lalu membukukannya ke akun biaya yang Anda petakan.
-                    </p>
-                    <span class="text-[13px] font-bold text-[#EA580C] inline-flex items-center gap-1">Didukung Receipt Capture &rarr;</span>
-                </a>
-            </div>
-        </div>
-    </section>
-
-    <!-- A DAY IN THE LIFE -->
-    <section class="bg-gray-50 py-16 md:py-20 px-6 border-t border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="text-center mb-12">
-                <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3">
-                    Sehari dalam hidup seller online
-                </h2>
-                <p class="text-[16px] text-gray-600 max-w-2xl mx-auto">
-                    Tiga momen di mana FluxyOS menggantikan spreadsheet, grup WhatsApp, dan tebak-tebakan.
-                </p>
-            </div>
-            <div class="grid md:grid-cols-3 gap-6">
-                <div class="bg-white rounded-2xl border border-gray-200 p-7">
-                    <span class="text-[11px] font-bold text-[#EA580C] uppercase tracking-wider">Pagi</span>
-                    <h3 class="text-[19px] font-bold text-gray-900 mt-1 mb-3">Payout kemarin, siap dibaca</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Buka FluxyOS sambil ngopi. Payout Tokopedia, Shopee, dan TikTok Shop kemarin sudah cocok dengan rekening Anda — net revenue, fee, refund, semua di satu dashboard.
-                    </p>
-                </div>
-                <div class="bg-white rounded-2xl border border-gray-200 p-7">
-                    <span class="text-[11px] font-bold text-[#EA580C] uppercase tracking-wider">Siang</span>
-                    <h3 class="text-[19px] font-bold text-gray-900 mt-1 mb-3">Keputusan restock dengan angka asli</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Lihat margin asli per channel sebelum buat PO berikutnya — termasuk porsi ad spend dan invoice supplier terakhir.
-                    </p>
-                </div>
-                <div class="bg-white rounded-2xl border border-gray-200 p-7">
-                    <span class="text-[11px] font-bold text-[#EA580C] uppercase tracking-wider">Sore</span>
-                    <h3 class="text-[19px] font-bold text-gray-900 mt-1 mb-3">Buku yang tutup sendiri</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Tidak perlu utak-atik spreadsheet. Revenue, retur, dan tagihan supplier hari ini sudah masuk ledger. Tutup buku jadi review 30 menit, bukan proyek tiga hari.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- AI AGENTS CALLOUT (dark) -->
-    <section class="section-dark py-20 md:py-24 px-6 border-t border-gray-800">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-2 gap-12 items-center">
-                <div>
-                    <span class="inline-block bg-white/[0.04] text-[#EA580C] text-[12px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full mb-5 border border-orange-500/20">FluxyOS AI Agents</span>
-                    <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight mb-5 leading-tight">
-                        Tanya kenapa revenue Shopee turun — dapat chart, bukan utas Slack.
-                    </h2>
-                    <p class="text-[16px] text-gray-400 leading-relaxed mb-8 max-w-xl">
-                        FluxyOS AI Agents memahami channel, produk, dan margin Anda. Tanya apa saja dengan bahasa biasa — mereka tarik angkanya, jalankan breakdown-nya, dan jelaskan apa yang berubah.
-                    </p>
-                    <a href="/aiagents" class="inline-flex items-center gap-2 text-[#EA580C] font-bold text-[15px] hover:text-[#F97316] transition-colors">
-                        Kenalan dengan agent
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                    </a>
-                </div>
-                <div class="bg-[#1A1F26] border border-gray-800 rounded-2xl p-6 space-y-4">
-                    <div class="flex items-start gap-3">
-                        <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0 text-[12px] font-bold">A</div>
-                        <div class="bg-gray-900 border border-gray-800 rounded-2xl rounded-tl-sm px-4 py-3 text-[14px] text-gray-200 leading-relaxed">
-                            Kenapa revenue Shopee turun hari Selasa?
-                        </div>
-                    </div>
-                    <div class="flex items-start gap-3 flex-row-reverse">
-                        <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 text-[12px] font-bold text-[#EA580C]">F</div>
-                        <div class="bg-white/[0.04] border border-orange-500/20 rounded-2xl rounded-tr-sm px-4 py-3 text-[14px] text-gray-100 leading-relaxed">
-                            Gross revenue Shopee Rp 11.2M, turun 38% dari Senin. Dua penyebab utama: promo gratis ongkir berakhir jam 12 (-Rp 4.1M est.) dan subsidi gratis ongkir tidak ditagih balik di 38 order. Order-nya sudah saya tandai untuk restock.
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-
-    <!-- FAQ -->
-    <section id="faq" class="py-16 md:py-20 px-6 border-t border-gray-200 bg-white">
-        <div class="max-w-3xl mx-auto">
-            <div class="mb-10">
-                <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3">
-                    Pertanyaan yang sering ditanyakan
-                </h2>
-                <p class="text-[16px] text-gray-600">
-                    Jawaban singkat untuk hal-hal yang biasanya seller online tanyakan sebelum daftar.
-                </p>
-            </div>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Apakah FluxyOS terhubung langsung ke Tokopedia, Shopee, dan TikTok Shop?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Ya. FluxyOS menarik order, payout, fee, dan refund dari Tokopedia, Shopee, TikTok Shop, Lazada, dan Blibli. Setiap file settlement marketplace di-parsing otomatis sehingga revenue, marketplace fee, dan net payout Anda langsung masuk ke baris ledger yang tepat tanpa import manual.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Apakah saya bisa lihat profit per channel?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Per channel, ya. Setelah biaya masuk ke FluxyOS, setiap order dipecah jadi revenue, marketplace fee, gateway fee, share ad cost, dan harga pokok. Margin per SKU belum tersedia — itu butuh master barang dan costing persediaan, yang masih ada di roadmap.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Bagaimana FluxyOS menangani PPN untuk order marketplace?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">FluxyOS menandai setiap transaksi dengan perlakuan PPN-nya berdasarkan format settlement marketplace dan setup pajak Anda. Hasilnya adalah ledger siap export yang bisa langsung dipakai akuntan atau KAP Anda untuk pelaporan PPN bulanan — tanpa rebuild dari spreadsheet.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Bagaimana kalau toko saya juga jualan lewat Shopify atau WooCommerce sendiri?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">FluxyOS memperlakukan website D2C Anda sebagai channel yang sama. Order Shopify dan WooCommerce, payout gateway (Midtrans, Xendit, Stripe), serta arus refund semua bergabung di ledger yang sama dengan data marketplace, jadi P&L tetap konsolidasi di seluruh storefront yang Anda jalankan.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Apakah saya butuh akuntan untuk setup ini?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Tidak. Default chart of accounts, mapping fee marketplace, dan kategori channel sudah pre-configured untuk e-commerce Indonesia. Hubungkan toko Anda, link bank, dan FluxyOS membukukan bulan pertama untuk Anda. Akuntan Anda bisa review dan adjust nanti.</p>
-            </details>
-            <details class="border-b border-gray-200 py-5 group">
-                <summary class="flex items-center justify-between cursor-pointer list-none">
-                    <h3 class="text-[17px] font-bold text-gray-900 pr-4">Apakah ada free tier untuk seller baru?</h3>
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                </summary>
-                <p class="mt-3 text-[15px] text-gray-700 leading-relaxed pr-8">Ya. FluxyOS punya free tier yang mencakup satu storefront dan rekonsiliasi dasar. Paid plan membuka multi-channel ingestion, AI agents, dan laporan margin lanjutan — lihat halaman pricing untuk detailnya.</p>
-            </details>
-        </div>
-    </section>
-
-    <!-- CTA SECTION -->
-    <section class="bg-[#0B0F19] py-16 md:py-24 px-6">
-        <div class="max-w-[1280px] mx-auto text-center">
-            <h2 class="text-[36px] md:text-[44px] font-bold tracking-tight text-white mb-5">
-                Berhenti rekonsiliasi. Mulai jalankan toko.
-            </h2>
-            <p class="text-[17px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">
-                Hubungkan channel Anda, lihat margin asli, dan biarkan FluxyOS menjaga buku tetap rapi di belakang layar. Gratis untuk mulai, berbayar saat siap berkembang.
+            <p class="text-[14px] leading-relaxed max-w-[280px] footer-body-text">
+                Sistem operasi keuangan yang cerdas. Satukan budget internal, pengeluaran operasional, dan pendapatan untuk agensi, manufaktur, dan bisnis modern.
             </p>
-            <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-sm hover:shadow inline-block text-center">
-                    Coba FluxyOS gratis
-                </a>
-                <a href="/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">
-                    Lihat harga
-                </a>
-            </div>
         </div>
-    </section>
 
-    <script src="/assets/js/universe-canvas.js" defer></script>
-    <script src="/assets/js/footer-loader.js" defer></script>
-    <script src="/assets/js/fluxyos.js" defer></script>
+        <div class="md:col-span-2">
+            <h4 class="text-[13px] font-bold text-white mb-6 uppercase tracking-wider">Platform</h4>
+            <ul class="space-y-4 text-[14px] font-medium footer-body-text">
+                <li><a href="/id/budgetlanding" class="footer-link">Dynamic Budgeting</a></li>
+                <li><a href="/id/vendorspend" class="footer-link">Invoice</a></li>
+                <li><a href="/id/revenuesync" class="footer-link">Revenue Sync</a></li>
+                <li><a href="/id/receiptcapture" class="footer-link">Receipt Capture</a></li>
+                <li><a href="/id/aiagents" class="footer-link">AI Finance Agents</a></li>
+            </ul>
+        </div>
+
+        <div class="md:col-span-2">
+            <h4 class="text-[13px] font-bold text-white mb-6 uppercase tracking-wider">Studi Kasus</h4>
+            <ul class="space-y-4 text-[14px] font-medium footer-body-text">
+                <li><a href="/id/use-cases/founder-ceo" class="footer-link">Founders &amp; CEOs</a></li>
+                <li><a href="/id/use-cases/cfo-finance-teams" class="footer-link">CFOs &amp; Finance Teams</a></li>
+                <li><a href="/id/use-cases/ecommerce-brands" class="footer-link">E-commerce Brands</a></li>
+                <li><a href="/id/use-cases/marketing-agencies" class="footer-link">Marketing Agencies</a></li>
+            </ul>
+        </div>
+
+        <div class="md:col-span-2">
+            <h4 class="text-[13px] font-bold text-white mb-6 uppercase tracking-wider">Perusahaan</h4>
+            <ul class="space-y-4 text-[14px] font-medium footer-body-text">
+                <li><a href="/id/pricing" class="footer-link">Harga</a></li>
+                <li><a href="/contact-sales" class="footer-link">Hubungi Sales</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="max-w-[1280px] mx-auto pt-8 footer-divider flex flex-col md:flex-row justify-between items-center gap-6">
+        <p class="text-[14px] font-medium footer-body-text">© 2026 FluxyOS Technologies. Semua hak dilindungi.</p>
+        <div class="flex gap-8 text-[14px] font-medium footer-body-text">
+            <a href="/privacy" class="footer-link">Kebijakan Privasi</a>
+            <a href="/terms" class="footer-link">Ketentuan Layanan</a>
+        </div>
+    </div>
+</footer>
+
+<script src="/assets/js/universe-canvas.js" defer></script>
+<script src="/assets/js/footer-loader.js" defer></script>
+<script src="/assets/js/fluxyos.js" defer></script>
 <script src="/assets/js/i18n.js" defer></script>
+<script src="/assets/js/ecommerce-landing.js" defer></script>
 </body>
 </html>
