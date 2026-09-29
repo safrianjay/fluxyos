@@ -73,7 +73,8 @@ test('missing configuration fails closed, retains counter and email fallback', a
     const state = await mock(page, { unavailable: true }); await page.goto('/contact-sales'); await fill(page);
     await expect(page.locator('#contact-error')).toContainText('Secure verification is unavailable');
     await page.locator('#contact-submit').click(); await expect(page.locator('#contact-submit')).toBeEnabled();
-    expect(state.submissions).toHaveLength(0); await expect(page.locator('form a[href="mailto:sales@fluxyos.com"]')).toBeVisible();
+    expect(state.submissions).toHaveLength(0); await expect(page.locator('#contact-error')).toContainText('sales@fluxyos.com');
+    await expect(page.locator('form').getByText('Prefer email?', { exact: false })).toHaveCount(0);
     await expect(page.locator('#message-counter')).toHaveText('37 / 100'); expect(state.errors).toEqual([]);
 });
 test('programmatic over-length message cannot be sent', async ({ page }) => {

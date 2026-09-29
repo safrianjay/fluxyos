@@ -2358,7 +2358,6 @@
         "IDR Account": "Akun IDR",
         "Contact Sales": "Hubungi Sales",
         "Briefly describe your needs.": "Ceritakan kebutuhan Anda secara singkat.",
-        "Prefer email?": "Lebih nyaman lewat email?",
         "Please enable JavaScript to use this secure form, or": "Aktifkan JavaScript untuk menggunakan formulir ini, atau",
         "email our sales team": "email tim sales kami",
         "Retail": "Ritel",
