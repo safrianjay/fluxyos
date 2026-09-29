@@ -9,11 +9,20 @@ The initial deployment enables validation, the honeypot, signed-session timing,
 durable rate limits and content screening **without claiming CAPTCHA verification**.
 Cloudflare authorization is unavailable, so Turnstile remains pending by explicit
 owner approval. This is not equivalent to a verified-human submission; bots can
-obtain sessions too. Configure these **production function-scoped** Netlify vars:
+obtain sessions too. Configure these **production** Netlify environment variables
+(prefer function-only scopes when the hosting plan supports them):
 
 - `CONTACT_FORM_BOT_MODE=pending`
 - `CONTACT_FORM_SESSION_SECRET`: a cryptographically random secret of at least
   32 characters, generated server-side and never committed or returned to clients.
+
+The current Netlify plan rejects specific scopes with HTTP 403, so this rollout
+uses its supported all-scopes production variables. The application reads the
+signing secret only in backend functions; it is never interpolated into static
+assets or returned by the configuration endpoint. Treat it as a credential even
+when Netlify's dedicated secret flag is unavailable. Verify variable presence
+through the API and the deployed configuration endpoint: this CLI version can
+exit successfully without persisting a rejected environment-variable update.
 
 The fallback is never selected by a client request or provider outage. Without
 explicit pending mode and a strong signing secret, missing configuration fails
@@ -24,7 +33,7 @@ mandatory even if the pending flag remains. Accepted pre-activation leads record
 
 ## Activate Turnstile later
 
-In the **marketing site's Netlify environment**, configure:
+In the **marketing site's production Netlify environment**, configure:
 
 - `TURNSTILE_SITE_KEY`: the public key of a Cloudflare **Managed** widget.
 - `TURNSTILE_SECRET_KEY`: its matching server-only secret. Never put this in
