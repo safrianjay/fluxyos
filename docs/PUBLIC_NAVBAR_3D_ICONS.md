@@ -21,7 +21,7 @@ Department Heads already links to the homepage `/fluxyos` (ID `/id/fluxyos`); th
 
 Original realistic 3D objects generated using the built-in imagegen skill/tool, no CLI or external icon pack. The common prompt and all subject prompts are recorded below; source filenames are preserved in the provenance table. Final assets: transparent 192×192 WebP, rendered at 48×48 CSS px (4× density), decorative alt="", native lazy loading, asynchronous decode. A small original outline SVG provides a failed-image fallback. Original generated PNGs remain in the imagegen output directory; site references only workspace assets.
 
-Common prompt:
+Original generation prompt (superseded by the palette revision below):
 
 > Use case: stylized-concept. Asset type: public website dropdown icon, legible at 48px. Create one original realistic 3D object, orthographic three-quarter view from above at 30 degrees, consistent upper-left soft studio light, soft contact shadow, matte deep navy #0B0F19, ivory ceramic and brushed steel materials. One tiny burnt-orange #EA580C detail only. Genuine transparent background, square composition, subject centered at 75% canvas width/height, equal clear padding. Strong simple silhouette, refined rounded edges, realistic gentle material highlights. No tile, base plate, border, background, tiny writing, logos, lettering, currency symbols, emojis or additional props. Subject:
 
@@ -151,3 +151,35 @@ Total: **133,226 bytes** for 18 assets; each below 12 KiB. Full-family visual re
 - Shared header parity: 47 pages. Indonesian mirror parity, module parsing (197 files), structural drift (including app Lucide icons), design lint and isolated prepare-deploy checks passed.
 - Screenshot review: `.qa/public-navbar/review-en-desktop-0.png`, `review-en-desktop-1.png`, `review-id-desktop-0.png`, `review-id-desktop-1.png`, `review-en-mobile.png`, `review-id-mobile.png`; family contact sheet `all-icons.png`.
 - No newly introduced product claims, customer proof or external-license assets. No approval needed for original generated assets. Department Heads retains the existing homepage destination.
+
+
+## Brighter palette revision — 2026-10-03
+
+All 18 icons retain sculptural 3D styling and now use predominantly light ivory ceramic and brushed steel, restrained navy details, and visible Fluxy Orange object accents (target 15–25%). Orange is never a background. Dynamic Budgeting replaces the allocation tray metaphor with a segmented allocation chart and adjustable sliders. Revenue Sync replaces the channel junction with a revenue record, circular sync arrows and neutral coins. Stable asset URLs are retained for shared navbar and section consumers.
+
+Generated with the built-in imagegen tool, using each previous WebP as its edit reference. Preserve silhouette, arrangement and viewing angle for the other 16 icons; retain soft upper-left lighting, rounded bevels, transparent padding and 48px readability. No new product claim or integration is introduced. Local full edit prompts and sources: `.qa/public-navbar/revision-sources.json`. Historical provenance above describes the original versions.
+
+| Entry | Revised source PNG | Export bytes |
+| --- | --- | --- |
+| point-of-sale | exec-73ba756b-ce44-4f63-9a2e-3e0073aed794.png | 9496 |
+| erp-intelligence | exec-bb47f337-d59c-4eae-8a2b-eef38faf88bd.png | 8814 |
+| budgeting | exec-50cba5ac-a334-4bfe-bac9-54dd43371d48.png | 6960 |
+| invoice | exec-166ce03f-37a0-4829-b923-68b309244d3d.png | 6870 |
+| revenue-sync | exec-564ca8e0-92f8-4ac6-ad6e-30938fa3cdf1.png | 6736 |
+| receipt-capture | exec-19852eb5-f9a2-4ec6-b6f6-d3e2c96c2eba.png | 8576 |
+| ai-agents | exec-881e2a19-da75-4953-941c-734ec7db7093.png | 9970 |
+| multi-currency | exec-722ec28c-76f2-4978-b408-db76e3bc30c0.png | 9670 |
+| accounting | exec-657a7e79-b179-4a5d-9807-a049e4449e9e.png | 6922 |
+| ecommerce | exec-eea25a9e-5306-4fd6-ba20-f1a5b5f8bce4.png | 8222 |
+| startups-saas | exec-d191df42-9ec6-4363-8d14-f17559309a12.png | 7632 |
+| marketing-agencies | exec-1f140378-9d0d-4287-810c-23f1c4243b9b.png | 9872 |
+| retail-franchises | exec-bee62f70-749a-4754-82d4-21132a7adbcf.png | 8754 |
+| restaurants-cafes | exec-c9560bc0-368e-4846-8d81-5c898e1f29be.png | 8516 |
+| manufacturing | exec-3624db95-75a3-4582-8142-513135ce6f23.png | 9174 |
+| cfo-finance | exec-b6eddcd6-f19b-411f-8dfc-70128836535b.png | 9536 |
+| founder-ceo | exec-2f3cdcda-68bf-4f78-a9d3-0ff8ad9204d8.png | 7408 |
+| department-heads | exec-acadbaba-458c-4fe5-b811-b49486bd7bc5.png | 7628 |
+
+Export total: 150,756 bytes. All files are transparent 192×192 RGBA WebP, below 12 KiB per asset and 216 KiB per family. Reviewed on white at 192px and 48px; screenshots remain in `.qa/public-navbar/`.
+
+Revision verification: all 26 public-navbar browser checks passed in Chromium and WebKit across EN/ID desktop, tablet and mobile widths (320–1440px). Verified hover/focus transforms, keyboard dismissal, touch navigation, failed-image fallback, reduced-motion behavior, route mapping and asset budgets. Canonical navbar check confirms all 47 pages remain synchronized.

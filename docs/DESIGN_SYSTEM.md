@@ -1175,8 +1175,12 @@ chevrons, language checks and promotional-card artwork keep their existing icons
 
 - Art direction: original realistic objects in an orthographic three-quarter
   view from above at 30 degrees. Upper-left soft studio light, gentle contact
-  shadows, matte Deep Navy `#0B0F19`, ivory ceramic and brushed steel. Orange
-  `#EA580C` identifies one small detail. No logos, tiny writing, UI screenshots,
+  shadows, predominantly light ivory ceramic and brushed steel. Deep Navy
+  `#0B0F19` is restrained trim; Fluxy Orange `#EA580C` supplies visible object
+  accents (roughly 15–25%), never a backdrop. Avoid large dark surfaces.
+  Dynamic Budgeting uses an allocation chart with adjustable sliders; Revenue
+  Sync uses a revenue record with circular sync arrows and neutral coins.
+  No logos, tiny writing, UI screenshots,
   emojis, baked tiles, borders, base plates or colored backdrops. A strong
   silhouette must remain recognizable at 48px.
 - Canvas/export: square transparent RGBA sources, optimized to 192×192 WebP for
