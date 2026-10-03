@@ -11,6 +11,11 @@ const test = base.test.extend({
                 if (property === 'newContext') return async options => {
                     const context = await target.newContext(options);
                     await installNetwork(context, pending);
+                    const close = context.close.bind(context);
+                    context.close = async closeOptions => {
+                        await context.unrouteAll({ behavior: 'wait' });
+                        return close(closeOptions);
+                    };
                     return context;
                 };
                 const value = Reflect.get(target, property, target);
@@ -19,6 +24,12 @@ const test = base.test.extend({
         });
         await use(wrapped);
     }, { scope: 'worker' }],
+    page: async ({ page }, use) => {
+        try { await use(page); }
+        finally {
+            await page.context().unrouteAll({ behavior: 'wait' });
+        }
+    },
 });
 
 module.exports = { ...base, test };
