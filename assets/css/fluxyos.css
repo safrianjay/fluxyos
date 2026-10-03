@@ -28,6 +28,7 @@ nav[data-animate="nav"] {
 }
 
 .promo-banner {
+    font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
     position: -webkit-sticky;
     position: sticky;
     top: 0;

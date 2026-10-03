@@ -1228,3 +1228,12 @@ walkthrough controls must use scroll bounds rather than assume one card fills
 the viewport. Maintain readable decision context on each card. Do not add
 illustrative/sample/dummy labels or standalone feature-status audit paragraphs;
 specific product limits belong in relevant copy and buying-context FAQs.
+
+### Universal promotion banner
+
+All public landing and use-case pages must use the homepage promotion markup
+and styles from `assets/css/fluxyos.css`. Preserve its gradient layers, percent
+icon color and shadow, copy/link colors, spacing, and responsive wrapping.
+Page-specific styles must not override `.promo-banner` or its descendants and
+pseudo-elements. A prerendered banner may reserve its height before JavaScript
+loads, but must retain the same visual treatment in EN and ID.
