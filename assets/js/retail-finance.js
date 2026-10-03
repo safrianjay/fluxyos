@@ -41,14 +41,17 @@
  prev.parentElement.hidden=false;let scrollFrame;
  function update(){
   const max=carousel.scrollWidth-carousel.clientWidth,left=carousel.scrollLeft,box=carousel.getBoundingClientRect();
-  prev.disabled=left<=1;next.disabled=left>=max-1;
+  // Native snap alignment can retain the 2px inline inset at either boundary.
+  prev.disabled=left<=3;next.disabled=left>=max-3;
   const shown=cards.map((c,i)=>({i,r:c.getBoundingClientRect()})).filter(({r})=>r.left<box.right-8&&r.right>box.left+8);
   if(shown.length)status.textContent=`${isID?'Langkah':'Steps'} ${shown[0].i+1}–${shown.at(-1).i+1} / ${cards.length}`;
  }
- function move(value){carousel.scrollTo({left:Math.max(0,Math.min(carousel.scrollWidth-carousel.clientWidth,value)),behavior:reduced.matches?'instant':'smooth'});}
+ function move(value,immediate=false){
+  carousel.scrollTo({left:Math.max(0,Math.min(carousel.scrollWidth-carousel.clientWidth,value)),behavior:immediate||reduced.matches?'instant':'smooth'});
+ }
  const stride=()=>cards[1].offsetLeft-cards[0].offsetLeft;
  prev.addEventListener('click',()=>move(carousel.scrollLeft-stride()));next.addEventListener('click',()=>move(carousel.scrollLeft+stride()));
- carousel.addEventListener('keydown',e=>{if(e.target!==carousel)return;const targets={ArrowLeft:carousel.scrollLeft-stride(),ArrowRight:carousel.scrollLeft+stride(),Home:0,End:carousel.scrollWidth};if(e.key in targets){e.preventDefault();move(targets[e.key]);}});
+ carousel.addEventListener('keydown',e=>{if(e.target!==carousel)return;const targets={ArrowLeft:carousel.scrollLeft-stride(),ArrowRight:carousel.scrollLeft+stride(),Home:0,End:carousel.scrollWidth};if(e.key in targets){e.preventDefault();move(targets[e.key],e.key==='Home'||e.key==='End');}});
  carousel.addEventListener('scroll',()=>{cancelAnimationFrame(scrollFrame);scrollFrame=requestAnimationFrame(update);},{passive:true});
  if('ResizeObserver'in window)new ResizeObserver(update).observe(carousel);
  update();
