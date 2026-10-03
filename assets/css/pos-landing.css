@@ -1536,8 +1536,16 @@
 
 /* Larger service illustrations, with a common visual language. */
 .pos-feature-art { height: 215px; gap: 12px; border-radius: 12px; background-color: #fafbfc; }
-.pos-feature-art > .pos-service-scene { width: 220px; height: 140px; stroke-width: 1.8; filter: drop-shadow(0 7px 5px #0b0f1908); }
-.pos-service-scene text { fill: #0b0f19; stroke: none; font: 500 19px Inter, sans-serif; text-anchor: middle; }
+.pos-3d-icon { display: block; width: 40px; height: 40px; flex: 0 0 auto; object-fit: contain; }
+.pos-node-title { gap: 10px; }
+.pos-feature-art > .pos-3d-icon { width: 144px; height: 144px; }
+.pos-feature-art .pos-3d-icon { transition: transform 240ms cubic-bezier(.25,1,.5,1); }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .pos-feature:hover .pos-3d-icon { transform: translateY(-4px) rotate(-2deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pos-feature-art .pos-3d-icon { transition: none; }
+}
 .pos-feature-art > span { font-size: 11px; max-width: 94%; }
 .pos-autoplay { display: inline-flex; align-items: center; gap: 9px; margin-top: 18px; padding: 8px 12px; color: #526075; font-size: 12px; border: 1px solid #dce0e9; border-radius: 20px; background: white; }
 .pos-autoplay[hidden] { display: none; }

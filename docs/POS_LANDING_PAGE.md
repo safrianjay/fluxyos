@@ -120,8 +120,8 @@ after source markup edits, following the generator order above.
 
 ### Service illustrations, phone playback, and financial samples
 
-The four service cards use custom SVG scenes (seating, coffee options, split
-payment, and cash drawer) with navy outlines and orange accents. The QR showcase
+The four service cards use original transparent 3D objects (seating, coffee
+options, split payment, and cash drawer) with light ivory, steel and orange accents. The QR showcase
 cycles its real app screenshots every six seconds while visible, pauses on
 hover/focus or manual selection, and includes a pause/play control. Reduced-motion
 preferences disable automatic playback by default.
@@ -131,3 +131,12 @@ maximum scale. Labels use thousands of Rupiah. Revenue totals Rp 4.800.000, COGS
 Rp 1.920.000, and gross profit Rp 2.880.000 (60% margin). Every day's costs and
 profit reconcile to revenue. Orange revenue, navy cost, and striped orange profit
 replace the purple bars; values remain readable without hover. EN and ID match.
+
+
+## 3D icon refresh — 2026-10-03
+
+The hero connection diagram and recipe-to-ledger illustration reuse the brighter public-navbar 3D family at 40px. Four service visuals render at 144px from transparent 384×384 WebP sources. The dining table reuses the original generated source behind the restaurant navbar asset; coffee customization, split payment and shift cash are new original imagegen assets matching that style. See `assets/images/pos-3d/manifest.json` for source filenames; local full generation prompts are recorded in `.qa/pos-3d-sources.json`. All four service assets together weigh 75,186 bytes.
+
+Keep light ivory ceramic and brushed steel as the dominant materials, visible orange object accents, restrained navy details, generous alpha margins, and the shared three-quarter viewpoint. Preserve semantic labels beside decorative images (`alt=""` and `aria-hidden="true"`). Reserve dimensions to prevent layout shifts and use lazy loading/async decoding. Service cards lift their artwork by 4px and tilt 2 degrees on pointer hover over 240ms; reduced motion disables that feedback. Controls, diagram connections and actual QR screenshots keep their established treatment. EN and ID share these assets; the Indonesian mirror is regenerated from the English source.
+
+Verification for this revision: all 20 POS landing tests passed in Chromium/WebKit, EN/ID at 390/768/1440px. All 12 decorative images loaded at their intended density; desktop/mobile screenshots, stable layout, pointer hover and reduced-motion behavior were verified. Localization and Organization schema checks passed. Review artifacts: `.qa/pos-3d/`.
