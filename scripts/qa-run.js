@@ -532,6 +532,7 @@ function rotatingShard(alreadyCovered) {
 function laneFE(changed) {
   console.log('\nFE');
   let ok = true;
+  ok = record('fe', run('QA static asset cache boundaries', 'node', ['--test', 'tests/qa-network.check.js'])) && ok;
   ok = record('fe', run('marketing navbar parity', 'node', ['scripts/sync-marketing-nav.js', '--check'])) && ok;
 
   ok = record('fe', run('design-system lint (changed lines)', 'node', ['scripts/qa/lint-design.js'])) && ok;
@@ -587,6 +588,9 @@ function laneFE(changed) {
   if (FORCE_ALL || changed.some((f) => /^(?:id\/)?use-cases\/retail-franchises\.html$|^assets\/(?:css\/retail-franchises|js\/retail-finance)\.|^tests\/retail-franchises\.|^scripts\/build-retail-page\.js$/.test(f))) {
     ok = record('fe', run('retail bilingual page parity', 'node', ['scripts/build-retail-page.js', '--check'])) && ok;
     ok = record('fe', run('browser: retail finance landing EN + ID', 'npx', ['playwright', 'test', '--config', 'tests/retail-franchises.config.js'], { timeout: 4 * 60_000 })) && ok;
+  }
+  if (FORCE_ALL || changed.some((f) => /^(?:id\/)?point-of-sale\.html$|^assets\/(?:css|js)\/pos-landing\.|^assets\/images\/pos-3d\/|^tests\/pos-landing\./.test(f))) {
+    ok = record('fe', run('browser: POS landing EN + ID', 'npx', ['playwright', 'test', '--config', 'tests/pos-landing.config.js'], { timeout: 4 * 60_000 })) && ok;
   }
   if (FORCE_ALL || changed.some((f) => /^assets\/images\/navbar-3d\/|^scripts\/public-nav-icons\.js$|^tests\/public-navbar\.|^assets\/js\/fluxyos\.js$|^scripts\/sync-marketing-nav\.js$/.test(f))) {
     ok = record('fe', run('browser: public navigation icons EN + ID', 'npx', ['playwright', 'test', '--config', 'tests/public-navbar.config.js'], { timeout: 4 * 60_000 })) && ok;

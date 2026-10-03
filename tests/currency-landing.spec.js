@@ -1,4 +1,4 @@
-const {test, expect} = require('@playwright/test');
+const {test, expect} = require('./public-test');
 
 test.beforeEach(async ({page}) => {
   // These local interaction tests must not wait on third-party fonts or

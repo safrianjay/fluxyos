@@ -1,4 +1,4 @@
-const{test,expect}=require('@playwright/test'),fs=require('fs');
+const{test,expect}=require('./public-test'),fs=require('fs');
 for(const locale of['en','id'])for(const width of[1440,1024,768,390,320])test(`${locale} retail page ${width}`,async({page,request})=>{
  const prefix=locale==='id'?'/id':'',errors=[],missing=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{if(r.url().startsWith('http://127.0.0.1:8765')&&r.status()>=400)missing.push(r.url())});

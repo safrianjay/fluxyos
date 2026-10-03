@@ -129,3 +129,20 @@ suspended` takes the site down. Check both:
 ```
 netlify api listSites --data '{}'    # look at .state and .build_settings.stop_builds
 ```
+
+### Browser QA static dependencies
+
+Public-page browser specs use `tests/public-test.js`; authenticated specs retain
+`tests/qa-test.js`, which extends it. The fixture also covers explicitly created
+no-JS, reduced-motion and touch contexts. Successful Google font and Tailwind CDN
+source bytes are cached under gitignored `.qa/static-assets/` for four hours,
+keyed by URL and user agent. The existing versioned Firebase SDK cache uses the
+same persistence. Source bytes and rendering remain real; failed responses are
+never cached and exhausted downloads fail the test. Auth, Firestore, application
+APIs and local assets are never intercepted by this cache. Analytics is suppressed
+so UI tests do not send measurements or wait for the analytics provider.
+
+`npm run qa` verifies the cache boundaries and runs the POS landing browser suite
+when its pages, assets or tests change. The complete passing, clean artifact must
+still match HEAD before pushing; this fixture does not waive any assertion or
+shipping gate.

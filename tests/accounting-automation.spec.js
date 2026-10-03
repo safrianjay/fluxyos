@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./public-test');
 const fs = require('fs');
 const path = require('path');
 async function open(page, route) {

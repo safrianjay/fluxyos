@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./public-test');
 async function mock(page, options = {}) {
     const submissions = [], errors = [];
     page.on('pageerror', error => errors.push(error.message));

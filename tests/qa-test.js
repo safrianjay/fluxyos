@@ -1,4 +1,5 @@
-const base = require('@playwright/test');
+const base = require('./public-test');
+const { staticAsset } = require('./helpers/qa-network');
 
 // Cache only immutable, versioned SDK source bytes for this test worker. Fresh
 // browser contexts otherwise repeat every gstatic download, occasionally hanging
@@ -11,21 +12,7 @@ const test = base.test.extend({
     context: async ({ context, firebaseSdkCache }, use) => {
         await context.route(/^https:\/\/www\.gstatic\.com\/firebasejs\/\d+\.\d+\.\d+\/firebase-[a-z-]+\.js$/, async route => {
             const url = route.request().url();
-            let response = firebaseSdkCache.get(url);
-            if (!response) {
-                response = (async () => {
-                    const fetched = await route.fetch({ timeout: 30000 });
-                    if (!fetched.ok()) throw new Error(`Firebase SDK download failed: ${fetched.status()} ${url}`);
-                    const headers = fetched.headers();
-                    // APIResponse.body() is decoded; don't replay compressed sizes.
-                    delete headers['content-encoding'];
-                    delete headers['content-length'];
-                    return { status: fetched.status(), headers, body: await fetched.body() };
-                })();
-                firebaseSdkCache.set(url, response);
-                response.catch(() => firebaseSdkCache.delete(url));
-            }
-            await route.fulfill(await response);
+            await route.fulfill(await staticAsset(route, url, firebaseSdkCache));
         });
         await use(context);
     },

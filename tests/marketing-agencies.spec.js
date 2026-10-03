@@ -1,4 +1,4 @@
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./public-test');
 for(const locale of ['en','id']) for(const width of [1440,768,390,320]) {
  test(`${locale} at ${width}: layout, routes, schema, keyboard and console`,async({page,request})=>{
   const failures=[];

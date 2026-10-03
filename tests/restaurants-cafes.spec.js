@@ -1,4 +1,4 @@
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./public-test');
 const fs=require('fs');
 for(const locale of ['en','id'])for(const width of [1440,768,390,320])test(`${locale} restaurant flow at ${width}`,async({page,request})=>{
  await page.setViewportSize({width,height:900});const errors=[],writes=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(['POST','PUT','PATCH','DELETE'].includes(r.method())&&!r.url().includes('google'))writes.push(r.url())});

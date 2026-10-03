@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./public-test');
 
 for (const locale of ['en', 'id']) {
   const route = (locale === 'id' ? '/id' : '') + '/receiptcapture';
