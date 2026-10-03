@@ -1,25 +1,25 @@
 {
   "dining-table": {
     "asset": "dining-table.webp",
-    "source": "exec-c9560bc0-368e-4846-8d81-5c898e1f29be.png",
+    "source": "exec-fb9e796f-8809-4712-89f3-286fc0d6af45.png",
     "width": 384,
     "height": 384
   },
   "order-customization": {
     "asset": "order-customization.webp",
-    "source": "exec-2a3170fd-d8d9-4d8f-ac62-e1593fc64963.png",
+    "source": "exec-c1bcfa28-8ca7-465f-bc96-e35b4bb14667.png",
     "width": 384,
     "height": 384
   },
   "split-payment": {
     "asset": "split-payment.webp",
-    "source": "exec-f94df1c2-06fc-42ef-8cf9-a0a6c7cc4ae4.png",
+    "source": "exec-7ff525bb-940a-4720-9d18-552d41577fc9.png",
     "width": 384,
     "height": 384
   },
   "shift-cash": {
     "asset": "shift-cash.webp",
-    "source": "exec-3191ed72-8170-4774-a2ef-09b4b6591dca.png",
+    "source": "exec-c999bfe4-db95-4f7e-80fb-8a0439e55792.png",
     "width": 384,
     "height": 384
   }

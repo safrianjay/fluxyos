@@ -3,108 +3,108 @@
     "route": "/point-of-sale",
     "label": "Point of Sale",
     "asset": "pos-terminal.webp",
-    "metaphor": "Ivory countertop terminal with orange casing accents"
+    "metaphor": "Countertop payment terminal"
   },
   "erp-intelligence": {
     "route": "/erp-intelligence",
     "label": "ERP Intelligence",
     "asset": "connected-records.webp",
-    "metaphor": "Three ivory record binders with orange rails and steel supports"
+    "metaphor": "Three financial record binders connected by steel rails"
   },
   "budgeting": {
     "route": "/budgetlanding",
     "label": "Dynamic Budgeting",
     "asset": "allocation-tray.webp",
-    "metaphor": "Budget allocation chart with adjustable sliders"
+    "metaphor": "Standalone segmented 3D pie chart representing budget allocation"
   },
   "invoice": {
     "route": "/vendorspend",
     "label": "Invoice",
     "asset": "invoice-envelope.webp",
-    "metaphor": "Invoice sheet emerging from an ivory envelope with orange seams"
+    "metaphor": "Invoice sheet emerging from an envelope"
   },
   "revenue-sync": {
     "route": "/revenuesync",
     "label": "Revenue Sync",
     "asset": "revenue-stream.webp",
-    "metaphor": "Revenue record with orange circular sync arrows and neutral coins"
+    "metaphor": "Revenue record with circular sync arrows and neutral coins"
   },
   "receipt-capture": {
     "route": "/receiptcapture",
     "label": "Receipt Capture",
     "asset": "receipt-scanner.webp",
-    "metaphor": "Receipt passing through an ivory scanner with orange rollers"
+    "metaphor": "Receipt passing through a document scanner"
   },
   "ai-agents": {
     "route": "/aiagents",
     "label": "FluxyOS AI Agents",
     "asset": "intelligence-orb.webp",
-    "metaphor": "Ivory sphere with orange and steel orbital rings"
+    "metaphor": "Sphere with precise orbital rings"
   },
   "multi-currency": {
     "route": "/multi-currency",
     "label": "Multi-Currency",
     "asset": "currency-globe.webp",
-    "metaphor": "Ivory globe with orange meridians and two neutral coins"
+    "metaphor": "Globe with meridians and two neutral coins"
   },
   "accounting": {
     "route": "/accounting-automation",
     "label": "Accounting Automation",
     "asset": "accounting-ledger.webp",
-    "metaphor": "Closed ivory ledger with ivory page edges and orange bookmark"
+    "metaphor": "Closed ledger with visible page edges and bookmark"
   },
   "ecommerce": {
     "route": "/use-cases/ecommerce-brands",
     "label": "E-Commerce Brands",
     "asset": "commerce-parcel.webp",
-    "metaphor": "Ivory parcel with orange cord and a steel sales tag"
+    "metaphor": "Parcel with sales tag"
   },
   "startups-saas": {
     "route": "/use-cases/tech-startups-saas",
     "label": "Tech Startups & SaaS",
     "asset": "server-stack.webp",
-    "metaphor": "Two ivory server units with navy vents and orange trim"
+    "metaphor": "Two compact server units"
   },
   "marketing-agencies": {
     "route": "/use-cases/marketing-agencies",
     "label": "Marketing Agencies",
     "asset": "client-brief.webp",
-    "metaphor": "Ivory client brief clipboard with orange frame and steel clip"
+    "metaphor": "Client brief clipboard with a cost sheet"
   },
   "retail-franchises": {
     "route": "/use-cases/retail-franchises",
     "label": "Retail & Franchises",
     "asset": "retail-store.webp",
-    "metaphor": "Compact ivory storefront with an orange awning"
+    "metaphor": "Compact storefront with awning"
   },
   "restaurants-cafes": {
     "route": "/use-cases/restaurants-cafes",
     "label": "Restaurants & Caf\u00e9s",
     "asset": "restaurant-table.webp",
-    "metaphor": "Ivory round dining table with orange trim and a place setting"
+    "metaphor": "Round dining table with place setting"
   },
   "manufacturing": {
     "route": "/use-cases/manufacturing",
     "label": "Manufacturing",
     "asset": "factory-gear.webp",
-    "metaphor": "Ivory precision gear with steel hub, orange ring and small navy block"
+    "metaphor": "Precision gear with machined block"
   },
   "cfo-finance": {
     "route": "/use-cases/cfo-finance-teams",
     "label": "CFOs & Finance Teams",
     "asset": "finance-calculator.webp",
-    "metaphor": "Ivory financial calculator with orange and navy accent keys"
+    "metaphor": "Financial calculator"
   },
   "founder-ceo": {
     "route": "/use-cases/founder-ceo",
     "label": "Founders & CEOs",
     "asset": "decision-compass.webp",
-    "metaphor": "Steel drawing compass with ivory and orange handles"
+    "metaphor": "Drawing compass"
   },
   "department-heads": {
     "route": "/fluxyos",
     "label": "Department Heads",
     "asset": "department-organizer.webp",
-    "metaphor": "Ivory desk organizer with three folders and orange handles"
+    "metaphor": "Desk organizer with three department folders"
   }
 }

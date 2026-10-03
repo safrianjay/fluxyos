@@ -183,3 +183,41 @@ Generated with the built-in imagegen tool, using each previous WebP as its edit 
 Export total: 150,756 bytes. All files are transparent 192×192 RGBA WebP, below 12 KiB per asset and 216 KiB per family. Reviewed on white at 192px and 48px; screenshots remain in `.qa/public-navbar/`.
 
 Revision verification: all 26 public-navbar browser checks passed in Chromium and WebKit across EN/ID desktop, tablet and mobile widths (320–1440px). Verified hover/focus transforms, keyboard dismissal, touch navigation, failed-image fallback, reduced-motion behavior, route mapping and asset budgets. Canonical navbar check confirms all 47 pages remain synchronized.
+
+
+## Contrast restoration and semantic refinement
+
+Restored the original Deep Navy, ivory ceramic and brushed-steel palette, with restrained orange accents. Current object concepts, perspective and geometry are retained except for Dynamic Budgeting, now a standalone segmented pie chart. The POS coffee visual uses a cup and order receipt, without gears or plus symbols. All asset URLs and rendered/export dimensions remain stable; no HTML, CSS, interaction, route or localization changes are needed. Transparent exports retain their previous optical footprint. See `DESIGN_SYSTEM.md` for the revised metaphor and contrast rules.
+
+Built-in imagegen edits use the current icon as the geometry reference and the original terminal source as the palette-only reference. Full prompts and source paths are stored locally in `.qa/icon-contrast-sources.json`; source files remain in the generated-images directory.
+
+| Entry | Source PNG |
+| --- | --- |
+| point-of-sale | exec-faef271b-f6ca-43d3-ac14-4a9da685d04a.png |
+| erp-intelligence | exec-c73081cf-e37d-4629-82e8-aa1b1b157915.png |
+| budgeting | exec-0abe37e6-1d92-4836-a10d-4cbd11700b6e.png |
+| invoice | exec-dcee68fa-63a7-4d47-a8fd-26bffe56a208.png |
+| revenue-sync | exec-4138bf35-e653-405f-9c2f-e666bc73ead8.png |
+| receipt-capture | exec-8e8c7e96-e387-48be-9dec-f2c9d0ba52a5.png |
+| ai-agents | exec-3dd48df1-be52-40cb-97b8-4b704bebac85.png |
+| multi-currency | exec-7b003582-daad-4394-b0b5-54e02f6cff6e.png |
+| accounting | exec-bc309c89-ba0c-47b4-b07d-8c0e5a1c9182.png |
+| ecommerce | exec-496540e5-8f10-4415-a887-16d5fba6699c.png |
+| startups-saas | exec-3e030459-635d-4279-b6af-2b04b6b52731.png |
+| marketing-agencies | exec-785a696a-3e95-4e65-8e6b-5da0b8ce8c4e.png |
+| retail-franchises | exec-7631e031-8558-4f76-b301-cfdfa8eb184d.png |
+| restaurants-cafes | exec-fb9e796f-8809-4712-89f3-286fc0d6af45.png |
+| manufacturing | exec-f60bf35d-13ae-48bd-9b6a-ad85527bb4b8.png |
+| cfo-finance | exec-531db472-648d-4c85-be3c-0febc6e2904e.png |
+| founder-ceo | exec-864eb3f3-98f3-4f06-8708-edc30a0beb45.png |
+| department-heads | exec-ff3c4538-7c36-4ab9-875b-c96f3700c172.png |
+| order-customization | exec-c1bcfa28-8ca7-465f-bc96-e35b4bb14667.png |
+| split-payment | exec-7ff525bb-940a-4720-9d18-552d41577fc9.png |
+| shift-cash | exec-c999bfe4-db95-4f7e-80fb-8a0439e55792.png |
+| dining-table | exec-fb9e796f-8809-4712-89f3-286fc0d6af45.png |
+
+Review artifacts: `.qa/icon-contrast-before/`, `.qa/icon-contrast-review.png`. White and gray surfaces, grayscale readability and before/after optical scale are reviewed at actual navbar size.
+
+Verification: all 26 navbar and 20 POS browser checks passed in Chromium/WebKit, EN/ID, desktop/tablet/mobile. Shared navbar exports total 127,532 bytes, below 216 KiB; every file is below 12 KiB. CSS, JS and HTML are unchanged.
+
+Ledger cover contrast refinement: broad navy cover, ivory pages and orange bookmark; source `exec-53eddd1d-1e67-41b5-9ebc-5f5332baab11.png`. Geometry, optical footprint and 192px export stay consistent.

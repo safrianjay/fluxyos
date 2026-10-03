@@ -1175,14 +1175,32 @@ chevrons, language checks and promotional-card artwork keep their existing icons
 
 - Art direction: original realistic objects in an orthographic three-quarter
   view from above at 30 degrees. Upper-left soft studio light, gentle contact
-  shadows, predominantly light ivory ceramic and brushed steel. Deep Navy
-  `#0B0F19` is restrained trim; Fluxy Orange `#EA580C` supplies visible object
-  accents (roughly 15–25%), never a backdrop. Avoid large dark surfaces.
-  Dynamic Budgeting uses an allocation chart with adjustable sliders; Revenue
-  Sync uses a revenue record with circular sync arrows and neutral coins.
+  shadows, matte Deep Navy `#0B0F19` structural surfaces, ivory ceramic secondary
+  surfaces and brushed steel details. Fluxy Orange `#EA580C` is a restrained,
+  meaningful accent, never a backdrop or an extensive frame around every part.
+  Preserve the deeper original palette: avoid ivory-on-white silhouettes and
+  excessive orange surfaces that weaken contrast or compete with CTAs.
+  Dynamic Budgeting uses a standalone segmented 3D pie chart; Revenue Sync uses
+  a revenue record with circular sync arrows and neutral coins. Coffee ordering
+  uses a coffee cup and order receipt, without gears or plus symbols.
   No logos, tiny writing, UI screenshots,
   emojis, baked tiles, borders, base plates or colored backdrops. A strong
   silhouette must remain recognizable at 48px.
+- Metaphor: choose a familiar object or conventional visual meaning that names
+  the workflow at a glance. Use one primary concept and at most one supporting
+  cue. Gears mean settings or machinery; do not use them as generic decoration
+  for ordering, finance or intelligence. A plus means add; it does not explain
+  coffee customization. Do not imply a product capability through artwork.
+- Contrast review: inspect every asset at its actual 48px navbar size on both
+  white and light-gray menu surfaces, and in grayscale. Important shapes and
+  boundaries should target at least 3:1 contrast against adjacent surfaces;
+  light material highlights may remain subtle when a navy boundary carries the
+  shape. Never rely on orange alone to distinguish adjacent concepts. Confirm
+  the object reads without zooming, tiny text or extra explanatory badges.
+- Revisions: palette-only requests preserve the current silhouette, geometry,
+  object arrangement, viewpoint, optical scale and transparent margins. Change
+  a metaphor only when explicitly requested. Keep CSS dimensions, layout,
+  routes, keyboard behavior, hover timing and reduced-motion behavior stable.
 - Canvas/export: square transparent RGBA sources, optimized to 192×192 WebP for
   4× density. Retain clear margins, optical centering and consistent object
   scale. Render every icon in a fixed **48×48 CSS-pixel** box with `object-fit:

@@ -140,3 +140,8 @@ The hero connection diagram and recipe-to-ledger illustration reuse the brighter
 Keep light ivory ceramic and brushed steel as the dominant materials, visible orange object accents, restrained navy details, generous alpha margins, and the shared three-quarter viewpoint. Preserve semantic labels beside decorative images (`alt=""` and `aria-hidden="true"`). Reserve dimensions to prevent layout shifts and use lazy loading/async decoding. Service cards lift their artwork by 4px and tilt 2 degrees on pointer hover over 240ms; reduced motion disables that feedback. Controls, diagram connections and actual QR screenshots keep their established treatment. EN and ID share these assets; the Indonesian mirror is regenerated from the English source.
 
 Verification for this revision: all 20 POS landing tests passed in Chromium/WebKit, EN/ID at 390/768/1440px. All 12 decorative images loaded at their intended density; desktop/mobile screenshots, stable layout, pointer hover and reduced-motion behavior were verified. Localization and Organization schema checks passed. Review artifacts: `.qa/pos-3d/`.
+
+
+### Contrast and metaphor refinement
+
+The later contrast revision restores the original Deep Navy, ivory and brushed-steel palette while keeping the current 3D object geometry, rendered dimensions, layout and interactions. Orange returns to restrained semantic accents. Coffee ordering uses a recognizable cup with an order receipt; gears and plus symbols are removed. Dynamic Budgeting uses the shared standalone pie-chart metaphor. These replace the lighter palette and coffee adjustment-knob direction documented above. Follow the Public Navbar 3D Icon Standard in `DESIGN_SYSTEM.md` for metaphor selection, consistent rendering and contrast review.
