@@ -258,7 +258,7 @@ Verified against the codebase, not from memory or roadmap intent.
 | Tax management (Indonesia) | ✅ Phases 1–4, 5.1 | `tax-center.html`, 5 tax collections |
 | Vendor management | ✅ | `vendors` panel, 123 refs in `db-service.js` |
 | COGS detection | ✅ | via `sak_category === 'cogs'` — a categorization of spend, not a consequence of stock moving (see §4) |
-| **Multi-entity accounting** | **📋 Not built** | Re-audited 2026-08-14. `entity_id` is carried on journals/accounts/balances, but `_resolvedScopeId()` returns the workspace id — it is a **constant, not a dimension**. One entity per workspace by construction; `entity_name` is read in one place and written nowhere. A `dimension_id` seam now exists on journal lines (`docs/DIMENSION_SEAM_DESIGN.md`); the collection, rollup, and UI are not built |
+| **Multi-entity accounting** | **📋 Not built** | Re-audited 2026-08-14. `entity_id` is carried on journals/accounts/balances, but `_resolvedScopeId()` returns the workspace id — it is a **constant, not a dimension**. One entity per workspace by construction; `entity_name` is read in one place and written nowhere. Outlet reporting is distinct from entity consolidation. Re-audited 2026-10-03 for Retail & Franchises: `dimensions`, `ledger_balances_by_dim`, `DataService.getOutletPnL`, and `/outlet-pnl` are live for outlet-attributed posted records within one workspace (`docs/data-model/dimensions.md`). Eligible comparisons require at least two outlets/branches; Unassigned remains visible and invoices do not carry an outlet dimension. This does not provide separate-entity or franchisee consolidation |
 
 ### Layer 3 — Operational Foundation · ◐ started, uneven
 

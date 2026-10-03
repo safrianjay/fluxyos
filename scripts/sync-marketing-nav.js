@@ -61,4 +61,4 @@ function run(check) {
   return failures;
 }
 if (require.main === module) process.exitCode = run(process.argv.includes('--check')) ? 1 : 0;
-module.exports = { pages, canonical, NAV, run };
+module.exports = { pages, canonical, render, NAV, run };

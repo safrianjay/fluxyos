@@ -147,12 +147,16 @@ The Tech Startup & SaaS EN/ID pair uses `scripts/build-startup-page.js`. Edit
 paired copy there, then run `node scripts/build-startup-page.js` (or `--check`).
 It shares the agency page’s CSS and interaction module, with a startup visual variant.
 
+The Retail & Franchises EN/ID pair uses `scripts/build-retail-page.js`. Edit paired copy there, then run `node scripts/build-retail-page.js` (or `--check`). It reuses the canonical navbar and agency editorial utilities, with retail-specific 3D assets and interactions.
+
 ### Translation glossary — recurring product/finance terms
 
 | English | Indonesian (canonical) | Notes |
 |---------|------------------------|-------|
 | Intelligent Finance Operating System | Sistem Operasi Keuangan Cerdas | **The product category.** The one exception to "brand names stay English": translate it, with the English in parentheses on first mention per page — *Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System)*. Canonical source: `PRODUCT_STRATEGY.md` §1 |
 | Point of Sale | Point of Sale (keep) | Product name; POS for the abbreviation |
+| Outlet P&L | Outlet P&L (keep) | Product surface; body copy uses “laporan laba rugi per outlet” |
+| Unassigned | Belum ditetapkan | Posting without outlet attribution; never hide these amounts from a comparison |
 | Cost of goods sold | Harga pokok penjualan | HPP for the abbreviation |
 | Shift | Shift | Cashier working session |
 | Table service | Layanan meja | Dine-in POS workflow |

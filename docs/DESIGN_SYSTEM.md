@@ -1216,3 +1216,15 @@ and inspect the icon at 48px on white and pale surfaces; verify transparent alph
 192px export and size budget; run navbar sync and paired generators; review EN/ID
 wrapping at desktop and mobile widths, keyboard/Escape/touch, reduced motion,
 failed-image fallback and all affected routes. Keep app Lucide assets unchanged.
+
+### Retail & Franchises public page
+
+Reuse the public navy/ivory 3D icon family for section icons and higher-density
+hero objects. The retail hero illustrates supported source → journal → outlet
+report records; its 8.5-second tour is an original adaptation, not a measured
+Stripe loop. Keep pause/resume and keyboard tabs, pause during reading or manual
+selection and offscreen, and disable autoplay for reduced motion. Multi-card
+walkthrough controls must use scroll bounds rather than assume one card fills
+the viewport. Maintain readable decision context on each card. Do not add
+illustrative/sample/dummy labels or standalone feature-status audit paragraphs;
+specific product limits belong in relevant copy and buying-context FAQs.
