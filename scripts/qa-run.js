@@ -571,6 +571,22 @@ function laneFE(changed) {
       ['playwright', 'test', '--config', 'tests/ecommerce-landing.config.js'],
       { timeout: 4 * 60_000 })) && ok;
   }
+  if (FORCE_ALL || changed.some((f) => /^(?:id\/)?use-cases\/(?:marketing-agencies|tech-startups-saas)\.html$|^assets\/(?:css|js)\/(?:marketing-agencies|tech-startups-saas|startup-walkthrough)\.|^tests\/(?:marketing-agencies|tech-startups-saas)\.|^scripts\/build-(?:agency|startup)-page\.js$/.test(f))) {
+    ok = record('fe', run('agency bilingual page parity', 'node',
+      ['scripts/build-agency-page.js', '--check'])) && ok;
+    ok = record('fe', run('startup bilingual page parity', 'node',
+      ['scripts/build-startup-page.js', '--check'])) && ok;
+    ok = record('fe', run('browser: agency and startup landings EN + ID', 'npx',
+      ['playwright', 'test', '--config', 'tests/tech-startups-saas.config.js'],
+      { timeout: 4 * 60_000 })) && ok;
+  }
+  if (FORCE_ALL || changed.some((f) => /^(?:id\/)?use-cases\/restaurants-cafes\.html$|^assets\/(?:css\/restaurants-cafes|js\/restaurant-finance)\.|^tests\/restaurants-cafes\.|^scripts\/build-restaurant-page\.js$/.test(f))) {
+    ok = record('fe', run('restaurant bilingual page parity', 'node', ['scripts/build-restaurant-page.js', '--check'])) && ok;
+    ok = record('fe', run('browser: restaurant finance landing EN + ID', 'npx', ['playwright', 'test', '--config', 'tests/restaurants-cafes.config.js'], { timeout: 4 * 60_000 })) && ok;
+  }
+  if (FORCE_ALL || changed.some((f) => /^assets\/images\/navbar-3d\/|^scripts\/public-nav-icons\.js$|^tests\/public-navbar\.|^assets\/js\/fluxyos\.js$|^scripts\/sync-marketing-nav\.js$/.test(f))) {
+    ok = record('fe', run('browser: public navigation icons EN + ID', 'npx', ['playwright', 'test', '--config', 'tests/public-navbar.config.js'], { timeout: 4 * 60_000 })) && ok;
+  }
   // No early exit for "nothing changed" any more: the rotating slice is the
   // whole point — it opens pages precisely when nobody has touched them.
 

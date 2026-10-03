@@ -1,0 +1,110 @@
+{
+  "point-of-sale": {
+    "route": "/point-of-sale",
+    "label": "Point of Sale",
+    "asset": "pos-terminal.webp",
+    "metaphor": "Compact countertop payment/order terminal"
+  },
+  "erp-intelligence": {
+    "route": "/erp-intelligence",
+    "label": "ERP Intelligence",
+    "asset": "connected-records.webp",
+    "metaphor": "Three upright financial record binders connected by a steel rail"
+  },
+  "budgeting": {
+    "route": "/budgetlanding",
+    "label": "Dynamic Budgeting",
+    "asset": "allocation-tray.webp",
+    "metaphor": "Three compartment allocation tray with navy and ivory blocks"
+  },
+  "invoice": {
+    "route": "/vendorspend",
+    "label": "Invoice",
+    "asset": "invoice-envelope.webp",
+    "metaphor": "Invoice sheet emerging from a navy envelope"
+  },
+  "revenue-sync": {
+    "route": "/revenuesync",
+    "label": "Revenue Sync",
+    "asset": "revenue-stream.webp",
+    "metaphor": "Two incoming channels joined to one collection vessel"
+  },
+  "receipt-capture": {
+    "route": "/receiptcapture",
+    "label": "Receipt Capture",
+    "asset": "receipt-scanner.webp",
+    "metaphor": "Receipt passing through a small document scanner"
+  },
+  "ai-agents": {
+    "route": "/aiagents",
+    "label": "FluxyOS AI Agents",
+    "asset": "intelligence-orb.webp",
+    "metaphor": "Ivory sphere with precise navy orbital rings"
+  },
+  "multi-currency": {
+    "route": "/multi-currency",
+    "label": "Multi-Currency",
+    "asset": "currency-globe.webp",
+    "metaphor": "Navy globe with ivory meridians and two neutral coins"
+  },
+  "accounting": {
+    "route": "/accounting-automation",
+    "label": "Accounting Automation",
+    "asset": "accounting-ledger.webp",
+    "metaphor": "Closed navy ledger with ivory page edges and orange bookmark"
+  },
+  "ecommerce": {
+    "route": "/use-cases/ecommerce-brands",
+    "label": "E-Commerce Brands",
+    "asset": "commerce-parcel.webp",
+    "metaphor": "Ivory parcel with navy sales tag"
+  },
+  "startups-saas": {
+    "route": "/use-cases/tech-startups-saas",
+    "label": "Tech Startups & SaaS",
+    "asset": "server-stack.webp",
+    "metaphor": "Two compact navy and steel server units"
+  },
+  "marketing-agencies": {
+    "route": "/use-cases/marketing-agencies",
+    "label": "Marketing Agencies",
+    "asset": "client-brief.webp",
+    "metaphor": "Navy clipboard with an ivory client brief and cost sheet"
+  },
+  "retail-franchises": {
+    "route": "/use-cases/retail-franchises",
+    "label": "Retail & Franchises",
+    "asset": "retail-store.webp",
+    "metaphor": "Compact ivory storefront with navy awning"
+  },
+  "restaurants-cafes": {
+    "route": "/use-cases/restaurants-cafes",
+    "label": "Restaurants & Caf\u00e9s",
+    "asset": "restaurant-table.webp",
+    "metaphor": "Small round dining table with place setting and upright receipt"
+  },
+  "manufacturing": {
+    "route": "/use-cases/manufacturing",
+    "label": "Manufacturing",
+    "asset": "factory-gear.webp",
+    "metaphor": "Steel precision gear with one small navy machined block"
+  },
+  "cfo-finance": {
+    "route": "/use-cases/cfo-finance-teams",
+    "label": "CFOs & Finance Teams",
+    "asset": "finance-calculator.webp",
+    "metaphor": "Navy financial calculator with ivory keys"
+  },
+  "founder-ceo": {
+    "route": "/use-cases/founder-ceo",
+    "label": "Founders & CEOs",
+    "asset": "decision-compass.webp",
+    "metaphor": "Precise steel and navy desk compass"
+  },
+  "department-heads": {
+    "route": "/fluxyos",
+    "label": "Department Heads",
+    "asset": "department-organizer.webp",
+    "metaphor": "Navy desk organizer with three ivory department folders"
+  }
+}

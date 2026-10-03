@@ -171,6 +171,8 @@ function _fluxyosInit() {
 
     document.querySelectorAll('[data-count]').forEach(item => countObserver.observe(item));
 
+    initPublicNavbar(nav, mobileMenuToggle, mobileMenu);
+
     const setMobileMenu = isOpen => {
         if (!mobileMenu || !mobileMenuToggle) return;
 
@@ -268,4 +270,41 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', _fluxyosInit);
 } else {
     _fluxyosInit();
+}
+
+
+// Shared public navigation only; authenticated sidebars keep their Lucide system.
+function initPublicNavbar(nav, mobileToggle, mobileMenu) {
+    if (!nav || nav.dataset.publicNavReady) return;
+    nav.dataset.publicNavReady = 'true';
+    const groups=[...nav.querySelectorAll('.group')].filter(g=>g.querySelector(':scope > .invisible'));
+    groups.forEach((group,i)=>{
+        const trigger=group.querySelector(':scope > button'),panel=group.querySelector(':scope > .invisible');
+        if(!trigger)return;
+        // Retain the IDs used by existing landing-page keyboard checks.
+        panel.id=`agency-nav-panel-${i}`;panel.classList.add('public-nav-panel');
+        trigger.setAttribute('aria-controls',panel.id);trigger.setAttribute('aria-expanded','false');
+        const close=()=>{group.classList.remove('public-nav-open');trigger.setAttribute('aria-expanded','false');};
+        const open=()=>{groups.forEach(other=>{if(other!==group){other.classList.remove('public-nav-open');other.classList.add('public-nav-dismissed');other.querySelector(':scope > button')?.setAttribute('aria-expanded','false');}});group.classList.remove('public-nav-dismissed');group.classList.add('public-nav-open');trigger.setAttribute('aria-expanded','true');};
+        trigger.addEventListener('click',()=>{if(group.classList.contains('public-nav-open')){close();group.classList.add('public-nav-dismissed');}else open();});
+        group.addEventListener('pointerenter',e=>{if(e.pointerType==='mouse'){open();group.classList.remove('public-nav-open');}});
+        group.addEventListener('pointerleave',()=>{if(!group.contains(document.activeElement))close();group.classList.remove('public-nav-dismissed');});
+        group.addEventListener('focusin',e=>{if(e.target!==trigger)open();});
+        group.addEventListener('focusout',e=>{if(!group.contains(e.relatedTarget)){close();group.classList.remove('public-nav-dismissed');}});
+        group.addEventListener('keydown',e=>{if(e.key==='Escape'){trigger.focus();close();group.classList.add('public-nav-dismissed');}if(e.key==='ArrowDown'&&e.target===trigger){e.preventDefault();open();panel.querySelector('a')?.focus();}});
+        document.addEventListener('pointerdown',e=>{if(!group.contains(e.target)){close();group.classList.add('public-nav-dismissed');}});
+    });
+    const fallback='/assets/images/navbar-3d/fallback.svg';
+    nav.querySelectorAll('[data-nav-icon]').forEach(img=>{
+        const recover=()=>{if(!img.src.endsWith('/fallback.svg')){img.src=fallback;img.dataset.iconFallback='true';}};
+        img.addEventListener('error',recover);if(img.complete&&!img.naturalWidth)recover();
+    });
+    nav.addEventListener('keydown',e=>{
+        if(e.key==='Escape'&&e.target.closest('#mobile-menu'))mobileToggle?.focus();
+        if(e.key!=='Tab'||!mobileMenu||mobileMenu.classList.contains('hidden'))return;
+        const items=[mobileToggle,...mobileMenu.querySelectorAll('a,button')].filter(x=>x&&x.getClientRects().length);
+        if(e.shiftKey&&e.target===items[0]){e.preventDefault();items.at(-1).focus();}else if(!e.shiftKey&&e.target===items.at(-1)){e.preventDefault();items[0].focus();}
+    });
+    const label=()=>{const open=mobileToggle.getAttribute('aria-expanded')==='true',id=document.documentElement.lang==='id';mobileToggle.setAttribute('aria-label',id?(open?'Tutup menu navigasi':'Buka menu navigasi'):(open?'Close navigation menu':'Open navigation menu'));};
+    if(mobileToggle){label();new MutationObserver(label).observe(mobileToggle,{attributes:true,attributeFilter:['aria-expanded']});}
 }

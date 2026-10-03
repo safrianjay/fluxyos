@@ -130,13 +130,22 @@ npm run seo:sync-org               # 2. Organization entity → Indonesian descr
 Order is load-bearing — see `SEO_STRATEGY.md` → "Generator order". Also note the
 7 `/id/` **root** pages are generated: editing `id/*.html` by hand is overwritten
 on the next build, so root-page head copy changes go in `scripts/build-id-mirrors.js`.
-The 8 `id/use-cases/*.html` pages are hand-maintained and are *not* generated.
+The root mirror generator does not touch `id/use-cases/*.html`. Use-case pages
+are maintained as pairs, with dedicated bilingual generators where documented below.
 
 The E-Commerce Brands EN/ID pair has a shared, bilingual content template in
 `scripts/build-ecommerce-page.js`. After editing that template, run
 `node scripts/build-ecommerce-page.js` (or `--check` to verify parity). It preserves
 each page's universal navbar and canonical Organization schema; the root mirror
 generator still does not touch use-case pages.
+
+The Marketing Agency EN/ID pair uses `scripts/build-agency-page.js`. Edit both
+languages in that template, then run `node scripts/build-agency-page.js`. Its
+`--check` option detects drift; the root mirror generator does not touch it.
+
+The Tech Startup & SaaS EN/ID pair uses `scripts/build-startup-page.js`. Edit
+paired copy there, then run `node scripts/build-startup-page.js` (or `--check`).
+It shares the agency page’s CSS and interaction module, with a startup visual variant.
 
 ### Translation glossary — recurring product/finance terms
 
@@ -163,6 +172,9 @@ generator still does not touch use-case pages.
 | Dynamic Budgeting | Dynamic Budgeting (keep) | Product name |
 | AI Agents / AI team | AI Agents / Tim AI | "Tim AI" in body copy |
 | Finance team | Tim keuangan | |
+| Software commitments | Komitmen software | Recorded vendor software costs; not customer subscription revenue |
+| Renewal date | Tanggal perpanjangan | Recorded subscription date; not an automated renewal action |
+| Billing cycle | Siklus tagihan | Frequency on a subscription record |
 | Categorize / Tag | Kelompokkan / Tandai | Avoid "kategorisasi" — too stiff |
 | Reconcile | Cocokkan | "Rekonsiliasi" only in titles where formality fits |
 | Approve | Setujui | |
@@ -560,3 +572,16 @@ formal key to the `ID` dictionary in `assets/js/dashboard-i18n.js`** in the same
 commit (mirrors the landing pair-edit rule). Any English string with no dictionary
 key (or pattern) simply renders untranslated — QA each page at lang = `id` to find
 and backfill gaps.
+
+### Illustrative UI copy (marketing pages)
+
+Follow the DESIGN_SYSTEM.md illustrative-product-UI rule in both languages. Do not
+add sample-data disclaimers such as “angka contoh, bukan hasil pelanggan” or
+“data dummy” to clearly illustrative visuals. Use workflow descriptions in captions
+and accessible labels. Keep supported-workflow copy accurate and require verified evidence for actual
+customer results. Do not add standalone product-audit summaries headed Available /
+Partial / Planned or Tersedia / Sebagian / Direncanakan to marketing pages. Explain
+a specific limitation only in a relevant FAQ or buying context when useful.
+
+
+Restaurant tour copy: do not show “Illustrative walkthrough” / “Ilustrasi alur kerja”, “Illustrative planning discussion” / “Ilustrasi diskusi perencanaan”, or equivalent dummy-data labels. Name the actual workflow or planning action instead. Pair all tour explanations and pause/resume labels in EN and ID. Restaurant vocabulary: ingredient → bahan; recipe → resep; cost of sales → harga pokok penjualan; goods receipt → penerimaan barang; recorded cash balance → saldo kas tercatat.

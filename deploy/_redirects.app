@@ -1,3 +1,13 @@
+
+# Retired dropshipping use case: accurate content now lives in E-Commerce Brands.
+/dropshippers-digital-ads https://fluxyos.com/use-cases/ecommerce-brands 301!
+/dropshippers-digital-ads.html https://fluxyos.com/use-cases/ecommerce-brands 301!
+/use-cases/dropshippers-digital-ads https://fluxyos.com/use-cases/ecommerce-brands 301!
+/use-cases/dropshippers-digital-ads.html https://fluxyos.com/use-cases/ecommerce-brands 301!
+/id/dropshippers-digital-ads https://fluxyos.com/id/use-cases/ecommerce-brands 301!
+/id/dropshippers-digital-ads.html https://fluxyos.com/id/use-cases/ecommerce-brands 301!
+/id/use-cases/dropshippers-digital-ads https://fluxyos.com/id/use-cases/ecommerce-brands 301!
+/id/use-cases/dropshippers-digital-ads.html https://fluxyos.com/id/use-cases/ecommerce-brands 301!
 # GENERATED SOURCE — installed as _redirects by scripts/prepare-deploy.js when
 # SITE_ROLE=app (the dashboard.fluxyos.com site). Never ships as-is.
 #
@@ -34,7 +44,6 @@ https://fluxyos-dashboard.netlify.app/*   https://dashboard.fluxyos.com/:splat  
 /llms.txt                   https://fluxyos.com/llms.txt                             301!
 /ecommerce-brands           https://fluxyos.com/use-cases/ecommerce-brands           301!
 /marketing-agencies         https://fluxyos.com/use-cases/marketing-agencies         301!
-/dropshippers-digital-ads   https://fluxyos.com/use-cases/dropshippers-digital-ads   301!
 /manufacturing              https://fluxyos.com/use-cases/manufacturing              301!
 /retail-franchises          https://fluxyos.com/use-cases/retail-franchises          301!
 # {{MARKETING_PAGE_REDIRECTS}}

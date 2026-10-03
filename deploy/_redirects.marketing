@@ -1,3 +1,13 @@
+
+# Retired dropshipping use case: accurate content now lives in E-Commerce Brands.
+/dropshippers-digital-ads /use-cases/ecommerce-brands 301!
+/dropshippers-digital-ads.html /use-cases/ecommerce-brands 301!
+/use-cases/dropshippers-digital-ads /use-cases/ecommerce-brands 301!
+/use-cases/dropshippers-digital-ads.html /use-cases/ecommerce-brands 301!
+/id/dropshippers-digital-ads /id/use-cases/ecommerce-brands 301!
+/id/dropshippers-digital-ads.html /id/use-cases/ecommerce-brands 301!
+/id/use-cases/dropshippers-digital-ads /id/use-cases/ecommerce-brands 301!
+/id/use-cases/dropshippers-digital-ads.html /id/use-cases/ecommerce-brands 301!
 # GENERATED SOURCE — installed as _redirects by scripts/prepare-deploy.js when
 # SITE_ROLE=marketing (the fluxyos.com apex site). Never ships as-is.
 #
@@ -16,7 +26,6 @@ https://www.fluxyos.com/*       https://fluxyos.com/:splat   301!
 # --- Legacy use-case shortcuts ---
 /ecommerce-brands           /use-cases/ecommerce-brands           301!
 /marketing-agencies         /use-cases/marketing-agencies         301!
-/dropshippers-digital-ads   /use-cases/dropshippers-digital-ads   301!
 /manufacturing              /use-cases/manufacturing              301!
 /retail-franchises          /use-cases/retail-franchises          301!
 

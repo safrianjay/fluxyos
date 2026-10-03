@@ -274,7 +274,7 @@ Verified against the codebase, not from memory or roadmap intent.
 | Commerce / marketplace order sync | ✅ Phases 1–3 | `commerce_*` collections, Shopee/TikTok connectors |
 | WhatsApp AI | 📋 | `settings-whatsapp.html` exists; planning only |
 | **Approval workflows** | **📋 Not built** | Sidebar shows disabled `Soon`; no data contract. The word appears only in budget copy. |
-| Inventory & stock movement | 🔭 → **funded** | Admitted §5. **Demand verified 2026-08-15: ~15 F&B prospects require ingredient-level inventory + POS and are blocked on it (`INVENTORY_DEMAND_VALIDATION.md` §7).** High necessity AND high demand under §5b. Scope is the F&B stack — ingredient master with UoM, recipes/BOM, waste, stock per outlet — **not** generic SKU decrement. Kernel ready; dimension seam, cursor pagination and `1200`/`2050`/`5150` shipped as preparation. No inventory collection, page or posting rule is built yet |
+| Inventory & stock movement | ◐ Configured F&B foundation | Re-audited 2026-10-03 for Restaurants & Cafés: `docs/data-model/stock.md`, `inventory-engine.explodeRecipe`, `DataService.createGoodsReceipt`, and `pos-service._emitPosSale` support ingredient records/recipes, goods receipts, immutable stock movements, and cost-of-sales journals from recorded costs. Linked supplier bills clear GRNI when configured. Recipe/item mapping and cost coverage are prerequisites; a paid order can still sell without complete stock relief. This supersedes the August “no inventory collection or posting rule” statement for these audited workflows; it does not certify the entire funded inventory scope or autonomous purchasing/forecasting. |
 | Purchasing / procurement | 🔭 | Admitted §5 |
 | Point of Sale | ✅ First-party till + QR ordering + read-only outlet Overview; ◐ payment integration | Re-audited 2026-09-24: `assets/js/pos-service.js` and `assets/js/pos.js` provide tables, reservations, order lifecycle, modifiers, split table bills, manual payment recording, shifts, and date-scoped POS analytics from real order events. `order.html` + `netlify/functions/qr-*.js` provide QR ordering. `POS-SALE` and `CM-ORDER-COGS` connect sales and configured recipe stock costs to the ledger and outlet. Footfall, delivery classification, partial refunds, complete external connector analytics, payment-provider processing, and offline order/payment queues are **not built**. Access is eligibility-gated. See `docs/data-model/pos.md`. |
 | Recipes / bill of materials | 🔭 | Admitted §5 (enables F&B COGS) |
@@ -340,6 +340,8 @@ FluxyOS computes Gross Margin from cost of revenue detected via
 `sak_category === 'cogs'`. That is correct as far as it goes — but for a business
 holding stock, **cost of goods sold is not an expense you record; it is a
 consequence of inventory you moved.**
+
+**Historical rationale (August 2026):** the gap described below motivated the inventory work. The configured workflow re-audit in §3 supersedes its present-tense availability statements; incomplete recipes, costs, or postings still leave gaps.
 
 Without inventory movement:
 

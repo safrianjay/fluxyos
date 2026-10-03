@@ -1102,6 +1102,33 @@ class as 3b, where the screen said something other than what was true.
 - Parallax, shimmer, and pulse effects are opt-in accents; they are not default
   page styling.
 
+### Illustrative product UI on marketing pages
+- Do not display “Illustrative walkthrough”, “Illustrative planning discussion”, or similar sample-data labels, including translated variants. Use the workflow or decision itself as the label. This also applies to restaurant tours and planning cards.
+- Do not add dummy-data disclaimers to clearly illustrative product visuals.
+  Avoid captions, badges, footnotes, and accessibility labels such as
+  “Product UI illustrations · sample figures, not customer results”, “dummy data”,
+  or their Indonesian equivalents. Describe the workflow instead.
+- This applies to English and Indonesian marketing copy. Describe supported
+  workflows accurately; explain limitations where they help a specific decision. Customer testimonials and results still
+  require verified evidence; illustrative figures are not customer proof.
+- An explicitly requested hero background animation may support the composition
+  with restrained, non-interactive movement behind the content. Preserve contrast,
+  avoid orange backgrounds, respect reduced motion, and settle within five seconds
+  or provide a pause control for continuous motion.
+
+
+### Marketing copy: no product-audit summaries
+- Do not add standalone status paragraphs or footnotes listing “Available”,
+  “Partial”, “MVP”, “Planned”, or long lists of absent features on landing pages.
+  Internal readiness audits and roadmap inventories belong in product docs.
+- Write concise copy about supported workflows. Answer a specific availability
+  question in the relevant FAQ or buying context when it helps the user decide;
+  do not repeat the internal audit beneath a capability grid.
+- Apply the same rule to English and Indonesian. Removing an audit summary does
+  not authorize claims about unbuilt features or unsupported customer results.
+- Remove the summary’s wrapper and reserved space. Use normal responsive section
+  padding so the next section follows the final card cleanly.
+
 ### 6) Content Density & Composition (Hard Rules)
 - Every section must earn its space with real utility:
   - data, decision context, workflow action, or concrete explanation
@@ -1134,3 +1161,58 @@ class as 3b, where the screen said something other than what was true.
   - rationale
   - impacted screens/components
   - risk tradeoff accepted
+
+### Automatic product tours
+- Automatic hero tours must offer an accessible pause/resume control. Pause while users hover, focus, or manually select a stage, while the page is hidden, and when the tour is outside the viewport. Do not auto-advance with reduced motion enabled. Never move keyboard focus automatically. Keep layouts stable and allow time to read each stage.
+
+## Public Navbar 3D Icon Standard
+
+This standard applies to the public marketing navbar's business links: Platform
+features/platform capabilities, Use Cases by industry, and By Role. Desktop,
+mobile, EN and ID reuse the same route-to-asset mapping. The authenticated app
+sidebar keeps its compact Lucide system; form controls, table actions, logo,
+chevrons, language checks and promotional-card artwork keep their existing icons.
+
+- Art direction: original realistic objects in an orthographic three-quarter
+  view from above at 30 degrees. Upper-left soft studio light, gentle contact
+  shadows, matte Deep Navy `#0B0F19`, ivory ceramic and brushed steel. Orange
+  `#EA580C` identifies one small detail. No logos, tiny writing, UI screenshots,
+  emojis, baked tiles, borders, base plates or colored backdrops. A strong
+  silhouette must remain recognizable at 48px.
+- Canvas/export: square transparent RGBA sources, optimized to 192×192 WebP for
+  4× density. Retain clear margins, optical centering and consistent object
+  scale. Render every icon in a fixed **48×48 CSS-pixel** box with `object-fit:
+  contain`; use a **16px** label gap. Desktop rows have a 76px minimum, mobile
+  rows an 80px minimum and grow naturally for translated descriptions. Never
+  crop copy to force a fixed row height. The component owns any row surface;
+  assets contain no surface tile.
+- Performance budget: at most **12 KiB per WebP**, **216 KiB for all 18 assets**.
+  Use native lazy loading, asynchronous decoding and explicit width/height.
+  Menu opening and failed images must not change the reserved icon dimensions.
+- Source of truth: `assets/images/navbar-3d/manifest.json` maps stable entry ID →
+  route → predictable kebab-case asset → metaphor. `scripts/public-nav-icons.js`
+  renders both desktop/mobile entries and the canonical navbar sync distributes
+  them. Duplicate semantic links reuse one icon; distinct adjacent entries use
+  distinct silhouettes. Changing an asset mapping updates canonical generation,
+  not individual landing pages.
+- Failure behavior: the shared public navbar replaces a failed 3D image with
+  the small original `navbar-3d/fallback.svg`. The image remains decorative and
+  the label/destination remain usable. The fallback is a financial-document
+  outline, not a new icon treatment for app navigation.
+- Interaction: images lift 3px and tilt −3° on hover or keyboard focus, over
+  240ms with `cubic-bezier(.25,1,.5,1)`. No loops, parallax or animated layout
+  dimensions. Reduced motion removes the lift, tilt and transitions. Focus
+  outline: 2px Fluxy Orange with 5px offset. Native links keep their normal
+  semantics and logical order; dropdown triggers expose expanded state, support
+  ArrowDown entry and Escape dismissal. The mobile menu retains focus trapping
+  and accessible close labels.
+- Accessibility: decorative images use `alt=""` inside `aria-hidden="true"`
+  wrappers. Visible link text supplies the accessible name. Do not duplicate
+  labels in image alt text or use an icon as the only navigation label.
+
+For a future entry: verify its real destination and paired copy; select a distinct
+metaphor (or reuse an existing semantic link); add the manifest mapping; generate
+and inspect the icon at 48px on white and pale surfaces; verify transparent alpha,
+192px export and size budget; run navbar sync and paired generators; review EN/ID
+wrapping at desktop and mobile widths, keyboard/Escape/touch, reduced motion,
+failed-image fallback and all affected routes. Keep app Lucide assets unchanged.

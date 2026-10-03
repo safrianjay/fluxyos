@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const iconTools = require('./public-nav-icons');
 const ROOT = path.resolve(__dirname, '..');
 const NAV = /<nav\b[\s\S]*?<\/nav>/i;
 const stripHomeClass = html => html.replace(/\bhome-hero-nav\s*/g, '');
@@ -21,7 +22,7 @@ function pages() {
 }
 function canonical(locale) {
   const file = locale === 'id' ? 'id/fluxyos.html' : 'fluxyos.html';
-  return stripHomeClass(fs.readFileSync(path.join(ROOT, file), 'utf8').match(NAV)[0]);
+  return iconTools.render(stripHomeClass(fs.readFileSync(path.join(ROOT, file), 'utf8').match(NAV)[0]));
 }
 function render(html, nav, file) {
   if (!file.startsWith('id/') && fs.existsSync(path.join(ROOT, 'id', file))) {

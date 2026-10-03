@@ -1414,9 +1414,9 @@
         "Map digital ad spend to specific client budgets seamlessly.": "Petakan biaya iklan digital ke budget klien dengan mulus.",
         "Retail & Franchises": "Ritel & Franchise",
         "Consolidate P&L records across multiple physical locations.": "Konsolidasi laporan P&L dari banyak lokasi sekaligus.",
-        "Dropshippers & Digital Ads": "Dropshipper & Iklan Digital",
-        "Scale your active stores by tracking live ad ROI against supplier costs to pinpoint true net margins.":
-            "Skalakan toko Anda dengan pantau ROI iklan dan biaya supplier — temukan margin bersih yang sebenarnya.",
+        "Restaurants & Cafés": "Restoran & Kafe",
+        "Connect sales, ingredient costs, accounting, budgets, and cash.":
+            "Hubungkan penjualan, biaya bahan, akuntansi, anggaran, dan kas.",
         "Manufacturing": "Manufaktur",
         "Track live unit economics and manufacturer costs as you scale up operations.":
             "Pantau unit economics dan biaya pabrikan saat Anda scale up.",
@@ -2124,7 +2124,7 @@
         "See how a fashion label unified retail and e-commerce to track unit economics.": "Lihat bagaimana brand fashion menyatukan ritel dan e-commerce untuk memantau unit economics.",
         "Track live unit economics and manufacturer costs.": "Pantau unit economics live dan biaya manufaktur.",
         "Compare outlet P&L and settlement.": "Bandingkan P&L dan settlement antar-outlet.",
-        "Spot ad waste and product margin.": "Temukan pemborosan iklan dan margin produk.",
+        "Understand the finances behind every order.": "Pahami keuangan di balik setiap pesanan.",
         "Monthly": "Bulanan",
         "Annually": "Tahunan",
         "Most Popular": "Paling Populer",

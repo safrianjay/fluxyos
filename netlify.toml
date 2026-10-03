@@ -85,6 +85,48 @@
 # Firebase Auth helper pages must be served from the app authDomain.
 # Netlify hosts fluxyos.com, so proxy these paths to Firebase Hosting.
 [[redirects]]
+  from = "/dropshippers-digital-ads.html"
+  to = "/use-cases/ecommerce-brands"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/use-cases/dropshippers-digital-ads"
+  to = "/use-cases/ecommerce-brands"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/use-cases/dropshippers-digital-ads.html"
+  to = "/use-cases/ecommerce-brands"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/id/dropshippers-digital-ads"
+  to = "/id/use-cases/ecommerce-brands"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/id/dropshippers-digital-ads.html"
+  to = "/id/use-cases/ecommerce-brands"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/id/use-cases/dropshippers-digital-ads"
+  to = "/id/use-cases/ecommerce-brands"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/id/use-cases/dropshippers-digital-ads.html"
+  to = "/id/use-cases/ecommerce-brands"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/__/auth/*"
   to = "https://fluxyos.firebaseapp.com/__/auth/:splat"
   status = 200
@@ -122,7 +164,7 @@
 
 [[redirects]]
   from = "/dropshippers-digital-ads"
-  to = "/use-cases/dropshippers-digital-ads"
+  to = "/use-cases/ecommerce-brands"
   status = 301
   force = true
 

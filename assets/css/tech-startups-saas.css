@@ -1,0 +1,77 @@
+/* Startup variant of the shared editorial use-case surface. */
+.st-sub-list { margin:20px 0; }
+.st-sub-row { display:flex; align-items:center; gap:12px; padding:14px 0; border-bottom:1px solid #e2e7ed; }
+.st-sub-row:last-child { border-bottom:0; }
+.st-sub-icon { display:flex; align-items:center; justify-content:center; width:32px; height:32px; border:1px solid #e2e7ed; border-radius:8px; color:#526074; flex-shrink:0; }
+.st-sub-icon svg { width:16px; height:16px; }
+.st-sub-row>div { min-width:0; flex:1; }
+.st-sub-row strong { display:block; font-size:12px; font-weight:500; }
+.st-sub-row small { display:block; color:#526074; font-size:10px; margin-top:4px; }
+.st-sub-row b { font-size:12px; font-weight:500; white-space:nowrap; }
+.st-budget-track { height:8px; background:#e2e7ed; border-radius:4px; margin:20px 0; overflow:hidden; }
+.st-budget-track span { display:block; height:100%; width:75%; background:#526b88; border-radius:4px; }
+.startup-site .ag-hero-invoice { width:81%; top:20px; }
+.startup-site .ag-hero-invoice .ag-window-head,.startup-site .ag-hero-invoice .ag-window-body { padding-right:20px; }
+.startup-site .ag-hero-expense { width:46%; right:-8px; top:6px; }
+.startup-site .ag-hero-cash { width:62%; bottom:12px; }
+.startup-site .ag-cap-visual { height:330px; }
+.startup-site .ag-cap-visual .st-sub-row { padding:10px 0; }
+.startup-site .ag-hero-invoice .st-sub-row:first-child { padding-right:38%; }
+@media(max-width:900px) { .startup-site .ag-hero-copy { max-width:680px; } }
+@media(max-width:600px) {
+ .startup-site .ag-stage { height:560px; }
+ .startup-site .ag-hero-invoice { width:94%; top:0; }
+ .startup-site .ag-hero-invoice .ag-window-head,.startup-site .ag-hero-invoice .ag-window-body { padding-right:16px; }
+ .startup-site .ag-hero-invoice .st-sub-row:first-child { padding-right:0; }
+ .startup-site .ag-hero-expense { top:294px; width:68%; right:0; }
+ .startup-site .ag-hero-cash { width:83%; bottom:0; }
+ .startup-site .ag-cap-visual { height:310px; }
+ .st-sub-icon { width:28px; height:28px; }
+ .st-sub-row { gap:8px; }
+}
+
+/* Walkthrough: an editorial step rail and a larger financial workspace. */
+.st-walk-layout { display:grid; grid-template-columns:.85fr 1.15fr; gap:80px; align-items:start; }
+.st-walk-intro .ag-section-heading h2 { font-size:34px; }
+.st-walk-tabs { margin-top:40px; display:grid; border-top:1px solid #344054; }
+.st-walk-tabs[hidden] { display:none; }
+.st-walk-tab { display:flex; align-items:center; gap:16px; padding:22px 4px; border-bottom:1px solid #344054; text-align:left; color:#aab8cb; font-size:16px; transition:color .18s ease,background .18s ease; }
+.st-walk-tab>svg { margin-left:auto; opacity:0; transition:opacity .18s ease,transform .18s ease; }
+.st-walk-number { display:flex; align-items:center; justify-content:center; width:36px; height:36px; border:1px solid #536176; border-radius:50%; font-size:12px; flex-shrink:0; }
+.st-walk-tab:hover { color:#fff; background:#ffffff04; }
+.st-walk-tab[aria-selected="true"] { color:#fff; }
+.st-walk-tab[aria-selected="true"] .st-walk-number { border-color:#fb923c; color:#fb923c; }
+.st-walk-tab[aria-selected="true"]>svg { opacity:1; transform:translateX(3px); color:#fb923c; }
+.st-walk-panel[hidden] { display:none; }
+.st-walk-panels { min-width:0; }
+.st-walk-panel+.st-walk-panel { margin-top:32px; }
+.st-walk-enhanced .st-walk-panel { margin-top:0; animation:st-panel-enter .28s ease-out; }
+.st-walk-canvas { background:#edf2f7; border:1px solid #344054; border-radius:16px; overflow:hidden; color:#0B0F19; }
+.st-canvas-top,.st-canvas-bottom { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px 24px; font-size:12px; color:#526074; background:#ffffff80; }
+.st-canvas-top { border-bottom:1px solid #d8e1eb; }
+.st-canvas-count { font-variant-numeric:tabular-nums; }
+.st-walk-product { min-height:480px; display:flex; align-items:center; justify-content:center; padding:28px 40px; background-image:linear-gradient(90deg,#d8e1eb80 1px,transparent 1px),linear-gradient(#d8e1eb80 1px,transparent 1px); background-size:48px 48px; }
+.st-walk-product>.ag-window { width:100%; max-width:400px; }
+.st-canvas-bottom { border-top:1px solid #d8e1eb; }
+.st-canvas-bottom>span:first-child { display:flex; align-items:center; gap:8px; }
+.st-canvas-bottom svg { width:16px; height:16px; color:#526b88; }
+.st-walk-caption { padding:24px 0 0; }
+.st-walk-caption h3 { font-size:24px; font-weight:400; margin-bottom:12px; }
+.st-walk-caption p { color:#b9c5d6; font-size:15px; max-width:560px; }
+.st-walk-panel:focus-visible { outline:3px solid #fb923c; outline-offset:8px; border-radius:16px; }
+@keyframes st-panel-enter { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+@media(max-width:1100px) { .st-walk-layout { gap:40px; } .st-walk-product { padding:24px; } }
+@media(max-width:900px) { .st-walk-layout { grid-template-columns:1fr; gap:32px; } .st-walk-intro { max-width:680px; } .st-walk-tabs { margin-top:28px; } .st-walk-product { min-height:480px; } .st-walk-panels { max-width:680px; } }
+@media(max-width:600px) { .st-walk-intro .ag-section-heading h2 { font-size:28px; } .st-walk-tab { padding:16px 4px; font-size:15px; gap:12px; } .st-walk-number { width:32px; height:32px; } .st-walk-product { padding:20px 16px; min-height:480px; } .st-canvas-top,.st-canvas-bottom { padding:16px; gap:8px; font-size:11px; } .st-canvas-bottom>span:last-child { display:none; } .st-walk-caption h3 { font-size:22px; } }
+
+/* Overlapping grid tracks reserve the tallest step and prevent selection jumps. */
+.st-walk-enhanced .st-walk-panels { display:grid; }
+.st-walk-enhanced .st-walk-panel { grid-area:1 / 1; align-self:start; min-width:0; }
+.st-walk-enhanced .st-walk-panel[hidden] { display:block; visibility:hidden; pointer-events:none; animation:none; }
+@media(max-width:900px) {
+ .st-walk-tabs { grid-template-columns:repeat(3,minmax(0,1fr)); }
+ .st-walk-tab { flex-direction:column; justify-content:flex-start; align-items:center; text-align:center; gap:10px; padding:16px 8px; font-size:13px; }
+ .st-walk-tab[aria-selected="true"] { border-bottom-color:#fb923c; }
+ .st-walk-tab>svg { display:none; }
+}
+@media(max-width:600px) { .st-walk-tab { padding:14px 4px; font-size:12px; min-height:108px; } .st-walk-number { width:28px; height:28px; } }
