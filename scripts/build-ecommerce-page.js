@@ -151,6 +151,7 @@ ${fs.readFileSync(path.join(root,id?'includes/footer-id.html':'includes/footer.h
     if(data['@type']==='BreadcrumbList') data.itemListElement=[{'@type':'ListItem',position:1,name:t('Home','Beranda'),item:`https://fluxyos.com${id?'/id/':'/'}`},{'@type':'ListItem',position:2,name:'E-Commerce Brands',item:`https://fluxyos.com${prefix}/use-cases/ecommerce-brands`}];
     return `<script type="application/ld+json">\n${JSON.stringify(data,null,2)}\n    </script>`;
   });
+ output=require('./use-case-icons').transform(output);
   if(check){if(output!==old){console.error('Out of date: '+path.relative(root,file));drift=true;}}
   else fs.writeFileSync(file,output);
 }

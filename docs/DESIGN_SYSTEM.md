@@ -1241,8 +1241,8 @@ failed-image fallback and all affected routes. Keep app Lucide assets unchanged.
 
 ### Retail & Franchises public page
 
-Reuse the public navy/ivory 3D icon family for section icons and higher-density
-hero objects. The retail hero illustrates supported source → journal → outlet
+Use the shared flat 2D family for body feature icons. Retain the original
+navy/ivory 3D family for larger hero illustrations. The retail hero illustrates supported source → journal → outlet
 report records; its 8.5-second tour is an original adaptation, not a measured
 Stripe loop. Keep keyboard tabs manual and use finite background motion without
 playback buttons; disable motion for reduced motion. Multi-card
@@ -1262,7 +1262,7 @@ loads, but must retain the same visual treatment in EN and ID.
 
 ### Manufacturing public page
 
-Follow the shared 3D icon standard and the section/claim audit in
+Use the shared 2D body icon standard and the section/claim audit in
 [MANUFACTURING_LANDING_PAGE.md](MANUFACTURING_LANDING_PAGE.md). Illustrate financial
 source records and decisions; do not imply manufacturing machinery control or
 released production costing. Keep floating hero objects clear of the underlying
@@ -1277,8 +1277,8 @@ Use the shared 1280px marketing shell for editorial reference layouts. Retain
 FluxyOS navigation, promo, footer and typography. Desktop feature headings may
 stick below the header, but must return to normal flow on mobile. Replace external
 customer metrics/logos with supported workflow proof when no approved proof exists.
-Use the original reconciliation, period-close, report-package and finance-review
-objects in `assets/images/cfo-finance/` alongside readable labels. Keep the same
+Use the flat reconciliation, period-close, report-package and finance-review
+icons in `assets/images/use-case-2d/` alongside readable labels. Keep the same
 navy/ivory/steel palette, small orange accents, perspective and silhouette rules
 as the public navbar family. Reserve panel height across language and viewport
 changes. Hero motion stays in the background, settles within five seconds, and respects
@@ -1290,10 +1290,16 @@ Do not add Play, Pause animation, or Resume animation buttons to public landing-
 
 ### Founder & CEO public page
 
-Use an editorial hero, fine neutral grid borders, alternating financial scenes and concise capability sections at the shared marketing width. Use the approved original 3D family beside clear text. Keep cash, obligations, allocation remaining and posted results distinct; do not imply forecasting or a dedicated executive dashboard. Preserve a stable headline and readable static scenes. See [FOUNDER_CEO_LANDING_PAGE.md](FOUNDER_CEO_LANDING_PAGE.md).
+Use an editorial hero, fine neutral grid borders, alternating financial scenes and concise capability sections at the shared marketing width. Use the approved original flat 2D body icons beside clear text. Keep cash, obligations, allocation remaining and posted results distinct; do not imply forecasting or a dedicated executive dashboard. Preserve a stable headline and readable static scenes. See [FOUNDER_CEO_LANDING_PAGE.md](FOUNDER_CEO_LANDING_PAGE.md).
 
 ### Platform feature icons — preserve the existing page
 
 An icon-only request changes icon artwork, not the page composition, copy, figures, card sizes, spacing or interactions. Reuse the approved FluxyOS 3D family: matte Deep Navy primary forms, ivory and brushed-steel secondary surfaces, small meaningful Fluxy Orange accents, consistent three-quarter perspective and upper-left lighting. Dynamic Budgeting uses the established pie chart; document, receipt, revenue, AI, currency and ledger metaphors remain distinct and recognizable.
 
 On existing Platform pages, retain each SVG wrapper's viewBox, classes, reserved dimensions and accessibility attributes, and replace only its artwork with the original transparent 3D asset. Keep directional arrows, checkmarks, search/close controls, chart paths, currency bars, connector diagrams, logos and status indicators unchanged. Do not enlarge a toolbar or card to accommodate an icon. Use the same asset for the same metaphor in both languages and in dynamically inserted content. Body exports live in `assets/images/platform-3d/manifest.json`; approved original 384px WebP sources stay below 32KB. `scripts/update-platform-icons.js` handles static artwork and `assets/js/platform-icons.js` handles existing dynamic icons, without introducing new UI or motion.
+
+### Use Case body icons — 2D artwork
+
+Use Case body feature icons use original flat SVG artwork in `assets/images/use-case-2d/`: a front-facing silhouette, consistent 1.8-unit rounded strokes on a 32-unit canvas, Deep Navy structure, and sparse Fluxy Orange detail. Keep transparent backgrounds; avoid gradients, perspective, shadows, or tiny text. Familiar metaphors identify allocations, invoices, receipts, journals, and reviews. Keep icons decorative beside descriptive text.
+
+Icon-only changes preserve existing wrappers, dimensions, layout, copy, charts, controls, animation, and larger product illustrations. The shared public navbar retains its approved 3D icons. `scripts/use-case-icons.js` applies body artwork consistently in paired page generators. Department Heads uses the same marketing width and finite accessible hero background motion; its budget walkthrough has manual keyboard-operable tabs. Do not imply department dashboards, department-scoped access, spending approval, or hard budget enforcement.

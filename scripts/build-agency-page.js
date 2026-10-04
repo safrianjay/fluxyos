@@ -48,7 +48,7 @@ for (const locale of ['en','id']) {
  let nav=navTools.canonical(locale);
  nav=nav.replace(/(<a href=")[^"]*("[^>]*>\s*Bahasa \(ID\))/,'$1/id/use-cases/marketing-agencies$2');
  if(id)nav=nav.replace(/(<a href=")[^"]*("[^>]*>\s*English \(EN\))/,'$1/use-cases/marketing-agencies$2');
- const output=`<!DOCTYPE html>
+ let output=`<!DOCTYPE html>
 <html lang="${locale}">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -104,6 +104,7 @@ ${nav}
 <script src="/assets/js/footer-loader.js" defer></script>
 </body></html>
 `;
+ output=require('./use-case-icons').transform(output);
  if(output!==old){if(check){console.error('Agency page drift: '+path.relative(root,file));drift=true;}else fs.writeFileSync(file,output);}
 }
 if(check&&drift)process.exitCode=1;

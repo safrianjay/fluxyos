@@ -597,3 +597,12 @@ a specific limitation only in a relevant FAQ or buying context when useful.
 
 
 Restaurant tour copy: do not show “Illustrative walkthrough” / “Ilustrasi alur kerja”, “Illustrative planning discussion” / “Ilustrasi diskusi perencanaan”, or equivalent dummy-data labels. Name the actual workflow or planning action instead. Pair all tour explanations and pause/resume labels in EN and ID. Restaurant vocabulary: ingredient → bahan; recipe → resep; cost of sales → harga pokok penjualan; goods receipt → penerimaan barang; recorded cash balance → saldo kas tercatat.
+
+### Department Heads landing terminology
+
+- Department Heads → Kepala Departemen.
+- Assigned spending → Biaya yang ditetapkan.
+- Remaining allocation → Sisa alokasi; distinguish it from kas tersedia.
+- Budget review → Tinjauan anggaran.
+
+The paired `/use-cases/department-heads` pages are authored by `scripts/build-department-page.js`. Brand and product names remain English.

@@ -58,7 +58,7 @@ for (const locale of ['en','id']) {
  const promoTemplate=promoSource.match(/banner\.innerHTML = (`[\s\S]*?`);/)[1];
  const promoHTML=vm.runInNewContext(promoTemplate,{isIndonesian:id});
  const promo=`<div class="promo-banner" data-static-promo role="region" aria-label="${t('FluxyOS promotion','Promo FluxyOS')}">${promoHTML}</div>`;
- const output=`<!DOCTYPE html>
+ let output=`<!DOCTYPE html>
 <html lang="${locale}">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -116,6 +116,7 @@ ${nav}
 <script src="/assets/js/footer-loader.js" defer></script>
 </body></html>
 `;
+ output=require('./use-case-icons').transform(output);
  if(output!==old){if(check){console.error('Startup page drift: '+path.relative(root,file));drift=true;}else fs.writeFileSync(file,output);}
 }
 if(check&&drift)process.exitCode=1;

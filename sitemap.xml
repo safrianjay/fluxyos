@@ -369,4 +369,22 @@
   </url>
   <url><loc>https://fluxyos.com/accounting-automation</loc><lastmod>2026-09-29</lastmod><changefreq>monthly</changefreq><priority>0.8</priority><xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/accounting-automation"/><xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/accounting-automation"/><xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/accounting-automation"/></url>
   <url><loc>https://fluxyos.com/id/accounting-automation</loc><lastmod>2026-09-29</lastmod><changefreq>monthly</changefreq><priority>0.8</priority><xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/accounting-automation"/><xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/accounting-automation"/><xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/accounting-automation"/></url>
+  <url>
+    <loc>https://fluxyos.com/use-cases/department-heads</loc>
+    <lastmod>2026-10-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/department-heads"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/department-heads"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/department-heads"/>
+  </url>
+  <url>
+    <loc>https://fluxyos.com/id/use-cases/department-heads</loc>
+    <lastmod>2026-10-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/department-heads"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/department-heads"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/department-heads"/>
+  </url>
 </urlset>

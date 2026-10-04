@@ -76,7 +76,8 @@ for(const locale of ['en','id']){
 <section class="ag-section"><div class="ag-shell ag-faq-grid">${copy(t('Questions, answered','Jawaban untuk Anda'),t('Before you connect<br>your restaurant.','Sebelum menghubungkan<br>restoran Anda.'),t('A few practical details about the financial connections.','Beberapa detail praktis tentang hubungan keuangan.'))}<div>${faq.map(([q,a])=>`<details class="ag-faq"><summary>${q}<span aria-hidden="true">+</span></summary><p>${a}</p></details>`).join('')}</div></div></section>
 <section class="ag-section ag-final"><div class="ag-shell">${copy(t('Keep the full picture','Lihat gambaran lengkapnya'),t('Serve your guests.<br>Stay connected to your finances.','Layani pelanggan Anda.<br>Tetap terhubung dengan keuangan.'),t('Explore FluxyOS plans or talk through the financial workflows behind your restaurant.','Lihat paket FluxyOS atau diskusikan alur keuangan di balik restoran Anda.'))}${ctas}</div></section></main>
 <script src="/assets/js/fluxyos.js" defer></script><script src="/assets/js/marketing-agencies.js" defer></script><script src="/assets/js/restaurant-finance.js" defer></script><script src="/assets/js/i18n.js" defer></script><script src="/assets/js/universe-canvas.js" defer></script><script src="/assets/js/footer-loader.js" defer></script></body></html>`;
- const output=head+body,old=fs.existsSync(file)?fs.readFileSync(file,'utf8'):'';
+ let output=head+body,old=fs.existsSync(file)?fs.readFileSync(file,'utf8'):'';
+ output=require('./use-case-icons').transform(output);
  if(output!==old){if(check){console.error('Restaurant page drift: '+file);drift=true;}else fs.writeFileSync(file,output);}
 }
 if(check&&drift)process.exitCode=1;else console.log(check?'Restaurant EN/ID pair is current.':'Built restaurant EN/ID pair.');

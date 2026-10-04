@@ -102,7 +102,7 @@
     "metaphor": "Drawing compass"
   },
   "department-heads": {
-    "route": "/fluxyos",
+    "route": "/use-cases/department-heads",
     "label": "Department Heads",
     "asset": "department-organizer.webp",
     "metaphor": "Desk organizer with three department folders"
