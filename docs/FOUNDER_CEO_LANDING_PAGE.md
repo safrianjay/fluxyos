@@ -10,7 +10,7 @@ Visited https://vercel.com/solutions/marketing-sites at 1440×900 and 390×900 i
 
 | Verified reference pattern | FluxyOS adaptation |
 | --- | --- |
-| Large centered hero, adjective animation, fine grid border, two CTAs. Runtime text animation duration 8000ms linear; decorative SVG paths include 3000ms loops. | Stable original founder headline, two working CTAs, original source-based financial illustration; no rotating headline that hides meaning. Restrained 3200ms stage highlight and 12s background grid drift are original timings. |
+| Large centered hero, adjective animation, fine grid border, two CTAs. Runtime text animation duration 8000ms linear; decorative SVG paths include 3000ms loops. | Stable original founder headline, two working CTAs, original source-based financial illustration; no rotating headline that hides meaning. Restrained 4.5-second background grid/atmosphere entrance is original timing. Business review content stays static. |
 | Four customer-metric cells, mobile stacked. | Four linked financial questions, desktop four-column and mobile two-column. No fabricated metrics or customer logos. |
 | Personalization / testing / flags / analytics visual sequence. | Alternating recorded cash / due commitments / budget scenes with readable financial context. |
 | Six capability items, collaboration scenes, large customer quote, playbook feature, customer logos, final CTAs. | Six verified capabilities, posted financial-result review and financial Q&A, original editorial statement, finance-team review link, visible buying FAQ, split final CTA. No invented customer proof or collaboration workflow. |
@@ -26,8 +26,12 @@ Copy describes recorded cash and obligations, assigned spending against allocati
 
 ## Interaction and accessibility
 
-Hero explanation plays automatically when visible. All three stages remain readable simultaneously. Highlights loop every 3.2 seconds; background grid drift is restrained. Pause/resume is keyboard accessible, and motion pauses on hover/focus, offscreen, or document hiding. A user's pause persists when scrolling away and back. Reduced motion disables automatic advancement and every decorative entrance/transition. No automatic focus or live announcement. Static content, links and native FAQs work without JavaScript. EN/ID use the same layout and controller with localized labels.
+The existing hero background has a finite 4.5-second entrance, suspended offscreen or when the document is hidden. All three Business review stages stay readable and static. No animation playback controls or newly added components. Reduced motion disables decorative motion and every entrance/transition. No automatic focus or live announcement. Static content, links and native FAQs work without JavaScript. EN/ID share the same background controller.
 
 ## Validation
 
 Focused Chromium/WebKit checks pass at 1440, 1024, 768, 390 and 320px in both languages, including metadata/schema/visible FAQ parity, keyboard controls, reduced-motion/no-JS behavior, local assets, CTA routes, console errors and horizontal overflow. Desktop/mobile screenshots were inspected. Lighthouse SEO is 100 in both languages, and also 100 for both updated CFO pages. Google Rich Results submission was attempted; the hosted tool returned “Something went wrong — Log in and try again.” Local JSON-LD and visible FAQ consistency checks pass; this does not represent successful hosted validation. Full repository QA is required against the final committed HEAD before push.
+
+## Hero motion revision
+
+The current hero uses only existing background pseudo-elements and a finite 4.5-second entrance, suspended offscreen or when the document is hidden. Reduced motion shows the static background. No Play/Pause/Resume animation controls are present. The CFO hero’s added three-card flow has been removed and its spacing restored. Founder Business review remains readable static product content. CFO walkthrough tabs remain manual; continuous automatic content changes were removed with their playback control. This revision supersedes earlier autoplay/control descriptions above.

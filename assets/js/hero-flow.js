@@ -1,2 +1,11 @@
-/* Readable source → accounting → review; motion only highlights the connection. */
-(()=>{const reduced=matchMedia('(prefers-reduced-motion: reduce)');document.querySelectorAll('[data-hero-flow]').forEach(flow=>{const nodes=[...flow.querySelectorAll('[data-hero-node]')],button=flow.querySelector('[data-hero-pause]');let visible=false,paused=false,hover=false,focus=false,timer,index=0;const sync=()=>{clearTimeout(timer);const running=visible&&!paused&&!hover&&!focus&&!document.hidden&&!reduced.matches;flow.dataset.running=String(running);button.hidden=reduced.matches;button.textContent=paused?button.dataset.resume:button.dataset.pause;button.setAttribute('aria-pressed',String(paused));if(running)timer=setTimeout(()=>{index=(index+1)%nodes.length;nodes.forEach((node,i)=>node.classList.toggle('is-active',i===index));sync()},3200)};nodes[0]?.classList.add('is-active');button.addEventListener('click',()=>{paused=!paused;sync()});flow.addEventListener('mouseenter',()=>{hover=true;sync()});flow.addEventListener('mouseleave',()=>{hover=false;sync()});flow.addEventListener('focusin',()=>{focus=true;sync()});flow.addEventListener('focusout',()=>requestAnimationFrame(()=>{focus=flow.contains(document.activeElement);sync()}));document.addEventListener('visibilitychange',sync);reduced.addEventListener('change',sync);new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;sync()},{threshold:.15}).observe(flow);sync()})})();
+/* Finite decorative hero motion: no cards, controls, or automatic content changes. */
+(()=>{
+ const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+ document.querySelectorAll('[data-hero-motion]').forEach(hero=>{
+  let visible=false;
+  const sync=()=>{hero.dataset.motionRunning=String(visible&&!document.hidden&&!reduced.matches)};
+  new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;sync()},{threshold:.1}).observe(hero);
+  document.addEventListener('visibilitychange',sync);
+  reduced.addEventListener('change',sync);sync();
+ });
+})();

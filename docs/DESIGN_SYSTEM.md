@@ -1114,7 +1114,7 @@ class as 3b, where the screen said something other than what was true.
 - An explicitly requested hero background animation may support the composition
   with restrained, non-interactive movement behind the content. Preserve contrast,
   avoid orange backgrounds, respect reduced motion, and settle within five seconds
-  or provide a pause control for continuous motion.
+  and do not add animation playback controls.
 
 
 ### Marketing copy: no product-audit summaries
@@ -1163,7 +1163,7 @@ class as 3b, where the screen said something other than what was true.
   - risk tradeoff accepted
 
 ### Automatic product tours
-- Automatic hero tours must offer an accessible pause/resume control. Pause while users hover, focus, or manually select a stage, while the page is hidden, and when the tour is outside the viewport. Do not auto-advance with reduced motion enabled. Never move keyboard focus automatically. Keep layouts stable and allow time to read each stage.
+- Do not add animation playback buttons to public landing pages. Use finite background motion (at most five seconds) and manual content tabs; preserve reduced-motion behavior, stable layouts and keyboard focus.
 
 ## Public Navbar 3D Icon Standard
 
@@ -1244,8 +1244,8 @@ failed-image fallback and all affected routes. Keep app Lucide assets unchanged.
 Reuse the public navy/ivory 3D icon family for section icons and higher-density
 hero objects. The retail hero illustrates supported source → journal → outlet
 report records; its 8.5-second tour is an original adaptation, not a measured
-Stripe loop. Keep pause/resume and keyboard tabs, pause during reading or manual
-selection and offscreen, and disable autoplay for reduced motion. Multi-card
+Stripe loop. Keep keyboard tabs manual and use finite background motion without
+playback buttons; disable motion for reduced motion. Multi-card
 walkthrough controls must use scroll bounds rather than assume one card fills
 the viewport. Maintain readable decision context on each card. Do not add
 illustrative/sample/dummy labels or standalone feature-status audit paragraphs;
@@ -1281,12 +1281,12 @@ Use the original reconciliation, period-close, report-package and finance-review
 objects in `assets/images/cfo-finance/` alongside readable labels. Keep the same
 navy/ivory/steel palette, small orange accents, perspective and silhouette rules
 as the public navbar family. Reserve panel height across language and viewport
-changes. Explanatory tours autoplay in view with pause, manual cancellation and
-reduced-motion support. Details: [CFO_FINANCE_LANDING_PAGE.md](CFO_FINANCE_LANDING_PAGE.md).
+changes. Hero motion stays in the background, settles within five seconds, and respects
+reduced motion. Content tours use manual tabs without playback buttons. Details: [CFO_FINANCE_LANDING_PAGE.md](CFO_FINANCE_LANDING_PAGE.md).
 
-### Explanatory hero animation
+### Hero motion without added controls or components
 
-Explanatory hero animations should play automatically when they help communicate the product. Do not gate understanding behind a Play button. Keep every stage understandable without motion, with readable labels and stable layout. Loop restrained highlights smoothly; pause offscreen, when the document is hidden, on hover or keyboard focus, and through an accessible pause/resume control. Respect live changes to prefers-reduced-motion: show the complete static explanation, without automatic advancement or decorative motion. Never move focus or announce automatic changes as live updates.
+Do not add Play, Pause animation, or Resume animation buttons to public landing-page animations. Animate the existing hero background and, where useful, the title entrance; do not introduce cards or components solely to carry motion. Decorative animation must be restrained, non-interactive, and finish within five seconds so a pause control is unnecessary. Pause its progress offscreen or while the document is hidden. Respect prefers-reduced-motion, including changes during the visit. Keep the text and product explanation fully understandable without motion. Use manual tabs for explanatory content that needs reading time; do not cycle content continuously without an accessible stopping mechanism.
 
 ### Founder & CEO public page
 
