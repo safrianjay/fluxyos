@@ -1,120 +1,9 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Intelligent Finance OS untuk CFO & Tim Finance | FluxyOS</title>
-    <link rel="stylesheet" href="/assets/css/tailwind.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/fluxyos.css">
-
-    <style>
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            -webkit-font-smoothing: antialiased;
-        }
-        .font-mono { font-family: 'Fira Code', monospace; }
-
-        .cfo-paper {
-            background:
-                linear-gradient(180deg, rgba(255, 255, 255, 0.93) 0%, rgba(249, 250, 251, 0.98) 100%),
-                linear-gradient(90deg, rgba(11, 15, 25, 0.035) 1px, transparent 1px),
-                linear-gradient(rgba(11, 15, 25, 0.035) 1px, transparent 1px);
-            background-size: auto, 48px 48px, 48px 48px;
-        }
-
-        .cfo-shadow {
-            box-shadow: 0 32px 80px -40px rgba(11, 15, 25, 0.45);
-        }
-
-        .cockpit-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
-        }
-
-        @media (max-width: 767px) {
-            .cockpit-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .workflow-trail {
-            position: relative;
-        }
-
-        .workflow-trail::before {
-            content: "";
-            position: absolute;
-            left: 24px;
-            top: 48px;
-            bottom: 24px;
-            width: 1px;
-            background: #E5E7EB;
-            z-index: 0;
-        }
-
-        @media (min-width: 1024px) {
-            .workflow-trail::before {
-                left: 48px;
-                right: 48px;
-                top: 50%;
-                bottom: auto;
-                height: 1px;
-                width: auto;
-            }
-        }
-
-        .memo-glow {
-            background:
-                linear-gradient(#FFFFFF 0 0) padding-box,
-                linear-gradient(135deg, rgba(234, 88, 12, 0.4), rgba(11, 15, 25, 0.08)) border-box;
-            border: 1px solid transparent;
-        }
-
-        .badge-accent {
-            border: 1px solid rgba(234, 88, 12, 0.25);
-            background-color: rgba(254, 243, 199, 0.4);
-            color: #EA580C;
-        }
-    </style>
-
-    <meta name="description" content="Bantu CFO dan tim finance mengelola tutup buku, rekonsiliasi, tagihan, pengeluaran vendor, dan laporan dalam satu sistem operasi.">
-    <link rel="canonical" href="https://fluxyos.com/id/use-cases/cfo-finance-teams">
-    <link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/cfo-finance-teams">
-    <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/cfo-finance-teams">
-    <link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/cfo-finance-teams">
-
-    <!-- Open Graph -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://fluxyos.com/id/use-cases/cfo-finance-teams">
-    <meta property="og:title" content="Intelligent Finance OS untuk CFO & Tim Finance | FluxyOS">
-    <meta property="og:description" content="Bantu CFO dan tim finance mengelola tutup buku, rekonsiliasi, tagihan, pengeluaran vendor, dan laporan dalam satu sistem operasi.">
-    <meta property="og:image" content="https://fluxyos.com/assets/images/og-cfo-finance-teams.png">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:site_name" content="FluxyOS">
-    <meta property="og:locale" content="id_ID">
-    <meta property="og:locale:alternate" content="en_US">
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Intelligent Finance OS untuk CFO & Tim Finance | FluxyOS">
-    <meta name="twitter:description" content="Bantu CFO dan tim finance mengelola tutup buku, rekonsiliasi, tagihan, pengeluaran vendor, dan laporan dalam satu sistem operasi.">
-    <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-cfo-finance-teams.png">
-
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZN7J6DRD2L"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-ZN7J6DRD2L');
-    </script>
-
-    <!-- Schema.org structured data -->
-    <script type="application/ld+json">
+<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Keuangan Terhubung untuk CFO & Tim Keuangan | FluxyOS</title><meta name="description" content="Hubungkan kas, tagihan, anggaran, rekonsiliasi, dan akuntansi. Lengkapi tinjauan CFO dan tim keuangan dengan catatan sumber di FluxyOS."><link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml"><link rel="canonical" href="https://fluxyos.com/id/use-cases/cfo-finance-teams">
+<link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/cfo-finance-teams">
+<link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/cfo-finance-teams">
+<link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/cfo-finance-teams">
+<meta property="og:type" content="website"><meta property="og:url" content="https://fluxyos.com/id/use-cases/cfo-finance-teams"><meta property="og:title" content="Keuangan Terhubung untuk CFO & Tim Keuangan | FluxyOS"><meta property="og:description" content="Hubungkan kas, tagihan, anggaran, rekonsiliasi, dan akuntansi. Lengkapi tinjauan CFO dan tim keuangan dengan catatan sumber di FluxyOS."><meta property="og:image" content="https://fluxyos.com/assets/images/og-cfo-finance-teams-id.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:site_name" content="FluxyOS"><meta property="og:locale" content="id_ID"><meta property="og:locale:alternate" content="en_US"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Keuangan Terhubung untuk CFO & Tim Keuangan | FluxyOS"><meta name="twitter:description" content="Hubungkan kas, tagihan, anggaran, rekonsiliasi, dan akuntansi. Lengkapi tinjauan CFO dan tim keuangan dengan catatan sumber di FluxyOS."><meta name="twitter:image" content="https://fluxyos.com/assets/images/og-cfo-finance-teams-id.png">
+<link rel="stylesheet" href="/assets/css/tailwind.min.css"><link rel="stylesheet" href="/assets/css/fluxyos.css"><link rel="stylesheet" href="/assets/css/marketing-agencies.css"><link rel="stylesheet" href="/assets/css/cfo-finance-teams.css"><link rel="preload" as="font" href="/assets/fonts/inter-latin-variable.woff2" type="font/woff2" crossorigin><script async src="https://www.googletagmanager.com/gtag/js?id=G-ZN7J6DRD2L"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-ZN7J6DRD2L');</script><script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "Organization",
@@ -151,143 +40,102 @@
         ]
       }
     }
-    </script>
-    <script type="application/ld+json">
+    </script><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "FluxyOS",
+  "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "Intelligent Finance Operating System",
+  "operatingSystem": "Web",
+  "url": "https://fluxyos.com/id/use-cases/cfo-finance-teams",
+  "inLanguage": "id",
+  "description": "Hubungkan kas, tagihan, anggaran, rekonsiliasi, dan akuntansi. Lengkapi tinjauan CFO dan tim keuangan dengan catatan sumber di FluxyOS.",
+  "featureList": [
+    "Rekonsiliasi rekening koran",
+    "Laporan keuangan dibukukan",
+    "Neraca saldo dan penutupan periode",
+    "Tinjauan anggaran dan komitmen",
+    "Paket ekspor CSV akuntansi"
+  ],
+  "publisher": {
+    "@id": "https://fluxyos.com/#organization"
+  }
+}</script>
+<script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
     {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "FluxyOS untuk CFO & Tim Finance",
-      "applicationCategory": "BusinessApplication",
-      "applicationSubCategory": "Finance Operations Software",
-      "operatingSystem": "Web, iOS, Android",
-      "url": "https://fluxyos.com/id/use-cases/cfo-finance-teams",
-      "inLanguage": "id-ID",
-      "description": "FluxyOS adalah sistem operasi keuangan untuk CFO dan tim finance. Hubungkan revenue, pengeluaran, tagihan, langganan software, kwitansi, dan vendor spend di satu tempat untuk tutup buku lebih cepat dan pelaporan yang siap diaudit.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "IDR",
-        "availability": "https://schema.org/InStock"
-      },
-      "featureList": [
-        "Scorecard kesiapan tutup buku akhir bulan",
-        "Pelacakan selisih rekonsiliasi lintas channel pembayaran",
-        "Kontrol tagihan dan utang usaha dengan batas waktu",
-        "Visibilitas pembaruan langganan SaaS dan software",
-        "Pelacakan kwitansi hilang dan petunjuk kategorisasi",
-        "Pemantauan konsentrasi vendor dan deviasi biaya",
-        "Asisten AI berbasis ledger untuk tanya-jawab langsung",
-        "Ekspor bersih yang siap digunakan oleh akuntan"
-      ],
-      "publisher": {
-        "@id": "https://fluxyos.com/#organization"
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Beranda",
+      "item": "https://fluxyos.com/id"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "CFO & Tim Keuangan",
+      "item": "https://fluxyos.com/id/use-cases/cfo-finance-teams"
+    }
+  ]
+}</script>
+<script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "inLanguage": "id",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Bisakah FluxyOS membantu penutupan akhir bulan?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Bisa. Accounting Center menyediakan tinjauan kesiapan penutupan, neraca saldo, jurnal dibukukan, serta penutupan periode. Pengguna berwenang menutup periode setelah menyelesaikan sumber belum dibukukan yang menghalangi dan neraca saldo tidak seimbang. Kelengkapan dokumen pendukung tetap perlu diperiksa tim Anda."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Apakah laporan keuangan memakai entri akuntansi dibukukan?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Laporan laba rugi, neraca, serta laporan arus kas dibukukan memakai saldo buku besar. Periksa dasar dan periode tinjauan yang Anda buka: pratinjau operasional berbasis catatan dan laporan akuntansi dibukukan digunakan untuk tinjauan yang berbeda."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Apakah rekonsiliasi bank memakai koneksi bank langsung?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Alur yang tersedia memakai impor rekening koran serta mendukung pemeriksaan kecocokan dan rekonsiliasi. Koneksi bank langsung belum dijanjikan di halaman ini. Perbarui impor rekening serta catatan pembayaran agar perbandingan akurat."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Bisakah kami mengonsolidasikan perusahaan atau menyetujui pembayaran?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Konsolidasi badan hukum terpisah dan alur persetujuan belum tersedia. FluxyOS menghubungkan catatan keuangan dalam workspace; FluxyOS tidak memindahkan uang atau menjalankan pembayaran supplier. Diskusikan struktur laporan serta kontrol yang dibutuhkan dengan sales."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Apa yang bisa dibagikan kepada akuntan?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Paket ekspor akuntansi berisi CSV laporan laba rugi, neraca, arus kas, neraca saldo, dan buku besar, beserta periode serta konteks pencocokan. Reports & Exports juga menyediakan pratinjau laporan keuangan dan cetak/simpan PDF melalui browser. Periksa dasar serta kelengkapan laporan sebelum membagikannya."
       }
     }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Home",
-          "item": "https://fluxyos.com/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Use Cases",
-          "item": "https://fluxyos.com/id/use-cases/cfo-finance-teams"
-        },
-        {
-          "@type": "ListItem",
-          "position": 3,
-          "name": "CFO & Tim Finance",
-          "item": "https://fluxyos.com/id/use-cases/cfo-finance-teams"
-        }
-      ]
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "inLanguage": "id-ID",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "Apakah FluxyOS dirancang untuk CFO atau tim finance kecil?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Ya. FluxyOS dirancang untuk pemilik bisnis dan tim finance yang membutuhkan sistem operasi yang lebih jelas untuk transaksi, tagihan, langganan, kwitansi, laporan, dan tanya-jawab keuangan."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Apakah FluxyOS dapat membantu tutup buku akhir bulan?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "FluxyOS membantu tim mengidentifikasi kwitansi yang hilang, catatan transaksi yang tidak lengkap, tagihan jatuh tempo, pembaruan langganan, dan celah pelaporan sebelum mengekspor atau meninjau laporan keuangan."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Apakah FluxyOS dapat melacak kwitansi yang hilang dan catatan transaksi yang belum lengkap?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Ya. FluxyOS menggunakan status transaksi seperti Missing Receipt (Kwitansi Hilang) dan dapat menampilkan catatan tidak lengkap yang memerlukan perhatian tim finance sebelum ditinjau oleh akuntan."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Apakah FluxyOS menggantikan software akuntansi?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Tidak. FluxyOS adalah sistem operasi keuangan sebelum akuntansi. Platform ini membantu merapikan catatan operasional, menjelaskan angka keuangan, dan menyiapkan ekspor yang bersih agar Anda menghabiskan lebih sedikit waktu memperbaiki kesalahan di software akuntansi."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Apakah FluxyOS bisa mengekspor laporan untuk akuntan?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Ya. FluxyOS dirancang untuk mendukung data keuangan yang siap diekspor, menyediakan file CSV/Excel bersih dengan transaksi terkategori, lampiran bukti kwitansi, dan metadata audit yang jelas."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Apakah Fluxy AI bisa menjawab pertanyaan keuangan dari data kami?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Ya. Fluxy AI dirancang untuk menjawab pertanyaan keuangan menggunakan catatan ledger transaksi FluxyOS dan ringkasan data yang dihitung di backend, memastikan jawaban tetap akurat dan dapat diverifikasi."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Apakah FluxyOS dapat menyetujui pembayaran atau memindahkan uang?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "FluxyOS mendukung alur kerja peninjauan dan pelacakan, namun pemindahan uang atau tindakan persetujuan pembayaran memerlukan konfirmasi eksplisit dari pengguna, riwayat audit, dan konfigurasi keamanan yang lebih ketat di masa depan."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Apakah data keuangan dipisahkan per pengguna atau workspace?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Ya. Semua data produksi sangat dibatasi per ruang lingkup pengguna (user-scoped) dan diisolasi di bawah kredensial terautentikasi, memastikan privasi penuh, pemisahan, dan keamanan catatan keuangan Anda."
-          }
-        }
-      ]
-    }
-    </script>
-</head>
-<body class="min-h-screen flex flex-col">
-
-    <!-- 1. Navigation with Mega Menu -->
-    <nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
+  ]
+}</script></head><body class="agency-site"><a class="ag-skip" href="#main-content">Langsung ke konten</a><div class="promo-banner" data-static-promo role="region" aria-label="Promo FluxyOS">
+            <div class="promo-banner__inner">
+                <span class="promo-banner__icon" aria-hidden="true">
+                    <span class="promo-banner__icon-mark">%</span>
+                </span>
+                <p class="promo-banner__copy">
+                    <span>Hemat 20% untuk paket tahunan FluxyOS. Aktifkan sebelum promo berakhir.</span>
+                </p>
+                <a class="promo-banner__link" href="/id/pricing">Lihat paket</a>
+            </div>
+        </div><nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
         <div class="max-w-[1280px] mx-auto px-6 h-[80px] flex items-center justify-between">
             <div class="flex items-center gap-12 h-full">
                 <a href="/id/fluxyos" class="flex items-center gap-2.5 cursor-pointer group">
@@ -571,667 +419,14 @@
             </div>
         </div>
     </nav>
-
-    <!-- 2. Hero Section -->
-    <section class="cfo-paper border-b border-gray-200 pt-16 md:pt-24 pb-20 px-6 relative overflow-hidden">
-        <div class="max-w-[1280px] mx-auto relative z-10">
-            <div class="grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center">
-                <div class="max-w-2xl" data-animate="hero-text">
-                    <span class="badge-accent text-[11px] font-mono font-semibold px-3 py-1 rounded-full uppercase tracking-wider inline-block mb-5">Sistem Operasi Keuangan</span>
-                    <h1 class="text-[40px] md:text-[56px] font-bold tracking-tight text-gray-950 leading-[1.08] mb-6">
-                        Kuasai ledger operasional. Bersihkan kesalahan sebelum akuntansi.
-                    </h1>
-                    <p class="text-[17px] md:text-[19px] text-gray-600 leading-relaxed mb-8">
-                        Bantu tim finance Anda memantau kesiapan tutup buku, mencocokkan selisih transaksi setiap hari, menemukan kwitansi yang hilang, dan mengelola pengeluaran vendor dalam satu cockpit premium.
-                    </p>
-                    <div class="flex flex-col sm:flex-row gap-4">
-                        <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-sm hover:shadow text-center">Coba FluxyOS gratis</a>
-                        <a href="/pricing" class="border border-gray-300 text-gray-700 font-semibold text-[15px] px-8 py-3.5 rounded-md hover:border-gray-400 hover:text-gray-900 transition-colors bg-white/50 backdrop-blur text-center">Lihat harga</a>
-                    </div>
-                </div>
-
-                <!-- Cockpit Visual Container -->
-                <div class="w-full" data-animate="hero-visual">
-                    <div class="bg-white border border-gray-200 rounded-3xl p-5 md:p-6 cfo-shadow relative">
-                        <div class="flex items-center justify-between border-b border-gray-150 pb-3.5 mb-5">
-                            <div>
-                                <p class="font-mono text-[9px] uppercase tracking-wider text-gray-400">Ledger Operasional Live</p>
-                                <h3 class="text-[15px] font-bold text-gray-950 uppercase tracking-tight">COCKPIT TUTUP BUKU AKHIR BULAN</h3>
-                            </div>
-                            <span class="w-3.5 h-3.5 rounded-full bg-green-500 animate-pulse"></span>
-                        </div>
-
-                        <div class="space-y-5">
-                            <!-- Scorecard 1: Close Readiness -->
-                            <div class="border border-gray-250 bg-gray-50/50 rounded-2xl p-4 flex justify-between items-center">
-                                <div>
-                                    <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-1">Kesiapan Tutup Buku</h4>
-                                    <p class="text-[12px] text-gray-600">44 dari 48 transaksi telah dikategorikan dengan lampiran bukti.</p>
-                                </div>
-                                <div class="text-right">
-                                    <span class="text-[32px] font-bold text-gray-900 tracking-tight font-mono">82%</span>
-                                </div>
-                            </div>
-
-                            <!-- Scorecard 2: reconciliation elements -->
-                            <div class="border border-gray-250 bg-gray-50/50 rounded-2xl p-4">
-                                <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-3">Rekonsiliasi & Celah Ledger</h4>
-                                <div class="space-y-2 text-[13px]">
-                                    <div class="flex justify-between border-b border-gray-150 pb-2">
-                                        <span class="text-gray-600">Tagihan Jatuh Tempo</span>
-                                        <span class="font-bold text-gray-950 font-mono">Rp 18.400.000</span>
-                                    </div>
-                                    <div class="flex justify-between border-b border-gray-150 pb-2">
-                                        <span class="text-gray-600">Kwitansi Hilang</span>
-                                        <span class="font-bold text-orange-600 font-mono">12 pending</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600">Belum Dikategorikan</span>
-                                        <span class="font-bold text-gray-950 font-mono">7 baris</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Scorecard 3: stream sample -->
-                            <div class="border border-gray-250 bg-gray-50/50 rounded-2xl p-4">
-                                <h4 class="text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-3">Ledger Stream Langsung</h4>
-                                <div class="space-y-2">
-                                    <div class="flex items-center justify-between text-[12px] border-b border-gray-150 pb-2">
-                                        <span class="font-medium text-gray-800">Billing: Kopi Nusantara</span>
-                                        <span class="font-bold text-gray-900 font-mono">Rp 3.200.000</span>
-                                        <span class="text-[10px] font-mono text-green-700 bg-green-50 px-2 py-0.5 rounded border border-green-200">Aktif</span>
-                                    </div>
-                                    <div class="flex items-center justify-between text-[12px] border-b border-gray-150 pb-2">
-                                        <span class="font-medium text-gray-800">Langganan: AWS Cloud</span>
-                                        <span class="font-bold text-gray-900 font-mono">Rp 14.800.000</span>
-                                        <span class="text-[10px] font-mono text-orange-700 bg-orange-50 px-2 py-0.5 rounded border border-orange-200">Bukti Tertunda</span>
-                                    </div>
-                                    <div class="flex items-center justify-between text-[12px]">
-                                        <span class="font-medium text-gray-800">Reimbursement: Mitra Clinic</span>
-                                        <span class="font-bold text-gray-900 font-mono">Rp 450.000</span>
-                                        <span class="text-[10px] font-mono text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">Sedang Ditinjau</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- 3. Section 2: Pain Points -->
-    <section class="py-16 md:py-24 px-6 bg-white border-b border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-3xl mb-16">
-                <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Kesenjangan Operasional</p>
-                <h2 class="text-[32px] md:text-[42px] font-bold tracking-tight text-gray-950 mb-5">
-                    Tutup buku akhir bulan seharusnya tidak terasa seperti penyelidikan detektif.
-                </h2>
-                <p class="text-[17px] text-gray-600 leading-relaxed">
-                    Ketika catatan operasional tersebar di berbagai silo, tim finance menghabiskan minggu pertama setiap bulan hanya untuk mengejar kwitansi dan memperbaiki angka yang tidak cocok.
-                </p>
-            </div>
-
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Pain 1 -->
-                <div class="border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-shadow bg-gray-50/50">
-                    <div class="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 text-[#EA580C] flex items-center justify-center font-mono font-bold mb-4">!</div>
-                    <h3 class="text-[18px] font-bold text-gray-950 mb-2">Penundaan Tutup Buku</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Mengejar dokumen yang hilang dari anggota tim menunda tutup buku akhir, menyebabkan hambatan pelaporan.
-                    </p>
-                </div>
-                <!-- Pain 2 -->
-                <div class="border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-shadow bg-gray-50/50">
-                    <div class="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 text-[#EA580C] flex items-center justify-center font-mono font-bold mb-4">?</div>
-                    <h3 class="text-[18px] font-bold text-gray-950 mb-2">Mengejar Kwitansi</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Permintaan manual untuk faktur pajak dan tangkapan layar pembayaran menghabiskan berhari-hari waktu produktif tim.
-                    </p>
-                </div>
-                <!-- Pain 3 -->
-                <div class="border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-shadow bg-gray-50/50">
-                    <div class="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 text-[#EA580C] flex items-center justify-center font-mono font-bold mb-4">&bull;</div>
-                    <h3 class="text-[18px] font-bold text-gray-950 mb-2">Kejutan Pembaruan SaaS</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Langganan software yang tidak terpantau diperbarui secara otomatis secara diam-diam, menguras anggaran tanpa sepengetahuan pemilik.
-                    </p>
-                </div>
-                <!-- Pain 4 -->
-                <div class="border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-shadow bg-gray-50/50">
-                    <div class="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 text-[#EA580C] flex items-center justify-center font-mono font-bold mb-4">&dollar;</div>
-                    <h3 class="text-[18px] font-bold text-gray-950 mb-2">Biaya Vendor Tidak Cocok</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Variasi harga kecil dan jam kerja kontraktor menciptakan deviasi biaya yang membutuhkan waktu berjam-jam untuk direkonsiliasi.
-                    </p>
-                </div>
-                <!-- Pain 5 -->
-                <div class="border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-shadow bg-gray-50/50 md:col-span-2 lg:col-span-1">
-                    <h3 class="text-[18px] font-bold text-gray-950 mb-2 mt-12 lg:mt-2">Siklus Pembersihan Ledger</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Akuntan membuang-buang waktu membersihkan transaksi yang belum dikategorikan alih-alih meninjau strategi keuangan.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- 4. Section 3: Intelligent Finance OS Layer -->
-    <section class="py-16 md:py-24 px-6 bg-[#F8FAFC] border-b border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-[0.85fr_1.15fr] gap-12 items-center">
-                <div>
-                    <h2 class="text-[32px] md:text-[42px] font-bold tracking-tight text-gray-950 mb-5">
-                        Sistem Operasi Sebelum Akuntansi
-                    </h2>
-                    <p class="text-[17px] text-gray-600 leading-relaxed mb-6">
-                        FluxyOS tidak menggantikan software akuntansi Anda. Platform ini mengatur catatan transaksi, menangkap kwitansi, dan memvalidasi kualitas data *sebelum* diekspor.
-                    </p>
-                    <div class="space-y-4">
-                        <div class="flex gap-4">
-                            <span class="w-6 h-6 rounded-full bg-orange-100 text-[#EA580C] flex items-center justify-center font-bold text-[13px] flex-shrink-0">&check;</span>
-                            <p class="text-[14px] text-gray-700 leading-relaxed">Cegah kesalahan klasifikasi dengan memvalidasi input operasional harian.</p>
-                        </div>
-                        <div class="flex gap-4">
-                            <span class="w-6 h-6 rounded-full bg-orange-100 text-[#EA580C] flex items-center justify-center font-bold text-[13px] flex-shrink-0">&check;</span>
-                            <p class="text-[14px] text-gray-700 leading-relaxed">Kumpulkan bukti transaksi langsung dari tim yang mengeluarkan biaya.</p>
-                        </div>
-                        <div class="flex gap-4">
-                            <span class="w-6 h-6 rounded-full bg-orange-100 text-[#EA580C] flex items-center justify-center font-bold text-[13px] flex-shrink-0">&check;</span>
-                            <p class="text-[14px] text-gray-700 leading-relaxed">Ekspor data siap audit yang rapi, bersih, dan terstruktur untuk akuntan Anda.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Operating System Map Visual -->
-                <div class="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm">
-                    <div class="text-center mb-6">
-                        <p class="text-[10px] font-mono uppercase tracking-wider text-gray-400">Peta Aliran Data Keuangan</p>
-                        <h4 class="text-[16px] font-bold text-gray-950 mt-1">Struktur Kontrol Ledger Operasional</h4>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4 mb-6">
-                        <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 text-center">
-                            <span class="text-[10px] font-mono uppercase tracking-wider text-gray-400 block mb-1">SUMBER INPUT</span>
-                            <span class="text-[12px] font-bold text-gray-800">Catatan Transaksi, Tagihan, Kwitansi, Langganan, Revenue</span>
-                        </div>
-                        <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 text-center">
-                            <span class="text-[10px] font-mono uppercase tracking-wider text-gray-400 block mb-1">TUJUAN EKSPOR</span>
-                            <span class="text-[12px] font-bold text-gray-800">Software Akuntansi, Laporan Pajak, Presentasi Dewan Direksi</span>
-                        </div>
-                    </div>
-
-                    <div class="border-t border-gray-150 pt-6">
-                        <h5 class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-4 text-center">Operational Ledger FluxyOS</h5>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 text-center flex flex-col justify-between h-[110px]">
-                                <span class="text-[12px] font-bold text-gray-800">Ledger</span>
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-orange-700 bg-orange-100 px-2 py-0.5 rounded self-center mt-1">Siap ditinjau</span>
-                            </div>
-                            <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 text-center flex flex-col justify-between h-[110px]">
-                                <span class="text-[12px] font-bold text-gray-800">Tagihan</span>
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-orange-700 bg-orange-100 px-2 py-0.5 rounded self-center mt-1">Dipantau</span>
-                            </div>
-                            <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 text-center flex flex-col justify-between h-[110px]">
-                                <span class="text-[12px] font-bold text-gray-800">Langganan</span>
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-100 px-2 py-0.5 rounded self-center mt-1">Terpantau</span>
-                            </div>
-                            <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 text-center flex flex-col justify-between h-[110px]">
-                                <span class="text-[12px] font-bold text-gray-800">Laporan & Ekspor</span>
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-100 px-2 py-0.5 rounded self-center mt-1">Siap diekspor</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- 5. Section 4: Workflow -->
-    <section class="py-16 md:py-24 px-6 bg-white border-b border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-3xl mb-12">
-                <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Alur Kerja</p>
-                <h2 class="text-[32px] md:text-[42px] font-bold tracking-tight text-gray-950 mb-5">
-                    Dari catatan yang tersebar hingga keuangan yang siap tutup buku.
-                </h2>
-                <p class="text-[17px] text-gray-600 leading-relaxed">
-                    Bangun alur operasional terstruktur yang mengumpulkan input, membersihkan pengecualian, dan meninjau celah data secara berkelanjutan.
-                </p>
-            </div>
-
-            <div class="workflow-trail grid lg:grid-cols-5 gap-8">
-                <!-- Step 1 -->
-                <div class="relative pl-14 lg:pl-0 lg:pt-14 z-10">
-                    <span class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white font-mono font-bold text-[#EA580C]">1</span>
-                    <h3 class="font-bold text-gray-950 mb-2">Capture (Kumpulkan)</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Kumpulkan transaksi, tagihan, kwitansi, invoice, langganan, dan catatan revenue secara otomatis.
-                    </p>
-                </div>
-                <!-- Step 2 -->
-                <div class="relative pl-14 lg:pl-0 lg:pt-14 z-10">
-                    <span class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white font-mono font-bold text-[#EA580C]">2</span>
-                    <h3 class="font-bold text-gray-950 mb-2">Classify (Klasifikasikan)</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Salurkan catatan ke modul FluxyOS yang tepat: Ledger, Bills, Subscriptions, atau Revenue Sync.
-                    </p>
-                </div>
-                <!-- Step 3 -->
-                <div class="relative pl-14 lg:pl-0 lg:pt-14 z-10">
-                    <span class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white font-mono font-bold text-[#EA580C]">3</span>
-                    <h3 class="font-bold text-gray-950 mb-2">Review (Tinjau)</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Lacak kwitansi yang hilang, periksa catatan belum terkategori, tagihan jatuh tempo, dan deviasi pengeluaran vendor yang ganda atau tidak biasa.
-                    </p>
-                </div>
-                <!-- Step 4 -->
-                <div class="relative pl-14 lg:pl-0 lg:pt-14 z-10">
-                    <span class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white font-mono font-bold text-[#EA580C]">4</span>
-                    <h3 class="font-bold text-gray-950 mb-2">Tanya Fluxy AI</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Ajukan pertanyaan wajar seperti &ldquo;Apa yang menghambat tutup buku?&rdquo; untuk segera menemukan anomali data yang belum selesai.
-                    </p>
-                </div>
-                <!-- Step 5 -->
-                <div class="relative pl-14 lg:pl-0 lg:pt-14 z-10">
-                    <span class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white font-mono font-bold text-[#EA580C]">5</span>
-                    <h3 class="font-bold text-gray-950 mb-2">Ekspor atau Laporkan</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Bagikan ekspor bersih kaya konteks dengan akuntan atau stakeholder, menghilangkan siklus rekonsiliasi menit-menit terakhir.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- 6. Section 5: Feature Fit -->
-    <section class="py-16 md:py-24 px-6 bg-[#F8FAFC] border-b border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-3xl mb-12">
-                <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Kemampuan Utama</p>
-                <h2 class="text-[32px] md:text-[42px] font-bold tracking-tight text-gray-950 mb-5">
-                    Dirancang sesuai dengan pekerjaan operasional nyata tim finance.
-                </h2>
-                <p class="text-[17px] text-gray-600 leading-relaxed">
-                    FluxyOS memprioritaskan visibilitas pada aspek yang memengaruhi kepercayaan pelaporan terlebih dahulu, menyusun fitur-fitur pendukung secara rapi di bawahnya.
-                </p>
-            </div>
-
-            <!-- Featured Card & Supporting Grid -->
-            <div class="grid lg:grid-cols-3 gap-6">
-                <!-- Large Featured Card -->
-                <div class="lg:col-span-3 rounded-3xl border border-gray-200 bg-white p-6 md:p-8 shadow-sm flex flex-col md:flex-row gap-8 items-center">
-                    <div class="flex-1">
-                        <span class="bg-[#EA580C]/10 text-[#EA580C] text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider inline-block mb-3">Pekerjaan Utama</span>
-                        <h3 class="text-[24px] md:text-[28px] font-bold text-gray-950 mb-3">Scorecard kesiapan tutup buku akhir bulan</h3>
-                        <p class="text-[15px] text-gray-600 leading-relaxed mb-4">
-                            Lihat dengan jelas apa yang menghambat proses tutup buku Anda. Temukan invoice yang hilang, kwitansi belum terlampir, pengeluaran vendor tanpa dokumen, atau kategori klasifikasi tertunda dalam satu scorecard persentase sederhana sebelum mengekspor data.
-                        </p>
-                        <ul class="space-y-2 text-[14px] text-gray-700">
-                            <li class="flex items-center gap-2">&bull; Identifikasi kebutuhan kwitansi tertunda per anggota tim</li>
-                            <li class="flex items-center gap-2">&bull; Deteksi tekanan utang usaha sebelum tanggal jatuh tempo tiba</li>
-                            <li class="flex items-center gap-2">&bull; Validasi kebersihan ledger sebelum diserahkan ke akuntan</li>
-                        </ul>
-                    </div>
-                    <div class="w-full md:w-[320px] bg-gray-50 border border-gray-200 rounded-2xl p-5 flex flex-col justify-between">
-                        <div>
-                            <div class="flex justify-between text-[12px] font-bold text-gray-500 mb-2">
-                                <span>STATUS TUTUP BUKU</span>
-                                <span class="text-orange-600">Butuh Tindakan</span>
-                            </div>
-                            <div class="h-2 w-full bg-gray-200 rounded-full overflow-hidden mb-4">
-                                <div class="h-full bg-[#EA580C] rounded-full" style="width: 82%;"></div>
-                            </div>
-                        </div>
-                        <div class="space-y-3">
-                            <div class="flex justify-between text-[13px] border-b border-gray-200 pb-2">
-                                <span class="text-gray-600">Bukti Terlampir</span>
-                                <span class="font-bold text-gray-800">44 dari 48</span>
-                            </div>
-                            <div class="flex justify-between text-[13px] border-b border-gray-200 pb-2">
-                                <span class="text-gray-600">Baris Terkategori</span>
-                                <span class="font-bold text-gray-800">92% Selesai</span>
-                            </div>
-                            <div class="flex justify-between text-[13px]">
-                                <span class="text-gray-600">Tagihan Tertunda</span>
-                                <span class="font-bold text-gray-800 font-mono">Rp 18.400.000</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Grid of Supporting Cards -->
-                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <h4 class="text-[17px] font-bold text-gray-950 mb-2">Pelacakan selisih rekonsiliasi</h4>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Identifikasi perbedaan antara register transaksi dan pengeluaran aktual lebih awal, melindungi bisnis dari kebocoran kas.
-                    </p>
-                </div>
-                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <h4 class="text-[17px] font-bold text-gray-950 mb-2">Kontrol tagihan & utang usaha</h4>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Lihat tagihan terjadwal, periksa tanggal jatuh tempo, nilai komitmen vendor, dan hindari denda keterlambatan dari satu register terpadu.
-                    </p>
-                </div>
-                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <h4 class="text-[17px] font-bold text-gray-950 mb-2">Visibilitas pengeluaran langganan</h4>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Pantau lini software aktif, lacak jadwal pembaruan kontrak, temukan lisensi ganda, dan periksa kepemilikan SaaS.
-                    </p>
-                </div>
-                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <h4 class="text-[17px] font-bold text-gray-950 mb-2">Tindak lanjut kwitansi hilang</h4>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Tandai dan tindak lanjuti catatan transaksi tanpa dokumen secara otomatis, menjaga kelengkapan riwayat audit PPN Anda.
-                    </p>
-                </div>
-                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <h4 class="text-[17px] font-bold text-gray-950 mb-2">Pemantauan pengeluaran vendor</h4>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Identifikasi lonjakan harga vendor yang tiba-tiba, periksa risiko konsentrasi vendor, dan lacak variasi pengeluaran kontraktor secara berkelanjutan.
-                    </p>
-                </div>
-                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <h4 class="text-[17px] font-bold text-gray-950 mb-2">Log aktivitas ramah audit</h4>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Jaga riwayat berkelanjutan atas perubahan ledger, lampiran dokumen, dan revisi kategorisasi, mempermudah pemeriksaan auditor.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- 7. Section 6: Fluxy AI for Finance Teams -->
-    <section class="py-16 md:py-24 px-6 bg-white border-b border-gray-200">
-        <div class="max-w-[1120px] mx-auto">
-            <div class="rounded-3xl border border-gray-200 bg-gray-50 p-6 md:p-8 shadow-sm">
-                <div class="grid lg:grid-cols-[0.85fr_1.15fr] gap-8 items-center">
-                    <div>
-                        <span class="bg-[#EA580C]/10 text-[#EA580C] text-[11px] font-bold px-2 py-1 rounded uppercase tracking-wider inline-block mb-3">Fluxy AI</span>
-                        <h2 class="text-[30px] md:text-[38px] font-bold tracking-tight text-gray-950 mb-5">
-                            Ajukan pertanyaan keuangan tanpa menyusun ulang spreadsheet.
-                        </h2>
-                        <p class="text-[16px] text-gray-600 leading-relaxed mb-6">
-                            Fluxy AI dibangun dengan logika ledger yang terverifikasi. AI ini memeriksa jumlah transaksi, mencocokkan tagihan jatuh tempo, dan menjelaskan variasi pengeluaran berdasarkan catatan ledger FluxyOS yang valid.
-                        </p>
-                        <div class="rounded-2xl bg-orange-50 border border-orange-200/50 p-4">
-                            <h5 class="text-[13px] font-bold text-orange-800 mb-1">Landasan Keamanan Keuangan</h5>
-                            <p class="text-[12px] text-[#EA580C] leading-relaxed">
-                                Fluxy AI memberikan jawaban berdasarkan data sistem yang dihitung. AI tidak akan mengarang angka, menulis aturan database, atau melakukan pembayaran secara otomatis tanpa konfirmasi langsung dari Anda.
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- AI Prompt/Response Memo Visual -->
-                    <div class="memo-glow rounded-2xl bg-white p-5 md:p-6 shadow-md">
-                        <div class="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
-                            <div>
-                                <p class="font-mono text-[9px] uppercase tracking-wider text-gray-400">Tinjauan Tanya-Jawab Ledger</p>
-                                <h3 class="text-[16px] font-bold text-gray-900">Validasi Tutup Buku Akhir Bulan</h3>
-                            </div>
-                            <span class="rounded bg-gray-950 text-white font-mono text-[10px] font-bold px-2 py-0.5">AI</span>
-                        </div>
-
-                        <div class="space-y-4">
-                            <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                                <p class="text-[11px] font-bold text-[#EA580C]">Pertanyaan Pengguna</p>
-                                <p class="text-[13px] text-gray-800 font-mono mt-1">&ldquo;Apa yang menghambat tutup buku bulan ini?&rdquo;</p>
-                            </div>
-                            <div class="bg-orange-50/40 rounded-xl p-3 border border-orange-100">
-                                <p class="text-[11px] font-bold text-[#EA580C]">Jawaban Fluxy AI</p>
-                                <p class="text-[13px] text-gray-800 leading-relaxed font-sans mt-1">
-                                    Saya menemukan 12 transaksi tanpa kwitansi, 7 catatan belum dikategorikan, dan 3 tagihan jatuh tempo. Fokuslah pada kwitansi yang hilang terlebih dahulu untuk memastikan kepatuhan audit PPN/pajak.
-                                </p>
-                            </div>
-                            <div class="border border-gray-150 rounded-xl p-3">
-                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Ringkasan Validasi</p>
-                                <div class="grid grid-cols-2 gap-2 text-[12px]">
-                                    <div class="flex justify-between py-1 border-b border-gray-100"><span class="text-gray-500">Kwitansi Hilang</span><span class="font-bold font-mono">12</span></div>
-                                    <div class="flex justify-between py-1 border-b border-gray-100"><span class="text-gray-500">Belum Terkategori</span><span class="font-bold font-mono">7</span></div>
-                                    <div class="flex justify-between py-1 border-b border-gray-100"><span class="text-gray-500">Tagihan Jatuh Tempo</span><span class="font-bold font-mono">3</span></div>
-                                    <div class="flex justify-between py-1 border-b border-gray-100"><span class="text-gray-500">Skor Kesiapan</span><span class="font-bold text-orange-600 font-mono">82%</span></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- 8. Section 7: Before / After -->
-    <section class="py-16 md:py-24 px-6 bg-[#F8FAFC] border-b border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-3xl mb-12 text-center mx-auto">
-                <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Perbandingan Operasi</p>
-                <h2 class="text-[32px] md:text-[42px] font-bold tracking-tight text-gray-950 mb-5">
-                    Sebelum FluxyOS, pekerjaan finance tersebar. Setelah FluxyOS, semuanya terkendali.
-                </h2>
-            </div>
-
-            <div class="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-                <!-- Before -->
-                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <h3 class="text-[18px] font-bold text-gray-500 mb-4 flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-gray-400"></span>
-                        Sebelum FluxyOS
-                    </h3>
-                    <ul class="space-y-3.5 text-[14px] text-gray-600">
-                        <li class="flex items-start gap-2.5">
-                            <span class="text-red-500 font-bold mt-0.5">&times;</span>
-                            <span>Selisih rekonsiliasi baru diketahui berminggu-minggu terlambat saat penutupan bank.</span>
-                        </li>
-                        <li class="flex items-start gap-2.5">
-                            <span class="text-red-500 font-bold mt-0.5">&times;</span>
-                            <span>Kwitansi tercecer di dalam chat pribadi dan berbagai email tim.</span>
-                        </li>
-                        <li class="flex items-start gap-2.5">
-                            <span class="text-red-500 font-bold mt-0.5">&times;</span>
-                            <span>Pembaruan SaaS terjadi secara tiba-tiba tanpa pelacakan pemilik yang jelas.</span>
-                        </li>
-                        <li class="flex items-start gap-2.5">
-                            <span class="text-red-500 font-bold mt-0.5">&times;</span>
-                            <span>Laporan manajemen membutuhkan waktu berhari-hari untuk disusun, dibersihkan, dan diverifikasi.</span>
-                        </li>
-                    </ul>
-                </div>
-
-                <!-- After -->
-                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <h3 class="text-[18px] font-bold text-gray-950 mb-4 flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>
-                        Setelah FluxyOS
-                    </h3>
-                    <ul class="space-y-3.5 text-[14px] text-gray-700 font-semibold">
-                        <li class="flex items-start gap-2.5">
-                            <span class="text-green-500 font-bold mt-0.5">&bull;</span>
-                            <span>Rekonsiliasi dilakukan setiap hari, mencocokkan baris pembayaran secara berkelanjutan.</span>
-                        </li>
-                        <li class="flex items-start gap-2.5">
-                            <span class="text-green-500 font-bold mt-0.5">&bull;</span>
-                            <span>Capture kwitansi memformat dokumen agar langsung sesuai dengan klaim ledger.</span>
-                        </li>
-                        <li class="flex items-start gap-2.5">
-                            <span class="text-green-500 font-bold mt-0.5">&bull;</span>
-                            <span>Dashboard langganan memberi tahu pemilik sebelum pembaruan kontrak.</span>
-                        </li>
-                        <li class="flex items-start gap-2.5">
-                            <span class="text-green-500 font-bold mt-0.5">&bull;</span>
-                            <span>Laporan disusun secara dinamis, menampilkan kesiapan ekspor secara langsung.</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- 9. Section 8: CFO Control Layer -->
-    <section class="py-16 md:py-24 px-6 bg-white border-b border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center">
-                <div>
-                    <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Visibilitas Strategis</p>
-                    <h2 class="text-[32px] md:text-[42px] font-bold tracking-tight text-gray-950 mb-5">
-                        Berikan visibilitas kepada CFO tanpa memperlambat gerak tim.
-                    </h2>
-                    <p class="text-[17px] text-gray-600 leading-relaxed mb-6">
-                        Berikan sinyal yang jelas kepada manajemen tentang kesehatan operasional: lacak konsentrasi vendor, tinjau tekanan pembaruan kontrak, dan pantau kecepatan belanja departemen tanpa membuat proses persetujuan yang rumit.
-                    </p>
-                    <div class="rounded-2xl border border-gray-150 p-4 bg-gray-50">
-                        <h4 class="text-[14px] font-bold text-gray-900 mb-1">Ketentuan Proksi Tekanan Kas (Cash Pressure)</h4>
-                        <p class="text-[13px] text-gray-600 leading-relaxed">
-                            FluxyOS menampilkan komitmen utang usaha dan tren pengeluaran sebagai proksi Tekanan Kas. Kami tetap transparan: perhitungan tekanan kas berfungsi sebagai proksi (perkiraan) kecuali jika catatan saldo bank yang sebenarnya telah terhubung.
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Strategic Stats Visual -->
-                <div class="rounded-3xl border border-gray-200 bg-white p-6 shadow-md relative">
-                    <div class="border-b border-gray-100 pb-3 mb-4">
-                        <p class="font-mono text-[9px] uppercase tracking-wider text-gray-400">Panel Ringkasan Eksekutif</p>
-                        <h3 class="text-[16px] font-bold text-gray-950">Konsentrasi & Deviasi Vendor</h3>
-                    </div>
-                    <div class="space-y-4 text-[13px]">
-                        <div>
-                            <div class="flex justify-between font-medium text-gray-800 mb-1">
-                                <span>AWS Cloud Infra</span>
-                                <span>+18% vs bulan lalu</span>
-                            </div>
-                            <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                                <div class="h-full bg-orange-500" style="width: 74%;"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="flex justify-between font-medium text-gray-800 mb-1">
-                                <span>Meta Marketing Spend</span>
-                                <span>-2% vs bulan lalu</span>
-                            </div>
-                            <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                                <div class="h-full bg-green-500" style="width: 48%;"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="flex justify-between font-medium text-gray-800 mb-1">
-                                <span>Layanan Kontraktor</span>
-                                <span>Pengeluaran stabil</span>
-                            </div>
-                            <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                                <div class="h-full bg-gray-500" style="width: 35%;"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- 10. Section 9: FAQ -->
-    <section id="faq" class="py-16 md:py-20 px-6 bg-white border-b border-gray-200">
-        <div class="max-w-[1120px] mx-auto">
-            <div class="grid lg:grid-cols-[0.8fr_1.2fr] gap-10">
-                <div>
-                    <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3">Pertanyaan yang sering diajukan</h2>
-                    <p class="text-[16px] text-gray-600">Jawaban operasional yang jelas untuk profesional keuangan dan CFO.</p>
-                </div>
-                <div class="space-y-4">
-                    <details class="border-b border-gray-200 py-4 group" open>
-                        <summary class="flex items-center justify-between cursor-pointer list-none">
-                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Apakah FluxyOS dirancang untuk CFO atau tim finance kecil?</h3>
-                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </summary>
-                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
-                            Ya. FluxyOS dirancang untuk pemilik bisnis dan tim finance yang membutuhkan sistem operasi yang lebih jelas untuk transaksi, tagihan, langganan, kwitansi, laporan, dan tanya-jawab keuangan.
-                        </p>
-                    </details>
-                    <details class="border-b border-gray-200 py-4 group">
-                        <summary class="flex items-center justify-between cursor-pointer list-none">
-                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Apakah FluxyOS dapat membantu tutup buku akhir bulan?</h3>
-                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </summary>
-                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
-                            FluxyOS membantu tim mengidentifikasi kwitansi yang hilang, catatan transaksi yang tidak lengkap, tagihan jatuh tempo, pembaruan langganan, dan celah pelaporan sebelum mengekspor atau meninjau laporan keuangan.
-                        </p>
-                    </details>
-                    <details class="border-b border-gray-200 py-4 group">
-                        <summary class="flex items-center justify-between cursor-pointer list-none">
-                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Apakah FluxyOS dapat melacak kwitansi yang hilang dan catatan transaksi yang belum lengkap?</h3>
-                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </summary>
-                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
-                            Ya. FluxyOS menggunakan status transaksi seperti Missing Receipt (Kwitansi Hilang) dan dapat menampilkan catatan tidak lengkap yang memerlukan perhatian tim finance sebelum ditinjau oleh akuntan.
-                        </p>
-                    </details>
-                    <details class="border-b border-gray-200 py-4 group">
-                        <summary class="flex items-center justify-between cursor-pointer list-none">
-                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Apakah FluxyOS menggantikan software akuntansi?</h3>
-                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </summary>
-                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
-                            Tidak. FluxyOS adalah sistem operasi keuangan sebelum akuntansi. Platform ini membantu merapikan catatan operasional, menjelaskan angka keuangan, dan menyiapkan ekspor yang bersih agar Anda menghabiskan lebih sedikit waktu memperbaiki kesalahan di software akuntansi.
-                        </p>
-                    </details>
-                    <details class="border-b border-gray-200 py-4 group">
-                        <summary class="flex items-center justify-between cursor-pointer list-none">
-                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Apakah FluxyOS bisa mengekspor laporan untuk akuntan?</h3>
-                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </summary>
-                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
-                            Ya. FluxyOS dirancang untuk mendukung data keuangan yang siap diekspor, menyediakan file CSV/Excel bersih dengan transaksi terkategori, lampiran bukti kwitansi, dan metadata audit yang jelas.
-                        </p>
-                    </details>
-                    <details class="border-b border-gray-200 py-4 group">
-                        <summary class="flex items-center justify-between cursor-pointer list-none">
-                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Apakah Fluxy AI bisa menjawab pertanyaan keuangan dari data kami?</h3>
-                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </summary>
-                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
-                            Ya. Fluxy AI dirancang untuk menjawab pertanyaan keuangan menggunakan catatan ledger transaksi FluxyOS and ringkasan data yang dihitung di backend, memastikan jawaban tetap akurat dan dapat diverifikasi.
-                        </p>
-                    </details>
-                    <details class="border-b border-gray-200 py-4 group">
-                        <summary class="flex items-center justify-between cursor-pointer list-none">
-                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Apakah FluxyOS dapat menyetujui pembayaran atau memindahkan uang?</h3>
-                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </summary>
-                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
-                            FluxyOS mendukung alur kerja peninjauan dan pelacakan, namun pemindahan uang atau tindakan persetujuan pembayaran memerlukan konfirmasi eksplisit dari pengguna, riwayat audit, dan konfigurasi keamanan yang lebih ketat di masa depan.
-                        </p>
-                    </details>
-                    <details class="border-b border-gray-200 py-4 group">
-                        <summary class="flex items-center justify-between cursor-pointer list-none">
-                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Apakah data keuangan dipisahkan per pengguna atau workspace?</h3>
-                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </summary>
-                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
-                            Ya. Semua data produksi sangat dibatasi per ruang lingkup pengguna (user-scoped) dan diisolasi di bawah kredensial terautentikasi, memastikan privasi penuh, pemisahan, dan keamanan catatan keuangan Anda.
-                        </p>
-                    </details>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- 11. Final CTA -->
-    <section class="bg-[#0B0F19] py-16 md:py-24 px-6 text-center">
-        <div class="max-w-[1280px] mx-auto">
-            <h2 class="text-[34px] md:text-[44px] font-bold tracking-tight text-white mb-5">
-                Tutup buku lebih cepat. Jelaskan angka keuangan lebih baik. Kendalikan pekerjaan finance lebih awal.
-            </h2>
-            <p class="text-[17px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">
-                Hubungkan input keuangan operasional Anda, lihat kesalahan validasi ledger secara real-time, dan jalankan tutup buku akhir bulan yang lebih bersih. Mulai gratis, tingkatkan saat operasi Anda berkembang.
-            </p>
-            <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-sm hover:shadow inline-block text-center">Coba FluxyOS gratis</a>
-                <a href="/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">Lihat harga</a>
-            </div>
-        </div>
-    </section>
-
-    <script src="/assets/js/universe-canvas.js" defer></script>
-    <script src="/assets/js/footer-loader.js" defer></script>
-    <script src="/assets/js/fluxyos.js" defer></script>
-<script src="/assets/js/i18n.js" defer></script>
-</body>
-</html>
+<main id="main-content" class="ag-page cf-page" data-locale-path="/use-cases/cfo-finance-teams">
+<section class="cf-hero"><div class="cf-hero-grid ag-shell"><h1>Pimpin dengan jelas.<br>Pantau sumber angkanya.</h1><div class="cf-hero-support"><p>Hubungkan kas, komitmen, anggaran, dan akuntansi dalam satu tinjauan keuangan. Lengkapi CFO dan tim keuangan Anda dengan konteks di balik angka.</p><div class="ag-actions"><a class="ag-primary" href="/id/pricing">Lihat FluxyOS <span aria-hidden="true">↗</span></a><a class="cf-secondary" href="/contact-sales">Hubungi sales</a></div></div></div><div class="ag-shell cf-work-strip"><a href="#financial-view"><img class="cf-icon" src="/assets/images/cfo-finance/finance-review.webp" width="88" height="88" alt="" loading="lazy" decoding="async"><h2>Kas & komitmen</h2><p>Lihat yang perlu ditinjau.</p><span class="cf-strip-arrow" aria-hidden="true">↗</span></a><a href="#reconciliation"><img class="cf-icon" src="/assets/images/cfo-finance/reconciliation.webp" width="88" height="88" alt="" loading="lazy" decoding="async"><h2>Rekonsiliasi</h2><p>Bandingkan catatan sumber.</p><span class="cf-strip-arrow" aria-hidden="true">↗</span></a><a href="#close"><img class="cf-icon" src="/assets/images/cfo-finance/period-close.webp" width="88" height="88" alt="" loading="lazy" decoding="async"><h2>Penutupan periode</h2><p>Tinjau sebelum menutup.</p><span class="cf-strip-arrow" aria-hidden="true">↗</span></a><a href="#walkthrough"><img class="cf-icon" src="/assets/images/cfo-finance/report-package.webp" width="88" height="88" alt="" loading="lazy" decoding="async"><h2>Laporan keuangan</h2><p>Lengkapi konteks akuntansi.</p><span class="cf-strip-arrow" aria-hidden="true">↗</span></a></div></section>
+<section id="financial-view" class="cf-section"><div class="ag-shell"><p class="cf-category">FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System) yang menghubungkan operasional keuangan, akuntansi, operasional bisnis, alur kerja perusahaan, dan analisis dalam satu sistem yang terus terhubung.</p><div class="cf-sticky-layout"><div class="cf-sticky-heading"><div class="cf-heading ag-reveal"><p class="ag-kicker">Pekerjaan keuangan terhubung</p><h2>Tinjauan yang jelas.<br>Jawaban yang bisa ditelusuri.</h2><p>Dari catatan belum lengkap hingga pembayaran dicocokkan dan laporan dibukukan. Simpan sumbernya dalam setiap tinjauan.</p></div><a class="ag-text-link" href="/id/accounting-automation">Lihat akuntansi<span aria-hidden="true">↗</span></a></div><div class="cf-feature-stack"><article id="documents" class="cf-feature ag-reveal"><div class="cf-feature-visual"><div class="cf-window"><div class="cf-window-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">Pemeriksaan kelengkapan</span><small>Tinjauan Oktober</small></div><div class="cf-window-body"><div class="cf-scene-title"><img class="cf-icon" src="/assets/images/navbar-3d/receipt-scanner.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><div><h3>Lengkapi catatan keuangan</h3><p>Tinjau detail yang mendukung pembukuan.</p></div></div><div class="cf-document-row"><span class="cf-document-mark">01</span><div><strong>Tagihan supplier · BILL-110</strong><span>Struk pendukung belum ada</span></div><span class="cf-status">Tinjau</span></div><div class="cf-document-row"><span class="cf-document-mark">02</span><div><strong>Subscription · SUB-028</strong><span>Tanggal perpanjangan belum dicatat</span></div><span class="cf-status">Tinjau</span></div></div></div></div><p class="cf-feature-caption"><strong>Dokumen dengan konteks.</strong> Temukan struk belum ada dan tanggal belum lengkap dalam tinjauan kelengkapan. Lengkapi detail sebelum memakai laporan.</p></article><article id="reconciliation" class="cf-feature ag-reveal"><div class="cf-feature-visual"><div class="cf-window"><div class="cf-window-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">Rekonsiliasi bank</span><small>Periksa kecocokan</small></div><div class="cf-window-body"><div class="cf-scene-title"><img class="cf-icon" src="/assets/images/cfo-finance/reconciliation.webp" width="88" height="88" alt="" loading="lazy" decoding="async"><div><h3>Dua catatan. Satu tinjauan.</h3><p>Bandingkan nominal, tanggal, dan sumber.</p></div></div><div class="cf-match-grid"><div data-cf-match>Baris rekening koran<strong>Rp8.400.000</strong><small>12 Oktober · PT Prima</small></div><span aria-hidden="true">↔</span><div data-cf-match>Pembayaran tagihan tercatat<strong>Rp8.400.000</strong><small>BILL-110 · 12 Oktober</small></div></div><button class="cf-inspect" type="button" data-cf-compare aria-expanded="false" aria-controls="cf-match-details" hidden>Bandingkan catatan ini <span aria-hidden="true">↗</span></button><p id="cf-match-details" class="cf-match-note">Nominal serta tanggal cocok. Periksa dokumen supplier sebelum mengonfirmasi rekonsiliasi di workspace Anda.</p></div></div></div><p class="cf-feature-caption"><strong>Rekonsiliasi dengan sumber.</strong> Impor rekening koran, bandingkan barisnya dengan catatan keuangan, lalu periksa kecocokan sebelum mengonfirmasi.</p></article><article id="statements" class="cf-feature ag-reveal"><div class="cf-feature-visual"><div class="cf-window"><div class="cf-window-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">Laporan laba rugi dibukukan</span><small>Oktober</small></div><div class="cf-window-body"><div class="cf-scene-title"><img class="cf-icon" src="/assets/images/cfo-finance/finance-review.webp" width="88" height="88" alt="" loading="lazy" decoding="async"><div><h3>Baca hasil akuntansinya</h3><p>Entri dibukukan menjadi dasar laporan.</p></div></div><div class="cf-statement-chart" aria-hidden="true"><span style="--bar:100%"></span><span style="--bar:66.67%"></span><span style="--bar:33.33%"></span></div><div class="cf-row"><span>Pendapatan</span><strong>Rp96.000.000</strong></div><div class="cf-row"><span>Total biaya</span><strong>Rp64.000.000</strong></div><div class="cf-row"><span>Laba bersih</span><strong>Rp32.000.000</strong></div></div></div></div><p class="cf-feature-caption"><strong>Laporan dengan dasar akuntansi.</strong> Baca pendapatan serta biaya dibukukan bersama. Periksa detail jurnal saat hasilnya perlu dijelaskan.</p></article></div></div></div></section>
+<section class="cf-section cf-editorial"><div class="ag-shell ag-reveal"><img class="cf-icon" src="/assets/images/cfo-finance/finance-review.webp" width="112" height="112" alt="" loading="lazy" decoding="async"><h2>Angkanya penting.<br>Begitu juga catatan di baliknya.</h2><p>Percakapan keuangan yang berguna dimulai dari pemahaman bersama tentang sumber, akuntansi, dan keputusan berikutnya.</p></div></section>
+<section id="walkthrough" class="cf-section"><div class="ag-shell"><div class="cf-split-heading"><div class="cf-heading ag-reveal"><p class="ag-kicker">Alur kerja di FluxyOS</p><h2>Dari catatan sumber<br>ke gambaran keuangan.</h2></div><p class="ag-reveal">Ikuti konteks keuangan satu tagihan supplier. Pilih langkah untuk melihat tinjauan berikutnya.</p></div><div class="cf-tour" data-cf-tour><div class="cf-tour-controls"><div class="cf-stages" role="tablist" aria-orientation="vertical" aria-label="Langkah alur keuangan" hidden><button type="button" id="cf-tab-0" data-cf-step="0" role="tab" aria-selected="true" aria-controls="cf-panel-0" tabindex="0"><span class="cf-stage-index">01</span><span><strong>Mulai dari sumbernya.</strong><span>Catat dokumen supplier, nominal, kategori, serta jatuh tempo.</span></span><span class="cf-stage-arrow" aria-hidden="true">↗</span></button><button type="button" id="cf-tab-1" data-cf-step="1" role="tab" aria-selected="false" aria-controls="cf-panel-1" tabindex="-1"><span class="cf-stage-index">02</span><span><strong>Periksa akuntansinya.</strong><span>Telusuri entri dibukukan ke tagihan serta periksa debit dan kredit.</span></span><span class="cf-stage-arrow" aria-hidden="true">↗</span></button><button type="button" id="cf-tab-2" data-cf-step="2" role="tab" aria-selected="false" aria-controls="cf-panel-2" tabindex="-1"><span class="cf-stage-index">03</span><span><strong>Baca gambaran keuangannya.</strong><span>Tinjau laporan berbasis buku besar beserta periode dan konteks sumbernya.</span></span><span class="cf-stage-arrow" aria-hidden="true">↗</span></button></div><button type="button" class="cf-replay" data-cf-replay data-play-label="Lihat alur catatannya" data-pause-label="Jeda alur catatannya" hidden><span data-cf-play-label>Lihat alur catatannya</span> <span data-cf-play-icon aria-hidden="true">▷</span></button><a class="ag-text-link" href="/id/accounting-automation">Lihat akuntansi terhubung<span aria-hidden="true">↗</span></a></div><div class="cf-tour-screen"><div class="cf-tour-top"><span>FluxyOS · Tinjauan keuangan</span><span>Oktober</span></div><div id="cf-panel-0" class="cf-tour-panel"><div class="cf-panel-heading"><span class="cf-stage-index">01</span><h3>Mulai dari sumbernya.</h3></div><div class="cf-window"><div class="cf-window-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">Catatan sumber</span><small>Catat</small></div><div class="cf-window-body"><div class="cf-tour-title"><img class="cf-icon" src="/assets/images/navbar-3d/invoice-envelope.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><div><span>BILL-110</span><h3>Layanan kantor</h3></div></div><div class="cf-row"><span>Tagihan supplier</span><strong>Rp8.400.000</strong></div><div class="cf-row"><span>Jatuh tempo</span><strong>12 Oktober</strong></div><div class="cf-source-tags"><span>Dokumen terlampir</span><span>Kategori biaya ditetapkan</span></div><p class="cf-tour-note">Dokumen menjelaskan biaya. Catatan pembayaran menjelaskan pergerakan kas.</p></div></div></div><div id="cf-panel-1" class="cf-tour-panel"><div class="cf-panel-heading"><span class="cf-stage-index">02</span><h3>Periksa akuntansinya.</h3></div><div class="cf-window"><div class="cf-window-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">Jurnal dibukukan</span><small>Akuntansi</small></div><div class="cf-window-body"><div class="cf-tour-title"><img class="cf-icon" src="/assets/images/navbar-3d/accounting-ledger.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><div><span>BILL-110</span><h3>Dari tagihan ke pembukuan</h3></div></div><table><caption>Tagihan sumber · entri akuntansi dibukukan</caption><thead><tr><th scope="col">Akun</th><th scope="col">Debit</th><th scope="col">Kredit</th></tr></thead><tbody><tr><th scope="row">Beban operasional</th><td>Rp8.400.000</td><td>—</td></tr><tr><th scope="row">Utang</th><td>—</td><td>Rp8.400.000</td></tr></tbody></table><p class="cf-tour-note">Entri seimbang. Sumbernya tetap bisa ditelusuri.</p></div></div></div><div id="cf-panel-2" class="cf-tour-panel"><div class="cf-panel-heading"><span class="cf-stage-index">03</span><h3>Baca gambaran keuangannya.</h3></div><div class="cf-window"><div class="cf-window-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">Laporan keuangan</span><small>Tinjau</small></div><div class="cf-window-body"><div class="cf-tour-title"><img class="cf-icon" src="/assets/images/cfo-finance/report-package.webp" width="88" height="88" alt="" loading="lazy" decoding="async"><div><span>Oktober · dasar dibukukan</span><h3>Lengkapi konteks tinjauan</h3></div></div><div class="cf-row"><span>Laporan laba rugi</span><strong>Pendapatan & biaya</strong></div><div class="cf-row"><span>Neraca</span><strong>Aset & kewajiban</strong></div><div class="cf-row"><span>Arus kas</span><strong>Pergerakan tercatat</strong></div><p class="cf-tour-note">Tinjau laporan serta entri sumbernya sebelum membagikan laporan keuangan.</p></div></div></div><div class="cf-flow-path" aria-hidden="true"><span data-cf-node="0">Sumber</span><i></i><span data-cf-node="1">Akuntansi</span><i></i><span data-cf-node="2">Tinjauan keuangan</span></div></div></div></div></section>
+<section id="close" class="cf-section cf-controls-section"><div class="ag-shell cf-controls-grid"><div class="cf-heading ag-reveal"><h2>Dirancang untuk ditinjau.</h2><p>Jaga pemeriksaan yang membuat angka berguna.</p></div><article class="cf-control ag-reveal"><img class="cf-icon" src="/assets/images/cfo-finance/reconciliation.webp" width="80" height="80" alt="" loading="lazy" decoding="async"><h3>Rekonsiliasi dengan konteks</h3><p>Impor rekening koran, bandingkan kecocokan, lalu pastikan catatan sumber sebelum rekonsiliasi.</p></article><article class="cf-control ag-reveal"><img class="cf-icon" src="/assets/images/cfo-finance/period-close.webp" width="80" height="80" alt="" loading="lazy" decoding="async"><h3>Tutup periode dengan pemeriksaan jelas</h3><p>Periksa sumber belum dibukukan dan neraca saldo sebelum pengguna berwenang menutup periode.</p></article><article class="cf-control ag-reveal"><img class="cf-icon" src="/assets/images/cfo-finance/report-package.webp" width="80" height="80" alt="" loading="lazy" decoding="async"><h3>Ekspor dengan dasar akuntansi</h3><p>Siapkan paket CSV akuntansi beserta periode dan hasil pencocokan untuk tinjauan keuangan.</p></article></div></section>
+<section class="cf-section"><div class="ag-shell"><div class="cf-heading ag-reveal"><h2>Satu sistem terhubung.<br>Tinjauan keuangan lebih lengkap.</h2></div><div class="cf-benefits-grid"><article class="cf-benefit ag-reveal"><img class="cf-icon" src="/assets/images/navbar-3d/invoice-envelope.webp" width="56" height="56" alt="" loading="lazy" decoding="async"><h3>Pantau utang usaha</h3><p>Baca tagihan supplier belum lunas beserta jatuh tempo dan dokumennya.</p><a class="ag-text-link" href="/id/vendorspend">Lihat fitur<span aria-hidden="true">↗</span></a></article><article class="cf-benefit ag-reveal"><img class="cf-icon" src="/assets/images/navbar-3d/allocation-tray.webp" width="56" height="56" alt="" loading="lazy" decoding="async"><h3>Bandingkan biaya dengan rencana</h3><p>Bandingkan biaya yang ditetapkan dengan alokasi anggaran sebelum komitmen berikutnya.</p><a class="ag-text-link" href="/id/budgetlanding">Lihat fitur<span aria-hidden="true">↗</span></a></article><article class="cf-benefit ag-reveal"><img class="cf-icon" src="/assets/images/navbar-3d/receipt-scanner.webp" width="56" height="56" alt="" loading="lazy" decoding="async"><h3>Simpan dokumen bersama catatan</h3><p>Periksa detail struk yang dibaca sebelum menyimpannya bersama biaya.</p><a class="ag-text-link" href="/id/receiptcapture">Lihat fitur<span aria-hidden="true">↗</span></a></article><article class="cf-benefit ag-reveal"><img class="cf-icon" src="/assets/images/navbar-3d/accounting-ledger.webp" width="56" height="56" alt="" loading="lazy" decoding="async"><h3>Telusuri entri ke sumbernya</h3><p>Buka buku besar dan detail jurnal dari neraca saldo untuk pemeriksaan lebih lanjut.</p><a class="ag-text-link" href="/id/accounting-automation">Lihat fitur<span aria-hidden="true">↗</span></a></article><article class="cf-benefit ag-reveal"><img class="cf-icon" src="/assets/images/navbar-3d/currency-globe.webp" width="56" height="56" alt="" loading="lazy" decoding="async"><h3>Jaga konteks mata uang</h3><p>Tinjau mata uang dokumen serta kurs tercatat dalam dasar akuntansi workspace Anda.</p><a class="ag-text-link" href="/id/multi-currency">Lihat fitur<span aria-hidden="true">↗</span></a></article><article class="cf-benefit ag-reveal"><img class="cf-icon" src="/assets/images/navbar-3d/intelligence-orb.webp" width="56" height="56" alt="" loading="lazy" decoding="async"><h3>Tanyakan catatan Anda</h3><p>Gunakan Fluxy AI untuk pertanyaan keuangan berdasarkan data yang tercatat di workspace Anda.</p><a class="ag-text-link" href="/id/aiagents">Lihat fitur<span aria-hidden="true">↗</span></a></article></div></div></section>
+<section class="cf-section cf-workflows"><div class="ag-shell"><div class="cf-heading ag-reveal"><h2>Mengikuti pekerjaan<br>tim keuangan Anda.</h2></div><div class="cf-workflow-grid"><a class="ag-reveal" href="/id/vendorspend"><img class="cf-icon" src="/assets/images/navbar-3d/invoice-envelope.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><span>Invoice pelanggan</span><span class="cf-workflow-arrow" aria-hidden="true">↗</span></a><a class="ag-reveal" href="/id/budgetlanding"><img class="cf-icon" src="/assets/images/navbar-3d/allocation-tray.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><span>Dynamic Budgeting</span><span class="cf-workflow-arrow" aria-hidden="true">↗</span></a><a class="ag-reveal" href="/id/receiptcapture"><img class="cf-icon" src="/assets/images/navbar-3d/receipt-scanner.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><span>Receipt Capture</span><span class="cf-workflow-arrow" aria-hidden="true">↗</span></a><a class="ag-reveal" href="/id/accounting-automation"><img class="cf-icon" src="/assets/images/navbar-3d/finance-calculator.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><span>Rekonsiliasi bank</span><span class="cf-workflow-arrow" aria-hidden="true">↗</span></a><a class="ag-reveal" href="/id/accounting-automation"><img class="cf-icon" src="/assets/images/navbar-3d/accounting-ledger.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><span>Neraca saldo & jurnal</span><span class="cf-workflow-arrow" aria-hidden="true">↗</span></a><a class="ag-reveal" href="/id/accounting-automation"><img class="cf-icon" src="/assets/images/navbar-3d/connected-records.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><span>Laporan keuangan</span><span class="cf-workflow-arrow" aria-hidden="true">↗</span></a><a class="ag-reveal" href="/id/revenuesync"><img class="cf-icon" src="/assets/images/navbar-3d/revenue-stream.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><span>Revenue Sync</span><span class="cf-workflow-arrow" aria-hidden="true">↗</span></a><a class="ag-reveal" href="/id/multi-currency"><img class="cf-icon" src="/assets/images/navbar-3d/currency-globe.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><span>Multi-Currency</span><span class="cf-workflow-arrow" aria-hidden="true">↗</span></a><a class="ag-reveal" href="/id/aiagents"><img class="cf-icon" src="/assets/images/navbar-3d/intelligence-orb.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><span>Fluxy AI</span><span class="cf-workflow-arrow" aria-hidden="true">↗</span></a></div></div></section>
+<section id="faq" class="cf-section cf-faq"><div class="ag-shell ag-faq-grid"><div class="cf-heading ag-reveal"><p class="ag-kicker">Jawaban untuk Anda</p><h2>Langkah awal praktis<br>untuk tim keuangan Anda.</h2></div><div><details class="ag-faq"><summary>Bisakah FluxyOS membantu penutupan akhir bulan?<span aria-hidden="true">+</span></summary><p>Bisa. Accounting Center menyediakan tinjauan kesiapan penutupan, neraca saldo, jurnal dibukukan, serta penutupan periode. Pengguna berwenang menutup periode setelah menyelesaikan sumber belum dibukukan yang menghalangi dan neraca saldo tidak seimbang. Kelengkapan dokumen pendukung tetap perlu diperiksa tim Anda.</p></details><details class="ag-faq"><summary>Apakah laporan keuangan memakai entri akuntansi dibukukan?<span aria-hidden="true">+</span></summary><p>Laporan laba rugi, neraca, serta laporan arus kas dibukukan memakai saldo buku besar. Periksa dasar dan periode tinjauan yang Anda buka: pratinjau operasional berbasis catatan dan laporan akuntansi dibukukan digunakan untuk tinjauan yang berbeda.</p></details><details class="ag-faq"><summary>Apakah rekonsiliasi bank memakai koneksi bank langsung?<span aria-hidden="true">+</span></summary><p>Alur yang tersedia memakai impor rekening koran serta mendukung pemeriksaan kecocokan dan rekonsiliasi. Koneksi bank langsung belum dijanjikan di halaman ini. Perbarui impor rekening serta catatan pembayaran agar perbandingan akurat.</p></details><details class="ag-faq"><summary>Bisakah kami mengonsolidasikan perusahaan atau menyetujui pembayaran?<span aria-hidden="true">+</span></summary><p>Konsolidasi badan hukum terpisah dan alur persetujuan belum tersedia. FluxyOS menghubungkan catatan keuangan dalam workspace; FluxyOS tidak memindahkan uang atau menjalankan pembayaran supplier. Diskusikan struktur laporan serta kontrol yang dibutuhkan dengan sales.</p></details><details class="ag-faq"><summary>Apa yang bisa dibagikan kepada akuntan?<span aria-hidden="true">+</span></summary><p>Paket ekspor akuntansi berisi CSV laporan laba rugi, neraca, arus kas, neraca saldo, dan buku besar, beserta periode serta konteks pencocokan. Reports & Exports juga menyediakan pratinjau laporan keuangan dan cetak/simpan PDF melalui browser. Periksa dasar serta kelengkapan laporan sebelum membagikannya.</p></details></div></div></section>
+<section class="cf-section cf-final"><div class="ag-shell cf-final-grid"><div class="cf-heading ag-reveal"><h2>Hubungkan catatannya.<br>Pimpin percakapannya.</h2></div><div><div class="ag-actions"><a class="ag-primary" href="/id/pricing">Lihat FluxyOS <span aria-hidden="true">↗</span></a><a class="cf-secondary" href="/contact-sales">Hubungi sales</a></div><p>Lihat paket atau diskusikan alur keuangan Anda bersama tim kami.</p></div></div></section>
+</main><script src="/assets/js/fluxyos.js" defer></script><script src="/assets/js/marketing-agencies.js" defer></script><script src="/assets/js/cfo-finance-teams.js" defer></script><script src="/assets/js/i18n.js" defer></script><script src="/assets/js/universe-canvas.js" defer></script><script src="/assets/js/footer-loader.js" defer></script></body></html>

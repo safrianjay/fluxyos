@@ -1270,3 +1270,16 @@ amounts and labels. Motion settles within five seconds; record tabs remain manua
 keyboard accessible, and stable in height. An explicit brief may request a concise
 example-workspace label; that exception does not relax the general prohibition on
 unnecessary illustrative/dummy-data disclaimers elsewhere.
+
+### CFO & Finance Teams public page
+
+Use the shared 1280px marketing shell for editorial reference layouts. Retain
+FluxyOS navigation, promo, footer and typography. Desktop feature headings may
+stick below the header, but must return to normal flow on mobile. Replace external
+customer metrics/logos with supported workflow proof when no approved proof exists.
+Use the original reconciliation, period-close, report-package and finance-review
+objects in `assets/images/cfo-finance/` alongside readable labels. Keep the same
+navy/ivory/steel palette, small orange accents, perspective and silhouette rules
+as the public navbar family. Reserve panel height across language and viewport
+changes. Explicit motion tours need pause, manual cancellation and reduced-motion
+support. Details: [CFO_FINANCE_LANDING_PAGE.md](CFO_FINANCE_LANDING_PAGE.md).

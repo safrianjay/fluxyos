@@ -1,120 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Intelligent Finance OS for CFOs & Finance Teams | FluxyOS</title>
-    <link rel="stylesheet" href="/assets/css/tailwind.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/fluxyos.css">
-
-    <style>
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            -webkit-font-smoothing: antialiased;
-        }
-        .font-mono { font-family: 'Fira Code', monospace; }
-
-        .cfo-paper {
-            background:
-                linear-gradient(180deg, rgba(255, 255, 255, 0.93) 0%, rgba(249, 250, 251, 0.98) 100%),
-                linear-gradient(90deg, rgba(11, 15, 25, 0.035) 1px, transparent 1px),
-                linear-gradient(rgba(11, 15, 25, 0.035) 1px, transparent 1px);
-            background-size: auto, 48px 48px, 48px 48px;
-        }
-
-        .cfo-shadow {
-            box-shadow: 0 32px 80px -40px rgba(11, 15, 25, 0.45);
-        }
-
-        .cockpit-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
-        }
-
-        @media (max-width: 767px) {
-            .cockpit-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .workflow-trail {
-            position: relative;
-        }
-
-        .workflow-trail::before {
-            content: "";
-            position: absolute;
-            left: 24px;
-            top: 48px;
-            bottom: 24px;
-            width: 1px;
-            background: #E5E7EB;
-            z-index: 0;
-        }
-
-        @media (min-width: 1024px) {
-            .workflow-trail::before {
-                left: 48px;
-                right: 48px;
-                top: 50%;
-                bottom: auto;
-                height: 1px;
-                width: auto;
-            }
-        }
-
-        .memo-glow {
-            background:
-                linear-gradient(#FFFFFF 0 0) padding-box,
-                linear-gradient(135deg, rgba(234, 88, 12, 0.4), rgba(11, 15, 25, 0.08)) border-box;
-            border: 1px solid transparent;
-        }
-
-        .badge-accent {
-            border: 1px solid rgba(234, 88, 12, 0.25);
-            background-color: rgba(254, 243, 199, 0.4);
-            color: #EA580C;
-        }
-    </style>
-
-    <meta name="description" content="Help CFOs and finance teams manage close, reconciliation, bills, receipts, vendor spend, reports, and finance questions in one operating layer.">
-    <link rel="canonical" href="https://fluxyos.com/use-cases/cfo-finance-teams">
-    <link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/cfo-finance-teams">
-    <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/cfo-finance-teams">
-    <link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/cfo-finance-teams">
-
-    <!-- Open Graph -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://fluxyos.com/use-cases/cfo-finance-teams">
-    <meta property="og:title" content="Intelligent Finance OS for CFOs & Finance Teams | FluxyOS">
-    <meta property="og:description" content="Help CFOs and finance teams manage close, reconciliation, bills, receipts, vendor spend, reports, and finance questions in one operating layer.">
-    <meta property="og:image" content="https://fluxyos.com/assets/images/og-cfo-finance-teams.png">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:site_name" content="FluxyOS">
-    <meta property="og:locale" content="en_US">
-    <meta property="og:locale:alternate" content="id_ID">
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Intelligent Finance OS for CFOs & Finance Teams | FluxyOS">
-    <meta name="twitter:description" content="Help CFOs and finance teams manage close, reconciliation, bills, receipts, vendor spend, reports, and finance questions in one operating layer.">
-    <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-cfo-finance-teams.png">
-
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZN7J6DRD2L"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-ZN7J6DRD2L');
-    </script>
-
-    <!-- Schema.org structured data -->
-    <script type="application/ld+json">
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Connected Finance for CFOs & Finance Teams | FluxyOS</title><meta name="description" content="Connect cash, bills, budgets, reconciliation, and accounting. Give CFOs and finance teams the records behind every financial review with FluxyOS."><link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml"><link rel="canonical" href="https://fluxyos.com/use-cases/cfo-finance-teams">
+<link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/cfo-finance-teams">
+<link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/cfo-finance-teams">
+<link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/cfo-finance-teams">
+<meta property="og:type" content="website"><meta property="og:url" content="https://fluxyos.com/use-cases/cfo-finance-teams"><meta property="og:title" content="Connected Finance for CFOs & Finance Teams | FluxyOS"><meta property="og:description" content="Connect cash, bills, budgets, reconciliation, and accounting. Give CFOs and finance teams the records behind every financial review with FluxyOS."><meta property="og:image" content="https://fluxyos.com/assets/images/og-cfo-finance-teams.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:site_name" content="FluxyOS"><meta property="og:locale" content="en_US"><meta property="og:locale:alternate" content="id_ID"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Connected Finance for CFOs & Finance Teams | FluxyOS"><meta name="twitter:description" content="Connect cash, bills, budgets, reconciliation, and accounting. Give CFOs and finance teams the records behind every financial review with FluxyOS."><meta name="twitter:image" content="https://fluxyos.com/assets/images/og-cfo-finance-teams.png">
+<link rel="stylesheet" href="/assets/css/tailwind.min.css"><link rel="stylesheet" href="/assets/css/fluxyos.css"><link rel="stylesheet" href="/assets/css/marketing-agencies.css"><link rel="stylesheet" href="/assets/css/cfo-finance-teams.css"><link rel="preload" as="font" href="/assets/fonts/inter-latin-variable.woff2" type="font/woff2" crossorigin><script async src="https://www.googletagmanager.com/gtag/js?id=G-ZN7J6DRD2L"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-ZN7J6DRD2L');</script><script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "Organization",
@@ -151,143 +40,102 @@
         ]
       }
     }
-    </script>
-    <script type="application/ld+json">
+    </script><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "FluxyOS",
+  "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "Intelligent Finance Operating System",
+  "operatingSystem": "Web",
+  "url": "https://fluxyos.com/use-cases/cfo-finance-teams",
+  "inLanguage": "en",
+  "description": "Connect cash, bills, budgets, reconciliation, and accounting. Give CFOs and finance teams the records behind every financial review with FluxyOS.",
+  "featureList": [
+    "Bank statement reconciliation",
+    "Posted financial statements",
+    "Trial balance and period close",
+    "Budget and commitment review",
+    "Accounting CSV export package"
+  ],
+  "publisher": {
+    "@id": "https://fluxyos.com/#organization"
+  }
+}</script>
+<script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
     {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "FluxyOS for CFOs & Finance Teams",
-      "applicationCategory": "BusinessApplication",
-      "applicationSubCategory": "Finance Operations Software",
-      "operatingSystem": "Web, iOS, Android",
-      "url": "https://fluxyos.com/use-cases/cfo-finance-teams",
-      "inLanguage": "en-US",
-      "description": "FluxyOS is a finance operations operating layer for CFOs and finance teams. Connect revenue, expenses, bills, subscriptions, receipts, and vendor spend in one place for faster close and audit-ready reporting.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "IDR",
-        "availability": "https://schema.org/InStock"
-      },
-      "featureList": [
-        "Month-end close readiness scorecard and validation",
-        "Reconciliation gap tracking across payment channels",
-        "Bills and payables control with due dates and alerts",
-        "SaaS and software subscription renewal visibility",
-        "Missing receipt tracing and categorization cues",
-        "Vendor spend concentration and drift monitoring",
-        "Grounded AI assistant for direct ledger Q&A",
-        "Export-ready context clean for accountants"
-      ],
-      "publisher": {
-        "@id": "https://fluxyos.com/#organization"
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://fluxyos.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "CFO & Finance Teams",
+      "item": "https://fluxyos.com/use-cases/cfo-finance-teams"
+    }
+  ]
+}</script>
+<script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "inLanguage": "en",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Can FluxyOS support month-end close?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. The Accounting Center has a close-readiness review, trial balance, posted journals, and period close. An authorized user closes the period after resolving blocking unposted sources and an unbalanced trial balance. Supporting-document completeness remains part of your team’s review."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do financial statements use posted accounting entries?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The posted income statement, balance sheet, and cash flow statement use ledger balances. Check the basis and period of the view you open: records-based operational previews and posted accounting statements serve different reviews."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does bank reconciliation include live bank feeds?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The verified workflow imports bank statements and supports match review and reconciliation. This page does not promise a live bank feed. Keep statement imports and payment records current for an accurate comparison."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can we consolidate separate companies or approve payments?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Separate-entity consolidation and approval workflows are not currently available. FluxyOS connects the financial records within a workspace; it does not move money or execute supplier payments. Discuss your reporting structure and required controls with sales."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What can we share with an accountant?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The accounting export package includes CSV files for the income statement, balance sheet, cash flow, trial balance, and general ledger, with period and tie-out context. Reports & Exports also supports financial report previews and browser print/save as PDF. Review the report basis and completeness before sharing."
       }
     }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Home",
-          "item": "https://fluxyos.com/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Use Cases",
-          "item": "https://fluxyos.com/use-cases/cfo-finance-teams"
-        },
-        {
-          "@type": "ListItem",
-          "position": 3,
-          "name": "CFOs & Finance Teams",
-          "item": "https://fluxyos.com/use-cases/cfo-finance-teams"
-        }
-      ]
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "inLanguage": "en-US",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "Is FluxyOS built for CFOs or small finance teams?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. FluxyOS is designed for business owners and finance teams that need a clearer operating layer for transactions, bills, subscriptions, receipts, reports, and financial questions."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can FluxyOS help with month-end close?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "FluxyOS helps teams identify missing receipts, incomplete records, overdue bills, subscription renewals, and reporting gaps before exporting or reviewing financial reports."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can FluxyOS track missing receipts and incomplete records?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. FluxyOS uses transaction statuses such as Missing Receipt and can surface incomplete records that need finance attention before accounting review."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Does FluxyOS replace accounting software?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "No. FluxyOS is the operational finance layer before accounting. It helps organize operational records, explain numbers, and prepare cleaner exports so you spend less time cleaning up errors in accounting software."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can FluxyOS export reports for accountants?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. FluxyOS is designed to support export-ready finance data, providing clean CSV/Excel files with categorized transactions, attached receipt proofs, and clear audit metadata."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can Fluxy AI answer finance questions from our data?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. Fluxy AI is designed to answer grounded finance questions using FluxyOS transaction ledger records and backend-calculated data summaries, ensuring answers remain accurate and verifiable."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can FluxyOS approve payments or move money?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "FluxyOS supports review and tracking workflows, but payment movement or approval actions require explicit user confirmation, audit trails, and future hardened security configurations."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is finance data separated per user or workspace?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. All production data is strictly user-scoped and isolated under authenticated credentials, ensuring complete privacy, separation, and security of financial records."
-          }
-        }
-      ]
-    }
-    </script>
-</head>
-<body class="min-h-screen flex flex-col">
-
-    <!-- 1. Navigation with Mega Menu -->
-    <nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
+  ]
+}</script></head><body class="agency-site"><a class="ag-skip" href="#main-content">Skip to content</a><div class="promo-banner" data-static-promo role="region" aria-label="FluxyOS promotion">
+            <div class="promo-banner__inner">
+                <span class="promo-banner__icon" aria-hidden="true">
+                    <span class="promo-banner__icon-mark">%</span>
+                </span>
+                <p class="promo-banner__copy">
+                    <span>Save 20% on annual FluxyOS plans. Activate before the promo ends.</span>
+                </p>
+                <a class="promo-banner__link" href="/pricing">View plans</a>
+            </div>
+        </div><nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
         <div class="max-w-[1280px] mx-auto px-6 h-[80px] flex items-center justify-between">
             <div class="flex items-center gap-12 h-full">
                 <a href="/fluxyos" class="flex items-center gap-2.5 cursor-pointer group">
@@ -574,667 +422,14 @@
             </div>
         </div>
     </nav>
-
-    <!-- Section 1: Hero -->
-    <section class="cfo-paper border-b border-gray-200 px-6 py-12 md:py-16 overflow-hidden">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center mb-12">
-                <div class="max-w-3xl">
-                    <span class="bg-[#EA580C]/10 text-[#EA580C] border border-[#EA580C]/25 text-[12px] font-bold px-3 py-1 rounded-full uppercase tracking-wider inline-block mb-5">By Role: CFOs & Finance Teams</span>
-                    <h1 class="text-[42px] md:text-[52px] font-bold tracking-tight leading-[1.08] text-gray-950 mb-6">
-                        Give your finance team one operating layer for close, control, and clarity.
-                    </h1>
-                    <p class="text-[17px] md:text-[19px] text-gray-700 leading-relaxed mb-8">
-                        FluxyOS helps CFOs and finance teams track revenue, expenses, bills, subscriptions, receipts, vendor spend, and reporting gaps in one place, so the team can close faster and explain the numbers with confidence.
-                    </p>
-                    <div class="flex flex-col sm:flex-row gap-4">
-                        <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-8 py-4 rounded-md transition-all duration-200 shadow-sm hover:shadow text-center">Try FluxyOS free</a>
-                        <a href="/pricing" class="border border-gray-300 bg-white text-gray-900 font-semibold text-[15px] px-8 py-4 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors text-center">View pricing</a>
-                    </div>
-                </div>
-
-                <!-- Hero Visual - Light Executive Control-Room Visual -->
-                <div class="rounded-3xl border border-gray-200 bg-white p-6 cfo-shadow relative">
-                    <div class="flex items-center justify-between border-b border-gray-200 pb-4 mb-4">
-                        <div>
-                            <p class="font-mono text-[10px] uppercase tracking-[0.2em] text-gray-400">FluxyOS Operational Cockpit</p>
-                            <h3 class="text-[18px] font-bold text-gray-950">Month-End Close readiness</h3>
-                        </div>
-                        <div class="bg-orange-50 border border-orange-200 rounded-full px-3 py-1 flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-[#EA580C] animate-pulse"></span>
-                            <span class="text-[12px] font-bold text-[#EA580C]">82% Ready</span>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3 mb-4">
-                        <div class="border border-gray-150 rounded-xl p-3 bg-gray-50">
-                            <p class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Missing Receipts</p>
-                            <p class="text-[20px] font-bold text-gray-900 font-mono mt-1">12 records</p>
-                            <span class="text-[11px] text-[#EA580C] font-semibold flex items-center gap-1 mt-1">&bull; Action required</span>
-                        </div>
-                        <div class="border border-gray-150 rounded-xl p-3 bg-gray-50">
-                            <p class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Bills due this week</p>
-                            <p class="text-[20px] font-bold text-gray-900 font-mono mt-1">Rp 18.400.000</p>
-                            <span class="text-[11px] text-gray-500 flex items-center gap-1 mt-1">&bull; 3 payables</span>
-                        </div>
-                    </div>
-
-                    <div class="border border-gray-150 rounded-xl p-4 bg-gray-50 mb-4">
-                        <div class="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">
-                            <span>Ledger Quality review</span>
-                            <span class="text-orange-600">7 uncategorized</span>
-                        </div>
-                        <div class="space-y-2 text-[12px]">
-                            <div class="flex justify-between items-center py-1.5 border-b border-gray-200">
-                                <span class="font-medium text-gray-800">AWS Cloud Renewal</span>
-                                <span class="font-mono text-gray-600">Rp 14.850.000</span>
-                                <span class="rounded bg-orange-100 text-orange-700 px-1.5 py-0.5 text-[10px] font-bold">Needs Tag</span>
-                            </div>
-                            <div class="flex justify-between items-center py-1.5">
-                                <span class="font-medium text-gray-800">Gojek - Client Dinner</span>
-                                <span class="font-mono text-gray-600">Rp 480.000</span>
-                                <span class="rounded bg-yellow-100 text-yellow-700 px-1.5 py-0.5 text-[10px] font-bold">Needs Receipt</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Fluxy AI Live Prompt -->
-                    <div class="rounded-2xl bg-gray-950 p-4 text-white font-sans">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="bg-[#EA580C] text-white text-[9px] font-bold px-1.5 py-0.5 rounded tracking-wide uppercase">Fluxy AI</span>
-                            <p class="text-[11px] text-gray-400">Grounded Assistant</p>
-                        </div>
-                        <p class="text-[12px] text-gray-200 leading-relaxed font-mono">
-                            &ldquo;12 transactions are missing receipts, 7 records are uncategorized, and 3 bills are overdue. Focus on missing receipts first to secure PPN audit claims.&rdquo;
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Section 2: Role Pain -->
-    <section class="py-16 md:py-24 px-6 bg-white border-b border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-3xl mb-12">
-                <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Operational Pain</p>
-                <h2 class="text-[32px] md:text-[42px] font-bold tracking-tight text-gray-950 mb-5">
-                    Finance teams do not need another dashboard. They need cleaner control.
-                </h2>
-                <p class="text-[17px] text-gray-600 leading-relaxed">
-                    A financial report is only useful when the transactions behind it are categorized, documented, and complete. Without a clean operational finance layer, month-end becomes a reactive chase.
-                </p>
-            </div>
-
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div class="rounded-2xl border border-gray-200 bg-gray-50 p-6 flex flex-col justify-between">
-                    <div>
-                        <span class="text-[32px] font-bold text-[#EA580C] font-mono">01</span>
-                        <h3 class="text-[18px] font-bold text-gray-950 mt-4 mb-2">Manual close processes</h3>
-                        <p class="text-[14px] text-gray-600 leading-relaxed">
-                            Month-end close depends on manual checks, comparing bank rows, chasing team members, and cleaning up descriptions.
-                        </p>
-                    </div>
-                </div>
-                <div class="rounded-2xl border border-gray-200 bg-gray-50 p-6 flex flex-col justify-between">
-                    <div>
-                        <span class="text-[32px] font-bold text-[#EA580C] font-mono">02</span>
-                        <h3 class="text-[18px] font-bold text-gray-950 mt-4 mb-2">Scattered documents</h3>
-                        <p class="text-[14px] text-gray-600 leading-relaxed">
-                            Receipts, bills, and vendor invoices arrive across email threads, WhatsApp chats, paper receipts, and screenshots.
-                        </p>
-                    </div>
-                </div>
-                <div class="rounded-2xl border border-gray-200 bg-gray-50 p-6 flex flex-col justify-between">
-                    <div>
-                        <span class="text-[32px] font-bold text-[#EA580C] font-mono">03</span>
-                        <h3 class="text-[18px] font-bold text-gray-950 mt-4 mb-2">SaaS & subscription drift</h3>
-                        <p class="text-[14px] text-gray-600 leading-relaxed">
-                            SaaS subscriptions and contractor rates grow quietly without clear owner tracking or renewal foresight, risking unexpected cash pressure.
-                        </p>
-                    </div>
-                </div>
-                <div class="rounded-2xl border border-gray-200 bg-gray-50 p-6 flex flex-col justify-between">
-                    <div>
-                        <span class="text-[32px] font-bold text-[#EA580C] font-mono">04</span>
-                        <h3 class="text-[18px] font-bold text-gray-950 mt-4 mb-2">Delayed reporting metrics</h3>
-                        <p class="text-[14px] text-gray-600 leading-relaxed">
-                            Management reports are delayed because the team is still matching payment proofs, resolving invoice amounts, or verifying classification gaps.
-                        </p>
-                    </div>
-                </div>
-                <div class="rounded-2xl border border-gray-200 bg-gray-50 p-6 flex flex-col justify-between">
-                    <div>
-                        <span class="text-[32px] font-bold text-[#EA580C] font-mono">05</span>
-                        <h3 class="text-[18px] font-bold text-gray-950 mt-4 mb-2">Reactive ad-hoc questions</h3>
-                        <p class="text-[14px] text-gray-600 leading-relaxed">
-                            Founders and stakeholders ask critical spend questions daily, forcing the finance team to search, download, and rebuild sheets on demand.
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Section 3: Finance Operating System -->
-    <section class="py-16 md:py-24 px-6 bg-[#F8FAFC] border-b border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-[0.8fr_1.2fr] gap-12 items-center">
-                <div>
-                    <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Finance Operating System</p>
-                    <h2 class="text-[32px] md:text-[42px] font-bold tracking-tight text-gray-950 mb-6">
-                        One place for the finance work that happens before the report.
-                    </h2>
-                    <p class="text-[16px] text-gray-600 leading-relaxed mb-6">
-                        FluxyOS is not a static visualization board. It is the operational finance layer that connects all cash inputs, payables, cards, SaaS lines, receipts, and revenue streams, preparing them for accounting and management review.
-                    </p>
-                    <div class="space-y-3">
-                        <div class="flex items-start gap-2.5 text-[14px] font-medium text-gray-800">
-                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
-                            <span>Pre-accounting operational ledger categorization</span>
-                        </div>
-                        <div class="flex items-start gap-2.5 text-[14px] font-medium text-gray-800">
-                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
-                            <span>Live pacing and upcoming bills control</span>
-                        </div>
-                        <div class="flex items-start gap-2.5 text-[14px] font-medium text-gray-800">
-                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
-                            <span>Receipt tracing with complete PPN trail support</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Workflow System Map Visual -->
-                <div class="rounded-3xl border border-gray-200 bg-white p-6 md:p-8 cfo-shadow relative overflow-hidden">
-                    <div class="flex items-center justify-between border-b border-gray-100 pb-4 mb-6">
-                        <h4 class="font-bold text-gray-950 uppercase tracking-wider text-[12px] font-mono">Platform Ecosystem Flow</h4>
-                        <span class="rounded-full bg-green-50 border border-green-200 text-green-700 text-[11px] px-2 py-0.5 font-bold">Synchronized</span>
-                    </div>
-
-                    <!-- System Map Diagram -->
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 relative z-10">
-                        <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 text-center flex flex-col justify-between h-[110px]">
-                            <span class="text-[12px] font-bold text-gray-800">Transactions Ledger</span>
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-100 px-2 py-0.5 rounded self-center mt-1">Close-ready</span>
-                        </div>
-                        <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 text-center flex flex-col justify-between h-[110px]">
-                            <span class="text-[12px] font-bold text-gray-800">Vendor Spend</span>
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-orange-700 bg-orange-100 px-2 py-0.5 rounded self-center mt-1">AI reviewed</span>
-                        </div>
-                        <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 text-center flex flex-col justify-between h-[110px]">
-                            <span class="text-[12px] font-bold text-gray-800">Receipt Capture</span>
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-[#EA580C] bg-orange-50 border border-[#EA580C]/25 px-2 py-0.5 rounded self-center mt-1">Needs receipt</span>
-                        </div>
-
-                        <!-- Main Core Central Card -->
-                        <div class="col-span-2 md:col-span-3 border border-[#EA580C]/30 rounded-2xl p-5 bg-gradient-to-r from-orange-50 to-white flex flex-col items-center justify-center text-center py-6 shadow-sm">
-                            <span class="font-mono text-[10px] uppercase tracking-widest text-[#EA580C] font-bold mb-1">Central Hub</span>
-                            <h5 class="text-[17px] font-bold text-gray-900">Finance Operations Operating Layer</h5>
-                            <p class="text-[12px] text-gray-500 mt-1 max-w-md">Unifies and structures entries, matching documents, checking budgets, and tracking payables live.</p>
-                        </div>
-
-                        <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 text-center flex flex-col justify-between h-[110px]">
-                            <span class="text-[12px] font-bold text-gray-800">Bills & Payables</span>
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-orange-700 bg-orange-100 px-2 py-0.5 rounded self-center mt-1">Due soon</span>
-                        </div>
-                        <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 text-center flex flex-col justify-between h-[110px]">
-                            <span class="text-[12px] font-bold text-gray-800">Subscriptions</span>
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-100 px-2 py-0.5 rounded self-center mt-1">Monitored</span>
-                        </div>
-                        <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 text-center flex flex-col justify-between h-[110px]">
-                            <span class="text-[12px] font-bold text-gray-800">Reports & Exports</span>
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-100 px-2 py-0.5 rounded self-center mt-1">Ready to export</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Section 4: Workflow -->
-    <section class="py-16 md:py-24 px-6 bg-white border-b border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-3xl mb-12">
-                <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">The Workflow</p>
-                <h2 class="text-[32px] md:text-[42px] font-bold tracking-tight text-gray-950 mb-5">
-                    From scattered records to close-ready finance.
-                </h2>
-                <p class="text-[17px] text-gray-600 leading-relaxed">
-                    Build a structured operation that captures inputs, cleans exceptions, and reviews gaps continuously.
-                </p>
-            </div>
-
-            <div class="workflow-trail grid lg:grid-cols-5 gap-8">
-                <!-- Step 1 -->
-                <div class="relative pl-14 lg:pl-0 lg:pt-14 z-10">
-                    <span class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white font-mono font-bold text-[#EA580C]">1</span>
-                    <h3 class="font-bold text-gray-950 mb-2">Capture</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Gather transactions, bills, receipts, invoices, subscriptions, and revenue records automatically.
-                    </p>
-                </div>
-                <!-- Step 2 -->
-                <div class="relative pl-14 lg:pl-0 lg:pt-14 z-10">
-                    <span class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white font-mono font-bold text-[#EA580C]">2</span>
-                    <h3 class="font-bold text-gray-950 mb-2">Classify</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Route records into the right FluxyOS modules: Ledger, Bills, Subscriptions, or Revenue Sync.
-                    </p>
-                </div>
-                <!-- Step 3 -->
-                <div class="relative pl-14 lg:pl-0 lg:pt-14 z-10">
-                    <span class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white font-mono font-bold text-[#EA580C]">3</span>
-                    <h3 class="font-bold text-gray-950 mb-2">Review</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Trace missing receipts, check uncategorized records, overdue bills, and duplicate or unusual vendor drift.
-                    </p>
-                </div>
-                <!-- Step 4 -->
-                <div class="relative pl-14 lg:pl-0 lg:pt-14 z-10">
-                    <span class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white font-mono font-bold text-[#EA580C]">4</span>
-                    <h3 class="font-bold text-gray-950 mb-2">Ask Fluxy AI</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Ask natural questions like &ldquo;What is blocking close?&rdquo; to quickly expose unresolved data anomalies.
-                    </p>
-                </div>
-                <!-- Step 5 -->
-                <div class="relative pl-14 lg:pl-0 lg:pt-14 z-10">
-                    <span class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white font-mono font-bold text-[#EA580C]">5</span>
-                    <h3 class="font-bold text-gray-950 mb-2">Export or Report</h3>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Share context-rich, clean exports with accountants or stakeholders, eliminating last-minute reconciliation loops.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Section 5: Feature Fit -->
-    <section class="py-16 md:py-24 px-6 bg-[#F8FAFC] border-b border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-3xl mb-12">
-                <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Core Capabilities</p>
-                <h2 class="text-[32px] md:text-[42px] font-bold tracking-tight text-gray-950 mb-5">
-                    Built around the finance team’s real operating jobs.
-                </h2>
-                <p class="text-[17px] text-gray-600 leading-relaxed">
-                    FluxyOS prioritizes visibility where it impacts reporting trust first, structuring supporting features neatly below.
-                </p>
-            </div>
-
-            <!-- Featured Card & Supporting Grid -->
-            <div class="grid lg:grid-cols-3 gap-6">
-                <!-- Large Featured Card -->
-                <div class="lg:col-span-3 rounded-3xl border border-gray-200 bg-white p-6 md:p-8 shadow-sm flex flex-col md:flex-row gap-8 items-center">
-                    <div class="flex-1">
-                        <span class="bg-[#EA580C]/10 text-[#EA580C] text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider inline-block mb-3">Featured Job</span>
-                        <h3 class="text-[24px] md:text-[28px] font-bold text-gray-950 mb-3">Month-end close readiness scorecard</h3>
-                        <p class="text-[15px] text-gray-600 leading-relaxed mb-4">
-                            See exactly what is holding back your month-end. Spot missing invoices, receipts, undocumented supplier spend, or pending classification categories in one simple percentage scorecard before exporting data.
-                        </p>
-                        <ul class="space-y-2 text-[14px] text-gray-700">
-                            <li class="flex items-center gap-2">&bull; Identify outstanding receipt requirements by team member</li>
-                            <li class="flex items-center gap-2">&bull; Spot payables pressure before due dates arrive</li>
-                            <li class="flex items-center gap-2">&bull; Validate ledger cleanliness before final accountant hand-off</li>
-                        </ul>
-                    </div>
-                    <div class="w-full md:w-[320px] bg-gray-50 border border-gray-200 rounded-2xl p-5 flex flex-col justify-between">
-                        <div>
-                            <div class="flex justify-between text-[12px] font-bold text-gray-500 mb-2">
-                                <span>CLOSE STATUS</span>
-                                <span class="text-orange-600">Action Required</span>
-                            </div>
-                            <div class="h-2 w-full bg-gray-200 rounded-full overflow-hidden mb-4">
-                                <div class="h-full bg-[#EA580C] rounded-full" style="width: 82%;"></div>
-                            </div>
-                        </div>
-                        <div class="space-y-3">
-                            <div class="flex justify-between text-[13px] border-b border-gray-200 pb-2">
-                                <span class="text-gray-600">Attached Proofs</span>
-                                <span class="font-bold text-gray-800">44 of 48</span>
-                            </div>
-                            <div class="flex justify-between text-[13px] border-b border-gray-200 pb-2">
-                                <span class="text-gray-600">Categorized Rows</span>
-                                <span class="font-bold text-gray-800">92% Complete</span>
-                            </div>
-                            <div class="flex justify-between text-[13px]">
-                                <span class="text-gray-600">Outstanding Bills</span>
-                                <span class="font-bold text-gray-800 font-mono">Rp 18.400.000</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Grid of Supporting Cards -->
-                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <h4 class="text-[17px] font-bold text-gray-950 mb-2">Reconciliation gap tracking</h4>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Identify differences between transaction registers and actual payouts early, protecting the business from cash leakage.
-                    </p>
-                </div>
-                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <h4 class="text-[17px] font-bold text-gray-950 mb-2">Bills & payables control</h4>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        View scheduled bills, check due dates, assess vendor commitments, and avoid late payments from a single unified register.
-                    </p>
-                </div>
-                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <h4 class="text-[17px] font-bold text-gray-950 mb-2">Subscription spend visibility</h4>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Monitor active software lines, track contract renewal schedules, spot duplicates, and check SaaS ownership.
-                    </p>
-                </div>
-                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <h4 class="text-[17px] font-bold text-gray-950 mb-2">Missing receipt follow-up</h4>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Tag and follow up on undocumented transaction records automatically, keeping your PPN audit trail complete.
-                    </p>
-                </div>
-                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <h4 class="text-[17px] font-bold text-gray-950 mb-2">Vendor spend monitoring</h4>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Identify sudden vendor rate drift, check concentration risks, and track contractor spend variations continuously.
-                    </p>
-                </div>
-                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <h4 class="text-[17px] font-bold text-gray-950 mb-2">Audit-friendly activity logs</h4>
-                    <p class="text-[14px] text-gray-600 leading-relaxed">
-                        Maintain a continuous history of ledger changes, attachments, and categorization revisions, simplifying auditor inspection.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Section 6: Fluxy AI for Finance Teams -->
-    <section class="py-16 md:py-24 px-6 bg-white border-b border-gray-200">
-        <div class="max-w-[1120px] mx-auto">
-            <div class="rounded-3xl border border-gray-200 bg-gray-50 p-6 md:p-8 shadow-sm">
-                <div class="grid lg:grid-cols-[0.85fr_1.15fr] gap-8 items-center">
-                    <div>
-                        <span class="bg-[#EA580C]/10 text-[#EA580C] text-[11px] font-bold px-2 py-1 rounded uppercase tracking-wider inline-block mb-3">Fluxy AI</span>
-                        <h2 class="text-[30px] md:text-[38px] font-bold tracking-tight text-gray-950 mb-5">
-                            Ask finance questions without rebuilding the spreadsheet.
-                        </h2>
-                        <p class="text-[16px] text-gray-600 leading-relaxed mb-6">
-                            Fluxy AI is built on grounded ledger logic. It reviews transaction counts, matches overdue bills, and explains spend variance based strictly on calculated FluxyOS ledger records.
-                        </p>
-                        <div class="rounded-2xl bg-orange-50 border border-orange-200/50 p-4">
-                            <h5 class="text-[13px] font-bold text-orange-800 mb-1">Safety Guardrail Grounding</h5>
-                            <p class="text-[12px] text-[#EA580C] leading-relaxed">
-                                Fluxy AI answers from calculated system records. It will never invent numbers, write database rules, or initiate payment payouts autonomously without explicit confirmation.
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- AI Prompt/Response Memo Visual -->
-                    <div class="memo-glow rounded-2xl bg-white p-5 md:p-6 shadow-md">
-                        <div class="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
-                            <div>
-                                <p class="font-mono text-[9px] uppercase tracking-wider text-gray-400">Ledger Q&A review</p>
-                                <h3 class="text-[16px] font-bold text-gray-900">Month-End Close Validation</h3>
-                            </div>
-                            <span class="rounded bg-gray-950 text-white font-mono text-[10px] font-bold px-2 py-0.5">AI</span>
-                        </div>
-
-                        <div class="space-y-4">
-                            <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                                <p class="text-[11px] font-bold text-[#EA580C]">User Query</p>
-                                <p class="text-[13px] text-gray-800 font-mono mt-1">&ldquo;What is blocking this month's close?&rdquo;</p>
-                            </div>
-                            <div class="bg-orange-50/40 rounded-xl p-3 border border-orange-100">
-                                <p class="text-[11px] font-bold text-[#EA580C]">Fluxy AI Response</p>
-                                <p class="text-[13px] text-gray-800 leading-relaxed font-sans mt-1">
-                                    I found 12 transactions missing receipts, 7 records uncategorized, and 3 bills overdue. Focus on missing receipts first to secure tax/PPN audit compliance.
-                                </p>
-                            </div>
-                            <div class="border border-gray-150 rounded-xl p-3">
-                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Validation Summary</p>
-                                <div class="grid grid-cols-2 gap-2 text-[12px]">
-                                    <div class="flex justify-between py-1 border-b border-gray-100"><span class="text-gray-500">Missing Receipts</span><span class="font-bold font-mono">12</span></div>
-                                    <div class="flex justify-between py-1 border-b border-gray-100"><span class="text-gray-500">Uncategorized</span><span class="font-bold font-mono">7</span></div>
-                                    <div class="flex justify-between py-1 border-b border-gray-100"><span class="text-gray-500">Overdue Bills</span><span class="font-bold font-mono">3</span></div>
-                                    <div class="flex justify-between py-1 border-b border-gray-100"><span class="text-gray-500">Ready score</span><span class="font-bold text-orange-600 font-mono">82%</span></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Section 7: Before / After -->
-    <section class="py-16 md:py-24 px-6 bg-[#F8FAFC] border-b border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="max-w-3xl mb-12 text-center mx-auto">
-                <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Operations Comparison</p>
-                <h2 class="text-[32px] md:text-[42px] font-bold tracking-tight text-gray-950 mb-5">
-                    Before FluxyOS, finance work is scattered. After FluxyOS, it is controlled.
-                </h2>
-            </div>
-
-            <div class="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-                <!-- Before -->
-                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <h3 class="text-[18px] font-bold text-gray-500 mb-4 flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-gray-400"></span>
-                        Before FluxyOS
-                    </h3>
-                    <ul class="space-y-3.5 text-[14px] text-gray-600">
-                        <li class="flex items-start gap-2.5">
-                            <span class="text-red-500 font-bold mt-0.5">&times;</span>
-                            <span>Reconciliation gaps are identified weeks late during bank closures.</span>
-                        </li>
-                        <li class="flex items-start gap-2.5">
-                            <span class="text-red-500 font-bold mt-0.5">&times;</span>
-                            <span>Receipts scatter inside personal chats and multiple team emails.</span>
-                        </li>
-                        <li class="flex items-start gap-2.5">
-                            <span class="text-red-500 font-bold mt-0.5">&times;</span>
-                            <span>SaaS renewals occur unexpectedly without clean owner tracking.</span>
-                        </li>
-                        <li class="flex items-start gap-2.5">
-                            <span class="text-red-500 font-bold mt-0.5">&times;</span>
-                            <span>Management reports take days to compile, clean, and verify.</span>
-                        </li>
-                    </ul>
-                </div>
-
-                <!-- After -->
-                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <h3 class="text-[18px] font-bold text-gray-950 mb-4 flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>
-                        After FluxyOS
-                    </h3>
-                    <ul class="space-y-3.5 text-[14px] text-gray-700 font-semibold">
-                        <li class="flex items-start gap-2.5">
-                            <span class="text-green-500 font-bold mt-0.5">&bull;</span>
-                            <span>Reconciliation occurs daily, matching payment rows continuously.</span>
-                        </li>
-                        <li class="flex items-start gap-2.5">
-                            <span class="text-green-500 font-bold mt-0.5">&bull;</span>
-                            <span>Receipt capture formats documents directly matching ledger claims.</span>
-                        </li>
-                        <li class="flex items-start gap-2.5">
-                            <span class="text-green-500 font-bold mt-0.5">&bull;</span>
-                            <span>Subscription dashboards notify owners ahead of contract renewal.</span>
-                        </li>
-                        <li class="flex items-start gap-2.5">
-                            <span class="text-green-500 font-bold mt-0.5">&bull;</span>
-                            <span>Reports compile dynamically, showing export-ready validation live.</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Section 8: CFO Control Layer -->
-    <section class="py-16 md:py-24 px-6 bg-white border-b border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center">
-                <div>
-                    <p class="font-mono text-[13px] uppercase tracking-[0.24em] text-[#EA580C] mb-4">Strategic Visibility</p>
-                    <h2 class="text-[32px] md:text-[42px] font-bold tracking-tight text-gray-950 mb-5">
-                        Give the CFO visibility without slowing the team down.
-                    </h2>
-                    <p class="text-[17px] text-gray-600 leading-relaxed mb-6">
-                        Provide leadership with clear signals on operational health: track vendor concentration, review renewal pressures, and monitor department spend pacing without creating bottleneck approval structures.
-                    </p>
-                    <div class="rounded-2xl border border-gray-150 p-4 bg-gray-50">
-                        <h4 class="text-[14px] font-bold text-gray-900 mb-1">Cash Pressure Proxy Direction</h4>
-                        <p class="text-[13px] text-gray-600 leading-relaxed">
-                            FluxyOS displays payables commitments and pacing trends as Cash Pressure proxies. We remain transparent: cash pressure calculations serve as proxies unless actual bank balance records are connected.
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Strategic Stats Visual -->
-                <div class="rounded-3xl border border-gray-200 bg-white p-6 shadow-md relative">
-                    <div class="border-b border-gray-100 pb-3 mb-4">
-                        <p class="font-mono text-[9px] uppercase tracking-wider text-gray-400">Executive Summary Panel</p>
-                        <h3 class="text-[16px] font-bold text-gray-950">Vendor concentration & Drift</h3>
-                    </div>
-                    <div class="space-y-4 text-[13px]">
-                        <div>
-                            <div class="flex justify-between font-medium text-gray-800 mb-1">
-                                <span>AWS Cloud Infra</span>
-                                <span>+18% vs last month</span>
-                            </div>
-                            <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                                <div class="h-full bg-orange-500" style="width: 74%;"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="flex justify-between font-medium text-gray-800 mb-1">
-                                <span>Meta Marketing Spend</span>
-                                <span>-2% vs last month</span>
-                            </div>
-                            <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                                <div class="h-full bg-green-500" style="width: 48%;"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="flex justify-between font-medium text-gray-800 mb-1">
-                                <span>Contractor Services</span>
-                                <span>Stable pacing</span>
-                            </div>
-                            <div class="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                                <div class="h-full bg-gray-500" style="width: 35%;"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Section 9: FAQ -->
-    <section id="faq" class="py-16 md:py-20 px-6 bg-white border-b border-gray-200">
-        <div class="max-w-[1120px] mx-auto">
-            <div class="grid lg:grid-cols-[0.8fr_1.2fr] gap-10">
-                <div>
-                    <h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3">Frequently asked questions</h2>
-                    <p class="text-[16px] text-gray-600">Clear operational answers for finance professionals and CFOs.</p>
-                </div>
-                <div class="space-y-4">
-                    <details class="border-b border-gray-200 py-4 group" open>
-                        <summary class="flex items-center justify-between cursor-pointer list-none">
-                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Is FluxyOS built for CFOs or small finance teams?</h3>
-                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </summary>
-                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
-                            Yes. FluxyOS is designed for business owners and finance teams that need a clearer operating layer for transactions, bills, subscriptions, receipts, reports, and financial questions.
-                        </p>
-                    </details>
-                    <details class="border-b border-gray-200 py-4 group">
-                        <summary class="flex items-center justify-between cursor-pointer list-none">
-                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Can FluxyOS help with month-end close?</h3>
-                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </summary>
-                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
-                            FluxyOS helps teams identify missing receipts, incomplete records, overdue bills, subscription renewals, and reporting gaps before exporting or reviewing financial reports.
-                        </p>
-                    </details>
-                    <details class="border-b border-gray-200 py-4 group">
-                        <summary class="flex items-center justify-between cursor-pointer list-none">
-                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Can FluxyOS track missing receipts and incomplete records?</h3>
-                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </summary>
-                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
-                            Yes. FluxyOS uses transaction statuses such as Missing Receipt and can surface incomplete records that need finance attention before accounting review.
-                        </p>
-                    </details>
-                    <details class="border-b border-gray-200 py-4 group">
-                        <summary class="flex items-center justify-between cursor-pointer list-none">
-                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Does FluxyOS replace accounting software?</h3>
-                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </summary>
-                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
-                            No. FluxyOS is the operational finance layer before accounting. It helps organize operational records, explain numbers, and prepare cleaner exports so you spend less time cleaning up errors in accounting software.
-                        </p>
-                    </details>
-                    <details class="border-b border-gray-200 py-4 group">
-                        <summary class="flex items-center justify-between cursor-pointer list-none">
-                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Can FluxyOS export reports for accountants?</h3>
-                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </summary>
-                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
-                            Yes. FluxyOS is designed to support export-ready finance data, providing clean CSV/Excel files with categorized transactions, attached receipt proofs, and clear audit metadata.
-                        </p>
-                    </details>
-                    <details class="border-b border-gray-200 py-4 group">
-                        <summary class="flex items-center justify-between cursor-pointer list-none">
-                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Can Fluxy AI answer finance questions from our data?</h3>
-                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </summary>
-                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
-                            Yes. Fluxy AI is designed to answer grounded finance questions using FluxyOS transaction ledger records and backend-calculated data summaries, ensuring answers remain accurate and verifiable.
-                        </p>
-                    </details>
-                    <details class="border-b border-gray-200 py-4 group">
-                        <summary class="flex items-center justify-between cursor-pointer list-none">
-                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Can FluxyOS approve payments or move money?</h3>
-                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </summary>
-                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
-                            FluxyOS supports review and tracking workflows, but payment movement or approval actions require explicit user confirmation, audit trails, and future hardened security configurations.
-                        </p>
-                    </details>
-                    <details class="border-b border-gray-200 py-4 group">
-                        <summary class="flex items-center justify-between cursor-pointer list-none">
-                            <h3 class="text-[16px] font-bold text-gray-900 pr-4">Is finance data separated per user or workspace?</h3>
-                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </summary>
-                        <p class="mt-2 text-[14px] text-gray-700 leading-relaxed">
-                            Yes. All production data is strictly user-scoped and isolated under authenticated credentials, ensuring complete privacy, separation, and security of financial records.
-                        </p>
-                    </details>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Section 10: Final CTA -->
-    <section class="bg-[#0B0F19] py-16 md:py-24 px-6 text-center">
-        <div class="max-w-[1280px] mx-auto">
-            <h2 class="text-[34px] md:text-[44px] font-bold tracking-tight text-white mb-5">
-                Close faster. Explain numbers better. Control finance work earlier.
-            </h2>
-            <p class="text-[17px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">
-                Connect your operational finance inputs, see ledger validation errors in real-time, and run a cleaner month-end. Start free, scale as your operations expand.
-            </p>
-            <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-sm hover:shadow inline-block text-center">Try FluxyOS free</a>
-                <a href="/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">See pricing</a>
-            </div>
-        </div>
-    </section>
-
-    <script src="/assets/js/universe-canvas.js" defer></script>
-    <script src="/assets/js/footer-loader.js" defer></script>
-    <script src="/assets/js/fluxyos.js" defer></script>
-<script src="/assets/js/i18n.js" defer></script>
-</body>
-</html>
+<main id="main-content" class="ag-page cf-page" data-locale-path="/use-cases/cfo-finance-teams">
+<section class="cf-hero"><div class="cf-hero-grid ag-shell"><h1>Lead with clarity.<br>Keep the source in view.</h1><div class="cf-hero-support"><p>Bring cash, commitments, budgets, and accounting into the same finance review. Give CFOs and finance teams the context behind the numbers.</p><div class="ag-actions"><a class="ag-primary" href="/pricing">Explore FluxyOS <span aria-hidden="true">↗</span></a><a class="cf-secondary" href="/contact-sales">Talk to sales</a></div></div></div><div class="ag-shell cf-work-strip"><a href="#financial-view"><img class="cf-icon" src="/assets/images/cfo-finance/finance-review.webp" width="88" height="88" alt="" loading="lazy" decoding="async"><h2>Cash & commitments</h2><p>See what needs attention.</p><span class="cf-strip-arrow" aria-hidden="true">↗</span></a><a href="#reconciliation"><img class="cf-icon" src="/assets/images/cfo-finance/reconciliation.webp" width="88" height="88" alt="" loading="lazy" decoding="async"><h2>Reconciliation</h2><p>Compare the source records.</p><span class="cf-strip-arrow" aria-hidden="true">↗</span></a><a href="#close"><img class="cf-icon" src="/assets/images/cfo-finance/period-close.webp" width="88" height="88" alt="" loading="lazy" decoding="async"><h2>Period close</h2><p>Review before you close.</p><span class="cf-strip-arrow" aria-hidden="true">↗</span></a><a href="#walkthrough"><img class="cf-icon" src="/assets/images/cfo-finance/report-package.webp" width="88" height="88" alt="" loading="lazy" decoding="async"><h2>Financial reporting</h2><p>Keep the accounting context.</p><span class="cf-strip-arrow" aria-hidden="true">↗</span></a></div></section>
+<section id="financial-view" class="cf-section"><div class="ag-shell"><p class="cf-category">FluxyOS is an Intelligent Finance Operating System that connects financial operations, accounting, business operations, enterprise workflows, and intelligence into one continuously connected system.</p><div class="cf-sticky-layout"><div class="cf-sticky-heading"><div class="cf-heading ag-reveal"><p class="ag-kicker">Connected financial work</p><h2>A clear view.<br>A traceable answer.</h2><p>Move from an incomplete record to a reconciled payment and a posted financial statement. Keep the source close at every review.</p></div><a class="ag-text-link" href="/accounting-automation">Explore accounting<span aria-hidden="true">↗</span></a></div><div class="cf-feature-stack"><article id="documents" class="cf-feature ag-reveal"><div class="cf-feature-visual"><div class="cf-window"><div class="cf-window-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">Accounting cleanup</span><small>October review</small></div><div class="cf-window-body"><div class="cf-scene-title"><img class="cf-icon" src="/assets/images/navbar-3d/receipt-scanner.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><div><h3>Complete the financial record</h3><p>Review the details that support the books.</p></div></div><div class="cf-document-row"><span class="cf-document-mark">01</span><div><strong>Supplier bill · BILL-110</strong><span>Supporting receipt missing</span></div><span class="cf-status">Review</span></div><div class="cf-document-row"><span class="cf-document-mark">02</span><div><strong>Subscription · SUB-028</strong><span>Renewal date not recorded</span></div><span class="cf-status">Review</span></div></div></div></div><p class="cf-feature-caption"><strong>Documents with context.</strong> Find missing receipts and incomplete dates in the cleanup review. Resolve the details before relying on the report.</p></article><article id="reconciliation" class="cf-feature ag-reveal"><div class="cf-feature-visual"><div class="cf-window"><div class="cf-window-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">Bank reconciliation</span><small>Review match</small></div><div class="cf-window-body"><div class="cf-scene-title"><img class="cf-icon" src="/assets/images/cfo-finance/reconciliation.webp" width="88" height="88" alt="" loading="lazy" decoding="async"><div><h3>Two records. One review.</h3><p>Compare the amount, date, and source.</p></div></div><div class="cf-match-grid"><div data-cf-match>Imported statement line<strong>Rp8.400.000</strong><small>12 October · PT Prima</small></div><span aria-hidden="true">↔</span><div data-cf-match>Recorded bill payment<strong>Rp8.400.000</strong><small>BILL-110 · 12 October</small></div></div><button class="cf-inspect" type="button" data-cf-compare aria-expanded="false" aria-controls="cf-match-details" hidden>Compare these records <span aria-hidden="true">↗</span></button><p id="cf-match-details" class="cf-match-note">The amounts and dates match. Review the supplier document before confirming the reconciliation in your workspace.</p></div></div></div><p class="cf-feature-caption"><strong>Reconciliation with a source.</strong> Import a statement, compare its line with a financial record, and review the match before confirming.</p></article><article id="statements" class="cf-feature ag-reveal"><div class="cf-feature-visual"><div class="cf-window"><div class="cf-window-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">Posted income statement</span><small>October</small></div><div class="cf-window-body"><div class="cf-scene-title"><img class="cf-icon" src="/assets/images/cfo-finance/finance-review.webp" width="88" height="88" alt="" loading="lazy" decoding="async"><div><h3>Read the accounting result</h3><p>Posted entries give the statement its basis.</p></div></div><div class="cf-statement-chart" aria-hidden="true"><span style="--bar:100%"></span><span style="--bar:66.67%"></span><span style="--bar:33.33%"></span></div><div class="cf-row"><span>Revenue</span><strong>Rp96.000.000</strong></div><div class="cf-row"><span>Total costs</span><strong>Rp64.000.000</strong></div><div class="cf-row"><span>Net income</span><strong>Rp32.000.000</strong></div></div></div></div><p class="cf-feature-caption"><strong>A statement with an accounting basis.</strong> Read posted revenue and costs together. Drill into the journal detail when the result needs explanation.</p></article></div></div></div></section>
+<section class="cf-section cf-editorial"><div class="ag-shell ag-reveal"><img class="cf-icon" src="/assets/images/cfo-finance/finance-review.webp" width="112" height="112" alt="" loading="lazy" decoding="async"><h2>The number matters.<br>So does the record behind it.</h2><p>A useful finance conversation starts with a shared view of the source, the accounting, and the decision ahead.</p></div></section>
+<section id="walkthrough" class="cf-section"><div class="ag-shell"><div class="cf-split-heading"><div class="cf-heading ag-reveal"><p class="ag-kicker">A product walkthrough</p><h2>From the source<br>to the financial picture.</h2></div><p class="ag-reveal">Follow one supplier bill through its financial context. Select a step to see what your team reviews next.</p></div><div class="cf-tour" data-cf-tour><div class="cf-tour-controls"><div class="cf-stages" role="tablist" aria-orientation="vertical" aria-label="Financial workflow stages" hidden><button type="button" id="cf-tab-0" data-cf-step="0" role="tab" aria-selected="true" aria-controls="cf-panel-0" tabindex="0"><span class="cf-stage-index">01</span><span><strong>Start with the source.</strong><span>Capture the supplier document, amount, category, and due date.</span></span><span class="cf-stage-arrow" aria-hidden="true">↗</span></button><button type="button" id="cf-tab-1" data-cf-step="1" role="tab" aria-selected="false" aria-controls="cf-panel-1" tabindex="-1"><span class="cf-stage-index">02</span><span><strong>Inspect the accounting.</strong><span>Follow posted entries back to the bill and review the debit and credit.</span></span><span class="cf-stage-arrow" aria-hidden="true">↗</span></button><button type="button" id="cf-tab-2" data-cf-step="2" role="tab" aria-selected="false" aria-controls="cf-panel-2" tabindex="-1"><span class="cf-stage-index">03</span><span><strong>Read the financial picture.</strong><span>Review ledger-based statements with the period and source context intact.</span></span><span class="cf-stage-arrow" aria-hidden="true">↗</span></button></div><button type="button" class="cf-replay" data-cf-replay data-play-label="Play the record flow" data-pause-label="Pause the record flow" hidden><span data-cf-play-label>Play the record flow</span> <span data-cf-play-icon aria-hidden="true">▷</span></button><a class="ag-text-link" href="/accounting-automation">Explore connected accounting<span aria-hidden="true">↗</span></a></div><div class="cf-tour-screen"><div class="cf-tour-top"><span>FluxyOS · Finance review</span><span>October</span></div><div id="cf-panel-0" class="cf-tour-panel"><div class="cf-panel-heading"><span class="cf-stage-index">01</span><h3>Start with the source.</h3></div><div class="cf-window"><div class="cf-window-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">Source records</span><small>Capture</small></div><div class="cf-window-body"><div class="cf-tour-title"><img class="cf-icon" src="/assets/images/navbar-3d/invoice-envelope.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><div><span>BILL-110</span><h3>Office services</h3></div></div><div class="cf-row"><span>Supplier bill</span><strong>Rp8.400.000</strong></div><div class="cf-row"><span>Due date</span><strong>12 October</strong></div><div class="cf-source-tags"><span>Document attached</span><span>Expense category set</span></div><p class="cf-tour-note">The document explains the cost. Payment records explain the cash movement.</p></div></div></div><div id="cf-panel-1" class="cf-tour-panel"><div class="cf-panel-heading"><span class="cf-stage-index">02</span><h3>Inspect the accounting.</h3></div><div class="cf-window"><div class="cf-window-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">Posted journal</span><small>Accounting</small></div><div class="cf-window-body"><div class="cf-tour-title"><img class="cf-icon" src="/assets/images/navbar-3d/accounting-ledger.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><div><span>BILL-110</span><h3>From the bill to the books</h3></div></div><table><caption>Source bill · posted accounting entries</caption><thead><tr><th scope="col">Account</th><th scope="col">Debit</th><th scope="col">Credit</th></tr></thead><tbody><tr><th scope="row">Operating expense</th><td>Rp8.400.000</td><td>—</td></tr><tr><th scope="row">Payables</th><td>—</td><td>Rp8.400.000</td></tr></tbody></table><p class="cf-tour-note">Balanced entries. The source stays identifiable.</p></div></div></div><div id="cf-panel-2" class="cf-tour-panel"><div class="cf-panel-heading"><span class="cf-stage-index">03</span><h3>Read the financial picture.</h3></div><div class="cf-window"><div class="cf-window-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">Financial statements</span><small>Review</small></div><div class="cf-window-body"><div class="cf-tour-title"><img class="cf-icon" src="/assets/images/cfo-finance/report-package.webp" width="88" height="88" alt="" loading="lazy" decoding="async"><div><span>October · posted basis</span><h3>Give the review its context</h3></div></div><div class="cf-row"><span>Income statement</span><strong>Revenue & costs</strong></div><div class="cf-row"><span>Balance sheet</span><strong>Assets & liabilities</strong></div><div class="cf-row"><span>Cash flow</span><strong>Recorded movements</strong></div><p class="cf-tour-note">Review the statements and their source entries before sharing your financial report.</p></div></div></div><div class="cf-flow-path" aria-hidden="true"><span data-cf-node="0">Source</span><i></i><span data-cf-node="1">Accounting</span><i></i><span data-cf-node="2">Financial view</span></div></div></div></div></section>
+<section id="close" class="cf-section cf-controls-section"><div class="ag-shell cf-controls-grid"><div class="cf-heading ag-reveal"><h2>Review by design.</h2><p>Keep the checks that make the numbers useful.</p></div><article class="cf-control ag-reveal"><img class="cf-icon" src="/assets/images/cfo-finance/reconciliation.webp" width="80" height="80" alt="" loading="lazy" decoding="async"><h3>Reconcile with context</h3><p>Import statements, compare matches, and confirm the underlying record before reconciliation.</p></article><article class="cf-control ag-reveal"><img class="cf-icon" src="/assets/images/cfo-finance/period-close.webp" width="80" height="80" alt="" loading="lazy" decoding="async"><h3>Close with the checks in view</h3><p>Check unposted sources and the trial balance before an authorized user closes the period.</p></article><article class="cf-control ag-reveal"><img class="cf-icon" src="/assets/images/cfo-finance/report-package.webp" width="80" height="80" alt="" loading="lazy" decoding="async"><h3>Export with an accounting basis</h3><p>Prepare the accounting CSV package with its period and tie-out results for your finance review.</p></article></div></section>
+<section class="cf-section"><div class="ag-shell"><div class="cf-heading ag-reveal"><h2>One connected system.<br>A more complete finance review.</h2></div><div class="cf-benefits-grid"><article class="cf-benefit ag-reveal"><img class="cf-icon" src="/assets/images/navbar-3d/invoice-envelope.webp" width="56" height="56" alt="" loading="lazy" decoding="async"><h3>Keep payables visible</h3><p>Read unpaid supplier bills with due dates and supporting documents.</p><a class="ag-text-link" href="/vendorspend">Explore feature<span aria-hidden="true">↗</span></a></article><article class="cf-benefit ag-reveal"><img class="cf-icon" src="/assets/images/navbar-3d/allocation-tray.webp" width="56" height="56" alt="" loading="lazy" decoding="async"><h3>Put spending beside the plan</h3><p>Compare assigned spending with budget allocations before another commitment.</p><a class="ag-text-link" href="/budgetlanding">Explore feature<span aria-hidden="true">↗</span></a></article><article class="cf-benefit ag-reveal"><img class="cf-icon" src="/assets/images/navbar-3d/receipt-scanner.webp" width="56" height="56" alt="" loading="lazy" decoding="async"><h3>Keep documents close</h3><p>Review extracted receipt details before saving them beside the expense.</p><a class="ag-text-link" href="/receiptcapture">Explore feature<span aria-hidden="true">↗</span></a></article><article class="cf-benefit ag-reveal"><img class="cf-icon" src="/assets/images/navbar-3d/accounting-ledger.webp" width="56" height="56" alt="" loading="lazy" decoding="async"><h3>Trace an entry to its source</h3><p>Move from the trial balance to the ledger and journal detail for a closer review.</p><a class="ag-text-link" href="/accounting-automation">Explore feature<span aria-hidden="true">↗</span></a></article><article class="cf-benefit ag-reveal"><img class="cf-icon" src="/assets/images/navbar-3d/currency-globe.webp" width="56" height="56" alt="" loading="lazy" decoding="async"><h3>Keep the currency context</h3><p>Review document currency and the recorded rate within your workspace’s accounting basis.</p><a class="ag-text-link" href="/multi-currency">Explore feature<span aria-hidden="true">↗</span></a></article><article class="cf-benefit ag-reveal"><img class="cf-icon" src="/assets/images/navbar-3d/intelligence-orb.webp" width="56" height="56" alt="" loading="lazy" decoding="async"><h3>Ask about your records</h3><p>Use Fluxy AI for financial questions grounded in the data recorded in your workspace.</p><a class="ag-text-link" href="/aiagents">Explore feature<span aria-hidden="true">↗</span></a></article></div></div></section>
+<section class="cf-section cf-workflows"><div class="ag-shell"><div class="cf-heading ag-reveal"><h2>Built around the work<br>your finance team does.</h2></div><div class="cf-workflow-grid"><a class="ag-reveal" href="/vendorspend"><img class="cf-icon" src="/assets/images/navbar-3d/invoice-envelope.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><span>Customer invoices</span><span class="cf-workflow-arrow" aria-hidden="true">↗</span></a><a class="ag-reveal" href="/budgetlanding"><img class="cf-icon" src="/assets/images/navbar-3d/allocation-tray.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><span>Dynamic Budgeting</span><span class="cf-workflow-arrow" aria-hidden="true">↗</span></a><a class="ag-reveal" href="/receiptcapture"><img class="cf-icon" src="/assets/images/navbar-3d/receipt-scanner.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><span>Receipt Capture</span><span class="cf-workflow-arrow" aria-hidden="true">↗</span></a><a class="ag-reveal" href="/accounting-automation"><img class="cf-icon" src="/assets/images/navbar-3d/finance-calculator.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><span>Bank reconciliation</span><span class="cf-workflow-arrow" aria-hidden="true">↗</span></a><a class="ag-reveal" href="/accounting-automation"><img class="cf-icon" src="/assets/images/navbar-3d/accounting-ledger.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><span>Trial balance & journals</span><span class="cf-workflow-arrow" aria-hidden="true">↗</span></a><a class="ag-reveal" href="/accounting-automation"><img class="cf-icon" src="/assets/images/navbar-3d/connected-records.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><span>Financial statements</span><span class="cf-workflow-arrow" aria-hidden="true">↗</span></a><a class="ag-reveal" href="/revenuesync"><img class="cf-icon" src="/assets/images/navbar-3d/revenue-stream.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><span>Revenue Sync</span><span class="cf-workflow-arrow" aria-hidden="true">↗</span></a><a class="ag-reveal" href="/multi-currency"><img class="cf-icon" src="/assets/images/navbar-3d/currency-globe.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><span>Multi-Currency</span><span class="cf-workflow-arrow" aria-hidden="true">↗</span></a><a class="ag-reveal" href="/aiagents"><img class="cf-icon" src="/assets/images/navbar-3d/intelligence-orb.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><span>Fluxy AI</span><span class="cf-workflow-arrow" aria-hidden="true">↗</span></a></div></div></section>
+<section id="faq" class="cf-section cf-faq"><div class="ag-shell ag-faq-grid"><div class="cf-heading ag-reveal"><p class="ag-kicker">Questions, answered</p><h2>A practical starting point<br>for your finance team.</h2></div><div><details class="ag-faq"><summary>Can FluxyOS support month-end close?<span aria-hidden="true">+</span></summary><p>Yes. The Accounting Center has a close-readiness review, trial balance, posted journals, and period close. An authorized user closes the period after resolving blocking unposted sources and an unbalanced trial balance. Supporting-document completeness remains part of your team’s review.</p></details><details class="ag-faq"><summary>Do financial statements use posted accounting entries?<span aria-hidden="true">+</span></summary><p>The posted income statement, balance sheet, and cash flow statement use ledger balances. Check the basis and period of the view you open: records-based operational previews and posted accounting statements serve different reviews.</p></details><details class="ag-faq"><summary>Does bank reconciliation include live bank feeds?<span aria-hidden="true">+</span></summary><p>The verified workflow imports bank statements and supports match review and reconciliation. This page does not promise a live bank feed. Keep statement imports and payment records current for an accurate comparison.</p></details><details class="ag-faq"><summary>Can we consolidate separate companies or approve payments?<span aria-hidden="true">+</span></summary><p>Separate-entity consolidation and approval workflows are not currently available. FluxyOS connects the financial records within a workspace; it does not move money or execute supplier payments. Discuss your reporting structure and required controls with sales.</p></details><details class="ag-faq"><summary>What can we share with an accountant?<span aria-hidden="true">+</span></summary><p>The accounting export package includes CSV files for the income statement, balance sheet, cash flow, trial balance, and general ledger, with period and tie-out context. Reports & Exports also supports financial report previews and browser print/save as PDF. Review the report basis and completeness before sharing.</p></details></div></div></section>
+<section class="cf-section cf-final"><div class="ag-shell cf-final-grid"><div class="cf-heading ag-reveal"><h2>Bring the records.<br>Lead the conversation.</h2></div><div><div class="ag-actions"><a class="ag-primary" href="/pricing">Explore FluxyOS <span aria-hidden="true">↗</span></a><a class="cf-secondary" href="/contact-sales">Talk to sales</a></div><p>Explore plans or discuss your finance workflow with our team.</p></div></div></section>
+</main><script src="/assets/js/fluxyos.js" defer></script><script src="/assets/js/marketing-agencies.js" defer></script><script src="/assets/js/cfo-finance-teams.js" defer></script><script src="/assets/js/i18n.js" defer></script><script src="/assets/js/universe-canvas.js" defer></script><script src="/assets/js/footer-loader.js" defer></script></body></html>

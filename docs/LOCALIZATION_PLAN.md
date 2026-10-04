@@ -157,6 +157,10 @@ The Retail & Franchises EN/ID pair uses `scripts/build-retail-page.js`. Edit pai
 | Point of Sale | Point of Sale (keep) | Product name; POS for the abbreviation |
 | Outlet P&L | Outlet P&L (keep) | Product surface; body copy uses “laporan laba rugi per outlet” |
 | Unassigned | Belum ditetapkan | Posting without outlet attribution; never hide these amounts from a comparison |
+| Period close | Penutupan periode | Accounting period close by an authorized user |
+| Trial balance | Neraca saldo | Ledger-based accounting balance check |
+| Posted basis | Dasar dibukukan | Distinct from a records-based operational preview |
+| Tie-out results | Hasil pencocokan | Accounting statement consistency checks |
 | Production commitment | Komitmen produksi | Manufacturing financial decision; not a production-control feature |
 | Work in progress | Barang dalam proses | Manufacturing costing is not currently available |
 | Recorded cash | Kas tercatat | Based on workspace records; not a live bank balance promise |

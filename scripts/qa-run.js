@@ -593,6 +593,10 @@ function laneFE(changed) {
     ok = record('fe', run('manufacturing bilingual page parity', 'node', ['scripts/build-manufacturing-page.js', '--check'])) && ok;
     ok = record('fe', run('browser: manufacturing finance landing EN + ID', 'npx', ['playwright', 'test', '--config', 'tests/manufacturing.config.js'], { timeout: 4 * 60_000 })) && ok;
   }
+  if (FORCE_ALL || changed.some((f) => /^(?:id\/)?use-cases\/cfo-finance-teams\.html$|^assets\/(?:css|js)\/cfo-finance-teams\.|^assets\/images\/cfo-finance\/|^tests\/cfo-finance-teams\.|^scripts\/build-cfo-page\.js$/.test(f))) {
+    ok = record('fe', run('CFO bilingual page parity', 'node', ['scripts/build-cfo-page.js', '--check'])) && ok;
+    ok = record('fe', run('browser: CFO finance landing EN + ID', 'npx', ['playwright', 'test', '--config', 'tests/cfo-finance-teams.config.js'], { timeout: 4 * 60_000 })) && ok;
+  }
   if (FORCE_ALL || changed.some((f) => /^(?:id\/)?point-of-sale\.html$|^assets\/(?:css|js)\/pos-landing\.|^assets\/images\/pos-3d\/|^tests\/pos-landing\./.test(f))) {
     ok = record('fe', run('browser: POS landing EN + ID', 'npx', ['playwright', 'test', '--config', 'tests/pos-landing.config.js'], { timeout: 4 * 60_000 })) && ok;
   }

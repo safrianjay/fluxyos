@@ -1,0 +1,38 @@
+{
+  "reconciliation": {
+    "asset": "reconciliation.webp",
+    "width": 384,
+    "height": 384,
+    "bytes": 15402,
+    "source": "exec-97b0a4d2-ecd6-4b8a-a8c0-9a11f6b1e267.png",
+    "provenance": "Original image generated for FluxyOS with the built-in image tool, 2026-10-04",
+    "style": "Orthographic 3/4, upper-left studio light, matte navy, ivory, steel, small orange accent, transparent background"
+  },
+  "period-close": {
+    "asset": "period-close.webp",
+    "width": 384,
+    "height": 384,
+    "bytes": 16520,
+    "source": "exec-21409cfb-799d-4c34-a85a-c99536594ab6.png",
+    "provenance": "Original image generated for FluxyOS with the built-in image tool, 2026-10-04",
+    "style": "Orthographic 3/4, upper-left studio light, matte navy, ivory, steel, small orange accent, transparent background"
+  },
+  "report-package": {
+    "asset": "report-package.webp",
+    "width": 384,
+    "height": 384,
+    "bytes": 11912,
+    "source": "exec-00e0bba4-0869-48a6-8b01-db310c15f65d.png",
+    "provenance": "Original image generated for FluxyOS with the built-in image tool, 2026-10-04",
+    "style": "Orthographic 3/4, upper-left studio light, matte navy, ivory, steel, small orange accent, transparent background"
+  },
+  "finance-review": {
+    "asset": "finance-review.webp",
+    "width": 384,
+    "height": 384,
+    "bytes": 11198,
+    "source": "exec-aecbaf99-c70d-47a7-a48c-9052c49f0126.png",
+    "provenance": "Original image generated for FluxyOS with the built-in image tool, 2026-10-04",
+    "style": "Orthographic 3/4, upper-left studio light, matte navy, ivory, steel, small orange accent, transparent background"
+  }
+}
