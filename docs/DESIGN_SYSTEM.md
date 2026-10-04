@@ -1281,5 +1281,13 @@ Use the original reconciliation, period-close, report-package and finance-review
 objects in `assets/images/cfo-finance/` alongside readable labels. Keep the same
 navy/ivory/steel palette, small orange accents, perspective and silhouette rules
 as the public navbar family. Reserve panel height across language and viewport
-changes. Explicit motion tours need pause, manual cancellation and reduced-motion
-support. Details: [CFO_FINANCE_LANDING_PAGE.md](CFO_FINANCE_LANDING_PAGE.md).
+changes. Explanatory tours autoplay in view with pause, manual cancellation and
+reduced-motion support. Details: [CFO_FINANCE_LANDING_PAGE.md](CFO_FINANCE_LANDING_PAGE.md).
+
+### Explanatory hero animation
+
+Explanatory hero animations should play automatically when they help communicate the product. Do not gate understanding behind a Play button. Keep every stage understandable without motion, with readable labels and stable layout. Loop restrained highlights smoothly; pause offscreen, when the document is hidden, on hover or keyboard focus, and through an accessible pause/resume control. Respect live changes to prefers-reduced-motion: show the complete static explanation, without automatic advancement or decorative motion. Never move focus or announce automatic changes as live updates.
+
+### Founder & CEO public page
+
+Use an editorial hero, fine neutral grid borders, alternating financial scenes and concise capability sections at the shared marketing width. Use the approved original 3D family beside clear text. Keep cash, obligations, allocation remaining and posted results distinct; do not imply forecasting or a dedicated executive dashboard. Preserve a stable headline and readable static scenes. See [FOUNDER_CEO_LANDING_PAGE.md](FOUNDER_CEO_LANDING_PAGE.md).

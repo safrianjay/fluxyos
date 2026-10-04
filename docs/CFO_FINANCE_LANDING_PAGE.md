@@ -16,7 +16,7 @@ The entire page was scrolled; local screenshots are in `.qa/vercel/`.
 | Left section heading sticks below the header while three right-hand visual/caption frames scroll. Computed desktop position is `sticky`; mobile is stacked. | Sticky accounting heading and cleanup / statement matching / posted financial-result frames. Sticky disabled on mobile. |
 | Chat visual has moving cursors: observed 3000ms and 3400ms linear loops. | No fake collaboration cursors or implied live team presence. Finance scenes use source records and one-time reveals / chart entrance. |
 | Large centered customer quote, followed by a split section heading and a staged product visual. | Centered original product statement, without attribution, followed by a supplier bill → journal → statements walkthrough. |
-| Desktop staged walkthrough uses text buttons; mobile uses 32px circular replay controls. Hover/focus transitions observed at 150ms ease-out; one mobile control specifies a 250ms delay. Keyboard Enter changed its `data-active` state. | Desktop vertical text tabs; compact mobile stage cards. 150ms state feedback and an original 280ms panel entrance. Explicit four-second record-flow playback with pause, no autoplay or automatic focus movement. |
+| Desktop staged walkthrough uses text buttons; mobile uses 32px circular replay controls. Hover/focus transitions observed at 150ms ease-out; one mobile control specifies a 250ms delay. Keyboard Enter changed its `data-active` state. | Desktop vertical text tabs; compact mobile stage cards. 150ms state feedback and an original 280ms panel entrance. Viewport-triggered 4.8-second stage loop with pause and no automatic focus movement. |
 | Products click sets `aria-expanded=true` and `data-open=true`; desktop hover alone left it false in the observed session. Mobile Open menu exposes Close menu. | Keep FluxyOS's verified universal navigation behavior; do not import Vercel's header. |
 | A heading beside three security cards, six benefits in a 3×2 grid, customer logos in a large grid, and a split final CTA. | Three financial-review cards, six supported capabilities, a nine-item linked workflow grid and split final CTA. Add visible FAQ for genuine buying questions and SEO. |
 
@@ -67,13 +67,12 @@ light, transparent padding, readable primary metaphor. All accompany text and us
 
 ## Interactions and accessibility
 
-- Hero text and workflow-strip entrances, finite line reveal; no continuous hero loop.
+- Hero text and workflow-strip entrances, plus a readable source → accounting → review illustration. Restrained grid motion and 3.2-second active-stage highlights start in view.
 - Shared one-time scroll reveals and finite statement-bar entrance.
 - Icon hover lift and tilt; links and cards retain keyboard focus outlines.
 - Comparison disclosure highlights the two records and explains what to verify.
 - Tabs: click / Arrow keys / Home / End, roving focus, ARIA-selected and labeled panels.
-- Explicit record flow: steps at 0 / 1.4 / 2.8 seconds, settles by 4.2 seconds;
-  pause control, manual-choice cancellation, offscreen/hidden cancellation.
+- Automatic record flow: stages advance every 4.8 seconds and loop. Pause/resume control; hover, focus, manual selection, offscreen and hidden-document pause. Manual selection persists until the visitor resumes.
 - All panel heights reserved from current width and font metrics, including ID copy.
 - Reduced motion disables every entrance/reveal/lift/transition and playback;
   manual stage selection remains available. Native links/disclosures and all three
