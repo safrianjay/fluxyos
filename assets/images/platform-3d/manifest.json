@@ -1,0 +1,62 @@
+{
+  "allocation-tray": {
+    "source": "/Users/jay/.codex/generated_images/01a1006a-bab9-7663-98da-0eb1af448ea9/exec-0abe37e6-1d92-4836-a10d-4cbd11700b6e.png",
+    "size": 384,
+    "reuse": "Original approved FluxyOS icon; size export only",
+    "bytes": 14048
+  },
+  "invoice-envelope": {
+    "source": "/Users/jay/.codex/generated_images/01a1006a-bab9-7663-98da-0eb1af448ea9/exec-dcee68fa-63a7-4d47-a8fd-26bffe56a208.png",
+    "size": 384,
+    "reuse": "Original approved FluxyOS icon; size export only",
+    "bytes": 11692
+  },
+  "revenue-stream": {
+    "source": "/Users/jay/.codex/generated_images/01a1006a-bab9-7663-98da-0eb1af448ea9/exec-4138bf35-e653-405f-9c2f-e666bc73ead8.png",
+    "size": 384,
+    "reuse": "Original approved FluxyOS icon; size export only",
+    "bytes": 13616
+  },
+  "receipt-scanner": {
+    "source": "/Users/jay/.codex/generated_images/01a1006a-bab9-7663-98da-0eb1af448ea9/exec-8e8c7e96-e387-48be-9dec-f2c9d0ba52a5.png",
+    "size": 384,
+    "reuse": "Original approved FluxyOS icon; size export only",
+    "bytes": 13490
+  },
+  "intelligence-orb": {
+    "source": "/Users/jay/.codex/generated_images/01a1006a-bab9-7663-98da-0eb1af448ea9/exec-3dd48df1-be52-40cb-97b8-4b704bebac85.png",
+    "size": 384,
+    "reuse": "Original approved FluxyOS icon; size export only",
+    "bytes": 17412
+  },
+  "currency-globe": {
+    "source": "/Users/jay/.codex/generated_images/01a1006a-bab9-7663-98da-0eb1af448ea9/exec-7b003582-daad-4394-b0b5-54e02f6cff6e.png",
+    "size": 384,
+    "reuse": "Original approved FluxyOS icon; size export only",
+    "bytes": 21422
+  },
+  "accounting-ledger": {
+    "source": "/Users/jay/.codex/generated_images/01a1006a-bab9-7663-98da-0eb1af448ea9/exec-53eddd1d-1e67-41b5-9ebc-5f5332baab11.png",
+    "size": 384,
+    "reuse": "Original approved FluxyOS icon; size export only",
+    "bytes": 11936
+  },
+  "connected-records": {
+    "source": "/Users/jay/.codex/generated_images/01a1006a-bab9-7663-98da-0eb1af448ea9/exec-c73081cf-e37d-4629-82e8-aa1b1b157915.png",
+    "size": 384,
+    "reuse": "Original approved FluxyOS icon; size export only",
+    "bytes": 13108
+  },
+  "pos-terminal": {
+    "source": "/Users/jay/.codex/generated_images/01a1006a-bab9-7663-98da-0eb1af448ea9/exec-faef271b-f6ca-43d3-ac14-4a9da685d04a.png",
+    "size": 384,
+    "reuse": "Original approved FluxyOS icon; size export only",
+    "bytes": 18448
+  },
+  "commerce-parcel": {
+    "source": "/Users/jay/.codex/generated_images/01a1006a-bab9-7663-98da-0eb1af448ea9/exec-496540e5-8f10-4415-a887-16d5fba6699c.png",
+    "size": 384,
+    "reuse": "Original approved FluxyOS icon; size export only",
+    "bytes": 16332
+  }
+}

@@ -1291,3 +1291,9 @@ Do not add Play, Pause animation, or Resume animation buttons to public landing-
 ### Founder & CEO public page
 
 Use an editorial hero, fine neutral grid borders, alternating financial scenes and concise capability sections at the shared marketing width. Use the approved original 3D family beside clear text. Keep cash, obligations, allocation remaining and posted results distinct; do not imply forecasting or a dedicated executive dashboard. Preserve a stable headline and readable static scenes. See [FOUNDER_CEO_LANDING_PAGE.md](FOUNDER_CEO_LANDING_PAGE.md).
+
+### Platform feature icons — preserve the existing page
+
+An icon-only request changes icon artwork, not the page composition, copy, figures, card sizes, spacing or interactions. Reuse the approved FluxyOS 3D family: matte Deep Navy primary forms, ivory and brushed-steel secondary surfaces, small meaningful Fluxy Orange accents, consistent three-quarter perspective and upper-left lighting. Dynamic Budgeting uses the established pie chart; document, receipt, revenue, AI, currency and ledger metaphors remain distinct and recognizable.
+
+On existing Platform pages, retain each SVG wrapper's viewBox, classes, reserved dimensions and accessibility attributes, and replace only its artwork with the original transparent 3D asset. Keep directional arrows, checkmarks, search/close controls, chart paths, currency bars, connector diagrams, logos and status indicators unchanged. Do not enlarge a toolbar or card to accommodate an icon. Use the same asset for the same metaphor in both languages and in dynamically inserted content. Body exports live in `assets/images/platform-3d/manifest.json`; approved original 384px WebP sources stay below 32KB. `scripts/update-platform-icons.js` handles static artwork and `assets/js/platform-icons.js` handles existing dynamic icons, without introducing new UI or motion.
