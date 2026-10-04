@@ -1,88 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Intelligent Finance OS for Manufacturing Companies | FluxyOS</title>
-    <link rel="stylesheet" href="/assets/css/tailwind.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/fluxyos.css">
-
-    <style>
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            -webkit-font-smoothing: antialiased;
-        }
-        .font-mono { font-family: 'Fira Code', monospace; }
-        .manufacturing-hero {
-            background:
-                radial-gradient(circle at 8% 12%, rgba(234, 88, 12, 0.10), transparent 26%),
-                linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
-        }
-        .control-shadow { box-shadow: 0 28px 90px -52px rgba(11, 15, 25, 0.72); }
-        .ad-grid {
-            background-image:
-                linear-gradient(rgba(11, 15, 25, 0.055) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(11, 15, 25, 0.055) 1px, transparent 1px);
-            background-size: 34px 34px;
-        }
-        .signal-card { transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
-        .signal-card:hover { transform: translateY(-2px); border-color: rgba(234, 88, 12, 0.35); box-shadow: 0 20px 50px -38px rgba(11, 15, 25, 0.5); }
-        .loop-step { position: relative; }
-        .loop-step::after {
-            content: "";
-            position: absolute;
-            top: 50%;
-            right: -32px;
-            width: 30px;
-            height: 1px;
-            background: #D1D5DB;
-        }
-        .loop-step:last-child::after { display: none; }
-        .audit-paper {
-            background:
-                linear-gradient(#FFFFFF 0 0) padding-box,
-                linear-gradient(135deg, rgba(234, 88, 12, 0.55), rgba(11, 15, 25, 0.14)) border-box;
-            border: 1px solid transparent;
-        }
-        @media (max-width: 1023px) { .loop-step::after { display: none; } }
-    </style>
-    <meta name="description" content="Track raw materials, labor, machine overhead, WIP, finished goods, invoices, and cash movement for manufacturing finance teams.">
-    <link rel="canonical" href="https://fluxyos.com/use-cases/manufacturing">
-    <link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/manufacturing">
-    <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/manufacturing">
-    <link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/manufacturing">
-
-    <!-- Open Graph -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://fluxyos.com/use-cases/manufacturing">
-    <meta property="og:title" content="Intelligent Finance OS for Manufacturing Companies | FluxyOS">
-    <meta property="og:description" content="Track raw materials, labor, machine overhead, WIP, finished goods, invoices, and cash movement for manufacturing finance teams.">
-    <meta property="og:image" content="https://fluxyos.com/assets/images/og-manufacturing.png">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:site_name" content="FluxyOS">
-    <meta property="og:locale" content="en_US">
-    <meta property="og:locale:alternate" content="id_ID">
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Intelligent Finance OS for Manufacturing Companies | FluxyOS">
-    <meta name="twitter:description" content="Track raw materials, labor, machine overhead, WIP, finished goods, invoices, and cash movement for manufacturing finance teams.">
-    <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-manufacturing.png">
-
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZN7J6DRD2L"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-ZN7J6DRD2L');
-    </script>
-
-    <!-- Schema.org structured data -->
-    <script type="application/ld+json">
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Manufacturing Finance, Connected | FluxyOS</title><meta name="description" content="Connect customer invoices, supplier bills, budgets, cash records, and accounting. Review the finances behind your next manufacturing commitment with FluxyOS."><link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml"><link rel="canonical" href="https://fluxyos.com/use-cases/manufacturing">
+<link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/manufacturing">
+<link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/manufacturing">
+<link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/manufacturing">
+<meta property="og:type" content="website"><meta property="og:url" content="https://fluxyos.com/use-cases/manufacturing"><meta property="og:title" content="Manufacturing Finance, Connected | FluxyOS"><meta property="og:description" content="Connect customer invoices, supplier bills, budgets, cash records, and accounting. Review the finances behind your next manufacturing commitment with FluxyOS."><meta property="og:image" content="https://fluxyos.com/assets/images/og-manufacturing.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:site_name" content="FluxyOS"><meta property="og:locale" content="en_US"><meta property="og:locale:alternate" content="id_ID">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Manufacturing Finance, Connected | FluxyOS"><meta name="twitter:description" content="Connect customer invoices, supplier bills, budgets, cash records, and accounting. Review the finances behind your next manufacturing commitment with FluxyOS."><meta name="twitter:image" content="https://fluxyos.com/assets/images/og-manufacturing.png">
+<link rel="stylesheet" href="/assets/css/tailwind.min.css"><link rel="stylesheet" href="/assets/css/fluxyos.css"><link rel="stylesheet" href="/assets/css/marketing-agencies.css"><link rel="stylesheet" href="/assets/css/manufacturing.css"><link rel="preload" as="font" href="/assets/fonts/inter-latin-variable.woff2" type="font/woff2" crossorigin>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-ZN7J6DRD2L"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-ZN7J6DRD2L');</script>
+<script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "Organization",
@@ -119,66 +44,102 @@
         ]
       }
     }
-    </script>
-    <script type="application/ld+json">
+    </script><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "FluxyOS",
+  "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "Intelligent Finance Operating System",
+  "operatingSystem": "Web",
+  "url": "https://fluxyos.com/use-cases/manufacturing",
+  "inLanguage": "en",
+  "description": "Connect customer invoices, supplier bills, budgets, cash records, and accounting. Review the finances behind your next manufacturing commitment with FluxyOS.",
+  "featureList": [
+    "Customer invoice records",
+    "Supplier bill records",
+    "Budget allocations and spending review",
+    "Posted journals and financial statements"
+  ],
+  "publisher": {
+    "@id": "https://fluxyos.com/#organization"
+  }
+}</script>
+<script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
     {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "FluxyOS for Manufacturing Companies",
-      "applicationCategory": "BusinessApplication",
-      "applicationSubCategory": "Manufacturing Finance Software",
-      "operatingSystem": "Web, iOS, Android",
-      "url": "https://fluxyos.com/use-cases/manufacturing",
-      "inLanguage": "en-US",
-      "description": "FluxyOS is a finance OS for manufacturing companies. Track raw materials, supplier bills, labor, machine overhead, work in progress, finished goods, invoices, and cash movement in one operating view.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "IDR",
-        "availability": "https://schema.org/InStock"
-      },
-      "featureList": [
-        "Batch-level production cost visibility for materials, labor, and overhead",
-        "Supplier bill and purchase order tracking for raw materials and packaging",
-        "Work-in-progress and finished goods cost monitoring",
-        "Cash-flow visibility across deposits, vendor payments, payroll, invoices, and collections",
-        "Margin review by product line, production run, or customer order",
-        "PPN-ready exports for transactions, receipts, supplier invoices, and operating costs"
-      ],
-      "publisher": {
-        "@id": "https://fluxyos.com/#organization"
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://fluxyos.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Manufacturing",
+      "item": "https://fluxyos.com/use-cases/manufacturing"
+    }
+  ]
+}</script>
+<script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "inLanguage": "en",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How does FluxyOS help a manufacturing finance team?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "FluxyOS connects customer invoices, supplier bills, recorded spending, budgets, cash records, and accounting. Your team can review collections, upcoming payments, and spending allocations together. The quality of the view depends on the records you enter and post."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does it calculate production costs by batch?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Manufacturing BOMs, production runs, work in progress, yield, and automatic batch costing are not currently available. Record supported bills and expenses for financial review; do not treat them as an automatically calculated production cost. Discuss your manufacturing requirements with sales."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is a remaining budget the same as available cash?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. A budget allocation is a spending plan. Recorded cash reflects the cash records in your workspace, while unpaid bills and invoices show separate commitments. Review these together and keep payment records current."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What should we prepare to get started?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Prepare your customer invoices, supplier bills, opening cash records, chart of accounts, and spending categories. Start with one workspace and review the setup with your finance team. Sales can help you assess fit before choosing a plan."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can it consolidate multiple manufacturing companies?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Multi-entity consolidation and per-factory production profitability are not currently supported. This walkthrough concerns financial records within one workspace. Confirm your company structure and reporting needs with sales."
       }
     }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://fluxyos.com/" },
-        { "@type": "ListItem", "position": 2, "name": "Use Cases", "item": "https://fluxyos.com/use-cases/manufacturing" },
-        { "@type": "ListItem", "position": 3, "name": "Manufacturing", "item": "https://fluxyos.com/use-cases/manufacturing" }
-      ]
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "inLanguage": "en-US",
-      "mainEntity": [
-        { "@type": "Question", "name": "How does FluxyOS help manufacturing finance teams?", "acceptedAnswer": { "@type": "Answer", "text": "FluxyOS connects supplier bills, material purchases, payroll, overhead, invoices, and collections so teams can understand cash and margin without waiting for month-end spreadsheets." } },
-        { "@type": "Question", "name": "Can FluxyOS track cost by batch or product line?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Costs can be grouped around batches, product lines, customer orders, or departments so each run has a clearer margin picture." } },
-        { "@type": "Question", "name": "Does FluxyOS replace a manufacturing ERP?", "acceptedAnswer": { "@type": "Answer", "text": "No. FluxyOS focuses on finance operations visibility around production: vendor spend, cash flow, receipts, bills, budgets, invoices, and margin review." } },
-        { "@type": "Question", "name": "Can it support PPN-ready exports?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Supplier invoices, receipts, customer invoices, and operating costs stay organized for accountant review and PPN-ready exports." } }
-      ]
-    }
-    </script>
-</head>
-<body class="min-h-screen flex flex-col">
-
-    <!-- 1. Navigation with Mega Menu -->
-    <nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
+  ]
+}</script>
+</head><body class="agency-site"><a class="ag-skip" href="#main-content">Skip to content</a><div class="promo-banner" data-static-promo role="region" aria-label="FluxyOS promotion">
+            <div class="promo-banner__inner">
+                <span class="promo-banner__icon" aria-hidden="true">
+                    <span class="promo-banner__icon-mark">%</span>
+                </span>
+                <p class="promo-banner__copy">
+                    <span>Save 20% on annual FluxyOS plans. Activate before the promo ends.</span>
+                </p>
+                <a class="promo-banner__link" href="/pricing">View plans</a>
+            </div>
+        </div><nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
         <div class="max-w-[1280px] mx-auto px-6 h-[80px] flex items-center justify-between">
             <div class="flex items-center gap-12 h-full">
                 <a href="/fluxyos" class="flex items-center gap-2.5 cursor-pointer group">
@@ -465,215 +426,13 @@
             </div>
         </div>
     </nav>
-
-    <!-- HERO SECTION -->
-    <section class="manufacturing-hero border-b border-gray-200 px-6 py-12 md:py-18 overflow-hidden">
-        <div class="max-w-[1280px] mx-auto grid lg:grid-cols-[0.9fr_1.1fr] gap-10 lg:gap-14 items-center">
-            <div>
-                <h1 class="text-[44px] md:text-[56px] font-bold tracking-tight leading-[1.05] text-gray-950 mb-6">See the true cost of every production run before margin disappears.</h1>
-                <p class="text-[18px] md:text-[20px] text-gray-700 leading-relaxed mb-8">FluxyOS is a finance OS for manufacturing owners, production heads, and finance teams that connects raw materials, supplier bills, labor, machine overhead, WIP, finished goods, invoices, and collections in one operating view.</p>
-                <div class="flex flex-col sm:flex-row gap-4">
-                    <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-7 py-4 rounded-md transition-all duration-200 shadow-sm hover:shadow text-center">Try FluxyOS free</a>
-                    <a href="#production-cost" class="border border-gray-300 bg-white text-gray-900 font-semibold text-[15px] px-7 py-4 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors text-center">View production cost map</a>
-                </div>
-            </div>
-            <div class="control-shadow rounded-[30px] border border-gray-200 bg-white p-4 md:p-6 ad-grid">
-                <div class="grid md:grid-cols-[0.92fr_1.08fr] gap-4">
-                    <div class="rounded-[22px] border border-gray-200 bg-white p-5">
-                        <div class="flex items-start justify-between gap-3 mb-5">
-                            <div>
-                                <h2 class="text-[23px] md:text-[28px] font-bold tracking-tight text-gray-950">Factory cash control room</h2>
-                                <p class="text-[13px] text-gray-500 mt-1">BCA operating account, May 2026</p>
-                            </div>
-                            <span class="rounded-full border border-[#EA580C]/40 px-3 py-1 text-[12px] font-semibold text-[#EA580C]">Live</span>
-                        </div>
-                        <div class="space-y-3">
-                            <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-4 flex items-center justify-between gap-3"><div><p class="text-[13px] font-bold text-gray-950">Customer payment</p><p class="text-[12px] text-gray-500 mt-1">PT Ritel Nusantara invoice 0841</p></div><span class="text-[14px] font-bold text-gray-950">+Rp 241M</span></div>
-                            <div class="rounded-2xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-3"><div><p class="text-[13px] font-bold text-gray-950">Supplier transfer</p><p class="text-[12px] text-gray-500 mt-1">Aluminium sheet deposit</p></div><span class="text-[14px] font-bold text-gray-950">-Rp 87M</span></div>
-                            <div class="rounded-2xl border border-[#EA580C]/30 bg-white p-4 flex items-center justify-between gap-3"><div><p class="text-[13px] font-bold text-gray-950">Machine maintenance</p><p class="text-[12px] text-gray-500 mt-1">Press line bearing replacement</p></div><span class="text-[14px] font-bold text-[#EA580C]">-Rp 18M</span></div>
-                            <div class="rounded-2xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-3"><div><p class="text-[13px] font-bold text-gray-950">Operator payroll</p><p class="text-[12px] text-gray-500 mt-1">Shift A and overtime</p></div><span class="text-[14px] font-bold text-gray-950">-Rp 64M</span></div>
-                            <div class="rounded-2xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-3"><div><p class="text-[13px] font-bold text-gray-950">PPN reserve</p><p class="text-[12px] text-gray-500 mt-1">Tax-ready cash set aside</p></div><span class="text-[14px] font-bold text-gray-950">-Rp 22M</span></div>
-                        </div>
-                    </div>
-                    <div class="rounded-[22px] bg-[#0B0F19] text-white p-5 md:p-6">
-                        <h3 class="text-[22px] md:text-[28px] font-bold tracking-tight">Batch A-118 cost build</h3>
-                        <p class="text-[13px] text-gray-300 mt-1">Kitchen appliance line, 1.240 units</p>
-                        <div class="mt-6 space-y-4">
-                            <div><div class="flex justify-between text-[13px] mb-2"><span class="text-gray-300">Raw materials</span><span class="font-bold">Rp 312M</span></div><div class="h-2 rounded-full bg-white/10 overflow-hidden"><div class="h-full w-[78%] rounded-full bg-white"></div></div></div>
-                            <div><div class="flex justify-between text-[13px] mb-2"><span class="text-gray-300">Operator labor</span><span class="font-bold">Rp 88M</span></div><div class="h-2 rounded-full bg-white/10 overflow-hidden"><div class="h-full w-[44%] rounded-full bg-white"></div></div></div>
-                            <div><div class="flex justify-between text-[13px] mb-2"><span class="text-gray-300">Machine overhead</span><span class="font-bold text-orange-200">Rp 63M</span></div><div class="h-2 rounded-full bg-white/10 overflow-hidden"><div class="h-full w-[31%] rounded-full bg-[#EA580C]"></div></div></div>
-                            <div class="grid grid-cols-2 gap-3 pt-2">
-                                <div class="rounded-2xl bg-white/8 border border-white/10 p-4"><p class="text-[12px] text-gray-400">WIP value</p><p class="text-[22px] font-bold mt-1">Rp 184M</p></div>
-                                <div class="rounded-2xl bg-white/8 border border-white/10 p-4"><p class="text-[12px] text-gray-400">Finished goods</p><p class="text-[22px] font-bold mt-1">Rp 526M</p></div>
-                            </div>
-                            <div class="rounded-2xl bg-white text-gray-950 p-4"><p class="text-[14px] font-semibold leading-relaxed">Delay next material PO until customer invoice clears or payroll week collides with supplier deposit.</p></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="production-cost" class="py-16 md:py-24 px-6 bg-white">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-[0.78fr_1.22fr] gap-10 lg:gap-14 items-start">
-                <div class="lg:pt-6">
-                    <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Manufacturing profit leaks rarely show up in one obvious place.</h2>
-                    <p class="text-[18px] text-gray-600 leading-relaxed">A finished product can look profitable until late supplier invoices, scrap, overtime, maintenance, packaging, freight, and delayed customer collections are tied back to the same production run.</p>
-                    <div class="mt-8 rounded-3xl border border-gray-200 bg-[#F8FAFC] p-5">
-                        <p class="text-[15px] font-bold text-gray-950">The batch looked healthy at quote stage.</p>
-                        <p class="text-[14px] text-gray-600 leading-relaxed mt-2">The real margin changed only after the shop floor posted overtime, maintenance, scrap, and freight.</p>
-                    </div>
-                </div>
-                <div class="control-shadow rounded-[28px] border border-gray-200 bg-[#F8FAFC] p-4 md:p-6">
-                    <div class="rounded-[22px] border border-gray-200 bg-white p-5 md:p-6">
-                        <h3 class="text-[24px] font-bold tracking-tight text-gray-950 mb-1">Margin waterfall for Batch A-118</h3>
-                        <p class="text-[14px] text-gray-600 mb-6">Planned margin moved from 24.5% to 18.9% after the real production events landed.</p>
-                        <div class="space-y-3">
-                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-gray-200 bg-[#F8FAFC] p-4"><div><p class="font-bold text-gray-950">Quoted production margin</p><p class="text-[12px] text-gray-500 mt-1">Materials and labor from the original plan</p></div><span class="text-[22px] font-bold text-gray-950">24.5%</span></div>
-                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-gray-200 bg-white p-4"><div><p class="font-bold text-gray-950">Raw material price change</p><p class="text-[12px] text-gray-500 mt-1">Aluminium sheet and imported components</p></div><span class="text-[18px] font-bold text-gray-950">-2.1%</span></div>
-                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-gray-200 bg-white p-4"><div><p class="font-bold text-gray-950">Overtime and operator meals</p><p class="text-[12px] text-gray-500 mt-1">Extra shift to recover late supplier delivery</p></div><span class="text-[18px] font-bold text-gray-950">-1.4%</span></div>
-                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-[#EA580C]/30 bg-white p-4"><div><p class="font-bold text-gray-950">Scrap, rework, and machine maintenance</p><p class="text-[12px] text-gray-500 mt-1">Press line bearing replacement and rejected casing</p></div><span class="text-[18px] font-bold text-[#EA580C]">-1.6%</span></div>
-                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-gray-200 bg-white p-4"><div><p class="font-bold text-gray-950">Freight and delayed collection</p><p class="text-[12px] text-gray-500 mt-1">Finished goods shipped before customer payment cleared</p></div><span class="text-[18px] font-bold text-gray-950">-0.5%</span></div>
-                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-gray-950 bg-gray-950 p-4 text-white"><div><p class="font-bold">Current margin</p><p class="text-[12px] text-gray-300 mt-1">Finance, production, and owner see the same result</p></div><span class="text-[24px] font-bold">18.9%</span></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="py-16 md:py-24 px-6 bg-white border-y border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-[0.78fr_1.22fr] gap-10 lg:gap-14 items-start">
-                <div class="lg:pt-4">
-                    <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Factory expenses should not wait for someone to collect paper receipts.</h2>
-                    <p class="text-[18px] text-gray-600 leading-relaxed">Proof arrives from the production floor, supplier desk, utility bill, and logistics run at different times. FluxyOS keeps each cost tied to the right batch, vendor, and review status.</p>
-                    <div class="mt-8 rounded-[26px] border border-gray-200 bg-[#F8FAFC] p-4">
-                        <p class="text-[13px] font-bold uppercase tracking-[0.08em] text-gray-500">Today's review queue</p>
-                        <div class="mt-4 grid grid-cols-3 gap-3">
-                            <div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[28px] font-bold text-gray-950">9</p><p class="text-[12px] text-gray-500 mt-1">proofs in tray</p></div>
-                            <div class="rounded-2xl bg-white border border-[#EA580C]/30 p-4"><p class="text-[28px] font-bold text-[#EA580C]">3</p><p class="text-[12px] text-gray-500 mt-1">need review</p></div>
-                            <div class="rounded-2xl bg-gray-950 p-4 text-white"><p class="text-[28px] font-bold">6</p><p class="text-[12px] text-gray-300 mt-1">ready export</p></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="control-shadow rounded-[32px] border border-gray-200 bg-[#F8FAFC] p-4 md:p-6">
-                    <div class="grid xl:grid-cols-[0.95fr_1.05fr] gap-5 items-stretch">
-                        <div class="rounded-[26px] border border-gray-200 bg-white p-5 min-h-[390px] relative overflow-hidden">
-                            <div class="flex items-center justify-between gap-3 mb-5">
-                                <h3 class="text-[22px] font-bold text-gray-950">Incoming proof tray</h3>
-                                <span class="rounded-full border border-[#EA580C]/35 px-3 py-1 text-[12px] font-bold text-[#EA580C]">3 open</span>
-                            </div>
-                            <div class="relative min-h-[280px]">
-                                <div class="absolute left-1 top-2 w-[78%] rotate-[-4deg] rounded-[20px] border border-gray-200 bg-white p-4 shadow-[0_18px_45px_-28px_rgba(15,23,42,0.45)]">
-                                    <p class="font-mono text-[11px] text-gray-400">RECEIPT / FLOOR</p>
-                                    <h4 class="mt-3 font-bold text-gray-950">Operator meal claim</h4>
-                                    <p class="mt-1 text-[13px] text-gray-500">Shift B overtime, Line 02</p>
-                                    <div class="mt-5 flex items-center justify-between border-t border-dashed border-gray-200 pt-3"><span class="text-[12px] text-[#EA580C] font-bold">missing photo</span><span class="font-bold">Rp 8.4M</span></div>
-                                </div>
-                                <div class="absolute right-0 top-[96px] w-[74%] rotate-[3deg] rounded-[20px] border border-gray-200 bg-[#F8FAFC] p-4 shadow-[0_18px_45px_-30px_rgba(15,23,42,0.5)]">
-                                    <p class="font-mono text-[11px] text-gray-400">INVOICE / SUPPLIER</p>
-                                    <h4 class="mt-3 font-bold text-gray-950">Spare part vendor</h4>
-                                    <p class="mt-1 text-[13px] text-gray-500">Bearing press line replacement</p>
-                                    <div class="mt-5 flex items-center justify-between border-t border-dashed border-gray-200 pt-3"><span class="text-[12px] text-gray-500 font-bold">attach batch</span><span class="font-bold">Rp 18M</span></div>
-                                </div>
-                                <div class="absolute left-8 bottom-0 w-[76%] rotate-[-1deg] rounded-[20px] border border-gray-950 bg-gray-950 p-4 text-white shadow-[0_22px_50px_-30px_rgba(15,23,42,0.7)]">
-                                    <p class="font-mono text-[11px] text-gray-400">UTILITY / MONTHLY</p>
-                                    <h4 class="mt-3 font-bold">Electricity bill</h4>
-                                    <p class="mt-1 text-[13px] text-gray-300">Compressor power spike</p>
-                                    <div class="mt-5 flex items-center justify-between border-t border-dashed border-white/15 pt-3"><span class="text-[12px] text-orange-200 font-bold">needs allocation</span><span class="font-bold">Rp 34M</span></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="grid gap-4">
-                            <div class="rounded-[26px] border border-gray-200 bg-white p-5">
-                                <h3 class="text-[22px] font-bold text-gray-950">Batch allocation board</h3>
-                                <div class="mt-5 grid grid-cols-2 gap-3">
-                                    <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Batch</p><p class="mt-1 text-[20px] font-bold text-gray-950">A-118</p></div>
-                                    <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Line</p><p class="mt-1 text-[20px] font-bold text-gray-950">02</p></div>
-                                    <div class="rounded-2xl bg-white border border-[#EA580C]/30 p-4"><p class="text-[12px] text-gray-500">Maintenance</p><p class="mt-1 text-[20px] font-bold text-[#EA580C]">Review</p></div>
-                                    <div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Freight</p><p class="mt-1 text-[20px] font-bold text-gray-950">Matched</p></div>
-                                </div>
-                            </div>
-                            <div class="rounded-[26px] border border-gray-200 bg-white p-5">
-                                <h3 class="text-[22px] font-bold text-gray-950">Finance decision panel</h3>
-                                <div class="mt-5 space-y-3">
-                                    <div class="flex items-center gap-3"><span class="h-3 w-3 rounded-full bg-[#EA580C]"></span><p class="text-[14px] text-gray-700"><strong class="text-gray-950">Missing proof:</strong> operator meal photo</p></div>
-                                    <div class="flex items-center gap-3"><span class="h-3 w-3 rounded-full bg-gray-950"></span><p class="text-[14px] text-gray-700"><strong class="text-gray-950">Needs allocation:</strong> compressor electricity</p></div>
-                                    <div class="flex items-center gap-3"><span class="h-3 w-3 rounded-full bg-gray-300"></span><p class="text-[14px] text-gray-700"><strong class="text-gray-950">Approved:</strong> packaging invoice for PPN export</p></div>
-                                </div>
-                                <div class="mt-5 rounded-2xl bg-gray-950 p-4 text-white">
-                                    <p class="text-[14px] font-semibold leading-relaxed">Finance review: clear the missing receipt, allocate utility cost to Batch A-118, then release the PPN-ready export.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="py-16 md:py-24 px-6 bg-[#F8FAFC] border-y border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-[0.95fr_1.05fr] gap-10 items-start">
-                <div>
-                    <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">From purchase order to paid invoice, everyone sees the same numbers.</h2>
-                    <p class="text-[18px] text-gray-600 leading-relaxed max-w-3xl">Owners can see cash exposure. Production heads can see which batch is drifting. Finance can see vendor bills, receipts, due dates, and collection gaps before month end.</p>
-                </div>
-                <div class="rounded-[28px] bg-white border border-gray-200 p-5 control-shadow">
-                    <h3 class="text-[22px] font-bold text-gray-950">Bank statement timing</h3>
-                    <div class="mt-4 space-y-3 text-[13px]">
-                        <div class="flex items-center justify-between gap-3 rounded-xl bg-[#F8FAFC] p-3"><span class="text-gray-600">Customer invoice due</span><span class="font-bold">Rp 241M</span></div>
-                        <div class="flex items-center justify-between gap-3 rounded-xl bg-white border border-gray-200 p-3"><span class="text-gray-600">Supplier deposit due</span><span class="font-bold">Rp 87M</span></div>
-                        <div class="flex items-center justify-between gap-3 rounded-xl bg-white border border-[#EA580C]/30 p-3"><span class="text-gray-600">Payroll week cash need</span><span class="font-bold text-[#EA580C]">Rp 64M</span></div>
-                        <div class="rounded-xl bg-gray-950 p-4 text-white"><p class="font-semibold">If collection slips by 5 days, the next material PO should wait.</p></div>
-                    </div>
-                </div>
-            </div>
-            <div class="mt-12 grid lg:grid-cols-6 gap-4">
-                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">01</span><h3 class="font-bold text-gray-950 mt-3">Purchase order</h3><p class="text-[13px] text-gray-600 mt-2">Materials, packaging, and supplier deposits.</p></div>
-                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">02</span><h3 class="font-bold text-gray-950 mt-3">Factory floor</h3><p class="text-[13px] text-gray-600 mt-2">Operators, machine time, maintenance, and scrap.</p></div>
-                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">03</span><h3 class="font-bold text-gray-950 mt-3">WIP</h3><p class="text-[13px] text-gray-600 mt-2">Cash tied up before goods are finished.</p></div>
-                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">04</span><h3 class="font-bold text-gray-950 mt-3">Finished goods</h3><p class="text-[13px] text-gray-600 mt-2">Stock value ready to ship or invoice.</p></div>
-                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">05</span><h3 class="font-bold text-gray-950 mt-3">Sales invoice</h3><p class="text-[13px] text-gray-600 mt-2">Customer billing, taxes, and due dates.</p></div>
-                <div class="loop-step rounded-2xl border border-gray-950 bg-gray-950 text-white p-5"><span class="font-mono text-[12px] text-orange-200">06</span><h3 class="font-bold mt-3">Bank collection</h3><p class="text-[13px] text-gray-300 mt-2">Payment clears and funds the next run.</p></div>
-            </div>
-        </div>
-    </section>
-
-    <section class="py-16 md:py-24 px-6 bg-white">
-        <div class="max-w-[1180px] mx-auto grid lg:grid-cols-[0.85fr_1.15fr] gap-10 items-center">
-            <div><h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Ask practical factory finance questions before the cash problem lands.</h2><p class="text-[18px] text-gray-600 leading-relaxed">Fluxy AI reads the ledger, receipts, bills, budgets, and production cost tags already inside FluxyOS, so the answer is grounded in your actual money movement.</p></div>
-            <div class="audit-paper rounded-[24px] bg-white text-gray-950 p-5 md:p-6">
-                <div class="flex items-center justify-between border-b border-gray-200 pb-4 mb-5"><div><h3 class="text-[22px] font-bold">Batch A-118 review</h3></div><span class="rounded-full bg-gray-950 px-3 py-1 text-[12px] font-semibold text-white">AI</span></div>
-                <div class="space-y-3">
-                    <div class="rounded-xl bg-gray-50 border border-gray-200 p-4"><p class="text-[13px] font-bold">Why did margin drop this week?</p><p class="text-[14px] text-gray-600 mt-2 leading-relaxed">Material price rose 8%, overtime added Rp 14M, and two maintenance bills were posted after the batch plan.</p></div>
-                    <div class="rounded-xl bg-gray-50 border border-gray-200 p-4"><p class="text-[13px] font-bold">Can we start the next production run?</p><p class="text-[14px] text-gray-600 mt-2 leading-relaxed">Yes if the Rp 241M customer invoice clears by Friday. Otherwise reduce supplier deposits by Rp 62M.</p></div>
-                    <div class="rounded-xl bg-gray-50 border border-gray-200 p-4"><p class="text-[13px] font-bold">Which costs still need receipts?</p><p class="text-[14px] text-gray-600 mt-2 leading-relaxed">Three courier payments, one spare-part purchase, and two petty cash entries need proof before export.</p></div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="py-16 md:py-24 px-6 bg-[#0B0F19] text-white">
-        <div class="max-w-[1180px] mx-auto">
-            <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight mb-10 max-w-3xl">Built for the people who have to explain the numbers.</h2>
-            <div class="grid md:grid-cols-3 gap-4">
-                <div class="rounded-2xl border border-white/10 bg-white/5 p-6"><h3 class="text-[21px] font-bold mb-3">Owner</h3><p class="text-[15px] text-gray-300 leading-relaxed">See whether cash can support the next material purchase, payroll week, and customer payment gap.</p></div>
-                <div class="rounded-2xl border border-white/10 bg-white/5 p-6"><h3 class="text-[21px] font-bold mb-3">Head of production</h3><p class="text-[15px] text-gray-300 leading-relaxed">Connect batch costs, overtime, downtime, and rework to the financial result of each run.</p></div>
-                <div class="rounded-2xl border border-white/10 bg-white/5 p-6"><h3 class="text-[21px] font-bold mb-3">Finance admin</h3><p class="text-[15px] text-gray-300 leading-relaxed">Keep supplier bills, receipts, due dates, collections, and PPN-ready exports organized without chasing folders.</p></div>
-            </div>
-        </div>
-    </section>
-
-    <section id="faq" class="py-16 md:py-20 px-6 border-y border-gray-200 bg-[#F8FAFC]"><div class="max-w-[1120px] mx-auto"><div class="max-w-3xl mb-8"><h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3">Frequently asked questions</h2><p class="text-[16px] text-gray-600">Short answers for manufacturing owners, production heads, and finance teams.</p></div><div class="grid md:grid-cols-2 gap-4"><details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">How does FluxyOS help manufacturing finance teams?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">FluxyOS connects supplier bills, material purchases, payroll, overhead, invoices, and collections so teams can understand cash and margin without waiting for month-end spreadsheets.</p></details><details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Can FluxyOS track cost by batch or product line?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Yes. Costs can be grouped around batches, product lines, customer orders, or departments so each run has a clearer margin picture.</p></details><details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Does FluxyOS replace a manufacturing ERP?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">No. FluxyOS focuses on finance operations visibility around production: vendor spend, cash flow, receipts, bills, budgets, invoices, and margin review.</p></details><details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Can it support PPN-ready exports?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Yes. Supplier invoices, receipts, customer invoices, and operating costs stay organized for accountant review and PPN-ready exports.</p></details></div></div></section>
-
-    <section class="bg-[#0B0F19] py-16 md:py-24 px-6"><div class="max-w-[1280px] mx-auto text-center"><h2 class="text-[36px] md:text-[44px] font-bold tracking-tight text-white mb-5">Run production with finance visibility, not finance surprises.</h2><p class="text-[17px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">Connect material spend, production costs, vendor bills, invoices, and cash movement before the next batch decision.</p><div class="flex flex-col sm:flex-row gap-4 justify-center"><a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-sm hover:shadow inline-block text-center">Try FluxyOS free</a><a href="/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">See pricing</a></div></div></section>
-
-    <script src="/assets/js/universe-canvas.js" defer></script>
-    <script src="/assets/js/footer-loader.js" defer></script>
-    <script src="/assets/js/fluxyos.js" defer></script>
-<script src="/assets/js/i18n.js" defer></script>
-</body>
-</html>
+<main id="main-content" class="ag-page mf-page" data-locale-path="/use-cases/manufacturing">
+<section class="mf-hero"><div class="ag-shell mf-hero-grid"><div class="mf-hero-copy"><h1>Know the finances<br>behind your next<br><em>production commitment.</em></h1><p>Customer invoices. Supplier bills. Spending plans. Bring the financial records together before the next order puts pressure on cash.</p><div class="ag-actions"><a class="ag-primary" href="/pricing">Explore plans <span aria-hidden="true">↗</span></a><a class="ag-text-link" href="/contact-sales">Talk to sales <span aria-hidden="true">↗</span></a></div><a class="mf-walk-link" href="#walkthrough">See how the records connect <span aria-hidden="true">↓</span></a></div><div class="mf-hero-visual" aria-label="Customer invoice, supplier bill, and budget records"><div class="mf-hero-orbit" aria-hidden="true"></div><div class="mf-hero-board"><div class="mf-ui-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">FluxyOS · Finance overview</span><small>October</small></div><div class="mf-hero-summary"><p>Recorded cash</p><strong>Rp56.000.000</strong><div class="mf-cash-lines"><span></span><span></span><span></span><span></span><span></span><span></span></div><div class="mf-row"><span>Customer receivables</span><strong>Rp30.000.000</strong></div><div class="mf-row"><span>Supplier bill due</span><strong>Rp12.000.000</strong></div></div></div><div class="mf-float mf-float-invoice"><img class="mf-icon" src="/assets/images/navbar-3d/invoice-envelope.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><div><span>Customer invoice</span><strong>INV-1024</strong><small>Outstanding · Rp30.000.000</small></div></div><div class="mf-float mf-float-budget"><img class="mf-icon" src="/assets/images/navbar-3d/allocation-tray.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><div><span>Dynamic Budgeting</span><strong>Rp12.000.000</strong><small>Remaining allocation</small></div></div><div class="mf-hero-trail"><span>Source records</span><span aria-hidden="true">→</span><span>Accounting</span><span aria-hidden="true">→</span><span>Financial review</span></div></div></div></section>
+<section class="ag-section mf-questions"><div class="ag-shell"><p class="mf-category">FluxyOS is an Intelligent Finance Operating System that connects financial operations, accounting, business operations, enterprise workflows, and intelligence into one continuously connected system.</p><div class="mf-section-intro"><div class="ag-section-heading ag-reveal"><p class="ag-kicker">Before the next commitment</p><h2>Can we see the financial impact<br>before cash becomes tight?</h2><p>Start with four questions your financial records can help answer.</p></div></div><div class="mf-question-grid"><article class="ag-reveal"><span class="mf-number">01</span><h3>What do customers still owe?</h3><p>Review outstanding invoices and recorded payments. Follow up on the amounts your next commitment depends on.</p></article><article class="ag-reveal"><span class="mf-number">02</span><h3>Which supplier payments come first?</h3><p>Check unpaid bills, their due dates, and supporting documents before setting payment priorities.</p></article><article class="ag-reveal"><span class="mf-number">03</span><h3>How much spending room remains?</h3><p>Compare assigned spending with your budget allocation. Separate a spending limit from money in the bank.</p></article><article class="ag-reveal"><span class="mf-number">04</span><h3>What can recorded cash support?</h3><p>Read cash balances alongside customer receivables and supplier commitments before deciding what to take on next.</p></article></div></div></section>
+<section id="process" class="ag-section mf-process"><div class="ag-shell"><div class="mf-section-intro"><div class="ag-section-heading ag-reveal"><p class="ag-kicker">How it connects</p><h2>One financial thread.<br>From commitment to review.</h2><p>Build the picture from the records your team already works with.</p></div></div><ol class="mf-steps"><li class="ag-reveal"><div class="mf-step-top"><span class="mf-number">01</span><img class="mf-icon" src="/assets/images/navbar-3d/invoice-envelope.webp" width="80" height="80" alt="" loading="lazy" decoding="async"></div><h3>Record the customer commitment</h3><p>Create the customer invoice with line items and a due date. Record incoming payments so the remaining balance stays clear.</p></li><li class="ag-reveal"><div class="mf-step-top"><span class="mf-number">02</span><img class="mf-icon" src="/assets/images/navbar-3d/commerce-parcel.webp" width="80" height="80" alt="" loading="lazy" decoding="async"></div><h3>Capture the supplier costs</h3><p>Save the supplier bill and attach its document. Keep the amount, category, and due date ready for finance review.</p></li><li class="ag-reveal"><div class="mf-step-top"><span class="mf-number">03</span><img class="mf-icon" src="/assets/images/navbar-3d/allocation-tray.webp" width="80" height="80" alt="" loading="lazy" decoding="async"></div><h3>Review budget and cash together</h3><p>Compare assigned expenses with allocations, then check recorded cash and unpaid bills. Use both views to judge the next commitment.</p></li><li class="ag-reveal"><div class="mf-step-top"><span class="mf-number">04</span><img class="mf-icon" src="/assets/images/navbar-3d/accounting-ledger.webp" width="80" height="80" alt="" loading="lazy" decoding="async"></div><h3>Inspect the accounting records</h3><p>Review posted journals and financial statements. Trace a financial entry to its source and resolve incomplete records before your review.</p></li></ol></div></section>
+<section class="ag-section"><div class="ag-shell ag-split"><div class="ag-section-heading ag-reveal"><p class="ag-kicker">Connected financial work</p><h2>Keep the source.<br>Understand the entry.</h2><p>A supplier bill gives a cost its context. Posted journals show the accounting impact. Financial statements bring those entries into the wider picture.</p></div><div class="mf-ledger-visual ag-reveal"><img class="mf-icon" src="/assets/images/navbar-3d/accounting-ledger.webp" width="112" height="112" alt="" loading="lazy" decoding="async"><div class="mf-ui"><div class="mf-ui-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">Posted journal</span><small>Accounting</small></div><div class="mf-ui-body"><p class="mf-document">BILL-082</p><table><caption>Operating supplies bill · posted entries</caption><thead><tr><th>Account</th><th>Debit</th><th>Credit</th></tr></thead><tbody><tr><th>Operating expense</th><td>Rp12.000.000</td><td>—</td></tr><tr><th>Payables</th><td>—</td><td>Rp12.000.000</td></tr></tbody></table><p class="mf-tag">Balanced · source linked</p></div></div><a class="ag-text-link" href="/accounting-automation">Explore accounting <span aria-hidden="true">↗</span></a></div></div></section>
+<section id="walkthrough" class="ag-section mf-walkthrough"><div class="ag-shell"><div class="mf-section-intro"><div class="ag-section-heading ag-reveal"><p class="ag-kicker">A product walkthrough</p><h2>Choose a record.<br>See the decision it supports.</h2><p>Follow an invoice, a supplier bill, or a budget category into its financial context.</p></div></div><div class="mf-workspace"><div class="mf-workspace-head"><strong>FluxyOS · Manufacturing finance</strong><span>Example workspace · October</span></div><div class="mf-selector" role="tablist" aria-label="Choose a financial record" hidden><button type="button" role="tab" id="mf-tab-0" aria-controls="mf-panel-0" aria-selected="true" tabindex="0" data-mf-tab="0"><img class="mf-icon" src="/assets/images/navbar-3d/invoice-envelope.webp" width="48" height="48" alt="" loading="lazy" decoding="async"><span>Customer invoice</span></button><button type="button" role="tab" id="mf-tab-1" aria-controls="mf-panel-1" aria-selected="false" tabindex="-1" data-mf-tab="1"><img class="mf-icon" src="/assets/images/navbar-3d/connected-records.webp" width="48" height="48" alt="" loading="lazy" decoding="async"><span>Supplier bill</span></button><button type="button" role="tab" id="mf-tab-2" aria-controls="mf-panel-2" aria-selected="false" tabindex="-1" data-mf-tab="2"><img class="mf-icon" src="/assets/images/navbar-3d/allocation-tray.webp" width="48" height="48" alt="" loading="lazy" decoding="async"><span>Budget category</span></button></div><div class="mf-panel" id="mf-panel-0" ><div class="mf-source"><div class="mf-ui"><div class="mf-ui-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">Customer invoice</span><small>Due 24 Oct</small></div><div class="mf-ui-body"><p class="mf-document">INV-1024 · PT Sinar Kemasan</p><h3>Packaging order</h3><div class="mf-row"><span>Amount invoiced</span><strong>Rp48.000.000</strong></div><div class="mf-row"><span>Payment received</span><strong>Rp18.000.000</strong></div><div class="mf-row"><span>Outstanding</span><strong>Rp30.000.000</strong></div></div></div></div><div class="mf-connector" aria-hidden="true">→</div><div class="mf-decision"><p class="ag-kicker">Review collections</p><h3>Rp30.000.000 still to collect</h3><p>Check the due date and recorded payments before counting this invoice as available cash.</p><div class="mf-financial-trail">Receivables → payment records → accounting review</div><a class="ag-text-link" href="/vendorspend">Explore the workflow <span aria-hidden="true">↗</span></a></div></div><div class="mf-panel" id="mf-panel-1" ><div class="mf-source"><div class="mf-ui"><div class="mf-ui-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">Supplier bill</span><small>Unpaid</small></div><div class="mf-ui-body"><p class="mf-document">BILL-082 · PT Bahan Prima</p><h3>Packaging supplies</h3><div class="mf-row"><span>Amount due</span><strong>Rp12.000.000</strong></div><div class="mf-row"><span>Due date</span><strong>18 October</strong></div><p class="mf-tag">Supplier document attached</p></div></div></div><div class="mf-connector" aria-hidden="true">→</div><div class="mf-decision"><p class="ag-kicker">Review payment priorities</p><h3>Rp12.000.000 due on 18 October</h3><p>Review the supplier document and due date alongside recorded cash. A bill is a commitment; payment is a separate event.</p><div class="mf-financial-trail">Supplier document → payables → payment review</div><a class="ag-text-link" href="/vendorspend">Explore the workflow <span aria-hidden="true">↗</span></a></div></div><div class="mf-panel" id="mf-panel-2" ><div class="mf-source"><div class="mf-ui"><div class="mf-ui-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">Dynamic Budgeting</span><small>October</small></div><div class="mf-ui-body"><h3>Operating supplies</h3><div class="mf-row"><span>Allocated</span><strong>Rp40.000.000</strong></div><div class="mf-row"><span>Assigned spending</span><strong>Rp28.000.000</strong></div><div class="mf-meter" aria-hidden="true"><span></span></div><div class="mf-row"><span>Remaining allocation</span><strong>Rp12.000.000</strong></div></div></div></div><div class="mf-connector" aria-hidden="true">→</div><div class="mf-decision"><p class="ag-kicker">Review spending room</p><h3>Rp12.000.000 of allocation remains</h3><p>Compare spending assigned to this category with its allocation. Then check cash and unpaid bills before taking on another cost.</p><div class="mf-financial-trail">Allocation → assigned spending → remaining budget</div><a class="ag-text-link" href="/budgetlanding">Explore the workflow <span aria-hidden="true">↗</span></a></div></div></div></div></section>
+<section class="ag-section"><div class="ag-shell"><div class="mf-section-intro"><div class="ag-section-heading ag-reveal"><p class="ag-kicker">For owners and finance teams</p><h2>Make the next review<br>a more useful conversation.</h2><p>Use connected financial records to decide what needs attention, rather than searching for the context first.</p></div></div><div class="mf-benefits"><article class="ag-reveal"><img class="mf-icon" src="/assets/images/navbar-3d/invoice-envelope.webp" width="96" height="96" alt="" loading="lazy" decoding="async"><h3>Follow up with the right context</h3><p>See the outstanding invoice and its recorded payments before asking a customer about collection.</p><a class="ag-text-link" href="/vendorspend">Explore feature <span aria-hidden="true">↗</span></a></article><article class="ag-reveal"><img class="mf-icon" src="/assets/images/navbar-3d/allocation-tray.webp" width="96" height="96" alt="" loading="lazy" decoding="async"><h3>Check the room before more spending</h3><p>Review assigned expenses, remaining allocation, and supplier commitments before another purchase.</p><a class="ag-text-link" href="/budgetlanding">Explore feature <span aria-hidden="true">↗</span></a></article><article class="ag-reveal"><img class="mf-icon" src="/assets/images/navbar-3d/accounting-ledger.webp" width="96" height="96" alt="" loading="lazy" decoding="async"><h3>Give the finance review a source</h3><p>Inspect posted journals and statements, then trace entries to their documents when a number needs explanation.</p><a class="ag-text-link" href="/accounting-automation">Explore feature <span aria-hidden="true">↗</span></a></article></div></div></section>
+<section id="faq" class="ag-section mf-faq-section"><div class="ag-shell ag-faq-grid"><div class="ag-section-heading ag-reveal"><p class="ag-kicker">Questions, answered</p><h2>Find the right fit<br>for your financial work.</h2><p>Practical details before your team gets started.</p></div><div><details class="ag-faq"><summary>How does FluxyOS help a manufacturing finance team?<span aria-hidden="true">+</span></summary><p>FluxyOS connects customer invoices, supplier bills, recorded spending, budgets, cash records, and accounting. Your team can review collections, upcoming payments, and spending allocations together. The quality of the view depends on the records you enter and post.</p></details><details class="ag-faq"><summary>Does it calculate production costs by batch?<span aria-hidden="true">+</span></summary><p>Manufacturing BOMs, production runs, work in progress, yield, and automatic batch costing are not currently available. Record supported bills and expenses for financial review; do not treat them as an automatically calculated production cost. Discuss your manufacturing requirements with sales.</p></details><details class="ag-faq"><summary>Is a remaining budget the same as available cash?<span aria-hidden="true">+</span></summary><p>No. A budget allocation is a spending plan. Recorded cash reflects the cash records in your workspace, while unpaid bills and invoices show separate commitments. Review these together and keep payment records current.</p></details><details class="ag-faq"><summary>What should we prepare to get started?<span aria-hidden="true">+</span></summary><p>Prepare your customer invoices, supplier bills, opening cash records, chart of accounts, and spending categories. Start with one workspace and review the setup with your finance team. Sales can help you assess fit before choosing a plan.</p></details><details class="ag-faq"><summary>Can it consolidate multiple manufacturing companies?<span aria-hidden="true">+</span></summary><p>Multi-entity consolidation and per-factory production profitability are not currently supported. This walkthrough concerns financial records within one workspace. Confirm your company structure and reporting needs with sales.</p></details></div></div></section>
+<section class="ag-section ag-final"><div class="ag-shell ag-split"><div class="ag-section-heading ag-reveal"><p class="ag-kicker">Your next commitment</p><h2>Move forward with<br>the financial context.</h2><p>Explore FluxyOS or discuss the financial workflows your manufacturing business needs.</p></div><div><div class="ag-actions"><a class="ag-primary" href="/pricing">Explore plans <span aria-hidden="true">↗</span></a><a class="ag-text-link" href="/contact-sales">Talk to sales <span aria-hidden="true">↗</span></a></div><a class="mf-walk-link" href="#walkthrough">Revisit the walkthrough ↑</a></div></div></section>
+</main><script src="/assets/js/fluxyos.js" defer></script><script src="/assets/js/marketing-agencies.js" defer></script><script src="/assets/js/manufacturing.js" defer></script><script src="/assets/js/i18n.js" defer></script><script src="/assets/js/universe-canvas.js" defer></script><script src="/assets/js/footer-loader.js" defer></script></body></html>

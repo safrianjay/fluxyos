@@ -1259,3 +1259,14 @@ icon color and shadow, copy/link colors, spacing, and responsive wrapping.
 Page-specific styles must not override `.promo-banner` or its descendants and
 pseudo-elements. A prerendered banner may reserve its height before JavaScript
 loads, but must retain the same visual treatment in EN and ID.
+
+### Manufacturing public page
+
+Follow the shared 3D icon standard and the section/claim audit in
+[MANUFACTURING_LANDING_PAGE.md](MANUFACTURING_LANDING_PAGE.md). Illustrate financial
+source records and decisions; do not imply manufacturing machinery control or
+released production costing. Keep floating hero objects clear of the underlying
+amounts and labels. Motion settles within five seconds; record tabs remain manual,
+keyboard accessible, and stable in height. An explicit brief may request a concise
+example-workspace label; that exception does not relax the general prohibition on
+unnecessary illustrative/dummy-data disclaimers elsewhere.

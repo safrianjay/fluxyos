@@ -1,0 +1,2 @@
+const {defineConfig}=require('@playwright/test');
+module.exports=defineConfig({testDir:'.',testMatch:'manufacturing.spec.js',fullyParallel:true,workers:2,reporter:'list',use:{baseURL:'http://127.0.0.1:8765'},webServer:{command:'node tests/qa-static-server.js',url:'http://127.0.0.1:8765/use-cases/manufacturing',reuseExistingServer:true},projects:[{name:'chromium',use:{browserName:'chromium'}},{name:'webkit',use:{browserName:'webkit'}}]});

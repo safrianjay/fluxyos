@@ -1,88 +1,13 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Intelligent Finance OS untuk Manufaktur | FluxyOS</title>
-    <link rel="stylesheet" href="/assets/css/tailwind.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/fluxyos.css">
-
-    <style>
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            -webkit-font-smoothing: antialiased;
-        }
-        .font-mono { font-family: 'Fira Code', monospace; }
-        .manufacturing-hero {
-            background:
-                radial-gradient(circle at 8% 12%, rgba(234, 88, 12, 0.10), transparent 26%),
-                linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
-        }
-        .control-shadow { box-shadow: 0 28px 90px -52px rgba(11, 15, 25, 0.72); }
-        .ad-grid {
-            background-image:
-                linear-gradient(rgba(11, 15, 25, 0.055) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(11, 15, 25, 0.055) 1px, transparent 1px);
-            background-size: 34px 34px;
-        }
-        .signal-card { transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
-        .signal-card:hover { transform: translateY(-2px); border-color: rgba(234, 88, 12, 0.35); box-shadow: 0 20px 50px -38px rgba(11, 15, 25, 0.5); }
-        .loop-step { position: relative; }
-        .loop-step::after {
-            content: "";
-            position: absolute;
-            top: 50%;
-            right: -32px;
-            width: 30px;
-            height: 1px;
-            background: #D1D5DB;
-        }
-        .loop-step:last-child::after { display: none; }
-        .audit-paper {
-            background:
-                linear-gradient(#FFFFFF 0 0) padding-box,
-                linear-gradient(135deg, rgba(234, 88, 12, 0.55), rgba(11, 15, 25, 0.14)) border-box;
-            border: 1px solid transparent;
-        }
-        @media (max-width: 1023px) { .loop-step::after { display: none; } }
-    </style>
-    <meta name="description" content="Pantau bahan baku, tenaga kerja, overhead mesin, WIP, barang jadi, invoice, dan arus kas manufaktur dalam satu finance OS.">
-    <link rel="canonical" href="https://fluxyos.com/id/use-cases/manufacturing">
-    <link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/manufacturing">
-    <link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/manufacturing">
-    <link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/manufacturing">
-
-    <!-- Open Graph -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://fluxyos.com/id/use-cases/manufacturing">
-    <meta property="og:title" content="Intelligent Finance OS untuk Manufaktur | FluxyOS">
-    <meta property="og:description" content="Pantau bahan baku, tenaga kerja, overhead mesin, WIP, barang jadi, invoice, dan arus kas manufaktur dalam satu finance OS.">
-    <meta property="og:image" content="https://fluxyos.com/assets/images/og-manufacturing.png">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:site_name" content="FluxyOS">
-    <meta property="og:locale" content="id_ID">
-    <meta property="og:locale:alternate" content="en_US">
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Intelligent Finance OS untuk Manufaktur | FluxyOS">
-    <meta name="twitter:description" content="Pantau bahan baku, tenaga kerja, overhead mesin, WIP, barang jadi, invoice, dan arus kas manufaktur dalam satu finance OS.">
-    <meta name="twitter:image" content="https://fluxyos.com/assets/images/og-manufacturing.png">
-
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZN7J6DRD2L"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-ZN7J6DRD2L');
-    </script>
-
-    <!-- Schema.org structured data -->
-    <script type="application/ld+json">
+<!DOCTYPE html><html lang="id"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Keuangan Manufaktur Terhubung | FluxyOS</title><meta name="description" content="Hubungkan invoice pelanggan, tagihan supplier, anggaran, kas tercatat, dan akuntansi. Tinjau keuangan di balik komitmen manufaktur Anda bersama FluxyOS."><link rel="icon" href="/assets/images/favicon.svg" type="image/svg+xml"><link rel="canonical" href="https://fluxyos.com/id/use-cases/manufacturing">
+<link rel="alternate" hreflang="en" href="https://fluxyos.com/use-cases/manufacturing">
+<link rel="alternate" hreflang="id" href="https://fluxyos.com/id/use-cases/manufacturing">
+<link rel="alternate" hreflang="x-default" href="https://fluxyos.com/use-cases/manufacturing">
+<meta property="og:type" content="website"><meta property="og:url" content="https://fluxyos.com/id/use-cases/manufacturing"><meta property="og:title" content="Keuangan Manufaktur Terhubung | FluxyOS"><meta property="og:description" content="Hubungkan invoice pelanggan, tagihan supplier, anggaran, kas tercatat, dan akuntansi. Tinjau keuangan di balik komitmen manufaktur Anda bersama FluxyOS."><meta property="og:image" content="https://fluxyos.com/assets/images/og-manufacturing-id.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:site_name" content="FluxyOS"><meta property="og:locale" content="id_ID"><meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Keuangan Manufaktur Terhubung | FluxyOS"><meta name="twitter:description" content="Hubungkan invoice pelanggan, tagihan supplier, anggaran, kas tercatat, dan akuntansi. Tinjau keuangan di balik komitmen manufaktur Anda bersama FluxyOS."><meta name="twitter:image" content="https://fluxyos.com/assets/images/og-manufacturing-id.png">
+<link rel="stylesheet" href="/assets/css/tailwind.min.css"><link rel="stylesheet" href="/assets/css/fluxyos.css"><link rel="stylesheet" href="/assets/css/marketing-agencies.css"><link rel="stylesheet" href="/assets/css/manufacturing.css"><link rel="preload" as="font" href="/assets/fonts/inter-latin-variable.woff2" type="font/woff2" crossorigin>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-ZN7J6DRD2L"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-ZN7J6DRD2L');</script>
+<script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "Organization",
@@ -119,66 +44,102 @@
         ]
       }
     }
-    </script>
-    <script type="application/ld+json">
+    </script><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "FluxyOS",
+  "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "Intelligent Finance Operating System",
+  "operatingSystem": "Web",
+  "url": "https://fluxyos.com/id/use-cases/manufacturing",
+  "inLanguage": "id",
+  "description": "Hubungkan invoice pelanggan, tagihan supplier, anggaran, kas tercatat, dan akuntansi. Tinjau keuangan di balik komitmen manufaktur Anda bersama FluxyOS.",
+  "featureList": [
+    "Catatan invoice pelanggan",
+    "Catatan tagihan supplier",
+    "Alokasi anggaran dan tinjauan pengeluaran",
+    "Jurnal dibukukan dan laporan keuangan"
+  ],
+  "publisher": {
+    "@id": "https://fluxyos.com/#organization"
+  }
+}</script>
+<script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
     {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "FluxyOS untuk Manufaktur",
-      "applicationCategory": "BusinessApplication",
-      "applicationSubCategory": "Software Keuangan Manufaktur",
-      "operatingSystem": "Web, iOS, Android",
-      "url": "https://fluxyos.com/id/use-cases/manufacturing",
-      "inLanguage": "id-ID",
-      "description": "FluxyOS adalah finance OS untuk perusahaan manufaktur. Pantau bahan baku, tagihan supplier, tenaga kerja, overhead mesin, work in progress, barang jadi, invoice, dan arus kas dalam satu view operasional.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "IDR",
-        "availability": "https://schema.org/InStock"
-      },
-      "featureList": [
-        "Visibilitas biaya produksi per batch untuk bahan, tenaga kerja, dan overhead",
-        "Pelacakan tagihan supplier dan purchase order untuk bahan baku dan packaging",
-        "Pantau work in progress dan biaya barang jadi",
-        "Visibilitas arus kas untuk deposit, pembayaran vendor, payroll, invoice, dan collection",
-        "Review margin per lini produk, batch produksi, atau order pelanggan",
-        "Ekspor siap PPN untuk transaksi, struk, invoice supplier, dan biaya operasional"
-      ],
-      "publisher": {
-        "@id": "https://fluxyos.com/#organization"
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Beranda",
+      "item": "https://fluxyos.com/id"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Manufaktur",
+      "item": "https://fluxyos.com/id/use-cases/manufacturing"
+    }
+  ]
+}</script>
+<script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "inLanguage": "id",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Bagaimana FluxyOS membantu tim keuangan manufaktur?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "FluxyOS menghubungkan invoice pelanggan, tagihan supplier, pengeluaran, anggaran, kas tercatat, dan akuntansi. Tim Anda bisa meninjau penagihan, pembayaran mendatang, serta alokasi pengeluaran bersama. Kelengkapan tinjauan bergantung pada catatan yang Anda masukkan dan bukukan."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Apakah FluxyOS menghitung biaya produksi per batch?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "BOM manufaktur, proses produksi, barang dalam proses, hasil produksi, serta perhitungan biaya batch otomatis belum tersedia. Catat tagihan dan biaya yang didukung untuk tinjauan keuangan; biaya tersebut bukan hasil perhitungan biaya produksi otomatis. Diskusikan kebutuhan manufaktur Anda dengan sales."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Apakah sisa anggaran sama dengan kas tersedia?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Tidak. Alokasi anggaran adalah rencana pengeluaran. Kas tercatat mencerminkan catatan kas dalam workspace, sedangkan tagihan dan invoice belum lunas menunjukkan komitmen terpisah. Tinjau semuanya bersama dan perbarui catatan pembayaran."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Apa yang perlu disiapkan untuk mulai?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Siapkan invoice pelanggan, tagihan supplier, catatan saldo kas awal, bagan akun, serta kategori pengeluaran. Mulai dengan satu workspace dan tinjau pengaturannya bersama tim keuangan. Sales bisa membantu menilai kesesuaian sebelum Anda memilih paket."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Bisakah FluxyOS mengonsolidasikan beberapa perusahaan manufaktur?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Konsolidasi beberapa badan hukum serta profitabilitas produksi per pabrik belum didukung. Alur ini membahas catatan keuangan dalam satu workspace. Pastikan kebutuhan struktur perusahaan dan laporan Anda bersama sales."
       }
     }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://fluxyos.com/" },
-        { "@type": "ListItem", "position": 2, "name": "Studi Kasus", "item": "https://fluxyos.com/use-cases/manufacturing" },
-        { "@type": "ListItem", "position": 3, "name": "Manufacturing", "item": "https://fluxyos.com/id/use-cases/manufacturing" }
-      ]
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "inLanguage": "id-ID",
-      "mainEntity": [
-        { "@type": "Question", "name": "Bagaimana FluxyOS membantu tim finance manufaktur?", "acceptedAnswer": { "@type": "Answer", "text": "FluxyOS menghubungkan tagihan supplier, pembelian bahan, payroll, overhead, invoice, dan collection supaya tim memahami kas dan margin tanpa menunggu spreadsheet akhir bulan." } },
-        { "@type": "Question", "name": "Apakah FluxyOS bisa melacak biaya per batch?", "acceptedAnswer": { "@type": "Answer", "text": "Bisa. Biaya dapat dikelompokkan per batch, lini produk, order pelanggan, atau departemen agar margin tiap produksi lebih jelas." } },
-        { "@type": "Question", "name": "Apakah FluxyOS menggantikan ERP manufaktur?", "acceptedAnswer": { "@type": "Answer", "text": "Tidak. FluxyOS fokus pada visibilitas finance operations di sekitar produksi: vendor spend, arus kas, struk, tagihan, budget, invoice, dan review margin." } },
-        { "@type": "Question", "name": "Apakah bisa mendukung ekspor siap PPN?", "acceptedAnswer": { "@type": "Answer", "text": "Bisa. Invoice supplier, struk, invoice pelanggan, dan biaya operasional tetap rapi untuk review akuntan dan ekspor siap PPN." } }
-      ]
-    }
-    </script>
-</head>
-<body class="min-h-screen flex flex-col">
-
-    <!-- 1. Navigation with Mega Menu -->
-    <nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
+  ]
+}</script>
+</head><body class="agency-site"><a class="ag-skip" href="#main-content">Langsung ke konten</a><div class="promo-banner" data-static-promo role="region" aria-label="Promo FluxyOS">
+            <div class="promo-banner__inner">
+                <span class="promo-banner__icon" aria-hidden="true">
+                    <span class="promo-banner__icon-mark">%</span>
+                </span>
+                <p class="promo-banner__copy">
+                    <span>Hemat 20% untuk paket tahunan FluxyOS. Aktifkan sebelum promo berakhir.</span>
+                </p>
+                <a class="promo-banner__link" href="/id/pricing">Lihat paket</a>
+            </div>
+        </div><nav class="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50" data-animate="nav">
         <div class="max-w-[1280px] mx-auto px-6 h-[80px] flex items-center justify-between">
             <div class="flex items-center gap-12 h-full">
                 <a href="/id/fluxyos" class="flex items-center gap-2.5 cursor-pointer group">
@@ -462,215 +423,13 @@
             </div>
         </div>
     </nav>
-
-    <!-- HERO SECTION -->
-    <section class="manufacturing-hero border-b border-gray-200 px-6 py-12 md:py-18 overflow-hidden">
-        <div class="max-w-[1280px] mx-auto grid lg:grid-cols-[0.9fr_1.1fr] gap-10 lg:gap-14 items-center">
-            <div>
-                <h1 class="text-[44px] md:text-[56px] font-bold tracking-tight leading-[1.05] text-gray-950 mb-6">Lihat biaya asli setiap produksi sebelum margin hilang.</h1>
-                <p class="text-[18px] md:text-[20px] text-gray-700 leading-relaxed mb-8">FluxyOS adalah finance OS untuk owner manufaktur, kepala produksi, dan tim finance yang menghubungkan bahan baku, tagihan supplier, tenaga kerja, overhead mesin, WIP, barang jadi, invoice, dan collection dalam satu view operasional.</p>
-                <div class="flex flex-col sm:flex-row gap-4">
-                    <a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] hover:from-[#D44400] hover:to-[#EA580C] text-white font-semibold text-[15px] px-7 py-4 rounded-md transition-all duration-200 shadow-sm hover:shadow text-center">Coba FluxyOS gratis</a>
-                    <a href="#production-cost" class="border border-gray-300 bg-white text-gray-900 font-semibold text-[15px] px-7 py-4 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors text-center">Lihat peta biaya produksi</a>
-                </div>
-            </div>
-            <div class="control-shadow rounded-[30px] border border-gray-200 bg-white p-4 md:p-6 ad-grid">
-                <div class="grid md:grid-cols-[0.92fr_1.08fr] gap-4">
-                    <div class="rounded-[22px] border border-gray-200 bg-white p-5">
-                        <div class="flex items-start justify-between gap-3 mb-5">
-                            <div>
-                                <h2 class="text-[23px] md:text-[28px] font-bold tracking-tight text-gray-950">Factory cash control room</h2>
-                                <p class="text-[13px] text-gray-500 mt-1">Rekening operasional BCA, Mei 2026</p>
-                            </div>
-                            <span class="rounded-full border border-[#EA580C]/40 px-3 py-1 text-[12px] font-semibold text-[#EA580C]">Live</span>
-                        </div>
-                        <div class="space-y-3">
-                            <div class="rounded-2xl border border-gray-200 bg-[#F8FAFC] p-4 flex items-center justify-between gap-3"><div><p class="text-[13px] font-bold text-gray-950">Pembayaran pelanggan</p><p class="text-[12px] text-gray-500 mt-1">PT Ritel Nusantara invoice 0841</p></div><span class="text-[14px] font-bold text-gray-950">+Rp 241M</span></div>
-                            <div class="rounded-2xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-3"><div><p class="text-[13px] font-bold text-gray-950">Transfer supplier</p><p class="text-[12px] text-gray-500 mt-1">Deposit aluminium sheet</p></div><span class="text-[14px] font-bold text-gray-950">-Rp 87M</span></div>
-                            <div class="rounded-2xl border border-[#EA580C]/30 bg-white p-4 flex items-center justify-between gap-3"><div><p class="text-[13px] font-bold text-gray-950">Maintenance mesin</p><p class="text-[12px] text-gray-500 mt-1">Ganti bearing press line</p></div><span class="text-[14px] font-bold text-[#EA580C]">-Rp 18M</span></div>
-                            <div class="rounded-2xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-3"><div><p class="text-[13px] font-bold text-gray-950">Payroll operator</p><p class="text-[12px] text-gray-500 mt-1">Shift A dan overtime</p></div><span class="text-[14px] font-bold text-gray-950">-Rp 64M</span></div>
-                            <div class="rounded-2xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-3"><div><p class="text-[13px] font-bold text-gray-950">Cadangan PPN</p><p class="text-[12px] text-gray-500 mt-1">Kas pajak disisihkan</p></div><span class="text-[14px] font-bold text-gray-950">-Rp 22M</span></div>
-                        </div>
-                    </div>
-                    <div class="rounded-[22px] bg-[#0B0F19] text-white p-5 md:p-6">
-                        <h3 class="text-[22px] md:text-[28px] font-bold tracking-tight">Biaya Batch A-118</h3>
-                        <p class="text-[13px] text-gray-300 mt-1">Lini kitchen appliance, 1.240 unit</p>
-                        <div class="mt-6 space-y-4">
-                            <div><div class="flex justify-between text-[13px] mb-2"><span class="text-gray-300">Bahan baku</span><span class="font-bold">Rp 312M</span></div><div class="h-2 rounded-full bg-white/10 overflow-hidden"><div class="h-full w-[78%] rounded-full bg-white"></div></div></div>
-                            <div><div class="flex justify-between text-[13px] mb-2"><span class="text-gray-300">Tenaga kerja operator</span><span class="font-bold">Rp 88M</span></div><div class="h-2 rounded-full bg-white/10 overflow-hidden"><div class="h-full w-[44%] rounded-full bg-white"></div></div></div>
-                            <div><div class="flex justify-between text-[13px] mb-2"><span class="text-gray-300">Overhead mesin</span><span class="font-bold text-orange-200">Rp 63M</span></div><div class="h-2 rounded-full bg-white/10 overflow-hidden"><div class="h-full w-[31%] rounded-full bg-[#EA580C]"></div></div></div>
-                            <div class="grid grid-cols-2 gap-3 pt-2">
-                                <div class="rounded-2xl bg-white/8 border border-white/10 p-4"><p class="text-[12px] text-gray-400">Nilai WIP</p><p class="text-[22px] font-bold mt-1">Rp 184M</p></div>
-                                <div class="rounded-2xl bg-white/8 border border-white/10 p-4"><p class="text-[12px] text-gray-400">Barang jadi</p><p class="text-[22px] font-bold mt-1">Rp 526M</p></div>
-                            </div>
-                            <div class="rounded-2xl bg-white text-gray-950 p-4"><p class="text-[14px] font-semibold leading-relaxed">Tunda PO bahan berikutnya sampai invoice pelanggan masuk, atau minggu payroll akan bentrok dengan deposit supplier.</p></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="production-cost" class="py-16 md:py-24 px-6 bg-white">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-[0.78fr_1.22fr] gap-10 lg:gap-14 items-start">
-                <div class="lg:pt-6">
-                    <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Kebocoran profit manufaktur jarang muncul di satu tempat yang jelas.</h2>
-                    <p class="text-[18px] text-gray-600 leading-relaxed">Produk jadi bisa terlihat profit sampai invoice supplier terlambat, scrap, overtime, maintenance, packaging, freight, dan collection pelanggan yang mundur ditarik kembali ke batch yang sama.</p>
-                    <div class="mt-8 rounded-3xl border border-gray-200 bg-[#F8FAFC] p-5">
-                        <p class="text-[15px] font-bold text-gray-950">Batch ini terlihat sehat saat quotation dibuat.</p>
-                        <p class="text-[14px] text-gray-600 leading-relaxed mt-2">Margin berubah setelah shop floor mencatat overtime, maintenance, scrap, dan freight yang benar-benar terjadi.</p>
-                    </div>
-                </div>
-                <div class="control-shadow rounded-[28px] border border-gray-200 bg-[#F8FAFC] p-4 md:p-6">
-                    <div class="rounded-[22px] border border-gray-200 bg-white p-5 md:p-6">
-                        <h3 class="text-[24px] font-bold tracking-tight text-gray-950 mb-1">Waterfall margin Batch A-118</h3>
-                        <p class="text-[14px] text-gray-600 mb-6">Margin rencana bergerak dari 24.5% ke 18.9% setelah kejadian produksi nyata masuk.</p>
-                        <div class="space-y-3">
-                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-gray-200 bg-[#F8FAFC] p-4"><div><p class="font-bold text-gray-950">Margin produksi saat quotation</p><p class="text-[12px] text-gray-500 mt-1">Bahan dan tenaga kerja dari rencana awal</p></div><span class="text-[22px] font-bold text-gray-950">24.5%</span></div>
-                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-gray-200 bg-white p-4"><div><p class="font-bold text-gray-950">Perubahan harga bahan baku</p><p class="text-[12px] text-gray-500 mt-1">Aluminium sheet dan komponen impor</p></div><span class="text-[18px] font-bold text-gray-950">-2.1%</span></div>
-                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-gray-200 bg-white p-4"><div><p class="font-bold text-gray-950">Overtime dan makan operator</p><p class="text-[12px] text-gray-500 mt-1">Shift tambahan untuk mengejar supplier terlambat</p></div><span class="text-[18px] font-bold text-gray-950">-1.4%</span></div>
-                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-[#EA580C]/30 bg-white p-4"><div><p class="font-bold text-gray-950">Scrap, rework, dan maintenance mesin</p><p class="text-[12px] text-gray-500 mt-1">Ganti bearing press line dan casing reject</p></div><span class="text-[18px] font-bold text-[#EA580C]">-1.6%</span></div>
-                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-gray-200 bg-white p-4"><div><p class="font-bold text-gray-950">Freight dan collection terlambat</p><p class="text-[12px] text-gray-500 mt-1">Barang jadi dikirim sebelum pembayaran pelanggan clear</p></div><span class="text-[18px] font-bold text-gray-950">-0.5%</span></div>
-                            <div class="grid grid-cols-[1fr_auto] gap-4 items-center rounded-2xl border border-gray-950 bg-gray-950 p-4 text-white"><div><p class="font-bold">Margin sekarang</p><p class="text-[12px] text-gray-300 mt-1">Finance, produksi, dan owner melihat hasil yang sama</p></div><span class="text-[24px] font-bold">18.9%</span></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="py-16 md:py-24 px-6 bg-white border-y border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-[0.78fr_1.22fr] gap-10 lg:gap-14 items-start">
-                <div class="lg:pt-4">
-                    <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Biaya pabrik tidak perlu menunggu orang mengumpulkan struk kertas.</h2>
-                    <p class="text-[18px] text-gray-600 leading-relaxed">Bukti biaya datang dari lantai produksi, meja supplier, tagihan listrik, dan pengiriman di waktu yang berbeda. FluxyOS menjaga setiap biaya terikat ke batch, vendor, dan status review yang tepat.</p>
-                    <div class="mt-8 rounded-[26px] border border-gray-200 bg-[#F8FAFC] p-4">
-                        <p class="text-[13px] font-bold uppercase tracking-[0.08em] text-gray-500">Antrian review hari ini</p>
-                        <div class="mt-4 grid grid-cols-3 gap-3">
-                            <div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[28px] font-bold text-gray-950">9</p><p class="text-[12px] text-gray-500 mt-1">bukti masuk</p></div>
-                            <div class="rounded-2xl bg-white border border-[#EA580C]/30 p-4"><p class="text-[28px] font-bold text-[#EA580C]">3</p><p class="text-[12px] text-gray-500 mt-1">perlu review</p></div>
-                            <div class="rounded-2xl bg-gray-950 p-4 text-white"><p class="text-[28px] font-bold">6</p><p class="text-[12px] text-gray-300 mt-1">siap ekspor</p></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="control-shadow rounded-[32px] border border-gray-200 bg-[#F8FAFC] p-4 md:p-6">
-                    <div class="grid xl:grid-cols-[0.95fr_1.05fr] gap-5 items-stretch">
-                        <div class="rounded-[26px] border border-gray-200 bg-white p-5 min-h-[390px] relative overflow-hidden">
-                            <div class="flex items-center justify-between gap-3 mb-5">
-                                <h3 class="text-[22px] font-bold text-gray-950">Tray bukti masuk</h3>
-                                <span class="rounded-full border border-[#EA580C]/35 px-3 py-1 text-[12px] font-bold text-[#EA580C]">3 terbuka</span>
-                            </div>
-                            <div class="relative min-h-[280px]">
-                                <div class="absolute left-1 top-2 w-[78%] rotate-[-4deg] rounded-[20px] border border-gray-200 bg-white p-4 shadow-[0_18px_45px_-28px_rgba(15,23,42,0.45)]">
-                                    <p class="font-mono text-[11px] text-gray-400">STRUK / FLOOR</p>
-                                    <h4 class="mt-3 font-bold text-gray-950">Klaim makan operator</h4>
-                                    <p class="mt-1 text-[13px] text-gray-500">Overtime Shift B, Line 02</p>
-                                    <div class="mt-5 flex items-center justify-between border-t border-dashed border-gray-200 pt-3"><span class="text-[12px] text-[#EA580C] font-bold">foto hilang</span><span class="font-bold">Rp 8.4M</span></div>
-                                </div>
-                                <div class="absolute right-0 top-[96px] w-[74%] rotate-[3deg] rounded-[20px] border border-gray-200 bg-[#F8FAFC] p-4 shadow-[0_18px_45px_-30px_rgba(15,23,42,0.5)]">
-                                    <p class="font-mono text-[11px] text-gray-400">INVOICE / SUPPLIER</p>
-                                    <h4 class="mt-3 font-bold text-gray-950">Vendor spare part</h4>
-                                    <p class="mt-1 text-[13px] text-gray-500">Ganti bearing press line</p>
-                                    <div class="mt-5 flex items-center justify-between border-t border-dashed border-gray-200 pt-3"><span class="text-[12px] text-gray-500 font-bold">kaitkan batch</span><span class="font-bold">Rp 18M</span></div>
-                                </div>
-                                <div class="absolute left-8 bottom-0 w-[76%] rotate-[-1deg] rounded-[20px] border border-gray-950 bg-gray-950 p-4 text-white shadow-[0_22px_50px_-30px_rgba(15,23,42,0.7)]">
-                                    <p class="font-mono text-[11px] text-gray-400">UTILITY / BULANAN</p>
-                                    <h4 class="mt-3 font-bold">Tagihan listrik</h4>
-                                    <p class="mt-1 text-[13px] text-gray-300">Lonjakan daya kompresor</p>
-                                    <div class="mt-5 flex items-center justify-between border-t border-dashed border-white/15 pt-3"><span class="text-[12px] text-orange-200 font-bold">perlu alokasi</span><span class="font-bold">Rp 34M</span></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="grid gap-4">
-                            <div class="rounded-[26px] border border-gray-200 bg-white p-5">
-                                <h3 class="text-[22px] font-bold text-gray-950">Papan alokasi batch</h3>
-                                <div class="mt-5 grid grid-cols-2 gap-3">
-                                    <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Batch</p><p class="mt-1 text-[20px] font-bold text-gray-950">A-118</p></div>
-                                    <div class="rounded-2xl bg-[#F8FAFC] border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Line</p><p class="mt-1 text-[20px] font-bold text-gray-950">02</p></div>
-                                    <div class="rounded-2xl bg-white border border-[#EA580C]/30 p-4"><p class="text-[12px] text-gray-500">Maintenance</p><p class="mt-1 text-[20px] font-bold text-[#EA580C]">Review</p></div>
-                                    <div class="rounded-2xl bg-white border border-gray-200 p-4"><p class="text-[12px] text-gray-500">Freight</p><p class="mt-1 text-[20px] font-bold text-gray-950">Cocok</p></div>
-                                </div>
-                            </div>
-                            <div class="rounded-[26px] border border-gray-200 bg-white p-5">
-                                <h3 class="text-[22px] font-bold text-gray-950">Panel keputusan finance</h3>
-                                <div class="mt-5 space-y-3">
-                                    <div class="flex items-center gap-3"><span class="h-3 w-3 rounded-full bg-[#EA580C]"></span><p class="text-[14px] text-gray-700"><strong class="text-gray-950">Bukti hilang:</strong> foto struk makan operator</p></div>
-                                    <div class="flex items-center gap-3"><span class="h-3 w-3 rounded-full bg-gray-950"></span><p class="text-[14px] text-gray-700"><strong class="text-gray-950">Perlu alokasi:</strong> listrik kompresor</p></div>
-                                    <div class="flex items-center gap-3"><span class="h-3 w-3 rounded-full bg-gray-300"></span><p class="text-[14px] text-gray-700"><strong class="text-gray-950">Disetujui:</strong> invoice packaging untuk export PPN</p></div>
-                                </div>
-                                <div class="mt-5 rounded-2xl bg-gray-950 p-4 text-white">
-                                    <p class="text-[14px] font-semibold leading-relaxed">Review finance: selesaikan struk hilang, alokasikan listrik ke Batch A-118, lalu release export siap PPN.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="py-16 md:py-24 px-6 bg-[#F8FAFC] border-y border-gray-200">
-        <div class="max-w-[1280px] mx-auto">
-            <div class="grid lg:grid-cols-[0.95fr_1.05fr] gap-10 items-start">
-                <div>
-                    <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Dari purchase order sampai invoice dibayar, semua orang melihat angka yang sama.</h2>
-                    <p class="text-[18px] text-gray-600 leading-relaxed max-w-3xl">Owner bisa melihat eksposur kas. Kepala produksi bisa melihat batch yang mulai melenceng. Finance bisa melihat tagihan vendor, struk, due date, dan collection gap sebelum akhir bulan.</p>
-                </div>
-                <div class="rounded-[28px] bg-white border border-gray-200 p-5 control-shadow">
-                    <h3 class="text-[22px] font-bold text-gray-950">Timing rekening bank</h3>
-                    <div class="mt-4 space-y-3 text-[13px]">
-                        <div class="flex items-center justify-between gap-3 rounded-xl bg-[#F8FAFC] p-3"><span class="text-gray-600">Invoice pelanggan jatuh tempo</span><span class="font-bold">Rp 241M</span></div>
-                        <div class="flex items-center justify-between gap-3 rounded-xl bg-white border border-gray-200 p-3"><span class="text-gray-600">Deposit supplier jatuh tempo</span><span class="font-bold">Rp 87M</span></div>
-                        <div class="flex items-center justify-between gap-3 rounded-xl bg-white border border-[#EA580C]/30 p-3"><span class="text-gray-600">Kebutuhan payroll minggu ini</span><span class="font-bold text-[#EA580C]">Rp 64M</span></div>
-                        <div class="rounded-xl bg-gray-950 p-4 text-white"><p class="font-semibold">Jika collection mundur 5 hari, PO bahan berikutnya harus ditahan.</p></div>
-                    </div>
-                </div>
-            </div>
-            <div class="mt-12 grid lg:grid-cols-6 gap-4">
-                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">01</span><h3 class="font-bold text-gray-950 mt-3">Purchase order</h3><p class="text-[13px] text-gray-600 mt-2">Bahan, packaging, dan deposit supplier.</p></div>
-                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">02</span><h3 class="font-bold text-gray-950 mt-3">Lantai produksi</h3><p class="text-[13px] text-gray-600 mt-2">Operator, waktu mesin, maintenance, dan scrap.</p></div>
-                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">03</span><h3 class="font-bold text-gray-950 mt-3">WIP</h3><p class="text-[13px] text-gray-600 mt-2">Kas tertahan sebelum barang selesai.</p></div>
-                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">04</span><h3 class="font-bold text-gray-950 mt-3">Barang jadi</h3><p class="text-[13px] text-gray-600 mt-2">Nilai stok siap kirim atau invoice.</p></div>
-                <div class="loop-step rounded-2xl border border-gray-200 bg-white p-5"><span class="font-mono text-[12px] text-[#EA580C]">05</span><h3 class="font-bold text-gray-950 mt-3">Invoice penjualan</h3><p class="text-[13px] text-gray-600 mt-2">Tagihan pelanggan, pajak, dan due date.</p></div>
-                <div class="loop-step rounded-2xl border border-gray-950 bg-gray-950 text-white p-5"><span class="font-mono text-[12px] text-orange-200">06</span><h3 class="font-bold mt-3">Collection bank</h3><p class="text-[13px] text-gray-300 mt-2">Pembayaran clear dan membiayai produksi berikutnya.</p></div>
-            </div>
-        </div>
-    </section>
-
-    <section class="py-16 md:py-24 px-6 bg-white">
-        <div class="max-w-[1180px] mx-auto grid lg:grid-cols-[0.85fr_1.15fr] gap-10 items-center">
-            <div><h2 class="text-[36px] md:text-[48px] font-bold tracking-tight text-gray-950 mb-5">Tanyakan pertanyaan finance pabrik sebelum masalah kas datang.</h2><p class="text-[18px] text-gray-600 leading-relaxed">Fluxy AI membaca ledger, struk, tagihan, budget, dan tag biaya produksi yang sudah ada di FluxyOS, jadi jawabannya memakai pergerakan uang Anda sendiri.</p></div>
-            <div class="audit-paper rounded-[24px] bg-white text-gray-950 p-5 md:p-6">
-                <div class="flex items-center justify-between border-b border-gray-200 pb-4 mb-5"><div><h3 class="text-[22px] font-bold">Review Batch A-118</h3></div><span class="rounded-full bg-gray-950 px-3 py-1 text-[12px] font-semibold text-white">AI</span></div>
-                <div class="space-y-3">
-                    <div class="rounded-xl bg-gray-50 border border-gray-200 p-4"><p class="text-[13px] font-bold">Kenapa margin turun minggu ini?</p><p class="text-[14px] text-gray-600 mt-2 leading-relaxed">Harga bahan naik 8%, overtime menambah Rp 14M, dan dua tagihan maintenance masuk setelah rencana batch dibuat.</p></div>
-                    <div class="rounded-xl bg-gray-50 border border-gray-200 p-4"><p class="text-[13px] font-bold">Apakah kita bisa mulai produksi berikutnya?</p><p class="text-[14px] text-gray-600 mt-2 leading-relaxed">Bisa jika invoice pelanggan Rp 241M masuk hari Jumat. Jika tidak, kurangi deposit supplier Rp 62M.</p></div>
-                    <div class="rounded-xl bg-gray-50 border border-gray-200 p-4"><p class="text-[13px] font-bold">Biaya mana yang masih butuh struk?</p><p class="text-[14px] text-gray-600 mt-2 leading-relaxed">Tiga pembayaran kurir, satu pembelian spare part, dan dua petty cash perlu bukti sebelum export.</p></div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="py-16 md:py-24 px-6 bg-[#0B0F19] text-white">
-        <div class="max-w-[1180px] mx-auto">
-            <h2 class="text-[36px] md:text-[48px] font-bold tracking-tight mb-10 max-w-3xl">Dibuat untuk orang yang harus menjelaskan angka.</h2>
-            <div class="grid md:grid-cols-3 gap-4">
-                <div class="rounded-2xl border border-white/10 bg-white/5 p-6"><h3 class="text-[21px] font-bold mb-3">Owner</h3><p class="text-[15px] text-gray-300 leading-relaxed">Lihat apakah kas cukup untuk pembelian bahan berikutnya, minggu payroll, dan jarak pembayaran pelanggan.</p></div>
-                <div class="rounded-2xl border border-white/10 bg-white/5 p-6"><h3 class="text-[21px] font-bold mb-3">Kepala produksi</h3><p class="text-[15px] text-gray-300 leading-relaxed">Hubungkan biaya batch, overtime, downtime, dan rework ke hasil finansial tiap produksi.</p></div>
-                <div class="rounded-2xl border border-white/10 bg-white/5 p-6"><h3 class="text-[21px] font-bold mb-3">Admin finance</h3><p class="text-[15px] text-gray-300 leading-relaxed">Rapikan tagihan supplier, struk, due date, collection, dan ekspor siap PPN tanpa mengejar folder.</p></div>
-            </div>
-        </div>
-    </section>
-
-    <section id="faq" class="py-16 md:py-20 px-6 border-y border-gray-200 bg-[#F8FAFC]"><div class="max-w-[1120px] mx-auto"><div class="max-w-3xl mb-8"><h2 class="text-[32px] md:text-[40px] font-bold tracking-tight text-gray-900 mb-3">Pertanyaan yang sering ditanyakan</h2><p class="text-[16px] text-gray-600">Jawaban singkat untuk owner manufaktur, kepala produksi, dan tim finance.</p></div><div class="grid md:grid-cols-2 gap-4"><details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Bagaimana FluxyOS membantu tim finance manufaktur?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">FluxyOS menghubungkan tagihan supplier, pembelian bahan, payroll, overhead, invoice, dan collection supaya tim memahami kas dan margin tanpa menunggu spreadsheet akhir bulan.</p></details><details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Apakah FluxyOS bisa melacak biaya per batch?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Bisa. Biaya dapat dikelompokkan per batch, lini produk, order pelanggan, atau departemen agar margin tiap produksi lebih jelas.</p></details><details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Apakah FluxyOS menggantikan ERP manufaktur?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Tidak. FluxyOS fokus pada visibilitas finance operations di sekitar produksi: vendor spend, arus kas, struk, tagihan, budget, invoice, dan review margin.</p></details><details class="rounded-2xl border border-gray-200 bg-white p-5 group"><summary class="flex items-center justify-between cursor-pointer list-none"><h3 class="text-[16px] font-bold text-gray-900 pr-4">Apakah bisa mendukung ekspor siap PPN?</h3><svg class="w-5 h-5 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></summary><p class="mt-3 text-[15px] text-gray-700 leading-relaxed">Bisa. Invoice supplier, struk, invoice pelanggan, dan biaya operasional tetap rapi untuk review akuntan dan ekspor siap PPN.</p></details></div></div></section>
-
-    <section class="bg-[#0B0F19] py-16 md:py-24 px-6"><div class="max-w-[1280px] mx-auto text-center"><h2 class="text-[36px] md:text-[44px] font-bold tracking-tight text-white mb-5">Jalankan produksi dengan visibilitas finance, bukan kejutan finance.</h2><p class="text-[17px] text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">Hubungkan belanja bahan, biaya produksi, tagihan vendor, invoice, dan arus kas sebelum keputusan batch berikutnya.</p><div class="flex flex-col sm:flex-row gap-4 justify-center"><a href="/login" class="bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white font-semibold text-[15px] px-8 py-4 rounded-md hover:from-[#D44400] hover:to-[#EA580C] transition-all duration-200 shadow-sm hover:shadow inline-block text-center">Coba FluxyOS gratis</a><a href="/pricing" class="border-2 border-gray-600 text-white font-semibold text-[15px] px-8 py-3 rounded-md hover:border-[#EA580C] hover:text-[#EA580C] transition-colors inline-block text-center">Lihat harga</a></div></div></section>
-
-    <script src="/assets/js/universe-canvas.js" defer></script>
-    <script src="/assets/js/footer-loader.js" defer></script>
-    <script src="/assets/js/fluxyos.js" defer></script>
-<script src="/assets/js/i18n.js" defer></script>
-</body>
-</html>
+<main id="main-content" class="ag-page mf-page" data-locale-path="/use-cases/manufacturing">
+<section class="mf-hero"><div class="ag-shell mf-hero-grid"><div class="mf-hero-copy"><h1>Pahami keuangan<br>di balik komitmen<br><em>produksi berikutnya.</em></h1><p>Invoice pelanggan. Tagihan supplier. Rencana pengeluaran. Hubungkan catatan keuangan sebelum pesanan berikutnya menekan kas Anda.</p><div class="ag-actions"><a class="ag-primary" href="/id/pricing">Lihat paket <span aria-hidden="true">↗</span></a><a class="ag-text-link" href="/contact-sales">Hubungi sales <span aria-hidden="true">↗</span></a></div><a class="mf-walk-link" href="#walkthrough">Lihat hubungan antar catatan <span aria-hidden="true">↓</span></a></div><div class="mf-hero-visual" aria-label="Catatan invoice pelanggan, tagihan supplier, dan anggaran"><div class="mf-hero-orbit" aria-hidden="true"></div><div class="mf-hero-board"><div class="mf-ui-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">FluxyOS · Tinjauan keuangan</span><small>Oktober</small></div><div class="mf-hero-summary"><p>Kas tercatat</p><strong>Rp56.000.000</strong><div class="mf-cash-lines"><span></span><span></span><span></span><span></span><span></span><span></span></div><div class="mf-row"><span>Piutang pelanggan</span><strong>Rp30.000.000</strong></div><div class="mf-row"><span>Tagihan supplier jatuh tempo</span><strong>Rp12.000.000</strong></div></div></div><div class="mf-float mf-float-invoice"><img class="mf-icon" src="/assets/images/navbar-3d/invoice-envelope.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><div><span>Invoice pelanggan</span><strong>INV-1024</strong><small>Belum lunas · Rp30.000.000</small></div></div><div class="mf-float mf-float-budget"><img class="mf-icon" src="/assets/images/navbar-3d/allocation-tray.webp" width="64" height="64" alt="" loading="lazy" decoding="async"><div><span>Dynamic Budgeting</span><strong>Rp12.000.000</strong><small>Sisa alokasi</small></div></div><div class="mf-hero-trail"><span>Catatan sumber</span><span aria-hidden="true">→</span><span>Akuntansi</span><span aria-hidden="true">→</span><span>Tinjauan keuangan</span></div></div></div></section>
+<section class="ag-section mf-questions"><div class="ag-shell"><p class="mf-category">FluxyOS adalah Sistem Operasi Keuangan Cerdas (Intelligent Finance Operating System) yang menghubungkan operasional keuangan, akuntansi, operasional bisnis, alur kerja perusahaan, dan analisis dalam satu sistem yang terus terhubung.</p><div class="mf-section-intro"><div class="ag-section-heading ag-reveal"><p class="ag-kicker">Sebelum komitmen berikutnya</p><h2>Bisakah kita melihat dampak keuangan<br>sebelum kas mulai ketat?</h2><p>Mulai dari empat pertanyaan yang bisa dibantu oleh catatan keuangan Anda.</p></div></div><div class="mf-question-grid"><article class="ag-reveal"><span class="mf-number">01</span><h3>Berapa piutang pelanggan?</h3><p>Tinjau invoice belum lunas serta pembayaran tercatat. Tindak lanjuti piutang yang dibutuhkan untuk komitmen berikutnya.</p></article><article class="ag-reveal"><span class="mf-number">02</span><h3>Supplier mana yang perlu dibayar dulu?</h3><p>Periksa tagihan belum lunas, jatuh tempo, dan dokumen pendukung sebelum menentukan prioritas pembayaran.</p></article><article class="ag-reveal"><span class="mf-number">03</span><h3>Berapa ruang pengeluaran tersisa?</h3><p>Bandingkan pengeluaran dengan alokasi anggaran. Bedakan batas pengeluaran dari uang di rekening.</p></article><article class="ag-reveal"><span class="mf-number">04</span><h3>Apa yang bisa didukung kas tercatat?</h3><p>Baca saldo kas bersama piutang pelanggan serta komitmen supplier sebelum menentukan langkah berikutnya.</p></article></div></div></section>
+<section id="process" class="ag-section mf-process"><div class="ag-shell"><div class="mf-section-intro"><div class="ag-section-heading ag-reveal"><p class="ag-kicker">Cara catatan terhubung</p><h2>Satu alur keuangan.<br>Dari komitmen hingga tinjauan.</h2><p>Bangun gambaran dari catatan yang sudah digunakan tim Anda.</p></div></div><ol class="mf-steps"><li class="ag-reveal"><div class="mf-step-top"><span class="mf-number">01</span><img class="mf-icon" src="/assets/images/navbar-3d/invoice-envelope.webp" width="80" height="80" alt="" loading="lazy" decoding="async"></div><h3>Catat komitmen pelanggan</h3><p>Buat invoice pelanggan dengan rincian barang dan jatuh tempo. Catat pembayaran masuk agar sisa piutang jelas.</p></li><li class="ag-reveal"><div class="mf-step-top"><span class="mf-number">02</span><img class="mf-icon" src="/assets/images/navbar-3d/commerce-parcel.webp" width="80" height="80" alt="" loading="lazy" decoding="async"></div><h3>Catat biaya supplier</h3><p>Simpan tagihan supplier beserta dokumennya. Lengkapi nominal, kategori, dan jatuh tempo untuk ditinjau tim keuangan.</p></li><li class="ag-reveal"><div class="mf-step-top"><span class="mf-number">03</span><img class="mf-icon" src="/assets/images/navbar-3d/allocation-tray.webp" width="80" height="80" alt="" loading="lazy" decoding="async"></div><h3>Tinjau anggaran bersama kas</h3><p>Bandingkan biaya yang ditetapkan dengan alokasi, lalu periksa kas tercatat serta tagihan belum lunas. Gunakan keduanya untuk menilai komitmen berikutnya.</p></li><li class="ag-reveal"><div class="mf-step-top"><span class="mf-number">04</span><img class="mf-icon" src="/assets/images/navbar-3d/accounting-ledger.webp" width="80" height="80" alt="" loading="lazy" decoding="async"></div><h3>Periksa catatan akuntansi</h3><p>Tinjau jurnal dibukukan serta laporan keuangan. Telusuri entri ke sumbernya dan lengkapi catatan sebelum tinjauan keuangan.</p></li></ol></div></section>
+<section class="ag-section"><div class="ag-shell ag-split"><div class="ag-section-heading ag-reveal"><p class="ag-kicker">Pekerjaan keuangan terhubung</p><h2>Simpan sumbernya.<br>Pahami entrinya.</h2><p>Tagihan supplier memberi konteks biaya. Jurnal dibukukan menunjukkan dampak akuntansinya. Laporan keuangan menyatukan entri dalam gambaran yang lebih luas.</p></div><div class="mf-ledger-visual ag-reveal"><img class="mf-icon" src="/assets/images/navbar-3d/accounting-ledger.webp" width="112" height="112" alt="" loading="lazy" decoding="async"><div class="mf-ui"><div class="mf-ui-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">Jurnal dibukukan</span><small>Akuntansi</small></div><div class="mf-ui-body"><p class="mf-document">BILL-082</p><table><caption>Tagihan perlengkapan operasional · entri dibukukan</caption><thead><tr><th>Akun</th><th>Debit</th><th>Kredit</th></tr></thead><tbody><tr><th>Beban operasional</th><td>Rp12.000.000</td><td>—</td></tr><tr><th>Utang</th><td>—</td><td>Rp12.000.000</td></tr></tbody></table><p class="mf-tag">Seimbang · sumber terhubung</p></div></div><a class="ag-text-link" href="/id/accounting-automation">Lihat akuntansi <span aria-hidden="true">↗</span></a></div></div></section>
+<section id="walkthrough" class="ag-section mf-walkthrough"><div class="ag-shell"><div class="mf-section-intro"><div class="ag-section-heading ag-reveal"><p class="ag-kicker">Alur kerja di FluxyOS</p><h2>Pilih catatannya.<br>Lihat keputusan yang didukungnya.</h2><p>Ikuti invoice, tagihan supplier, atau kategori anggaran hingga konteks keuangannya.</p></div></div><div class="mf-workspace"><div class="mf-workspace-head"><strong>FluxyOS · Keuangan manufaktur</strong><span>Workspace contoh · Oktober</span></div><div class="mf-selector" role="tablist" aria-label="Pilih catatan keuangan" hidden><button type="button" role="tab" id="mf-tab-0" aria-controls="mf-panel-0" aria-selected="true" tabindex="0" data-mf-tab="0"><img class="mf-icon" src="/assets/images/navbar-3d/invoice-envelope.webp" width="48" height="48" alt="" loading="lazy" decoding="async"><span>Invoice pelanggan</span></button><button type="button" role="tab" id="mf-tab-1" aria-controls="mf-panel-1" aria-selected="false" tabindex="-1" data-mf-tab="1"><img class="mf-icon" src="/assets/images/navbar-3d/connected-records.webp" width="48" height="48" alt="" loading="lazy" decoding="async"><span>Tagihan supplier</span></button><button type="button" role="tab" id="mf-tab-2" aria-controls="mf-panel-2" aria-selected="false" tabindex="-1" data-mf-tab="2"><img class="mf-icon" src="/assets/images/navbar-3d/allocation-tray.webp" width="48" height="48" alt="" loading="lazy" decoding="async"><span>Kategori anggaran</span></button></div><div class="mf-panel" id="mf-panel-0" ><div class="mf-source"><div class="mf-ui"><div class="mf-ui-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">Invoice pelanggan</span><small>Jatuh tempo 24 Okt</small></div><div class="mf-ui-body"><p class="mf-document">INV-1024 · PT Sinar Kemasan</p><h3>Pesanan kemasan</h3><div class="mf-row"><span>Jumlah invoice</span><strong>Rp48.000.000</strong></div><div class="mf-row"><span>Pembayaran diterima</span><strong>Rp18.000.000</strong></div><div class="mf-row"><span>Belum lunas</span><strong>Rp30.000.000</strong></div></div></div></div><div class="mf-connector" aria-hidden="true">→</div><div class="mf-decision"><p class="ag-kicker">Tinjau penagihan</p><h3>Rp30.000.000 belum diterima</h3><p>Periksa jatuh tempo serta pembayaran tercatat sebelum menghitung invoice ini sebagai kas tersedia.</p><div class="mf-financial-trail">Piutang → catatan pembayaran → tinjauan akuntansi</div><a class="ag-text-link" href="/id/vendorspend">Lihat alur kerjanya <span aria-hidden="true">↗</span></a></div></div><div class="mf-panel" id="mf-panel-1" ><div class="mf-source"><div class="mf-ui"><div class="mf-ui-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">Tagihan supplier</span><small>Belum lunas</small></div><div class="mf-ui-body"><p class="mf-document">BILL-082 · PT Bahan Prima</p><h3>Perlengkapan kemasan</h3><div class="mf-row"><span>Jumlah terutang</span><strong>Rp12.000.000</strong></div><div class="mf-row"><span>Jatuh tempo</span><strong>18 Oktober</strong></div><p class="mf-tag">Dokumen supplier terlampir</p></div></div></div><div class="mf-connector" aria-hidden="true">→</div><div class="mf-decision"><p class="ag-kicker">Tinjau prioritas pembayaran</p><h3>Rp12.000.000 jatuh tempo 18 Oktober</h3><p>Tinjau dokumen supplier dan jatuh tempo bersama kas tercatat. Tagihan adalah komitmen; pembayaran dicatat terpisah.</p><div class="mf-financial-trail">Dokumen supplier → utang → tinjauan pembayaran</div><a class="ag-text-link" href="/id/vendorspend">Lihat alur kerjanya <span aria-hidden="true">↗</span></a></div></div><div class="mf-panel" id="mf-panel-2" ><div class="mf-source"><div class="mf-ui"><div class="mf-ui-head"><span><img src="/assets/images/favicon.svg" width="18" height="18" alt="">Dynamic Budgeting</span><small>Oktober</small></div><div class="mf-ui-body"><h3>Perlengkapan operasional</h3><div class="mf-row"><span>Dialokasikan</span><strong>Rp40.000.000</strong></div><div class="mf-row"><span>Pengeluaran ditetapkan</span><strong>Rp28.000.000</strong></div><div class="mf-meter" aria-hidden="true"><span></span></div><div class="mf-row"><span>Sisa alokasi</span><strong>Rp12.000.000</strong></div></div></div></div><div class="mf-connector" aria-hidden="true">→</div><div class="mf-decision"><p class="ag-kicker">Tinjau ruang pengeluaran</p><h3>Sisa alokasi Rp12.000.000</h3><p>Bandingkan pengeluaran dalam kategori ini dengan alokasinya. Lalu periksa kas serta tagihan belum lunas sebelum menambah biaya.</p><div class="mf-financial-trail">Alokasi → pengeluaran ditetapkan → sisa anggaran</div><a class="ag-text-link" href="/id/budgetlanding">Lihat alur kerjanya <span aria-hidden="true">↗</span></a></div></div></div></div></section>
+<section class="ag-section"><div class="ag-shell"><div class="mf-section-intro"><div class="ag-section-heading ag-reveal"><p class="ag-kicker">Untuk pemilik dan tim keuangan</p><h2>Jadikan tinjauan berikutnya<br>percakapan yang lebih berguna.</h2><p>Gunakan catatan keuangan terhubung untuk menentukan prioritas, tanpa mencari konteks dari awal.</p></div></div><div class="mf-benefits"><article class="ag-reveal"><img class="mf-icon" src="/assets/images/navbar-3d/invoice-envelope.webp" width="96" height="96" alt="" loading="lazy" decoding="async"><h3>Tindak lanjuti dengan konteks jelas</h3><p>Lihat invoice belum lunas beserta pembayaran tercatat sebelum menagih pelanggan.</p><a class="ag-text-link" href="/id/vendorspend">Lihat fitur <span aria-hidden="true">↗</span></a></article><article class="ag-reveal"><img class="mf-icon" src="/assets/images/navbar-3d/allocation-tray.webp" width="96" height="96" alt="" loading="lazy" decoding="async"><h3>Periksa ruang sebelum menambah biaya</h3><p>Tinjau biaya, sisa alokasi, serta komitmen supplier sebelum pembelian berikutnya.</p><a class="ag-text-link" href="/id/budgetlanding">Lihat fitur <span aria-hidden="true">↗</span></a></article><article class="ag-reveal"><img class="mf-icon" src="/assets/images/navbar-3d/accounting-ledger.webp" width="96" height="96" alt="" loading="lazy" decoding="async"><h3>Lengkapi sumber tinjauan keuangan</h3><p>Periksa jurnal dan laporan, lalu telusuri entri ke dokumennya saat nominal perlu dijelaskan.</p><a class="ag-text-link" href="/id/accounting-automation">Lihat fitur <span aria-hidden="true">↗</span></a></article></div></div></section>
+<section id="faq" class="ag-section mf-faq-section"><div class="ag-shell ag-faq-grid"><div class="ag-section-heading ag-reveal"><p class="ag-kicker">Jawaban untuk Anda</p><h2>Temukan yang tepat<br>untuk pekerjaan keuangan Anda.</h2><p>Detail praktis sebelum tim Anda mulai.</p></div><div><details class="ag-faq"><summary>Bagaimana FluxyOS membantu tim keuangan manufaktur?<span aria-hidden="true">+</span></summary><p>FluxyOS menghubungkan invoice pelanggan, tagihan supplier, pengeluaran, anggaran, kas tercatat, dan akuntansi. Tim Anda bisa meninjau penagihan, pembayaran mendatang, serta alokasi pengeluaran bersama. Kelengkapan tinjauan bergantung pada catatan yang Anda masukkan dan bukukan.</p></details><details class="ag-faq"><summary>Apakah FluxyOS menghitung biaya produksi per batch?<span aria-hidden="true">+</span></summary><p>BOM manufaktur, proses produksi, barang dalam proses, hasil produksi, serta perhitungan biaya batch otomatis belum tersedia. Catat tagihan dan biaya yang didukung untuk tinjauan keuangan; biaya tersebut bukan hasil perhitungan biaya produksi otomatis. Diskusikan kebutuhan manufaktur Anda dengan sales.</p></details><details class="ag-faq"><summary>Apakah sisa anggaran sama dengan kas tersedia?<span aria-hidden="true">+</span></summary><p>Tidak. Alokasi anggaran adalah rencana pengeluaran. Kas tercatat mencerminkan catatan kas dalam workspace, sedangkan tagihan dan invoice belum lunas menunjukkan komitmen terpisah. Tinjau semuanya bersama dan perbarui catatan pembayaran.</p></details><details class="ag-faq"><summary>Apa yang perlu disiapkan untuk mulai?<span aria-hidden="true">+</span></summary><p>Siapkan invoice pelanggan, tagihan supplier, catatan saldo kas awal, bagan akun, serta kategori pengeluaran. Mulai dengan satu workspace dan tinjau pengaturannya bersama tim keuangan. Sales bisa membantu menilai kesesuaian sebelum Anda memilih paket.</p></details><details class="ag-faq"><summary>Bisakah FluxyOS mengonsolidasikan beberapa perusahaan manufaktur?<span aria-hidden="true">+</span></summary><p>Konsolidasi beberapa badan hukum serta profitabilitas produksi per pabrik belum didukung. Alur ini membahas catatan keuangan dalam satu workspace. Pastikan kebutuhan struktur perusahaan dan laporan Anda bersama sales.</p></details></div></div></section>
+<section class="ag-section ag-final"><div class="ag-shell ag-split"><div class="ag-section-heading ag-reveal"><p class="ag-kicker">Komitmen berikutnya</p><h2>Melangkah dengan<br>konteks keuangan yang jelas.</h2><p>Lihat FluxyOS atau diskusikan alur keuangan yang dibutuhkan bisnis manufaktur Anda.</p></div><div><div class="ag-actions"><a class="ag-primary" href="/id/pricing">Lihat paket <span aria-hidden="true">↗</span></a><a class="ag-text-link" href="/contact-sales">Hubungi sales <span aria-hidden="true">↗</span></a></div><a class="mf-walk-link" href="#walkthrough">Lihat kembali alur kerjanya ↑</a></div></div></section>
+</main><script src="/assets/js/fluxyos.js" defer></script><script src="/assets/js/marketing-agencies.js" defer></script><script src="/assets/js/manufacturing.js" defer></script><script src="/assets/js/i18n.js" defer></script><script src="/assets/js/universe-canvas.js" defer></script><script src="/assets/js/footer-loader.js" defer></script></body></html>

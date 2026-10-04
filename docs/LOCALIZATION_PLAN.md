@@ -157,6 +157,10 @@ The Retail & Franchises EN/ID pair uses `scripts/build-retail-page.js`. Edit pai
 | Point of Sale | Point of Sale (keep) | Product name; POS for the abbreviation |
 | Outlet P&L | Outlet P&L (keep) | Product surface; body copy uses “laporan laba rugi per outlet” |
 | Unassigned | Belum ditetapkan | Posting without outlet attribution; never hide these amounts from a comparison |
+| Production commitment | Komitmen produksi | Manufacturing financial decision; not a production-control feature |
+| Work in progress | Barang dalam proses | Manufacturing costing is not currently available |
+| Recorded cash | Kas tercatat | Based on workspace records; not a live bank balance promise |
+| Remaining allocation | Sisa alokasi | Budget availability, distinct from cash |
 | Cost of goods sold | Harga pokok penjualan | HPP for the abbreviation |
 | Shift | Shift | Cashier working session |
 | Table service | Layanan meja | Dine-in POS workflow |
